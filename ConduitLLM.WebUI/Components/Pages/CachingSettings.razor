@@ -1,0 +1,562 @@
+@page "/caching-settings"
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.Core.Caching
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@inject ICacheStatusService CacheStatusService
+@inject ICacheMetricsService MetricsService
+@rendermode InteractiveServer
+@inject ILogger<CachingSettings> Logger
+@implements IDisposable
+
+<PageTitle>Cache Settings</PageTitle>
+
+<h1>
+    <span class="bi bi-database" aria-hidden="true"></span> Cache Settings
+</h1>
+<hr />
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Cache Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableCache" @bind="_isEnabled" @onclick="ToggleCacheEnabled">
+                    <label class="form-check-label" for="enableCache">Enable Cache</label>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="cacheType" class="form-label">Cache Type</label>
+                        <select class="form-select" id="cacheType" @bind="_cacheType" disabled="@(!_isEnabled)">
+                            @foreach (var option in _cacheTypeOptions)
+                            {
+                                <option value="@option.Value">@option.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="maxItems" class="form-label">Max Cache Items</label>
+                        <input type="number" class="form-control" id="maxItems" min="100" @bind="_maxCacheItems" disabled="@(!_isEnabled)">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="defaultExpiration" class="form-label">Default Expiration (minutes)</label>
+                        <input type="number" class="form-control" id="defaultExpiration" min="1" @bind="_defaultExpirationMinutes" disabled="@(!_isEnabled)">
+                    </div>
+                </div>
+
+                @if (_cacheType == "Redis")
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Redis Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="redisConnection" class="form-label">Connection String</label>
+                                <input type="text" class="form-control" id="redisConnection" @bind="_redisConnectionString" 
+                                       placeholder="localhost:6379" disabled="@(!_isEnabled)">
+                            </div>
+                            <div class="mb-3">
+                                <label for="redisInstance" class="form-label">Redis Instance Name</label>
+                                <input type="text" class="form-control" id="redisInstance" @bind="_redisInstanceName" 
+                                       placeholder="conduitllm-cache" disabled="@(!_isEnabled)">
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="accordion mb-3" id="cacheSettings">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingCacheKey">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapseCacheKey" aria-expanded="false" 
+                                    aria-controls="collapseCacheKey" disabled="@(!_isEnabled)">
+                                Cache Key Settings
+                            </button>
+                        </h2>
+                        <div id="collapseCacheKey" class="accordion-collapse collapse" 
+                                aria-labelledby="headingCacheKey" data-bs-parent="#cacheSettings">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeModel" 
+                                                   @bind="_includeModelInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeModel">
+                                                Include Model
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeProvider" 
+                                                   @bind="_includeProviderInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeProvider">
+                                                Include Provider
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeApiKey" 
+                                                   @bind="_includeApiKeyInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeApiKey">
+                                                Include API Key
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeTemperature" 
+                                                   @bind="_includeTemperatureInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeTemperature">
+                                                Include Temperature
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeMaxTokens" 
+                                                   @bind="_includeMaxTokensInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeMaxTokens">
+                                                Include Max Tokens
+                                            </label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeTopP" 
+                                                   @bind="_includeTopPInKey" disabled="@(!_isEnabled)">
+                                            <label class="form-check-label" for="includeTopP">
+                                                Include Top P
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingModelRules">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapseModelRules" aria-expanded="false" 
+                                    aria-controls="collapseModelRules" disabled="@(!_isEnabled)">
+                                Model-Specific Rules
+                            </button>
+                        </h2>
+                        <div id="collapseModelRules" class="accordion-collapse collapse" 
+                                aria-labelledby="headingModelRules" data-bs-parent="#cacheSettings">
+                            <div class="accordion-body">
+                                @foreach (var rule in _modelRules)
+                                {
+                                    <div class="card mb-2">
+                                        <div class="card-body">
+                                            <div class="row align-items-end">
+                                                <div class="col-md-5 mb-2">
+                                                    <label class="form-label">Model Pattern</label>
+                                                    <input type="text" class="form-control" @bind="rule.ModelNamePattern" disabled="@(!_isEnabled)">
+                                                </div>
+                                                <div class="col-md-3 mb-2">
+                                                    <label class="form-label">Behavior</label>
+                                                    <select class="form-select" @bind="rule.CacheBehavior" disabled="@(!_isEnabled)">
+                                                        <option value="@CacheBehavior.Default">Default</option>
+                                                        <option value="@CacheBehavior.Always">Always</option>
+                                                        <option value="@CacheBehavior.Never">Never</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3 mb-2">
+                                                    <label class="form-label">Expiration (min)</label>
+                                                    <input type="number" class="form-control" @bind="rule.ExpirationMinutes" 
+                                                           disabled="@(!_isEnabled || rule.CacheBehavior == CacheBehavior.Never)">
+                                                </div>
+                                                <div class="col-md-1 mb-2 d-flex align-items-center">
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveModelRule(rule))" 
+                                                            disabled="@(!_isEnabled)">
+                                                        <span class="bi bi-trash"></span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                <button class="btn btn-outline-primary" @onclick="AddModelRule" disabled="@(!_isEnabled)">
+                                    <span class="bi bi-plus-circle me-1"></span> Add Model Rule
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-primary" @onclick="SaveConfiguration" disabled="@(!_isInitialized)">
+                        <span class="bi bi-save me-1"></span> Save Changes
+                    </button>
+                    <button class="btn btn-danger" @onclick="ClearCache" disabled="@(!_isEnabled)">
+                        <span class="bi bi-trash me-1"></span> Clear Cache
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Cache Statistics</h5>
+            </div>
+            <div class="card-body">
+                @if (_isLoading)
+                {
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Status:</span> 
+                            <span class="badge @(_cacheStats.IsEnabled ? "bg-success" : "bg-secondary")">
+                                @(_cacheStats.IsEnabled ? "Enabled" : "Disabled")
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Type:</span> <span>@_cacheStats.CacheType</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Items:</span> <span>@_cacheStats.TotalItems</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Hit Rate:</span> <span>@(_cacheStats.HitRate.ToString("P2"))</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Memory Usage:</span> <span>@FormatBytes(_cacheStats.MemoryUsageBytes)</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Avg. Response Time:</span> <span>@_cacheStats.AvgResponseTime.ToString("F2") ms</span>
+                        </li>
+                    </ul>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="LoadCacheStatisticsAsync">
+                            <span class="bi bi-arrow-clockwise me-1"></span> Refresh
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Model-Specific Statistics</h5>
+            </div>
+            <div class="card-body">
+                @if (_modelStats.Count == 0)
+                {
+                    <div class="alert alert-info">
+                        <span class="bi bi-info-circle me-2"></span>
+                        No model-specific statistics available.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Hits</th>
+                                    <th>Misses</th>
+                                    <th>Hit Rate</th>
+                                    <th>Avg Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var stat in _modelStats)
+                                {
+                                    <tr>
+                                        <td>@stat.ModelName</td>
+                                        <td>@stat.Hits</td>
+                                        <td>@stat.Misses</td>
+                                        <td>@stat.HitRate.ToString("P2")</td>
+                                        <td>@stat.AvgResponseTime.ToString("F2") ms</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<CacheTypeOption> _cacheTypeOptions = new()
+    {
+        new CacheTypeOption("Memory", "Memory"),
+        new CacheTypeOption("Redis", "Redis")
+    };
+    
+    private bool _isEnabled;
+    private string _cacheType = "Memory";
+    private int _maxCacheItems = 10000;
+    private int _defaultExpirationMinutes = 60;
+    private string _redisConnectionString = "localhost:6379";
+    private string _redisInstanceName = "conduitllm-cache";
+    private bool _includeModelInKey = true;
+    private bool _includeProviderInKey = true;
+    private bool _includeApiKeyInKey = false;
+    private bool _includeTemperatureInKey = true;
+    private bool _includeMaxTokensInKey = false;
+    private bool _includeTopPInKey = false;
+    private List<ModelCacheRule> _modelRules = new();
+    
+    private bool _isInitialized = false;
+    private bool _isLoading = true;
+    
+    // Cache statistics
+    private CacheStats _cacheStats = new();
+    private List<ModelStatistics> _modelStats = new();
+    
+    private Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+        _isInitialized = true;
+        
+        // Set up a timer to refresh cache statistics every 30 seconds
+        _refreshTimer = new Timer(async _ => 
+        {
+            try 
+            {
+                await LoadCacheStatisticsAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error refreshing cache statistics: {ex.Message}");
+            }
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+    
+    private async Task LoadConfigurationAsync()
+    {
+        _isLoading = true;
+        
+        try
+        {
+            var cacheSection = Configuration.GetSection("Caching");
+            _isEnabled = cacheSection?.GetValue<bool>("Enabled") ?? false;
+            _cacheType = cacheSection?.GetValue<string>("Provider") ?? "Memory";
+            _maxCacheItems = cacheSection?.GetValue<int>("MaxItems") ?? 10000;
+            _defaultExpirationMinutes = cacheSection?.GetValue<int>("DefaultExpirationMinutes") ?? 60;
+            _redisConnectionString = cacheSection?.GetValue<string>("RedisConnectionString") ?? "localhost:6379";
+            _redisInstanceName = cacheSection?.GetValue<string>("RedisInstanceName") ?? "conduitllm-cache";
+            _includeModelInKey = cacheSection?.GetValue<bool>("IncludeModelInKey") ?? true;
+            _includeProviderInKey = cacheSection?.GetValue<bool>("IncludeProviderInKey") ?? true;
+            _includeApiKeyInKey = cacheSection?.GetValue<bool>("IncludeApiKeyInKey") ?? false;
+            _includeTemperatureInKey = cacheSection?.GetValue<bool>("IncludeTemperatureInKey") ?? true;
+            _includeMaxTokensInKey = cacheSection?.GetValue<bool>("IncludeMaxTokensInKey") ?? false;
+            _includeTopPInKey = cacheSection?.GetValue<bool>("IncludeTopPInKey") ?? false;
+            
+            // Load model rules
+            _modelRules = new List<ModelCacheRule>();
+            var rulesSection = cacheSection?.GetSection("ModelRules");
+            if (rulesSection != null)
+            {
+                foreach (var ruleSection in rulesSection.GetChildren())
+                {
+                    _modelRules.Add(new ModelCacheRule
+                    {
+                        ModelNamePattern = ruleSection.GetValue<string>("ModelNamePattern") ?? "",
+                        CacheBehavior = (CacheBehavior)ruleSection.GetValue<int>("CacheBehavior"),
+                        ExpirationMinutes = ruleSection.GetValue<int?>("ExpirationMinutes")
+                    });
+                }
+            };
+            
+            await LoadCacheStatisticsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading cache configuration");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private async Task LoadCacheStatisticsAsync()
+    {
+        try
+        {
+            var status = await CacheStatusService.GetCacheStatusAsync();
+            _cacheStats = new CacheStats
+            {
+                IsEnabled = status.IsEnabled,
+                CacheType = status.CacheType,
+                TotalItems = status.TotalItems,
+                HitRate = status.HitRate,
+                MemoryUsageBytes = status.MemoryUsageBytes,
+                AvgResponseTime = status.AvgResponseTime
+            };
+            
+            // Load model-specific statistics from the metrics service
+            _modelStats.Clear();
+            var modelMetrics = MetricsService.GetModelMetrics();
+            
+            foreach (var modelName in MetricsService.GetTrackedModels())
+            {
+                var metrics = MetricsService.GetMetricsForModel(modelName);
+                if (metrics != null)
+                {
+                    _modelStats.Add(new ModelStatistics
+                    {
+                        ModelName = modelName,
+                        Hits = metrics.Hits,
+                        Misses = metrics.Misses,
+                        HitRate = metrics.GetHitRate(),
+                        AvgResponseTime = metrics.GetAverageRetrievalTimeMs()
+                    });
+                }
+            }
+            
+            // Sort by hit rate descending, then by usage (hits + misses) descending
+            _modelStats = _modelStats
+                .OrderByDescending(m => m.HitRate)
+                .ThenByDescending(m => m.Hits + m.Misses)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading cache statistics: {Message}", ex.Message);
+        }
+    }
+    
+    private async Task SaveConfiguration()
+    {
+        try
+        {
+            // In a real implementation, this would save configuration to a service
+            // For this sample, we'll just log the configuration
+            Logger.LogInformation("Saving cache configuration: Enabled={Enabled}, Type={Type}", _isEnabled, _cacheType);
+            
+            // Update cache status with new settings
+            await CacheStatusService.SetCacheEnabledAsync(_isEnabled);
+            
+            // Refresh the statistics
+            await LoadCacheStatisticsAsync();
+            
+            Logger.LogInformation("Cache configuration saved");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving cache configuration");
+        }
+    }
+    
+    private void ToggleCacheEnabled()
+    {
+        _isEnabled = !_isEnabled;
+    }
+    
+    private void AddModelRule()
+    {
+        _modelRules.Add(new ModelCacheRule
+        {
+            ModelNamePattern = "",
+            CacheBehavior = CacheBehavior.Default,
+            ExpirationMinutes = _defaultExpirationMinutes
+        });
+    }
+    
+    private void RemoveModelRule(ModelCacheRule rule)
+    {
+        _modelRules.Remove(rule);
+    }
+    
+    private async Task ClearCache()
+    {
+        try
+        {
+            await CacheStatusService.ClearCacheAsync();
+            
+            // Refresh statistics after clearing the cache
+            await LoadCacheStatisticsAsync();
+            
+            Logger.LogInformation("Cache cleared successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing cache");
+        }
+    }
+    
+    private string FormatBytes(long bytes)
+    {
+        string[] suffix = { "B", "KB", "MB", "GB", "TB" };
+        int i;
+        double dblBytes = bytes;
+        for (i = 0; i < suffix.Length && bytes >= 1024; i++, bytes /= 1024)
+        {
+            dblBytes = bytes / 1024.0;
+        }
+        
+        return $"{dblBytes:0.#} {suffix[i]}";
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+
+    // Model classes for the cache UI
+    private class CacheTypeOption
+    {
+        public string Value { get; }
+        public string Label { get; }
+        
+        public CacheTypeOption(string value, string label)
+        {
+            Value = value;
+            Label = label;
+        }
+    }
+    
+    private enum CacheBehavior
+    {
+        Default = 0,
+        Always = 1,
+        Never = 2
+    }
+    
+    private class ModelCacheRule
+    {
+        public string ModelNamePattern { get; set; } = string.Empty;
+        public CacheBehavior CacheBehavior { get; set; } = CacheBehavior.Default;
+        public int? ExpirationMinutes { get; set; }
+    }
+    
+    private class CacheStats
+    {
+        public bool IsEnabled { get; set; }
+        public string CacheType { get; set; } = "Memory";
+        public int TotalItems { get; set; }
+        public double HitRate { get; set; }
+        public long MemoryUsageBytes { get; set; }
+        public double AvgResponseTime { get; set; }
+    }
+
+    private class ModelStatistics
+    {
+        public string ModelName { get; set; } = string.Empty;
+        public long Hits { get; set; }
+        public long Misses { get; set; }
+        public double HitRate { get; set; }
+        public double AvgResponseTime { get; set; }
+    }
+}

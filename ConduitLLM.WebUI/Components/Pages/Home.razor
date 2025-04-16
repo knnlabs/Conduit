@@ -1,0 +1,656 @@
+@page "/"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Configuration
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.Core.Caching
+@using ConduitLLM.Core.Models.Routing
+@inject ConfigurationDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject ProviderStatusService ProviderStatusService
+@inject IConfiguration Configuration
+@inject IRouterService RouterService
+@inject ICacheStatusService CacheStatusService
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>ConduitLLM Dashboard</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1>Welcome to ConduitLLM</h1>
+            <p class="lead">The central configuration hub for your LLM integrations</p>
+        </div>
+    </div>
+
+    @if (!IsMasterKeySet)
+    {
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <strong>Master Key Not Set:</strong> For enhanced security, especially for managing virtual keys, it's highly recommended to set a Master Key using the <code>CONDUIT_MASTER_KEY</code> environment variable. This key protects sensitive operations.
+                        <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments#set-the-environment" target="_blank" class="alert-link ms-1">Learn how to set environment variables</a>.
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Provider Status</h2>
+                    <button class="btn btn-sm btn-light" @onclick="CheckAllProvidersStatus" disabled="@isCheckingStatus">
+                        @if (isCheckingStatus)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="visually-hidden">Checking...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-arrow-clockwise"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (providerCount == 0)
+                    {
+                        <div class="alert alert-warning">
+                            <h4 class="alert-heading">No Providers Configured</h4>
+                            <p>
+                                You haven't configured any LLM providers yet. To get started with ConduitLLM, 
+                                you'll need to add at least one provider.
+                            </p>
+                            <hr>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                <button class="btn btn-primary" @onclick="NavigateToConfiguration">
+                                    <i class="bi bi-plus-circle"></i> Add Your First Provider
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (providerStatuses.Count > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Provider</th>
+                                            <th>Status</th>
+                                            <th>Last Checked</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var provider in providers)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong>@provider.ProviderName</strong>
+                                                </td>
+                                                <td>
+                                                    @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
+                                                    {
+                                                        @if (status.IsOnline)
+                                                        {
+                                                            <span class="badge bg-success d-inline-flex align-items-center">
+                                                                <i class="bi bi-check-circle me-1"></i> Online
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-danger d-inline-flex align-items-center">
+                                                                <i class="bi bi-x-circle me-1"></i> Offline
+                                                            </span>
+                                                            <small class="d-block text-muted mt-1">@status.StatusMessage</small>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary d-inline-flex align-items-center">
+                                                            <i class="bi bi-question-circle me-1"></i> Unknown
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (providerStatuses.TryGetValue(provider.ProviderName, out var statusTime) && statusTime.LastCheckedUtc != default)
+                                                    {
+                                                        <small>@statusTime.LastCheckedUtc.ToLocalTime().ToString("g")</small>
+                                                    }
+                                                    else
+                                                    {
+                                                        <small>-</small>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+
+                        <div class="mt-3">
+                            <p class="mb-0">
+                                <strong>@providerCount</strong> provider@(providerCount == 1 ? "" : "s") configured<br>
+                                <strong>@mappingCount</strong> model mapping@(mappingCount == 1 ? "" : "s") defined
+                            </p>
+                            
+                            <div class="d-grid gap-2 mt-3">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="NavigateToConfiguration">
+                                    <i class="bi bi-gear"></i> Manage Configuration
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="NavigateToChat">
+                                    <i class="bi bi-chat-dots"></i> Go to Chat
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Routing Status</h2>
+                    <button class="btn btn-sm btn-light" @onclick="CheckRoutingStatus" disabled="@isCheckingRoutingStatus">
+                        @if (isCheckingRoutingStatus)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="visually-hidden">Checking...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-arrow-clockwise"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (isLoadingRouting)
+                    {
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (routerConfig == null)
+                    {
+                        <div class="alert alert-warning">
+                            <h4 class="alert-heading">Routing Not Configured</h4>
+                            <p>
+                                Routing is not configured yet. Visit the Routing Settings page to set up model routing.
+                            </p>
+                            <hr>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                <button class="btn btn-primary" @onclick="NavigateToRoutingSettings">
+                                    <i class="bi bi-shuffle"></i> Configure Routing
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-2">
+                                <span class="badge @(isRouterEnabled ? "bg-success" : "bg-warning") p-2">
+                                    <i class="bi @(isRouterEnabled ? "bi-toggle-on" : "bi-toggle-off") me-1"></i>
+                                    @(isRouterEnabled ? "Enabled" : "Disabled")
+                                </span>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary p-2">
+                                    <i class="bi bi-diagram-3 me-1"></i>
+                                    @GetStrategyDisplayName(routerConfig.DefaultRoutingStrategy)
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="small mb-3">
+                            <p class="mb-1"><strong>Model deployments:</strong> @(routerConfig.ModelDeployments?.Count ?? 0)</p>
+                            <p class="mb-1"><strong>Fallback configurations:</strong> @(routerConfig.FallbackConfigurations?.Count ?? 0)</p>
+                            <p class="mb-0"><strong>Max retries:</strong> @(routerConfig.MaxRetries)</p>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-sm btn-outline-info" @onclick="NavigateToRoutingSettings">
+                                <i class="bi bi-gear"></i> Manage Routing
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Caching Status</h2>
+                    <button class="btn btn-sm btn-light" @onclick="CheckCachingStatus" disabled="@isCheckingCachingStatus">
+                        @if (isCheckingCachingStatus)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="visually-hidden">Checking...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-arrow-clockwise"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (isLoadingCaching)
+                    {
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (cacheStats == null)
+                    {
+                        <div class="alert alert-warning">
+                            <h4 class="alert-heading">Caching Not Configured</h4>
+                            <p>
+                                Response caching is not configured yet. Visit the Caching Settings page to set up LLM response caching.
+                            </p>
+                            <hr>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                <button class="btn btn-primary" @onclick="NavigateToCachingSettings">
+                                    <i class="bi bi-database"></i> Configure Caching
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-2">
+                                <span class="badge @(isCacheEnabled ? "bg-success" : "bg-warning") p-2">
+                                    <i class="bi @(isCacheEnabled ? "bi-toggle-on" : "bi-toggle-off") me-1"></i>
+                                    @(isCacheEnabled ? "Enabled" : "Disabled")
+                                </span>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary p-2">
+                                    <i class="bi bi-hdd me-1"></i>
+                                    @cacheType
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="small mb-3">
+                            <p class="mb-1"><strong>Cached responses:</strong> @cacheStats.TotalItems</p>
+                            <p class="mb-1"><strong>Hit rate:</strong> @(cacheStats.HitRate * 100)%</p>
+                            <p class="mb-0"><strong>Memory usage:</strong> @FormatBytes(cacheStats.MemoryUsageBytes)</p>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-sm btn-outline-success" @onclick="NavigateToCachingSettings">
+                                <i class="bi bi-gear"></i> Manage Caching
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h2 class="h5 mb-0">About ConduitLLM</h2>
+                </div>
+                <div class="card-body">
+                    <p>
+                        ConduitLLM is a .NET client library for interacting with various LLM providers through 
+                        a unified interface. This web dashboard helps you:
+                    </p>
+                    <ul>
+                        <li>Configure provider credentials (API keys, endpoints)</li>
+                        <li>Map generic model names to provider-specific models</li>
+                        <li>Manage global settings for your LLM integrations</li>
+                        <li>Test your configurations through a chat interface</li>
+                    </ul>
+                    <p class="small text-muted mt-3">
+                        <a href="/about" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-info-circle"></i> View More Details
+                        </a>
+                        <a href="https://github.com/nickna/ConduitLLM" target="_blank" class="btn btn-sm btn-outline-dark ms-2">
+                            <i class="bi bi-github"></i> GitHub Repository
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<DbProviderCredentials> providers = new();
+    private int providerCount;
+    private int mappingCount;
+    private bool isLoading = true;
+    private bool isCheckingStatus = false;
+    private Dictionary<string, ProviderStatus> providerStatuses = new();
+    private EventHandler<LocationChangedEventArgs>? locationChangedHandler;
+    private bool IsMasterKeySet;
+    
+    // Routing status properties
+    private RouterConfig? routerConfig;
+    private bool isRouterEnabled;
+    private bool isLoadingRouting = true;
+    private bool isCheckingRoutingStatus = false;
+    
+    // Caching status properties
+    private CacheStats? cacheStats;
+    private bool isCacheEnabled;
+    private string cacheType = "Memory";
+    private bool isLoadingCaching = true;
+    private bool isCheckingCachingStatus = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsMasterKeySet = !string.IsNullOrEmpty(Configuration["CONDUIT_MASTER_KEY"]);
+
+        // Register for navigation events
+        locationChangedHandler = OnLocationChanged;
+        NavigationManager.LocationChanged += locationChangedHandler;
+        
+        await LoadDataAsync();
+    }
+
+    // Force a refresh when the component is rendered - this helps when navigating back
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender && providers.Count > 0 && providerStatuses.Count == 0)
+        {
+            // If we have providers but no statuses, refresh the statuses
+            await CheckAllProvidersStatus();
+            StateHasChanged();
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Check if we're on the homepage by comparing the current URL to the home route
+        string homeUrl = NavigationManager.ToAbsoluteUri("/").ToString();
+        string currentUrl = NavigationManager.Uri;
+        
+        // Add logging to help debug
+        Console.WriteLine($"Navigation detected: {currentUrl}");
+        Console.WriteLine($"Home URL: {homeUrl}");
+        
+        // Check if we're at the homepage (either exactly or with hash/query params)
+        bool isHomePage = currentUrl == homeUrl || 
+                          currentUrl.StartsWith(homeUrl) && 
+                          (currentUrl.Length == homeUrl.Length || 
+                           currentUrl[homeUrl.Length] == '#' || 
+                           currentUrl[homeUrl.Length] == '?');
+        
+        if (isHomePage)
+        {
+            Console.WriteLine("Navigated to Home page - reloading data");
+            
+            // Reset loading states but DO NOT clear existing data
+            // This ensures we keep showing the old data until the new data is loaded
+            isLoading = true;
+            isLoadingRouting = routerConfig == null; // Only set to loading if we don't have data
+            isLoadingCaching = cacheStats == null;   // Only set to loading if we don't have data
+            
+            // Trigger an update to show loading indicators where needed
+            StateHasChanged();
+            
+            // Start loading data asynchronously
+            _ = InvokeAsync(ReloadDataAsync);
+        }
+    }
+    
+    // New method for handling data reload after navigation
+    private async Task ReloadDataAsync()
+    {
+        try
+        {
+            // First load the providers and model counts from a factory-created context
+            // which will be properly disposed when done with the using block
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            providers = await dbContext.ProviderCredentials.ToListAsync();
+            providerCount = providers.Count;
+            mappingCount = await dbContext.ModelMappings.CountAsync();
+            
+            // Update UI after loading basic data
+            isLoading = false;
+            StateHasChanged();
+            
+            // Then start loading the statuses concurrently
+            var tasks = new List<Task>();
+            
+            if (providerCount > 0)
+            {
+                tasks.Add(CheckAllProvidersStatus());
+            }
+            
+            tasks.Add(CheckRoutingStatus());
+            tasks.Add(CheckCachingStatus());
+            
+            // Wait for all status loading tasks to complete
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error reloading data: {ex.Message}");
+        }
+        finally
+        {
+            // Ensure all loading states are cleared
+            isLoading = false;
+            isLoadingRouting = false;
+            isLoadingCaching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            // Create a new DbContext instance from the factory
+            // This will be properly disposed when done with the using block
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            providers = await dbContext.ProviderCredentials.ToListAsync();
+            providerCount = providers.Count;
+            mappingCount = await dbContext.ModelMappings.CountAsync();
+            
+            // Then load each status sequentially to avoid timing issues
+            // Start with provider status if we have providers
+            if (providerCount > 0)
+            {
+                await CheckAllProvidersStatus();
+            }
+            
+            // Load routing information
+            await CheckRoutingStatus();
+            
+            // Load caching information
+            await CheckCachingStatus();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            // Ensure all loading states are cleared
+            isLoading = false;
+            isLoadingRouting = false;
+            isLoadingCaching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckAllProvidersStatus()
+    {
+        if (isCheckingStatus)
+            return;
+            
+        try
+        {
+            isCheckingStatus = true;
+            StateHasChanged();
+            
+            // Clear old statuses before getting new ones
+            providerStatuses.Clear();
+            providerStatuses = await ProviderStatusService.CheckAllProvidersStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error checking provider status: {ex.Message}");
+        }
+        finally
+        {
+            isCheckingStatus = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task CheckRoutingStatus()
+    {
+        if (isCheckingRoutingStatus)
+            return;
+            
+        try
+        {
+            isCheckingRoutingStatus = true;
+            StateHasChanged();
+            
+            var routerStatus = await RouterService.GetRouterStatusAsync();
+            routerConfig = routerStatus.Config;
+            isRouterEnabled = routerStatus.IsEnabled;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error checking routing status: {ex.Message}");
+            routerConfig = null;
+        }
+        finally
+        {
+            isCheckingRoutingStatus = false;
+            isLoadingRouting = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task CheckCachingStatus()
+    {
+        if (isCheckingCachingStatus)
+            return;
+            
+        try
+        {
+            isCheckingCachingStatus = true;
+            StateHasChanged();
+            
+            // In a real implementation, this would fetch from the cache service
+            // For now we simulate cache status
+            await Task.Delay(200); // Simulate network delay
+            
+            var cacheStatus = await CacheStatusService.GetCacheStatusAsync();
+            cacheStats = new CacheStats
+            {
+                TotalItems = cacheStatus.TotalItems,
+                HitRate = cacheStatus.HitRate,
+                MemoryUsageBytes = cacheStatus.MemoryUsageBytes,
+                AvgResponseTime = cacheStatus.AvgResponseTime
+            };
+            isCacheEnabled = cacheStatus.IsEnabled;
+            cacheType = cacheStatus.CacheType;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error checking cache status: {ex.Message}");
+            cacheStats = null;
+        }
+        finally
+        {
+            isCheckingCachingStatus = false;
+            isLoadingCaching = false;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToConfiguration()
+    {
+        NavigationManager.NavigateTo("/configuration");
+    }
+
+    private void NavigateToChat()
+    {
+        NavigationManager.NavigateTo("/chat");
+    }
+    
+    private void NavigateToRoutingSettings()
+    {
+        NavigationManager.NavigateTo("/routing-settings");
+    }
+    
+    private void NavigateToCachingSettings()
+    {
+        NavigationManager.NavigateTo("/caching-settings");
+    }
+    
+    private string GetStrategyDisplayName(string strategy)
+    {
+        return strategy?.ToLower() switch
+        {
+            "simple" => "Simple",
+            "random" => "Random",
+            "round-robin" => "Round Robin",
+            _ => strategy ?? "Unknown"
+        };
+    }
+    
+    private string FormatBytes(long bytes)
+    {
+        string[] suffix = { "B", "KB", "MB", "GB", "TB" };
+        int i;
+        double dblBytes = bytes;
+        
+        for (i = 0; i < suffix.Length && bytes >= 1024; i++, bytes /= 1024)
+        {
+            dblBytes = bytes / 1024.0;
+        }
+        
+        return $"{dblBytes:0.#} {suffix[i]}";
+    }
+    
+    private class CacheStats
+    {
+        public int TotalItems { get; set; }
+        public double HitRate { get; set; }
+        public long MemoryUsageBytes { get; set; }
+        public double AvgResponseTime { get; set; }
+    }
+    
+    public void Dispose()
+    {
+        // Unregister the event handler when component is disposed
+        if (locationChangedHandler != null)
+        {
+            NavigationManager.LocationChanged -= locationChangedHandler;
+        }
+    }
+}

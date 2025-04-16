@@ -1,0 +1,366 @@
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Logging // Added for logging
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject ProviderStatusService ProviderStatusService
+@inject NavigationManager NavigationManager
+@inject ILogger<GuidedSetupWizard> Logger // Inject logger
+
+<div class="guided-setup-container">
+    @if (IsOpen)
+    {
+        <div class="guided-setup-overlay">
+            <div class="guided-setup-dialog">
+                <div class="guided-setup-header">
+                    <h4>@GetWizardTitle()</h4>
+                    <button type="button" class="btn-close" @onclick="CloseWizard" aria-label="Close"></button>
+                </div>
+                <div class="guided-setup-body">
+                    @if (currentStep == 0)
+                    {
+                        <div class="step welcome-step">
+                            <h5>Welcome to @(providerModel?.ProviderName ?? "Provider") Setup</h5>
+                            <p>This wizard will guide you through configuring @(providerModel?.ProviderName ?? "the provider") for use with ConduitLLM.</p>
+
+                            <div class="step-content mt-4">
+                                <h6>You'll need:</h6>
+                                <ul class="setup-checklist">
+                                    <li>
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        An active @(providerModel?.ProviderName ?? "provider") account
+                                    </li>
+                                    <li>
+                                        <i class="bi bi-check-circle text-success me-2"></i>
+                                        An API key from @(providerModel?.ProviderName ?? "the provider")
+                                    </li>
+                                    @if (providerModel?.ProviderName == "OpenAI" || providerModel?.ProviderName == "Anthropic")
+                                    {
+                                        <li>
+                                            <i class="bi bi-check-circle text-success me-2"></i>
+                                            Payment method set up with @(providerModel?.ProviderName)
+                                        </li>
+                                    }
+                                </ul>
+
+                                @if (!string.IsNullOrEmpty(providerModel?.ProviderName) && ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName) != null)
+                                {
+                                    <div class="mt-3">
+                                        <a href="@ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName)" target="_blank" class="btn btn-outline-primary">
+                                            <i class="bi bi-key me-2"></i>Get @(providerModel.ProviderName) API Key
+                                        </a>
+                                        <small class="d-block mt-2 text-muted">
+                                            Opens the @(providerModel.ProviderName) website where you can create an API key
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (currentStep == 1)
+                    {
+                        <div class="step api-key-step">
+                            <h5>Enter API Key and Settings</h5>
+                            <p>Provide your @(providerModel?.ProviderName ?? "provider") API key and any other required settings:</p>
+
+                            <div class="mb-3">
+                                <label for="wizardApiKey" class="form-label">API Key</label>
+                                <input type="password" class="form-control" id="wizardApiKey"
+                                    @bind="providerModel!.ApiKey" placeholder="Enter your API key here" />
+                                @if (string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext)
+                                {
+                                    <div class="text-danger mt-1">API key is required</div>
+                                }
+                            </div>
+
+                            @if (providerModel?.ProviderName == "OpenRouter" || providerModel?.ProviderName == "Fireworks")
+                            {
+                                <div class="mb-3">
+                                    <label for="wizardApiBase" class="form-label">API Base URL (Optional)</label>
+                                    <input type="text" class="form-control" id="wizardApiBase"
+                                        @bind="providerModel!.ApiBase" placeholder="Leave empty for default" />
+                                    <small class="form-text text-muted">
+                                        Usually you can leave this empty to use the default.
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (currentStep == 2)
+                    {
+                        <div class="step test-step">
+                            <h5>Test Connection</h5>
+                            <p>Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</p>
+
+                            @if (isTesting)
+                            {
+                                <div class="d-flex justify-content-center my-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Testing connection...</span>
+                                    </div>
+                                </div>
+                                <p class="text-center">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</p>
+                            }
+                            else if (testStatus != null)
+                            {
+                                <div class="my-3">
+                                    @if (testStatus.IsOnline)
+                                    {
+                                        <div class="alert alert-success">
+                                            <i class="bi bi-check-circle-fill me-2"></i>
+                                            <strong>Connection Successful!</strong>
+                                            <p class="mb-0 mt-2">Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-danger">
+                                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                            <strong>Connection Failed</strong>
+                                            <p class="mb-0 mt-2">Error: @testStatus.StatusMessage</p>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (!testStatus.IsOnline)
+                                {
+                                    <button class="btn btn-primary" @onclick="TestConnection">
+                                        <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                                    </button>
+                                }
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary" @onclick="TestConnection">
+                                    <i class="bi bi-lightning-charge me-2"></i>Test Connection
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="guided-setup-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-outline-secondary"
+                            @onclick="PreviousStep" disabled="@(currentStep == 0)">
+                            <i class="bi bi-arrow-left me-1"></i>Back
+                        </button>
+
+                        <div class="step-indicators">
+                            @for (int i = 0; i < totalSteps; i++)
+                            {
+                                int stepIndex = i;
+                                <span class="step-dot @(currentStep == stepIndex ? "active" : "")"
+                                      @onclick="() => GoToStep(stepIndex)"></span>
+                            }
+                        </div>
+
+                        @if (currentStep < totalSteps - 1)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="NextStep">
+                                Next<i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-success" @onclick="FinishSetup">
+                                Finish<i class="bi bi-check-lg ms-1"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    // ProviderName parameter removed
+
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<DbProviderCredentials> OnSetupComplete { get; set; }
+
+    private int currentStep = 0;
+    private int totalSteps = 3; // Welcome, Configure, Test
+    // Initialize with a required property set, even if it's temporary. OpenForProvider will set the real one.
+    private DbProviderCredentials providerModel = new DbProviderCredentials { ProviderName = string.Empty };
+    private bool attemptedNext = false;
+    private bool isTesting = false;
+    private ProviderStatus? testStatus = null;
+
+    // OnInitialized and OnParametersSet removed. Initialization is handled by OpenForProvider.
+
+    /// <summary>
+    /// Explicitly opens and initializes the wizard for a specific provider.
+    /// Called by the parent component.
+    /// </summary>
+    public async Task OpenForProvider(string providerName) // Changed to async Task
+    {
+        Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Called with providerName: '{ProviderName}'", providerName);
+        // Reset internal state for a fresh setup
+        providerModel = new DbProviderCredentials { ProviderName = providerName }; // Create new model instance
+        currentStep = 0;
+        testStatus = null;
+        attemptedNext = false;
+        isTesting = false;
+        IsOpen = true; // Open the dialog
+        await IsOpenChanged.InvokeAsync(true); // Notify parent
+        Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Initialized providerModel.ProviderName to: '{ModelProviderName}'", providerModel.ProviderName);
+        StateHasChanged(); // Ensure UI reflects changes
+    }
+
+    private string GetWizardTitle()
+    {
+        // Use providerModel.ProviderName for the title
+        return $"Configure {providerModel?.ProviderName ?? "Provider"} - Step {currentStep + 1} of {totalSteps}";
+    }
+
+    private async Task NextStep()
+    {
+        attemptedNext = true;
+
+        if (currentStep == 1 && string.IsNullOrWhiteSpace(providerModel?.ApiKey))
+        {
+            // Validation for API key step
+            return;
+        }
+
+        if (currentStep < totalSteps - 1)
+        {
+            currentStep++;
+
+            // Auto-test connection when reaching test step
+            if (currentStep == 2 && testStatus == null)
+            {
+                await TestConnection();
+            }
+        }
+    }
+
+    private void PreviousStep()
+    {
+        if (currentStep > 0)
+        {
+            currentStep--;
+        }
+    }
+
+    private void GoToStep(int step)
+    {
+        if (step >= 0 && step < totalSteps)
+        {
+            currentStep = step;
+        }
+    }
+
+    private async Task TestConnection()
+    {
+        if (providerModel == null || string.IsNullOrWhiteSpace(providerModel.ApiKey))
+        {
+            testStatus = new ProviderStatus
+            {
+                IsOnline = false,
+                StatusMessage = "API key is required",
+                LastCheckedUtc = DateTime.UtcNow
+            };
+            return;
+        }
+
+        isTesting = true;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogDebug("GuidedSetupWizard.TestConnection - Testing with providerModel.ProviderName: '{ModelProviderName}'", providerModel.ProviderName);
+            // Pass a copy to avoid potential modification issues if service holds reference? Unlikely but safer.
+            var testCredentials = new DbProviderCredentials
+            {
+                ProviderName = providerModel.ProviderName,
+                ApiKey = providerModel.ApiKey,
+                ApiBase = providerModel.ApiBase,
+                ApiVersion = providerModel.ApiVersion
+            };
+            testStatus = await ProviderStatusService.CheckProviderStatusAsync(testCredentials);
+        }
+        catch (Exception ex)
+        {
+            testStatus = new ProviderStatus
+            {
+                IsOnline = false,
+                StatusMessage = $"Error: {ex.Message}",
+                LastCheckedUtc = DateTime.UtcNow
+            };
+        }
+        finally
+        {
+            isTesting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FinishSetup()
+    {
+        // First check if we need to test the connection
+        if (testStatus == null)
+        {
+            await TestConnection();
+            // If test failed or is still running, don't proceed
+            if (testStatus == null || !testStatus.IsOnline) return;
+        }
+        else if (!testStatus.IsOnline)
+        {
+             // If test already ran and failed, don't proceed
+             return;
+        }
+
+        // Check if this provider already exists before invoking the callback
+        using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        var existingProvider = await dbContext.ProviderCredentials
+            .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
+
+        if (existingProvider != null)
+        {
+            testStatus = new ProviderStatus // Re-use testStatus to display error
+            {
+                IsOnline = false,
+                StatusMessage = $"A provider named '{providerModel?.ProviderName}' already exists",
+                LastCheckedUtc = DateTime.UtcNow
+            };
+            StateHasChanged();
+            return;
+        }
+
+        // Create a new instance to avoid EF tracking issues
+        if (providerModel != null)
+        {
+            var newProvider = new DbProviderCredentials
+            {
+                ProviderName = providerModel.ProviderName,
+                ApiKey = providerModel.ApiKey,
+                ApiBase = providerModel.ApiBase,
+                ApiVersion = providerModel.ApiVersion
+            };
+
+            await OnSetupComplete.InvokeAsync(newProvider);
+        }
+
+        await CloseWizard(); // Close after successful completion
+    }
+
+    private async Task CloseWizard()
+    {
+        IsOpen = false;
+        // Reset state for next time
+        currentStep = 0;
+        testStatus = null;
+        attemptedNext = false;
+        // Reset model with required property set
+        providerModel = new DbProviderCredentials { ProviderName = string.Empty };
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

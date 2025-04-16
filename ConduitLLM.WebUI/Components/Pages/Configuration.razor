@@ -1,0 +1,435 @@
+@page "/configuration"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ILogger<Configuration> Logger
+@rendermode InteractiveServer
+
+<h1>Configuration Management</h1>
+
+@if (!string.IsNullOrEmpty(deleteErrorMessage))
+{
+    <div class="alert alert-danger mt-2">@deleteErrorMessage</div>
+}
+
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>LLM Providers</h2>
+        <div>
+            <button class="btn btn-primary" @onclick="AddProvider">
+                <i class="bi bi-plus-lg me-1"></i> Add Provider
+            </button>
+            <div class="dropdown d-inline-block ms-2">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="quickSetupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-magic me-1"></i> Quick Setup
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickSetupDropdown">
+                    @foreach (var provider in _supportedProviders)
+                    {
+                        <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">@provider</button></li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    @if (providerCredentials == null)
+    {
+        <p><em>Loading credentials...</em></p>
+    }
+    else if (!providerCredentials.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <span>No providers configured yet. Add an LLM provider to get started.</span>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-3 g-4 mt-2">
+            @foreach (var provider in _supportedProviders)
+            {
+                <div class="col">
+                    <div class="card h-100 provider-card">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">@provider</h5>
+                            <p class="card-text flex-grow-1">
+                                @GetProviderDescription(provider)
+                            </p>
+                            <button class="btn btn-outline-primary" @onclick="() => LaunchGuidedSetup(provider)">
+                                <i class="bi bi-magic me-1"></i> Setup @provider
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Name</th>
+                        <th>API Key</th>
+                        <th>Base URL</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cred in providerCredentials)
+                    {
+                        <tr>
+                            <td>@cred.ProviderName</td>
+                            <td>@(string.IsNullOrEmpty(cred.Name) ? "—" : cred.Name)</td>
+                            <td class="text-muted">@(string.IsNullOrEmpty(cred.ApiKey) ? "Not set" : "••••••••")</td>
+                            <td>@(string.IsNullOrEmpty(cred.ApiBase) ? "Default" : cred.ApiBase)</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => EditProvider(cred.Id)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProvider(cred.Id)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<hr />
+
+<h2>Model Mappings</h2>
+
+@if (modelMappings == null)
+{
+    <p><em>Loading mappings...</em></p>
+}
+else if (!modelMappings.Any())
+{
+    <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle me-2"></i>
+        <span>No model mappings configured yet. Add a mapping to begin using ConduitLLM.</span>
+    </div>
+
+    <button class="btn btn-primary" @onclick="AddMapping">
+        <i class="bi bi-plus-lg me-1"></i>Add First Mapping
+    </button>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Model Alias</th>
+                    <th>Provider</th>
+                    <th>Provider Model</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var mapping in modelMappings)
+                {
+                    <tr>
+                        <td>@mapping.ModelAlias</td>
+                        <td>
+                            @{
+                                var providerInfo = providerCredentials?.FirstOrDefault(p => p.ProviderName == mapping.ProviderName);
+                                var displayName = providerInfo != null && !string.IsNullOrEmpty(providerInfo.Name) 
+                                                ? providerInfo.Name 
+                                                : mapping.ProviderName;
+                            }
+                            @displayName
+                        </td>
+                        <td>@mapping.ProviderModelId</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditMapping(mapping.Id)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteMapping(mapping.Id)">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <button class="btn btn-primary" @onclick="AddMapping">
+        <i class="bi bi-plus-lg me-1"></i>Add Mapping
+    </button>
+}
+
+<hr />
+
+<h2>Global Settings</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label for="proxyUrl" class="form-label">Conduit Proxy Base URL:</label>
+            <InputText id="proxyUrl" @bind-Value="proxyBaseUrlInput" class="form-control" />
+            <small class="form-text text-muted">The base URL for the Conduit proxy server. This is used by the WebUI to route requests.</small>
+        </div>
+        <button class="btn btn-primary" @onclick="SaveProxyUrl" disabled="@isSavingProxyUrl">
+            @if (isSavingProxyUrl)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span> Saving...</span>
+            }
+            else
+            {
+                <span>Save Proxy URL</span>
+            }
+        </button>
+         @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
+        {
+            <span class="ms-3 @(proxyUrlSaveSuccess ? "text-success" : "text-danger")">@proxyUrlSaveMessage</span>
+        }
+    </div>
+</div>
+
+<GuidedSetupWizard
+    @ref="guidedSetupWizardInstance"
+    IsOpen="isGuidedSetupOpen"
+    OnSetupComplete="HandleSetupComplete"
+    IsOpenChanged="(value) => { isGuidedSetupOpen = value; StateHasChanged(); }" />
+    @* Removed @key and ProviderName parameter *@
+
+@code {
+    private List<DbProviderCredentials>? providerCredentials;
+    private List<DbModelProviderMapping>? modelMappings;
+    private string? deleteErrorMessage;
+
+    // --- Global Settings State ---
+    private const string ProxyUrlKey = "ConduitProxyBaseUrl";
+    private const string DefaultProxyUrl = "http://localhost:5000";
+    private string proxyBaseUrlInput = DefaultProxyUrl;
+    private bool isSavingProxyUrl = false;
+    private string? proxyUrlSaveMessage;
+    private bool proxyUrlSaveSuccess = false;
+
+    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras" };
+    private bool isGuidedSetupOpen = false;
+    // Removed selectedProviderForSetup variable
+    private GuidedSetupWizard? guidedSetupWizardInstance; // Reference to the wizard
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            await LoadProviderCredentialsAsync();
+            await LoadModelMappingsAsync();
+            await LoadProxyUrlAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading data");
+        }
+    }
+
+    private async Task LoadProviderCredentialsAsync()
+    {
+        using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        providerCredentials = await dbContext.ProviderCredentials.OrderBy(p => p.ProviderName).ToListAsync();
+    }
+
+    private async Task LoadModelMappingsAsync()
+    {
+        using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        modelMappings = await dbContext.ModelMappings.OrderBy(m => m.ModelAlias).ToListAsync();
+    }
+
+    private async Task LoadProxyUrlAsync()
+    {
+        using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        proxyUrlSaveMessage = null;
+        var setting = await dbContext.GlobalSettings.FindAsync(ProxyUrlKey);
+        proxyBaseUrlInput = setting?.Value ?? DefaultProxyUrl;
+    }
+
+    private async Task SaveProxyUrl()
+    {
+        isSavingProxyUrl = true;
+        proxyUrlSaveMessage = null;
+        proxyUrlSaveSuccess = false;
+        StateHasChanged();
+
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var setting = await dbContext.GlobalSettings.FindAsync(ProxyUrlKey);
+
+            if (setting == null)
+            {
+                setting = new GlobalSetting
+                {
+                    Key = ProxyUrlKey,
+                    Value = proxyBaseUrlInput ?? DefaultProxyUrl
+                };
+                dbContext.GlobalSettings.Add(setting);
+            }
+            else
+            {
+                setting.Value = proxyBaseUrlInput ?? DefaultProxyUrl;
+                dbContext.GlobalSettings.Update(setting);
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            proxyUrlSaveSuccess = true;
+            proxyUrlSaveMessage = "Proxy URL saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving proxy URL");
+            proxyUrlSaveMessage = $"Error saving proxy URL: {ex.Message}";
+        }
+        finally
+        {
+            isSavingProxyUrl = false;
+            StateHasChanged();
+        }
+    }
+
+    // --- Provider/Mapping Methods ---
+
+    private void AddProvider()
+    {
+        NavigationManager.NavigateTo("/configuration/provider/edit");
+    }
+
+    private void EditProvider(int id)
+    {
+        NavigationManager.NavigateTo($"/configuration/provider/edit/{id}");
+    }
+
+    private async Task DeleteProvider(int id)
+    {
+        try
+        {
+            deleteErrorMessage = null;
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var providerToDelete = await dbContext.ProviderCredentials.FindAsync(id);
+            if (providerToDelete == null) return;
+
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+                $"Are you sure you want to delete the provider '{providerToDelete.ProviderName}'? This cannot be undone.");
+
+            if (!confirmed) return;
+
+            var relatedMappings = await dbContext.ModelMappings
+                .Where(m => m.ProviderName == providerToDelete.ProviderName)
+                .ToListAsync();
+
+            if (relatedMappings.Any())
+            {
+                dbContext.ModelMappings.RemoveRange(relatedMappings);
+            }
+
+            dbContext.ProviderCredentials.Remove(providerToDelete);
+            await dbContext.SaveChangesAsync();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            deleteErrorMessage = $"Error deleting provider: {ex.Message}";
+            Logger.LogError(ex, "Error deleting provider");
+            StateHasChanged();
+        }
+    }
+
+    private void AddMapping()
+    {
+        NavigationManager.NavigateTo("/configuration/mapping/edit");
+    }
+
+    private void EditMapping(int id)
+    {
+        NavigationManager.NavigateTo($"/configuration/mapping/edit/{id}");
+    }
+
+    private async Task DeleteMapping(int id)
+    {
+        try
+        {
+            deleteErrorMessage = null;
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var mappingToDelete = await dbContext.ModelMappings.FindAsync(id);
+            if (mappingToDelete == null) return;
+
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+                $"Are you sure you want to delete the mapping '{mappingToDelete.ModelAlias}'? This cannot be undone.");
+
+            if (!confirmed) return;
+
+            dbContext.ModelMappings.Remove(mappingToDelete);
+            await dbContext.SaveChangesAsync();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            deleteErrorMessage = $"Error deleting mapping: {ex.Message}";
+            Logger.LogError(ex, "Error deleting mapping");
+            StateHasChanged();
+        }
+    }
+
+    private async Task LaunchGuidedSetup(string providerName) // Changed to async Task
+    {
+        // Removed await InvokeAsync(StateHasChanged); - the StateHasChanged in OpenForProvider should handle UI update.
+        if (guidedSetupWizardInstance != null)
+        {
+             await guidedSetupWizardInstance.OpenForProvider(providerName); // Added await
+        }
+        else
+        {
+             Logger.LogError("GuidedSetupWizard instance reference is null when trying to launch setup.");
+             // Handle error? Maybe show a message to the user?
+             // For now, just log the error. The wizard won't open.
+         }
+         // StateHasChanged(); // Explicitly tell parent component to re-render - Removed as IsOpenChanged handles this
+     }
+
+     private async Task HandleSetupComplete(DbProviderCredentials newProvider)
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            await dbContext.ProviderCredentials.AddAsync(newProvider);
+            await dbContext.SaveChangesAsync();
+
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving provider from guided setup");
+            deleteErrorMessage = $"Error saving provider: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderDescription(string provider)
+    {
+        return provider switch
+        {
+            "OpenAI" => "Connect to GPT-3.5, GPT-4, and other OpenAI models",
+            "Anthropic" => "Connect to Claude models for advanced reasoning",
+            "Cohere" => "Connect to Command models for enterprise applications",
+            "Gemini" => "Connect to Google's Gemini models for multimodal capabilities",
+            "Fireworks" => "Connect to Fireworks.ai for fast and cost-effective inference",
+            "OpenRouter" => "Connect to OpenRouter for access to multiple models through one API",
+            "Cerebras" => "Connect to Cerebras Cloud for Slimpajama models",
+            _ => "Connect to AI models through this provider"
+        };
+    }
+}

@@ -1,0 +1,354 @@
+@page "/virtualkeys/dashboard"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using ConduitLLM.Configuration.Constants
+@using ConduitLLM.Core.Interfaces
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+@inject IVirtualKeyService VirtualKeyService
+@inject RequestLogService RequestLogService
+@inject NavigationManager NavigationManager
+@inject ILogger<VirtualKeysDashboard> Logger
+@rendermode InteractiveServer
+
+<h1>Virtual Keys Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <p class="lead">
+            Monitor your virtual key usage, spending patterns, and budget allocation across all your keys.
+        </p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-2">@errorMessage</div>
+}
+
+@if (isLoading)
+{
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading dashboard data...</p>
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card bg-light h-100">
+                <div class="card-body text-center">
+                    <h1 class="display-4">@totalKeys</h1>
+                    <p class="text-muted mb-0">Total Keys</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card bg-light h-100">
+                <div class="card-body text-center">
+                    <h1 class="display-4">@activeKeys</h1>
+                    <p class="text-muted mb-0">Active Keys</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card bg-light h-100">
+                <div class="card-body text-center">
+                    <h1 class="display-4">$@totalSpend.ToString("N2")</h1>
+                    <p class="text-muted mb-0">Total Spend</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="card bg-light h-100">
+                <div class="card-body text-center">
+                    <h1 class="display-4">@totalRequests</h1>
+                    <p class="text-muted mb-0">Total Requests</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Spending by Key</h5>
+                    <select class="form-select form-select-sm w-auto" @bind="timeRange">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                        <option value="365">Last Year</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:300px; width:100%">
+                        <!-- This div will be used for the chart -->
+                        <canvas id="spendingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Keys Approaching Budget Limits</h5>
+                </div>
+                <div class="card-body">
+                    @if (highUsageKeys.Count == 0)
+                    {
+                        <div class="text-center p-4">
+                            <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                            <p class="mt-2">No keys approaching budget limits</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var key in highUsageKeys)
+                            {
+                                <a href="/virtualkeys/edit/@key.Id" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">@key.KeyName</h6>
+                                        <small>@GetBudgetUsagePercentage(key)%</small>
+                                    </div>
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar @GetBudgetProgressClass(key)" role="progressbar" 
+                                            style="width: @GetBudgetUsagePercentage(key)%" 
+                                            aria-valuenow="@GetBudgetUsagePercentage(key)" 
+                                            aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        $@key.CurrentSpend.ToString("N2") of $@key.MaxBudget?.ToString("N2")
+                                    </small>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Key Usage Overview</h5>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Key Name</th>
+                            <th>Status</th>
+                            <th>Budget</th>
+                            <th>Requests</th>
+                            <th>Avg Response</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var key in virtualKeys.OrderByDescending(k => k.CurrentSpend))
+                        {
+                            var keySummary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == key.Id);
+                            
+                            <tr @onclick="() => SelectKey(key.Id)" style="cursor: pointer;">
+                                <td>@key.KeyName</td>
+                                <td>
+                                    @if (key.IsEnabled)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Disabled</span>
+                                    }
+                                    @if (key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow)
+                                    {
+                                        <span class="badge bg-secondary ms-1">Expired</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (key.MaxBudget.HasValue)
+                                    {
+                                        <div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>$@key.CurrentSpend.ToString("N2")</span>
+                                                <span>$@key.MaxBudget.Value.ToString("N2")</span>
+                                            </div>
+                                            <div class="progress mt-1" style="height: 5px;">
+                                                <div class="progress-bar @GetBudgetProgressClass(key)" role="progressbar" 
+                                                    style="width: @GetBudgetUsagePercentage(key)%" 
+                                                    aria-valuenow="@GetBudgetUsagePercentage(key)" 
+                                                    aria-valuemin="0" aria-valuemax="100">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">@(key.BudgetDuration ?? "Total")</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>No limit</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (keySummary != null)
+                                    {
+                                        <div>@keySummary.TotalRequests</div>
+                                        <small class="text-muted">@keySummary.RecentRequests in last 24h</small>
+                                    }
+                                    else
+                                    {
+                                        <span>No data</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (keySummary != null && keySummary.TotalRequests > 0)
+                                    {
+                                        <span>@keySummary.AverageResponseTime.ToString("N0")ms</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => NavigateToEdit(key.Id)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-info" @onclick="() => ViewDetails(key.Id)">Details</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (selectedKeyId > 0)
+    {
+        <VirtualKeyUsageDetails KeyId="@selectedKeyId" />
+    }
+}
+
+@code {
+    private bool isLoading = true;
+    private string? errorMessage;
+    private List<VirtualKeyDto> virtualKeys = new();
+    private List<VirtualKeyDto> highUsageKeys = new();
+    private List<KeyAggregateSummary> keySummaries = new();
+    private int selectedKeyId = 0;
+    private int timeRange = 30;
+    
+    // Dashboard stats
+    private int totalKeys = 0;
+    private int activeKeys = 0;
+    private decimal totalSpend = 0;
+    private int totalRequests = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        
+        try
+        {
+            // Load all virtual keys
+            virtualKeys = await VirtualKeyService.ListVirtualKeysAsync();
+            
+            // Calculate dashboard stats
+            totalKeys = virtualKeys.Count;
+            activeKeys = virtualKeys.Count(k => k.IsEnabled && 
+                                             (!k.ExpiresAt.HasValue || k.ExpiresAt.Value > DateTime.UtcNow));
+            totalSpend = virtualKeys.Sum(k => k.CurrentSpend);
+            
+            // Find keys approaching their budget limit
+            highUsageKeys = virtualKeys
+                .Where(k => k.MaxBudget.HasValue && 
+                           k.IsEnabled && 
+                           (k.CurrentSpend / k.MaxBudget.Value) >= VirtualKeyConstants.BudgetWarningThresholds.Low / 100m)
+                .OrderByDescending(k => k.CurrentSpend / k.MaxBudget!.Value)
+                .ToList();
+                
+            // Load usage summaries for all keys
+            keySummaries = await RequestLogService.GetAllKeysUsageSummaryAsync() ?? new List<KeyAggregateSummary>();
+            totalRequests = keySummaries?.Sum(k => k.TotalRequests) ?? 0;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading dashboard data: {ex.Message}";
+            Logger.LogError(ex, "Error loading virtual keys dashboard data");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadDataAsync();
+    }
+
+    private void SelectKey(int keyId)
+    {
+        if (selectedKeyId == keyId)
+        {
+            selectedKeyId = 0; // Toggle off
+        }
+        else
+        {
+            selectedKeyId = keyId;
+        }
+    }
+
+    private void NavigateToEdit(int keyId)
+    {
+        NavigationManager.NavigateTo($"/virtualkeys/edit/{keyId}");
+    }
+
+    private void ViewDetails(int keyId)
+    {
+        selectedKeyId = keyId;
+    }
+
+    private string GetBudgetProgressClass(VirtualKeyDto key)
+    {
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+            return "bg-secondary";
+            
+        var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;
+        
+        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.High)
+            return "bg-danger";
+        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.Medium)
+            return "bg-warning";
+        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.Low)
+            return "bg-info";
+            
+        return "bg-success";
+    }
+
+    private int GetBudgetUsagePercentage(VirtualKeyDto key)
+    {
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+            return 0;
+            
+        var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;
+        return (int)Math.Min(100, percentage);
+    }
+}

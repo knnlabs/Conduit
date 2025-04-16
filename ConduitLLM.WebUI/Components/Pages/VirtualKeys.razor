@@ -1,0 +1,257 @@
+@page "/virtualkeys"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using Microsoft.EntityFrameworkCore 
+@using Microsoft.JSInterop 
+@using ConduitLLM.Core.Interfaces
+@inject IVirtualKeyService VirtualKeyService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime 
+@inject ILogger<VirtualKeys> Logger
+@rendermode InteractiveServer
+
+<h1>Virtual Keys Management</h1>
+
+<div class="mb-4">
+    <p class="lead">
+        Virtual keys allow external applications to access ConduitLLM's API with controlled permissions and spending limits.
+    </p>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-2">@errorMessage</div>
+}
+
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Virtual Keys</h2>
+        <div>
+            <button class="btn btn-primary" @onclick="AddVirtualKey">
+                <i class="bi bi-plus-lg me-1"></i> Add Key
+            </button>
+        </div>
+    </div>
+
+    @if (virtualKeys == null)
+    {
+        <p><em>Loading virtual keys...</em></p>
+    }
+    else if (!virtualKeys.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <span>No virtual keys configured yet. Add a key to enable API access with controlled permissions.</span>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">About Virtual Keys</h5>
+            </div>
+            <div class="card-body">
+                <p>Virtual keys let you:</p>
+                <ul>
+                    <li>Grant API access to third-party applications without sharing your provider credentials</li>
+                    <li>Set spending limits to control costs</li>
+                    <li>Restrict access to specific models</li>
+                    <li>Set expiration dates for temporary access</li>
+                </ul>
+                <button class="btn btn-primary" @onclick="AddVirtualKey">
+                    <i class="bi bi-plus-lg me-1"></i> Create Your First Key
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Budget</th>
+                        <th>Models</th>
+                        <th>Created</th>
+                        <th>Expires</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var key in virtualKeys)
+                    {
+                        <tr>
+                            <td>@key.KeyName</td>
+                            <td>
+                                @if (key.IsEnabled)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Disabled</span>
+                                }
+                                @if (key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow)
+                                {
+                                    <span class="badge bg-secondary ms-1">Expired</span>
+                                }
+                            </td>
+                            <td>
+                                @if (key.MaxBudget.HasValue)
+                                {
+                                    <div>
+                                        $@key.CurrentSpend.ToString("F2") / $@key.MaxBudget.Value.ToString("F2")
+                                        <div class="progress mt-1" style="height: 5px;">
+                                            @{
+                                                var percentage = key.MaxBudget.Value > 0 
+                                                    ? Math.Min((key.CurrentSpend / key.MaxBudget.Value) * 100, 100) 
+                                                    : 0;
+                                                var colorClass = percentage switch {
+                                                    > 90 => "bg-danger",
+                                                    > 70 => "bg-warning",
+                                                    _ => "bg-success"
+                                                };
+                                            }
+                                            <div class="progress-bar @colorClass" role="progressbar" 
+                                                 style="width: @percentage%;" 
+                                                 aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">@(key.BudgetDuration ?? "Total")</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>No limit</span>
+                                }
+                            </td>
+                            <td>
+                                @if (string.IsNullOrEmpty(key.AllowedModels))
+                                {
+                                    <span>All models</span>
+                                }
+                                else
+                                {
+                                    <span title="@key.AllowedModels">
+                                        @(key.AllowedModels.Length > 15 
+                                            ? key.AllowedModels.Substring(0, 12) + "..." 
+                                            : key.AllowedModels)
+                                    </span>
+                                }
+                            </td>
+                            <td>@key.CreatedAt.ToLocalTime().ToString("g")</td>
+                            <td>
+                                @if (key.ExpiresAt.HasValue)
+                                {
+                                    @key.ExpiresAt.Value.ToLocalTime().ToString("g")
+                                }
+                                else
+                                {
+                                    <span>Never</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => EditVirtualKey(key.Id)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-warning" @onclick="() => ResetKeySpend(key.Id, key.KeyName)">Reset spend</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteVirtualKey(key.Id, key.KeyName)">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<VirtualKeyDto>? virtualKeys;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            errorMessage = null;
+            virtualKeys = await VirtualKeyService.ListVirtualKeysAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading virtual keys: {ex.Message}";
+            Logger.LogError(ex, "Error loading virtual keys");
+        }
+    }
+
+    private void AddVirtualKey()
+    {
+        NavigationManager.NavigateTo("/virtualkeys/edit");
+    }
+
+    private void EditVirtualKey(int id)
+    {
+        NavigationManager.NavigateTo($"/virtualkeys/edit/{id}");
+    }
+
+    private async Task DeleteVirtualKey(int id, string keyName)
+    {
+        try
+        {
+            errorMessage = null; 
+            
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+                $"Are you sure you want to delete the virtual key '{keyName}'? This cannot be undone.");
+                
+            if (!confirmed) return;
+
+            var success = await VirtualKeyService.DeleteVirtualKeyAsync(id);
+            if (success)
+            {
+                await LoadDataAsync();
+            }
+            else
+            {
+                errorMessage = $"Could not delete key with ID {id}. The key may have been already deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting virtual key: {ex.Message}";
+            Logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", id);
+        }
+    }
+
+    private async Task ResetKeySpend(int id, string keyName)
+    {
+        try
+        {
+            errorMessage = null; 
+            
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+                $"Are you sure you want to reset the spend for virtual key '{keyName}'? This will set the current spend to zero.");
+                
+            if (!confirmed) return;
+
+            var success = await VirtualKeyService.ResetSpendAsync(id);
+            if (success)
+            {
+                await LoadDataAsync();
+            }
+            else
+            {
+                errorMessage = $"Could not reset spend for key with ID {id}. The key may not exist.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error resetting spend: {ex.Message}";
+            Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", id);
+        }
+    }
+}

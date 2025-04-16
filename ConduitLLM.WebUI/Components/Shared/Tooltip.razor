@@ -1,0 +1,15 @@
+@code {
+    [Parameter]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public string Position { get; set; } = "top";
+}
+
+<span class="tooltip-container" style="display: inline-block; margin-left: 5px; cursor: pointer;">
+    <i class="bi bi-question-circle text-muted" 
+       data-bs-toggle="tooltip" 
+       data-bs-placement="@Position" 
+       title="@Text">
+    </i>
+</span>

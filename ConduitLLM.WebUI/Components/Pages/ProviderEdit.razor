@@ -1,0 +1,445 @@
+@page "/configuration/provider/edit/{Id:int?}"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using Microsoft.EntityFrameworkCore 
+@using Microsoft.Extensions.Logging 
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject NavigationManager NavigationManager
+@inject ProviderStatusService ProviderStatusService
+@inject ConfigurationChangeNotifier ConfigNotifier 
+@inject ILogger<ProviderEdit> _logger
+@rendermode InteractiveServer
+
+<h1>@(Id.HasValue ? "Edit Provider" : "Add Provider")</h1>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (provider == null)
+{
+     <p class="text-danger">Provider not found or error loading.</p>
+}
+else
+{
+    <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="ProviderForm"> 
+        <DataAnnotationsValidator />
+        @* Keep ValidationSummary for other potential errors *@
+        <ValidationSummary />
+
+        @* Display general errors above the form *@
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="providerName" class="form-label">Provider Name:</label>
+                    <InputSelect id="providerName" @bind-Value="provider.ProviderName" class="form-select" disabled="@Id.HasValue"> 
+                        <option value="">-- Select Provider --</option>
+                        @foreach (var name in _supportedProviders)
+                        {
+                            <option value="@name">@name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => provider.ProviderName)" />
+                    @if (Id.HasValue)
+                    {
+                        <small class="form-text text-muted">Provider name cannot be changed after creation.</small>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Display Name:</label>
+                    <InputText @bind-Value="provider.Name" id="name" class="form-control" placeholder="Custom name for this provider" />
+                    <ValidationMessage For="@(() => provider.Name)" />
+                    <small class="form-text text-muted">A friendly name to identify this provider in the UI.</small>
+                </div>
+
+                @* Conditionally hide ApiBase for OpenRouter *@
+                @if (provider.ProviderName != "OpenRouter")
+                {
+                    <div class="mb-3">
+                        <label for="apiBase" class="form-label">API Base URL (Optional, leave empty for default)</label>
+                        <InputText @bind-Value="provider.ApiBase" id="apiBase" class="form-control" placeholder="https://api.example.com" />
+                        <ValidationMessage For="@(() => provider.ApiBase)" />
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label for="apiVersion" class="form-label">API Version (Optional)</label>
+                    <InputText @bind-Value="provider.ApiVersion" id="apiVersion" class="form-control" placeholder="v1" />
+                    <ValidationMessage For="@(() => provider.ApiVersion)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="apiKey" class="form-label">API Key:</label>
+                    <InputText @bind-Value="provider.ApiKey" id="apiKey" class="form-control" type="password" placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")" />
+                    <ValidationMessage For="@(() => provider.ApiKey)" />
+                    <small class="form-text text-muted">Existing keys are not displayed for security reasons. Leave empty to keep the current key.</small>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(provider.ProviderName) && 
+                      (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
+                       ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
+                {
+                    <div class="mb-3 border p-3 rounded bg-light">
+                        <h5>@provider.ProviderName Resources</h5>
+                        <div class="d-flex flex-column gap-2">
+                            @if (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
+                            {
+                                <a href="@ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" target="_blank" class="d-inline-flex align-items-center">
+                                    <i class="bi bi-key me-2"></i> Get API Key
+                                </a>
+                            }
+                            @if (ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
+                            {
+                                <a href="@ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" target="_blank" class="d-inline-flex align-items-center">
+                                    <i class="bi bi-book me-2"></i> View Documentation
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-6">
+                @if (!string.IsNullOrEmpty(provider.ProviderName) && !string.IsNullOrEmpty(provider.ApiKey))
+                {
+                    <div class="mb-3">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Connection Test</h5>
+                            </div>
+                            <div class="card-body">
+                                @if (showConnectionStatus)
+                                {
+                                    <div class="mb-3">
+                                        <div class="@(connectionStatus?.IsOnline ?? false ? "alert alert-success" : "alert alert-danger")">
+                                            @if (connectionStatus?.IsOnline ?? false)
+                                            {
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                <strong>Connected successfully!</strong>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-exclamation-circle-fill me-2"></i>
+                                                <strong>Connection failed</strong>
+                                                <p class="mb-0 mt-2 small">@connectionStatusMessage</p>
+                                            }
+                                        </div>
+                                        <div class="text-muted small mt-2">
+                                            Last tested: @(connectionStatus != null ? connectionStatus.LastCheckedUtc.ToLocalTime().ToString("g") : "")
+                                        </div>
+                                    </div>
+                                }
+                                
+                                <button type="button" class="btn btn-outline-primary" @onclick="TestConnection" disabled="@isTestingConnection">
+                                    @if (isTestingConnection)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span> Testing...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-lightning-charge me-1"></i>
+                                        <span>Test Connection</span>
+                                    }
+                                </button>
+                                <div class="form-text mt-2">
+                                    Verifies your API key and connection settings
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col">
+                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Save Provider</span>
+                    }
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" @onclick="Cancel" disabled="@isSaving">Cancel</button>
+                <button type="button" class="btn btn-outline-primary ms-2" @onclick="TestConnection" disabled="@isTestingConnection || isSaving">
+                    @if (isTestingConnection)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> Testing...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-lightning-charge me-1"></i>
+                        <span>Test Connection</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private DbProviderCredentials provider = new DbProviderCredentials { ProviderName = "" };
+    private string? errorMessage;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isTestingConnection = false;
+    private ProviderStatus? connectionStatus = null;
+    private string connectionStatusMessage = "";
+    private bool showConnectionStatus = false;
+    private string? originalApiKey;
+    private EditContext editContext = null!;
+    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras" }; // Added Cerebras provider
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(provider);
+        
+        if (Id.HasValue)
+        {
+            isLoading = true;
+            StateHasChanged();
+            
+            try
+            {
+                using var dbContext = await DbContextFactory.CreateDbContextAsync();
+                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                
+                if (existingProvider != null)
+                {
+                    // Clone the object - we don't want to track the original entity
+                    provider = new DbProviderCredentials
+                    {
+                        Id = existingProvider.Id,
+                        ProviderName = existingProvider.ProviderName,
+                        ApiBase = existingProvider.ApiBase,
+                        ApiVersion = existingProvider.ApiVersion,
+                        Name = existingProvider.Name
+                        // Don't copy API key for security reasons
+                    };
+                    
+                    // Keep track of the original API key existence
+                    if (!string.IsNullOrEmpty(existingProvider.ApiKey))
+                    {
+                        originalApiKey = "PLACEHOLDER"; // Just indicate it exists
+                    }
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/configuration");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading provider: {ex.Message}");
+                errorMessage = $"Error loading provider: {ex.Message}";
+            }
+            finally
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+        else
+        {
+            // For new providers, provider object is already initialized
+            isLoading = false;
+        }
+        
+        editContext = new EditContext(provider);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        StateHasChanged();
+        
+        try 
+        {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            if (Id.HasValue) // Edit
+            {
+                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                
+                if (existingProvider != null)
+                {
+                    // Update the entity with form values
+                    existingProvider.ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase;
+                    existingProvider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
+                    existingProvider.Name = string.IsNullOrWhiteSpace(provider.Name) ? null : provider.Name;
+                    
+                    // Only update API key if provided (not empty)
+                    if (!string.IsNullOrWhiteSpace(provider.ApiKey))
+                    {
+                        existingProvider.ApiKey = provider.ApiKey;
+                    }
+                    else if (originalApiKey == null)
+                    {
+                         // No change needed, existingProvider.ApiKey retains its value from the DB load
+                         // We just need to ensure it wasn't cleared if originalApiKey was set
+                         // Re-fetch might be safer if complex logic evolves
+                         var freshProvider = await dbContext.ProviderCredentials.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id.Value);
+                         existingProvider.ApiKey = freshProvider?.ApiKey;
+                    }
+                    else // Field blank, and no original key -> set to null
+                    {
+                         existingProvider.ApiKey = null;
+                    }
+
+                    dbContext.ProviderCredentials.Update(existingProvider);
+                }
+                else
+                {
+                     // Handle case where provider was deleted between load and save
+                     Console.WriteLine("Error: Provider not found during update.");
+                     errorMessage = "Error: Provider not found during update.";
+                     StateHasChanged();
+                     return;
+                }
+            }
+            else // Add
+            {
+                 // Ensure optional fields are null if empty/whitespace
+                 provider.ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase;
+                 provider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
+                 provider.ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey;
+
+                await dbContext.ProviderCredentials.AddAsync(provider);
+            }
+            
+            await dbContext.SaveChangesAsync();
+            
+            // Notify the Conduit HTTP proxy about configuration changes
+            try
+            {
+                // Get the proxy base URL from global settings
+                var proxyUrlSetting = await dbContext.GlobalSettings
+                    .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
+                
+                string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
+                
+                bool notificationSuccess = await ConfigNotifier.NotifyConfigurationChangedAsync(proxyUrl);
+                if (!notificationSuccess)
+                {
+                    _logger.LogWarning("Failed to notify proxy server about configuration changes. The server may need to be restarted.");
+                    // We still proceed with navigation even if notification fails
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error notifying proxy server about configuration changes");
+                // We still proceed with navigation even if notification fails
+            }
+            
+            NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
+        }
+        catch (DbUpdateException dbEx)
+        {
+             // Handle potential database errors (like unique constraint violation if check failed)
+             Console.WriteLine($"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}");
+             errorMessage = $"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}";
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Error saving provider: {ex.Message}");
+             errorMessage = $"Error saving provider: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false; // Reset saving flag
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/configuration");
+    }
+
+    private async Task TestConnection()
+    {
+        if (string.IsNullOrWhiteSpace(provider.ApiKey))
+        {
+            showConnectionStatus = true;
+            connectionStatusMessage = "API key is required to test the connection";
+            connectionStatus = null;
+            return;
+        }
+
+        isTestingConnection = true;
+        showConnectionStatus = false;
+        connectionStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            // Make a copy of the provider with current form values for testing
+            var testProvider = new DbProviderCredentials
+            {
+                ProviderName = provider.ProviderName,
+                ApiKey = provider.ApiKey,
+                ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
+                ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion
+            };
+
+            // Test the connection
+            connectionStatus = await ProviderStatusService.CheckProviderStatusAsync(testProvider);
+            showConnectionStatus = true;
+            
+            if (connectionStatus.IsOnline)
+            {
+                connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
+            }
+            else
+            {
+                connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            connectionStatusMessage = $"Error testing connection: {ex.Message}";
+            showConnectionStatus = true;
+        }
+        finally
+        {
+            isTestingConnection = false;
+            StateHasChanged();
+        }
+    }
+
+    private void EditProvider(int id)
+    {
+        NavigationManager.NavigateTo($"/configuration/provider/edit/{id}");
+    }
+
+    private string GetProviderDescription(string providerName)
+    {
+        return providerName switch
+        {
+            "OpenAI" => "Provides access to GPT models from OpenAI.",
+            "Anthropic" => "Provides access to Claude models from Anthropic.",
+            "Cohere" => "Provides access to language models from Cohere.",
+            "Gemini" => "Provides access to Gemini models from Google.",
+            "Fireworks" => "Provides access to a variety of open-source and first-party models.",
+            "OpenRouter" => "Provides unified API access to many LLM providers.",
+            _ => "Provides access to language models."
+        };
+    }
+}

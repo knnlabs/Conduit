@@ -1,0 +1,871 @@
+@page "/routing-settings"
+@using ConduitLLM.Core.Models.Routing
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.Configuration.Options
+@using ConduitLLM.WebUI.Services
+@using Microsoft.Extensions.Options
+@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.Data
+@inject IRouterService RouterService
+@rendermode InteractiveServer
+@inject IOptions<RouterOptions> RouterOptions
+@inject RouterOptionsService RouterOptionsService
+@inject ILogger<RoutingSettings> Logger
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+
+<PageTitle>ConduitLLM - Routing Settings</PageTitle>
+
+<h1>
+    <span class="bi bi-shuffle" aria-hidden="true"></span> Routing Settings
+</h1>
+<hr />
+
+@if (!string.IsNullOrEmpty(_statusMessage))
+{
+    <div class="alert @_statusAlertClass alert-dismissible fade show" role="alert">
+        @_statusMessage
+        <button type="button" class="btn-close" @onclick="ClearStatusMessage"></button>
+    </div>
+}
+
+@if (!_isInitialized)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert @(_isEnabled ? "alert-success" : "alert-warning")">
+        <div class="d-flex align-items-center">
+            <span class="bi @(_isEnabled ? "bi-toggle-on" : "bi-toggle-off") me-2"></span>
+            <div>
+                <h4 class="alert-heading mb-0">Router is @(_isEnabled ? "enabled" : "disabled")</h4>
+                <p class="mb-0 small">Router @(_isEnabled ? "is" : "is not") currently handling model requests</p>
+            </div>
+            <button type="button" class="btn @(_isEnabled ? "btn-warning" : "btn-success") ms-auto" @onclick="ToggleRouterEnabled">
+                @(_isEnabled ? "Disable" : "Enable") Router
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Router Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="routingStrategy" class="form-label">Default Routing Strategy</label>
+                        <select id="routingStrategy" class="form-select" @bind="_config.DefaultRoutingStrategy">
+                            <option value="simple">Simple (Use first available model)</option>
+                            <option value="random">Random (Random model selection)</option>
+                            <option value="round-robin">Round Robin (Equal distribution)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="maxRetries" class="form-label">Maximum Retries</label>
+                        <input type="number" class="form-control" id="maxRetries" min="0" max="10" 
+                               @bind="_config.MaxRetries" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="retryBaseDelay" class="form-label">Base Retry Delay (ms)</label>
+                        <input type="number" class="form-control" id="retryBaseDelay" min="100" step="100" 
+                               @bind="_config.RetryBaseDelayMs" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="retryMaxDelay" class="form-label">Maximum Retry Delay (ms)</label>
+                        <input type="number" class="form-control" id="retryMaxDelay" min="500" step="500" 
+                               @bind="_config.RetryMaxDelayMs" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Routing Strategies Explained</h5>
+                </div>
+                <div class="card-body">
+                    <dl>
+                        <dt>Simple</dt>
+                        <dd>Uses the first available model deployment in the list. If it fails, falls back to the next one.</dd>
+                        
+                        <dt>Random</dt>
+                        <dd>Randomly selects from available model deployments. Provides load distribution across all deployments.</dd>
+                        
+                        <dt>Round Robin</dt>
+                        <dd>Evenly distributes requests across all model deployments in a sequential order.</dd>
+                    </dl>
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Fallback configuration is applied regardless of the routing strategy when a model fails.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-end mb-4">
+        <button type="button" class="btn btn-primary" @onclick="async () => await SaveConfigurationAsync()">
+            <span class="bi bi-save me-1"></span> Save Configuration
+        </button>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="mb-0">Model Deployments</h5>
+            <button type="button" class="btn btn-sm btn-primary ms-auto" @onclick="AddNewDeploymentAsync">
+                <span class="bi bi-plus"></span> Add Deployment
+            </button>
+        </div>
+        <div class="card-body">
+            @if (_config.ModelDeployments.Count == 0)
+            {
+                <div class="alert alert-warning">
+                    <span class="bi bi-exclamation-triangle me-2"></span>
+                    No model deployments configured. Add deployments to enable routing between models.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Model Name</th>
+                                <th>Provider</th>
+                                <th>Weight</th>
+                                <th>Health Check Enabled</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var deployment in _config.ModelDeployments)
+                            {
+                                <tr>
+                                    <td>@deployment.ModelName</td>
+                                    <td>@deployment.ProviderName</td>
+                                    <td>@deployment.Weight</td>
+                                    <td>
+                                        <span class="badge bg-@(deployment.HealthCheckEnabled ? "success" : "secondary")">
+                                            @(deployment.HealthCheckEnabled ? "Enabled" : "Disabled")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@(deployment.IsHealthy && deployment.IsEnabled ? "success" : 
+                                                           deployment.IsEnabled ? "warning" : "secondary")">
+                                            @(deployment.IsHealthy && deployment.IsEnabled ? "Healthy" : 
+                                              !deployment.IsEnabled ? "Disabled" : "Unhealthy")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditDeploymentAsync(deployment)">
+                                            <span class="bi bi-pencil"></span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDeploymentAsync(deployment)">
+                                            <span class="bi bi-trash"></span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center">
+            <h5 class="mb-0">Fallback Configurations</h5>
+        </div>
+        <div class="card-body">
+            @if (_config.ModelDeployments.Count == 0)
+            {
+                <div class="alert alert-warning">
+                    <span class="bi bi-exclamation-triangle me-2"></span>
+                    You need to add model deployments before configuring fallbacks.
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <button type="button" class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                        <span class="bi bi-plus-circle"></span> Add Fallback Configuration
+                    </button>
+                </div>
+                
+                @if (_config.FallbackConfigurations?.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Primary Model</th>
+                                    <th>Fallback Models</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var fallback in _config.FallbackConfigurations)
+                                {
+                                    <tr>
+                                        <td>@GetModelDisplayName(fallback.PrimaryModelDeploymentId)</td>
+                                        <td>
+                                            @if (fallback.FallbackModelDeploymentIds.Count == 0)
+                                            {
+                                                <span class="badge bg-warning">No fallbacks</span>
+                                            }
+                                            else
+                                            {
+                                                foreach (var modelId in fallback.FallbackModelDeploymentIds)
+                                                {
+                                                    <div class="badge bg-info mb-1 me-1">@GetModelDisplayName(modelId)</div>
+                                                }
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditFallbackAsync(fallback)">
+                                                <span class="bi bi-pencil"></span>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteFallbackAsync(fallback)">
+                                                <span class="bi bi-trash"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <span class="bi bi-info-circle me-2"></span>
+                        No fallback configurations defined. Fallbacks determine which models to use when a preferred model is unavailable.
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    
+    @if (_showDeploymentModal)
+    {
+        <div class="modal fade show" style="display:block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(_editingDeployment.Id == Guid.Empty ? "Add" : "Edit") Model Deployment</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDeploymentModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="modelName" class="form-label">Model Name</label>
+                            <select id="modelName" class="form-select" @bind="_editingDeployment.ModelName">
+                                <option value="">-- Select Model --</option>
+                                @foreach (var model in _availableModelMappings)
+                                {
+                                    <option value="@model.ModelAlias">@model.ModelAlias</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="providerName" class="form-label">Provider Name</label>
+                            <select id="providerName" class="form-select" @bind="_editingDeployment.ProviderName">
+                                <option value="">-- Select Provider --</option>
+                                @foreach (var provider in _availableProviders)
+                                {
+                                    <option value="@provider.ProviderName">@(string.IsNullOrEmpty(provider.Name) ? provider.ProviderName : $"{provider.ProviderName} ({provider.Name})")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">Weight</label>
+                            <input type="number" class="form-control" id="weight" min="1" @bind="_editingDeployment.Weight" />
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="healthCheckEnabled" @bind="_editingDeployment.HealthCheckEnabled" />
+                            <label class="form-check-label" for="healthCheckEnabled">
+                                Enable Health Checks
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="enabled" @bind="_editingDeployment.IsEnabled" />
+                            <label class="form-check-label" for="enabled">
+                                Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDeploymentModal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SaveDeploymentAsync">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+    
+    @if (_showFallbackModal)
+    {
+        <div class="modal fade show" style="display:block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(_editingFallback.Id == Guid.Empty ? "Add" : "Edit") Fallback Configuration</h5>
+                        <button type="button" class="btn-close" @onclick="CloseFallbackModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="primaryModel" class="form-label">Primary Model</label>
+                            <select id="primaryModel" class="form-select" @bind="_editingFallback.PrimaryModelDeploymentId">
+                                <option value="">-- Select Primary Model --</option>
+                                @foreach (var model in _config.ModelDeployments)
+                                {
+                                    <option value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fallback Models (in order)</label>
+                            <div class="list-group mb-2">
+                                @foreach (var fallbackId in _editingFallback.FallbackModelDeploymentIds)
+                                {
+                                    var model = _config.ModelDeployments.FirstOrDefault(m => m.Id.ToString() == fallbackId);
+                                    if (model != null)
+                                    {
+                                        <div class="list-group-item d-flex align-items-center">
+                                            <span>@model.ModelName (@model.ProviderName)</span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger ms-auto" 
+                                                    @onclick="() => RemoveFallbackModelAsync(fallbackId)">
+                                                <span class="bi bi-x"></span>
+                                            </button>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            
+                            <select class="form-select" @bind="_selectedFallbackModelId">
+                                <option value="">-- Add Fallback Model --</option>
+                                @foreach (var model in _config.ModelDeployments.Where(m => 
+                                    m.Id.ToString() != _editingFallback.PrimaryModelDeploymentId && 
+                                    !_editingFallback.FallbackModelDeploymentIds.Contains(m.Id.ToString())))
+                                {
+                                    <option value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" 
+                                    @onclick="AddFallbackModelAsync" disabled="@(_selectedFallbackModelId == Guid.Empty)">
+                                <span class="bi bi-plus-circle"></span> Add Model
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseFallbackModal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SaveFallbackAsync">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+}
+
+@code {
+    private bool _isInitialized = false;
+    private bool _isEnabled = false;
+    private RouterConfig _config = new();
+    private bool _isSaving = false;
+    private string _statusMessage = "";
+    private string _statusAlertClass = "alert-info";
+    
+    // Deployment modal state
+    private bool _showDeploymentModal = false;
+    private ModelDeployment _editingDeployment = new();
+    
+    // Fallback modal state
+    private bool _showFallbackModal = false;
+    private FallbackConfiguration _editingFallback = new();
+    private Guid _selectedFallbackModelId = Guid.Empty;
+    
+    // Lists for dropdowns
+    private List<DbProviderCredentials> _availableProviders = new();
+    private List<DbModelProviderMapping> _availableModelMappings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isEnabled = await RouterOptionsService.GetRouterEnabledAsync();
+            
+            await ReloadConfiguration();
+            
+            // Load providers and model mappings for dropdowns
+            await LoadProvidersAndMappingsAsync();
+            
+            _isInitialized = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing routing settings");
+            SetStatusMessage("Failed to load routing settings: " + ex.Message, true);
+            _isInitialized = true; // Still mark as initialized to show the error
+        }
+    }
+    
+    private async Task ReloadConfiguration()
+    {
+        try
+        {
+            var config = await RouterService.GetRouterConfigAsync();
+            if (config != null)
+            {
+                _config = config;
+            }
+            else
+            {
+                // Create default config if none exists
+                _config = new RouterConfig
+                {
+                    DefaultRoutingStrategy = "simple",
+                    MaxRetries = 3,
+                    RetryBaseDelayMs = 500,
+                    RetryMaxDelayMs = 5000,
+                    ModelDeployments = new List<ModelDeployment>(),
+                    FallbackConfigurations = new List<FallbackConfiguration>(),
+                    FallbacksEnabled = false
+                };
+            }
+            
+            if (_config.FallbackConfigurations == null)
+            {
+                _config.FallbackConfigurations = new List<FallbackConfiguration>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load router configuration");
+            SetStatusMessage("Failed to load router configuration: " + ex.Message, true);
+        }
+    }
+    
+    private async Task<bool> SaveConfigurationAsync()
+    {
+        if (_isSaving) return false; // Indicate save didn't proceed if already saving
+        
+        bool success = false; // Flag to track success
+        try
+        {
+            _isSaving = true;
+            SetStatusMessage("Saving router configuration...", false);
+            
+            // Validate configuration before saving
+            if (_config == null)
+            {
+                SetStatusMessage("Error: Router configuration is null", true);
+                return false;
+            }
+            
+            // Ensure unique deployment names
+            var duplicateNames = _config.ModelDeployments
+                .GroupBy(d => d.DeploymentName)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+                
+            if (duplicateNames.Any())
+            {
+                SetStatusMessage($"Error: Duplicate deployment names found: {string.Join(", ", duplicateNames)}", true);
+                return false;
+            }
+
+            // Save the configuration
+            success = await RouterService.UpdateRouterConfigAsync(_config);
+            
+            if (success)
+            {
+                SetStatusMessage("Router configuration saved successfully", false);
+                await ReloadConfiguration(); // Refresh data
+            }
+            else
+            {
+                SetStatusMessage("Failed to save router configuration", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving router configuration");
+            SetStatusMessage($"Error saving configuration: {ex.Message}", true);
+            success = false;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged(); // Update UI regardless of success/failure
+        }
+        return success; // Return the success status
+    }
+    
+    private async Task ToggleRouterEnabled()
+    {
+        try
+        {
+            // Toggle the router enabled state
+            bool newState = !_isEnabled;
+            SetStatusMessage($"Updating router state to {(newState ? "enabled" : "disabled")}...", false);
+            StateHasChanged();
+            
+            // Update the router state
+            bool success = await RouterOptionsService.SetRouterEnabledAsync(newState);
+            
+            if (success)
+            {
+                _isEnabled = newState;
+                SetStatusMessage($"Router {(_isEnabled ? "enabled" : "disabled")} successfully", false);
+                
+                // If enabling, initialize the router to ensure it's properly set up
+                if (_isEnabled)
+                {
+                    await RouterService.InitializeRouterAsync();
+                }
+            }
+            else
+            {
+                SetStatusMessage("Failed to save router state", true);
+                Logger.LogError("Failed to save router state");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Revert the UI state on error
+            SetStatusMessage("Error toggling router state: " + ex.Message, true);
+            Logger.LogError(ex, "Failed to toggle router state");
+        }
+    }
+    
+    // Model Deployment methods
+    private void AddNewDeploymentAsync()
+    {
+        _editingDeployment = new ModelDeployment
+        {
+            Id = Guid.NewGuid(),
+            IsEnabled = true,
+            HealthCheckEnabled = true,
+            Weight = 1
+        };
+        _showDeploymentModal = true;
+        StateHasChanged();
+    }
+    
+    private void EditDeploymentAsync(ModelDeployment deployment)
+    {
+        _editingDeployment = new ModelDeployment
+        {
+            Id = deployment.Id,
+            ModelName = deployment.ModelName,
+            ProviderName = deployment.ProviderName,
+            Weight = deployment.Weight,
+            HealthCheckEnabled = deployment.HealthCheckEnabled,
+            IsEnabled = deployment.IsEnabled
+        };
+        _showDeploymentModal = true;
+        StateHasChanged();
+    }
+    
+    private async Task SaveDeploymentAsync()
+    {
+        try
+        {
+            // Validate the deployment
+            if (string.IsNullOrWhiteSpace(_editingDeployment.DeploymentName))
+            {
+                SetStatusMessage("Deployment name cannot be empty", true);
+                return;
+            }
+            
+            if (string.IsNullOrWhiteSpace(_editingDeployment.ModelName))
+            {
+                SetStatusMessage("Model name cannot be empty", true);
+                return;
+            }
+            
+            if (string.IsNullOrWhiteSpace(_editingDeployment.ProviderName))
+            {
+                SetStatusMessage("Provider name cannot be empty", true);
+                return;
+            }
+            
+            // Generate ID if this is a new deployment
+            if (_editingDeployment.Id == Guid.Empty)
+            {
+                _editingDeployment.Id = Guid.NewGuid();
+            }
+            
+            var existingIndex = _config.ModelDeployments.FindIndex(d => d.Id == _editingDeployment.Id);
+            
+            if (existingIndex >= 0)
+            {
+                _config.ModelDeployments[existingIndex] = _editingDeployment;
+            }
+            else
+            {
+                _config.ModelDeployments.Add(_editingDeployment);
+            }
+            
+            // Save the updated configuration to the database and check result
+            bool success = await SaveConfigurationAsync();
+            
+            if (success)
+            {
+                _showDeploymentModal = false;
+                // StateHasChanged is called within SaveConfigurationAsync on success
+            }
+            else
+            {
+                // Rely on the status message set by SaveConfigurationAsync
+                StateHasChanged(); // Ensure UI reflects status message change
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatusMessage($"Error saving deployment: {ex.Message}", true);
+            Logger.LogError(ex, "Error saving model deployment");
+            StateHasChanged();
+        }
+    }
+    
+    private async Task DeleteDeploymentAsync(ModelDeployment deployment)
+    {
+        try
+        {
+            // Store the ID in case 'deployment' object becomes invalid after removal
+            var deploymentId = deployment.Id;
+            var deploymentName = deployment.DeploymentName;
+            
+            // Check if this deployment is used in any fallback configurations
+            bool usedInFallbacks = false;
+            if (_config.FallbackConfigurations != null)
+            {
+                foreach (var fallback in _config.FallbackConfigurations)
+                {
+                    if (fallback.PrimaryModelDeploymentId == deploymentId.ToString() ||
+                        fallback.FallbackModelDeploymentIds.Contains(deploymentId.ToString()))
+                    {
+                        usedInFallbacks = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (usedInFallbacks)
+            {
+                SetStatusMessage($"Cannot delete '{deploymentName}' because it's used in fallback configurations", true);
+                return;
+            }
+            
+            // Remove the deployment
+            _config.ModelDeployments.RemoveAll(d => d.Id == deploymentId);
+            
+            // Save the updated configuration to the database and check result
+            bool success = await SaveConfigurationAsync();
+
+            if (!success)
+            {
+                // If save failed, potentially add the fallback config back?
+                // Rely on the error message for now.
+                // StateHasChanged is called in SaveConfigurationAsync
+            }
+            // StateHasChanged is called within SaveConfigurationAsync on success/failure
+        }
+        catch (Exception ex)
+        {
+            SetStatusMessage($"Error deleting deployment: {ex.Message}", true);
+            Logger.LogError(ex, "Error deleting model deployment");
+            StateHasChanged();
+        }
+    }
+    
+    // Fallback Configuration methods
+    private void AddFallbackConfigAsync()
+    {
+        _editingFallback = new FallbackConfiguration
+        {
+            Id = Guid.NewGuid(),
+            FallbackModelDeploymentIds = new List<string>()
+        };
+        _selectedFallbackModelId = Guid.Empty;
+        _showFallbackModal = true;
+        StateHasChanged();
+    }
+    
+    private void EditFallbackAsync(FallbackConfiguration fallback)
+    {
+        _editingFallback = new FallbackConfiguration
+        {
+            Id = fallback.Id,
+            PrimaryModelDeploymentId = fallback.PrimaryModelDeploymentId,
+            FallbackModelDeploymentIds = new List<string>(fallback.FallbackModelDeploymentIds)
+        };
+        _selectedFallbackModelId = Guid.Empty;
+        _showFallbackModal = true;
+        StateHasChanged();
+    }
+    
+    private async Task SaveFallbackAsync()
+    {
+        try
+        {
+            // Validate the fallback configuration
+            if (string.IsNullOrEmpty(_editingFallback.PrimaryModelDeploymentId))
+            {
+                SetStatusMessage("Primary model must be selected", true);
+                return;
+            }
+            
+            if (_editingFallback.FallbackModelDeploymentIds == null || 
+                !_editingFallback.FallbackModelDeploymentIds.Any())
+            {
+                SetStatusMessage("At least one fallback model must be selected", true);
+                return;
+            }
+            
+            if (_config.FallbackConfigurations == null)
+            {
+                _config.FallbackConfigurations = new List<FallbackConfiguration>();
+            }
+            
+            var existingIndex = _config.FallbackConfigurations.FindIndex(f => f.Id == _editingFallback.Id);
+            
+            if (existingIndex >= 0)
+            {
+                _config.FallbackConfigurations[existingIndex] = _editingFallback;
+            }
+            else
+            {
+                _config.FallbackConfigurations.Add(_editingFallback);
+            }
+            
+            // Save the updated configuration to the database and check result
+            bool success = await SaveConfigurationAsync();
+
+            if (success)
+            {
+                _showFallbackModal = false;
+                // StateHasChanged is called within SaveConfigurationAsync on success
+            }
+            else
+            {
+                // Rely on the status message set by SaveConfigurationAsync
+                StateHasChanged(); // Ensure UI reflects status message change
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatusMessage($"Error saving fallback configuration: {ex.Message}", true);
+            Logger.LogError(ex, "Error saving fallback configuration");
+            StateHasChanged();
+        }
+    }
+    
+    private async Task DeleteFallbackAsync(FallbackConfiguration fallback)
+    {
+        try
+        {
+            var fallbackId = fallback.Id;
+            _config.FallbackConfigurations?.RemoveAll(f => f.Id == fallbackId);
+            
+            // Save the updated configuration to the database and check result
+            bool success = await SaveConfigurationAsync();
+
+            if (!success)
+            {
+                // If save failed, potentially add the fallback config back?
+                // Rely on the error message for now.
+                // StateHasChanged is called in SaveConfigurationAsync
+            }
+            // StateHasChanged is called within SaveConfigurationAsync on success/failure
+        }
+        catch (Exception ex)
+        {
+            SetStatusMessage($"Error deleting fallback configuration: {ex.Message}", true);
+            Logger.LogError(ex, "Error deleting fallback configuration");
+            StateHasChanged();
+        }
+    }
+    
+    private void AddFallbackModelAsync()
+    {
+        if (_selectedFallbackModelId != Guid.Empty && 
+            !_editingFallback.FallbackModelDeploymentIds.Contains(_selectedFallbackModelId.ToString()))
+        {
+            _editingFallback.FallbackModelDeploymentIds.Add(_selectedFallbackModelId.ToString());
+            _selectedFallbackModelId = Guid.Empty;
+            StateHasChanged();
+        }
+    }
+    
+    private void RemoveFallbackModelAsync(string modelId)
+    {
+        _editingFallback.FallbackModelDeploymentIds.Remove(modelId);
+        StateHasChanged();
+    }
+    
+    private void CloseDeploymentModal()
+    {
+        _showDeploymentModal = false;
+        StateHasChanged();
+    }
+    
+    private void CloseFallbackModal()
+    {
+        _showFallbackModal = false;
+        StateHasChanged();
+    }
+    
+    private string GetModelDisplayName(string modelId)
+    {
+        var model = _config.ModelDeployments.FirstOrDefault(m => m.Id.ToString() == modelId);
+        return model != null ? $"{model.ModelName} ({model.ProviderName})" : "Unknown Model";
+    }
+    
+    private void SetStatusMessage(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusAlertClass = isError ? "alert-danger" : "alert-success";
+        StateHasChanged();
+    }
+    
+    private void ClearStatusMessage()
+    {
+        _statusMessage = "";
+        StateHasChanged();
+    }
+    
+    private async Task LoadProvidersAndMappingsAsync()
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Load providers with their display names
+            _availableProviders = await dbContext.ProviderCredentials
+                .OrderBy(p => p.ProviderName)
+                .ToListAsync();
+                
+            // Load model mappings
+            _availableModelMappings = await dbContext.ModelMappings
+                .OrderBy(m => m.ModelAlias)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading providers and model mappings");
+            // Don't set status message as this is a background operation
+        }
+    }
+}

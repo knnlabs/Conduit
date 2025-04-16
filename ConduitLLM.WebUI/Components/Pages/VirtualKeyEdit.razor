@@ -1,0 +1,588 @@
+@page "/virtualkeys/edit/{Id:int?}"
+@using ConduitLLM.WebUI.Data
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using ConduitLLM.Configuration.Entities
+@using Microsoft.EntityFrameworkCore 
+@using Microsoft.Extensions.Logging 
+@using ConduitLLM.Core.Interfaces
+@using System.Linq
+@inject IVirtualKeyService VirtualKeyService
+@inject NavigationManager NavigationManager
+@inject ILogger<VirtualKeyEdit> Logger
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h1>@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")</h1>
+
+@if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (request == null && Id.HasValue)
+{
+    <p class="text-danger">Virtual key not found or error loading.</p>
+}
+else if (showCreatedKey)
+{
+    <div class="alert alert-success">
+        <h4 class="alert-heading">Virtual Key Created Successfully!</h4>
+        <p>Your new virtual key has been created. Please save this key as it will only be shown once:</p>
+        <div class="input-group mb-3">
+            <input type="text" readonly class="form-control bg-light" value="@createdKey" id="newKeyInput" />
+            <button class="btn btn-outline-secondary" type="button" @onclick="CopyKeyToClipboard">
+                <i class="bi bi-clipboard"></i> Copy
+            </button>
+        </div>
+        <p class="mb-0">This key can be used to authenticate API requests. For security reasons, we only show this key once and store a secure hash.</p>
+    </div>
+    
+    <div class="alert alert-warning">
+        <p><i class="bi bi-exclamation-triangle-fill me-2"></i> Make sure to securely store this key. You won't be able to retrieve it again.</p>
+    </div>
+    
+    <div class="mt-4">
+        <button class="btn btn-primary" @onclick="ReturnToList">Return to Virtual Keys List</button>
+    </div>
+}
+else
+{
+    <EditForm Model="@request" OnValidSubmit="HandleValidSubmit" FormName="VirtualKeyForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Key Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="keyName" class="form-label">Key Name:</label>
+                            <InputText id="keyName" @bind-Value="request!.KeyName" class="form-control" />
+                            <ValidationMessage For="@(() => request!.KeyName)" />
+                            <div class="form-text">A friendly name to identify this key</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="allowedModels" class="form-label">
+                                Allowed Models (Optional): 
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Select specific models this key can access. Leave empty to allow all models. More restrictive keys are more secure.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                                @if (availableModels != null && availableModels.Count > 0)
+                                {
+                                    <span class="badge bg-primary rounded-pill ms-2">
+                                        @selectedModels.Count selected
+                                    </span>
+                                }
+                            </label>
+                            
+                            <!-- Search and action buttons -->
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" placeholder="Search models..." 
+                                       @bind="modelSearchText" @bind:event="oninput" />
+                                <button type="button" class="btn btn-outline-secondary" 
+                                        @onclick="SelectAllModels" disabled="@(availableModels?.Count == 0)">
+                                    <i class="bi bi-check-all"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" 
+                                        @onclick="ClearAllModels" disabled="@(selectedModels.Count == 0)">
+                                    <i class="bi bi-x-lg"></i> Clear All
+                                </button>
+                            </div>
+                            
+                            <div class="form-control" style="height: auto; max-height: 250px; overflow-y: auto; padding: 0;">
+                                @if (availableModels == null || availableModels.Count == 0)
+                                {
+                                    <div class="p-3 text-muted">Loading models...</div>
+                                }
+                                else
+                                {
+                                    var filteredModels = FilterModels();
+                                    var groupedModels = filteredModels
+                                        .GroupBy(m => m.ProviderName)
+                                        .OrderBy(g => g.Key);
+                                    
+                                    @if (!filteredModels.Any())
+                                    {
+                                        <div class="p-3 text-muted">No models match your search.</div>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var group in groupedModels)
+                                        {
+                                            <div class="provider-group">
+                                                <div class="provider-header p-2 bg-light border-bottom">
+                                                    <strong>@group.Key</strong>
+                                                    <span class="badge bg-secondary rounded-pill float-end">
+                                                        @group.Count() model@(group.Count() != 1 ? "s" : "")
+                                                    </span>
+                                                </div>
+                                                <div class="px-2 py-1">
+                                                    @foreach (var model in group.OrderBy(m => m.ModelAlias))
+                                                    {
+                                                        <div class="form-check my-1">
+                                                            <input type="checkbox" class="form-check-input" 
+                                                                id="model_@model.ModelAlias" 
+                                                                value="@model.ModelAlias" 
+                                                                checked="@selectedModels.Contains(model.ModelAlias)"
+                                                                @onchange="@(e => ToggleModelSelection(model.ModelAlias, e.Value is bool value ? value : false))" />
+                                                            <label class="form-check-label" for="model_@model.ModelAlias">
+                                                                @model.ModelAlias
+                                                                <small class="text-muted">(@model.ProviderModelId)</small>
+                                                            </label>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                            <ValidationMessage For="@(() => request!.AllowedModels)" />
+                            <div class="form-text d-flex justify-content-between align-items-center">
+                                <span>Select models that can be used with this key. Leave empty to allow all models.</span>
+                                @if (selectedModels.Count > 0)
+                                {
+                                    <button type="button" class="btn btn-sm btn-link p-0" @onclick="ShowSelectedModels">
+                                        Show selected
+                                    </button>
+                                }
+                            </div>
+                            @if (showSelectedModelsList && selectedModels.Count > 0)
+                            {
+                                <div class="mt-2 p-2 bg-light border rounded">
+                                    <div class="d-flex justify-content-between">
+                                        <small><strong>Selected models:</strong></small>
+                                        <button type="button" class="btn-close btn-sm" @onclick="() => showSelectedModelsList = false"></button>
+                                    </div>
+                                    <small>@string.Join(", ", selectedModels.OrderBy(m => m))</small>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <InputCheckbox id="isEnabled" @bind-Value="isEnabled" class="form-check-input" />
+                                <label class="form-check-label" for="isEnabled">
+                                    Key Enabled
+                                </label>
+                            </div>
+                            <div class="form-text">Disable to temporarily prevent usage of this key</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="metadata" class="form-label">Metadata (Optional):</label>
+                            <InputTextArea id="metadata" @bind-Value="request!.Metadata" class="form-control" rows="3" />
+                            <div class="form-text">Optional JSON metadata or notes about this key</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Budget & Expiration</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="maxBudget" class="form-label">Maximum Budget (Optional):</label>
+                            <InputNumber id="maxBudget" @bind-Value="request!.MaxBudget" class="form-control" />
+                            <ValidationMessage For="@(() => request!.MaxBudget)" />
+                            <div class="form-text">Maximum spend in USD. Leave empty for no budget limit.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="budgetDuration" class="form-label">Budget Duration:</label>
+                            <InputSelect id="budgetDuration" @bind-Value="request!.BudgetDuration" class="form-select">
+                                <option value="Total">Total (Lifetime)</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Daily">Daily</option>
+                            </InputSelect>
+                            <div class="form-text">Period over which the budget applies</div>
+                        </div>
+
+                        @if (Id.HasValue && currentSpend.HasValue)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Current Spend:</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control bg-light" value="@currentSpend.Value.ToString("F2")" readonly />
+                                </div>
+                                <div class="form-text">
+                                    <a href="#" @onclick="ResetCurrentSpend" @onclick:preventDefault>Reset to zero</a>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label for="expiresAt" class="form-label">Expiration Date (Optional):</label>
+                            <InputDate id="expiresAt" @bind-Value="request!.ExpiresAt" class="form-control" />
+                            <ValidationMessage For="@(() => request!.ExpiresAt)" />
+                            <div class="form-text">Date when this key will automatically expire. Leave empty for no expiration.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col">
+                <button type="submit" class="btn btn-primary me-2" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-1"></i>
+                        <span>@(Id.HasValue ? "Save Changes" : "Create Key")</span>
+                    }
+                </button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private UpdateVirtualKeyRequestDto? request;
+    private ConduitLLM.Configuration.Entities.VirtualKey? existingKey;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isEnabled;
+    private string? errorMessage;
+    private string? createdKey;
+    private bool showCreatedKey = false;
+    private decimal? currentSpend;
+
+    // Model selection fields
+    private List<ModelMappingViewModel> availableModels = new();
+    private HashSet<string> selectedModels = new();
+    private string modelSearchText = string.Empty;
+    private bool showSelectedModelsList = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load available models
+            await LoadAvailableModelsAsync();
+            
+            if (Id.HasValue)
+            {
+                // Editing existing key
+                var keyInfo = await VirtualKeyService.GetVirtualKeyInfoAsync(Id.Value);
+                if (keyInfo != null)
+                {
+                    await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+                    existingKey = await dbContext.VirtualKeys.FindAsync(Id.Value);
+                    
+                    if (existingKey == null)
+                    {
+                        errorMessage = "Virtual key not found in database.";
+                        return;
+                    }
+                    
+                    request = new UpdateVirtualKeyRequestDto
+                    {
+                        KeyName = existingKey.KeyName,
+                        AllowedModels = existingKey.AllowedModels,
+                        MaxBudget = existingKey.MaxBudget,
+                        BudgetDuration = existingKey.BudgetDuration,
+                        ExpiresAt = existingKey.ExpiresAt,
+                        Metadata = existingKey.Metadata
+                    };
+                    
+                    // Set the non-nullable property for checkbox binding
+                    isEnabled = existingKey.IsEnabled;
+                    
+                    currentSpend = existingKey.CurrentSpend;
+
+                    // Initialize selected models from comma-separated string
+                    InitializeSelectedModels(existingKey.AllowedModels);
+                }
+            }
+            else
+            {
+                // New key
+                request = new UpdateVirtualKeyRequestDto
+                {
+                    KeyName = "",
+                    AllowedModels = "",
+                    BudgetDuration = "Total",
+                    IsEnabled = true
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading virtual key: {ex.Message}";
+            Logger.LogError(ex, "Error loading virtual key with ID {KeyId}", Id);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+        
+        // Initialize tooltips after the component is rendered
+        await InitializeTooltips();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeTooltips();
+        }
+    }
+    
+    private async Task InitializeTooltips()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("initTooltips");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing tooltips");
+        }
+    }
+
+    // Initialize selected models from comma-separated string
+    private void InitializeSelectedModels(string? allowedModels)
+    {
+        selectedModels.Clear();
+        
+        if (!string.IsNullOrWhiteSpace(allowedModels))
+        {
+            var models = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var model in models)
+            {
+                selectedModels.Add(model);
+            }
+        }
+    }
+
+    // Toggle selection of a model
+    private void ToggleModelSelection(string modelAlias, bool isSelected)
+    {
+        if (isSelected)
+        {
+            selectedModels.Add(modelAlias);
+        }
+        else
+        {
+            selectedModels.Remove(modelAlias);
+        }
+        
+        // Update the request.AllowedModels property with the comma-separated list
+        if (request != null)
+        {
+            request.AllowedModels = string.Join(",", selectedModels);
+        }
+    }
+    
+    // Filter models based on search text
+    private List<ModelMappingViewModel> FilterModels()
+    {
+        if (string.IsNullOrWhiteSpace(modelSearchText))
+        {
+            return availableModels;
+        }
+        
+        return availableModels
+            .Where(m => 
+                m.ModelAlias.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase) || 
+                m.ProviderName.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase) ||
+                m.ProviderModelId.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+    
+    // Select all visible (filtered) models
+    private void SelectAllModels()
+    {
+        var filtered = FilterModels();
+        foreach (var model in filtered)
+        {
+            selectedModels.Add(model.ModelAlias);
+        }
+        
+        // Update the request
+        if (request != null)
+        {
+            request.AllowedModels = string.Join(",", selectedModels);
+        }
+    }
+    
+    // Clear all selected models
+    private void ClearAllModels()
+    {
+        selectedModels.Clear();
+        
+        if (request != null)
+        {
+            request.AllowedModels = string.Empty;
+        }
+    }
+    
+    // Show/hide the selected models list
+    private void ShowSelectedModels()
+    {
+        showSelectedModelsList = !showSelectedModelsList;
+    }
+
+    // Load available models from database
+    private async Task LoadAvailableModelsAsync()
+    {
+        try
+        {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var modelMappings = await dbContext.ModelMappings
+                .OrderBy(m => m.ModelAlias)
+                .ToListAsync();
+            
+            availableModels = modelMappings
+                .Select(m => new ModelMappingViewModel 
+                { 
+                    ModelAlias = m.ModelAlias, 
+                    ProviderName = m.ProviderName,
+                    ProviderModelId = m.ProviderModelId
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading model mappings");
+            errorMessage = "Failed to load available models.";
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        
+        try
+        {
+            // Ensure request is not null and update the IsEnabled property from the non-nullable field
+            if (request != null)
+            {
+                request.IsEnabled = isEnabled;
+                
+                // Update AllowedModels from selectedModels set
+                request.AllowedModels = string.Join(",", selectedModels);
+            }
+            
+            if (Id.HasValue && existingKey != null)
+            {
+                // Update existing key
+                var success = await VirtualKeyService.UpdateVirtualKeyAsync(Id.Value, request!);
+                if (success)
+                {
+                    NavigationManager.NavigateTo("/virtualkeys");
+                }
+                else
+                {
+                    errorMessage = "Failed to update the virtual key. It may have been deleted.";
+                }
+            }
+            else
+            {
+                // Create new key
+                var createRequest = new CreateVirtualKeyRequestDto
+                {
+                    KeyName = request!.KeyName ?? "",
+                    AllowedModels = request.AllowedModels,
+                    MaxBudget = request.MaxBudget,
+                    BudgetDuration = request.BudgetDuration,
+                    ExpiresAt = request.ExpiresAt,
+                    Metadata = request.Metadata
+                };
+                
+                var response = await VirtualKeyService.GenerateVirtualKeyAsync(createRequest);
+                createdKey = response.VirtualKey;
+                showCreatedKey = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving virtual key: {ex.Message}";
+            Logger.LogError(ex, "Error saving virtual key");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/virtualkeys");
+    }
+    
+    private void ReturnToList()
+    {
+        NavigationManager.NavigateTo("/virtualkeys");
+    }
+
+    private async Task ResetCurrentSpend()
+    {
+        if (!Id.HasValue) return;
+        
+        try
+        {
+            var success = await VirtualKeyService.ResetSpendAsync(Id.Value);
+            if (success)
+            {
+                currentSpend = 0;
+                StateHasChanged();
+            }
+            else
+            {
+                errorMessage = "Failed to reset spend. The key may have been deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error resetting spend: {ex.Message}";
+            Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", Id);
+        }
+    }
+    
+    private async Task CopyKeyToClipboard()
+    {
+        if (string.IsNullOrEmpty(createdKey)) return;
+        
+        try
+        {
+            await JSRuntime.InvokeAsync<object>("navigator.clipboard.writeText", createdKey);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying key to clipboard");
+        }
+    }
+    
+    // View model for model mappings
+    private class ModelMappingViewModel
+    {
+        public string ModelAlias { get; set; } = string.Empty;
+        public string ProviderName { get; set; } = string.Empty;
+        public string ProviderModelId { get; set; } = string.Empty;
+    }
+}

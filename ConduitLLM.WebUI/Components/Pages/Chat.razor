@@ -1,0 +1,441 @@
+@page "/chat"
+@using System.Text.Json
+@using System.Text
+@using System.Net.Http.Headers
+@using System.Text.Json.Serialization
+@using ConduitLLM.Configuration
+@using ConduitLLM.Core.Models
+@using Microsoft.Extensions.Options
+@using ConduitLLM.WebUI.Data
+@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.Components.Shared
+@inject IHttpClientFactory HttpClientFactory
+@inject IOptions<ConduitSettings> ConduitSettingsOptions
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h1>Chat Playground</h1>
+
+@if (modelMappings == null || !modelMappings.Any())
+{
+    <div class="alert alert-warning">No models configured. Please add models in the <a href="/configuration">Configuration</a> page.</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-8">
+            <div class="mb-3">
+                <label for="systemPrompt" class="form-label">System Prompt (Optional):</label>
+                <Tooltip Text="Instructions that define the AI's behavior for the entire conversation (e.g., 'You are a helpful assistant', 'Respond as a SQL expert')" />
+                <textarea id="systemPrompt" class="form-control" rows="3" @bind="systemPrompt"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="userMessage" class="form-label">User Message:</label>
+                <Tooltip Text="The message or query you want to send to the AI model" />
+                <textarea id="userMessage" class="form-control" rows="5" @bind="userMessage" placeholder="Enter your message here..."></textarea>
+            </div>
+
+            <div class="mb-3">
+                 <button class="btn btn-primary" @onclick="SendRequest" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> Sending...</span>
+                    }
+                    else
+                    {
+                        <span>Send Request</span>
+                    }
+                </button>
+                 <button class="btn btn-secondary ms-2" @onclick="ClearChat" disabled="@isLoading">Clear</button>
+            </div>
+
+             @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3">@errorMessage</div>
+            }
+
+            @* Chat History Display *@
+            <div class="mt-4 chat-history" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; background-color: #f8f9fa;">
+                @if (!chatHistory.Any() && !isLoading)
+                {
+                    <p class="text-muted text-center">Chat history will appear here.</p>
+                }
+                @foreach (var message in chatHistory)
+                {
+                    <div class="mb-2 chat-message @GetMessageClass(message.Role)">
+                        <strong style="text-transform: capitalize;">@(message.Role):</strong>
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;">@message.Content</pre>
+                    </div>
+                }
+                 @if (isLoading && streamResponse) // Show streaming indicator within history
+                {
+                     <div class="mb-2 chat-message assistant">
+                         <strong>Assistant:</strong> <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                     </div>
+                }
+                 @if (isLoading && !streamResponse) // Show non-streaming loading indicator
+                {
+                     <div class="mb-2 chat-message assistant text-muted">
+                         <strong>Assistant:</strong> <span>Waiting for response... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></span>
+                     </div>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h4>Parameters</h4>
+             <div class="mb-3">
+                <label for="modelAlias" class="form-label">Model:</label>
+                <Tooltip Text="The AI model to use for generating responses - different models have different capabilities and specializations" />
+                <select id="modelAlias" class="form-select" @bind="selectedModelAlias">
+                    @if (!modelMappings.Any())
+                    {
+                        <option value="">No models configured</option>
+                    }
+                    else
+                    {
+                        <option value="">-- Select Model --</option>
+                        @foreach (var mapping in modelMappings.OrderBy(m => m.ModelAlias))
+                        {
+                            <option value="@mapping.ModelAlias">@mapping.ModelAlias (@mapping.ProviderName)</option>
+                        }
+                    }
+                </select>
+            </div>
+             <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="streamResponse" @bind="streamResponse">
+                <label class="form-check-label" for="streamResponse">Stream Response</label>
+                <Tooltip Text="When enabled, shows the AI response as it's being generated instead of waiting for the complete response" />
+            </div>
+            <div class="mb-3">
+                <label for="temperature" class="form-label">Temperature: @temperature</label>
+                <Tooltip Text="Controls randomness: 0 is deterministic (more predictable), higher values (0.7-1.0) increase creativity but may be less factual" />
+                <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.1" @bind="temperature">
+            </div>
+             <div class="mb-3">
+                <label for="maxTokens" class="form-label">Max Tokens (Optional):</label>
+                <Tooltip Text="Maximum number of tokens (words/subwords) in the generated response. Leave empty to use the provider's default" />
+                <InputNumber id="maxTokens" class="form-control" @bind-Value="maxTokens" placeholder="Provider default" />
+            </div>
+             <div class="mb-3">
+                <label for="apiKeyOverride" class="form-label">API Key Override (Optional):</label>
+                <Tooltip Text="Override the configured API key with your own for this request only" />
+                <input type="password" id="apiKeyOverride" class="form-control" @bind="apiKeyOverride" placeholder="Use configured key by default" />
+                 <small class="form-text text-muted">Overrides key from configuration for this request.</small>
+            </div>
+             <div class="mb-3">
+                <label for="topP" class="form-label">Top P (Optional): @topP</label>
+                <Tooltip Text="Alternative to temperature - controls randomness by limiting to top percentage of token probability mass (nucleus sampling)" Position="right" />
+                <input type="range" class="form-range" id="topP" min="0" max="1" step="0.01" @bind="topP">
+                 <small class="form-text text-muted">Alternative to Temperature (nucleus sampling). Leave unset to use Temperature.</small>
+            </div>
+             <div class="mb-3">
+                <label for="stopSequences" class="form-label">Stop Sequences (Optional):</label>
+                <Tooltip Text="Sequences that will cause the model to stop generating text when encountered (e.g., 'Human:', 'END')" Position="right" />
+                <input type="text" id="stopSequences" class="form-control" @bind="stopSequences" placeholder="e.g. Human:, AI:">
+                 <small class="form-text text-muted">Comma-separated list of sequences to stop generation.</small>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private ConduitSettings settings => ConduitSettingsOptions.Value;
+    private List<ModelProviderMapping> modelMappings = new();
+    private string selectedModelAlias = "";
+    private string systemPrompt = "";
+    private string userMessage = "";
+    private double temperature = 0.7;
+    private int? maxTokens = null;
+    private bool streamResponse = true;
+    private string? apiKeyOverride = null;
+    private double? topP = null; 
+    private string? stopSequences = null; 
+
+    private string errorMessage = "";
+    private bool isLoading = false;
+    private string _proxyBaseUrl = "http://localhost:5000"; 
+    private List<Message> chatHistory = new(); 
+    private bool isProxyUrlLoading = true; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        isProxyUrlLoading = true;
+        await LoadProxyUrlAsync();
+        await LoadModelMappingsFromDatabase();
+        isProxyUrlLoading = false; 
+        // No need to call StateHasChanged here, Blazor handles it after OnInitializedAsync
+    }
+
+    private async Task LoadModelMappingsFromDatabase()
+    {
+        try
+        {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var dbMappings = await dbContext.ModelMappings.ToListAsync();
+            
+            // Convert database mappings to Configuration model mappings
+            modelMappings = dbMappings.Select(m => new ModelProviderMapping
+            {
+                ModelAlias = m.ModelAlias,
+                ProviderName = m.ProviderName,
+                ProviderModelId = m.ProviderModelId
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading model mappings: {ex.Message}";
+        }
+    }
+
+    private async Task LoadProxyUrlAsync()
+    {
+        try
+        {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var setting = await dbContext.GlobalSettings.FindAsync("ConduitProxyBaseUrl");
+            _proxyBaseUrl = setting?.Value ?? "http://localhost:5000"; 
+        }
+        catch (Exception ex)
+        {
+             Console.WriteLine($"Error loading Proxy URL from database: {ex.Message}");
+             errorMessage = "Error loading proxy URL configuration."; 
+             _proxyBaseUrl = "http://localhost:5000"; 
+        }
+    }
+
+    private async Task SendRequest()
+    {
+        if (string.IsNullOrWhiteSpace(userMessage) || string.IsNullOrWhiteSpace(selectedModelAlias))
+        {
+            errorMessage = "Please select a model and enter a user message.";
+            return;
+        }
+         if (isProxyUrlLoading) 
+        {
+            errorMessage = "Proxy URL configuration is still loading. Please wait.";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = "";
+
+        // Add user message to history
+        var userMsg = new Message { Role = "user", Content = userMessage };
+        chatHistory.Add(userMsg);
+        var currentMessage = userMessage; 
+        userMessage = ""; 
+        StateHasChanged(); 
+
+        // Prepare messages for API request
+        var messagesToSend = new List<Message>();
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            messagesToSend.Add(new Message { Role = "system", Content = systemPrompt });
+        }
+        messagesToSend.AddRange(chatHistory); 
+
+        var request = new ChatCompletionRequest
+        {
+            Model = selectedModelAlias,
+            Messages = messagesToSend, 
+            Temperature = (topP == null) ? temperature : (double?)null, 
+            MaxTokens = maxTokens,
+            TopP = topP, 
+            Stop = ParseStopSequences(stopSequences), 
+            Stream = streamResponse
+        };
+
+        var httpClient = HttpClientFactory.CreateClient();
+        var requestUri = $"{_proxyBaseUrl}/v1/chat/completions";
+
+        try
+        {
+            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri);
+            var jsonPayload = JsonSerializer.Serialize(request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }); 
+            httpRequestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            // Add API Key Override header if provided
+            if (!string.IsNullOrWhiteSpace(apiKeyOverride))
+            {
+                httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKeyOverride);
+            }
+
+            if (streamResponse)
+            {
+                // Handle streaming response
+                Message? streamingAssistantMsg = null; 
+                // StateHasChanged(); 
+
+                httpRequestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+                using var response = await httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    errorMessage = $"Error: {response.StatusCode}. {errorContent}";
+                }
+                else
+                {
+                    // Add placeholder for assistant message before starting stream
+                    streamingAssistantMsg = new Message { Role = "assistant", Content = "" };
+                    chatHistory.Add(streamingAssistantMsg);
+                    StateHasChanged(); 
+
+                    using var stream = await response.Content.ReadAsStreamAsync();
+                    using var reader = new StreamReader(stream);
+
+                    while (!reader.EndOfStream)
+                    {
+                        var line = await reader.ReadLineAsync();
+                        if (string.IsNullOrWhiteSpace(line)) continue; 
+
+                        // Basic SSE parsing (remove "data: ")
+                        if (line.StartsWith("data: "))
+                        {
+                            var dataJson = line.Substring("data: ".Length).Trim();
+                            if (dataJson.Equals("[DONE]", StringComparison.OrdinalIgnoreCase))
+                            {
+                                break; 
+                            }
+
+                            try
+                            {
+                                // Deserialize the chunk
+                                var chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(dataJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); 
+                                var content = chunk?.Choices?.FirstOrDefault()?.Delta?.Content;
+
+                                if (!string.IsNullOrEmpty(content) && streamingAssistantMsg != null)
+                                {
+                                    streamingAssistantMsg.Content += content; 
+                                    StateHasChanged(); 
+                                }
+                            }
+                            catch (JsonException jsonEx)
+                            {
+                                Console.WriteLine($"Error deserializing stream chunk: {jsonEx.Message}");
+                                if(streamingAssistantMsg != null) streamingAssistantMsg.Content += $"[Error parsing chunk: {dataJson}]\n"; 
+                                StateHasChanged();
+                            }
+                        }
+                        // We typically don't display non-data lines in the chat history
+                        // else
+                        // {
+                        //      if(streamingAssistantMsg != null) streamingAssistantMsg.Content += line + "\n";
+                        //      StateHasChanged();
+                        // }
+                    }
+                }
+            }
+            else
+            {
+                // Handle non-streaming response
+                // Add a placeholder message before sending
+                var assistantPlaceholder = new Message { Role = "assistant", Content = "Waiting for response..." };
+                chatHistory.Add(assistantPlaceholder);
+                StateHasChanged(); 
+
+                using var response = await httpClient.SendAsync(httpRequestMessage);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Remove placeholder before adding final response or error
+                chatHistory.Remove(assistantPlaceholder);
+
+                string? assistantReplyContent = null; 
+                if (!response.IsSuccessStatusCode)
+                {
+                    errorMessage = $"Error: {response.StatusCode}. {responseContent}";
+                }
+                else
+                {
+                    // Extract content from the response model (assuming ChatCompletionResponse structure)
+                    try
+                    {
+                        var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        assistantReplyContent = chatResponse?.Choices?.FirstOrDefault()?.Message?.Content;
+
+                        // Fallback: Pretty print JSON if parsing fails or content is empty but response is valid JSON
+                        if (string.IsNullOrEmpty(assistantReplyContent))
+                        {
+                             using var jsonDoc = JsonDocument.Parse(responseContent);
+                             assistantReplyContent = JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions { WriteIndented = true });
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                         errorMessage = $"Error parsing JSON response: {jsonEx.Message}. Raw content: {responseContent}";
+                         // Removed unused apiResponse field
+                    }
+                    if (!string.IsNullOrEmpty(assistantReplyContent))
+                    {
+                         chatHistory.Add(new Message { Role = "assistant", Content = assistantReplyContent });
+                    }
+                    else if (string.IsNullOrEmpty(errorMessage)) 
+                    {
+                         errorMessage = "Received an empty response from the assistant.";
+                    }
+                }
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            // Use configured URL in error message
+            errorMessage = $"Network Error: Failed to connect to the API proxy at {_proxyBaseUrl}. Ensure it is running. Details: {httpEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An unexpected error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+     private void ClearChat()
+    {
+        systemPrompt = "";
+        userMessage = "";
+        errorMessage = "";
+        apiKeyOverride = null;
+        topP = null; 
+        stopSequences = null; 
+        chatHistory.Clear(); 
+        // Optionally reset other parameters like temperature?
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize Bootstrap tooltips
+            await JSRuntime.InvokeVoidAsync("initializeTooltips");
+        }
+    }
+
+    // Helper method for CSS class
+    private string GetMessageClass(string role) => role?.ToLowerInvariant() switch
+    {
+        "user" => "user-message",
+        "assistant" => "assistant-message",
+        "system" => "system-message",
+        _ => ""
+    };
+
+    // Helper to parse comma-separated stop sequences
+    private List<string>? ParseStopSequences(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return null;
+        }
+        return input.Split(',')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+    }
+}

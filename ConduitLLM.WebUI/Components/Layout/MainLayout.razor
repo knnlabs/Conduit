@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <div style="margin-left: auto; display: flex; align-items: center;">
+                <NotificationDisplay />
+                <a href="https://github.com/nickna/ConduitLLM" target="_blank" style="margin-left: 1rem;">About</a>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

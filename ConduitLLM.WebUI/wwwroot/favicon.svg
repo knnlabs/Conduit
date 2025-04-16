@@ -1,0 +1,18 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="1.5">
+  <title>Conduit Icon Favicon</title>
+  <g id="icon" stroke="#2AD8C8" stroke-width="6" fill="none">
+    <path d="M 5 30 L 5 15 A 10 10 0 0 1 15 5 L 30 5" />
+    <path d="M 70 5 L 85 5 A 10 10 0 0 1 95 15 L 95 30" />
+    <path d="M 95 70 L 95 85 A 10 10 0 0 1 85 95 L 70 95" />
+    <path d="M 30 95 L 15 95 A 10 10 0 0 1 5 85 L 5 70" />
+
+    <g id="network" transform="translate(50, 50) scale(0.8)" stroke-width="4">
+      <circle cx="0" cy="0" r="10" fill="#2AD8C8" stroke="none"/>
+      <circle cx="-25" cy="-20" r="10" fill="#2AD8C8" stroke="none"/>
+      <circle cx="-25" cy="20" r="10" fill="#2AD8C8" stroke="none"/>
+
+      <line x1="0" y1="0" x2="-25" y2="-20"/>
+      <line x1="0" y1="0" x2="-25" y2="20"/>
+    </g>
+  </g>
+</svg>
