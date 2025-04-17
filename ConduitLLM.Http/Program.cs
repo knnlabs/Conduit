@@ -52,6 +52,10 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
+// Model costs tracking service
+builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+builder.Services.AddMemoryCache();
+
 // 2. Register DbContext Factory (using connection string from appsettings.json)
 // Get database provider configuration from environment variables
 string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";

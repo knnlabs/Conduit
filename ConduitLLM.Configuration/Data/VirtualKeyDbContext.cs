@@ -43,6 +43,11 @@ namespace ConduitLLM.Configuration
         public DbSet<GlobalSetting> GlobalSettings { get; set; } = null!;
 
         /// <summary>
+        /// Database set for model costs
+        /// </summary>
+        public DbSet<ModelCost> ModelCosts { get; set; } = null!;
+
+        /// <summary>
         /// Configures the model for the context
         /// </summary>
         /// <param name="modelBuilder">The model builder</param>
@@ -87,6 +92,13 @@ namespace ConduitLLM.Configuration
                       .WithMany(e => e.RequestLogs)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure ModelCost entity
+            modelBuilder.Entity<ModelCost>(entity =>
+            {
+                entity.HasIndex(e => e.ModelIdPattern)
+                      .IsUnique(false); // Patterns might not be unique if we allow overlaps
             });
         }
     }

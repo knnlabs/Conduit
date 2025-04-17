@@ -16,6 +16,7 @@ public class ConfigurationDbContext : DbContext
     public DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
     public DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
     public DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
+    public DbSet<ModelCost> ModelCosts { get; set; } = null!;
 
     public ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> options)
         : base(options)
@@ -104,6 +105,12 @@ public class ConfigurationDbContext : DbContext
         {
             entity.HasIndex(e => new { e.FallbackConfigurationId, e.Order }).IsUnique();
             entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
+        });
+
+        modelBuilder.Entity<ModelCost>(entity =>
+        {
+            entity.HasIndex(e => e.ModelIdPattern)
+                  .IsUnique(false); // Patterns might not be unique if we allow overlaps
         });
     }
 
