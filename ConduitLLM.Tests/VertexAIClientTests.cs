@@ -263,6 +263,146 @@ public class VertexAIClientTests
     }
 
     [Fact]
+    public async Task StreamChatCompletionAsync_EmptyStream_ReturnsNoChunks()
+    {
+        // Arrange
+        var request = CreateTestRequest("vertex-gemini");
+        var modelId = "gemini-1.5-pro";
+        var emptyResponse = new VertexAIPredictionResponse { Predictions = new List<VertexAIPrediction>() };
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", MoqIt.IsAny<HttpRequestMessage>(), MoqIt.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = JsonContent.Create(emptyResponse)
+            });
+        var client = new VertexAIClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        // Act
+        int chunkCount = 0;
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+        {
+            chunkCount++;
+        }
+        // Assert
+        Assert.Equal(0, chunkCount);
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_MalformedChunk_HandlesGracefully()
+    {
+        // Arrange
+        var request = CreateTestRequest("vertex-gemini");
+        var modelId = "gemini-1.5-pro";
+        var malformedJson = "{ not_a_valid_json: }";
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", MoqIt.IsAny<HttpRequestMessage>(), MoqIt.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(malformedJson, System.Text.Encoding.UTF8, "application/json")
+            });
+        var client = new VertexAIClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        // Act & Assert
+        await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
+        {
+            await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            {
+                // Should not yield any chunk
+            }
+        });
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_CancellationRequested_ThrowsTaskCanceled()
+    {
+        // Arrange
+        var request = CreateTestRequest("vertex-gemini");
+        var modelId = "gemini-1.5-pro";
+        var expectedResponse = CreateSuccessGeminiResponse();
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", MoqIt.IsAny<HttpRequestMessage>(), MoqIt.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = JsonContent.Create(expectedResponse)
+            });
+        var client = new VertexAIClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+        // Act & Assert
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: cts.Token))
+            {
+                // Should not yield any chunk
+            }
+        });
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_NetworkException_ThrowsLLMCommunicationException()
+    {
+        // Arrange
+        var request = CreateTestRequest("vertex-gemini");
+        var modelId = "gemini-1.5-pro";
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", MoqIt.IsAny<HttpRequestMessage>(), MoqIt.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Network error"));
+        var client = new VertexAIClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        // Act & Assert
+        await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
+        {
+            await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            {
+                // Should not yield any chunk
+            }
+        });
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_LargeNumberOfChunks_StreamsAll()
+    {
+        // Arrange
+        var request = CreateTestRequest("vertex-gemini");
+        var modelId = "gemini-1.5-pro";
+        var manyPredictions = new VertexAIPredictionResponse
+        {
+            Predictions = Enumerable.Range(0, 50).Select(i => new VertexAIPrediction
+            {
+                Candidates = new List<VertexAIGeminiCandidate>
+                {
+                    new VertexAIGeminiCandidate
+                    {
+                        Content = new VertexAIGeminiContent
+                        {
+                            Role = "model",
+                            Parts = new List<VertexAIGeminiPart> { new VertexAIGeminiPart { Text = $"Chunk {i}" } }
+                        },
+                        FinishReason = "STOP"
+                    }
+                }
+            }).ToList()
+        };
+        _handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", MoqIt.IsAny<HttpRequestMessage>(), MoqIt.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = JsonContent.Create(manyPredictions)
+            });
+        var client = new VertexAIClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        int count = 0;
+        // Act
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+        {
+            Assert.NotNull(chunk);
+            count++;
+        }
+        // Assert
+        Assert.Equal(50, count);
+    }
+
+    [Fact]
     public async Task ListModelsAsync_ReturnsModels()
     {
         // Arrange

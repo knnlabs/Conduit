@@ -149,106 +149,52 @@ public class VertexAIClient : ILLMClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
         _logger.LogInformation("Streaming is not natively supported in this Vertex AI client implementation. Simulating streaming.");
-        
-        // Since we don't have a direct streaming API for Vertex AI in this implementation,
-        // we'll use the non-streaming endpoint and simulate streaming
-        var fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
-        
-        if (fullResponse.Choices == null || !fullResponse.Choices.Any() ||
-            string.IsNullOrEmpty(fullResponse.Choices[0].Message?.Content))
+
+        // Use the non-streaming endpoint and simulate streaming per prediction/candidate
+        ChatCompletionResponse fullResponse;
+        try
+        {
+            fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
+        }
+        catch (LLMCommunicationException ex) when (ex.Message.Contains("or response is empty"))
+        {
+            // For streaming, treat empty response as empty stream, not exception
+            yield break;
+        }
+
+        if (fullResponse.Choices == null || fullResponse.Choices.Count == 0)
         {
             yield break;
         }
-        
-        // Simulate streaming by breaking up the content
-        string content = fullResponse.Choices[0].Message!.Content!;
-        
-        // Generate a random ID for this streaming session
-        string streamId = Guid.NewGuid().ToString();
-        
-        // Initial chunk with role
-        yield return new ChatCompletionChunk
+
+        foreach (var choice in fullResponse.Choices)
         {
-            Id = streamId,
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model,
-            Choices = new List<StreamingChoice>
+            yield return new ChatCompletionChunk
             {
-                new StreamingChoice
+                Id = Guid.NewGuid().ToString(),
+                Object = "chat.completion.chunk",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = request.Model,
+                Choices = new List<StreamingChoice>
                 {
-                    Index = 0,
-                    Delta = new DeltaContent
+                    new StreamingChoice
                     {
-                        Role = "assistant",
-                        Content = null
+                        Index = choice.Index,
+                        Delta = new DeltaContent
+                        {
+                            Role = choice.Message?.Role,
+                            Content = choice.Message?.Content
+                        },
+                        FinishReason = choice.FinishReason
                     }
                 }
-            }
-        };
-        
-        // Break content into chunks (words or sentences could be used)
-        var words = content.Split(' ');
-        
-        // Send content in chunks
-        StringBuilder currentChunk = new StringBuilder();
-        foreach (var word in words)
-        {
-            // Add delay to simulate real streaming
-            await Task.Delay(25, cancellationToken);
-            
-            currentChunk.Append(word).Append(' ');
-            
-            // Send every few words
-            if (currentChunk.Length > 0)
-            {
-                yield return new ChatCompletionChunk
-                {
-                    Id = streamId,
-                    Object = "chat.completion.chunk",
-                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = request.Model,
-                    Choices = new List<StreamingChoice>
-                    {
-                        new StreamingChoice
-                        {
-                            Index = 0,
-                            Delta = new DeltaContent
-                            {
-                                Content = currentChunk.ToString()
-                            }
-                        }
-                    }
-                };
-                
-                currentChunk.Clear();
-            }
-            
+            };
             if (cancellationToken.IsCancellationRequested)
             {
                 yield break;
             }
         }
-        
-        // Final chunk with finish reason
-        yield return new ChatCompletionChunk
-        {
-            Id = streamId,
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model,
-            Choices = new List<StreamingChoice>
-            {
-                new StreamingChoice
-                {
-                    Index = 0,
-                    Delta = new DeltaContent(),
-                    FinishReason = fullResponse.Choices[0].FinishReason
-                }
-            }
-        };
     }
 
     /// <inheritdoc />
@@ -474,47 +420,43 @@ public class VertexAIClient : ILLMClient
     {
         var vertexResponse = await response.Content.ReadFromJsonAsync<VertexAIPredictionResponse>(
             cancellationToken: cancellationToken);
-            
+        
         if (vertexResponse?.Predictions == null || !vertexResponse.Predictions.Any())
         {
             _logger.LogError("Failed to deserialize the response from Google Vertex AI or response is empty");
             throw new LLMCommunicationException("Failed to deserialize the response from Google Vertex AI or response is empty");
         }
         
-        // Get the first prediction and candidate
-        var prediction = vertexResponse.Predictions![0];
-        
-        // Check if candidates exist and have contents
-        if (prediction.Candidates == null || !prediction.Candidates.Any() || 
-            prediction.Candidates[0].Content == null)
+        // Map all candidates from all predictions to core Choices
+        var choices = new List<Choice>();
+        int idx = 0;
+        foreach (var prediction in vertexResponse.Predictions)
         {
-            _logger.LogError("Vertex AI Gemini response has empty content or missing content structure");
-            throw new LLMCommunicationException("Vertex AI Gemini response has empty content or missing content structure");
+            if (prediction.Candidates != null)
+            {
+                foreach (var candidate in prediction.Candidates)
+                {
+                    var content = candidate.Content?.Parts?.FirstOrDefault()?.Text ?? string.Empty;
+                    choices.Add(new Choice
+                    {
+                        Index = idx++,
+                        Message = new Message
+                        {
+                            Role = "assistant",
+                            Content = content
+                        },
+                        FinishReason = candidate.FinishReason
+                    });
+                }
+            }
         }
-        
-        var candidate = prediction.Candidates[0];
-        
-        // Validate content parts before accessing
-        if (candidate.Content!.Parts == null || !candidate.Content.Parts.Any())
+
+        if (choices.Count == 0)
         {
-            _logger.LogError("Vertex AI Gemini response has empty content parts");
-            throw new LLMCommunicationException("Vertex AI Gemini response has empty content parts");
+            _logger.LogError("Gemini response has no candidates");
+            throw new LLMCommunicationException("Gemini response has no candidates");
         }
-        
-        // Extract the text content - now we can safely use null-forgiving operator after thorough validation
-        string content = string.Join("\n", candidate.Content!.Parts!
-            .Where(p => p.Text != null)
-            .Select(p => p.Text ?? string.Empty));
-            
-        // Map finish reason
-        string finishReason = candidate.FinishReason?.ToLowerInvariant() switch
-        {
-            "stop" => "stop",
-            "max_tokens" => "length",
-            "safety" => "content_filter",
-            _ => candidate.FinishReason ?? "stop"
-        };
-        
+
         // Create the core response
         return new ChatCompletionResponse
         {
@@ -522,25 +464,13 @@ public class VertexAIClient : ILLMClient
             Object = "chat.completion",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = originalModelAlias, // Return the requested model alias
-            Choices = new List<Choice>
-            {
-                new Choice
-                {
-                    Index = 0,
-                    Message = new Message
-                    {
-                        Role = "assistant",
-                        Content = content
-                    },
-                    FinishReason = finishReason
-                }
-            },
+            Choices = choices,
             Usage = new Usage
             {
                 // Vertex AI doesn't provide token usage in the response
                 // Estimate based on text length
-                PromptTokens = EstimateTokenCount(string.Join(" ", content)),
-                CompletionTokens = EstimateTokenCount(content),
+                PromptTokens = EstimateTokenCount(string.Join(" ", choices.Select(c => c.Message.Content)) ),
+                CompletionTokens = EstimateTokenCount(string.Join(" ", choices.Select(c => c.Message.Content)) ),
                 TotalTokens = 0 // Will be calculated below
             }
         };
