@@ -213,7 +213,7 @@ public class BedrockClient : ILLMClient
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+    public virtual async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
         ChatCompletionRequest request,
         string? apiKey = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
