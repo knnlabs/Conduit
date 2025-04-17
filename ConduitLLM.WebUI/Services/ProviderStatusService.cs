@@ -257,6 +257,18 @@ namespace ConduitLLM.WebUI.Services
                         return "https://openrouter.ai/api/v1/models"; 
                     case "cerebras": // Lowercase
                         return "https://cerebras.cloud/api/v1/models";
+                    case "aws bedrock":
+                        return "https://bedrock-runtime.us-east-1.amazonaws.com/model";
+                    case "sagemaker":
+                        return "https://runtime.sagemaker.us-east-1.amazonaws.com/endpoints";
+                    case "vertexai":
+                        return "https://us-central1-aiplatform.googleapis.com/v1/projects/-/locations/us-central1/models";
+                    case "huggingface":
+                        return "https://api-inference.huggingface.co/models";
+                    case "groq":
+                        return "https://api.groq.com/openai/v1/models";
+                    case "mistral":
+                        return "https://api.mistral.ai/v1/models";
                     default:
                         // Return empty string for unknown providers
                         return string.Empty;
@@ -280,10 +292,22 @@ namespace ConduitLLM.WebUI.Services
                 case "fireworks": // Lowercase
                     return $"{baseUrl}/inference/v1/models";
                 case "openrouter": // Lowercase
-                     // Revert to using the models endpoint for validation
+                    // Revert to using the models endpoint for validation
                     return $"{baseUrl}/api/v1/models";
                 case "cerebras": // Lowercase
                     return $"{baseUrl}/api/v1/models";
+                case "aws bedrock":
+                    return $"{baseUrl}/model";
+                case "sagemaker":
+                    return $"{baseUrl}/endpoints";
+                case "vertexai":
+                    return $"{baseUrl}/v1/projects/-/locations/us-central1/models";
+                case "huggingface":
+                    return $"{baseUrl}/models";
+                case "groq":
+                    return $"{baseUrl}/openai/v1/models";
+                case "mistral":
+                    return $"{baseUrl}/v1/models";
                 default:
                     return $"{baseUrl}/v1/models";
             }

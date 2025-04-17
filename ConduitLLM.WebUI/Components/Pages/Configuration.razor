@@ -213,7 +213,7 @@ else
     private string? proxyUrlSaveMessage;
     private bool proxyUrlSaveSuccess = false;
 
-    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras" };
+    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
     private bool isGuidedSetupOpen = false;
     // Removed selectedProviderForSetup variable
     private GuidedSetupWizard? guidedSetupWizardInstance; // Reference to the wizard
@@ -429,6 +429,12 @@ else
             "Fireworks" => "Connect to Fireworks.ai for fast and cost-effective inference",
             "OpenRouter" => "Connect to OpenRouter for access to multiple models through one API",
             "Cerebras" => "Connect to Cerebras Cloud for Slimpajama models",
+            "AWS Bedrock" => "Connect to Amazon Bedrock for foundation models",
+            "SageMaker" => "Connect to AWS SageMaker for hosted LLMs",
+            "VertexAI" => "Connect to Google Vertex AI for enterprise-grade models",
+            "HuggingFace" => "Connect to HuggingFace Hub for open-source models",
+            "Groq" => "Connect to Groq for ultra-fast inference on Llama/Mixtral",
+            "Mistral" => "Connect to Mistral AI for Mixtral and Le Chat models",
             _ => "Connect to AI models through this provider"
         };
     }

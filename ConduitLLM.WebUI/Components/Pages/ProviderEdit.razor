@@ -203,7 +203,7 @@ else
     private bool showConnectionStatus = false;
     private string? originalApiKey;
     private EditContext editContext = null!;
-    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras" }; // Added Cerebras provider
+    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -439,6 +439,13 @@ else
             "Gemini" => "Provides access to Gemini models from Google.",
             "Fireworks" => "Provides access to a variety of open-source and first-party models.",
             "OpenRouter" => "Provides unified API access to many LLM providers.",
+            "Cerebras" => "Provides access to Cerebras Slimpajama models.",
+            "AWS Bedrock" => "Provides access to foundation models via Amazon Bedrock.",
+            "SageMaker" => "Provides access to hosted LLMs via AWS SageMaker.",
+            "VertexAI" => "Provides access to Google Vertex AI models.",
+            "HuggingFace" => "Provides access to HuggingFace Hub models.",
+            "Groq" => "Provides ultra-fast inference via Groq.",
+            "Mistral" => "Provides access to Mistral AI models.",
             _ => "Provides access to language models."
         };
     }
