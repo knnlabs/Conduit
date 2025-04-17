@@ -22,4 +22,7 @@ public class CreateVirtualKeyRequestDto
     public DateTime? ExpiresAt { get; set; }
 
     public string? Metadata { get; set; } // Optional JSON metadata
+
+    public int? RateLimitRpm { get; set; }
+    public int? RateLimitRpd { get; set; }
 }

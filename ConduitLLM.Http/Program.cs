@@ -15,6 +15,8 @@ using ConduitLLM.WebUI.Services;  // Added for VirtualKeyService
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.Extensions.Options; // Added for IOptions
+using Microsoft.AspNetCore.RateLimiting;
+using ConduitLLM.Http.Security;
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
@@ -36,6 +38,19 @@ builder.Services.AddOptions<ConduitSettings>()
 
 // Add database-sourced settings provider to populate settings from DB
 builder.Services.AddTransient<IStartupFilter, DatabaseSettingsStartupFilter>();
+
+// Rate Limiter registration
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy<Microsoft.AspNetCore.Http.HttpContext>("VirtualKeyPolicy", context =>
+    {
+        // Use the actual partition provider from the policy instance
+        var policy = context.RequestServices.GetRequiredService<VirtualKeyRateLimitPolicy>();
+        return policy.GetPartition(context);
+    });
+});
+builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
 // 2. Register DbContext Factory (using connection string from appsettings.json)
 // Get database provider configuration from environment variables
@@ -109,6 +124,10 @@ app.UseStaticFiles();
 app.UseDefaultFiles();
 
 app.UseHttpsRedirection(); // Consider if needed depending on deployment
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
 
 // --- API Endpoints ---
 
@@ -640,16 +659,15 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
         var settings = _settingsOptions.Value;
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            
             // Load provider credentials
-            var providerCredsList = await dbContext.ProviderCredentials.ToListAsync();
-            if (providerCredsList.Any())
+            var providerCredsList = await _dbContextFactory.CreateDbContextAsync();
+            var providerCredsList2 = await providerCredsList.ProviderCredentials.ToListAsync();
+            if (providerCredsList2.Any())
             {
-                _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
+                _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList2.Count);
                 
                 // Convert database provider credentials to Core provider credentials
-                var providersList = providerCredsList.Select(p => new ProviderCredentials
+                var providersList = providerCredsList2.Select(p => new ProviderCredentials
                 {
                     ProviderName = p.ProviderName,
                     ApiKey = p.ApiKey,
@@ -688,7 +706,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             }
 
             // Load model mappings from database
-            var modelMappings = await dbContext.ModelMappings.ToListAsync();
+            var modelMappings = await providerCredsList.ModelMappings.ToListAsync();
             if (modelMappings.Any())
             {
                 _logger.LogInformation("Found {Count} model mappings in database", modelMappings.Count);

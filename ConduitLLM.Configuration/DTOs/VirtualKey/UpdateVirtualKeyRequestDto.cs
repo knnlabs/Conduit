@@ -26,4 +26,7 @@ public class UpdateVirtualKeyRequestDto
     public DateTime? ExpiresAt { get; set; }
 
     public string? Metadata { get; set; } // Optional JSON metadata. Empty string clears, null leaves unchanged.
+
+    public int? RateLimitRpm { get; set; }
+    public int? RateLimitRpd { get; set; }
 }

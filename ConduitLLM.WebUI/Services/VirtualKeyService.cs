@@ -44,7 +44,9 @@ public class VirtualKeyService : IVirtualKeyService
             ExpiresAt = request.ExpiresAt?.ToUniversalTime(),
             Metadata = request.Metadata,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RateLimitRpm = request.RateLimitRpm,
+            RateLimitRpd = request.RateLimitRpd
         };
 
         using var context = await _contextFactory.CreateDbContextAsync();
@@ -101,67 +103,23 @@ public class VirtualKeyService : IVirtualKeyService
     public async Task<bool> UpdateVirtualKeyAsync(int id, UpdateVirtualKeyRequestDto request)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
-        ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(id);
-
-        if (virtualKey == null)
-        {
-            return false; // Key not found
-        }
-
-        // Only update fields that are specified in the request (non-null)
-        if (request.KeyName != null)
-        {
-            virtualKey.KeyName = request.KeyName;
-        }
-
-        // Special handling for AllowedModels - empty string means clear the list
-        if (request.AllowedModels != null)
-        {
-            virtualKey.AllowedModels = request.AllowedModels;
-        }
-
-        if (request.MaxBudget.HasValue)
-        {
-            virtualKey.MaxBudget = request.MaxBudget;
-        }
-
+        var virtualKey = await context.VirtualKeys.FindAsync(id);
+        if (virtualKey == null) return false;
+        virtualKey.KeyName = request.KeyName ?? virtualKey.KeyName;
+        virtualKey.AllowedModels = request.AllowedModels ?? virtualKey.AllowedModels;
+        virtualKey.MaxBudget = request.MaxBudget ?? virtualKey.MaxBudget;
+        virtualKey.BudgetDuration = request.BudgetDuration ?? virtualKey.BudgetDuration;
         if (request.BudgetDuration != null)
-        {
-            virtualKey.BudgetDuration = request.BudgetDuration;
-            // Update budget start date if the duration changed
             virtualKey.BudgetStartDate = DetermineBudgetStartDate(request.BudgetDuration);
-        }
-
-        if (request.IsEnabled.HasValue)
-        {
-            virtualKey.IsEnabled = request.IsEnabled.Value;
-        }
-
-        // Special handling for ExpiresAt - null means leave unchanged
-        // To clear, would need a separate flag or convention (e.g., MinValue)
-        if (request.ExpiresAt.HasValue)
-        {
-            virtualKey.ExpiresAt = request.ExpiresAt.Value.ToUniversalTime();
-        }
-
-        // Special handling for Metadata - empty string means clear it
+        virtualKey.IsEnabled = request.IsEnabled ?? virtualKey.IsEnabled;
+        virtualKey.ExpiresAt = request.ExpiresAt?.ToUniversalTime() ?? virtualKey.ExpiresAt;
         if (request.Metadata != null)
-        {
-            virtualKey.Metadata = request.Metadata;
-        }
-
+            virtualKey.Metadata = string.IsNullOrEmpty(request.Metadata) ? null : request.Metadata;
         virtualKey.UpdatedAt = DateTime.UtcNow;
-
-        try
-        {
-            await context.SaveChangesAsync();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", id);
-            return false;
-        }
+        virtualKey.RateLimitRpm = request.RateLimitRpm;
+        virtualKey.RateLimitRpd = request.RateLimitRpd;
+        await context.SaveChangesAsync();
+        return true;
     }
 
     /// <summary>
@@ -434,8 +392,6 @@ public class VirtualKeyService : IVirtualKeyService
         {
             Id = entity.Id,
             KeyName = entity.KeyName,
-            // KeyPrefix could be derived from KeyHash if we stored the original prefix separately,
-            // but for simplicity, we'll omit it here. UI can show ID/Name.
             AllowedModels = entity.AllowedModels,
             MaxBudget = entity.MaxBudget,
             CurrentSpend = entity.CurrentSpend,
@@ -445,7 +401,9 @@ public class VirtualKeyService : IVirtualKeyService
             ExpiresAt = entity.ExpiresAt,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt,
-            Metadata = entity.Metadata
+            Metadata = entity.Metadata,
+            RateLimitRpm = entity.RateLimitRpm,
+            RateLimitRpd = entity.RateLimitRpd
         };
     }
 }

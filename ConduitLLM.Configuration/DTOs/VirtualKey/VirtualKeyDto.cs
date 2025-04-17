@@ -19,4 +19,6 @@ public class VirtualKeyDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string? Metadata { get; set; }
+    public int? RateLimitRpm { get; set; }
+    public int? RateLimitRpd { get; set; }
 }

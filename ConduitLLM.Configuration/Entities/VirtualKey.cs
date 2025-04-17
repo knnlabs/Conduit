@@ -88,6 +88,16 @@ public class VirtualKey
     public string? AllowedModels { get; set; }
 
     /// <summary>
+    /// Requests per minute rate limit for this key
+    /// </summary>
+    public int? RateLimitRpm { get; set; }
+
+    /// <summary>
+    /// Requests per day rate limit for this key
+    /// </summary>
+    public int? RateLimitRpd { get; set; }
+
+    /// <summary>
     /// Virtual collection of request logs
     /// </summary>
     public virtual ICollection<RequestLog>? RequestLogs { get; set; }

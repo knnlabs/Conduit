@@ -184,6 +184,17 @@ else
                             <InputTextArea id="metadata" @bind-Value="request!.Metadata" class="form-control" rows="3" />
                             <div class="form-text">Optional JSON metadata or notes about this key</div>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="rateLimitRpm" class="form-label">Requests Per Minute (RPM):</label>
+                            <InputNumber id="rateLimitRpm" @bind-Value="request!.RateLimitRpm" class="form-control" />
+                            <div class="form-text">Leave empty for unlimited RPM.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="rateLimitRpd" class="form-label">Requests Per Day (RPD):</label>
+                            <InputNumber id="rateLimitRpd" @bind-Value="request!.RateLimitRpd" class="form-control" />
+                            <div class="form-text">Leave empty for unlimited RPD.</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -305,7 +316,9 @@ else
                         MaxBudget = existingKey.MaxBudget,
                         BudgetDuration = existingKey.BudgetDuration,
                         ExpiresAt = existingKey.ExpiresAt,
-                        Metadata = existingKey.Metadata
+                        Metadata = existingKey.Metadata,
+                        RateLimitRpm = existingKey.RateLimitRpm,
+                        RateLimitRpd = existingKey.RateLimitRpd
                     };
                     
                     // Set the non-nullable property for checkbox binding
@@ -511,7 +524,9 @@ else
                     MaxBudget = request.MaxBudget,
                     BudgetDuration = request.BudgetDuration,
                     ExpiresAt = request.ExpiresAt,
-                    Metadata = request.Metadata
+                    Metadata = request.Metadata,
+                    RateLimitRpm = request.RateLimitRpm,
+                    RateLimitRpd = request.RateLimitRpd
                 };
                 
                 var response = await VirtualKeyService.GenerateVirtualKeyAsync(createRequest);
