@@ -1,35 +1,40 @@
+using System.Text.Json.Serialization;
+
 namespace ConduitLLM.Core.Models;
 
 /// <summary>
-/// Represents information about a specific LLM model configured within the system.
-/// This might be loaded from configuration.
+/// Represents information about a specific LLM model, formatted similarly to OpenAI's /models response.
 /// </summary>
 public class ModelInfo
 {
     /// <summary>
-    /// The alias or identifier used within this library to refer to the model.
+    /// The model identifier, which can be referenced in the API endpoints.
+    /// Corresponds to the 'ModelAlias' used internally for routing configuration.
     /// </summary>
-    public required string ModelAlias { get; set; }
+    [JsonPropertyName("id")]
+    public required string Id { get; set; }
 
     /// <summary>
-    /// The actual model name used by the underlying provider (e.g., "gpt-4", "claude-3-opus-20240229").
+    /// The object type, which is always "model".
     /// </summary>
-    public required string ProviderModelName { get; set; }
+    [JsonPropertyName("object")]
+    public string Object { get; } = "model";
 
     /// <summary>
-    /// The identifier of the provider handling this model (e.g., "openai", "anthropic", "azure").
+    /// The organization that owns the model (e.g., "openai", "anthropic", "google").
+    /// This might correspond to the 'ProviderId' used internally.
     /// </summary>
-    public required string ProviderId { get; set; }
+    [JsonPropertyName("owned_by")]
+    public required string OwnedBy { get; set; }
 
     /// <summary>
     /// Maximum context window size in tokens for this model. (Optional)
     /// </summary>
+    [JsonPropertyName("context_window")] // Example of aligning with potential standard names
     public int? MaxContextTokens { get; set; }
 
-    /// <summary>
-    /// Maximum number of output tokens this model can generate in a single response. (Optional)
-    /// </summary>
-    public int? MaxOutputTokens { get; set; }
-
-    // Add other relevant model properties as needed (e.g., cost per token, supported features)
+    // Note: Removed ProviderModelName and ProviderId as they are less standard for the /models endpoint.
+    // 'OwnedBy' can represent the provider. 'Id' represents the usable model alias.
+    // MaxOutputTokens is less common in the standard /models response but could be added if needed.
+    // Other properties like 'created' (timestamp) or 'permission' could be added for closer OpenAI parity if available.
 }
