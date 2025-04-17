@@ -1,0 +1,351 @@
+@page "/system-info"
+@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.Data
+@using System.IO
+@using ConduitLLM.Configuration
+@using ConduitLLM.Configuration.Entities
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IProviderCredentialService ProviderCredentialService
+@inject IModelProviderMappingService ModelMappingService
+
+<PageTitle>System Information - ConduitLLM</PageTitle>
+
+<h1 class="mb-4">System Information</h1>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Database Information</h5>
+                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshDatabaseInfo">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                @if (IsLoading)
+                {
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted">Provider</div>
+                            <div class="fw-bold">@DatabaseProvider</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted">Connection</div>
+                            <div class="fw-bold text-truncate" title="@ConnectionStringMasked">@ConnectionStringMasked</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="small text-muted">Tables</div>
+                            <div class="fw-bold">@TableCount</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Size</div>
+                            <div class="fw-bold">@DatabaseSize</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Location</div>
+                            <div class="fw-bold text-truncate" title="@DatabaseLocation">@DatabaseLocation</div>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-4">Records Count</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="small text-muted">Virtual Keys</div>
+                            <div class="fw-bold">@VirtualKeyCount</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Requests</div>
+                            <div class="fw-bold">@RequestCount</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted">Global Settings</div>
+                            <div class="fw-bold">@SettingsCount</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">LLM Configuration</h5>
+                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshLlmInfo">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                @if (IsLoading)
+                {
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 text-center h-100">
+                                <div class="fs-1 text-primary">@ProviderCount</div>
+                                <div class="text-muted">Providers Configured</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 text-center h-100">
+                                <div class="fs-1 text-primary">@ModelCount</div>
+                                <div class="text-muted">Models Mapped</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Providers.Any())
+                    {
+                        <h6 class="mt-4">Configured Providers</h6>
+                        <ul class="list-group">
+                            @foreach (var provider in Providers)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @provider
+                                    <span class="badge bg-primary rounded-pill">Provider</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mt-3">
+                            No providers configured yet.
+                        </div>
+                    }
+
+                    @if (Models.Any())
+                    {
+                        <h6 class="mt-4">Model Mappings</h6>
+                        <ul class="list-group">
+                            @foreach (var model in Models)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @model
+                                    <span class="badge bg-secondary rounded-pill">Model</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mt-3">
+                            No model mappings configured yet.
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsLoading = true;
+    private string DatabaseProvider = "Unknown";
+    private string ConnectionStringMasked = "";
+    private string DatabaseLocation = "";
+    private string DatabaseSize = "Unknown";
+    private int TableCount = 0;
+    private int VirtualKeyCount = 0;
+    private int RequestCount = 0;
+    private int SettingsCount = 0;
+    private int ProviderCount = 0;
+    private int ModelCount = 0;
+    private List<string> Providers = new();
+    private List<string> Models = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAllData();
+    }
+
+    private async Task RefreshAllData()
+    {
+        IsLoading = true;
+        await Task.WhenAll(
+            RefreshDatabaseInfo(),
+            RefreshLlmInfo()
+        );
+        IsLoading = false;
+    }
+
+    private async Task RefreshDatabaseInfo()
+    {
+        try
+        {
+            using var context = await DbContextFactory.CreateDbContextAsync();
+            
+            // Get database provider info
+            var connectionType = context.Database.ProviderName;
+            DatabaseProvider = connectionType?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true 
+                ? "SQLite" 
+                : connectionType?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
+                    ? "PostgreSQL"
+                    : connectionType ?? "Unknown";
+
+            // Mask connection string for security
+            var connectionString = context.Database.GetConnectionString();
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                if (connectionString.Contains("Data Source="))
+                {
+                    // For SQLite
+                    var path = connectionString.Replace("Data Source=", "").Trim();
+                    DatabaseLocation = path;
+                    ConnectionStringMasked = $"Data Source={Path.GetFileName(path)}";
+                    
+                    // Get database file size if available
+                    if (File.Exists(path))
+                    {
+                        var fileInfo = new FileInfo(path);
+                        DatabaseSize = FormatFileSize(fileInfo.Length);
+                    }
+                }
+                else if (connectionString.Contains("Host="))
+                {
+                    // For PostgreSQL
+                    ConnectionStringMasked = MaskConnectionString(connectionString);
+                    DatabaseLocation = ExtractHostFromConnectionString(connectionString);
+                    
+                    // Can't determine database size directly for PostgreSQL
+                    DatabaseSize = "Remote DB";
+                }
+                else
+                {
+                    ConnectionStringMasked = "Configured";
+                    DatabaseLocation = "Unknown";
+                }
+            }
+            else
+            {
+                ConnectionStringMasked = "Not configured";
+            }
+
+            // Count records in main tables
+            VirtualKeyCount = await context.VirtualKeys.CountAsync();
+            RequestCount = await context.RequestLogs.CountAsync();
+            SettingsCount = await context.GlobalSettings.CountAsync();
+
+            // Count tables (approximation for SQLite)
+            if (DatabaseProvider == "SQLite")
+            {
+                var tables = await context.Database.SqlQuery<string>($"SELECT name FROM sqlite_master WHERE type='table'").ToListAsync();
+                TableCount = tables.Count;
+            }
+            else if (DatabaseProvider == "PostgreSQL")
+            {
+                // For PostgreSQL, schema information would require a different query
+                TableCount = 13; // Approximate count based on the known schema
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting database info: {ex.Message}");
+            // Set default values on error
+            DatabaseProvider = "Error";
+            ConnectionStringMasked = "Error retrieving";
+            TableCount = 0;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RefreshLlmInfo()
+    {
+        try
+        {
+            // Get provider info
+            var providers = await ProviderCredentialService.GetAllCredentialsAsync();
+            ProviderCount = providers.Count;
+            Providers = providers.Select(p => p.ProviderName).ToList();
+
+            // Get model mappings
+            var modelMappings = await ModelMappingService.GetAllMappingsAsync();
+            ModelCount = modelMappings.Count;
+            Models = modelMappings.Select(m => $"{m.ModelAlias} → {m.ProviderName}/{m.ProviderModelId}").ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting LLM info: {ex.Message}");
+            ProviderCount = 0;
+            ModelCount = 0;
+        }
+
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string MaskConnectionString(string connectionString)
+    {
+        // Replace password and sensitive info with ****
+        if (string.IsNullOrEmpty(connectionString)) return string.Empty;
+        
+        var parts = connectionString.Split(';');
+        var maskedParts = new List<string>();
+        
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) || 
+                part.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
+            {
+                maskedParts.Add(part.Split('=')[0] + "=****");
+            }
+            else
+            {
+                maskedParts.Add(part);
+            }
+        }
+        
+        return string.Join(";", maskedParts);
+    }
+
+    private string ExtractHostFromConnectionString(string connectionString)
+    {
+        // Extract host from PostgreSQL connection string
+        if (string.IsNullOrEmpty(connectionString)) return string.Empty;
+        
+        var parts = connectionString.Split(';');
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) || 
+                part.StartsWith("Server=", StringComparison.OrdinalIgnoreCase))
+            {
+                return part.Split('=')[1];
+            }
+        }
+        
+        return "Unknown host";
+    }
+}
