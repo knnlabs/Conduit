@@ -117,8 +117,9 @@ public class SageMakerClientTests
         Assert.Equal("assistant", message.Role);
         Assert.Equal(expectedResponse.GeneratedOutputs[0].Content, message.Content);
         Assert.NotNull(response.Usage);
-        
-        _handlerMock.Protected().Verify(
+        var usage = response.Usage;
+        Assert.NotNull(usage);
+        _handlerMock!.Protected().Verify(
             "SendAsync",
             Times.Once(),
             Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => 

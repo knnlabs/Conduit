@@ -205,7 +205,7 @@ public class GroqClientTests
 
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri.ToString().Contains("/models")), 
+                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri != null && req.RequestUri.ToString().Contains("/models")), 
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {

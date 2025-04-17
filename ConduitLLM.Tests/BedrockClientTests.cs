@@ -120,9 +120,14 @@ public class BedrockClientTests
         Assert.Equal("assistant", message?.Role);
         Assert.Equal(expectedResponse.Content[0].Text, message?.Content);
         Assert.NotNull(response.Usage);
-        Assert.Equal(expectedResponse.Usage.InputTokens + expectedResponse.Usage.OutputTokens, response.Usage?.TotalTokens);
+        var usage = response.Usage;
+        Assert.NotNull(usage);
+        Assert.Equal(expectedResponse.Usage.InputTokens + expectedResponse.Usage.OutputTokens, usage.TotalTokens);
         
-        _handlerMock.Protected().Verify(
+        Assert.NotNull(_handlerMock);
+        var handlerMock = _handlerMock;
+        Assert.NotNull(handlerMock);
+        handlerMock.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
             Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
