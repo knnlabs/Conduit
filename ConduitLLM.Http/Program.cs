@@ -83,13 +83,16 @@ if (string.IsNullOrEmpty(dbConnectionString))
 if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase)) 
 {
     builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString)); // SQLite
+        options.UseSqlite(dbConnectionString)); // Existing registration for WebUI context
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString)); // Add this for ConfigurationDbContext
 }
 else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
-    // PostgreSQL configuration - handled at runtime with the correct dependencies
     builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
+        options.UseNpgsql(dbConnectionString)); // Existing registration for WebUI context
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString)); // Add this for ConfigurationDbContext
 }
 else
 {
@@ -109,6 +112,7 @@ builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -1004,7 +1008,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ApiVersion = p.ApiVersion,
                     ApiBase = p.ApiBase
                 }).ToList();
-
+                
                 // Now integrate these with existing settings
                 // Two approaches: 
                 // 1. Replace in-memory with DB values

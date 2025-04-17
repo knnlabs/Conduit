@@ -66,19 +66,18 @@ builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nam
 // Configure DbContext Factory based on the provider
 if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 {
-    // Default to SQLite
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options => 
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString));
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseSqlite(dbConnectionString));
 }
 #if POSTGRES
-// PostgreSQL configuration will be handled by the Dockerfile and runtime configuration 
 else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
-    // This will be set up at runtime with the proper dependencies
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options => {
-        // This requires the Npgsql EF Core package to be referenced correctly
-        options.UseNpgsql(dbConnectionString);
-    });
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
 }
 #endif
 
@@ -125,6 +124,7 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, C
 builder.Services.AddHttpContextAccessor(); 
 
 // Add Authorization services and the custom handler
+builder.Services.AddAuthorization();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ConduitLLM.WebUI.Authorization.MasterKeyAuthorizationHandler>();
 builder.Services.AddAuthorization(options =>
 {
