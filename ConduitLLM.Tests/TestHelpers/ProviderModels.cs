@@ -39,6 +39,29 @@ public class OpenAIChatCompletionChunk
 
     [System.Text.Json.Serialization.JsonPropertyName("choices")]
     public List<OpenAIChunkChoice> Choices { get; set; } = new();
+
+    public static List<OpenAIChatCompletionChunk> GenerateChunks(int count)
+    {
+        var chunks = new List<OpenAIChatCompletionChunk>();
+        for (int i = 0; i < count; i++)
+        {
+            chunks.Add(new OpenAIChatCompletionChunk
+            {
+                Id = $"chunk-{i}",
+                Choices = new List<OpenAIChunkChoice>
+                {
+                    new OpenAIChunkChoice
+                    {
+                        Index = 0,
+                        Delta = new OpenAIDelta { Role = "assistant", Content = $"content-{i}" },
+                        FinishReason = null
+                    }
+                },
+                Model = "gpt-4"
+            });
+        }
+        return chunks;
+    }
 }
 
 /// <summary>

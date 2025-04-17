@@ -2,7 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
-using ConduitLLM.Tests.TestHelpers.Mocks; // For response/request DTOs
+using ConduitLLM.Tests.TestHelpers.Mocks; // For response/request DTOs and SseContent
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Contrib.HttpClient; // For mocking HttpClient
@@ -64,24 +64,24 @@ public class OpenAIClientTests
     }
 
     // Helper to create a standard successful OpenAI API response DTO
-    private TestHelpers.Mocks.OpenAIChatCompletionResponse CreateSuccessOpenAIDto(string modelId = "gpt-4")
+    private OpenAIChatCompletionResponse CreateSuccessOpenAIDto(string modelId = "gpt-4")
     {
-        return new TestHelpers.Mocks.OpenAIChatCompletionResponse
+        return new OpenAIChatCompletionResponse
         {
             Id = "chatcmpl-123",
             Object = "chat.completion",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = modelId,
-            Choices = new List<TestHelpers.Mocks.OpenAIChoice>
+            Choices = new List<OpenAIChoice>
             {
-                new TestHelpers.Mocks.OpenAIChoice
+                new OpenAIChoice
                 {
                     Index = 0,
-                    Message = new TestHelpers.Mocks.OpenAIMessage { Role = "assistant", Content = "Hello there! How can I help you today?" },
+                    Message = new OpenAIMessage { Role = "assistant", Content = "Hello there! How can I help you today?" },
                     FinishReason = "stop"
                 }
             },
-            Usage = new TestHelpers.Mocks.OpenAIUsage { PromptTokens = 10, CompletionTokens = 15, TotalTokens = 25 }
+            Usage = new OpenAIUsage { PromptTokens = 10, CompletionTokens = 15, TotalTokens = 25 }
         };
     }
 
@@ -118,7 +118,7 @@ public class OpenAIClientTests
             }
             if (req.Content != null)
             {
-                var body = await req.Content.ReadFromJsonAsync<TestHelpers.Mocks.OpenAIChatCompletionRequest>();
+                var body = await req.Content.ReadFromJsonAsync<OpenAIChatCompletionRequest>();
                 Assert.NotNull(body);
                 Assert.Equal(providerModelId, body.Model); // Should use provider model ID in request
                 Assert.Equal(request.Messages[0].Content, body.Messages[0].Content);
@@ -187,7 +187,7 @@ public class OpenAIClientTests
             }
             if (req.Content != null)
             {
-                var body = await req.Content.ReadFromJsonAsync<TestHelpers.Mocks.OpenAIChatCompletionRequest>();
+                var body = await req.Content.ReadFromJsonAsync<OpenAIChatCompletionRequest>();
                 Assert.NotNull(body);
                 Assert.Equal(providerModelId, body.Model);
                 Assert.Equal(request.Messages[0].Content, body.Messages[0].Content);
@@ -329,74 +329,74 @@ public class OpenAIClientTests
     }
 
     // Helper to create standard OpenAI chunk DTOs
-    private IEnumerable<TestHelpers.Mocks.OpenAIChatCompletionChunk> CreateStandardOpenAIChunks()
+    private IEnumerable<OpenAIChatCompletionChunk> CreateStandardOpenAIChunks()
     {
         // First chunk with role only
-        yield return new TestHelpers.Mocks.OpenAIChatCompletionChunk
+        yield return new OpenAIChatCompletionChunk
         {
             Id = "chatcmpl-123-chunk-1",
             Object = "chat.completion.chunk",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = "gpt-4",
-            Choices = new List<TestHelpers.Mocks.OpenAIChunkChoice>
+            Choices = new List<OpenAIChunkChoice>
             {
-                new TestHelpers.Mocks.OpenAIChunkChoice
+                new OpenAIChunkChoice
                 {
                     Index = 0,
-                    Delta = new TestHelpers.Mocks.OpenAIDelta { Role = "assistant", Content = null },
+                    Delta = new OpenAIDelta { Role = "assistant", Content = null },
                     FinishReason = null
                 }
             }
         };
 
         // Content chunks
-        yield return new TestHelpers.Mocks.OpenAIChatCompletionChunk
+        yield return new OpenAIChatCompletionChunk
         {
             Id = "chatcmpl-123-chunk-2",
             Object = "chat.completion.chunk",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = "gpt-4",
-            Choices = new List<TestHelpers.Mocks.OpenAIChunkChoice>
+            Choices = new List<OpenAIChunkChoice>
             {
-                new TestHelpers.Mocks.OpenAIChunkChoice
+                new OpenAIChunkChoice
                 {
                     Index = 0,
-                    Delta = new TestHelpers.Mocks.OpenAIDelta { Content = "Hello" },
+                    Delta = new OpenAIDelta { Content = "Hello" },
                     FinishReason = null
                 }
             }
         };
 
-        yield return new TestHelpers.Mocks.OpenAIChatCompletionChunk
+        yield return new OpenAIChatCompletionChunk
         {
             Id = "chatcmpl-123-chunk-3",
             Object = "chat.completion.chunk",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = "gpt-4",
-            Choices = new List<TestHelpers.Mocks.OpenAIChunkChoice>
+            Choices = new List<OpenAIChunkChoice>
             {
-                new TestHelpers.Mocks.OpenAIChunkChoice
+                new OpenAIChunkChoice
                 {
                     Index = 0,
-                    Delta = new TestHelpers.Mocks.OpenAIDelta { Content = ", world!" },
+                    Delta = new OpenAIDelta { Content = ", world!" },
                     FinishReason = null
                 }
             }
         };
 
         // Final chunk with finish reason
-        yield return new TestHelpers.Mocks.OpenAIChatCompletionChunk
+        yield return new OpenAIChatCompletionChunk
         {
             Id = "chatcmpl-123-chunk-4",
             Object = "chat.completion.chunk",
             Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             Model = "gpt-4",
-            Choices = new List<TestHelpers.Mocks.OpenAIChunkChoice>
+            Choices = new List<OpenAIChunkChoice>
             {
-                new TestHelpers.Mocks.OpenAIChunkChoice
+                new OpenAIChunkChoice
                 {
                     Index = 0,
-                    Delta = new TestHelpers.Mocks.OpenAIDelta { Content = "" },
+                    Delta = new OpenAIDelta { Content = "" },
                     FinishReason = "stop"
                 }
             }
@@ -450,7 +450,7 @@ public class OpenAIClientTests
             }
             if (req.Content != null)
             {
-                var body = await req.Content.ReadFromJsonAsync<TestHelpers.Mocks.OpenAIChatCompletionRequest>();
+                var body = await req.Content.ReadFromJsonAsync<OpenAIChatCompletionRequest>();
                 Assert.NotNull(body);
                 Assert.True(body.Stream); // Verify stream was set to true
                 Assert.Equal(providerModelId, body.Model);
@@ -689,17 +689,168 @@ public class OpenAIClientTests
         _handlerMock.VerifyRequest(HttpMethod.Post, expectedUri, Times.Once());
     }
 
-    // Helper to create standard OpenAI model list DTOs
-    private TestHelpers.Mocks.OpenAIModelListResponse CreateModelListResponseDto()
+    [Fact]
+    public async Task StreamChatCompletionAsync_EmptyStream_YieldsNoChunks()
     {
-        return new TestHelpers.Mocks.OpenAIModelListResponse
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        var emptyStream = new List<OpenAIChatCompletionChunk>();
+        var sseContent = SseContent.FromChunks(emptyStream);
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+
+        // Act
+        var chunks = new List<ChatCompletionChunk>();
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            chunks.Add(chunk);
+
+        // Assert
+        Assert.Empty(chunks);
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_InvalidChunk_HandlesGracefully()
+    {
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        var invalidChunk = new OpenAIChatCompletionChunk { Id = "bad", Choices = null };
+        var sseContent = SseContent.FromChunks(new[] { invalidChunk });
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+
+        // Act
+        var chunks = new List<ChatCompletionChunk>();
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            chunks.Add(chunk);
+
+        // Assert
+        Assert.Single(chunks);
+        Assert.Empty(chunks[0].Choices);
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_RespectsCancellation()
+    {
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(3);
+        var sseContent = SseContent.FromChunks(chunksDto);
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var cts = new CancellationTokenSource();
+
+        // Act
+        var chunks = new List<ChatCompletionChunk>();
+        var enumerator = client.StreamChatCompletionAsync(request, cancellationToken: cts.Token).GetAsyncEnumerator();
+        Assert.True(await enumerator.MoveNextAsync()); // First chunk
+        chunks.Add(enumerator.Current);
+        cts.Cancel();
+        Exception? ex = await Record.ExceptionAsync(async () =>
+        {
+            while (await enumerator.MoveNextAsync())
+                chunks.Add(enumerator.Current);
+        });
+
+        // Assert
+        Assert.Single(chunks);
+        Assert.True(ex is OperationCanceledException, $"Expected OperationCanceledException but got {ex?.GetType()}");
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_ExceptionDuringStream_Throws()
+    {
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        // Simulate SSE stream with a chunk, then an exception
+        var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(1);
+        var sseContent = SseContent.FromChunks(chunksDto, throwOnRead: true);
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
+        {
+            await foreach (var _ in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None)) { }
+        });
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_WithDelayedChunks_HandlesLatency()
+    {
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(2);
+        var sseContent = SseContent.FromChunks(chunksDto, delayMs: 100);
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        // Act
+        var chunks = new List<ChatCompletionChunk>();
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            chunks.Add(chunk);
+        sw.Stop();
+
+        // Assert
+        Assert.Equal(2, chunks.Count);
+        Assert.True(sw.ElapsedMilliseconds >= 100, "Should take at least 100ms due to delays");
+    }
+
+    [Fact]
+    public async Task StreamChatCompletionAsync_LargeNumberOfChunks_AllReceived()
+    {
+        // Arrange
+        var request = CreateTestRequest("openai-alias");
+        var providerModelId = "gpt-4";
+        var expectedUri = "https://api.openai.com/v1/chat/completions";
+        var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(100);
+        var sseContent = SseContent.FromChunks(chunksDto);
+        _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
+            .ReturnsResponse(HttpStatusCode.OK, sseContent)
+            .Verifiable();
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+
+        // Act
+        var chunks = new List<ChatCompletionChunk>();
+        await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
+            chunks.Add(chunk);
+
+        // Assert
+        Assert.Equal(100, chunks.Count);
+        Assert.All(chunks, c => Assert.StartsWith("chunk-", c.Id));
+    }
+
+    // Helper to create standard OpenAI model list DTOs
+    private OpenAIModelListResponse CreateModelListResponseDto()
+    {
+        return new OpenAIModelListResponse
         {
             Object = "list",
-            Data = new List<TestHelpers.Mocks.OpenAIModelData> // Use OpenAIModelData instead of OpenAIModelInfo
+            Data = new List<OpenAIModelData> // Use OpenAIModelData instead of OpenAIModelInfo
             {
-                new TestHelpers.Mocks.OpenAIModelData { Id = "gpt-4", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" },
-                new TestHelpers.Mocks.OpenAIModelData { Id = "gpt-3.5-turbo", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" },
-                new TestHelpers.Mocks.OpenAIModelData { Id = "text-embedding-ada-002", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" }
+                new OpenAIModelData { Id = "gpt-4", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" },
+                new OpenAIModelData { Id = "gpt-3.5-turbo", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" },
+                new OpenAIModelData { Id = "text-embedding-ada-002", Object = "model", Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), OwnedBy = "openai" }
             }
         };
     }

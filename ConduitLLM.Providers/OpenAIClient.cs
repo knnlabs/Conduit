@@ -365,49 +365,54 @@ public class OpenAIClient : ILLMClient
         }
         catch (HttpRequestException ex)
         {
-            // Catch and rethrow network errors during initial stream setup
-            throw new IOException($"Network error during stream setup: {ex.Message}", ex);
+            throw new LLMCommunicationException($"Network error during stream setup: {ex.Message}", ex);
         }
-        
-        // If we get here, we have a valid reader
-        try
+        catch (IOException ex)
         {
-            // Process the SSE stream
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            throw new LLMCommunicationException($"IO error during stream setup: {ex.Message}", ex);
+        }
+
+        // If we get here, we have a valid reader
+        try // only try/finally is allowed with yield
+        {
+            while (!reader.EndOfStream)
             {
-                string? line;
+                if (cancellationToken.IsCancellationRequested)
+                    throw new OperationCanceledException(cancellationToken);
+
+                string? line = null;
                 try
                 {
                     line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (HttpRequestException ex)
                 {
-                    throw new IOException($"Network error reading from stream: {ex.Message}", ex);
+                    throw new LLMCommunicationException($"Network error reading from stream: {ex.Message}", ex);
+                }
+                catch (IOException ex)
+                {
+                    throw new LLMCommunicationException($"IO error reading from stream: {ex.Message}", ex);
                 }
 
                 if (string.IsNullOrWhiteSpace(line))
-                {
-                    // Skip empty lines (part of SSE protocol)
                     continue;
-                }
 
                 if (line.StartsWith("data:"))
                 {
                     string jsonData = line.Substring("data:".Length).Trim();
-
                     if (jsonData.Equals("[DONE]", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogInformation("Received [DONE] marker, ending stream processing.");
-                        break; // End of stream
+                        break;
                     }
 
                     ChatCompletionChunk? coreChunk = null;
+                    bool deserializationFailed = false;
                     try
                     {
                         var openAIChunk = JsonSerializer.Deserialize<OpenAIChatCompletionChunk>(jsonData);
                         if (openAIChunk != null)
                         {
-                            // Map the chunk - Use originalModelAlias
                             coreChunk = MapToCoreChunk(openAIChunk, originalModelAlias);
                         }
                         else
@@ -418,17 +423,16 @@ public class OpenAIClient : ILLMClient
                     catch (JsonException ex)
                     {
                         _logger.LogError(ex, "JSON deserialization error processing openai stream chunk. JSON: {JsonData}", jsonData);
+                        deserializationFailed = true;
                         throw new LLMCommunicationException($"Error deserializing openai stream chunk: Invalid JSON data. {ex.Message}. Data: {jsonData}", ex);
                     }
-
-                    if (coreChunk != null)
+                    if (!deserializationFailed && coreChunk != null)
                     {
                         yield return coreChunk;
                     }
                 }
-                else if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(":")) // Ignore comments starting with ':'
+                else if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith(":"))
                 {
-                    // Log unexpected lines
                     _logger.LogTrace("Skipping non-data line in SSE stream: {Line}", line);
                 }
             }
@@ -436,10 +440,9 @@ public class OpenAIClient : ILLMClient
         }
         finally
         {
-            // Ensure resources are disposed even if exceptions occur during processing
             reader?.Dispose();
             responseStream?.Dispose();
-            response.Dispose(); // Dispose the response object itself
+            response.Dispose();
             _logger.LogDebug("Disposed openai stream resources.");
         }
     }
@@ -453,13 +456,14 @@ public class OpenAIClient : ILLMClient
             Object = openAIChunk.Object ?? "chat.completion.chunk", // Default if missing
             Created = openAIChunk.Created,
             Model = originalModelAlias, // Use the alias requested by the user
-            Choices = openAIChunk.Choices.Select(c => new StreamingChoice
+            Choices = (openAIChunk.Choices ?? new List<OpenAIStreamingChoice>()).Select(c => new StreamingChoice
             {
                 Index = c.Index,
+                // Ensure Role and Content are not null before assigning to required Message properties
                 Delta = new DeltaContent
                 {
-                    Role = c.Delta.Role, // Can be null
-                    Content = c.Delta.Content // Can be null
+                    Role = c.Delta?.Role, // Can be null
+                    Content = c.Delta?.Content // Can be null
                 },
                 FinishReason = c.FinishReason // Can be null
             }).ToList()
