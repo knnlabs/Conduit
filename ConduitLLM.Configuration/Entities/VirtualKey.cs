@@ -111,4 +111,10 @@ public class VirtualKey
     /// Virtual collection of notifications
     /// </summary>
     public virtual ICollection<Notification>? Notifications { get; set; }
+
+    /// <summary>
+    /// Concurrency token for optimistic concurrency control
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
 }

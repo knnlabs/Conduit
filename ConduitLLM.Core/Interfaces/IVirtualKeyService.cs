@@ -51,4 +51,21 @@ public interface IVirtualKeyService
     /// Updates the spend for a specific virtual key.
     /// </summary>
     Task<bool> UpdateSpendAsync(int keyId, decimal cost);
+
+    /// <summary>
+    /// Checks if the budget period for a key has expired based on its duration and start date,
+    /// and resets the spend and start date if necessary.
+    /// </summary>
+    /// <param name="keyId">The ID of the virtual key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the budget was reset, false otherwise.</returns>
+    Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets detailed info about a virtual key for validation and budget checking.
+    /// </summary>
+    /// <param name="keyId">The ID of the virtual key to retrieve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The virtual key entity if found, otherwise null.</returns>
+    Task<ConduitLLM.Configuration.Entities.VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default);
 }

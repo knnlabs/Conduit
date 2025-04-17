@@ -141,6 +141,7 @@ app.MapPost("/v1/chat/completions", async (
     [FromServices] Conduit conduit,
     [FromServices] ILogger<Program> logger,
     [FromServices] IVirtualKeyService virtualKeyService, // Inject Virtual Key Service
+    [FromServices] ICostCalculationService costCalculator, // Inject Cost Calculation Service
     HttpRequest httpRequest,
     HttpResponse httpResponse) =>
 {
@@ -149,36 +150,115 @@ app.MapPost("/v1/chat/completions", async (
     // 1. Extract API Key from header
     string? apiKey = null;
     string? originalApiKey = null; // Store the original key for virtual key check
-    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) &&
-        authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
     {
-        apiKey = authHeader.ToString().Substring("Bearer ".Length).Trim();
-        originalApiKey = apiKey; // Keep the original key
-        logger.LogDebug("Extracted API Key from Authorization header.");
-    }
-    else
-    {
-        logger.LogDebug("No Authorization header found or invalid format.");
+        // Check if it's a Bearer token
+        string auth = authHeader.ToString();
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            originalApiKey = auth.Substring("Bearer ".Length).Trim();
+        }
+        else
+        {
+            originalApiKey = auth.Trim(); // Just in case they sent the raw key
+        }
     }
 
     // --- Virtual Key Check & Validation ---
+    ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = null;
     int? virtualKeyId = null; // Store the ID if a virtual key is used
     bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
 
     if (useVirtualKey)
     {
         logger.LogInformation("Virtual Key detected. Validating...");
-        var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+        // First validate just to get the entity without model check
+        virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
         if (virtualKey == null)
         {
-            logger.LogWarning("Virtual Key validation failed for key starting with: {Prefix}", originalApiKey!.Substring(0, Math.Min(originalApiKey.Length, 10)));
-            // Return an OpenAI-compatible error response for invalid key
-            return Results.Json(new OpenAIErrorResponse { Error = new OpenAIError { Message = "Invalid API Key provided.", Type = "invalid_request_error", Param = null, Code = "invalid_api_key" } }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
+            logger.LogWarning("Invalid or disabled Virtual Key provided.");
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "Invalid API key provided", 
+                    Type = "invalid_request_error", 
+                    Code = "invalid_api_key" 
+                } 
+            }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
         }
 
-        logger.LogInformation("Virtual Key ID {KeyId} validated successfully.", virtualKey.Id);
         virtualKeyId = virtualKey.Id;
+
+        // --- Budget Reset Check ---
+        bool budgetWasReset = await virtualKeyService.ResetBudgetIfExpiredAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+        if (budgetWasReset)
+        {
+            // Reload the key entity to get the updated spend/start date after reset
+            virtualKey = await virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+            
+            if (virtualKey == null)
+            {
+                logger.LogError("Virtual key ID {KeyId} disappeared during budget reset", virtualKeyId.Value);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = "An error occurred processing your request", 
+                        Type = "server_error", 
+                        Code = "internal_error" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.InternalServerError, options: jsonSerializerOptions);
+            }
+            
+            logger.LogInformation("Budget was reset for key ID {KeyId}. New budget period started.", virtualKeyId.Value);
+        }
+
+        // --- Budget Limit Check ---
+        if (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value)
+        {
+            logger.LogWarning("Virtual key budget exceeded for Key ID {KeyId}. Current: {CurrentSpend}, Max: {MaxBudget}",
+                virtualKey.Id, virtualKey.CurrentSpend, virtualKey.MaxBudget.Value);
+            
+            // Use 402 Payment Required for budget issues
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "This key's budget has been exceeded.", 
+                    Type = "insufficient_quota", 
+                    Code = "billing_hard_limit_reached" 
+                } 
+            }, statusCode: StatusCodes.Status402PaymentRequired, options: jsonSerializerOptions);
+        }
+
+        // --- Model Access Check ---
+        if (!string.IsNullOrEmpty(request.Model) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+        {
+            // Check if the requested model is allowed for this key
+            // Reusing ValidateVirtualKeyAsync with the model parameter
+            var validationWithModel = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!, request.Model);
+            if (validationWithModel == null)
+            {
+                logger.LogWarning("Virtual key {KeyId} attempted to access restricted model: {Model}", virtualKey.Id, request.Model);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = $"The model `{request.Model}` is not allowed for this key.", 
+                        Type = "invalid_request_error", 
+                        Code = "model_not_allowed" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.Forbidden, options: jsonSerializerOptions);
+            }
+        }
+
         apiKey = null; // *** CRITICAL: Do not pass the virtual key down to the actual provider ***
+    }
+    else
+    {
+        apiKey = originalApiKey; // Use the provided key directly
     }
 
     // --- Non-Streaming Path ---
@@ -189,16 +269,26 @@ app.MapPost("/v1/chat/completions", async (
         {
             // Pass the actual provider apiKey (which might be null if virtual key was used)
             var response = await conduit.CreateChatCompletionAsync(request, apiKey, httpRequest.HttpContext.RequestAborted);
-            // Ensure response is serialized correctly according to OpenAI spec
-
-            // ---> TODO: Implement actual cost calculation based on response.Usage <--- 
-            if (virtualKeyId.HasValue)
+            
+            // --- Cost Tracking for Virtual Keys ---
+            if (virtualKeyId.HasValue && response.Usage != null)
             {
-                decimal cost = 0.01m; // Placeholder cost
-                logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost}", virtualKeyId.Value, cost);
-                await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+                decimal calculatedCost = await costCalculator.CalculateCostAsync(
+                    response.Model, response.Usage, httpRequest.HttpContext.RequestAborted);
+                
+                if (calculatedCost > 0)
+                {
+                    logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost}", virtualKeyId.Value, calculatedCost);
+                    bool spendUpdated = await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, calculatedCost);
+                    
+                    if (!spendUpdated)
+                    {
+                        logger.LogError("Failed to update spend for Virtual Key ID {KeyId}", virtualKeyId.Value);
+                        // Continue despite failure - logging is sufficient, don't block response
+                    }
+                }
             }
-
+            
             return Results.Json(response, options: jsonSerializerOptions);
         }
         catch (Exception ex)
@@ -220,35 +310,49 @@ app.MapPost("/v1/chat/completions", async (
         {
             // Pass the actual provider apiKey (which might be null if virtual key was used)
             await foreach (var chunk in conduit.StreamChatCompletionAsync(request, apiKey, httpRequest.HttpContext.RequestAborted)
-                .WithCancellation(httpRequest.HttpContext.RequestAborted))
+                            .WithCancellation(httpRequest.HttpContext.RequestAborted)) 
             {
-                var chunkJson = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
-                await httpResponse.WriteAsync($"data: {chunkJson}\n\n", httpRequest.HttpContext.RequestAborted);
+                if (httpRequest.HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    logger.LogInformation("Stream was cancelled.");
+                    break;
+                }
+
+                // Serialize to JSON and append SSE prefix
+                string jsonChunk = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
+                await httpResponse.WriteAsync($"data: {jsonChunk}\n\n", httpRequest.HttpContext.RequestAborted);
                 await httpResponse.Body.FlushAsync(httpRequest.HttpContext.RequestAborted);
-                logger.LogDebug("Sent stream chunk.");
             }
 
-            // Send the [DONE] message
+            // Streaming end marker
             await httpResponse.WriteAsync("data: [DONE]\n\n", httpRequest.HttpContext.RequestAborted);
             await httpResponse.Body.FlushAsync(httpRequest.HttpContext.RequestAborted);
             logger.LogInformation("Finished sending stream.");
 
-            // ---> TODO: Implement actual cost calculation (might need accumulated usage data) <--- 
+            // For streaming requests, we'll have to use the approximate usage data collected at the client side
+            // or use a placeholder cost until we have a better solution
             if (virtualKeyId.HasValue)
             {
-                decimal cost = 0.01m; // Placeholder cost - streaming calculation is harder
+                // TODO: Implement proper usage tracking for streaming requests
+                // Could accumulate tokens in client or estimate based on response length
+                // For now, use a minimal cost placeholder
+                decimal cost = 0.01m; // Placeholder cost - streaming calculation will be improved later
                 logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after stream completion", virtualKeyId.Value, cost);
-                // Note: Spend update happens *after* the stream completes.
                 await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
             }
         }
         catch (OperationCanceledException)
         {
             // If the stream fails or is cancelled, we might *not* want to charge spend, or handle it differently.
-            // Current logic only updates spend on successful stream completion.
-            if (virtualKeyId.HasValue)
+            if (!httpResponse.HasStarted)
             {
-                logger.LogWarning("Streaming request cancelled for Virtual Key ID {KeyId}. Spend not updated for this partial stream.", virtualKeyId.Value);
+                // If we haven't sent any data yet, we can still return a proper response
+                logger.LogInformation("Stream cancelled before sending any data.");
+                httpResponse.Headers.ContentType = "application/json";
+                return Results.Json(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError { Message = "Request was cancelled", Type = "invalid_request_error" }
+                }, statusCode: (int)HttpStatusCode.RequestTimeout, options: jsonSerializerOptions);
             }
             logger.LogInformation("Streaming request cancelled by client.");
         }
@@ -256,18 +360,20 @@ app.MapPost("/v1/chat/completions", async (
         {
             logger.LogError(ex, "Error processing streaming chat completion request.");
             // Difficult to send a clean error response once streaming has started.
-            // The connection might just be closed abruptly from the client's perspective.
-            // Logging the error server-side is the most reliable action here.
             if (!httpResponse.HasStarted)
             {
-                // If we haven't started writing the response yet, we can send a proper error code.
-                // This is unlikely if the error happens mid-stream but possible if it occurs during setup.
-                httpResponse.StatusCode = 500;
-                // If we haven't started writing the response yet, we can try to send a proper error code.
-                // This is unlikely if the error happens mid-stream but possible if it occurs during setup.
-                httpResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
-                await httpResponse.WriteAsync("data: {\"error\": {\"message\": \"An internal server error occurred during streaming setup.\"}}\n\n", httpRequest.HttpContext.RequestAborted);
-                await httpResponse.WriteAsync("data: [DONE]\n\n", httpRequest.HttpContext.RequestAborted); // Terminate stream
+                // Only send error result if we haven't started sending stream data
+                httpResponse.Headers.ContentType = "application/json";
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = $"Streaming error: {ex.Message}", 
+                        Type = "server_error", 
+                        Code = ex is ConduitException ? "llm_error" : "internal_error" 
+                    } 
+                }, statusCode: (int)(ex is LLMCommunicationException commEx ? commEx.StatusCode ?? HttpStatusCode.InternalServerError : HttpStatusCode.InternalServerError), 
+                options: jsonSerializerOptions);
             }
             // Otherwise, the stream will likely just terminate abruptly.
         }
@@ -275,7 +381,6 @@ app.MapPost("/v1/chat/completions", async (
         // Return Empty result because the response is written directly to the stream
         return Results.Empty;
     }
-
 }).WithTags("LLM Proxy");
 
 app.MapPost("/v1/embeddings", async (
@@ -283,56 +388,153 @@ app.MapPost("/v1/embeddings", async (
     [FromServices] Conduit conduit,
     [FromServices] ILogger<Program> logger,
     [FromServices] IVirtualKeyService virtualKeyService,
+    [FromServices] ICostCalculationService costCalculator, // Inject Cost Calculation Service
     HttpRequest httpRequest) =>
 {
     logger.LogInformation("Received /v1/embeddings request for model: {Model}", request.Model);
+
+    // 1. Extract API Key from header
     string? apiKey = null;
-    string? originalApiKey = null;
-    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader))
+    string? originalApiKey = null; // Store the original key for virtual key check
+
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
     {
-        var bearer = authHeader.ToString();
-        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            originalApiKey = bearer.Substring("Bearer ".Length).Trim();
+        // Check if it's a Bearer token
+        string auth = authHeader.ToString();
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            originalApiKey = auth.Substring("Bearer ".Length).Trim();
+        }
         else
-            originalApiKey = bearer.Trim();
+        {
+            originalApiKey = auth.Trim(); // Just in case they sent the raw key
+        }
     }
-    else if (httpRequest.Headers.TryGetValue("api-key", out var apiKeyHeader))
-    {
-        originalApiKey = apiKeyHeader.ToString().Trim();
-    }
+
+    // --- Virtual Key Check & Validation ---
+    ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = null;
+    int? virtualKeyId = null; // Store the ID if a virtual key is used
     bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
-    int? virtualKeyId = null;
+
     if (useVirtualKey)
     {
         logger.LogInformation("Virtual Key detected. Validating...");
-        var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+        // First validate just to get the entity without model check
+        virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
         if (virtualKey == null)
         {
-            logger.LogWarning("Invalid Virtual Key provided for /v1/embeddings");
-            return Results.Json(new { error = new { message = "Invalid API Key.", type = "invalid_request_error", code = "invalid_api_key" } }, statusCode: 401);
+            logger.LogWarning("Invalid or disabled Virtual Key provided.");
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "Invalid API key provided", 
+                    Type = "invalid_request_error", 
+                    Code = "invalid_api_key" 
+                } 
+            }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
         }
+
         virtualKeyId = virtualKey.Id;
-        apiKey = null;
+
+        // --- Budget Reset Check ---
+        bool budgetWasReset = await virtualKeyService.ResetBudgetIfExpiredAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+        if (budgetWasReset)
+        {
+            // Reload the key entity to get the updated spend/start date after reset
+            virtualKey = await virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+            
+            if (virtualKey == null)
+            {
+                logger.LogError("Virtual key ID {KeyId} disappeared during budget reset", virtualKeyId.Value);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = "An error occurred processing your request", 
+                        Type = "server_error", 
+                        Code = "internal_error" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.InternalServerError, options: jsonSerializerOptions);
+            }
+            
+            logger.LogInformation("Budget was reset for key ID {KeyId}. New budget period started.", virtualKeyId.Value);
+        }
+
+        // --- Budget Limit Check ---
+        if (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value)
+        {
+            logger.LogWarning("Virtual key budget exceeded for Key ID {KeyId}. Current: {CurrentSpend}, Max: {MaxBudget}",
+                virtualKey.Id, virtualKey.CurrentSpend, virtualKey.MaxBudget.Value);
+            
+            // Use 402 Payment Required for budget issues
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "This key's budget has been exceeded.", 
+                    Type = "insufficient_quota", 
+                    Code = "billing_hard_limit_reached" 
+                } 
+            }, statusCode: StatusCodes.Status402PaymentRequired, options: jsonSerializerOptions);
+        }
+
+        // --- Model Access Check ---
+        if (!string.IsNullOrEmpty(request.Model) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+        {
+            // Check if the requested model is allowed for this key
+            // Reusing ValidateVirtualKeyAsync with the model parameter
+            var validationWithModel = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!, request.Model);
+            if (validationWithModel == null)
+            {
+                logger.LogWarning("Virtual key {KeyId} attempted to access restricted model: {Model}", virtualKey.Id, request.Model);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = $"The model `{request.Model}` is not allowed for this key.", 
+                        Type = "invalid_request_error", 
+                        Code = "model_not_allowed" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.Forbidden, options: jsonSerializerOptions);
+            }
+        }
+
+        apiKey = null; // *** CRITICAL: Do not pass the virtual key down to the actual provider ***
     }
     else
     {
-        apiKey = originalApiKey;
+        apiKey = originalApiKey; // Use the provided key directly
     }
+
     try
     {
         var response = await conduit.CreateEmbeddingAsync(request, apiKey, httpRequest.HttpContext.RequestAborted);
-        // Optionally update spend for virtual key
-        if (virtualKeyId.HasValue)
+        
+        // --- Cost Tracking for Virtual Keys ---
+        if (virtualKeyId.HasValue && response.Usage != null)
         {
-            decimal cost = 0.001m; // Placeholder cost for embeddings
-            logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after embeddings", virtualKeyId.Value, cost);
-            await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+            decimal calculatedCost = await costCalculator.CalculateCostAsync(
+                response.Model, response.Usage, httpRequest.HttpContext.RequestAborted);
+            
+            if (calculatedCost > 0)
+            {
+                logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost}", virtualKeyId.Value, calculatedCost);
+                bool spendUpdated = await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, calculatedCost);
+                
+                if (!spendUpdated)
+                {
+                    logger.LogError("Failed to update spend for Virtual Key ID {KeyId}", virtualKeyId.Value);
+                    // Continue despite failure - logging is sufficient, don't block response
+                }
+            }
         }
+        
         return Results.Json(response, options: jsonSerializerOptions);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error processing embeddings request");
+        logger.LogError(ex, "Error processing embedding request.");
         return MapExceptionToHttpResult(ex, logger);
     }
 }).WithTags("LLM Proxy");
@@ -342,51 +544,163 @@ app.MapPost("/v1/images/generations", async (
     [FromServices] Conduit conduit,
     [FromServices] ILogger<Program> logger,
     [FromServices] IVirtualKeyService virtualKeyService,
+    [FromServices] ICostCalculationService costCalculator, // Inject Cost Calculation Service
     HttpRequest httpRequest) =>
 {
     logger.LogInformation("Received /v1/images/generations request for model: {Model}", request.Model);
+    
+    // 1. Extract API Key from header
     string? apiKey = null;
-    string? originalApiKey = null;
-    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader))
+    string? originalApiKey = null; // Store the original key for virtual key check
+
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
     {
-        var bearer = authHeader.ToString();
-        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            originalApiKey = bearer.Substring("Bearer ".Length).Trim();
+        // Check if it's a Bearer token
+        string auth = authHeader.ToString();
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            originalApiKey = auth.Substring("Bearer ".Length).Trim();
+        }
         else
-            originalApiKey = bearer.Trim();
+        {
+            originalApiKey = auth.Trim(); // Just in case they sent the raw key
+        }
     }
-    else if (httpRequest.Headers.TryGetValue("api-key", out var apiKeyHeader))
-    {
-        originalApiKey = apiKeyHeader.ToString().Trim();
-    }
+
+    // --- Virtual Key Check & Validation ---
+    ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = null;
+    int? virtualKeyId = null; // Store the ID if a virtual key is used
     bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
-    int? virtualKeyId = null;
+
     if (useVirtualKey)
     {
         logger.LogInformation("Virtual Key detected. Validating...");
-        var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+        // First validate just to get the entity without model check
+        virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
         if (virtualKey == null)
         {
-            logger.LogWarning("Invalid Virtual Key provided for /v1/images/generations");
-            return Results.Json(new { error = new { message = "Invalid API Key.", type = "invalid_request_error", code = "invalid_api_key" } }, statusCode: 401);
+            logger.LogWarning("Invalid or disabled Virtual Key provided.");
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "Invalid API key provided", 
+                    Type = "invalid_request_error", 
+                    Code = "invalid_api_key" 
+                } 
+            }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
         }
+
         virtualKeyId = virtualKey.Id;
-        apiKey = null;
+
+        // --- Budget Reset Check ---
+        bool budgetWasReset = await virtualKeyService.ResetBudgetIfExpiredAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+        if (budgetWasReset)
+        {
+            // Reload the key entity to get the updated spend/start date after reset
+            virtualKey = await virtualKeyService.GetVirtualKeyInfoForValidationAsync(virtualKey.Id, httpRequest.HttpContext.RequestAborted);
+            
+            if (virtualKey == null)
+            {
+                logger.LogError("Virtual key ID {KeyId} disappeared during budget reset", virtualKeyId.Value);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = "An error occurred processing your request", 
+                        Type = "server_error", 
+                        Code = "internal_error" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.InternalServerError, options: jsonSerializerOptions);
+            }
+            
+            logger.LogInformation("Budget was reset for key ID {KeyId}. New budget period started.", virtualKeyId.Value);
+        }
+
+        // --- Budget Limit Check ---
+        if (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value)
+        {
+            logger.LogWarning("Virtual key budget exceeded for Key ID {KeyId}. Current: {CurrentSpend}, Max: {MaxBudget}",
+                virtualKey.Id, virtualKey.CurrentSpend, virtualKey.MaxBudget.Value);
+            
+            // Use 402 Payment Required for budget issues
+            return Results.Json(new OpenAIErrorResponse 
+            { 
+                Error = new OpenAIError 
+                { 
+                    Message = "This key's budget has been exceeded.", 
+                    Type = "insufficient_quota", 
+                    Code = "billing_hard_limit_reached" 
+                } 
+            }, statusCode: StatusCodes.Status402PaymentRequired, options: jsonSerializerOptions);
+        }
+
+        // --- Model Access Check ---
+        if (!string.IsNullOrEmpty(request.Model) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
+        {
+            // Check if the requested model is allowed for this key
+            // Reusing ValidateVirtualKeyAsync with the model parameter
+            var validationWithModel = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!, request.Model);
+            if (validationWithModel == null)
+            {
+                logger.LogWarning("Virtual key {KeyId} attempted to access restricted model: {Model}", virtualKey.Id, request.Model);
+                return Results.Json(new OpenAIErrorResponse 
+                { 
+                    Error = new OpenAIError 
+                    { 
+                        Message = $"The model `{request.Model}` is not allowed for this key.", 
+                        Type = "invalid_request_error", 
+                        Code = "model_not_allowed" 
+                    } 
+                }, statusCode: (int)HttpStatusCode.Forbidden, options: jsonSerializerOptions);
+            }
+        }
+
+        apiKey = null; // Don't pass virtual key down
     }
     else
     {
         apiKey = originalApiKey;
     }
+
     try
     {
         var response = await conduit.CreateImageAsync(request, apiKey, httpRequest.HttpContext.RequestAborted);
-        // Optionally update spend for virtual key
+        
+        // --- Cost Tracking for Virtual Keys ---
         if (virtualKeyId.HasValue)
         {
-            decimal cost = 0.02m; // Placeholder cost for image generation
-            logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after image generation", virtualKeyId.Value, cost);
-            await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+            // Create a synthetic usage object for cost calculation
+            var syntheticUsage = new Usage
+            {
+                PromptTokens = request.Prompt.Length, // Approximate from prompt length
+                CompletionTokens = 0,
+                TotalTokens = request.Prompt.Length,
+                // Only ImageCount is available in the Usage class
+                ImageCount = request.N ?? 1
+            };
+            
+            // Pass additional metadata as part of the model ID string
+            // This allows the cost calculator to consider image size and quality
+            string modelWithMetadata = $"{request.Model}:{request.Size ?? "1024x1024"}:{request.Quality ?? "standard"}";
+            
+            decimal calculatedCost = await costCalculator.CalculateCostAsync(
+                modelWithMetadata, syntheticUsage, httpRequest.HttpContext.RequestAborted);
+            
+            if (calculatedCost > 0)
+            {
+                logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} for image generation", 
+                    virtualKeyId.Value, calculatedCost);
+                bool spendUpdated = await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, calculatedCost);
+                
+                if (!spendUpdated)
+                {
+                    logger.LogError("Failed to update spend for Virtual Key ID {KeyId}", virtualKeyId.Value);
+                    // Continue despite failure - logging is sufficient, don't block response
+                }
+            }
         }
+        
         return Results.Json(response, options: jsonSerializerOptions);
     }
     catch (Exception ex)
@@ -428,16 +742,23 @@ app.MapPost("/admin/refresh-configuration", async (
                 ApiBase = p.ApiBase
             }).ToList();
             
-            // Replace in-memory credentials with database values
+            // Now integrate these with existing settings
+            // Two approaches: 
+            // 1. Replace in-memory with DB values
+            // 2. Merge DB with in-memory (with DB taking precedence)
+            // Using approach #2 here
+            
             if (settings.ProviderCredentials == null)
             {
                 settings.ProviderCredentials = new List<ProviderCredentials>();
             }
-            else
-            {
-                settings.ProviderCredentials.Clear();
-            }
             
+            // Remove any in-memory providers that exist in DB to avoid duplicates
+            settings.ProviderCredentials.RemoveAll(p => 
+                providersList.Any(dbp => 
+                    string.Equals(dbp.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
+            
+            // Then add all the database credentials
             settings.ProviderCredentials.AddRange(providersList);
             
             foreach (var cred in providersList)
@@ -461,21 +782,23 @@ app.MapPost("/admin/refresh-configuration", async (
                 ProviderModelId = m.ProviderModelId
             }).ToList();
             
-            // Replace in-memory mappings with database values
+            // Initialize or clear the existing mappings
             if (settings.ModelMappings == null)
             {
                 settings.ModelMappings = new List<ModelProviderMapping>();
             }
             else
             {
+                // Replace all in-memory mappings with database ones
                 settings.ModelMappings.Clear();
             }
             
+            // Add all database mappings
             settings.ModelMappings.AddRange(mappingsList);
             
             foreach (var mapping in mappingsList)
             {
-                logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
+                logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
                     mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
             }
         }
@@ -519,6 +842,8 @@ app.MapGet("/api/providers/{providerName}/models", async (
     {
         // Get credentials from the database
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(httpRequest.HttpContext.RequestAborted);
+        
+        // Load provider credentials
         var providerCreds = await dbContext.ProviderCredentials
                                     .AsNoTracking() // Read-only operation
                                     .FirstOrDefaultAsync(p => p.ProviderName.ToLower() == providerName.ToLower(),
@@ -677,7 +1002,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ProviderName = p.ProviderName,
                     ApiKey = p.ApiKey,
                     ApiVersion = p.ApiVersion,
-                    ApiBase = p.ApiBase // Corrected property name to match DbProviderCredentials
+                    ApiBase = p.ApiBase
                 }).ToList();
 
                 // Now integrate these with existing settings
@@ -699,7 +1024,6 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                 // Then add all the database credentials
                 settings.ProviderCredentials.AddRange(providersList);
                 
-                // Log the loaded credentials
                 foreach (var cred in providersList)
                 {
                     _logger.LogInformation("Loaded credentials for provider: {ProviderName}", cred.ProviderName);

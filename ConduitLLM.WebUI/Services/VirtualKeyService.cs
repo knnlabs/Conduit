@@ -316,28 +316,165 @@ public class VirtualKeyService : IVirtualKeyService
             return false; // Key not found
         }
 
-        // Use a thread-safe way to update spend if high concurrency is expected,
-        // but for now, a simple addition is sufficient.
-        // Consider using optimistic concurrency (row versioning) or atomic operations if needed.
-        virtualKey.CurrentSpend += cost;
-        virtualKey.UpdatedAt = DateTime.UtcNow;
-
         try
         {
+            // Update spend and timestamp
+            virtualKey.CurrentSpend += cost;
+            virtualKey.UpdatedAt = DateTime.UtcNow;
+
             await context.SaveChangesAsync();
+            
+            _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}", keyId, virtualKey.CurrentSpend);
             return true;
         }
         catch (DbUpdateConcurrencyException ex)
         {            
-            _logger.LogError(ex, "Concurrency error updating spend for key ID {KeyId}.", keyId);
-            // Handle concurrency conflict (e.g., reload entity and retry)
-            return false;
+            _logger.LogError(ex, "Concurrency error updating spend for key ID {KeyId}. Attempting retry...", keyId);
+            
+            // Implement retry strategy
+            try
+            {
+                // Reload the entity with the latest data
+                await ex.Entries.Single().ReloadAsync();
+                
+                // Get a new reference to the entity after reload
+                virtualKey = await context.VirtualKeys.FindAsync(keyId);
+                if (virtualKey == null)
+                {
+                    _logger.LogError("After concurrency error, key ID {KeyId} could not be found.", keyId);
+                    return false;
+                }
+                
+                // Reapply the spend update to the latest version
+                virtualKey.CurrentSpend += cost;
+                virtualKey.UpdatedAt = DateTime.UtcNow;
+                
+                // Try to save again
+                await context.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated spend after retry for key ID {KeyId}. New spend: {CurrentSpend}", 
+                    keyId, virtualKey.CurrentSpend);
+                return true;
+            }
+            catch (Exception retryEx)
+            {
+                _logger.LogError(retryEx, "Failed to update spend after concurrency retry for key ID {KeyId}.", keyId);
+                return false;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating spend for key ID {KeyId}.", keyId);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Checks if the budget period for a key has expired based on its duration and start date,
+    /// and resets the spend and start date if necessary.
+    /// </summary>
+    /// <param name="keyId">The ID of the virtual key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the budget was reset, false otherwise.</returns>
+    public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(
+            new object[] { keyId }, 
+            cancellationToken);
+
+        if (virtualKey == null || 
+            string.IsNullOrEmpty(virtualKey.BudgetDuration) || 
+            !virtualKey.BudgetStartDate.HasValue)
+        {
+            // Can't reset budget if key doesn't exist or has no budget duration/start date
+            return false;
+        }
+
+        DateTime now = DateTime.UtcNow;
+        bool needsReset = false;
+
+        // Calculate when the current budget period should end
+        if (virtualKey.BudgetDuration.Equals(Configuration.Constants.VirtualKeyConstants.BudgetPeriods.Monthly, 
+                                          StringComparison.OrdinalIgnoreCase))
+        {
+            // For monthly, check if we're in a new month from the start date
+            DateTime startDate = virtualKey.BudgetStartDate.Value;
+            DateTime periodEnd = new DateTime(
+                startDate.Year + (startDate.Month == 12 ? 1 : 0),
+                startDate.Month == 12 ? 1 : startDate.Month + 1,
+                1,
+                0, 0, 0,
+                DateTimeKind.Utc).AddDays(-1); // Last day of the month
+            
+            needsReset = now > periodEnd;
+        }
+        else if (virtualKey.BudgetDuration.Equals(Configuration.Constants.VirtualKeyConstants.BudgetPeriods.Daily, 
+                                              StringComparison.OrdinalIgnoreCase))
+        {
+            // For daily, check if we're on a different calendar day (UTC)
+            needsReset = now.Date > virtualKey.BudgetStartDate.Value.Date;
+        }
+        // Note: "Weekly" period is not defined in VirtualKeyConstants.BudgetPeriods
+        // If we need to support Weekly in the future, uncomment this code and add it to the constants
+        /*
+        else if (virtualKey.BudgetDuration.Equals("Weekly", StringComparison.OrdinalIgnoreCase))
+        {
+            // For weekly, check if it's been 7 days or more since the start date
+            DateTime startDate = virtualKey.BudgetStartDate.Value;
+            DateTime periodEnd = startDate.AddDays(7).Date;
+            
+            needsReset = now.Date >= periodEnd;
+        }
+        */
+
+        if (needsReset)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}", 
+                    keyId, virtualKey.CurrentSpend, virtualKey.BudgetStartDate);
+                
+                // Reset the spend
+                virtualKey.CurrentSpend = 0;
+                
+                // Set new budget start date
+                virtualKey.BudgetStartDate = DetermineBudgetStartDate(virtualKey.BudgetDuration);
+                virtualKey.UpdatedAt = now;
+                
+                await context.SaveChangesAsync(cancellationToken);
+                
+                _logger.LogInformation(
+                    "Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}", 
+                    keyId, virtualKey.BudgetStartDate);
+                
+                return true;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogError(ex, "Concurrency error resetting budget for key ID {KeyId}", keyId);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resetting budget for key ID {KeyId}", keyId);
+                return false;
+            }
+        }
+
+        return false; // No reset needed
+    }
+
+    /// <summary>
+    /// Gets detailed info about a virtual key for validation and budget checking.
+    /// </summary>
+    /// <param name="keyId">The ID of the virtual key to retrieve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The virtual key entity if found, otherwise null.</returns>
+    public async Task<ConduitLLM.Configuration.Entities.VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.VirtualKeys.FindAsync(new object[] { keyId }, cancellationToken);
     }
 
     // --- Helper Methods ---
