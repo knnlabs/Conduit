@@ -32,8 +32,8 @@ ENV DB_CONNECTION_STRING=Data Source=/data/conduit.db
 # Create volume for persistent data
 VOLUME /data
 
-# Expose port
-EXPOSE 80
+# Expose ports for WebUI (5001, 5002) and API (5000, 5003)
+EXPOSE 80 5000 5001 5002 5003
 
 # Set the entry point
 ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]

@@ -1,0 +1,35 @@
+# .dockerignore
+
+# Ignore .git directory
+.git
+.gitignore
+
+# Ignore user-specific files
+.vs
+.vscode
+*.user
+*.suo
+
+# Ignore build outputs
+bin/
+obj/
+TestResults/
+out/
+
+# Ignore Docker-related files that shouldn't be copied
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+
+# Ignore OS generated files
+*.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore secrets (if any)
+secrets/
+*.pfx
+*.key
+*.crt
