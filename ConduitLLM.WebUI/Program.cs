@@ -23,9 +23,37 @@ using ConduitLLM.Core.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get database provider configuration from environment variables
+string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+string? dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+// Default connection string for SQLite if not specified and SQLite is selected
+if (string.IsNullOrEmpty(dbConnectionString) && dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+{
+    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=ConduitConfig.db";
+}
+else if (string.IsNullOrEmpty(dbConnectionString) && dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException("DB_CONNECTION_STRING environment variable must be set when using PostgreSQL provider");
+}
+
 // Add the custom EF configuration provider
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=ConduitConfig.db";
-builder.Configuration.AddEntityFrameworkConfiguration(options => options.UseSqlite(connectionString));
+if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+{
+    // Default to SQLite
+    builder.Configuration.AddEntityFrameworkConfiguration(options => options.UseSqlite(dbConnectionString));
+}
+#if POSTGRES
+// PostgreSQL configuration will be handled by the Dockerfile and runtime configuration
+else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    // This will be set up at runtime with the proper dependencies
+    builder.Configuration.AddEntityFrameworkConfiguration(options => {
+        // This requires the Npgsql EF Core package to be referenced correctly
+        options.UseNpgsql(dbConnectionString);
+    });
+}
+#endif
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -34,9 +62,24 @@ builder.Services.AddRazorComponents()
 // Configure ConduitSettings to be bound from the application's configuration
 builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nameof(ConduitSettings)));
 
-// Configure SQLite DbContext Factory
-builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Configure DbContext Factory based on the provider
+if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+{
+    // Default to SQLite
+    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options => 
+        options.UseSqlite(dbConnectionString));
+}
+#if POSTGRES
+// PostgreSQL configuration will be handled by the Dockerfile and runtime configuration 
+else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    // This will be set up at runtime with the proper dependencies
+    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options => {
+        // This requires the Npgsql EF Core package to be referenced correctly
+        options.UseNpgsql(dbConnectionString);
+    });
+}
+#endif
 
 // Register HttpClient for calling the API proxy
 builder.Services.AddHttpClient();

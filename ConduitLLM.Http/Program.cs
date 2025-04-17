@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore; // Added for EF Core
 using ConduitLLM.WebUI.Data; // Added for DbContext and models
 using ConduitLLM.WebUI.Interfaces; // Added for IVirtualKeyService
 using ConduitLLM.WebUI.Services;  // Added for VirtualKeyService
+using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,14 +35,43 @@ builder.Services.AddOptions<ConduitSettings>()
 builder.Services.AddTransient<IStartupFilter, DatabaseSettingsStartupFilter>();
 
 // 2. Register DbContext Factory (using connection string from appsettings.json)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
+// Get database provider configuration from environment variables
+string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+string? dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+// Default connection string for SQLite if not specified and SQLite is selected
+if (string.IsNullOrEmpty(dbConnectionString))
 {
-    // Handle missing connection string - throw or log fatal error
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found in configuration.");
+    if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException("DB_CONNECTION_STRING environment variable must be set when using PostgreSQL provider");
+    }
+    
+    // Use the connection string from configuration for SQLite
+    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(dbConnectionString))
+    {
+        // Handle missing connection string
+        throw new InvalidOperationException("Connection string 'DefaultConnection' not found in configuration.");
+    }
 }
-builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
-    options.UseSqlite(connectionString)); // Assuming SQLite
+
+// Configure DbContext Factory based on the database provider
+if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase)) 
+{
+    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString)); // SQLite
+}
+else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    // PostgreSQL configuration - handled at runtime with the correct dependencies
+    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
+}
+else
+{
+    throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
+}
 
 // 3. Register Conduit Services
 // TODO: Consider creating a dedicated extension method like AddConduit() in Core or Providers
