@@ -3,29 +3,53 @@ using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
 {
+    /// <summary>
+    /// Represents the response from an embedding generation request.
+    /// </summary>
     public class EmbeddingResponse
     {
+        /// <summary>
+        /// The type of object returned, typically "list".
+        /// </summary>
         [JsonPropertyName("object")]
-        public string Object { get; set; }
+        public required string Object { get; set; }
 
+        /// <summary>
+        /// A list of embedding data objects.
+        /// </summary>
         [JsonPropertyName("data")]
-        public List<EmbeddingData> Data { get; set; }
+        public required List<EmbeddingData> Data { get; set; }
 
+        /// <summary>
+        /// The ID of the model used for generating embeddings.
+        /// </summary>
         [JsonPropertyName("model")]
-        public string Model { get; set; }
+        public required string Model { get; set; }
 
+        /// <summary>
+        /// Usage statistics for the embedding request.
+        /// </summary>
         [JsonPropertyName("usage")]
-        public Usage Usage { get; set; }
+        public required Usage Usage { get; set; }
     }
 
     public class EmbeddingData
     {
+        /// <summary>
+        /// The type of object, typically "embedding".
+        /// </summary>
         [JsonPropertyName("object")]
-        public string Object { get; set; }
+        public required string Object { get; set; }
 
+        /// <summary>
+        /// The embedding vector, represented as a list of floating-point numbers.
+        /// </summary>
         [JsonPropertyName("embedding")]
-        public List<float> Embedding { get; set; }
+        public required List<float> Embedding { get; set; }
 
+        /// <summary>
+        /// The index of the embedding in the list.
+        /// </summary>
         [JsonPropertyName("index")]
         public int Index { get; set; }
     }

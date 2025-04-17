@@ -557,18 +557,11 @@ app.MapPost("/v1/images/generations", async (
     string? apiKey = null;
     string? originalApiKey = null; // Store the original key for virtual key check
 
-    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) &&
+        authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
     {
-        // Check if it's a Bearer token
-        string auth = authHeader.ToString();
-        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            originalApiKey = auth.Substring("Bearer ".Length).Trim();
-        }
-        else
-        {
-            originalApiKey = auth.Trim(); // Just in case they sent the raw key
-        }
+        originalApiKey = authHeader.ToString().Substring("Bearer ".Length).Trim();
+        logger.LogDebug("Extracted API Key from Authorization header.");
     }
 
     // --- Virtual Key Check & Validation ---
@@ -681,7 +674,7 @@ app.MapPost("/v1/images/generations", async (
                 CompletionTokens = 0,
                 TotalTokens = request.Prompt.Length,
                 // Only ImageCount is available in the Usage class
-                ImageCount = request.N ?? 1
+                ImageCount = request.N
             };
             
             // Pass additional metadata as part of the model ID string

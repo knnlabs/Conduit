@@ -723,7 +723,7 @@ public class OpenAIClientTests
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
         var expectedUri = "https://api.openai.com/v1/chat/completions";
-        var invalidChunk = new OpenAIChatCompletionChunk { Id = "bad", Choices = null };
+        var invalidChunk = new OpenAIChatCompletionChunk { Id = "bad", Choices = null! }; // Suppress warning for test
         var sseContent = SseContent.FromChunks(new[] { invalidChunk });
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)

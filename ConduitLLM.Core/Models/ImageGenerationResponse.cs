@@ -7,10 +7,10 @@ namespace ConduitLLM.Core.Models
     public class ImageGenerationResponse
     {
         [JsonPropertyName("created")]
-        public long Created { get; set; }
+        public required long Created { get; set; }
 
         [JsonPropertyName("data")]
-        public List<ImageData> Data { get; set; }
+        public required List<ImageData> Data { get; set; }
         
         [JsonPropertyName("usage")]
         public Usage? Usage { get; set; }
@@ -19,9 +19,9 @@ namespace ConduitLLM.Core.Models
     public class ImageData
     {
         [JsonPropertyName("url")]
-        public string? Url { get; set; }
+        public required string? Url { get; set; }
 
         [JsonPropertyName("b64_json")]
-        public string? B64Json { get; set; }
+        public required string? B64Json { get; set; }
     }
 }

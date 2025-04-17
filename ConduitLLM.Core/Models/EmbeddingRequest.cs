@@ -6,13 +6,13 @@ namespace ConduitLLM.Core.Models
     public class EmbeddingRequest
     {
         [JsonPropertyName("input")]
-        public object Input { get; set; } // string, or array of strings/tokens
+        public required object Input { get; set; } // string, or array of strings/tokens
 
         [JsonPropertyName("model")]
-        public string Model { get; set; }
+        public required string Model { get; set; }
 
         [JsonPropertyName("encoding_format")]
-        public string EncodingFormat { get; set; }
+        public required string EncodingFormat { get; set; } = "float";
 
         [JsonPropertyName("dimensions")]
         public int? Dimensions { get; set; }

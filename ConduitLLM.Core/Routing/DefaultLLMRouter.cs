@@ -329,7 +329,7 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <inheritdoc/>
-        public async Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? routingStrategy = null,
             string? apiKey = null,

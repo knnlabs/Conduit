@@ -118,8 +118,9 @@ public class SageMakerClientTests
         if (message != null)
         {
             var msg = message;
+            Assert.NotNull(msg);
             Assert.Equal("assistant", msg.Role);
-            Assert.Equal(expectedResponse.GeneratedOutputs[0].Content, msg.Content);
+            Assert.Equal(expectedResponse.GeneratedOutputs![0].Content, msg.Content!);
         }
         Assert.Equal(request.Model, response.Model); // Should return original alias
         Assert.NotNull(response.Usage);

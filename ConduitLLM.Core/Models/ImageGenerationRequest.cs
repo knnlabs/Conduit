@@ -5,13 +5,13 @@ namespace ConduitLLM.Core.Models
     public class ImageGenerationRequest
     {
         [JsonPropertyName("prompt")]
-        public string Prompt { get; set; }
+        public required string Prompt { get; set; }
 
         [JsonPropertyName("model")]
-        public string Model { get; set; }
+        public required string Model { get; set; } = "dall-e-2"; // Default to dall-e-2 if not specified
 
         [JsonPropertyName("n")]
-        public int? N { get; set; }
+        public int N { get; set; } = 1; // Default to 1 image
 
         [JsonPropertyName("quality")]
         public string? Quality { get; set; }

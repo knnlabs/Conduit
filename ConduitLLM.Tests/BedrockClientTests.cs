@@ -125,12 +125,12 @@ public class BedrockClientTests
         {
             var msg = message;
             Assert.Equal("assistant", msg.Role);
-            Assert.Equal(expectedResponse.Content[0].Text, msg.Content);
+            Assert.Equal(expectedResponse.Content![0].Text, msg.Content!); 
         }
         Assert.NotNull(response.Usage);
         var usage = response.Usage;
         Assert.NotNull(usage);
-        Assert.Equal(expectedResponse.Usage.InputTokens + expectedResponse.Usage.OutputTokens, usage.TotalTokens);
+        Assert.Equal(expectedResponse.Usage!.InputTokens + expectedResponse.Usage!.OutputTokens, usage.TotalTokens);
         
         Assert.NotNull(_handlerMock);
         var handlerMock = _handlerMock;
@@ -440,6 +440,22 @@ public class BedrockClientTests
         Assert.True(sw.ElapsedMilliseconds >= 100, "Should take at least 100ms due to delays");
     }
 
+    [Fact]
+    public async Task ListModelsAsync_ReturnsModels()
+    {
+        // Arrange
+        var modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
+        var client = new BedrockClient(modelId, _loggerMock.Object, _httpClient);
+
+        // Act
+        var models = await client.ListModelsAsync();
+
+        // Assert
+        Assert.NotNull(models);
+        Assert.NotEmpty(models);
+        Assert.Contains(models, m => m.Contains("claude"));
+    }
+
     // Test double to create a standard ChatCompletionRequest
     private class FakeBedrockClient : BedrockClient
     {
@@ -538,7 +554,7 @@ public class BedrockClientTests
                 Object = "chat.completion.chunk",
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Model = request.Model,
-                Choices = null // Invalid/missing choices
+                Choices = null! // Invalid - suppress warning for test
             };
             await Task.CompletedTask;
         }
@@ -549,6 +565,8 @@ public class BedrockClientTests
     {
         public ExceptionStreamBedrockClient(string providerModelId, ILogger<BedrockClient> logger, HttpClient? httpClient = null)
             : base(providerModelId, logger, httpClient) { }
+
+#pragma warning disable CS0162 // Unreachable code detected - expected for this test helper
         public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
@@ -556,8 +574,9 @@ public class BedrockClientTests
         {
             await Task.Delay(10, cancellationToken);
             throw new InvalidOperationException("Simulated streaming failure");
-            yield break; // Fixes CS8419: async-iterator must have yield
+            yield break; // Add unreachable yield break to satisfy CS8419
         }
+#pragma warning restore CS0162
     }
 
     // Test double: yields two chunks, cancels after first if token is canceled
@@ -719,7 +738,7 @@ public class BedrockClientTests
                 Object = "chat.completion.chunk",
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Model = request.Model,
-                Choices = null // Invalid
+                Choices = null! // Invalid - suppress warning for test
             };
             yield return new ChatCompletionChunk
             {
@@ -762,8 +781,7 @@ public class BedrockClientTests
             };
             
             // Ensure we delay at least 100ms before the next chunk
-            // Use Task.Delay and explicitly wait for it to complete
-            await Task.Delay(110, cancellationToken); // Using 110ms to ensure we exceed the 100ms threshold
+            await Task.Delay(110, cancellationToken); // Use 110ms to ensure threshold is met
             
             // Second chunk
             yield return new ChatCompletionChunk
@@ -784,20 +802,4 @@ public class BedrockClientTests
             };
         }
     }
-
-    [Fact]
-    public async Task ListModelsAsync_ReturnsModels()
-    {
-        // Arrange
-        var modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
-        var client = new BedrockClient(modelId, _loggerMock.Object, _httpClient);
-
-        // Act
-        var models = await client.ListModelsAsync();
-
-        // Assert
-        Assert.NotNull(models);
-        Assert.NotEmpty(models);
-        Assert.Contains(models, m => m.Contains("claude"));
-    }
-}
+} // Closing brace for BedrockClientTests class
