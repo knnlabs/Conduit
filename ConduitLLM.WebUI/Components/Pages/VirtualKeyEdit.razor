@@ -219,17 +219,44 @@ else
                                 <option value="Monthly">Monthly</option>
                                 <option value="Daily">Daily</option>
                             </InputSelect>
-                            <div class="form-text">Period over which the budget applies</div>
+                            <div class="form-text">
+                                Period over which the budget applies.
+                                <span data-bs-toggle="tooltip" title="Monthly and Daily budgets reset automatically after their period expires">
+                                    <i class="bi bi-info-circle"></i>
+                                </span>
+                            </div>
                         </div>
 
                         @if (Id.HasValue && currentSpend.HasValue)
                         {
                             <div class="mb-3">
                                 <label class="form-label">Current Spend:</label>
-                                <div class="input-group">
+                                <div class="input-group mb-2">
                                     <span class="input-group-text">$</span>
                                     <input type="text" class="form-control bg-light" value="@currentSpend.Value.ToString("F2")" readonly />
                                 </div>
+                                
+                                @if (request?.MaxBudget.HasValue == true)
+                                {
+                                    <div class="mb-2">
+                                        @{
+                                            var percentage = Math.Min(100, (int)(currentSpend.Value / request.MaxBudget.Value * 100));
+                                            var progressClass = percentage < 60 ? "bg-success" : 
+                                                               percentage < 80 ? "bg-warning" : "bg-danger";
+                                        }
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar @progressClass" role="progressbar" 
+                                                 style="width: @percentage%;" 
+                                                 aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-1 d-block">
+                                            $@currentSpend.Value.ToString("F2") / $@request.MaxBudget.Value.ToString("F2")
+                                            @(!string.IsNullOrEmpty(request.BudgetDuration) ? $" ({request.BudgetDuration})" : "")
+                                        </small>
+                                    </div>
+                                }
+                                
                                 <div class="form-text">
                                     <a href="#" @onclick="ResetCurrentSpend" @onclick:preventDefault>Reset to zero</a>
                                 </div>

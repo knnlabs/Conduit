@@ -1,0 +1,440 @@
+@page "/model-costs"
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.Services
+@using Microsoft.Extensions.Logging
+@inject IModelCostService ModelCostService
+@inject ILogger<ModelCosts> Logger
+@rendermode InteractiveServer
+
+<h1>Model Cost Management</h1>
+
+<div class="alert alert-info">
+    <p><i class="bi bi-info-circle me-2"></i> Model costs are used to calculate usage spending for virtual keys and enforce budgets.</p>
+    <p class="mb-0">The <strong>ModelIdPattern</strong> supports wildcards (e.g., "openai/gpt-4*" or "*-embedding*") for matching multiple models with a single cost entry.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+    </div>
+}
+
+@if (successMessage != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @successMessage
+        <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Model Costs</h5>
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm me-2" @onclick="RefreshModelCosts">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm me-2" @onclick="ClearCache">
+                        <i class="bi bi-x-circle me-1"></i> Clear Cache
+                    </button>
+                    <button class="btn btn-primary btn-sm" @onclick="() => ShowAddEditModal()">
+                        <i class="bi bi-plus-circle me-1"></i> Add New Model Cost
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (isLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading model costs...</p>
+                    </div>
+                }
+                else if (modelCosts == null || !modelCosts.Any())
+                {
+                    <div class="alert alert-secondary">
+                        <p class="mb-0">No model costs defined yet. Click 'Add New Model Cost' to create one.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Model ID Pattern</th>
+                                    <th>Input Token Cost ($)</th>
+                                    <th>Output Token Cost ($)</th>
+                                    <th>Embedding Token Cost ($)</th>
+                                    <th>Image Cost ($)</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cost in modelCosts.OrderBy(c => c.ModelIdPattern))
+                                {
+                                    <tr>
+                                        <td>@cost.ModelIdPattern</td>
+                                        <td>@FormatCost(cost.InputTokenCost)</td>
+                                        <td>@FormatCost(cost.OutputTokenCost)</td>
+                                        <td>@FormatCost(cost.EmbeddingTokenCost)</td>
+                                        <td>@FormatCost(cost.ImageCostPerImage)</td>
+                                        <td><small>@cost.CreatedAt.ToString("g")</small></td>
+                                        <td><small>@cost.UpdatedAt.ToString("g")</small></td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" @onclick="() => ShowAddEditModal(cost)">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showAddEditModal)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingModelCost.Id == 0 ? "Add New Model Cost" : "Edit Model Cost")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@editingModelCost" OnValidSubmit="HandleAddEditSubmit" FormName="ModelCostForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="modelIdPattern" class="form-label">Model ID Pattern:</label>
+                            <InputText id="modelIdPattern" @bind-Value="editingModelCost.ModelIdPattern" class="form-control" />
+                            <div class="form-text">
+                                Examples: "openai/gpt-4o" (exact match), "anthropic/claude-3*" (wildcard), "*-embedding*" (multi-wildcard)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="inputTokenCost" class="form-label">Input Token Cost ($ per 1000 tokens):</label>
+                            <InputNumber id="inputTokenCost" @bind-Value="inputTokenCostPerThousand" class="form-control" />
+                            <div class="form-text">Cost in USD per 1,000 input tokens</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="outputTokenCost" class="form-label">Output Token Cost ($ per 1000 tokens):</label>
+                            <InputNumber id="outputTokenCost" @bind-Value="outputTokenCostPerThousand" class="form-control" />
+                            <div class="form-text">Cost in USD per 1,000 output tokens</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="embeddingTokenCost" class="form-label">Embedding Token Cost ($ per 1000 tokens):</label>
+                            <InputNumber id="embeddingTokenCostPerThousand" @bind-Value="embeddingTokenCostPerThousand" class="form-control" />
+                            <div class="form-text">Cost in USD per 1,000 embedding tokens (leave empty if not applicable)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="imageCostPerImage" class="form-label">Image Cost ($ per image):</label>
+                            <InputNumber id="imageCostPerImage" @bind-Value="editingModelCost.ImageCostPerImage" class="form-control" />
+                            <div class="form-text">Cost in USD per generated image (leave empty if not applicable)</div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-1"></i>
+                                    <span>Save</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (showDeleteConfirmation)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the model cost for <strong>@deletingModelCost?.ModelIdPattern</strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteModelCost" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Deleting...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-trash me-1"></i>
+                            <span>Delete</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<ModelCost>? modelCosts;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string? errorMessage;
+    private string? successMessage;
+    
+    // Add/Edit modal variables
+    private bool showAddEditModal = false;
+    private ModelCost editingModelCost = new();
+    
+    // Delete confirmation modal variables
+    private bool showDeleteConfirmation = false;
+    private ModelCost? deletingModelCost;
+    
+    // Cost display as per 1000 tokens for better UX
+    private decimal inputTokenCostPerThousand;
+    private decimal outputTokenCostPerThousand;
+    private decimal? embeddingTokenCostPerThousand;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadModelCostsAsync();
+    }
+
+    private async Task LoadModelCostsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            modelCosts = await ModelCostService.ListModelCostsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading model costs: {ex.Message}";
+            Logger.LogError(ex, "Error loading model costs");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshModelCosts()
+    {
+        await LoadModelCostsAsync();
+    }
+
+    private void ClearCache()
+    {
+        try
+        {
+            ModelCostService.ClearCache();
+            successMessage = "Model cost cache cleared successfully";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error clearing cache: {ex.Message}";
+            Logger.LogError(ex, "Error clearing model cost cache");
+        }
+    }
+
+    private void ShowAddEditModal(ModelCost? modelCost = null)
+    {
+        if (modelCost != null)
+        {
+            // Editing existing cost
+            editingModelCost = new ModelCost
+            {
+                Id = modelCost.Id,
+                ModelIdPattern = modelCost.ModelIdPattern,
+                InputTokenCost = modelCost.InputTokenCost,
+                OutputTokenCost = modelCost.OutputTokenCost,
+                EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
+                ImageCostPerImage = modelCost.ImageCostPerImage,
+                CreatedAt = modelCost.CreatedAt,
+                UpdatedAt = modelCost.UpdatedAt
+            };
+            
+            // Convert from per-token to per-thousand tokens for better UX
+            inputTokenCostPerThousand = editingModelCost.InputTokenCost * 1000;
+            outputTokenCostPerThousand = editingModelCost.OutputTokenCost * 1000;
+            embeddingTokenCostPerThousand = editingModelCost.EmbeddingTokenCost.HasValue 
+                                            ? editingModelCost.EmbeddingTokenCost * 1000 
+                                            : null;
+        }
+        else
+        {
+            // Adding new cost
+            editingModelCost = new ModelCost
+            {
+                ModelIdPattern = "",
+                InputTokenCost = 0,
+                OutputTokenCost = 0
+            };
+            
+            inputTokenCostPerThousand = 0;
+            outputTokenCostPerThousand = 0;
+            embeddingTokenCostPerThousand = null;
+        }
+        
+        showAddEditModal = true;
+    }
+
+    private void ShowDeleteConfirmation(ModelCost modelCost)
+    {
+        deletingModelCost = modelCost;
+        showDeleteConfirmation = true;
+    }
+
+    private void CloseModal()
+    {
+        showAddEditModal = false;
+        showDeleteConfirmation = false;
+        editingModelCost = new();
+        deletingModelCost = null;
+    }
+
+    private async Task HandleAddEditSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        
+        try
+        {
+            // Convert from per-thousand tokens back to per-token
+            editingModelCost.InputTokenCost = inputTokenCostPerThousand / 1000;
+            editingModelCost.OutputTokenCost = outputTokenCostPerThousand / 1000;
+            editingModelCost.EmbeddingTokenCost = embeddingTokenCostPerThousand.HasValue 
+                                                ? embeddingTokenCostPerThousand.Value / 1000 
+                                                : null;
+            
+            if (editingModelCost.Id == 0)
+            {
+                // Creating new cost
+                await ModelCostService.AddModelCostAsync(editingModelCost);
+                successMessage = $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully";
+            }
+            else
+            {
+                // Updating existing cost
+                var result = await ModelCostService.UpdateModelCostAsync(editingModelCost);
+                if (result)
+                {
+                    successMessage = $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully";
+                }
+                else
+                {
+                    errorMessage = "Failed to update model cost. It may have been deleted.";
+                }
+            }
+            
+            // Close modal and refresh list
+            CloseModal();
+            await LoadModelCostsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving model cost: {ex.Message}";
+            Logger.LogError(ex, "Error saving model cost: {Error}", ex.Message);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteModelCost()
+    {
+        if (deletingModelCost == null) return;
+        
+        isSaving = true;
+        errorMessage = null;
+        
+        try
+        {
+            var result = await ModelCostService.DeleteModelCostAsync(deletingModelCost.Id);
+            if (result)
+            {
+                successMessage = $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully";
+            }
+            else
+            {
+                errorMessage = "Failed to delete model cost. It may have already been removed.";
+            }
+            
+            // Close modal and refresh list
+            CloseModal();
+            await LoadModelCostsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting model cost: {ex.Message}";
+            Logger.LogError(ex, "Error deleting model cost: {Error}", ex.Message);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string FormatCost(decimal? cost)
+    {
+        if (!cost.HasValue || cost.Value == 0) return "—";
+        
+        // Multiply by 1000 to show per 1000 tokens
+        var perThousand = cost.Value * 1000;
+        
+        // Format with appropriate number of decimal places
+        if (perThousand < 0.01m)
+        {
+            return $"${perThousand:F6}/1K";
+        }
+        else if (perThousand < 0.1m)
+        {
+            return $"${perThousand:F4}/1K";
+        }
+        else
+        {
+            return $"${perThousand:F2}/1K";
+        }
+    }
+}
