@@ -20,9 +20,9 @@ namespace ConduitLLM.Tests.Security
 {
     public class VirtualKeyAuthenticationTests
     {
-        private DbContextOptions<VirtualKeyDbContext> GetDbOptions()
+        private DbContextOptions<ConfigurationDbContext> GetDbOptions()
         {
-            return new DbContextOptionsBuilder<VirtualKeyDbContext>()
+            return new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
         }
@@ -32,7 +32,7 @@ namespace ConduitLLM.Tests.Security
         {
             // Arrange
             var options = GetDbOptions();
-            using var context = new VirtualKeyDbContext(options);
+            using var context = new ConfigurationDbContext(options);
             var service = new VirtualKeyService(context);
             
             // Act
@@ -48,7 +48,7 @@ namespace ConduitLLM.Tests.Security
             // Arrange
             var options = GetDbOptions();
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey
                 {
@@ -60,7 +60,7 @@ namespace ConduitLLM.Tests.Security
                 await context.SaveChangesAsync();
             }
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new VirtualKeyService(context);
                 
@@ -78,7 +78,7 @@ namespace ConduitLLM.Tests.Security
             // Arrange
             var options = GetDbOptions();
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey
                 {
@@ -91,7 +91,7 @@ namespace ConduitLLM.Tests.Security
                 await context.SaveChangesAsync();
             }
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new VirtualKeyService(context);
                 
@@ -109,7 +109,7 @@ namespace ConduitLLM.Tests.Security
             // Arrange
             var options = GetDbOptions();
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey
                 {
@@ -124,7 +124,7 @@ namespace ConduitLLM.Tests.Security
                 await context.SaveChangesAsync();
             }
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new VirtualKeyService(context);
                 
@@ -142,7 +142,7 @@ namespace ConduitLLM.Tests.Security
             // Arrange
             var options = GetDbOptions();
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey
                 {
@@ -158,7 +158,7 @@ namespace ConduitLLM.Tests.Security
                 await context.SaveChangesAsync();
             }
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new VirtualKeyService(context);
                 

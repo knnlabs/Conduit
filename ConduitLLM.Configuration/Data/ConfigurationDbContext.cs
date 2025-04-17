@@ -7,13 +7,13 @@ namespace ConduitLLM.Configuration
     /// <summary>
     /// Database context for ConduitLLM configuration
     /// </summary>
-    public class VirtualKeyDbContext : DbContext
+    public class ConfigurationDbContext : DbContext
     {
         /// <summary>
-        /// Initializes a new instance of the VirtualKeyDbContext
+        /// Initializes a new instance of the ConfigurationDbContext
         /// </summary>
         /// <param name="options">The options to be used by the context</param>
-        public VirtualKeyDbContext(DbContextOptions<VirtualKeyDbContext> options) : base(options)
+        public ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> options) : base(options)
         {
         }
 

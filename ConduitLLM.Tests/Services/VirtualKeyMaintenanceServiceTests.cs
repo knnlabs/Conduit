@@ -13,9 +13,9 @@ namespace ConduitLLM.Tests.Services
 {
     public class VirtualKeyMaintenanceServiceTests
     {
-        private DbContextOptions<VirtualKeyDbContext> GetDbOptions()
+        private DbContextOptions<ConfigurationDbContext> GetDbOptions()
         {
-            return new DbContextOptionsBuilder<VirtualKeyDbContext>()
+            return new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
         }
@@ -27,7 +27,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var yesterday = DateTime.UtcNow.AddDays(-1).Date;
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -44,14 +44,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.ProcessBudgetResetsAsync();
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var key = await context.VirtualKeys.FindAsync(1);
                 
@@ -75,7 +75,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var lastMonth = DateTime.UtcNow.AddMonths(-1);
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -92,14 +92,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.ProcessBudgetResetsAsync();
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var key = await context.VirtualKeys.FindAsync(1);
                 
@@ -125,7 +125,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var yesterday = DateTime.UtcNow.AddDays(-1);
             
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.AddRange(
                     new VirtualKey 
@@ -149,14 +149,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.DisableExpiredKeysAsync();
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var expiredKey = await context.VirtualKeys.FindAsync(1);
                 var validKey = await context.VirtualKeys.FindAsync(2);

@@ -15,9 +15,9 @@ namespace ConduitLLM.Tests.Services
 {
     public class NotificationServiceTests
     {
-        private DbContextOptions<VirtualKeyDbContext> GetDbOptions()
+        private DbContextOptions<ConfigurationDbContext> GetDbOptions()
         {
-            return new DbContextOptionsBuilder<VirtualKeyDbContext>()
+            return new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
         }
@@ -29,7 +29,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             
             // Setup test data
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -46,14 +46,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notificationService = new Configuration.Services.NotificationService(context);
                 await notificationService.CheckBudgetLimitsAsync();
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notification = await context.Notifications.FirstOrDefaultAsync();
                 
@@ -75,7 +75,7 @@ namespace ConduitLLM.Tests.Services
             var fiveDaysLater = DateTime.UtcNow.AddDays(5);
             
             // Setup test data
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -91,14 +91,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notificationService = new Configuration.Services.NotificationService(context);
                 await notificationService.CheckKeyExpirationAsync();
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notification = await context.Notifications.FirstOrDefaultAsync();
                 
@@ -123,7 +123,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             
             // Setup test data
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.Notifications.Add(new Notification
                 {
@@ -138,14 +138,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notificationService = new Configuration.Services.NotificationService(context);
                 await notificationService.MarkAsReadAsync(1);
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var notification = await context.Notifications.FindAsync(1);
                 

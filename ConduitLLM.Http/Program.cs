@@ -82,13 +82,13 @@ if (string.IsNullOrEmpty(dbConnectionString))
 // Configure DbContext Factory based on the database provider
 if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase)) 
 {
-    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
         options.UseSqlite(dbConnectionString)); // SQLite
 }
 else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
     // PostgreSQL configuration - handled at runtime with the correct dependencies
-    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options =>
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
         options.UseNpgsql(dbConnectionString));
 }
 else
@@ -714,7 +714,7 @@ app.MapPost("/v1/images/generations", async (
 app.MapPost("/admin/refresh-configuration", async (
     [FromServices] IOptions<ConduitSettings> settingsOptions,
     [FromServices] ILogger<Program> logger,
-    [FromServices] IDbContextFactory<ConfigurationDbContext> dbContextFactory) =>
+    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory) =>
 {
     logger.LogInformation("Received configuration refresh request");
     
@@ -823,7 +823,7 @@ app.MapPost("/admin/refresh-configuration", async (
 app.MapGet("/api/providers/{providerName}/models", async (
     string providerName,
     [FromServices] ILLMClientFactory clientFactory,
-    [FromServices] IDbContextFactory<ConfigurationDbContext> dbContextFactory, // Inject DbContextFactory
+    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory, // Inject DbContextFactory
     [FromServices] ILogger<Program> logger,
     HttpRequest httpRequest) =>
 {
@@ -963,12 +963,12 @@ public class OpenAIError
 // Helper for triggering database settings load on startup
 public class DatabaseSettingsStartupFilter : IStartupFilter
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> _dbContextFactory;
     private readonly IOptions<ConduitSettings> _settingsOptions;
     private readonly ILogger<DatabaseSettingsStartupFilter> _logger;
 
     public DatabaseSettingsStartupFilter(
-        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+        IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory,
         IOptions<ConduitSettings> settingsOptions,
         ILogger<DatabaseSettingsStartupFilter> logger)
     {
@@ -1047,7 +1047,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ProviderName = m.ProviderName,
                     ProviderModelId = m.ProviderModelId
                 }).ToList();
-
+                
                 // Initialize or clear the existing mappings
                 if (settings.ModelMappings == null)
                 {

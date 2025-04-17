@@ -67,7 +67,7 @@ builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nam
 if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 {
     // Default to SQLite
-    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options => 
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options => 
         options.UseSqlite(dbConnectionString));
 }
 #if POSTGRES
@@ -75,7 +75,7 @@ if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
     // This will be set up at runtime with the proper dependencies
-    builder.Services.AddDbContextFactory<ConfigurationDbContext>(options => {
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options => {
         // This requires the Npgsql EF Core package to be referenced correctly
         options.UseNpgsql(dbConnectionString);
     });
@@ -188,7 +188,7 @@ using (var scope = app.Services.CreateScope())
 // Apply migrations automatically on startup
 using (var scope = app.Services.CreateScope())
 {
-    var dbContextFactory = scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ConfigurationDbContext>>();
+    var dbContextFactory = scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>>();
     using var dbContext = dbContextFactory.CreateDbContext();
     dbContext.Database.Migrate();
 }

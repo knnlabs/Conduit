@@ -15,7 +15,7 @@ namespace ConduitLLM.Configuration.Services;
 /// </summary>
 public class ModelCostService : IModelCostService
 {
-    private readonly IDbContextFactory<VirtualKeyDbContext> _dbContextFactory;
+    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ModelCostService> _logger;
     private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(1);
@@ -23,7 +23,7 @@ public class ModelCostService : IModelCostService
     private const string AllModelsCacheKey = CacheKeyPrefix + "All";
 
     public ModelCostService(
-        IDbContextFactory<VirtualKeyDbContext> dbContextFactory,
+        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
         IMemoryCache cache,
         ILogger<ModelCostService> logger)
     {

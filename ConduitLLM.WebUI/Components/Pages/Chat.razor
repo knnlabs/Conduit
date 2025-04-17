@@ -11,7 +11,7 @@
 @using ConduitLLM.WebUI.Components.Shared
 @inject IHttpClientFactory HttpClientFactory
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 

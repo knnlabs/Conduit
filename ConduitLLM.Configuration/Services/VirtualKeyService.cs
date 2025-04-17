@@ -13,13 +13,13 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class VirtualKeyService : IVirtualKeyService
     {
-        private readonly VirtualKeyDbContext _context;
+        private readonly ConfigurationDbContext _context;
         
         /// <summary>
         /// Initializes a new instance of the VirtualKeyService
         /// </summary>
         /// <param name="context">Database context</param>
-        public VirtualKeyService(VirtualKeyDbContext context)
+        public VirtualKeyService(ConfigurationDbContext context)
         {
             _context = context;
         }

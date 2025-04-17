@@ -14,13 +14,13 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class RequestLogService : IRequestLogService
     {
-        private readonly VirtualKeyDbContext _context;
+        private readonly ConfigurationDbContext _context;
         
         /// <summary>
         /// Initializes a new instance of the RequestLogService
         /// </summary>
         /// <param name="context">Database context</param>
-        public RequestLogService(VirtualKeyDbContext context)
+        public RequestLogService(ConfigurationDbContext context)
         {
             _context = context;
         }

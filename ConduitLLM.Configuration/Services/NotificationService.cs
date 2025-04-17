@@ -13,7 +13,7 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class NotificationService
     {
-        private readonly VirtualKeyDbContext _context;
+        private readonly ConfigurationDbContext _context;
         
         // Budget warning thresholds
         private const decimal WarningThreshold = 0.75m; // 75%
@@ -27,7 +27,7 @@ namespace ConduitLLM.Configuration.Services
         /// Initializes a new instance of the NotificationService
         /// </summary>
         /// <param name="context">Database context</param>
-        public NotificationService(VirtualKeyDbContext context)
+        public NotificationService(ConfigurationDbContext context)
         {
             _context = context;
         }

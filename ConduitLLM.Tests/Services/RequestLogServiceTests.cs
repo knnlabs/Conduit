@@ -13,9 +13,9 @@ namespace ConduitLLM.Tests.Services
 {
     public class RequestLogServiceTests
     {
-        private DbContextOptions<VirtualKeyDbContext> GetDbOptions()
+        private DbContextOptions<ConfigurationDbContext> GetDbOptions()
         {
-            return new DbContextOptionsBuilder<VirtualKeyDbContext>()
+            return new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
         }
@@ -27,7 +27,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             
             // Create a virtual key first
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -43,7 +43,7 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Test the request logging
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new RequestLogService(context);
                 var logRequest = new LogRequestDto
@@ -66,7 +66,7 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Assert
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 // Use Include to explicitly load the navigation property
                 var log = await context.RequestLogs
@@ -99,7 +99,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             
             // Setup test data
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey { Id = 1, KeyName = "Test Key", KeyHash = "vk_test123", IsEnabled = true });
                 await context.SaveChangesAsync();
@@ -115,7 +115,7 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new VirtualKeyDbContext(options))
+            using (var context = new ConfigurationDbContext(options))
             {
                 var service = new RequestLogService(context);
                 var stats = await service.GetUsageStatisticsAsync(1, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
