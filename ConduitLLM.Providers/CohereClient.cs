@@ -680,4 +680,9 @@ public class CohereClient : ILLMClient
         return Task.FromResult(knownModels);
     }
 
+    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by CohereClient."));
+
+    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by CohereClient."));
 }

@@ -555,4 +555,148 @@ public class OpenAIClient : ILLMClient
         }
     }
 
+    // Embeddings
+    public async Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
+
+        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+        if (!apiBase.EndsWith("/")) apiBase += "/";
+        var requestUri = new Uri(new Uri(apiBase), "v1/embeddings");
+
+        var openAIRequest = new
+        {
+            input = request.Input,
+            model = request.Model,
+            encoding_format = request.EncodingFormat,
+            dimensions = request.Dimensions,
+            user = request.User
+        };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = JsonContent.Create(openAIRequest)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                _logger.LogError("openai API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                throw new LLMCommunicationException($"openai API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
+            }
+            var embeddingResponse = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (embeddingResponse == null)
+            {
+                _logger.LogError("Failed to deserialize embeddings response from openai API.");
+                throw new LLMCommunicationException("Failed to deserialize embeddings response from openai API.");
+            }
+            return embeddingResponse;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error processing openai embeddings response.");
+            throw new LLMCommunicationException("Error deserializing openai embeddings response.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request error communicating with openai API for embeddings.");
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogWarning(ex, "openai API embeddings request timed out.");
+            throw new LLMCommunicationException("openai API embeddings request timed out.", ex);
+        }
+        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(ex, "openai API embeddings request was canceled.");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while creating openai embeddings.");
+            throw new LLMCommunicationException($"An unexpected error occurred while creating embeddings: {ex.Message}", ex);
+        }
+    }
+
+    // Image Generation
+    public async Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
+
+        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+        if (!apiBase.EndsWith("/")) apiBase += "/";
+        var requestUri = new Uri(new Uri(apiBase), "v1/images/generations");
+
+        var openAIRequest = new
+        {
+            prompt = request.Prompt,
+            model = request.Model,
+            n = request.N,
+            quality = request.Quality,
+            response_format = request.ResponseFormat,
+            size = request.Size,
+            style = request.Style,
+            user = request.User
+        };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = JsonContent.Create(openAIRequest)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+
+        try
+        {
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                _logger.LogError("openai API image generation request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                throw new LLMCommunicationException($"openai API image generation request failed with status code {response.StatusCode}. Response: {errorContent}");
+            }
+            var imageResponse = await response.Content.ReadFromJsonAsync<ImageGenerationResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (imageResponse == null)
+            {
+                _logger.LogError("Failed to deserialize image generation response from openai API.");
+                throw new LLMCommunicationException("Failed to deserialize image generation response from openai API.");
+            }
+            return imageResponse;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error processing openai image generation response.");
+            throw new LLMCommunicationException("Error deserializing openai image generation response.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request error communicating with openai API for image generation.");
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogWarning(ex, "openai API image generation request timed out.");
+            throw new LLMCommunicationException("openai API image generation request timed out.", ex);
+        }
+        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(ex, "openai API image generation request was canceled.");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while creating openai image generation.");
+            throw new LLMCommunicationException($"An unexpected error occurred while creating image generation: {ex.Message}", ex);
+        }
+    }
 }

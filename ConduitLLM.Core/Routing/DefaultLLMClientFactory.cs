@@ -228,6 +228,12 @@ namespace ConduitLLM.Core.Routing
             });
         }
 
+        public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => Task.FromException<EmbeddingResponse>(new NotSupportedException($"Embeddings are not supported for provider '{_providerName}'"));
+
+        public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => Task.FromException<ImageGenerationResponse>(new NotSupportedException($"Image generation is not supported for provider '{_providerName}'"));
+
         public IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
         {
             return StreamChatCompletionInternalAsync(request, cancellationToken);

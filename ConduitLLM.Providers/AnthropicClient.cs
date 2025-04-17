@@ -473,6 +473,12 @@ public class AnthropicClient : ILLMClient
         return Task.FromResult(knownModels);
     }
 
+    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by AnthropicClient."));
+
+    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by AnthropicClient."));
+
     private AnthropicMessageRequest MapToAnthropicRequest(ChatCompletionRequest coreRequest)
     {
         string? systemPrompt = null;

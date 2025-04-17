@@ -254,6 +254,124 @@ app.MapPost("/v1/chat/completions", async (
 
 }).WithTags("LLM Proxy");
 
+app.MapPost("/v1/embeddings", async (
+    [FromBody] EmbeddingRequest request,
+    [FromServices] Conduit conduit,
+    [FromServices] ILogger<Program> logger,
+    [FromServices] IVirtualKeyService virtualKeyService,
+    HttpRequest httpRequest) =>
+{
+    logger.LogInformation("Received /v1/embeddings request for model: {Model}", request.Model);
+    string? apiKey = null;
+    string? originalApiKey = null;
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader))
+    {
+        var bearer = authHeader.ToString();
+        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            originalApiKey = bearer.Substring("Bearer ".Length).Trim();
+        else
+            originalApiKey = bearer.Trim();
+    }
+    else if (httpRequest.Headers.TryGetValue("api-key", out var apiKeyHeader))
+    {
+        originalApiKey = apiKeyHeader.ToString().Trim();
+    }
+    bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
+    int? virtualKeyId = null;
+    if (useVirtualKey)
+    {
+        logger.LogInformation("Virtual Key detected. Validating...");
+        var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+        if (virtualKey == null)
+        {
+            logger.LogWarning("Invalid Virtual Key provided for /v1/embeddings");
+            return Results.Json(new { error = new { message = "Invalid API Key.", type = "invalid_request_error", code = "invalid_api_key" } }, statusCode: 401);
+        }
+        virtualKeyId = virtualKey.Id;
+        apiKey = null;
+    }
+    else
+    {
+        apiKey = originalApiKey;
+    }
+    try
+    {
+        var response = await conduit.CreateEmbeddingAsync(request, apiKey, httpRequest.HttpContext.RequestAborted);
+        // Optionally update spend for virtual key
+        if (virtualKeyId.HasValue)
+        {
+            decimal cost = 0.001m; // Placeholder cost for embeddings
+            logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after embeddings", virtualKeyId.Value, cost);
+            await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+        }
+        return Results.Json(response, options: jsonSerializerOptions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error processing embeddings request");
+        return MapExceptionToHttpResult(ex, logger);
+    }
+}).WithTags("LLM Proxy");
+
+app.MapPost("/v1/images/generations", async (
+    [FromBody] ImageGenerationRequest request,
+    [FromServices] Conduit conduit,
+    [FromServices] ILogger<Program> logger,
+    [FromServices] IVirtualKeyService virtualKeyService,
+    HttpRequest httpRequest) =>
+{
+    logger.LogInformation("Received /v1/images/generations request for model: {Model}", request.Model);
+    string? apiKey = null;
+    string? originalApiKey = null;
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader))
+    {
+        var bearer = authHeader.ToString();
+        if (bearer.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            originalApiKey = bearer.Substring("Bearer ".Length).Trim();
+        else
+            originalApiKey = bearer.Trim();
+    }
+    else if (httpRequest.Headers.TryGetValue("api-key", out var apiKeyHeader))
+    {
+        originalApiKey = apiKeyHeader.ToString().Trim();
+    }
+    bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
+    int? virtualKeyId = null;
+    if (useVirtualKey)
+    {
+        logger.LogInformation("Virtual Key detected. Validating...");
+        var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+        if (virtualKey == null)
+        {
+            logger.LogWarning("Invalid Virtual Key provided for /v1/images/generations");
+            return Results.Json(new { error = new { message = "Invalid API Key.", type = "invalid_request_error", code = "invalid_api_key" } }, statusCode: 401);
+        }
+        virtualKeyId = virtualKey.Id;
+        apiKey = null;
+    }
+    else
+    {
+        apiKey = originalApiKey;
+    }
+    try
+    {
+        var response = await conduit.CreateImageAsync(request, apiKey, httpRequest.HttpContext.RequestAborted);
+        // Optionally update spend for virtual key
+        if (virtualKeyId.HasValue)
+        {
+            decimal cost = 0.02m; // Placeholder cost for image generation
+            logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after image generation", virtualKeyId.Value, cost);
+            await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+        }
+        return Results.Json(response, options: jsonSerializerOptions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error processing image generation request");
+        return MapExceptionToHttpResult(ex, logger);
+    }
+}).WithTags("LLM Proxy");
+
 // Add a configuration refresh endpoint
 app.MapPost("/admin/refresh-configuration", async (
     [FromServices] IOptions<ConduitSettings> settingsOptions,

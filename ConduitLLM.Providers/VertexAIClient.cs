@@ -199,6 +199,12 @@ public class VertexAIClient : ILLMClient
         }
     }
 
+    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by VertexAIClient."));
+
+    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by VertexAIClient."));
+
     /// <inheritdoc />
     public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
     {

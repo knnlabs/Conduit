@@ -164,6 +164,14 @@ namespace ConduitLLM.Core.Caching
             }
         }
 
+        /// <inheritdoc />
+        public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => _innerClient.CreateEmbeddingAsync(request, apiKey, cancellationToken);
+
+        /// <inheritdoc />
+        public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => _innerClient.CreateImageAsync(request, apiKey, cancellationToken);
+
         /// <summary>
         /// Generates a cache key for the request
         /// </summary>

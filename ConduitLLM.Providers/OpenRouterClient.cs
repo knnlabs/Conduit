@@ -193,6 +193,12 @@ namespace ConduitLLM.Providers
             finally { response?.Dispose(); }
         }
 
+        public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by OpenRouterClient."));
+
+        public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+            => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by OpenRouterClient."));
+
         // --- Helper Methods ---
 
         private OpenAIChatCompletionRequest MapToOpenRouterRequest(ChatCompletionRequest coreRequest, string providerModelId) => new()

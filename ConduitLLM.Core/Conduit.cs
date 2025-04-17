@@ -133,6 +133,36 @@ public class Conduit // Consider making this non-static and using dependency inj
         }
     }
 
+    // Embeddings
+    public async Task<EmbeddingResponse> CreateEmbeddingAsync(
+        EmbeddingRequest request,
+        string? apiKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Model))
+            throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
+
+        // No router for embeddings (OpenAI spec does not support routing for embeddings)
+        ILLMClient client = _clientFactory.GetClient(request.Model);
+        return await client.CreateEmbeddingAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Image Generation
+    public async Task<ImageGenerationResponse> CreateImageAsync(
+        ImageGenerationRequest request,
+        string? apiKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Model))
+            throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
+
+        // No router for image generation (OpenAI spec does not support routing for images)
+        ILLMClient client = _clientFactory.GetClient(request.Model);
+        return await client.CreateImageAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Gets the router instance if one is configured
     /// </summary>
@@ -206,10 +236,5 @@ public class Conduit // Consider making this non-static and using dependency inj
             .Contains(strategy.ToLowerInvariant());
     }
 
-    // Add other high-level methods as needed (e.g., GetEmbeddingsAsync).
-    // public Task<EmbeddingsResponse> GetEmbeddingsAsync(EmbeddingsRequest request, CancellationToken cancellationToken = default)
-    // {
-    //     // Similar logic: get client, call client method
-    //     throw new NotImplementedException();
-    // }
+    // Add other high-level methods as needed.
 }

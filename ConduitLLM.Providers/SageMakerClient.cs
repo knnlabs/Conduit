@@ -304,6 +304,14 @@ public class SageMakerClient : ILLMClient
         
         return new List<string> { _endpointName };
     }
+
+    /// <inheritdoc />
+    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by SageMakerClient."));
+
+    /// <inheritdoc />
+    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by SageMakerClient."));
     
     #region Helper Methods
     

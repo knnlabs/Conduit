@@ -288,6 +288,12 @@ public class HuggingFaceClient : ILLMClient
             "tiiuae/falcon-7b-instruct"
         };
     }
+
+    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by HuggingFaceClient."));
+
+    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by HuggingFaceClient."));
     
     #region Helper Methods
     
