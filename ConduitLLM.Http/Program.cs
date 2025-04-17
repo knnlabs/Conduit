@@ -54,6 +54,7 @@ builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 
 // Model costs tracking service
 builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 builder.Services.AddMemoryCache();
 
 // 2. Register DbContext Factory (using connection string from appsettings.json)

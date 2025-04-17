@@ -118,6 +118,9 @@ builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RequestLogService>();
 // Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
 
+// Register Cost Calculation Service
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
+
 // Required for accessing HttpContext in handlers/services
 builder.Services.AddHttpContextAccessor(); 
 
