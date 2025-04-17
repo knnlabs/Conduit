@@ -106,19 +106,19 @@ public class SageMakerClientTests
         // Assert with defensive null checking
         Assert.NotNull(response);
         Assert.NotNull(response.Choices);
-        Assert.True(response.Choices?.Count > 0, "Response choices should not be empty");
-        
-        var firstChoice = response.Choices?[0];
+        Assert.True(response.Choices != null && response.Choices.Count > 0, "Response choices should not be empty");
+        var firstChoice = response.Choices != null && response.Choices.Count > 0 ? response.Choices[0] : null;
         Assert.NotNull(firstChoice);
-        
         var message = firstChoice?.Message;
         Assert.NotNull(message);
+        if (message != null)
+        {
+            var msg = message;
+            Assert.Equal("assistant", msg.Role);
+            Assert.Equal(expectedResponse.GeneratedOutputs[0].Content, msg.Content);
+        }
         Assert.Equal(request.Model, response.Model); // Should return original alias
-        Assert.Equal("assistant", message.Role);
-        Assert.Equal(expectedResponse.GeneratedOutputs[0].Content, message.Content);
         Assert.NotNull(response.Usage);
-        var usage = response.Usage;
-        Assert.NotNull(usage);
         _handlerMock!.Protected().Verify(
             "SendAsync",
             Times.Once(),

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="AWSSDK.BedrockRuntime" Version="3.7.200" />
   </ItemGroup>
 
   <PropertyGroup>

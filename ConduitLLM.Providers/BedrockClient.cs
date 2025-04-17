@@ -17,6 +17,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon.BedrockRuntime;
+using Amazon.BedrockRuntime.Model;
+using Amazon.Runtime;
 
 namespace ConduitLLM.Providers;
 
@@ -26,7 +29,6 @@ namespace ConduitLLM.Providers;
 public class BedrockClient : ILLMClient
 {
     private readonly HttpClient _httpClient;
-    private readonly ProviderCredentials _credentials;
     private readonly string _providerModelId;
     private readonly ILogger<BedrockClient> _logger;
 
@@ -35,22 +37,12 @@ public class BedrockClient : ILLMClient
     // This is a simplified version for demonstration purposes
     
     public BedrockClient(
-        ProviderCredentials credentials,
         string providerModelId,
         ILogger<BedrockClient> logger,
         HttpClient? httpClient = null)
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-        {
-            throw new ConfigurationException("AWS Access Key ID (ApiKey) is missing for AWS Bedrock provider.");
-        }
-        
-        // ApiSecret doesn't exist in ProviderCredentials, so we'll have to use another approach
-        // For AWS credentials, we'll assume they're provided through environment variables or AWS credentials file
         
         _httpClient = httpClient ?? new HttpClient();
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -150,7 +142,7 @@ public class BedrockClient : ILLMClient
         // In a real implementation, we would use AWS SDK for .NET with AWS signature V4
         // This is a simplified version for demonstration purposes
         string modelId = GetBedrockModelId(_providerModelId);
-        string apiUrl = $"{_credentials.ApiBase}/model/{modelId}/invoke";
+        string apiUrl = $"https://api.bedrock.amazonaws.com/model/{modelId}/invoke";
         
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
         requestMessage.Content = JsonContent.Create(claudeRequest, options: new JsonSerializerOptions
@@ -227,41 +219,77 @@ public class BedrockClient : ILLMClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        
         _logger.LogInformation("Streaming chat completion with AWS Bedrock for model {Model}", _providerModelId);
-        
-        // Implementation would use AWS SDK BedrockRuntime.InvokeModelWithResponseStream
-        // Add minimal await to make this truly async
-        await Task.Delay(1, cancellationToken);
-        
-        // For now, throw NotImplementedException but after the yield to satisfy compiler
-        _logger.LogWarning("Streaming is not yet implemented for AWS Bedrock");
-        
-        // Return a single chunk with error information before throwing
-        yield return new ChatCompletionChunk
+
+        var config = new AmazonBedrockRuntimeConfig
         {
-            Id = Guid.NewGuid().ToString(),
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model,
-            Choices = new List<StreamingChoice>
+            RegionEndpoint = Amazon.RegionEndpoint.USEast1
+        };
+        using var client = new AmazonBedrockRuntimeClient(config);
+
+        var bedrockRequest = new BedrockClaudeChatRequest
+        {
+            MaxTokens = request.MaxTokens,
+            Temperature = (float?)request.Temperature,
+            TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+            Messages = request.Messages.Select(m => new BedrockClaudeMessage
             {
-                new StreamingChoice
+                Role = m.Role,
+                Content = new List<BedrockClaudeContent> { new BedrockClaudeContent { Text = m.Content } }
+            }).ToList()
+        };
+        var requestBody = JsonSerializer.Serialize(bedrockRequest);
+        var invokeRequest = new InvokeModelWithResponseStreamRequest
+        {
+            ModelId = _providerModelId,
+            Body = new MemoryStream(Encoding.UTF8.GetBytes(requestBody)),
+            ContentType = "application/json",
+            Accept = "application/json"
+        };
+
+        var response = await client.InvokeModelWithResponseStreamAsync(invokeRequest, cancellationToken);
+        foreach (var ev in response.Body)
+        {
+            if (ev is Amazon.BedrockRuntime.Model.PayloadPart payloadPart)
+            {
+                ChatCompletionChunk? chunk = null;
+                var json = Encoding.UTF8.GetString(payloadPart.Bytes.ToArray());
+                try
                 {
-                    Index = 0,
-                    Delta = new DeltaContent
+                    var chunkObj = JsonSerializer.Deserialize<BedrockStreamingResponse>(json);
+                    if (chunkObj != null && !string.IsNullOrEmpty(chunkObj.Completion))
                     {
-                        Content = "Streaming is not implemented for AWS Bedrock yet."
-                    },
-                    FinishReason = "stop"
+                        chunk = new ChatCompletionChunk
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Object = "chat.completion.chunk",
+                            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            Model = request.Model,
+                            Choices = new List<StreamingChoice>
+                            {
+                                new StreamingChoice
+                                {
+                                    Index = 0,
+                                    Delta = new DeltaContent
+                                    {
+                                        Content = chunkObj.Completion
+                                    },
+                                    FinishReason = chunkObj.StopReason
+                                }
+                            }
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse Bedrock streaming chunk: {Json}", json);
+                }
+                if (chunk != null)
+                {
+                    yield return chunk;
                 }
             }
-        };
-        
-        // In a real implementation:
-        // 1. Create appropriate request based on model
-        // 2. Use AWS SDK to invoke model with streaming
-        // 3. Yield ChatCompletionChunk objects as they arrive
+        }
     }
 
     /// <inheritdoc />
