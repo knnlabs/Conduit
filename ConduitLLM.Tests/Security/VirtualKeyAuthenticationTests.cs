@@ -1,15 +1,19 @@
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Services;
-using ConduitLLM.Configuration;
 using ConduitLLM.Http.Security;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using System;
-using System.Security.Claims;
-using System.Threading.Tasks;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Security

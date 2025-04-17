@@ -1,11 +1,3 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Providers;
-using ConduitLLM.Tests.TestHelpers.Mocks; // For Gemini DTOs
-using Microsoft.Extensions.Logging;
-using Moq;
-using Moq.Contrib.HttpClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +7,18 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Providers;
+using ConduitLLM.Tests.TestHelpers.Mocks; // For Gemini DTOs
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+using Moq.Contrib.HttpClient;
+
 using Xunit;
 
 namespace ConduitLLM.Tests;

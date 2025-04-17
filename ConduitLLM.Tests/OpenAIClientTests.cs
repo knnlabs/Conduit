@@ -1,12 +1,3 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Providers;
-using ConduitLLM.Tests.TestHelpers.Mocks; // For response/request DTOs and SseContent
-using Microsoft.Extensions.Logging;
-using Moq;
-using Moq.Contrib.HttpClient; // For mocking HttpClient
-using Moq.Protected; // Add this for Protected() extension method
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -15,6 +6,19 @@ using System.Net.Http.Json; // For CreateJsonResponse
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Providers;
+using ConduitLLM.Tests.TestHelpers.Mocks; // For response/request DTOs and SseContent
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+using Moq.Contrib.HttpClient; // For mocking HttpClient
+using Moq.Protected; // Add this for Protected() extension method
+
 using Xunit;
 
 namespace ConduitLLM.Tests;

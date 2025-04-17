@@ -1,5 +1,7 @@
-using ConduitLLM.Core.Exceptions;
 using System;
+
+using ConduitLLM.Core.Exceptions;
+
 using Xunit;
 
 namespace ConduitLLM.Tests;

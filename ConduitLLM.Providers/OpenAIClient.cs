@@ -1,22 +1,24 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models; // Added missing using
 using System;
 using System.Collections.Generic;
+using System.IO; // For StreamReader
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json; // Required for PostAsJsonAsync, ReadFromJsonAsync
+using System.Runtime.CompilerServices; // For IAsyncEnumerable
+using System.Text; // For reading error content
+using System.Text.Json; // For JsonException
 using System.Text.Json.Serialization; // For JsonPropertyName
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging; // Added for logging
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models; // Added missing using
 using ConduitLLM.Providers.InternalModels; // Use external models
-using System.Text; // For reading error content
-using System.Text.Json; // For JsonException
-using System.IO; // For StreamReader
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
+
+using Microsoft.Extensions.Logging; // Added for logging
 
 namespace ConduitLLM.Providers;
 

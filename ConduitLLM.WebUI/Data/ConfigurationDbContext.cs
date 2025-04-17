@@ -1,6 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Data.Entities;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.WebUI.Data;
 

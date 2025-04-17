@@ -1,8 +1,10 @@
+using System;
+
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace ConduitLLM.Configuration.Extensions
 {

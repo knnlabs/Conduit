@@ -1,23 +1,25 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO; // For StreamReader
 using System.Linq;
+using System.Net; // For HttpStatusCode
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices; // For IAsyncEnumerable
+using System.Text; // For reading error content
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels; // Added for OpenAI DTOs
-using System.Text; // For reading error content
-using System.IO; // For StreamReader
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
-using System.Net; // For HttpStatusCode
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {

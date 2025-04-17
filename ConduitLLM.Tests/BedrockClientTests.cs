@@ -1,11 +1,3 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Providers;
-using ConduitLLM.Providers.InternalModels;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Moq.Protected;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -14,6 +6,18 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Providers;
+using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+using Moq.Protected;
+
 using Xunit;
 
 namespace ConduitLLM.Tests;

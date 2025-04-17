@@ -1,22 +1,16 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Runtime.CompilerServices; // For IAsyncEnumerable
+using System.Text; // For reading error content
+using System.Text.Json; // For JsonException and deserializing errors
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models; // Added missing using
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels; // Use external models
-using System.Text; // For reading error content
-using System.Text.Json; // For JsonException and deserializing errors
-using System.IO; // For StreamReader
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers;
 
@@ -50,7 +44,7 @@ public class AnthropicClient : ILLMClient
 
         // Allow injection of HttpClient for testing
         _httpClient = httpClient ?? new HttpClient();
-        
+
         // Use ApiBase from credentials if provided, otherwise default
         string apiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase;
         // Ensure ApiBase ends with a slash
@@ -78,8 +72,8 @@ public class AnthropicClient : ILLMClient
         string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
         if (string.IsNullOrWhiteSpace(effectiveApiKey))
         {
-             // This should ideally not happen if constructor validation is correct, but double-check
-             throw new ConfigurationException($"API key (x-api-key) is missing for provider '{_credentials.ProviderName}' and no override was provided.");
+            // This should ideally not happen if constructor validation is correct, but double-check
+            throw new ConfigurationException($"API key (x-api-key) is missing for provider '{_credentials.ProviderName}' and no override was provided.");
         }
 
         _logger.LogInformation("Mapping Core request to Anthropic request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
@@ -99,12 +93,12 @@ public class AnthropicClient : ILLMClient
         {
             // Create request message manually for better control
             var requestUri = new Uri(_httpClient.BaseAddress!, MessagesEndpoint);
-            
+
             var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
             {
                 Content = JsonContent.Create(anthropicRequest)
             };
-            
+
             // Set x-api-key header for this specific request
             requestMessage.Headers.Add("x-api-key", effectiveApiKey);
 
@@ -114,7 +108,7 @@ public class AnthropicClient : ILLMClient
             if (response.IsSuccessStatusCode)
             {
                 var responseDto = await response.Content.ReadFromJsonAsync<AnthropicMessageResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-                
+
                 if (responseDto == null)
                 {
                     _logger.LogError("Failed to deserialize Anthropic response despite 200 OK status");
@@ -129,7 +123,7 @@ public class AnthropicClient : ILLMClient
             {
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
                 _logger.LogError("Anthropic API request failed with status {Status}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                
+
                 try
                 {
                     // Try to parse the error as JSON first
@@ -146,7 +140,7 @@ public class AnthropicClient : ILLMClient
                     // If it's not JSON, treat as plain text error
                     _logger.LogWarning("Could not parse Anthropic error response as JSON. Treating as plain text.");
                 }
-                
+
                 // Default error if JSON parsing failed or error structure unexpected
                 throw new LLMCommunicationException($"Anthropic API request failed with status code {response.StatusCode}. Response: {errorContent}");
             }
@@ -199,7 +193,7 @@ public class AnthropicClient : ILLMClient
         string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
         if (string.IsNullOrWhiteSpace(effectiveApiKey))
         {
-             throw new ConfigurationException($"API key (x-api-key) is missing for provider '{_credentials.ProviderName}' and no override was provided.");
+            throw new ConfigurationException($"API key (x-api-key) is missing for provider '{_credentials.ProviderName}' and no override was provided.");
         }
 
         _logger.LogInformation("Mapping Core request to Anthropic streaming request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
@@ -262,7 +256,7 @@ public class AnthropicClient : ILLMClient
         CancellationToken cancellationToken)
     {
         var requestUri = new Uri(_httpClient.BaseAddress!, MessagesEndpoint);
-        
+
         _logger.LogDebug("Sending streaming request to Anthropic API: {Endpoint}", requestUri);
 
         // Create request message with streaming option
@@ -270,10 +264,10 @@ public class AnthropicClient : ILLMClient
         {
             Content = JsonContent.Create(anthropicRequest)
         };
-        
+
         // Set API key header
         requestMessage.Headers.Add("x-api-key", effectiveApiKey);
-        
+
         var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
 
@@ -281,7 +275,7 @@ public class AnthropicClient : ILLMClient
         {
             string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
             _logger.LogError("Anthropic streaming request failed with status {Status}. Response: {ErrorContent}", response.StatusCode, errorContent);
-            
+
             try
             {
                 // Try to parse as JSON error first
@@ -333,8 +327,8 @@ public class AnthropicClient : ILLMClient
 
     // Inner async iterator to handle the loop and yield
     private async IAsyncEnumerable<ChatCompletionChunk> ReadAndProcessAnthropicStreamLinesAsync(
-        StreamReader reader, 
-        string currentModel, 
+        StreamReader reader,
+        string currentModel,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         string? currentMessageId = null;
@@ -365,7 +359,7 @@ public class AnthropicClient : ILLMClient
                                 if (startEvent?.Message != null)
                                 {
                                     currentMessageId = startEvent.Message.Id;
-                                    _logger.LogDebug("Stream started. Message ID: {MessageId}, Model: {Model}", 
+                                    _logger.LogDebug("Stream started. Message ID: {MessageId}, Model: {Model}",
                                         startEvent.Message.Id, startEvent.Message.Model ?? currentModel);
                                 }
                                 break;
@@ -433,8 +427,8 @@ public class AnthropicClient : ILLMClient
                     }
                     catch (JsonException jsonEx)
                     {
-                         _logger.LogError(jsonEx, "JSON error processing Anthropic event '{EventType}'. Data: {JsonData}", currentEvent, jsonData);
-                         throw new LLMCommunicationException($"Error deserializing Anthropic stream event", jsonEx);
+                        _logger.LogError(jsonEx, "JSON error processing Anthropic event '{EventType}'. Data: {JsonData}", currentEvent, jsonData);
+                        throw new LLMCommunicationException($"Error deserializing Anthropic stream event", jsonEx);
                     }
 
                     // Yield the chunk if we produced one
@@ -443,7 +437,7 @@ public class AnthropicClient : ILLMClient
                         yield return chunk;
                     }
                 }
-                
+
                 // Reset for next event
                 currentEvent = null;
             }
@@ -500,9 +494,9 @@ public class AnthropicClient : ILLMClient
             }
             else
             {
-                 _logger.LogWarning("Unsupported message role '{Role}' encountered for Anthropic provider. Skipping message.", msg.Role);
-                 // Or throw an exception if strict adherence is required:
-                 // throw new ArgumentException($"Unsupported message role '{msg.Role}' for Anthropic provider.");
+                _logger.LogWarning("Unsupported message role '{Role}' encountered for Anthropic provider. Skipping message.", msg.Role);
+                // Or throw an exception if strict adherence is required:
+                // throw new ArgumentException($"Unsupported message role '{msg.Role}' for Anthropic provider.");
             }
         }
 
@@ -510,8 +504,8 @@ public class AnthropicClient : ILLMClient
         // Conduit likely handles this, but basic validation/logging can be useful.
         if (messages.Count == 0 || !messages[0].Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))
         {
-             _logger.LogWarning("Anthropic messages should ideally start with a 'user' role. The API might reject this request.");
-             // Consider throwing new ArgumentException("Anthropic requires messages to start with a 'user' role.");
+            _logger.LogWarning("Anthropic messages should ideally start with a 'user' role. The API might reject this request.");
+            // Consider throwing new ArgumentException("Anthropic requires messages to start with a 'user' role.");
         }
         // TODO: Add validation for alternating roles if needed.
 
@@ -542,8 +536,8 @@ public class AnthropicClient : ILLMClient
         if (responseContentBlock == null || string.IsNullOrEmpty(responseContentBlock.Text))
         {
             // This case should ideally be caught earlier, but handle defensively
-             _logger.LogError("Invalid Anthropic response structure encountered during mapping: Missing text content block.");
-             throw new LLMCommunicationException("Invalid response structure received from Anthropic API (missing text content).");
+            _logger.LogError("Invalid Anthropic response structure encountered during mapping: Missing text content block.");
+            throw new LLMCommunicationException("Invalid response structure received from Anthropic API (missing text content).");
         }
 
         var choice = new Choice

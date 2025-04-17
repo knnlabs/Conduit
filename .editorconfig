@@ -1,0 +1,26 @@
+# top-most EditorConfig file
+root = true
+
+[*.cs]
+# C# files
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+charset = utf-8
+trim_trailing_whitespace = true
+
+# Organize and remove usings
+# (dotnet format will use these rules for organizing usings)
+dotnet_separate_import_directive_groups = true
+dotnet_sort_system_directives_first = true
+
+# Remove unnecessary usings (IDE/analyzers)
+dotnet_remove_unnecessary_usings = true
+
+# C# style rules
+csharp_new_line_before_open_brace = all
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+
+# Optional: treat warnings as errors for unused usings
+# dotnet_diagnostic.IDE0005.severity = error
