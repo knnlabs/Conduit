@@ -257,26 +257,25 @@ public class CohereClient : ILLMClient
             FinishReason = MapFinishReason(cohereResponse.FinishReason) ?? string.Empty // Add null check with empty string default
         };
 
-        Usage? usage = null;
+        Usage usage = new Usage
+        {
+            PromptTokens = 0,
+            CompletionTokens = 0,
+            TotalTokens = 0
+        };
+        
         if (cohereResponse.Meta?.Tokens != null) // Prefer newer 'tokens' field
         {
-            usage = new Usage
-            {
-                PromptTokens = cohereResponse.Meta.Tokens.InputTokens ?? 0,
-                CompletionTokens = cohereResponse.Meta.Tokens.OutputTokens ?? 0,
-                TotalTokens = (cohereResponse.Meta.Tokens.InputTokens ?? 0) + (cohereResponse.Meta.Tokens.OutputTokens ?? 0)
-            };
+            usage.PromptTokens = cohereResponse.Meta.Tokens.InputTokens ?? 0;
+            usage.CompletionTokens = cohereResponse.Meta.Tokens.OutputTokens ?? 0;
+            usage.TotalTokens = (cohereResponse.Meta.Tokens.InputTokens ?? 0) + (cohereResponse.Meta.Tokens.OutputTokens ?? 0);
         }
         else if (cohereResponse.Meta?.BilledUnits != null) // Fallback to older 'billed_units'
         {
-             usage = new Usage
-            {
-                PromptTokens = cohereResponse.Meta.BilledUnits.InputTokens ?? 0,
-                CompletionTokens = cohereResponse.Meta.BilledUnits.OutputTokens ?? 0,
-                TotalTokens = (cohereResponse.Meta.BilledUnits.InputTokens ?? 0) + (cohereResponse.Meta.BilledUnits.OutputTokens ?? 0)
-            };
+            usage.PromptTokens = cohereResponse.Meta.BilledUnits.InputTokens ?? 0;
+            usage.CompletionTokens = cohereResponse.Meta.BilledUnits.OutputTokens ?? 0;
+            usage.TotalTokens = (cohereResponse.Meta.BilledUnits.InputTokens ?? 0) + (cohereResponse.Meta.BilledUnits.OutputTokens ?? 0);
         }
-
 
         return new ChatCompletionResponse
         {

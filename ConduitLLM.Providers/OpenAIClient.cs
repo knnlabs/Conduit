@@ -597,6 +597,22 @@ public class OpenAIClient : ILLMClient
                 _logger.LogError("Failed to deserialize embeddings response from openai API.");
                 throw new LLMCommunicationException("Failed to deserialize embeddings response from openai API.");
             }
+            
+            // Ensure usage data is properly set for embeddings
+            // For embeddings, we typically only have prompt tokens since there's no completion
+            embeddingResponse.Usage ??= new Usage
+            {
+                PromptTokens = embeddingResponse.Usage?.PromptTokens ?? 0,
+                CompletionTokens = 0, // Embeddings don't have completion tokens
+                TotalTokens = embeddingResponse.Usage?.TotalTokens ?? embeddingResponse.Usage?.PromptTokens ?? 0
+            };
+            
+            // If we have total tokens but no prompt tokens (unusual), use total tokens as prompt tokens
+            if (embeddingResponse.Usage.PromptTokens == 0 && embeddingResponse.Usage.TotalTokens > 0)
+            {
+                embeddingResponse.Usage.PromptTokens = embeddingResponse.Usage.TotalTokens;
+            }
+            
             return embeddingResponse;
         }
         catch (JsonException ex)
@@ -671,6 +687,16 @@ public class OpenAIClient : ILLMClient
                 _logger.LogError("Failed to deserialize image generation response from openai API.");
                 throw new LLMCommunicationException("Failed to deserialize image generation response from openai API.");
             }
+            
+            // Set usage information for image generation
+            imageResponse.Usage ??= new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = imageResponse.Data?.Count ?? 0
+            };
+            
             return imageResponse;
         }
         catch (JsonException ex)

@@ -387,6 +387,10 @@ public class HuggingFaceClient : ILLMClient
     
     private ChatCompletionResponse CreateChatCompletionResponse(string model, string content)
     {
+        // Estimate token counts based on text length
+        int estimatedPromptTokens = EstimateTokenCount(content);
+        int estimatedCompletionTokens = EstimateTokenCount(content);
+        
         return new ChatCompletionResponse
         {
             Id = Guid.NewGuid().ToString(),
@@ -409,22 +413,23 @@ public class HuggingFaceClient : ILLMClient
             Usage = new Usage
             {
                 // HuggingFace doesn't provide token usage
-                // Estimate based on text length
-                PromptTokens = EstimateTokenCount(content),
-                CompletionTokens = EstimateTokenCount(content),
-                TotalTokens = EstimateTokenCount(content) * 2
+                // Provide estimated counts based on text length
+                PromptTokens = estimatedPromptTokens,
+                CompletionTokens = estimatedCompletionTokens,
+                TotalTokens = estimatedPromptTokens + estimatedCompletionTokens
             }
         };
     }
     
     private int EstimateTokenCount(string text)
     {
-        // Very rough token count estimation
+        // Rough token count estimation
         if (string.IsNullOrEmpty(text))
             return 0;
             
         // Approximately 4 characters per token for English text
-        return text.Length / 4;
+        // This is a rough estimate that works for many models but isn't exact
+        return Math.Max(1, text.Length / 4);
     }
     
     #endregion

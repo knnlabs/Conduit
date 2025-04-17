@@ -11,6 +11,9 @@ namespace ConduitLLM.Core.Models
 
         [JsonPropertyName("data")]
         public List<ImageData> Data { get; set; }
+        
+        [JsonPropertyName("usage")]
+        public Usage? Usage { get; set; }
     }
 
     public class ImageData

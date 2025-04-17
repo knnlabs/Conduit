@@ -743,6 +743,7 @@ public class BedrockClientTests
             string? apiKey = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            // First chunk
             yield return new ChatCompletionChunk
             {
                 Id = "delay-1",
@@ -759,7 +760,12 @@ public class BedrockClientTests
                     }
                 }
             };
-            await Task.Delay(100, cancellationToken);
+            
+            // Ensure we delay at least 100ms before the next chunk
+            // Use Task.Delay and explicitly wait for it to complete
+            await Task.Delay(110, cancellationToken); // Using 110ms to ensure we exceed the 100ms threshold
+            
+            // Second chunk
             yield return new ChatCompletionChunk
             {
                 Id = "delay-2",
@@ -776,7 +782,6 @@ public class BedrockClientTests
                     }
                 }
             };
-            await Task.CompletedTask;
         }
     }
 

@@ -108,7 +108,6 @@ namespace ConduitLLM.Providers
 
                 if (openAICompatibleResponse == null) throw new LLMCommunicationException("Failed to deserialize response from OpenRouter API.");
                 if (openAICompatibleResponse.Choices == null || !openAICompatibleResponse.Choices.Any() || openAICompatibleResponse.Choices[0].Message == null) throw new LLMCommunicationException("Invalid response structure (missing choices/message).");
-                if (openAICompatibleResponse.Usage == null) throw new LLMCommunicationException("Invalid response structure (missing usage).");
 
                 _logger.LogInformation("OpenRouterClient: Mapping response for model alias '{ModelAlias}'", request.Model);
                 return MapToCoreResponse(openAICompatibleResponse, request.Model);
@@ -218,7 +217,21 @@ namespace ConduitLLM.Providers
             var choice = openAIResponse.Choices?.FirstOrDefault();
             var message = choice?.Message;
             var usage = openAIResponse.Usage;
-            if (choice == null || message == null || usage == null) throw new LLMCommunicationException("Invalid response structure.");
+            if (choice == null || message == null) throw new LLMCommunicationException("Invalid response structure.");
+
+            // Create a new Usage object even if the response doesn't provide one
+            var responseUsage = new Usage
+            {
+                PromptTokens = usage?.PromptTokens ?? 0,
+                CompletionTokens = usage?.CompletionTokens ?? 0,
+                TotalTokens = usage?.TotalTokens ?? 0
+            };
+        
+            // Calculate TotalTokens if needed
+            if (responseUsage.TotalTokens == 0 && (responseUsage.PromptTokens > 0 || responseUsage.CompletionTokens > 0))
+            {
+                responseUsage.TotalTokens = responseUsage.PromptTokens + responseUsage.CompletionTokens;
+            }
 
             return new ChatCompletionResponse
             {
@@ -231,7 +244,7 @@ namespace ConduitLLM.Providers
                     Message = new Message { Role = message.Role!, Content = message.Content! },
                     FinishReason = choice.FinishReason ?? ""
                 }},
-                Usage = new Usage { PromptTokens = usage.PromptTokens, CompletionTokens = usage.CompletionTokens, TotalTokens = usage.TotalTokens }
+                Usage = responseUsage
             };
         }
 
