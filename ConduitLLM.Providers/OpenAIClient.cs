@@ -467,7 +467,7 @@ public class OpenAIClient : ILLMClient
     }
 
      /// <inheritdoc />
-    public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
+    public virtual async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
     {
         // Azure openai does not support the /v1/models endpoint directly via API key auth.
         // Listing models typically requires Azure RBAC permissions and uses Azure management libraries,
