@@ -1,6 +1,7 @@
 @page "/configuration"
 @using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Data.Entities
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.EntityFrameworkCore.Infrastructure
 @using Microsoft.JSInterop
@@ -11,11 +12,13 @@
 @using Microsoft.EntityFrameworkCore.Query
 @using Microsoft.EntityFrameworkCore.Storage
 @using System.Net.Http
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject ILogger<Configuration> Logger
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
+@inject HttpRetryConfigurationService HttpRetryService
+@inject HttpTimeoutConfigurationService HttpTimeoutService
 @rendermode InteractiveServer
 
 <h1>Configuration Management</h1>
@@ -202,7 +205,7 @@ else
     <div class="col-md-6">
         <div class="card mb-3">
             <div class="card-header">
-                <h5 class="mb-0">HTTP Client Settings</h5>
+                <h5 class="mb-0">HTTP Retry Settings</h5>
             </div>
             <div class="card-body">
                 <div class="mb-3">
@@ -240,7 +243,7 @@ else
                     </div>
                 </div>
                 <button class="btn btn-primary" @onclick="SaveHttpRetryOptions">
-                    <i class="bi bi-save me-1"></i> Save HTTP Settings
+                    <i class="bi bi-save me-1"></i> Save Retry Settings
                 </button>
                 @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
                 {
@@ -251,6 +254,46 @@ else
             </div>
         </div>
     </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">HTTP Timeout Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="timeoutSeconds" class="form-label">Timeout Duration (seconds)</label>
+                    <input type="number" class="form-control" id="timeoutSeconds" 
+                           @bind="httpTimeoutOptions.TimeoutSeconds" min="10" max="600" />
+                    <div class="form-text">
+                        Maximum time to wait for HTTP requests to complete before timing out (10-600 seconds).
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableTimeoutLogging" 
+                           @bind="httpTimeoutOptions.EnableTimeoutLogging" />
+                    <label class="form-check-label" for="enableTimeoutLogging">
+                        Enable Timeout Logging
+                    </label>
+                    <div class="form-text">
+                        Log detailed information about request timeouts.
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="SaveHttpTimeoutOptions">
+                    <i class="bi bi-save me-1"></i> Save Timeout Settings
+                </button>
+                @if (!string.IsNullOrEmpty(httpTimeoutOptionsSaveMessage))
+                {
+                    <div class="alert alert-success mt-2" role="alert">
+                        @httpTimeoutOptionsSaveMessage
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-6">
         <div class="card mb-3">
             <div class="card-header">
@@ -281,6 +324,30 @@ else
             </div>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">About HTTP Timeout Settings</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    These settings control how ConduitLLM handles timeouts when communicating with LLM provider APIs.
+                </p>
+                <ul>
+                    <li>
+                        <strong>Timeout Duration</strong>: Maximum time to wait for HTTP requests to complete before timing out.
+                    </li>
+                    <li>
+                        <strong>Enable Timeout Logging</strong>: When enabled, detailed logs will be generated for each request timeout, helping with troubleshooting.
+                    </li>
+                </ul>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    These settings apply to all provider clients and provide resilience against slow or unresponsive APIs.
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @* Guided Setup Modal Components *@
@@ -289,9 +356,9 @@ else
     IsOpen="isGuidedSetupOpen"
     OnSetupComplete="HandleSetupComplete"
     IsOpenChanged="(value) => { isGuidedSetupOpen = value; StateHasChanged(); }" />
-    @* Removed @key and ProviderName parameter *@
 
 @code {
+    // --- Providers and Mappings State ---
     private List<DbProviderCredentials>? providerCredentials;
     private List<DbModelProviderMapping>? modelMappings;
     private string? deleteErrorMessage;
@@ -299,98 +366,99 @@ else
     // --- Global Settings State ---
     private string? proxyBaseUrlInput;
     private string? proxyUrlSaveMessage;
-    private const string ProxyUrlKey = "ProxyBaseUrl";
-    private const string DefaultProxyUrl = "http://localhost:5000";
-
+    
     // --- HTTP Retry Options State ---
     private RetryOptions httpRetryOptions = new RetryOptions();
     private string? httpRetryOptionsSaveMessage;
     
+    // --- HTTP Timeout Options State ---
+    private TimeoutOptions httpTimeoutOptions = new TimeoutOptions();
+    private string? httpTimeoutOptionsSaveMessage;
+    
     // --- Guided Setup State ---
     private GuidedSetupWizard? guidedSetupWizardInstance;
     private bool isGuidedSetupOpen;
+    // currentSetupProvider is reserved for future use
+    #pragma warning disable CS0414 // Field is assigned but its value is never used
+    private string currentSetupProvider = "";
+    #pragma warning restore CS0414
     
-    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
-
+    private readonly List<string> _supportedProviders = new List<string> {
+        "OpenAI", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter"
+    };
+    
     protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
-    }
-
-    private async Task LoadDataAsync()
     {
         try
         {
-            await LoadProviderCredentialsAsync();
+            await LoadProvidersAsync();
             await LoadModelMappingsAsync();
             await LoadProxyUrlAsync();
             await LoadHttpRetryOptionsAsync();
+            await LoadHttpTimeoutOptionsAsync();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading data");
+            Logger.LogError(ex, "Error initializing Configuration page");
         }
     }
-
-    private async Task LoadProviderCredentialsAsync()
+    
+    // --- Settings Loading Methods ---
+    
+    private async Task LoadProvidersAsync()
     {
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
-        providerCredentials = await dbContext.ProviderCredentials.OrderBy(p => p.ProviderName).ToListAsync();
-    }
-
-    private async Task LoadModelMappingsAsync()
-    {
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
-        modelMappings = await dbContext.ModelMappings.OrderBy(m => m.ModelAlias).ToListAsync();
-    }
-
-    private async Task LoadProxyUrlAsync()
-    {
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
-        proxyUrlSaveMessage = null;
-        var setting = await dbContext.GlobalSettings.FindAsync(ProxyUrlKey);
-        proxyBaseUrlInput = setting?.Value ?? DefaultProxyUrl;
-    }
-
-    private async Task LoadHttpRetryOptionsAsync()
-    {
-        try 
+        try
         {
             using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            
-            // Load MaxRetries setting
-            var maxRetriesSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxRetries");
-            if (maxRetriesSetting != null && int.TryParse(maxRetriesSetting.Value, out int maxRetries))
-            {
-                httpRetryOptions.MaxRetries = maxRetries;
-            }
-            
-            // Load InitialDelaySeconds setting
-            var initialDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:InitialDelaySeconds");
-            if (initialDelaySetting != null && int.TryParse(initialDelaySetting.Value, out int initialDelay))
-            {
-                httpRetryOptions.InitialDelaySeconds = initialDelay;
-            }
-            
-            // Load MaxDelaySeconds setting
-            var maxDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxDelaySeconds");
-            if (maxDelaySetting != null && int.TryParse(maxDelaySetting.Value, out int maxDelay))
-            {
-                httpRetryOptions.MaxDelaySeconds = maxDelay;
-            }
-            
-            // Load EnableRetryLogging setting
-            var enableLoggingSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:EnableRetryLogging");
-            if (enableLoggingSetting != null && bool.TryParse(enableLoggingSetting.Value, out bool enableLogging))
-            {
-                httpRetryOptions.EnableRetryLogging = enableLogging;
-            }
+            providerCredentials = await dbContext.ProviderCredentials.ToListAsync();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading HTTP retry options");
-            // Don't display error to user, just use defaults
+            Logger.LogError(ex, "Error loading provider credentials");
+            providerCredentials = new List<DbProviderCredentials>();
         }
+    }
+    
+    private async Task LoadModelMappingsAsync()
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            modelMappings = await dbContext.ModelMappings.ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading model mappings");
+            modelMappings = new List<DbModelProviderMapping>();
+        }
+    }
+    
+    private async Task LoadProxyUrlAsync()
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
+            proxyBaseUrlInput = proxyUrlSetting?.Value;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading proxy URL setting");
+        }
+    }
+    
+    private async Task LoadHttpRetryOptionsAsync()
+    {
+        // Defensive: if GetRetryConfiguration() is not async, remove async modifier
+        httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new RetryOptions();
+        await Task.CompletedTask;
+    }
+    
+    private async Task LoadHttpTimeoutOptionsAsync()
+    {
+        // Defensive: if GetTimeoutConfiguration() is not async, remove async modifier
+        httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new TimeoutOptions();
+        await Task.CompletedTask;
     }
     
     private async Task SaveProxyUrl()
@@ -398,120 +466,47 @@ else
         try
         {
             using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
             
-            // Clear any previous message
-            proxyUrlSaveMessage = null;
-            var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == ProxyUrlKey);
-            if (setting == null)
+            if (proxyUrlSetting == null)
             {
-                setting = new GlobalSetting 
-                { 
-                    Key = ProxyUrlKey, 
-                    Value = proxyBaseUrlInput ?? DefaultProxyUrl 
-                };
-                dbContext.GlobalSettings.Add(setting);
+                // Create new setting
+                // Defensive: ensure proxyBaseUrlInput is not null
+                proxyUrlSetting = new GlobalSetting { Key = "ConduitSettings:ProxyBaseUrl", Value = proxyBaseUrlInput ?? string.Empty };
+                dbContext.GlobalSettings.Add(proxyUrlSetting);
             }
             else
             {
-                setting.Value = proxyBaseUrlInput ?? DefaultProxyUrl;
-                dbContext.GlobalSettings.Update(setting);
+                // Update existing setting
+                // Defensive: ensure proxyBaseUrlInput is not null
+                proxyUrlSetting.Value = proxyBaseUrlInput ?? string.Empty;
+                dbContext.GlobalSettings.Update(proxyUrlSetting);
             }
+            
             await dbContext.SaveChangesAsync();
-            proxyUrlSaveMessage = "Proxy URL saved successfully.";
+            
+            // Notify of configuration change
+            await ConfigChangeNotifier.NotifyConfigurationChangedAsync("ConduitSettings:ProxyBaseUrl");
+            
+            proxyUrlSaveMessage = "Base URL saved successfully.";
+            await Task.Delay(3000); // Show message for 3 seconds
+            proxyUrlSaveMessage = null;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving proxy URL");
-            proxyUrlSaveMessage = $"Error saving proxy URL: {ex.Message}";
+            proxyUrlSaveMessage = $"Error saving URL: {ex.Message}";
         }
     }
-
+    
     private async Task SaveHttpRetryOptions()
     {
         try
         {
             httpRetryOptionsSaveMessage = null;
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            
-            // Save MaxRetries setting
-            var maxRetriesSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxRetries");
-            if (maxRetriesSetting == null)
-            {
-                maxRetriesSetting = new GlobalSetting 
-                { 
-                    Key = "HttpRetry:MaxRetries", 
-                    Value = httpRetryOptions.MaxRetries.ToString() 
-                };
-                dbContext.GlobalSettings.Add(maxRetriesSetting);
-            }
-            else
-            {
-                maxRetriesSetting.Value = httpRetryOptions.MaxRetries.ToString();
-                dbContext.GlobalSettings.Update(maxRetriesSetting);
-            }
-            
-            // Save InitialDelaySeconds setting
-            var initialDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:InitialDelaySeconds");
-            if (initialDelaySetting == null)
-            {
-                initialDelaySetting = new GlobalSetting 
-                { 
-                    Key = "HttpRetry:InitialDelaySeconds", 
-                    Value = httpRetryOptions.InitialDelaySeconds.ToString() 
-                };
-                dbContext.GlobalSettings.Add(initialDelaySetting);
-            }
-            else
-            {
-                initialDelaySetting.Value = httpRetryOptions.InitialDelaySeconds.ToString();
-                dbContext.GlobalSettings.Update(initialDelaySetting);
-            }
-            
-            // Save MaxDelaySeconds setting
-            var maxDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxDelaySeconds");
-            if (maxDelaySetting == null)
-            {
-                maxDelaySetting = new GlobalSetting 
-                { 
-                    Key = "HttpRetry:MaxDelaySeconds", 
-                    Value = httpRetryOptions.MaxDelaySeconds.ToString() 
-                };
-                dbContext.GlobalSettings.Add(maxDelaySetting);
-            }
-            else
-            {
-                maxDelaySetting.Value = httpRetryOptions.MaxDelaySeconds.ToString();
-                dbContext.GlobalSettings.Update(maxDelaySetting);
-            }
-            
-            // Save EnableRetryLogging setting
-            var enableLoggingSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:EnableRetryLogging");
-            if (enableLoggingSetting == null)
-            {
-                enableLoggingSetting = new GlobalSetting 
-                { 
-                    Key = "HttpRetry:EnableRetryLogging", 
-                    Value = httpRetryOptions.EnableRetryLogging.ToString() 
-                };
-                dbContext.GlobalSettings.Add(enableLoggingSetting);
-            }
-            else
-            {
-                enableLoggingSetting.Value = httpRetryOptions.EnableRetryLogging.ToString();
-                dbContext.GlobalSettings.Update(enableLoggingSetting);
-            }
-            
-            await dbContext.SaveChangesAsync();
+            await HttpRetryService.UpdateRetryConfigurationAsync(httpRetryOptions);
             httpRetryOptionsSaveMessage = "HTTP retry settings saved successfully.";
-            
-            // Get the proxy base URL from global settings
-            var proxyUrlSetting = await dbContext.GlobalSettings
-                .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
-            
-            string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
-            
-            // Trigger reload of settings across the application
-            await ConfigChangeNotifier.NotifyConfigurationChangedAsync(proxyUrl);
         }
         catch (Exception ex)
         {
@@ -520,8 +515,23 @@ else
         }
     }
 
-    // --- Provider/Mapping Methods ---
+    private async Task SaveHttpTimeoutOptions()
+    {
+        try
+        {
+            httpTimeoutOptionsSaveMessage = null;
+            await HttpTimeoutService.UpdateTimeoutConfigurationAsync(httpTimeoutOptions);
+            httpTimeoutOptionsSaveMessage = "HTTP timeout settings saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving HTTP timeout options");
+            httpTimeoutOptionsSaveMessage = $"Error saving settings: {ex.Message}";
+        }
+    }
 
+    // --- Provider/Mapping Methods ---
+    
     private void AddProvider()
     {
         NavigationManager.NavigateTo("/configuration/provider/edit");
@@ -557,7 +567,8 @@ else
 
             dbContext.ProviderCredentials.Remove(providerToDelete);
             await dbContext.SaveChangesAsync();
-            await LoadDataAsync();
+            await LoadProvidersAsync();
+            await LoadModelMappingsAsync();
         }
         catch (Exception ex)
         {
@@ -593,7 +604,8 @@ else
 
             dbContext.ModelMappings.Remove(mappingToDelete);
             await dbContext.SaveChangesAsync();
-            await LoadDataAsync();
+            await LoadProvidersAsync();
+            await LoadModelMappingsAsync();
         }
         catch (Exception ex)
         {
@@ -625,7 +637,8 @@ else
             await dbContext.ProviderCredentials.AddAsync(newProvider);
             await dbContext.SaveChangesAsync();
 
-            await LoadDataAsync();
+            await LoadProvidersAsync();
+            await LoadModelMappingsAsync();
         }
         catch (Exception ex)
         {
@@ -642,16 +655,13 @@ else
             "OpenAI" => "Connect to GPT-3.5, GPT-4, and other OpenAI models",
             "Anthropic" => "Connect to Claude models for advanced reasoning",
             "Cohere" => "Connect to Command models for enterprise applications",
-            "Gemini" => "Connect to Google's Gemini models for multimodal capabilities",
-            "Fireworks" => "Connect to Fireworks.ai for fast and cost-effective inference",
-            "OpenRouter" => "Connect to OpenRouter for access to multiple models through one API",
-            "Cerebras" => "Connect to Cerebras Cloud for Slimpajama models",
-            "AWS Bedrock" => "Connect to Amazon Bedrock for foundation models",
-            "SageMaker" => "Connect to AWS SageMaker for hosted LLMs",
-            "VertexAI" => "Connect to Google Vertex AI for enterprise-grade models",
-            "HuggingFace" => "Connect to HuggingFace Hub for open-source models",
-            "Groq" => "Connect to Groq for ultra-fast inference on Llama/Mixtral",
+            "Google" => "Connect to Google's Gemini models for multimodal capabilities",
             "Mistral" => "Connect to Mistral AI for Mixtral and Le Chat models",
+            "Groq" => "Connect to Groq for ultra-fast inference on Llama/Mixtral",
+            "HuggingFace" => "Connect to HuggingFace Hub for open-source models",
+            "AWS" => "Connect to Amazon Bedrock for foundation models",
+            "Azure" => "Connect to Azure Cognitive Services for enterprise-grade models",
+            "OpenRouter" => "Connect to OpenRouter for access to multiple models through one API",
             _ => "Connect to AI models through this provider"
         };
     }

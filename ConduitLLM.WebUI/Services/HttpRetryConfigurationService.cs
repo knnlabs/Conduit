@@ -29,6 +29,55 @@ public class HttpRetryConfigurationService
     }
 
     /// <summary>
+    /// Gets the current retry configuration
+    /// </summary>
+    /// <returns>The current retry configuration</returns>
+    public RetryOptions GetRetryConfiguration()
+    {
+        return _options.CurrentValue;
+    }
+
+    /// <summary>
+    /// Updates the retry configuration settings
+    /// </summary>
+    /// <param name="retryOptions">The new retry options to apply</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    public async Task UpdateRetryConfigurationAsync(RetryOptions retryOptions)
+    {
+        if (retryOptions == null)
+        {
+            throw new ArgumentNullException(nameof(retryOptions));
+        }
+
+        try
+        {
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            
+            // Save MaxRetries setting
+            await UpdateSettingAsync(dbContext, "HttpRetry:MaxRetries", retryOptions.MaxRetries.ToString());
+            
+            // Save InitialDelaySeconds setting
+            await UpdateSettingAsync(dbContext, "HttpRetry:InitialDelaySeconds", retryOptions.InitialDelaySeconds.ToString());
+            
+            // Save MaxDelaySeconds setting
+            await UpdateSettingAsync(dbContext, "HttpRetry:MaxDelaySeconds", retryOptions.MaxDelaySeconds.ToString());
+            
+            // Save EnableRetryLogging setting
+            await UpdateSettingAsync(dbContext, "HttpRetry:EnableRetryLogging", retryOptions.EnableRetryLogging.ToString());
+
+            await dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("HTTP retry settings updated: MaxRetries={MaxRetries}, InitialDelay={InitialDelay}s, MaxDelay={MaxDelay}s, EnableLogging={EnableLogging}",
+                retryOptions.MaxRetries, retryOptions.InitialDelaySeconds, retryOptions.MaxDelaySeconds, retryOptions.EnableRetryLogging);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating HTTP retry settings in database");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Loads HTTP retry settings from the database and updates the application configuration.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
@@ -82,6 +131,24 @@ public class HttpRetryConfigurationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading HTTP retry settings from database");
+        }
+    }
+
+    private async Task UpdateSettingAsync(ConfigurationDbContext dbContext, string key, string value)
+    {
+        var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+        
+        if (setting == null)
+        {
+            // Create new setting if it doesn't exist
+            setting = new GlobalSetting { Key = key, Value = value };
+            dbContext.GlobalSettings.Add(setting);
+        }
+        else
+        {
+            // Update existing setting
+            setting.Value = value;
+            dbContext.GlobalSettings.Update(setting);
         }
     }
 }

@@ -1,6 +1,7 @@
 using Polly;
 using Polly.Extensions.Http;
 using Polly.Contrib.WaitAndRetry;
+using Polly.Timeout;
 using System;
 using System.Net.Http;
 using Microsoft.Extensions.Logging;
@@ -53,5 +54,36 @@ public static class ResiliencePolicies
                         outcome.Exception?.Message);
                 })
             .WithPolicyKey("LLMProviderRetryPolicy"); // Assign a policy key for identification
+    }
+
+    /// <summary>
+    /// Creates a timeout policy for HTTP requests to LLM provider APIs.
+    /// Uses a pessimistic timeout strategy to ensure strict timeout enforcement.
+    /// </summary>
+    /// <param name="timeout">Timeout duration (default: 100 seconds)</param>
+    /// <param name="logger">Optional logger for logging timeout events</param>
+    /// <returns>A configured Polly timeout policy for HTTP requests</returns>
+    public static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy(
+        TimeSpan? timeout = null,
+        ILogger? logger = null)
+    {
+        // Default timeout if not provided
+        timeout ??= TimeSpan.FromSeconds(100);
+
+        // Pessimistic strategy ensures the timeout is enforced strictly
+        return Policy.TimeoutAsync<HttpResponseMessage>(
+            timeout.Value, 
+            TimeoutStrategy.Pessimistic, 
+            onTimeoutAsync: (context, timespan, task, exception) =>
+            {
+                // Log the timeout event if a logger is provided
+                logger?.LogWarning(
+                    "HTTP request timed out after {TimeoutMs}ms. Request: {Operation}",
+                    timespan.TotalMilliseconds,
+                    context.OperationKey);
+                
+                return Task.CompletedTask;
+            })
+            .WithPolicyKey("LLMProviderTimeoutPolicy"); // Name for identification
     }
 }

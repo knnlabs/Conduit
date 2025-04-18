@@ -108,6 +108,13 @@ builder.Services.AddOptions<RetryOptions>()
 builder.Services.AddScoped<HttpRetryConfigurationService>();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 
+// Register HTTP timeout configuration services
+builder.Services.AddOptions<TimeoutOptions>()
+    .Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName))
+    .ValidateDataAnnotations();
+builder.Services.AddScoped<HttpTimeoutConfigurationService>();
+builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
+
 // Register HttpClient with retry policies for LLM providers
 builder.Services.AddLLMProviderHttpClients();
 
