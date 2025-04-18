@@ -8,6 +8,7 @@ using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
+using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 using ConduitLLM.WebUI.Data; // Added for DbContext and models
 using ConduitLLM.WebUI.Interfaces; // Added for IVirtualKeyService
 using ConduitLLM.WebUI.Services;  // Added for VirtualKeyService
@@ -113,6 +114,9 @@ builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAuthorization();
+
+// Register HttpClient with retry policies for LLM providers
+builder.Services.AddLLMProviderHttpClients();
 
 var app = builder.Build();
 

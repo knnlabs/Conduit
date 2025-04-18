@@ -13,8 +13,10 @@ using ConduitLLM.WebUI.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.Providers.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.StaticWebAssets;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +98,9 @@ builder.Services.Configure<RouterOptions>(
 
 // Register Router services using the extension method
 builder.Services.AddRouterServices(builder.Configuration);
+
+// Register HttpClient with retry policies for LLM providers
+builder.Services.AddLLMProviderHttpClients();
 
 // Register Services
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderStatusService>();
