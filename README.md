@@ -34,40 +34,27 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
 - **Extensible Architecture**: Easily add support for new LLM providers
 
-## Architecture
+## 🏗️ Architecture
 
 ConduitLLM follows a modular architecture with distinct components handling specific responsibilities:
 
 ```mermaid
-graph LR
-    subgraph "User/Client Interaction"
-        Client[WebUI / Client App]
-    end
-
-    subgraph "ConduitLLM System"
-        Http[ConduitLLM.Http<br>(API Gateway)]
-        Core[ConduitLLM.Core<br>(Orchestration)]
-        Providers[ConduitLLM.Providers<br>(Provider Logic)]
-        Config[ConduitLLM.Configuration<br>(Settings)]
-
-        Client --> Http
-        Http --> Core
-        Core --> Providers
-
-        Http --> Config
-        Core --> Config
-        Providers --> Config
-    end
-
-    subgraph "External Services"
-        LLM[LLM Backends<br>(OpenAI, Anthropic, etc.)]
-    end
-
+flowchart LR
+    Client["WebUI / Client App"]
+    Http["ConduitLLM.Http(API Gateway)"]
+    Core["ConduitLLM.Core(Orchestration)"]
+    Providers["ConduitLLM.Providers(Provider Logic)"]
+    Config["ConduitLLM.Configuration(Settings)"]
+    LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
+    
+    Client --> Http
+    Http --> Core
+    Core --> Providers
     Providers --> LLM
-
-    style Client fill:#f9f,stroke:#333,stroke-width:2px
-    style LLM fill:#ccf,stroke:#333,stroke-width:2px
-    style Config fill:#ff9,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
+    
+    Http --> Config
+    Core --> Config
+    Providers --> Config
 ```
 
 ### Components
