@@ -7,6 +7,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Extensions;
+using ConduitLLM.Core.Exceptions;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -205,15 +206,18 @@ public class ResiliencePolicyTests
             }
         };
 
-        // The request should time out and throw a TimeoutRejectedException or similar
-        var exception = await Assert.ThrowsAsync<TaskCanceledException>(async () => 
+        // The request should time out and throw an LLMCommunicationException wrapping a TaskCanceledException
+        var exception = await Assert.ThrowsAsync<LLMCommunicationException>(async () => 
             await openAIClient.CreateChatCompletionAsync(request)
         );
 
-        // Verify it was a timeout that caused the TaskCanceledException
-        Assert.Contains(exception.InnerException?.GetType().Name ?? string.Empty, 
-            new[] { "TimeoutRejectedException", "TimeoutException" }, 
-            StringComparer.OrdinalIgnoreCase);
+        // Verify it was a timeout that caused the LLMCommunicationException
+        Assert.NotNull(exception.InnerException);
+        Assert.True(
+            exception.InnerException is TaskCanceledException || exception.InnerException is TimeoutRejectedException,
+            $"Expected inner exception to be TaskCanceledException or TimeoutRejectedException, but was {exception.InnerException?.GetType().Name}"
+        );
+        Assert.Contains("timeout", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -312,14 +316,17 @@ public class ResiliencePolicyTests
         };
 
         // First call should fail with 503, retry, then time out on the second attempt
-        var exception = await Assert.ThrowsAsync<TaskCanceledException>(async () => 
+        var exception = await Assert.ThrowsAsync<LLMCommunicationException>(async () => 
             await openAIClient.CreateChatCompletionAsync(request)
         );
 
         // Verify it was a timeout after a retry
         Assert.Equal(2, callCount); // Verify we tried twice (1 failure + 1 timeout)
-        Assert.Contains(exception.InnerException?.GetType().Name ?? string.Empty, 
-            new[] { "TimeoutRejectedException", "TimeoutException" }, 
-            StringComparer.OrdinalIgnoreCase);
+        Assert.NotNull(exception.InnerException);
+        Assert.True(
+            exception.InnerException is TaskCanceledException || exception.InnerException is TimeoutRejectedException,
+            $"Expected inner exception to be TaskCanceledException or TimeoutRejectedException, but was {exception.InnerException?.GetType().Name}"
+        );
+        Assert.Contains("timeout", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
