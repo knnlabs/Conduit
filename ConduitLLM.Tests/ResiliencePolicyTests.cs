@@ -114,6 +114,6 @@ public class ResiliencePolicyTests
         Assert.Equal(3, callCount); // Verify we tried 3 times (2 failures + 1 success)
         Assert.NotNull(result);
         Assert.Equal("test", result.Id);
-        Assert.Equal(30, result.Usage.TotalTokens); // Verify usage data was properly parsed
+        Assert.Equal(30, result?.Usage?.TotalTokens); // Verify usage data was properly parsed
     }
 }

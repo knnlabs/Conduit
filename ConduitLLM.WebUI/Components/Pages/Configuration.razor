@@ -2,11 +2,20 @@
 @using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.Infrastructure
 @using Microsoft.JSInterop
+@using ConduitLLM.Providers.Configuration
+@using Microsoft.Extensions.DependencyInjection
+@using System.Linq
+@using System.Linq.Expressions
+@using Microsoft.EntityFrameworkCore.Query
+@using Microsoft.EntityFrameworkCore.Storage
+@using System.Net.Http
 @inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject ILogger<Configuration> Logger
+@inject ConfigurationChangeNotifier ConfigChangeNotifier
 @rendermode InteractiveServer
 
 <h1>Configuration Management</h1>
@@ -172,27 +181,109 @@ else
     <div class="col-md-6">
         <div class="mb-3">
             <label for="proxyUrl" class="form-label">Conduit Proxy Base URL:</label>
-            <InputText id="proxyUrl" @bind-Value="proxyBaseUrlInput" class="form-control" />
-            <small class="form-text text-muted">The base URL for the Conduit proxy server. This is used by the WebUI to route requests.</small>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="proxyUrl" @bind="proxyBaseUrlInput" placeholder="e.g., https://api.yourcompany.com/conduit" />
+                <button class="btn btn-outline-primary" @onclick="SaveProxyUrl">Save</button>
+            </div>
+            @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
+            {
+                <div class="alert alert-success mt-2" role="alert">
+                    @proxyUrlSaveMessage
+                </div>
+            }
+            <div class="form-text text-muted">
+                URL where your Conduit API is publicly accessible. Used for SDK clients.
+            </div>
         </div>
-        <button class="btn btn-primary" @onclick="SaveProxyUrl" disabled="@isSavingProxyUrl">
-            @if (isSavingProxyUrl)
-            {
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                <span> Saving...</span>
-            }
-            else
-            {
-                <span>Save Proxy URL</span>
-            }
-        </button>
-         @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
-        {
-            <span class="ms-3 @(proxyUrlSaveSuccess ? "text-success" : "text-danger")">@proxyUrlSaveMessage</span>
-        }
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">HTTP Client Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="maxRetries" class="form-label">Maximum Retry Attempts</label>
+                    <input type="number" class="form-control" id="maxRetries" 
+                           @bind="httpRetryOptions.MaxRetries" min="0" max="10" />
+                    <div class="form-text">
+                        Maximum number of times to retry HTTP requests on transient failures (0-10).
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="initialDelay" class="form-label">Initial Delay (seconds)</label>
+                    <input type="number" class="form-control" id="initialDelay" 
+                           @bind="httpRetryOptions.InitialDelaySeconds" min="0" max="10" step="0.5" />
+                    <div class="form-text">
+                        Initial delay before first retry attempt.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="maxDelay" class="form-label">Maximum Delay (seconds)</label>
+                    <input type="number" class="form-control" id="maxDelay" 
+                           @bind="httpRetryOptions.MaxDelaySeconds" min="1" max="60" />
+                    <div class="form-text">
+                        Maximum delay cap for any retry attempt.
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="enableRetryLogging" 
+                           @bind="httpRetryOptions.EnableRetryLogging" />
+                    <label class="form-check-label" for="enableRetryLogging">
+                        Enable Retry Logging
+                    </label>
+                    <div class="form-text">
+                        Log detailed information about retry attempts.
+                    </div>
+                </div>
+                <button class="btn btn-primary" @onclick="SaveHttpRetryOptions">
+                    <i class="bi bi-save me-1"></i> Save HTTP Settings
+                </button>
+                @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
+                {
+                    <div class="alert alert-success mt-2" role="alert">
+                        @httpRetryOptionsSaveMessage
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">About HTTP Client Settings</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    These settings control how ConduitLLM handles retry logic when communicating with LLM provider APIs.
+                </p>
+                <ul>
+                    <li>
+                        <strong>Maximum Retry Attempts</strong>: Number of times the system will retry failed API calls that encounter transient errors (such as network issues or rate limiting).
+                    </li>
+                    <li>
+                        <strong>Initial Delay</strong>: How long to wait before the first retry attempt. Subsequent retries use exponential backoff with jitter.
+                    </li>
+                    <li>
+                        <strong>Maximum Delay</strong>: The maximum time to wait between retry attempts, regardless of the backoff calculation.
+                    </li>
+                    <li>
+                        <strong>Enable Retry Logging</strong>: When enabled, detailed logs will be generated for each retry attempt, helping with troubleshooting.
+                    </li>
+                </ul>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    These settings apply to all provider clients and provide resilience against temporary API outages and rate limiting.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Guided Setup Modal Components *@
 <GuidedSetupWizard
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
@@ -206,17 +297,20 @@ else
     private string? deleteErrorMessage;
 
     // --- Global Settings State ---
-    private const string ProxyUrlKey = "ConduitProxyBaseUrl";
-    private const string DefaultProxyUrl = "http://localhost:5000";
-    private string proxyBaseUrlInput = DefaultProxyUrl;
-    private bool isSavingProxyUrl = false;
+    private string? proxyBaseUrlInput;
     private string? proxyUrlSaveMessage;
-    private bool proxyUrlSaveSuccess = false;
+    private const string ProxyUrlKey = "ProxyBaseUrl";
+    private const string DefaultProxyUrl = "http://localhost:5000";
 
+    // --- HTTP Retry Options State ---
+    private RetryOptions httpRetryOptions = new RetryOptions();
+    private string? httpRetryOptionsSaveMessage;
+    
+    // --- Guided Setup State ---
+    private GuidedSetupWizard? guidedSetupWizardInstance;
+    private bool isGuidedSetupOpen;
+    
     private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
-    private bool isGuidedSetupOpen = false;
-    // Removed selectedProviderForSetup variable
-    private GuidedSetupWizard? guidedSetupWizardInstance; // Reference to the wizard
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,6 +324,7 @@ else
             await LoadProviderCredentialsAsync();
             await LoadModelMappingsAsync();
             await LoadProxyUrlAsync();
+            await LoadHttpRetryOptionsAsync();
         }
         catch (Exception ex)
         {
@@ -257,24 +352,62 @@ else
         proxyBaseUrlInput = setting?.Value ?? DefaultProxyUrl;
     }
 
+    private async Task LoadHttpRetryOptionsAsync()
+    {
+        try 
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Load MaxRetries setting
+            var maxRetriesSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxRetries");
+            if (maxRetriesSetting != null && int.TryParse(maxRetriesSetting.Value, out int maxRetries))
+            {
+                httpRetryOptions.MaxRetries = maxRetries;
+            }
+            
+            // Load InitialDelaySeconds setting
+            var initialDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:InitialDelaySeconds");
+            if (initialDelaySetting != null && int.TryParse(initialDelaySetting.Value, out int initialDelay))
+            {
+                httpRetryOptions.InitialDelaySeconds = initialDelay;
+            }
+            
+            // Load MaxDelaySeconds setting
+            var maxDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxDelaySeconds");
+            if (maxDelaySetting != null && int.TryParse(maxDelaySetting.Value, out int maxDelay))
+            {
+                httpRetryOptions.MaxDelaySeconds = maxDelay;
+            }
+            
+            // Load EnableRetryLogging setting
+            var enableLoggingSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:EnableRetryLogging");
+            if (enableLoggingSetting != null && bool.TryParse(enableLoggingSetting.Value, out bool enableLogging))
+            {
+                httpRetryOptions.EnableRetryLogging = enableLogging;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading HTTP retry options");
+            // Don't display error to user, just use defaults
+        }
+    }
+    
     private async Task SaveProxyUrl()
     {
-        isSavingProxyUrl = true;
-        proxyUrlSaveMessage = null;
-        proxyUrlSaveSuccess = false;
-        StateHasChanged();
-
         try
         {
             using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var setting = await dbContext.GlobalSettings.FindAsync(ProxyUrlKey);
-
+            
+            // Clear any previous message
+            proxyUrlSaveMessage = null;
+            var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == ProxyUrlKey);
             if (setting == null)
             {
-                setting = new GlobalSetting
-                {
-                    Key = ProxyUrlKey,
-                    Value = proxyBaseUrlInput ?? DefaultProxyUrl
+                setting = new GlobalSetting 
+                { 
+                    Key = ProxyUrlKey, 
+                    Value = proxyBaseUrlInput ?? DefaultProxyUrl 
                 };
                 dbContext.GlobalSettings.Add(setting);
             }
@@ -283,10 +416,7 @@ else
                 setting.Value = proxyBaseUrlInput ?? DefaultProxyUrl;
                 dbContext.GlobalSettings.Update(setting);
             }
-
             await dbContext.SaveChangesAsync();
-
-            proxyUrlSaveSuccess = true;
             proxyUrlSaveMessage = "Proxy URL saved successfully.";
         }
         catch (Exception ex)
@@ -294,10 +424,99 @@ else
             Logger.LogError(ex, "Error saving proxy URL");
             proxyUrlSaveMessage = $"Error saving proxy URL: {ex.Message}";
         }
-        finally
+    }
+
+    private async Task SaveHttpRetryOptions()
+    {
+        try
         {
-            isSavingProxyUrl = false;
-            StateHasChanged();
+            httpRetryOptionsSaveMessage = null;
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Save MaxRetries setting
+            var maxRetriesSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxRetries");
+            if (maxRetriesSetting == null)
+            {
+                maxRetriesSetting = new GlobalSetting 
+                { 
+                    Key = "HttpRetry:MaxRetries", 
+                    Value = httpRetryOptions.MaxRetries.ToString() 
+                };
+                dbContext.GlobalSettings.Add(maxRetriesSetting);
+            }
+            else
+            {
+                maxRetriesSetting.Value = httpRetryOptions.MaxRetries.ToString();
+                dbContext.GlobalSettings.Update(maxRetriesSetting);
+            }
+            
+            // Save InitialDelaySeconds setting
+            var initialDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:InitialDelaySeconds");
+            if (initialDelaySetting == null)
+            {
+                initialDelaySetting = new GlobalSetting 
+                { 
+                    Key = "HttpRetry:InitialDelaySeconds", 
+                    Value = httpRetryOptions.InitialDelaySeconds.ToString() 
+                };
+                dbContext.GlobalSettings.Add(initialDelaySetting);
+            }
+            else
+            {
+                initialDelaySetting.Value = httpRetryOptions.InitialDelaySeconds.ToString();
+                dbContext.GlobalSettings.Update(initialDelaySetting);
+            }
+            
+            // Save MaxDelaySeconds setting
+            var maxDelaySetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:MaxDelaySeconds");
+            if (maxDelaySetting == null)
+            {
+                maxDelaySetting = new GlobalSetting 
+                { 
+                    Key = "HttpRetry:MaxDelaySeconds", 
+                    Value = httpRetryOptions.MaxDelaySeconds.ToString() 
+                };
+                dbContext.GlobalSettings.Add(maxDelaySetting);
+            }
+            else
+            {
+                maxDelaySetting.Value = httpRetryOptions.MaxDelaySeconds.ToString();
+                dbContext.GlobalSettings.Update(maxDelaySetting);
+            }
+            
+            // Save EnableRetryLogging setting
+            var enableLoggingSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "HttpRetry:EnableRetryLogging");
+            if (enableLoggingSetting == null)
+            {
+                enableLoggingSetting = new GlobalSetting 
+                { 
+                    Key = "HttpRetry:EnableRetryLogging", 
+                    Value = httpRetryOptions.EnableRetryLogging.ToString() 
+                };
+                dbContext.GlobalSettings.Add(enableLoggingSetting);
+            }
+            else
+            {
+                enableLoggingSetting.Value = httpRetryOptions.EnableRetryLogging.ToString();
+                dbContext.GlobalSettings.Update(enableLoggingSetting);
+            }
+            
+            await dbContext.SaveChangesAsync();
+            httpRetryOptionsSaveMessage = "HTTP retry settings saved successfully.";
+            
+            // Get the proxy base URL from global settings
+            var proxyUrlSetting = await dbContext.GlobalSettings
+                .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
+            
+            string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
+            
+            // Trigger reload of settings across the application
+            await ConfigChangeNotifier.NotifyConfigurationChangedAsync(proxyUrl);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving HTTP retry options");
+            httpRetryOptionsSaveMessage = $"Error saving settings: {ex.Message}";
         }
     }
 
@@ -384,12 +603,11 @@ else
         }
     }
 
-    private async Task LaunchGuidedSetup(string providerName) // Changed to async Task
+    private async Task LaunchGuidedSetup(string providerName) 
     {
-        // Removed await InvokeAsync(StateHasChanged); - the StateHasChanged in OpenForProvider should handle UI update.
         if (guidedSetupWizardInstance != null)
         {
-             await guidedSetupWizardInstance.OpenForProvider(providerName); // Added await
+             await guidedSetupWizardInstance.OpenForProvider(providerName); 
         }
         else
         {
@@ -397,10 +615,9 @@ else
              // Handle error? Maybe show a message to the user?
              // For now, just log the error. The wizard won't open.
          }
-         // StateHasChanged(); // Explicitly tell parent component to re-render - Removed as IsOpenChanged handles this
-     }
+    }
 
-     private async Task HandleSetupComplete(DbProviderCredentials newProvider)
+    private async Task HandleSetupComplete(DbProviderCredentials newProvider)
     {
         try
         {

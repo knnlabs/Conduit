@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Caching;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.WebUI.Authorization;
 using ConduitLLM.WebUI.Components;
@@ -14,6 +15,7 @@ using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -98,6 +100,13 @@ builder.Services.Configure<RouterOptions>(
 
 // Register Router services using the extension method
 builder.Services.AddRouterServices(builder.Configuration);
+
+// Register HTTP retry configuration services
+builder.Services.AddOptions<RetryOptions>()
+    .Bind(builder.Configuration.GetSection(RetryOptions.SectionName))
+    .ValidateDataAnnotations();
+builder.Services.AddScoped<HttpRetryConfigurationService>();
+builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 
 // Register HttpClient with retry policies for LLM providers
 builder.Services.AddLLMProviderHttpClients();
