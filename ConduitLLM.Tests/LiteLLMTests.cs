@@ -7,6 +7,9 @@ using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -18,19 +21,21 @@ public class ConduitTests
 {
     private readonly Mock<ILLMClientFactory> _mockFactory;
     private readonly Mock<ILLMClient> _mockClient;
+    private readonly Mock<ILogger<Conduit>> _mockLogger;
     private readonly Conduit _conduit;
 
     public ConduitTests()
     {
         _mockFactory = new Mock<ILLMClientFactory>();
         _mockClient = new Mock<ILLMClient>();
+        _mockLogger = new Mock<ILogger<Conduit>>();
 
         // Setup factory to return the mock client for any model alias by default
         _mockFactory.Setup(f => f.GetClient(It.IsAny<string>()))
                     .Returns(_mockClient.Object);
 
         // Instantiate Conduit with the mock factory
-        _conduit = new Conduit(_mockFactory.Object);
+        _conduit = new Conduit(_mockFactory.Object, _mockLogger.Object);
     }
 
     [Fact]

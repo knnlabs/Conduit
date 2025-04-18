@@ -29,6 +29,12 @@ namespace ConduitLLM.Configuration.Entities
 
         public bool IsEnabled { get; set; } = true;
 
+        /// <summary>
+        /// The maximum number of tokens the model's context window can handle.
+        /// Used for automatic context management to prevent exceeding model limits.
+        /// </summary>
+        public int? MaxContextTokens { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

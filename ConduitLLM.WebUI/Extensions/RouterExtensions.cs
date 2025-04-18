@@ -4,9 +4,11 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core;
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Routing;
@@ -17,6 +19,7 @@ using ConduitLLM.WebUI.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.WebUI.Extensions
 {
@@ -83,7 +86,18 @@ namespace ConduitLLM.WebUI.Extensions
                 {
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
                     var router = sp.GetRequiredService<ILLMRouter>();
-                    return new Conduit(clientFactory, router);
+                    var logger = sp.GetRequiredService<ILogger<Conduit>>();
+                    var contextManager = sp.GetService<IContextManager>();
+                    var modelProviderMappingService = sp.GetService<IModelProviderMappingService>();
+                    var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
+                    
+                    return new Conduit(
+                        clientFactory, 
+                        logger,
+                        router,
+                        contextManager,
+                        modelProviderMappingService,
+                        contextOptions);
                 });
             }
             else
@@ -95,7 +109,17 @@ namespace ConduitLLM.WebUI.Extensions
                 services.AddScoped<Conduit>(sp => 
                 {
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
-                    return new Conduit(clientFactory);
+                    var logger = sp.GetRequiredService<ILogger<Conduit>>();
+                    var contextManager = sp.GetService<IContextManager>();
+                    var modelProviderMappingService = sp.GetService<IModelProviderMappingService>();
+                    var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
+                    
+                    return new Conduit(
+                        clientFactory,
+                        logger,
+                        contextManager: contextManager,
+                        modelProviderMappingService: modelProviderMappingService,
+                        contextOptions: contextOptions);
                 });
             }
 

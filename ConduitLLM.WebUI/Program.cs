@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Caching;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
@@ -160,6 +161,9 @@ builder.Services.AddSingleton<ConduitLLM.Core.ConduitRegistry>();
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 
 builder.Services.AddControllers();
+
+// Register context management services
+builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
 

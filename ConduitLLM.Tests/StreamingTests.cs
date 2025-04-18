@@ -36,7 +36,7 @@ public class StreamingTests
 
         // Instantiate Conduit with the mock factory
         // Assuming Conduit constructor takes ILLMClientFactory. Adjust if it needs ILogger too.
-        _conduit = new Conduit(_mockFactory.Object);
+        _conduit = new Conduit(_mockFactory.Object, _mockLogger.Object);
     }
 
     // Helper method to create an async enumerable from a list of chunks

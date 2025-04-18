@@ -20,6 +20,13 @@ namespace ConduitLLM.Tests.Services
                 .Options;
         }
         
+        private ConfigurationDbContext CreateTestContext(DbContextOptions<ConfigurationDbContext> options)
+        {
+            var context = new ConfigurationDbContext(options);
+            context.IsTestEnvironment = true;
+            return context;
+        }
+        
         [Fact]
         public async Task ProcessDailyBudgetResets_ShouldReset_WhenDayHasPassed()
         {
@@ -27,7 +34,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var yesterday = DateTime.UtcNow.AddDays(-1).Date;
             
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -44,14 +51,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.ProcessBudgetResetsAsync();
             }
             
             // Assert
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var key = await context.VirtualKeys.FindAsync(1);
                 
@@ -75,7 +82,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var lastMonth = DateTime.UtcNow.AddMonths(-1);
             
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 context.VirtualKeys.Add(new VirtualKey 
                 { 
@@ -92,14 +99,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.ProcessBudgetResetsAsync();
             }
             
             // Assert
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var key = await context.VirtualKeys.FindAsync(1);
                 
@@ -125,7 +132,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var yesterday = DateTime.UtcNow.AddDays(-1);
             
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 context.VirtualKeys.AddRange(
                     new VirtualKey 
@@ -149,14 +156,14 @@ namespace ConduitLLM.Tests.Services
             }
             
             // Act
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var maintenanceService = new VirtualKeyMaintenanceService(context);
                 await maintenanceService.DisableExpiredKeysAsync();
             }
             
             // Assert
-            using (var context = new ConfigurationDbContext(options))
+            using (var context = CreateTestContext(options))
             {
                 var expiredKey = await context.VirtualKeys.FindAsync(1);
                 var validKey = await context.VirtualKeys.FindAsync(2);

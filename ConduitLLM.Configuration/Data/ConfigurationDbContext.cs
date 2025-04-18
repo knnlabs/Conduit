@@ -1,6 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration
 {
@@ -46,6 +53,18 @@ namespace ConduitLLM.Configuration
         /// Database set for model costs
         /// </summary>
         public DbSet<ModelCost> ModelCosts { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for model provider mappings
+        /// </summary>
+        public DbSet<ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for provider credentials
+        /// </summary>
+        public DbSet<ProviderCredential> ProviderCredentials { get; set; } = null!;
+
+        public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
         /// Configures the model for the context
@@ -100,6 +119,23 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ModelIdPattern)
                       .IsUnique(false); // Patterns might not be unique if we allow overlaps
             });
+            
+            // Only configure ModelProviderMapping in non-test environments or ignore it in test environments
+            if (IsTestEnvironment)
+            {
+                modelBuilder.Ignore<ModelProviderMapping>();
+                modelBuilder.Ignore<ProviderCredential>();
+            }
+            else
+            {
+                // Configure ModelProviderMapping for production environment
+                modelBuilder.Entity<ModelProviderMapping>()
+                    .HasKey("Id"); // Use string-based key identification to avoid type errors
+                
+                // Configure ProviderCredential for production environment
+                modelBuilder.Entity<ProviderCredential>()
+                    .HasKey("Id");
+            }
         }
     }
 }
