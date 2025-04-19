@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -11,6 +12,7 @@ namespace ConduitLLM.Configuration.Entities
     public class ModelProviderMapping
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]

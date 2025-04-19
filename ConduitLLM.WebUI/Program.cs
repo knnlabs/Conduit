@@ -91,6 +91,12 @@ if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
             options.ConfigureWarnings(warnings => 
                 warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         }
+        
+        // Configure entity types that need explicit configuration
+        options.UseModel(new ConduitLLM.Configuration.ConfigurationDbContext(
+            new DbContextOptionsBuilder<ConduitLLM.Configuration.ConfigurationDbContext>()
+                .UseSqlite(dbConnectionString)
+                .Options).Model);
     });
 }
 #if POSTGRES

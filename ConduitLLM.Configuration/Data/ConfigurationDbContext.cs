@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Data;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -57,12 +58,12 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Database set for model provider mappings
         /// </summary>
-        public DbSet<ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
+        public DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
 
         /// <summary>
         /// Database set for provider credentials
         /// </summary>
-        public DbSet<ProviderCredential> ProviderCredentials { get; set; } = null!;
+        public DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
 
         public bool IsTestEnvironment { get; set; } = false;
 
@@ -139,26 +140,14 @@ namespace ConduitLLM.Configuration
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
-            
+
+            modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
+
             // Only configure ModelProviderMapping in non-test environments or ignore it in test environments
             if (IsTestEnvironment)
             {
-                modelBuilder.Ignore<ModelProviderMapping>();
-                modelBuilder.Ignore<ProviderCredential>();
-            }
-            else
-            {
-                // Configure ModelProviderMapping for production environment with explicit namespace
-                modelBuilder.Entity<Entities.ModelProviderMapping>(entity =>
-                {
-                    entity.HasKey(e => e.Id);
-                });
-                
-                // Configure ProviderCredential for production environment with explicit namespace
-                modelBuilder.Entity<Entities.ProviderCredential>(entity =>
-                {
-                    entity.HasKey(e => e.Id);
-                });
+                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
+                modelBuilder.Ignore<ConduitLLM.Configuration.Entities.ProviderCredential>();
             }
         }
     }

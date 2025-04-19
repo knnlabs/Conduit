@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -9,6 +10,7 @@ namespace ConduitLLM.Configuration.Entities
     public class ProviderCredential
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]

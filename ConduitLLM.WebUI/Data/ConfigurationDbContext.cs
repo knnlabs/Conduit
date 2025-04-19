@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.WebUI.Data.Entities;
 
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,8 @@ public class ConfigurationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationEntityConfigurations();
 
         // Add unique constraints to prevent duplicate entries
         modelBuilder.Entity<DbProviderCredentials>()
@@ -111,17 +114,6 @@ public class ConfigurationDbContext : DbContext
         {
             entity.HasIndex(e => e.ModelIdPattern)
                   .IsUnique(false); // Patterns might not be unique if we allow overlaps
-        });
-        
-        // Add explicit configuration for the Configuration library entities
-        modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelProviderMapping>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-        });
-        
-        modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
-        {
-            entity.HasKey(e => e.Id);
         });
     }
 
