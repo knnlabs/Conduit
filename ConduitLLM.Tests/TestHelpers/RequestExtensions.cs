@@ -11,7 +11,7 @@ namespace ConduitLLM.Tests.TestHelpers
         /// <summary>
         /// Converts a ChatCompletionRequest to a provider-specific request
         /// </summary>
-        public static TRequest ToProviderRequest<TRequest>(this Core.Models.ChatCompletionRequest request) where TRequest : new()
+        public static TRequest ToProviderRequest<TRequest>(this ConduitLLM.Core.Models.ChatCompletionRequest request) where TRequest : new()
         {
             // The implementation details don't matter for tests, this is just a placeholder
             return new TRequest();

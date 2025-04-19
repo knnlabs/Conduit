@@ -72,5 +72,20 @@ public class ChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? User { get; set; }
 
+    /// <summary>
+    /// A list of tools the model may call. Currently, only functions are supported as tools.
+    /// </summary>
+    [JsonPropertyName("tools")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Tool>? Tools { get; set; }
+
+    /// <summary>
+    /// Controls which (if any) tool is called by the model. "none" means the model will not call a tool and instead generates a message.
+    /// "auto" means the model can choose either to call a tool or not. Specifying a particular function forces the model to call that function.
+    /// </summary>
+    [JsonPropertyName("tool_choice")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ToolChoice? ToolChoice { get; set; }
+
     // Add other common parameters as needed (e.g., presence_penalty, frequency_penalty, logit_bias)
 }

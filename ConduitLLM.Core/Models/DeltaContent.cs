@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -20,4 +21,11 @@ public class DeltaContent
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Content { get; set; }
+    
+    /// <summary>
+    /// The tool calls made by the assistant in this delta chunk.
+    /// </summary>
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ToolCallChunk>? ToolCalls { get; set; }
 }

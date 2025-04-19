@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -17,7 +18,8 @@ public class Message
     /// The contents of the message.
     /// </summary>
     [JsonPropertyName("content")]
-    public required string Content { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Content { get; set; }
 
     /// <summary>
     /// The name of the author of this message. May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
@@ -27,12 +29,19 @@ public class Message
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Name { get; set; }
 
-    // Consider adding properties for function/tool calls if needed later
-    // [JsonPropertyName("tool_calls")]
-    // public List<ToolCall>? ToolCalls { get; set; }
-    //
-    // [JsonPropertyName("tool_call_id")]
-    // public string? ToolCallId { get; set; }
+    /// <summary>
+    /// The tool calls made by the assistant. Only valid when role="assistant".
+    /// </summary>
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ToolCall>? ToolCalls { get; set; }
+
+    /// <summary>
+    /// The ID of the tool call that this message is responding to. Only valid when role="tool".
+    /// </summary>
+    [JsonPropertyName("tool_call_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ToolCallId { get; set; }
 }
 
 /// <summary>

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.InternalModels;
 
@@ -28,16 +31,38 @@ internal record OpenAIChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // Don't include if false (default)
     public bool Stream { get; init; } = false;
 
+    // Tool/function calling support
+    [JsonPropertyName("tools")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Tool>? Tools { get; init; }
+
+    [JsonPropertyName("tool_choice")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? ToolChoice { get; init; }
+
     // TODO: Add other optional parameters like top_p, n, stop, presence_penalty, frequency_penalty, logit_bias, user
 }
 
 internal record OpenAIMessage
 {
     [JsonPropertyName("role")]
-    public required string Role { get; init; } // "system", "user", "assistant"
+    public required string Role { get; init; } // "system", "user", "assistant", "tool"
 
     [JsonPropertyName("content")]
-    public required string Content { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Content { get; init; }
+
+    [JsonPropertyName("name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ToolCall>? ToolCalls { get; init; }
+
+    [JsonPropertyName("tool_call_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ToolCallId { get; init; }
 }
 
 internal record OpenAIChatCompletionResponse
@@ -72,7 +97,7 @@ internal record OpenAIChoice
     public required OpenAIMessage Message { get; init; }
 
     [JsonPropertyName("finish_reason")]
-    public string? FinishReason { get; init; } // e.g., "stop", "length"
+    public string? FinishReason { get; init; } // e.g., "stop", "length", "tool_calls"
 
     // Optional logprobs field
 }
@@ -121,7 +146,7 @@ internal record OpenAIStreamingChoice
     public required OpenAIDeltaContent Delta { get; init; }
 
     [JsonPropertyName("finish_reason")]
-    public string? FinishReason { get; init; } // e.g., "stop", "length"
+    public string? FinishReason { get; init; } // e.g., "stop", "length", "tool_calls"
 
     // Optional logprobs field
 }
@@ -135,8 +160,72 @@ internal record OpenAIDeltaContent
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Content { get; init; } // The actual token(s)
+
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ToolCallChunk>? ToolCalls { get; init; }
 }
 
+// --- Internal Models for Tool Calling ---
+internal record Tool
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("metadata")]
+    public JsonNode? Metadata { get; init; }
+
+    [JsonPropertyName("availability")]
+    public ToolAvailability? Availability { get; init; }
+}
+
+internal record ToolCall
+{
+    [JsonPropertyName("tool")]
+    public required string Tool { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("user_message")]
+    public string? UserMessage { get; init; }
+
+    [JsonPropertyName("metadata")]
+    public JsonNode? Metadata { get; init; }
+
+    [JsonPropertyName("user_id")]
+    public string? UserId { get; init; }
+}
+
+internal record ToolCallChunk
+{
+    [JsonPropertyName("index")]
+    public int Index { get; init; }
+
+    [JsonPropertyName("tool")]
+    public required string Tool { get; init; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("user_message")]
+    public string? UserMessage { get; init; }
+
+    [JsonPropertyName("metadata")]
+    public JsonNode? Metadata { get; init; }
+
+    [JsonPropertyName("user_id")]
+    public string? UserId { get; init; }
+}
+
+internal record ToolAvailability
+{
+    [JsonPropertyName("availability")]
+    public required string Availability { get; init; }
+}
 
 // --- Internal Models for Model Listing ---
 // See: https://platform.openai.com/docs/api-reference/models/list

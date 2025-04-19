@@ -188,80 +188,120 @@ public class OpenAIClient : ILLMClient
     private OpenAIChatCompletionRequest MapToOpenAIRequest(ChatCompletionRequest coreRequest)
     {
         // Map core request to the DTO from InternalModels
-        return new OpenAIChatCompletionRequest
+        var request = new OpenAIChatCompletionRequest
         {
             Model = _providerModelId, // Use the specific model ID for the provider
             Messages = coreRequest.Messages.Select(m => new OpenAIMessage
             {
-                // Ensure Role and Content are not null before assigning
+                // Ensure Role is not null before assigning
                 Role = m.Role ?? throw new ArgumentNullException(nameof(m.Role), "Message role cannot be null"),
-                Content = m.Content ?? throw new ArgumentNullException(nameof(m.Content), "Message content cannot be null")
+                // Content can be null for tool calls
+                Content = m.Content,
+                Name = m.Name,
+                ToolCalls = m.ToolCalls != null ? MapCoreToolCallsToInternal(m.ToolCalls) : null,
+                ToolCallId = m.ToolCallId
             }).ToList(),
             // Map only supported parameters defined in InternalModels/OpenAIModels.cs
             Temperature = (float?)coreRequest.Temperature, // Explicit cast needed
             MaxTokens = coreRequest.MaxTokens,
+            Stream = coreRequest.Stream ?? false,
+            Tools = coreRequest.Tools != null ? MapCoreToolsToInternal(coreRequest.Tools) : null,
+            ToolChoice = coreRequest.ToolChoice?.GetSerializedValue()
             // TODO: Map other parameters (TopP, N, Stream, Stop, User etc.) if added to Core request and OpenAIModels
         };
+
+        return request;
+    }
+
+    private List<InternalModels.Tool>? MapCoreToolsToInternal(List<Core.Models.Tool> coreTools)
+    {
+        if (coreTools == null || !coreTools.Any()) return null;
+
+        return coreTools.Select(tool => new InternalModels.Tool
+        {
+            // Map to internal model
+            // Note: OpenAI internal model has different structure, so we'll need to adapt
+            Name = tool.Type == "function" ? tool.Function.Name : "unknown",
+            Description = tool.Function.Description,
+            // Possibly map other fields as necessary
+        }).ToList();
+    }
+
+    private List<InternalModels.ToolCall>? MapCoreToolCallsToInternal(List<Core.Models.ToolCall> coreToolCalls)
+    {
+        if (coreToolCalls == null || !coreToolCalls.Any()) return null;
+
+        return coreToolCalls.Select(tc => new InternalModels.ToolCall
+        {
+            // Map to internal model
+            Tool = tc.Type,
+            Name = tc.Function.Name,
+            // Map other fields
+        }).ToList();
     }
 
     private ChatCompletionResponse MapToCoreResponse(OpenAIChatCompletionResponse openAIResponse, string originalModelAlias)
     {
-        // Map DTO from InternalModels back to core response
-        // Ensure Choices and the first choice/message are not null (already validated in caller, but good practice)
-        var openAIChoice = openAIResponse.Choices?.FirstOrDefault();
-        var openAIMessage = openAIChoice?.Message;
-        var openAIUsage = openAIResponse.Usage; // Already validated non-null in caller
-
-        if (openAIChoice == null || openAIMessage == null)
-        {
-            // This case should ideally be caught earlier, but handle defensively
-            _logger.LogError("Invalid openai response structure encountered during mapping: Missing choice or message.");
-            throw new LLMCommunicationException("Invalid response structure received from openai API (missing choice or message).");
-        }
-
         return new ChatCompletionResponse
         {
-            // Use null-coalescing for required string properties
-            Id = openAIResponse.Id ?? Guid.NewGuid().ToString(), // Generate an ID if missing? Or throw?
-            Object = openAIResponse.Object ?? "chat.completion", // Default if missing
-            Created = openAIResponse.Created ?? 0, // Provide default 0 if null (CS0266 fix)
-            Model = originalModelAlias, // Return the alias the user requested
-            Choices = new List<Choice> // Assuming N=1 for now
+            Id = openAIResponse.Id ?? Guid.NewGuid().ToString(),
+            Object = openAIResponse.Object ?? "chat.completion",
+            Created = openAIResponse.Created ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Model = originalModelAlias, // Use the model alias from the request, not the provider model ID
+            Choices = openAIResponse.Choices.Select(c => new Choice
             {
-                new Choice
+                Index = c.Index,
+                FinishReason = c.FinishReason ?? FinishReason.Stop,
+                Message = new Message
                 {
-                    Index = openAIChoice.Index,
-                    // Ensure Role and Content are not null before assigning to required Message properties
-                    Message = new Message {
-                        Role = openAIMessage.Role ?? throw new LLMCommunicationException("openai response message role cannot be null."),
-                        Content = openAIMessage.Content ?? throw new LLMCommunicationException("openai response message content cannot be null.")
-                    },
-                    FinishReason = openAIChoice.FinishReason ?? string.Empty // Add null check with empty string default
+                    Role = c.Message.Role,
+                    Content = c.Message.Content,
+                    Name = c.Message.Name,
+                    ToolCalls = c.Message.ToolCalls != null ? MapInternalToolCallsToCore(c.Message.ToolCalls) : null
                 }
-            },
-            Usage = new Usage // Already validated non-null
-            {
-                PromptTokens = openAIUsage?.PromptTokens ?? 0, // Add null conditional and default value
-                CompletionTokens = openAIUsage?.CompletionTokens ?? 0, // Add null conditional and default value
-                TotalTokens = openAIUsage?.TotalTokens ?? 0 // Add null conditional and default value
-            }
-            // TODO: Map SystemFingerprint if added to Core response
+            }).ToList(),
+            Usage = openAIResponse.Usage != null
+                ? new Usage
+                {
+                    PromptTokens = openAIResponse.Usage.PromptTokens,
+                    CompletionTokens = openAIResponse.Usage.CompletionTokens,
+                    TotalTokens = openAIResponse.Usage.TotalTokens
+                }
+                : null
         };
     }
 
-    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private List<Core.Models.ToolCall>? MapInternalToolCallsToCore(List<InternalModels.ToolCall> internalToolCalls)
     {
-        try
+        if (internalToolCalls == null || !internalToolCalls.Any()) return null;
+
+        return internalToolCalls.Select(itc => new Core.Models.ToolCall
         {
-            // Use a buffer to avoid potential issues with large error responses if needed,
-            // but ReadAsStringAsync is usually fine for typical API errors.
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
+            Id = Guid.NewGuid().ToString(), // Generate an ID if not available
+            Type = itc.Tool,
+            Function = new Core.Models.FunctionCall
+            {
+                Name = itc.Name ?? string.Empty,
+                Arguments = itc.UserMessage ?? "{}" // Default to empty JSON object
+            }
+        }).ToList();
+    }
+
+    private List<Core.Models.ToolCallChunk>? MapInternalToolCallChunksToCore(List<InternalModels.ToolCallChunk> internalToolCallChunks)
+    {
+        if (internalToolCallChunks == null || !internalToolCallChunks.Any()) return null;
+
+        return internalToolCallChunks.Select((itcc, index) => new Core.Models.ToolCallChunk
         {
-            // Log this?
-            return $"Failed to read error content: {ex.Message}";
-        }
+            Index = index,
+            Id = itcc.UserId ?? Guid.NewGuid().ToString(),
+            Type = itcc.Tool,
+            Function = new Core.Models.FunctionCallChunk
+            {
+                Name = itcc.Name ?? string.Empty,
+                Arguments = itcc.UserMessage ?? "{}"
+            }
+        }).ToList();
     }
 
     // --- Removed internal DTOs as they are now in InternalModels/OpenAIModels.cs ---
@@ -269,41 +309,35 @@ public class OpenAIClient : ILLMClient
     /// <inheritdoc />
     public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
         ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
+        string? apiKey = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        // Determine the API key to use: override if provided, otherwise use configured key
         string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-         if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-             throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
-        }
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
 
         _logger.LogInformation("Mapping Core request to openai streaming request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
         // Map request, ensuring Stream = true
-        var openAIRequest = MapToOpenAIRequest(request) with { Stream = true };
+        var openAIRequest = MapToOpenAIRequest(request);
+        openAIRequest = openAIRequest with { Stream = true }; // Ensure stream is set to true
 
         // Declare response outside the try block
         HttpResponseMessage response;
         try
         {
-            // Assign response inside the try block, passing the effectiveApiKey
             response = await SetupAndSendStreamingRequestAsync(openAIRequest, effectiveApiKey, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) // Catch setup/connection errors
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting up or sending initial streaming request to openai API.");
-            // Ensure specific exception types are thrown if needed (e.g., ConfigurationException, LLMCommunicationException)
-            // For simplicity, rethrowing wrapped exception, but could be more specific.
-            throw new LLMCommunicationException($"Failed to initiate stream: {ex.Message}", ex);
+            _logger.LogError(ex, "Failed to set up or send streaming request");
+            throw new LLMCommunicationException($"Failed to set up or send streaming request: {ex.Message}", ex);
         }
 
-        // 2. Process the stream, passing the assigned response and originalModelAlias
-        await foreach (var chunk in ProcessOpenAIStreamAsync(response, originalModelAlias: request.Model, cancellationToken).ConfigureAwait(false))
+        // Process the stream
+        await foreach (var chunk in ProcessOpenAIStreamAsync(response, request.Model, cancellationToken).ConfigureAwait(false))
         {
-             yield return chunk;
+            yield return chunk;
         }
     }
 
@@ -315,43 +349,42 @@ public class OpenAIClient : ILLMClient
     {
         // Construct request message manually
         using var requestMessage = new HttpRequestMessage();
-            requestMessage.Method = HttpMethod.Post;
-            requestMessage.Content = JsonContent.Create(openAIRequest, options: new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }); // Ensure nulls aren't sent unnecessarily
+        requestMessage.Method = HttpMethod.Post;
+        requestMessage.Content = JsonContent.Create(openAIRequest, options: new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }); // Ensure nulls aren't sent unnecessarily
 
-            // Determine URL and Auth Header based on provider (same logic as non-streaming), using effectiveApiKey
-            if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
-            {
-                if (string.IsNullOrWhiteSpace(_credentials.ApiBase)) throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for the 'azure' provider.");
-                string azureApiBase = _credentials.ApiBase.TrimEnd('/');
-                string deploymentName = _providerModelId;
-                string apiVersion = !string.IsNullOrWhiteSpace(_credentials.ApiVersion) ? _credentials.ApiVersion : DefaultAzureApiVersion;
-                requestMessage.RequestUri = new Uri($"{azureApiBase}/openai/deployments/{deploymentName}/chat/completions?api-version={apiVersion}");
-                requestMessage.Headers.Add("api-key", effectiveApiKey); // Use effectiveApiKey
-                _logger.LogDebug("Sending streaming request to Azure openai endpoint: {Endpoint}", requestMessage.RequestUri);
-            }
-            else
-            {
-                string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
-                if (!apiBase.EndsWith('/')) apiBase += "/";
-                requestMessage.RequestUri = new Uri(new Uri(apiBase), "v1/chat/completions"); // Use relative path
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey); // Use effectiveApiKey
-                _logger.LogDebug("Sending streaming request to openai-compatible endpoint: {Endpoint}", requestMessage.RequestUri);
-            }
+        // Determine URL and Auth Header based on provider (same logic as non-streaming), using effectiveApiKey
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(_credentials.ApiBase)) throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for the 'azure' provider.");
+            string azureApiBase = _credentials.ApiBase.TrimEnd('/');
+            string deploymentName = _providerModelId;
+            string apiVersion = !string.IsNullOrWhiteSpace(_credentials.ApiVersion) ? _credentials.ApiVersion : DefaultAzureApiVersion;
+            requestMessage.RequestUri = new Uri($"{azureApiBase}/openai/deployments/{deploymentName}/chat/completions?api-version={apiVersion}");
+            requestMessage.Headers.Add("api-key", effectiveApiKey); // Use effectiveApiKey
+            _logger.LogDebug("Sending streaming request to Azure openai endpoint: {Endpoint}", requestMessage.RequestUri);
+        }
+        else
+        {
+            string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+            if (!apiBase.EndsWith('/')) apiBase += "/";
+            requestMessage.RequestUri = new Uri(new Uri(apiBase), "v1/chat/completions"); // Use relative path
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey); // Use effectiveApiKey
+            _logger.LogDebug("Sending streaming request to openai-compatible endpoint: {Endpoint}", requestMessage.RequestUri);
+        }
 
-            // Send request and get headers first - Re-add declaration
-            HttpResponseMessage response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        // Send request and get headers first - Re-add declaration
+        HttpResponseMessage response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API streaming request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"openai API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
-            }
+        if (!response.IsSuccessStatusCode)
+        {
+            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+            _logger.LogError("openai API streaming request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+            throw new LLMCommunicationException($"openai API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
+        }
 
-            _logger.LogDebug("Received successful streaming response header from openai API. Starting stream processing.");
-            return response; // Return the successful response with headers (This was the intended return after the first check)
+        _logger.LogDebug("Received successful streaming response header from openai API. Starting stream processing.");
+        return response; // Return the successful response with headers (This was the intended return after the first check)
     }
-
 
     // Helper to process the actual stream content
     // Completely restructured to avoid yield within try/catch (which causes CS1626 error)
@@ -450,29 +483,29 @@ public class OpenAIClient : ILLMClient
     }
 
     // New mapping function for streaming chunks
-    private ChatCompletionChunk MapToCoreChunk(OpenAIChatCompletionChunk openAIChunk, string originalModelAlias)
+    private ChatCompletionChunk MapToCoreChunk(OpenAIChatCompletionChunk chunk, string originalModelAlias)
     {
         return new ChatCompletionChunk
         {
-            Id = openAIChunk.Id,
-            Object = openAIChunk.Object ?? "chat.completion.chunk", // Default if missing
-            Created = openAIChunk.Created,
-            Model = originalModelAlias, // Use the alias requested by the user
-            Choices = (openAIChunk.Choices ?? new List<OpenAIStreamingChoice>()).Select(c => new StreamingChoice
+            Id = chunk.Id ?? Guid.NewGuid().ToString(),
+            Object = chunk.Object ?? "chat.completion.chunk",
+            Created = chunk.Created ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Model = originalModelAlias, // Use the model alias from the request, not provider model ID
+            Choices = (chunk.Choices ?? new List<OpenAIStreamingChoice>()).Select(c => new StreamingChoice
             {
                 Index = c.Index,
-                // Ensure Role and Content are not null before assigning to required Message properties
                 Delta = new DeltaContent
                 {
-                    Role = c.Delta?.Role, // Can be null
-                    Content = c.Delta?.Content // Can be null
+                    Role = c.Delta?.Role,
+                    Content = c.Delta?.Content,
+                    ToolCalls = c.Delta?.ToolCalls != null ? MapInternalToolCallChunksToCore(c.Delta.ToolCalls) : null
                 },
-                FinishReason = c.FinishReason // Can be null
+                FinishReason = c.FinishReason
             }).ToList()
         };
     }
 
-     /// <inheritdoc />
+    /// <inheritdoc />
     public virtual async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
     {
         // Azure openai does not support the /v1/models endpoint directly via API key auth.
@@ -723,6 +756,21 @@ public class OpenAIClient : ILLMClient
         {
             _logger.LogError(ex, "An unexpected error occurred while creating openai image generation.");
             throw new LLMCommunicationException($"An unexpected error occurred while creating image generation: {ex.Message}", ex);
+        }
+    }
+
+    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Use a buffer to avoid potential issues with large error responses if needed,
+            // but ReadAsStringAsync is usually fine for typical API errors.
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Log this?
+            return $"Failed to read error content: {ex.Message}";
         }
     }
 }
