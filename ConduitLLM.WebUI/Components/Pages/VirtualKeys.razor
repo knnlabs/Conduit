@@ -5,6 +5,8 @@
 @using Microsoft.EntityFrameworkCore 
 @using Microsoft.JSInterop 
 @using ConduitLLM.Core.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject IVirtualKeyService VirtualKeyService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 

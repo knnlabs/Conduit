@@ -1,0 +1,568 @@
+@page "/cost-dashboard"
+@using System.Globalization
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.Configuration.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Cost Dashboard - ConduitLLM</PageTitle>
+
+<h1 class="mb-4">Cost Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="dateRangeFilter" class="form-label">Date Range</label>
+                        <select id="dateRangeFilter" class="form-select" @bind="selectedDateRange">
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3" style="@(selectedDateRange == "custom" ? "display:block" : "display:none")">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" id="startDate" class="form-control" @bind="startDate" />
+                    </div>
+                    <div class="col-md-3 mb-3" style="@(selectedDateRange == "custom" ? "display:block" : "display:none")">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" id="endDate" class="form-control" @bind="endDate" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="virtualKeyFilter" class="form-label">Virtual Key</label>
+                        <select id="virtualKeyFilter" class="form-select" @bind="selectedVirtualKeyId">
+                            <option value="">All Keys</option>
+                            @if (virtualKeys != null)
+                            {
+                                @foreach (var key in virtualKeys)
+                                {
+                                    <option value="@key.Id">@key.KeyName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="modelFilter" class="form-label">Model</label>
+                        <select id="modelFilter" class="form-select" @bind="selectedModel">
+                            <option value="">All Models</option>
+                            @if (models != null)
+                            {
+                                @foreach (var model in models)
+                                {
+                                    <option value="@model">@model</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 text-end">
+                        <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
+                        <button class="btn btn-secondary ms-2" @onclick="ClearFilters">Clear Filters</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading cost data...</p>
+        </div>
+    </div>
+}
+else if (dashboardData == null)
+{
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i> No cost data found for the selected filters.
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Cost Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Total Cost</h5>
+                    <h2 class="mb-0">$@FormatDecimal(dashboardData.TotalCost)</h2>
+                    <small>@dashboardData.StartDate.ToString("MMM dd") - @dashboardData.EndDate.ToString("MMM dd, yyyy")</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Total Requests</h5>
+                    <h2 class="mb-0">@dashboardData.TotalRequests.ToString("N0")</h2>
+                    <small>Avg Cost: $@FormatDecimal(dashboardData.AverageCostPerRequest) per request</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Total Tokens</h5>
+                    <h2 class="mb-0">@((dashboardData.TotalInputTokens + dashboardData.TotalOutputTokens).ToString("N0"))</h2>
+                    <small>In: @dashboardData.TotalInputTokens.ToString("N0") / Out: @dashboardData.TotalOutputTokens.ToString("N0")</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Cost per 1K Tokens</h5>
+                    <h2 class="mb-0">$@FormatDecimal(dashboardData.AverageCostPer1000Tokens)</h2>
+                    <small>Based on total tokens processed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Cost Trend</h5>
+                </div>
+                <div class="card-body">
+                    @if (trendData != null && trendData.Periods.Count > 0)
+                    {
+                        <div style="height: 300px;">
+                            <canvas id="costTrendChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No trend data available for the selected period.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Cost Distribution by Model</h5>
+                </div>
+                <div class="card-body">
+                    @if (dashboardData.CostByModel.Count > 0)
+                    {
+                        <div style="height: 300px;">
+                            <canvas id="modelDistributionChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No model distribution data available.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Virtual Keys Usage Row -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Virtual Key Usage</h5>
+                </div>
+                <div class="card-body">
+                    @if (dashboardData.CostByKey.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Key Name</th>
+                                        <th>Requests</th>
+                                        <th>Tokens (In/Out)</th>
+                                        <th>Cost</th>
+                                        <th>Budget Usage</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var keyData in dashboardData.CostByKey.OrderByDescending(k => k.Value.TotalCost))
+                                    {
+                                        var key = keyData.Value;
+                                        <tr>
+                                            <td>@key.KeyName</td>
+                                            <td>@key.RequestCount.ToString("N0")</td>
+                                            <td>@key.InputTokens.ToString("N0") / @key.OutputTokens.ToString("N0")</td>
+                                            <td>$@FormatDecimal(key.TotalCost)</td>
+                                            <td>
+                                                @if (key.MaxBudget.HasValue && key.MaxBudget > 0)
+                                                {
+                                                    <div class="progress" style="height: 20px;">
+                                                        @{
+                                                            var progressClass = key.BudgetUsedPercentage < 60 
+                                                                ? "bg-success" 
+                                                                : (key.BudgetUsedPercentage < 85 ? "bg-warning" : "bg-danger");
+                                                        }
+                                                        <div class="progress-bar @progressClass" role="progressbar" 
+                                                             style="width: @key.BudgetUsedPercentage%;" 
+                                                             aria-valuenow="@key.BudgetUsedPercentage" aria-valuemin="0" aria-valuemax="100">
+                                                            @key.BudgetUsedPercentage.ToString("0.0")%
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted">$@FormatDecimal(key.TotalCost) of $@FormatDecimal(key.MaxBudget.Value)</small>
+                                                }
+                                                else
+                                                {
+                                                    <span>No budget set</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a href="/virtualkeys/edit/@keyData.Key" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No virtual key usage data available.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Cost Breakdown -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Daily Cost Breakdown</h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ExportCostDataToCSV">
+                        <i class="bi bi-download me-1"></i> Export to CSV
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (dashboardData.CostByDay.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Requests</th>
+                                        <th>Input Tokens</th>
+                                        <th>Output Tokens</th>
+                                        <th>Total Tokens</th>
+                                        <th>Cost</th>
+                                        <th>Cost/1K Tokens</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var dayData in dashboardData.CostByDay.OrderByDescending(d => d.Key))
+                                    {
+                                        var day = dayData.Key;
+                                        var cost = dayData.Value;
+                                        var requests = dashboardData.RequestsByDay.TryGetValue(day, out var reqCount) ? reqCount : 0;
+                                        var tokenData = dashboardData.TokensByDay.TryGetValue(day, out var tokens) ? tokens : new TokenData();
+                                        var totalTokens = tokenData.TotalTokens;
+                                        var costPer1k = totalTokens > 0 ? cost / (totalTokens / 1000.0m) : 0;
+                                        
+                                        <tr>
+                                            <td>@day.ToString("yyyy-MM-dd")</td>
+                                            <td>@requests.ToString("N0")</td>
+                                            <td>@tokenData.InputTokens.ToString("N0")</td>
+                                            <td>@tokenData.OutputTokens.ToString("N0")</td>
+                                            <td>@totalTokens.ToString("N0")</td>
+                                            <td>$@FormatDecimal(cost)</td>
+                                            <td>$@FormatDecimal(costPer1k)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No daily cost breakdown available.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private CostDashboardDto? dashboardData;
+    private CostTrendDto? trendData;
+    private List<dynamic>? virtualKeys;
+    private List<string>? models;
+    private bool isLoading = true;
+    
+    // Filter state
+    private string? selectedVirtualKeyId;
+    private string? selectedModel;
+    private string selectedDateRange = "30d";
+    private DateTime startDate = DateTime.UtcNow.AddDays(-30);
+    private DateTime endDate = DateTime.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFiltersDataAsync();
+        await LoadDashboardDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Nothing special for first render
+        }
+        
+        if (!isLoading && dashboardData != null)
+        {
+            await RenderChartsAsync();
+        }
+    }
+
+    private async Task LoadFiltersDataAsync()
+    {
+        try
+        {
+            virtualKeys = await Http.GetFromJsonAsync<List<dynamic>>("api/logs/keys");
+            models = await Http.GetFromJsonAsync<List<string>>("api/logs/models");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading filter data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        isLoading = true;
+        
+        try
+        {
+            // Apply date range based on selection
+            SetDateRangeFromSelection();
+            
+            // Build query parameters for dashboard data
+            var queryParams = new List<string>
+            {
+                $"startDate={startDate:yyyy-MM-dd}",
+                $"endDate={endDate:yyyy-MM-dd}"
+            };
+            
+            if (!string.IsNullOrEmpty(selectedVirtualKeyId))
+            {
+                queryParams.Add($"virtualKeyId={selectedVirtualKeyId}");
+            }
+            
+            if (!string.IsNullOrEmpty(selectedModel))
+            {
+                queryParams.Add($"modelName={Uri.EscapeDataString(selectedModel)}");
+            }
+            
+            var dashboardUrl = $"api/costdashboard/data?{string.Join("&", queryParams)}";
+            dashboardData = await Http.GetFromJsonAsync<CostDashboardDto>(dashboardUrl);
+            
+            // Build query parameters for trend data
+            var trendQueryParams = new List<string>
+            {
+                "period=day",
+                $"count={Math.Min(30, (endDate - startDate).Days + 1)}"
+            };
+            
+            if (!string.IsNullOrEmpty(selectedVirtualKeyId))
+            {
+                trendQueryParams.Add($"virtualKeyId={selectedVirtualKeyId}");
+            }
+            
+            if (!string.IsNullOrEmpty(selectedModel))
+            {
+                trendQueryParams.Add($"modelName={Uri.EscapeDataString(selectedModel)}");
+            }
+            
+            var trendUrl = $"api/costdashboard/trend?{string.Join("&", trendQueryParams)}";
+            trendData = await Http.GetFromJsonAsync<CostTrendDto>(trendUrl);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading dashboard data: {ex.Message}");
+            dashboardData = null;
+            trendData = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SetDateRangeFromSelection()
+    {
+        switch (selectedDateRange)
+        {
+            case "7d":
+                startDate = DateTime.UtcNow.AddDays(-7);
+                endDate = DateTime.UtcNow;
+                break;
+            case "30d":
+                startDate = DateTime.UtcNow.AddDays(-30);
+                endDate = DateTime.UtcNow;
+                break;
+            case "90d":
+                startDate = DateTime.UtcNow.AddDays(-90);
+                endDate = DateTime.UtcNow;
+                break;
+            // For "custom", we use the user-selected dates
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        selectedVirtualKeyId = null;
+        selectedModel = null;
+        selectedDateRange = "30d";
+        startDate = DateTime.UtcNow.AddDays(-30);
+        endDate = DateTime.UtcNow;
+        
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task RenderChartsAsync()
+    {
+        try
+        {
+            if (dashboardData != null && dashboardData.CostByModel.Count > 0)
+            {
+                // Prepare model distribution data
+                var modelLabels = dashboardData.CostByModel.Keys.ToArray();
+                var modelData = dashboardData.CostByModel.Values.Select(v => (double)v).ToArray();
+                
+                // Create a random but consistent color for each model
+                var modelColors = modelLabels.Select(m => GenerateColorFromString(m)).ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderPieChart", "modelDistributionChart", modelLabels, modelData, modelColors);
+            }
+            
+            if (trendData != null && trendData.Periods.Count > 0)
+            {
+                // Prepare trend data
+                var periodLabels = trendData.Periods.Select(p => p.Label).ToArray();
+                var periodCostData = trendData.Periods.Select(p => (double)p.Cost).ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderLineChart", "costTrendChart", periodLabels, periodCostData);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error rendering charts: {ex.Message}");
+        }
+    }
+
+    private string GenerateColorFromString(string input)
+    {
+        // Simple algorithm to generate a color based on a string
+        if (string.IsNullOrEmpty(input)) return "#3498db";
+        
+        var hash = 0;
+        foreach (var c in input)
+        {
+            hash = c + ((hash << 5) - hash);
+        }
+        
+        var color = "#";
+        for (var i = 0; i < 3; i++)
+        {
+            var value = (hash >> (i * 8)) & 0xFF;
+            color += $"{value:X2}";
+        }
+        
+        return color;
+    }
+
+    private async Task ExportCostDataToCSV()
+    {
+        if (dashboardData == null || dashboardData.CostByDay.Count == 0)
+            return;
+
+        var csvData = new System.Text.StringBuilder();
+        
+        // Add header
+        csvData.AppendLine("Date,Requests,Input Tokens,Output Tokens,Total Tokens,Cost,Cost per 1K Tokens");
+        
+        // Add data rows
+        foreach (var dayData in dashboardData.CostByDay.OrderByDescending(d => d.Key))
+        {
+            var day = dayData.Key;
+            var cost = dayData.Value;
+            var requests = dashboardData.RequestsByDay.TryGetValue(day, out var reqCount) ? reqCount : 0;
+            var tokenData = dashboardData.TokensByDay.TryGetValue(day, out var tokens) ? tokens : new TokenData();
+            var totalTokens = tokenData.TotalTokens;
+            var costPer1k = totalTokens > 0 ? cost / (totalTokens / 1000.0m) : 0;
+            
+            csvData.AppendLine(
+                $"{day:yyyy-MM-dd}," +
+                $"{requests}," +
+                $"{tokenData.InputTokens}," +
+                $"{tokenData.OutputTokens}," +
+                $"{totalTokens}," +
+                $"{cost.ToString(CultureInfo.InvariantCulture)}," +
+                $"{costPer1k.ToString(CultureInfo.InvariantCulture)}"
+            );
+        }
+        
+        var fileName = $"cost_data_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+        var fileContent = csvData.ToString();
+        
+        // Use JS interop to trigger download
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "text/csv", fileContent);
+    }
+
+    private string FormatDecimal(decimal value)
+    {
+        if (value >= 10)
+            return value.ToString("0.00");
+        else if (value >= 0.01m)
+            return value.ToString("0.000");
+        else
+            return value.ToString("0.000000");
+    }
+}

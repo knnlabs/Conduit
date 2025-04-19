@@ -1,0 +1,137 @@
+@page "/login"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Cryptography
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms // Add this using directive
+@inject NavigationManager NavigationManager
+@inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery // Inject IAntiforgery
+@inject ILogger<Login> Logger
+
+<PageTitle>Login - ConduitLLM</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">ConduitLLM Admin Login</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="/account/login"> @* Changed to standard form POST *@
+                        @* Removed DataAnnotationsValidator and ValidationSummary *@
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mb-3">
+                                @errorMessage
+                            </div>
+                        }
+
+                        <!-- Debug info section -->
+                        <div class="alert alert-info mb-3">
+                            <h5>Authentication Help</h5>
+                            <p><strong>Detected Master Key:</strong></p>
+                            <pre class="bg-light p-2 user-select-all"><code>@displayKey</code></pre>
+                            <p class="text-muted">Click the key above to select it, then copy and paste into the field below.</p>
+                        </div>
+                        
+                        @* Add hidden field for returnUrl *@
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        
+                        @* Add hidden field for Antiforgery token *@
+                        @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
+                        {
+                            <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
+                        }
+
+                        <div class="mb-3">
+                            <label for="masterKey" class="form-label">Master Key</label>
+                            @* Changed to standard input, added name attribute *@
+                            <input id="masterKey" name="masterKey" class="form-control" type="password" autocomplete="off" required /> 
+                            @* Removed ValidationMessage, added HTML5 required attribute, changed type back to password *@
+                            <div class="form-text">Enter your master key shown above or when starting the application with ./start.sh</div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            @* Changed to standard input, added name and value attributes *@
+                            <input id="rememberMe" name="rememberMe" type="checkbox" value="true" class="form-check-input" /> 
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                Login @* Simplified button content *@
+                            </button>
+                        </div>
+                    </form> @* Corrected closing tag *@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+    private string? returnUrl;
+    private string displayKey = "Loading...";
+    private string? requestToken; // Field to store the antiforgery token
+    private string? requestTokenFormFieldName; // Field to store the expected form field name
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get the return URL from query parameters
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var url))
+        {
+            returnUrl = url;
+        }
+
+        // Get the master key from env var directly
+        string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+        displayKey = !string.IsNullOrEmpty(envMasterKey) ? envMasterKey : "(not found)";
+        
+        // Log diagnostic info
+        Logger.LogInformation("Login page loaded, looking for master key");
+        Logger.LogInformation($"Environment variable CONDUIT_MASTER_KEY exists: {!string.IsNullOrEmpty(envMasterKey)}");
+        if (!string.IsNullOrEmpty(envMasterKey))
+        {
+            Logger.LogInformation($"Environment variable CONDUIT_MASTER_KEY length: {envMasterKey.Length}");
+        }
+
+        // Check for error query parameter from redirect
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("error", out var errorValue))
+        {
+            if (errorValue == "InvalidKey")
+            {
+                errorMessage = "Invalid master key provided.";
+                Logger.LogWarning("Login page loaded with invalid key error message.");
+            }
+        }
+
+        // Generate Antiforgery Token
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext != null)
+        {
+            var tokens = Antiforgery.GetAndStoreTokens(httpContext);
+            requestToken = tokens.RequestToken;
+            requestTokenFormFieldName = tokens.FormFieldName;
+            Logger.LogInformation("Antiforgery token generated. Field name: {FieldName}", requestTokenFormFieldName);
+        }
+        else
+        {
+            Logger.LogError("HttpContext is null, cannot generate antiforgery token.");
+            errorMessage = "Internal security error. Please try refreshing the page.";
+        }
+        
+        // Removed EditContext initialization
+        // editContext = new EditContext(loginModel); 
+        
+        await base.OnInitializedAsync();
+    }
+
+    // Removed AttemptManualLogin, HandleLogin, HandleInvalidSubmit, HashMasterKey, and LoginModel
+}

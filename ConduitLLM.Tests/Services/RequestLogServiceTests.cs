@@ -6,6 +6,8 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Services;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Xunit;
 
@@ -34,6 +36,7 @@ namespace ConduitLLM.Tests.Services
             var options = GetDbOptions();
             var keyUuid = Guid.NewGuid().ToString();
             var currentTime = DateTime.UtcNow;
+            var logger = NullLogger<RequestLogService>.Instance;
             
             // Add a virtual key first
             using (var context = CreateTestContext(options))
@@ -51,7 +54,7 @@ namespace ConduitLLM.Tests.Services
             // Act
             using (var context = CreateTestContext(options))
             {
-                var logService = new RequestLogService(context);
+                var logService = new RequestLogService(context, logger);
                 
                 await logService.LogRequestAsync(new LogRequestDto
                 {
@@ -91,6 +94,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var options = GetDbOptions();
+            var logger = NullLogger<RequestLogService>.Instance;
             
             // Setup test data
             using (var context = CreateTestContext(options))
@@ -111,7 +115,7 @@ namespace ConduitLLM.Tests.Services
             // Act
             using (var context = CreateTestContext(options))
             {
-                var service = new RequestLogService(context);
+                var service = new RequestLogService(context, logger);
                 var stats = await service.GetUsageStatisticsAsync(1, DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
                 
                 // Assert

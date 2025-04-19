@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager NavigationManager
 
 <div class="page">
     <div class="sidebar">
@@ -9,6 +11,18 @@
         <div class="top-row px-4">
             <div style="margin-left: auto; display: flex; align-items: center;">
                 <NotificationDisplay />
+                <CascadingAuthenticationState>
+                    <AuthorizeView>
+                        <Authorized>
+                            <span class="me-3 text-success">
+                                <i class="bi bi-person-check"></i> Admin
+                            </span>
+                            <a href="/logout" class="btn btn-outline-danger btn-sm me-2">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </Authorized>
+                    </AuthorizeView>
+                </CascadingAuthenticationState>
                 <a href="https://github.com/knnlabs/ConduitLLM" target="_blank" style="margin-left: 1rem;">About</a>
             </div>
         </div>

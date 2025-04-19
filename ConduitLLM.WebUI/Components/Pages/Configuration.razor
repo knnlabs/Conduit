@@ -12,6 +12,8 @@
 @using Microsoft.EntityFrameworkCore.Query
 @using Microsoft.EntityFrameworkCore.Storage
 @using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime

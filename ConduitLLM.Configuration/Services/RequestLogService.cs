@@ -4,8 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Services.Dtos;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -15,14 +17,17 @@ namespace ConduitLLM.Configuration.Services
     public class RequestLogService : IRequestLogService
     {
         private readonly ConfigurationDbContext _context;
+        private readonly ILogger<RequestLogService> _logger;
         
         /// <summary>
         /// Initializes a new instance of the RequestLogService
         /// </summary>
         /// <param name="context">Database context</param>
-        public RequestLogService(ConfigurationDbContext context)
+        /// <param name="logger">Logger instance</param>
+        public RequestLogService(ConfigurationDbContext context, ILogger<RequestLogService> logger)
         {
             _context = context;
+            _logger = logger;
         }
         
         /// <inheritdoc/>
@@ -237,6 +242,163 @@ namespace ConduitLLM.Configuration.Services
                 .ToListAsync();
                 
             return (logs, totalCount);
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> SearchLogsAsync(
+            int? virtualKeyId,
+            string? modelFilter,
+            DateTime startDate,
+            DateTime endDate,
+            int? statusCode,
+            int pageNumber = 1,
+            int pageSize = 20)
+        {
+            try
+            {
+                var query = _context.RequestLogs
+                    .AsNoTracking()
+                    .Include(r => r.VirtualKey)
+                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+
+                // Apply optional filters
+                if (virtualKeyId.HasValue)
+                {
+                    query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(modelFilter))
+                {
+                    query = query.Where(r => r.ModelName.Contains(modelFilter));
+                }
+
+                if (statusCode.HasValue)
+                {
+                    query = query.Where(r => r.StatusCode == statusCode.Value);
+                }
+
+                // Get total count before pagination
+                var totalCount = await query.CountAsync();
+
+                // Apply sorting and pagination
+                var logs = await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return (logs, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching request logs");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var logs = await _context.RequestLogs
+                    .AsNoTracking()
+                    .Include(r => r.VirtualKey)
+                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
+                    .ToListAsync();
+
+                var summary = new LogsSummaryDto
+                {
+                    TotalRequests = logs.Count,
+                    TotalCost = logs.Sum(r => r.Cost),
+                    TotalInputTokens = logs.Sum(r => r.InputTokens),
+                    TotalOutputTokens = logs.Sum(r => r.OutputTokens),
+                    AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
+                    StartDate = startDate,
+                    EndDate = endDate
+                };
+
+                // Group by model
+                var modelGroups = logs
+                    .GroupBy(r => r.ModelName)
+                    .Select(g => new
+                    {
+                        ModelName = g.Key,
+                        RequestCount = g.Count(),
+                        TotalCost = g.Sum(r => r.Cost)
+                    })
+                    .OrderByDescending(g => g.RequestCount)
+                    .ToList();
+
+                foreach (var model in modelGroups)
+                {
+                    summary.RequestsByModel[model.ModelName] = model.RequestCount;
+                    summary.CostByModel[model.ModelName] = model.TotalCost;
+                }
+
+                // Group by key
+                var keyGroups = logs
+                    .GroupBy(r => r.VirtualKeyId)
+                    .Select(g => new
+                    {
+                        KeyId = g.Key,
+                        KeyName = g.First().VirtualKey?.KeyName ?? "Unknown",
+                        RequestCount = g.Count(),
+                        TotalCost = g.Sum(r => r.Cost)
+                    })
+                    .ToList();
+
+                foreach (var key in keyGroups)
+                {
+                    summary.RequestsByKey[key.KeyId] = new KeySummary
+                    {
+                        KeyName = key.KeyName,
+                        RequestCount = key.RequestCount,
+                        TotalCost = key.TotalCost
+                    };
+                }
+
+                // Calculate success rate and group by status
+                var successCount = logs.Count(r => r.StatusCode.HasValue && r.StatusCode >= 200 && r.StatusCode < 300);
+                summary.SuccessRate = logs.Any() ? (double)successCount / logs.Count * 100 : 0;
+
+                var statusGroups = logs
+                    .Where(r => r.StatusCode.HasValue)
+                    .GroupBy(r => r.StatusCode!.Value)
+                    .Select(g => new { StatusCode = g.Key, Count = g.Count() })
+                    .ToList();
+
+                foreach (var status in statusGroups)
+                {
+                    summary.RequestsByStatus[status.StatusCode] = status.Count;
+                }
+
+                return summary;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting logs summary");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<string>> GetDistinctModelsAsync()
+        {
+            try
+            {
+                return await _context.RequestLogs
+                    .AsNoTracking()
+                    .Select(r => r.ModelName)
+                    .Distinct()
+                    .OrderBy(m => m)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting distinct models");
+                throw;
+            }
         }
     }
 }

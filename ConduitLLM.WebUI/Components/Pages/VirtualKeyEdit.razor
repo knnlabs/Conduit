@@ -89,12 +89,10 @@ else
                             <div class="input-group mb-2">
                                 <input type="text" class="form-control" placeholder="Search models..." 
                                        @bind="modelSearchText" @bind:event="oninput" />
-                                <button type="button" class="btn btn-outline-secondary" 
-                                        @onclick="SelectAllModels" disabled="@(availableModels?.Count == 0)">
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => SelectAllModels()">
                                     <i class="bi bi-check-all"></i> Select All
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary" 
-                                        @onclick="ClearAllModels" disabled="@(selectedModels.Count == 0)">
+                                <button class="btn btn-outline-secondary" type="button" @onclick="() => ClearModelSelection()">
                                     <i class="bi bi-x-lg"></i> Clear All
                                 </button>
                             </div>
@@ -109,9 +107,10 @@ else
                                     var filteredModels = FilterModels();
                                     var groupedModels = filteredModels
                                         .GroupBy(m => m.ProviderName)
-                                        .OrderBy(g => g.Key);
+                                        .OrderBy(g => g.Key)
+                                        .ToList();
                                     
-                                    @if (!filteredModels.Any())
+                                    if (groupedModels.Count == 0)
                                     {
                                         <div class="p-3 text-muted">No models match your search.</div>
                                     }
@@ -129,15 +128,14 @@ else
                                                 <div class="px-2 py-1">
                                                     @foreach (var model in group.OrderBy(m => m.ModelAlias))
                                                     {
-                                                        <div class="form-check my-1">
-                                                            <input type="checkbox" class="form-check-input" 
-                                                                id="model_@model.ModelAlias" 
-                                                                value="@model.ModelAlias" 
-                                                                checked="@selectedModels.Contains(model.ModelAlias)"
-                                                                @onchange="@(e => ToggleModelSelection(model.ModelAlias, e.Value is bool value ? value : false))" />
-                                                            <label class="form-check-label" for="model_@model.ModelAlias">
+                                                        <div class="form-check py-1">
+                                                            <input class="form-check-input" type="checkbox" 
+                                                                   id="model_@(model.ProviderModelId)" 
+                                                                   checked="@selectedModels.Contains(model.ModelAlias)"
+                                                                   @onchange="e => ToggleModelSelection(model.ModelAlias, (bool)e.Value!)" />
+                                                            <label class="form-check-label d-block text-truncate" for="model_@(model.ProviderModelId)" 
+                                                                  title="@model.ModelAlias">
                                                                 @model.ModelAlias
-                                                                <small class="text-muted">(@model.ProviderModelId)</small>
                                                             </label>
                                                         </div>
                                                     }
@@ -147,148 +145,179 @@ else
                                     }
                                 }
                             </div>
-                            <ValidationMessage For="@(() => request!.AllowedModels)" />
-                            <div class="form-text d-flex justify-content-between align-items-center">
-                                <span>Select models that can be used with this key. Leave empty to allow all models.</span>
-                                @if (selectedModels.Count > 0)
-                                {
-                                    <button type="button" class="btn btn-sm btn-link p-0" @onclick="ShowSelectedModels">
-                                        Show selected
-                                    </button>
-                                }
+                            <div class="form-text mt-1">
+                                Specify which models this key can access, or leave empty to allow all models.
                             </div>
-                            @if (showSelectedModelsList && selectedModels.Count > 0)
-                            {
-                                <div class="mt-2 p-2 bg-light border rounded">
-                                    <div class="d-flex justify-content-between">
-                                        <small><strong>Selected models:</strong></small>
-                                        <button type="button" class="btn-close btn-sm" @onclick="() => showSelectedModelsList = false"></button>
-                                    </div>
-                                    <small>@string.Join(", ", selectedModels.OrderBy(m => m))</small>
-                                </div>
-                            }
                         </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <InputCheckbox id="isEnabled" @bind-Value="isEnabled" class="form-check-input" />
-                                <label class="form-check-label" for="isEnabled">
-                                    Key Enabled
-                                </label>
-                            </div>
-                            <div class="form-text">Disable to temporarily prevent usage of this key</div>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Rate Limits</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i> 
+                            Rate limits help prevent abuse and manage API load. Set to 0 for no limit.
                         </div>
-
+                        
                         <div class="mb-3">
-                            <label for="metadata" class="form-label">Metadata (Optional):</label>
-                            <InputTextArea id="metadata" @bind-Value="request!.Metadata" class="form-control" rows="3" />
-                            <div class="form-text">Optional JSON metadata or notes about this key</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="rateLimitRpm" class="form-label">Requests Per Minute (RPM):</label>
+                            <label for="rateLimitRpm" class="form-label">
+                                Requests Per Minute (RPM):
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum number of requests allowed per minute for this key. Set to 0 for no limit.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                            </label>
                             <InputNumber id="rateLimitRpm" @bind-Value="request!.RateLimitRpm" class="form-control" />
-                            <div class="form-text">Leave empty for unlimited RPM.</div>
+                            <ValidationMessage For="@(() => request!.RateLimitRpm)" />
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="rateLimitRpd" class="form-label">Requests Per Day (RPD):</label>
+                            <label for="rateLimitRpd" class="form-label">
+                                Requests Per Day (RPD):
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum number of requests allowed per day for this key. Set to 0 for no limit.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                            </label>
                             <InputNumber id="rateLimitRpd" @bind-Value="request!.RateLimitRpd" class="form-control" />
-                            <div class="form-text">Leave empty for unlimited RPD.</div>
+                            <ValidationMessage For="@(() => request!.RateLimitRpd)" />
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <div class="col-md-6">
                 <div class="card shadow-sm mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0">Budget & Expiration</h5>
+                        <h5 class="mb-0">Budget Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3" role="alert">
+                            <i class="bi bi-info-circle-fill me-2"></i> 
+                            Set a budget limit for this key to control costs. The budget can reset on a schedule you define.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="maxBudget" class="form-label">
+                                Max Budget ($):
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum amount in USD this key can spend. Set to 0 for no budget limit.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                            </label>
+                            <InputNumber id="maxBudget" @bind-Value="request!.MaxBudget" class="form-control" />
+                            <ValidationMessage For="@(() => request!.MaxBudget)" />
+                            <div class="form-text">Set to 0 for no budget limit</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="budgetDuration" class="form-label">
+                                Budget Reset Schedule:
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="How often the budget should reset. Select 'Never' if you want a fixed budget without reset.">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                </span>
+                            </label>
+                            <InputSelect id="budgetDuration" @bind-Value="request!.BudgetDuration" class="form-control">
+                                <option value="">Never (Fixed Budget)</option>
+                                <option value="Daily">Daily</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Quarterly">Quarterly</option>
+                                <option value="Yearly">Yearly</option>
+                            </InputSelect>
+                            <div class="form-text">How often the budget resets</div>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(request!.BudgetDuration))
+                        {
+                            <div class="mb-3">
+                                <label for="budgetStartDate" class="form-label">Budget Start Date:</label>
+                                <InputDate id="budgetStartDate" @bind-Value="budgetStartDate" class="form-control" />
+                                <div class="form-text">The date from which budget cycles are calculated</div>
+                            </div>
+                        }
+                        
+                        @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Current Budget Usage:</label>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="progress flex-grow-1" style="height: 20px;">
+                                        @{
+                                            var percentage = (int)(request.MaxBudget > 0 
+                                                ? Math.Min(100, (currentSpend / request.MaxBudget.Value) * 100) 
+                                                : 0);
+                                            var progressClass = percentage < 60 
+                                                ? "bg-success" 
+                                                : (percentage < 85 ? "bg-warning" : "bg-danger");
+                                        }
+                                        <div class="progress-bar @progressClass" role="progressbar" 
+                                             style="width: @(percentage)%;" 
+                                             aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
+                                            @percentage%
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="ResetCurrentSpend">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Reset
+                                    </button>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted">
+                                    <span>$@(currentSpend.ToString("0.000000"))</span>
+                                    <span>of $@(request.MaxBudget?.ToString("0.000000"))</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(request!.BudgetDuration) && budgetStartDate.HasValue)
+                                {
+                                    <div class="mt-2 text-muted">
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        Next reset: @(GetNextBudgetResetDate(request.BudgetDuration, budgetStartDate))
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Key Details</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label for="maxBudget" class="form-label">Maximum Budget (Optional):</label>
-                            <InputNumber id="maxBudget" @bind-Value="request!.MaxBudget" class="form-control" />
-                            <ValidationMessage For="@(() => request!.MaxBudget)" />
-                            <div class="form-text">Maximum spend in USD. Leave empty for no budget limit.</div>
+                            <label for="description" class="form-label">Description (Optional):</label>
+                            <InputTextArea id="description" @bind-Value="description" class="form-control" rows="3" />
+                            <div class="form-text">A description of what this key is used for</div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="budgetDuration" class="form-label">Budget Duration:</label>
-                            <InputSelect id="budgetDuration" @bind-Value="request!.BudgetDuration" class="form-select">
-                                <option value="Total">Total (Lifetime)</option>
-                                <option value="Monthly">Monthly</option>
-                                <option value="Daily">Daily</option>
-                            </InputSelect>
-                            <div class="form-text">
-                                Period over which the budget applies.
-                                <span data-bs-toggle="tooltip" title="Monthly and Daily budgets reset automatically after their period expires">
-                                    <i class="bi bi-info-circle"></i>
+                            <label for="expirationDate" class="form-label">
+                                Expiration Date (Optional):
+                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Date when this key will expire. Leave empty for a non-expiring key.">
+                                    <i class="bi bi-info-circle-fill"></i>
                                 </span>
-                            </div>
-                        </div>
-
-                        @if (Id.HasValue && currentSpend.HasValue)
-                        {
-                            <div class="mb-3">
-                                <label class="form-label">Current Spend:</label>
-                                <div class="input-group mb-2">
-                                    <span class="input-group-text">$</span>
-                                    <input type="text" class="form-control bg-light" value="@currentSpend.Value.ToString("F2")" readonly />
-                                </div>
-                                
-                                @if (request?.MaxBudget.HasValue == true)
-                                {
-                                    <div class="mb-2">
-                                        @{
-                                            var percentage = Math.Min(100, (int)(currentSpend.Value / request.MaxBudget.Value * 100));
-                                            var progressClass = percentage < 60 ? "bg-success" : 
-                                                               percentage < 80 ? "bg-warning" : "bg-danger";
-                                        }
-                                        <div class="progress" style="height: 10px;">
-                                            <div class="progress-bar @progressClass" role="progressbar" 
-                                                 style="width: @percentage%;" 
-                                                 aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
-                                            </div>
-                                        </div>
-                                        <small class="text-muted mt-1 d-block">
-                                            $@currentSpend.Value.ToString("F2") / $@request.MaxBudget.Value.ToString("F2")
-                                            @(!string.IsNullOrEmpty(request.BudgetDuration) ? $" ({request.BudgetDuration})" : "")
-                                        </small>
-                                    </div>
-                                }
-                                
-                                <div class="form-text">
-                                    <a href="#" @onclick="ResetCurrentSpend" @onclick:preventDefault>Reset to zero</a>
-                                </div>
-                            </div>
-                        }
-
-                        <div class="mb-3">
-                            <label for="expiresAt" class="form-label">Expiration Date (Optional):</label>
-                            <InputDate id="expiresAt" @bind-Value="request!.ExpiresAt" class="form-control" />
-                            <ValidationMessage For="@(() => request!.ExpiresAt)" />
-                            <div class="form-text">Date when this key will automatically expire. Leave empty for no expiration.</div>
+                            </label>
+                            <InputDate id="expirationDate" @bind-Value="request!.ExpiresAt" class="form-control" />
+                            <div class="form-text">Leave empty for a key that never expires</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="row mt-4">
-            <div class="col">
-                <button type="submit" class="btn btn-primary me-2" disabled="@isSaving">
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary" disabled="@isSaving">
                     @if (isSaving)
                     {
-                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                        <span>Saving...</span>
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span class="ms-1">Saving...</span>
                     }
                     else
                     {
-                        <i class="bi bi-save me-1"></i>
-                        <span>@(Id.HasValue ? "Save Changes" : "Create Key")</span>
+                        <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
                     }
                 </button>
-                <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="Cancel">Cancel</button>
             </div>
         </div>
     </EditForm>
@@ -297,273 +326,236 @@ else
 @code {
     [Parameter]
     public int? Id { get; set; }
-
-    private UpdateVirtualKeyRequestDto? request;
-    private ConduitLLM.Configuration.Entities.VirtualKey? existingKey;
+    
     private bool isLoading = true;
     private bool isSaving = false;
-    private bool isEnabled;
     private string? errorMessage;
-    private string? createdKey;
-    private bool showCreatedKey = false;
-    private decimal? currentSpend;
-
-    // Model selection fields
-    private List<ModelMappingViewModel> availableModels = new();
+    private UpdateVirtualKeyRequestDto? request;
+    private List<ModelMappingViewModel>? availableModels;
     private HashSet<string> selectedModels = new();
-    private string modelSearchText = string.Empty;
-    private bool showSelectedModelsList = false;
+    private string modelSearchText = "";
+    private decimal currentSpend = 0;
+    private bool showCreatedKey = false;
+    private string createdKey = "";
+    private string? description; // Field to hold description since UpdateVirtualKeyRequestDto doesn't have it
+    private DateTime? budgetStartDate; // Field to hold budget start date
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Load available models
-            await LoadAvailableModelsAsync();
+            await LoadAvailableModels();
             
             if (Id.HasValue)
             {
-                // Editing existing key
-                var keyInfo = await VirtualKeyService.GetVirtualKeyInfoAsync(Id.Value);
-                if (keyInfo != null)
-                {
-                    await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-                    existingKey = await dbContext.VirtualKeys.FindAsync(Id.Value);
-                    
-                    if (existingKey == null)
-                    {
-                        errorMessage = "Virtual key not found in database.";
-                        return;
-                    }
-                    
-                    request = new UpdateVirtualKeyRequestDto
-                    {
-                        KeyName = existingKey.KeyName,
-                        AllowedModels = existingKey.AllowedModels,
-                        MaxBudget = existingKey.MaxBudget,
-                        BudgetDuration = existingKey.BudgetDuration,
-                        ExpiresAt = existingKey.ExpiresAt,
-                        Metadata = existingKey.Metadata,
-                        RateLimitRpm = existingKey.RateLimitRpm,
-                        RateLimitRpd = existingKey.RateLimitRpd
-                    };
-                    
-                    // Set the non-nullable property for checkbox binding
-                    isEnabled = existingKey.IsEnabled;
-                    
-                    currentSpend = existingKey.CurrentSpend;
-
-                    // Initialize selected models from comma-separated string
-                    InitializeSelectedModels(existingKey.AllowedModels);
-                }
+                await LoadVirtualKey();
             }
             else
             {
-                // New key
+                // Create a new request
                 request = new UpdateVirtualKeyRequestDto
                 {
                     KeyName = "",
+                    MaxBudget = 0,
+                    BudgetDuration = "",
+                    ExpiresAt = null,
                     AllowedModels = "",
-                    BudgetDuration = "Total",
-                    IsEnabled = true
+                    RateLimitRpm = 0,
+                    RateLimitRpd = 0
                 };
             }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+            Logger.LogError(ex, "Error initializing VirtualKeyEdit component");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task LoadVirtualKey()
+    {
+        if (!Id.HasValue) return;
+        
+        try
+        {
+            var key = await VirtualKeyService.GetVirtualKeyInfoAsync(Id.Value);
+            if (key == null)
+            {
+                return;
+            }
+            
+            // Initialize the request from the existing key
+            request = new UpdateVirtualKeyRequestDto
+            {
+                KeyName = key.KeyName,
+                MaxBudget = key.MaxBudget,
+                BudgetDuration = key.BudgetDuration,
+                ExpiresAt = key.ExpiresAt,
+                AllowedModels = key.AllowedModels,
+                RateLimitRpm = key.RateLimitRpm,
+                RateLimitRpd = key.RateLimitRpd
+            };
+            
+            description = key.Metadata; // Use metadata for description 
+            budgetStartDate = key.BudgetStartDate; // Store the budget start date separately
+            
+            // Parse allowed models
+            if (!string.IsNullOrEmpty(key.AllowedModels))
+            {
+                selectedModels = new HashSet<string>(key.AllowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries));
+            }
+            
+            currentSpend = key.CurrentSpend;
         }
         catch (Exception ex)
         {
             errorMessage = $"Error loading virtual key: {ex.Message}";
             Logger.LogError(ex, "Error loading virtual key with ID {KeyId}", Id);
         }
-        finally
-        {
-            isLoading = false;
-        }
-        
-        // Initialize tooltips after the component is rendered
-        await InitializeTooltips();
     }
     
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await InitializeTooltips();
-        }
-    }
-    
-    private async Task InitializeTooltips()
-    {
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("initTooltips");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error initializing tooltips");
-        }
-    }
-
-    // Initialize selected models from comma-separated string
-    private void InitializeSelectedModels(string? allowedModels)
-    {
-        selectedModels.Clear();
-        
-        if (!string.IsNullOrWhiteSpace(allowedModels))
-        {
-            var models = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var model in models)
-            {
-                selectedModels.Add(model);
-            }
-        }
-    }
-
-    // Toggle selection of a model
-    private void ToggleModelSelection(string modelAlias, bool isSelected)
-    {
-        if (isSelected)
-        {
-            selectedModels.Add(modelAlias);
-        }
-        else
-        {
-            selectedModels.Remove(modelAlias);
-        }
-        
-        // Update the request.AllowedModels property with the comma-separated list
-        if (request != null)
-        {
-            request.AllowedModels = string.Join(",", selectedModels);
-        }
-    }
-    
-    // Filter models based on search text
-    private List<ModelMappingViewModel> FilterModels()
-    {
-        if (string.IsNullOrWhiteSpace(modelSearchText))
-        {
-            return availableModels;
-        }
-        
-        return availableModels
-            .Where(m => 
-                m.ModelAlias.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase) || 
-                m.ProviderName.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase) ||
-                m.ProviderModelId.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
-    
-    // Select all visible (filtered) models
-    private void SelectAllModels()
-    {
-        var filtered = FilterModels();
-        foreach (var model in filtered)
-        {
-            selectedModels.Add(model.ModelAlias);
-        }
-        
-        // Update the request
-        if (request != null)
-        {
-            request.AllowedModels = string.Join(",", selectedModels);
-        }
-    }
-    
-    // Clear all selected models
-    private void ClearAllModels()
-    {
-        selectedModels.Clear();
-        
-        if (request != null)
-        {
-            request.AllowedModels = string.Empty;
-        }
-    }
-    
-    // Show/hide the selected models list
-    private void ShowSelectedModels()
-    {
-        showSelectedModelsList = !showSelectedModelsList;
-    }
-
-    // Load available models from database
-    private async Task LoadAvailableModelsAsync()
+    private async Task LoadAvailableModels()
     {
         try
         {
             await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var modelMappings = await dbContext.ModelMappings
-                .OrderBy(m => m.ModelAlias)
-                .ToListAsync();
             
-            availableModels = modelMappings
-                .Select(m => new ModelMappingViewModel 
-                { 
-                    ModelAlias = m.ModelAlias, 
+            var models = await dbContext.ModelMappings
+                .AsNoTracking()
+                .Select(m => new ModelMappingViewModel
+                {
+                    ModelAlias = m.ModelAlias,
                     ProviderName = m.ProviderName,
                     ProviderModelId = m.ProviderModelId
                 })
-                .ToList();
+                .OrderBy(m => m.ProviderName)
+                .ThenBy(m => m.ModelAlias)
+                .ToListAsync();
+                
+            availableModels = models;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading model mappings");
-            errorMessage = "Failed to load available models.";
+            errorMessage = $"Error loading models: {ex.Message}";
+            Logger.LogError(ex, "Error loading available models");
         }
     }
-
+    
+    private List<ModelMappingViewModel> FilterModels()
+    {
+        if (availableModels == null) return new List<ModelMappingViewModel>();
+        
+        if (string.IsNullOrWhiteSpace(modelSearchText))
+            return availableModels;
+            
+        return availableModels
+            .Where(m => 
+                m.ModelAlias.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase) ||
+                m.ProviderName.Contains(modelSearchText, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+    
+    private void ToggleModelSelection(string modelKey, bool isSelected)
+    {
+        if (isSelected)
+            selectedModels.Add(modelKey);
+        else
+            selectedModels.Remove(modelKey);
+    }
+    
+    private void SelectAllModels()
+    {
+        if (availableModels == null) return;
+        
+        var filteredModels = FilterModels();
+        foreach (var model in filteredModels)
+        {
+            selectedModels.Add(model.ModelAlias);
+        }
+    }
+    
+    private void ClearModelSelection()
+    {
+        if (modelSearchText.Length > 0)
+        {
+            // If there's a search filter, only clear the filtered items
+            var filteredModelKeys = FilterModels()
+                .Select(m => m.ModelAlias)
+                .ToList();
+                
+            foreach (var key in filteredModelKeys)
+            {
+                selectedModels.Remove(key);
+            }
+        }
+        else
+        {
+            // Clear all selections
+            selectedModels.Clear();
+        }
+    }
+    
     private async Task HandleValidSubmit()
     {
-        isSaving = true;
-        errorMessage = null;
+        if (request == null) return;
         
         try
         {
-            // Ensure request is not null and update the IsEnabled property from the non-nullable field
-            if (request != null)
-            {
-                request.IsEnabled = isEnabled;
-                
-                // Update AllowedModels from selectedModels set
-                request.AllowedModels = string.Join(",", selectedModels);
-            }
+            isSaving = true;
             
-            if (Id.HasValue && existingKey != null)
+            // Update the allowed models from the selection
+            request.AllowedModels = string.Join(",", selectedModels);
+            
+            if (Id.HasValue)
             {
-                // Update existing key
-                var success = await VirtualKeyService.UpdateVirtualKeyAsync(Id.Value, request!);
-                if (success)
+                // Update an existing key
+                // Also set the metadata field to store the description
+                request.Metadata = description;
+                
+                var result = await VirtualKeyService.UpdateVirtualKeyAsync(Id.Value, request);
+                if (result)
                 {
                     NavigationManager.NavigateTo("/virtualkeys");
                 }
                 else
                 {
-                    errorMessage = "Failed to update the virtual key. It may have been deleted.";
+                    errorMessage = "Failed to update the virtual key";
                 }
             }
             else
             {
-                // Create new key
+                // Create a new key
                 var createRequest = new CreateVirtualKeyRequestDto
                 {
-                    KeyName = request!.KeyName ?? "",
+                    KeyName = request.KeyName ?? "",
                     AllowedModels = request.AllowedModels,
                     MaxBudget = request.MaxBudget,
                     BudgetDuration = request.BudgetDuration,
                     ExpiresAt = request.ExpiresAt,
-                    Metadata = request.Metadata,
+                    Metadata = description,
                     RateLimitRpm = request.RateLimitRpm,
                     RateLimitRpd = request.RateLimitRpd
                 };
                 
                 var response = await VirtualKeyService.GenerateVirtualKeyAsync(createRequest);
-                createdKey = response.VirtualKey;
-                showCreatedKey = true;
+                if (response != null)
+                {
+                    createdKey = response.VirtualKey;
+                    showCreatedKey = true;
+                }
+                else
+                {
+                    errorMessage = "Failed to create the virtual key";
+                }
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error saving virtual key: {ex.Message}";
+            errorMessage = $"Error: {ex.Message}";
             Logger.LogError(ex, "Error saving virtual key");
         }
         finally
@@ -626,5 +618,68 @@ else
         public string ModelAlias { get; set; } = string.Empty;
         public string ProviderName { get; set; } = string.Empty;
         public string ProviderModelId { get; set; } = string.Empty;
+    }
+
+    private string GetNextBudgetResetDate(string budgetDuration, DateTime? budgetStartDate)
+    {
+        if (string.IsNullOrEmpty(budgetDuration) || !budgetStartDate.HasValue)
+            return "N/A";
+
+        DateTime start = budgetStartDate.Value;
+        DateTime now = DateTime.UtcNow;
+        DateTime nextReset;
+
+        switch (budgetDuration.ToLowerInvariant())
+        {
+            case "daily":
+                nextReset = now.Date.AddDays(1);
+                break;
+            case "weekly":
+                // Calculate days until next week starts from the original start day
+                int daysUntilNextWeek = ((int)start.DayOfWeek - (int)now.DayOfWeek + 7) % 7;
+                if (daysUntilNextWeek == 0) daysUntilNextWeek = 7; // If today is the reset day, move to next week
+                nextReset = now.Date.AddDays(daysUntilNextWeek);
+                break;
+            case "monthly":
+                // Calculate next month with same day
+                int day = Math.Min(start.Day, DateTime.DaysInMonth(now.Year, now.Month));
+                if (now.Day < day)
+                    nextReset = new DateTime(now.Year, now.Month, day);
+                else
+                    nextReset = new DateTime(
+                        now.Month == 12 ? now.Year + 1 : now.Year,
+                        now.Month == 12 ? 1 : now.Month + 1,
+                        Math.Min(start.Day, DateTime.DaysInMonth(
+                            now.Month == 12 ? now.Year + 1 : now.Year,
+                            now.Month == 12 ? 1 : now.Month + 1)));
+                break;
+            case "quarterly":
+                // Calculate the current quarter
+                int currentQuarter = (now.Month - 1) / 3;
+                // Calculate the next quarter's first month
+                int nextQuarterMonth = (currentQuarter + 1) * 3 + 1;
+                int nextQuarterYear = now.Year;
+                if (nextQuarterMonth > 12)
+                {
+                    nextQuarterMonth -= 12;
+                    nextQuarterYear += 1;
+                }
+                nextReset = new DateTime(
+                    nextQuarterYear,
+                    nextQuarterMonth,
+                    Math.Min(start.Day, DateTime.DaysInMonth(nextQuarterYear, nextQuarterMonth)));
+                break;
+            case "yearly":
+                // Calculate next yearly reset
+                if (now.Month < start.Month || (now.Month == start.Month && now.Day < start.Day))
+                    nextReset = new DateTime(now.Year, start.Month, Math.Min(start.Day, DateTime.DaysInMonth(now.Year, start.Month)));
+                else
+                    nextReset = new DateTime(now.Year + 1, start.Month, Math.Min(start.Day, DateTime.DaysInMonth(now.Year + 1, start.Month)));
+                break;
+            default:
+                return "N/A";
+        }
+
+        return nextReset.ToString("yyyy-MM-dd");
     }
 }

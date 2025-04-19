@@ -1,3 +1,7 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Authorization
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +11,6 @@
     <base href="/" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="@Assets["app.css"]" />
-    <!-- Removed reference to missing styles.css file -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <ImportMap />
@@ -16,22 +19,62 @@
 </head>
 
 <body>
+    <div id="app-loading">
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="loading-text">Loading ConduitLLM...</div>
+        </div>
+    </div>
     <div id="blazor-error-ui" data-nosnippet>
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
-        <button class="dismiss">🗙</button>
-        <div class="detailed-error">
-            <environment include="Development">
-                <span>⚠️ <strong>Error Details:</strong> <span id="blazor-error-detail"></span></span>
-            </environment>
-        </div>
+        <a class="dismiss">X</a>
     </div>
-    <Routes />
+    <CascadingAuthenticationState>
+        <Router AppAssembly="@typeof(App).Assembly">
+            <Found Context="routeData">
+                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(ConduitLLM.WebUI.Components.Layout.MainLayout)">
+                    <NotAuthorized>
+                        @{
+                            var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+                            if (routeData.PageType != typeof(ConduitLLM.WebUI.Components.Pages.Login) && 
+                                routeData.PageType != typeof(ConduitLLM.WebUI.Components.Pages.AccessDenied))
+                            {
+                                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                            }
+                        }
+                    </NotAuthorized>
+                </AuthorizeRouteView>
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <PageTitle>Not found</PageTitle>
+                <LayoutView Layout="@typeof(ConduitLLM.WebUI.Components.Layout.MainLayout)">
+                    <p role="alert">Sorry, there's nothing at this address.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingAuthenticationState>
+
     <script src="_framework/blazor.web.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="js/site.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/tooltips.js"></script>
+    <script src="js/charts.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('app-loading').style.display = 'none';
+        });
+    </script>
 </body>
 
 </html>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

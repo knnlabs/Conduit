@@ -1,4 +1,20 @@
+using System;
+using System;
+using System.IO;
 using ConduitLLM.Configuration;
+using ConduitLLM.WebUI;
+using Microsoft.AspNetCore.Authentication; // <-- Add this using directive
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
@@ -18,13 +34,8 @@ using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.StaticWebAssets;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,8 +73,34 @@ else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 #endif
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.Cookie.Name = "ConduitAuth";
+        options.LoginPath = "/login";
+        options.LogoutPath = "/logout";
+        options.AccessDeniedPath = "/access-denied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(1);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    });
+
+// Add authorization with policy requirements
+builder.Services.AddAuthorization(options =>
+{
+    // Define policy that requires master key authentication
+    options.AddPolicy("MasterKeyPolicy", policy =>
+        policy.RequireClaim("MasterKeyAuthenticated", "true"));
+    
+    // Configure a fallback policy that allows anonymous access by default
+    // This allows public pages like Login and AccessDenied to be accessed without authentication
+    // Individual pages will use [Authorize] attribute as needed
+    options.FallbackPolicy = null; // Allow anonymous access by default
+});
+
+// Add HttpContextAccessor - required for authentication in Razor components
+builder.Services.AddHttpContextAccessor();
 
 // Configure ConduitSettings to be bound from the application's configuration
 builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nameof(ConduitSettings)));
@@ -158,6 +195,7 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, Cond
 builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>(); 
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RequestLogService>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Services.ICostDashboardService, ConduitLLM.WebUI.Services.CostDashboardService>();
 
 // Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
@@ -165,24 +203,17 @@ builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
 // Register Cost Calculation Service
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 
-// Required for accessing HttpContext in handlers/services
-builder.Services.AddHttpContextAccessor(); 
-
-// Add Authorization services and the custom handler
-builder.Services.AddAuthorization();
-builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ConduitLLM.WebUI.Authorization.MasterKeyAuthorizationHandler>();
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("MasterKeyPolicy", policy =>
-        policy.Requirements.Add(new ConduitLLM.WebUI.Authorization.MasterKeyRequirement()));
-});
-
 // Add Conduit related services
 builder.Services.AddSingleton<ConduitLLM.Core.ConduitRegistry>();
 
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 
+// Add Razor Components
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+// Add Controllers
 builder.Services.AddControllers();
 
 // Register context management services
@@ -190,20 +221,33 @@ builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
 
+// Print master key for debugging purposes
+var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+Console.WriteLine("==============================================");
+Console.WriteLine($"Access Key: {masterKey}");
+Console.WriteLine("==============================================");
+
 // Initialize Master Key using InitialSetupService
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
+    var initialSetupService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.InitialSetupService>();
+    await initialSetupService.EnsureMasterKeyExistsAsync();
+    
+    // Verify the master key is set and accessible
+    var envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+    if (string.IsNullOrEmpty(envMasterKey))
     {
-        var initialSetupService = services.GetRequiredService<ConduitLLM.WebUI.Services.InitialSetupService>();
-        await initialSetupService.EnsureMasterKeyExistsAsync();
+        Console.WriteLine("WARNING: CONDUIT_MASTER_KEY environment variable is not set!");
     }
-    catch (Exception ex)
+    else
     {
-        var logger = services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during application initialization.");
+        Console.WriteLine($"CONDUIT_MASTER_KEY environment variable is set. Length: {envMasterKey.Length}");
     }
+
+    // Get global settings
+    var globalSettingService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Interfaces.IGlobalSettingService>();
+    var storedHash = await globalSettingService.GetMasterKeyHashAsync();
+    Console.WriteLine($"Master key hash from database: {storedHash ?? "NOT FOUND"}");
 }
 
 // Initialize Router with configuration
@@ -258,6 +302,9 @@ app.UseDefaultFiles();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Add authentication middleware before authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Add Virtual Key Authentication and LLM Request Tracking middleware
@@ -267,6 +314,61 @@ app.UseLlmRequestTracking();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+// Ensure controllers are mapped for our API endpoints
 app.MapControllers();
+
+// --- Add Minimal API endpoint for Login ---
+// Changed rememberMe to nullable bool (bool?)
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger) =>
+{
+    logger.LogInformation("POST /account/login received.");
+    string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+    bool isValid = false;
+
+    if (!string.IsNullOrEmpty(envMasterKey))
+    {
+        // Use the same comparison logic as before
+        isValid = string.Equals(masterKey?.Trim(), envMasterKey.Trim(), StringComparison.OrdinalIgnoreCase);
+        logger.LogInformation("Environment variable key comparison result: {IsValid}", isValid);
+    }
+    else
+    {
+        // Optional: Add fallback to database hash check here if needed in the future
+        logger.LogWarning("CONDUIT_MASTER_KEY environment variable not set during POST /account/login.");
+    }
+
+    if (isValid)
+    {
+        logger.LogInformation("Login successful via POST /account/login.");
+        var claims = new List<System.Security.Claims.Claim>
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Admin"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Administrator"),
+            new System.Security.Claims.Claim("MasterKeyAuthenticated", "true")
+        };
+        var claimsIdentity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var authProperties = new Microsoft.AspNetCore.Authentication.AuthenticationProperties
+        {
+            // Handle nullable rememberMe, default to false if null (unchecked)
+            IsPersistent = rememberMe ?? false, 
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays((rememberMe ?? false) ? 7 : 1) 
+        };
+
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new System.Security.Claims.ClaimsPrincipal(claimsIdentity),
+            authProperties);
+
+        return Results.Redirect(returnUrl ?? "/");
+    }
+    else
+    {
+        logger.LogWarning("Login failed via POST /account/login.");
+        // Redirect back to login page with an error indicator
+        var redirectUrl = $"/login?error=InvalidKey{(string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}")}";
+        return Results.Redirect(redirectUrl);
+    }
+});
+// --- End Minimal API endpoint ---
 
 app.Run();

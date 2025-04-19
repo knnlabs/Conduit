@@ -1,0 +1,41 @@
+@page "/access-denied"
+@inject NavigationManager NavigationManager
+
+<PageTitle>Access Denied - ConduitLLM</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Access Denied</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-shield-lock-fill text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4 class="text-center mb-4">You do not have permission to view this resource</h4>
+                    <p class="text-center">
+                        You need to be authenticated with the appropriate credentials to access this page.
+                    </p>
+                    <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                        <button class="btn btn-primary" @onclick="NavigateToLogin">Go to Login</button>
+                        <button class="btn btn-outline-secondary" @onclick="NavigateToHome">Return to Home</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private void NavigateToHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}
