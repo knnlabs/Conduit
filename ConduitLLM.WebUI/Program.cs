@@ -72,9 +72,26 @@ builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nam
 if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
+    {
+        options.UseSqlite(dbConnectionString);
+        if (builder.Environment.IsDevelopment())
+        {
+            // Suppress the pending model changes warning in development
+            options.ConfigureWarnings(warnings => 
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
+    
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
+    {
+        options.UseSqlite(dbConnectionString);
+        if (builder.Environment.IsDevelopment())
+        {
+            // Suppress the pending model changes warning in development
+            options.ConfigureWarnings(warnings => 
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
 }
 #if POSTGRES
 else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))

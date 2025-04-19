@@ -120,6 +120,26 @@ namespace ConduitLLM.Configuration
                       .IsUnique(false); // Patterns might not be unique if we allow overlaps
             });
             
+            // Configure VirtualKeySpendHistory entity
+            modelBuilder.Entity<VirtualKeySpendHistory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne<VirtualKey>()
+                      .WithMany(e => e.SpendHistory)
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure Notification entity
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne<VirtualKey>()
+                      .WithMany(e => e.Notifications)
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+            
             // Only configure ModelProviderMapping in non-test environments or ignore it in test environments
             if (IsTestEnvironment)
             {
@@ -128,13 +148,17 @@ namespace ConduitLLM.Configuration
             }
             else
             {
-                // Configure ModelProviderMapping for production environment
-                modelBuilder.Entity<ModelProviderMapping>()
-                    .HasKey("Id"); // Use string-based key identification to avoid type errors
+                // Configure ModelProviderMapping for production environment with explicit namespace
+                modelBuilder.Entity<Entities.ModelProviderMapping>(entity =>
+                {
+                    entity.HasKey(e => e.Id);
+                });
                 
-                // Configure ProviderCredential for production environment
-                modelBuilder.Entity<ProviderCredential>()
-                    .HasKey("Id");
+                // Configure ProviderCredential for production environment with explicit namespace
+                modelBuilder.Entity<Entities.ProviderCredential>(entity =>
+                {
+                    entity.HasKey(e => e.Id);
+                });
             }
         }
     }

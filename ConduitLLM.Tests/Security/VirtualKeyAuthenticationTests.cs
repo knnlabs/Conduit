@@ -33,6 +33,7 @@ namespace ConduitLLM.Tests.Security
             // Arrange
             var options = GetDbOptions();
             using var context = new ConfigurationDbContext(options);
+            context.IsTestEnvironment = true;
             var service = new VirtualKeyService(context);
             
             // Act
@@ -50,6 +51,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 context.VirtualKeys.Add(new VirtualKey
                 {
                     Id = 1,
@@ -62,6 +64,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 var service = new VirtualKeyService(context);
                 
                 // Act
@@ -80,6 +83,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 context.VirtualKeys.Add(new VirtualKey
                 {
                     Id = 1,
@@ -93,6 +97,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 var service = new VirtualKeyService(context);
                 
                 // Act
@@ -111,6 +116,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 context.VirtualKeys.Add(new VirtualKey
                 {
                     Id = 1,
@@ -126,6 +132,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 var service = new VirtualKeyService(context);
                 
                 // Act
@@ -144,6 +151,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 context.VirtualKeys.Add(new VirtualKey
                 {
                     Id = 1,
@@ -160,6 +168,7 @@ namespace ConduitLLM.Tests.Security
             
             using (var context = new ConfigurationDbContext(options))
             {
+                context.IsTestEnvironment = true;
                 var service = new VirtualKeyService(context);
                 
                 // Act

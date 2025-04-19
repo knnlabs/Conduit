@@ -112,6 +112,17 @@ public class ConfigurationDbContext : DbContext
             entity.HasIndex(e => e.ModelIdPattern)
                   .IsUnique(false); // Patterns might not be unique if we allow overlaps
         });
+        
+        // Add explicit configuration for the Configuration library entities
+        modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelProviderMapping>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+        });
+        
+        modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+        });
     }
 
     // It's generally better to configure the database connection in Program.cs

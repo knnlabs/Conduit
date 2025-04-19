@@ -113,6 +113,9 @@ builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Fix: Add Authentication services
+builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
 
 // Register HttpClient with retry policies for LLM providers
