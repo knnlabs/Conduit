@@ -319,6 +319,15 @@ app.MapPost("/v1/chat/completions", async (
 
         try
         {
+            // Capture the requested model ID for cost calculation
+            string responseModelId = request.Model ?? string.Empty;
+
+            // Initialize variables to accumulate token counts
+            // Note: We have to track this manually as streaming chunks usually don't include usage info
+            int totalPromptTokens = 0;
+            int totalCompletionTokens = 0;
+            bool hasReceivedUsage = false;
+
             // Pass the actual provider apiKey (which might be null if virtual key was used)
             await foreach (var chunk in conduit.StreamChatCompletionAsync(request, apiKey, httpRequest.HttpContext.RequestAborted)
                             .WithCancellation(httpRequest.HttpContext.RequestAborted)) 
@@ -329,6 +338,24 @@ app.MapPost("/v1/chat/completions", async (
                     break;
                 }
 
+                // Update model ID if provided in the response
+                if (!string.IsNullOrEmpty(chunk.Model))
+                {
+                    responseModelId = chunk.Model;
+                }
+
+                // Check if this chunk contains a message with usage info
+                // Some providers send usage in a special message structure
+                if (chunk.Choices != null && chunk.Choices.Count > 0)
+                {
+                    // Extract completion content length as a rough approximation for token count
+                    // This is a fallback when no explicit usage info is provided
+                    if (chunk.Choices[0].Delta?.Content != null)
+                    {
+                        totalCompletionTokens += 1; // Increment by a small value per chunk
+                    }
+                }
+                
                 // Serialize to JSON and append SSE prefix
                 string jsonChunk = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
                 await httpResponse.WriteAsync($"data: {jsonChunk}\n\n", httpRequest.HttpContext.RequestAborted);
@@ -340,16 +367,31 @@ app.MapPost("/v1/chat/completions", async (
             await httpResponse.Body.FlushAsync(httpRequest.HttpContext.RequestAborted);
             logger.LogInformation("Finished sending stream.");
 
-            // For streaming requests, we'll have to use the approximate usage data collected at the client side
-            // or use a placeholder cost until we have a better solution
+            // If we haven't received explicit usage info, use the request's messages to estimate prompt tokens
+            if (!hasReceivedUsage && request.Messages != null)
+            {
+                // Rough estimation: about 4 tokens per word
+                totalPromptTokens = request.Messages.Sum(m => (m.Content?.ToString()?.Length ?? 0) / 4);
+            }
+
+            // Create final usage object for cost calculation
+            var finalUsage = new Usage
+            {
+                PromptTokens = totalPromptTokens,
+                CompletionTokens = totalCompletionTokens,
+                TotalTokens = totalPromptTokens + totalCompletionTokens
+            };
+
+            // For streaming requests, calculate actual cost based on accumulated usage
             if (virtualKeyId.HasValue)
             {
-                // TODO: Implement proper usage tracking for streaming requests
-                // Could accumulate tokens in client or estimate based on response length
-                // For now, use a minimal cost placeholder
-                decimal cost = 0.01m; // Placeholder cost - streaming calculation will be improved later
-                logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after stream completion", virtualKeyId.Value, cost);
-                await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, cost);
+                // Calculate actual cost using the cost calculation service
+                decimal calculatedCost = await costCalculator.CalculateCostAsync(responseModelId, finalUsage, httpRequest.HttpContext.RequestAborted);
+                
+                logger.LogInformation("Updating spend for Virtual Key ID {KeyId} by {Cost} after stream completion", 
+                    virtualKeyId.Value, calculatedCost);
+                
+                await virtualKeyService.UpdateSpendAsync(virtualKeyId.Value, calculatedCost);
             }
         }
         catch (OperationCanceledException)
@@ -898,6 +940,128 @@ app.MapGet("/api/providers/{providerName}/models", async (
     }
 
 }).WithTags("LLM Proxy Configuration");
+
+app.MapGet("/v1/models", async (
+    [FromServices] ILogger<Program> logger,
+    [FromServices] IVirtualKeyService virtualKeyService,
+    [FromServices] IOptions<ConduitSettings> settingsOptions,
+    [FromServices] IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> dbContextFactory,
+    HttpRequest httpRequest) =>
+{
+    logger.LogInformation("Received /v1/models request");
+
+    // 1. Extract API Key from header
+    string? originalApiKey = null;
+
+    if (httpRequest.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
+    {
+        string auth = authHeader.ToString();
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            originalApiKey = auth.Substring("Bearer ".Length).Trim();
+        }
+        else
+        {
+            originalApiKey = auth.Trim(); // Just in case they sent the raw key
+        }
+    }
+
+    if (string.IsNullOrEmpty(originalApiKey))
+    {
+        logger.LogWarning("No API key provided for model listing");
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
+                Message = "No API key provided",
+                Type = "invalid_request_error",
+                Code = "missing_api_key"
+            }
+        }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
+    }
+
+    try
+    {
+        var settings = settingsOptions.Value;
+        List<ModelProviderMapping> allowedModels = new List<ModelProviderMapping>();
+
+        // --- Virtual Key Check & Validation ---
+        bool useVirtualKey = originalApiKey?.StartsWith("condt_", StringComparison.OrdinalIgnoreCase) ?? false;
+        if (useVirtualKey)
+        {
+            logger.LogInformation("Virtual Key detected. Validating and filtering models...");
+            var virtualKey = await virtualKeyService.ValidateVirtualKeyAsync(originalApiKey!);
+            if (virtualKey == null)
+            {
+                logger.LogWarning("Invalid or disabled Virtual Key provided");
+                return Results.Json(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = "Invalid API key provided",
+                        Type = "invalid_request_error",
+                        Code = "invalid_api_key"
+                    }
+                }, statusCode: (int)HttpStatusCode.Unauthorized, options: jsonSerializerOptions);
+            }
+
+            // Get list of allowed models for this virtual key
+            if (!string.IsNullOrEmpty(virtualKey.AllowedModels))
+            {
+                // Split comma-separated list and trim each value
+                var permittedModelAliases = virtualKey.AllowedModels
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(m => m.Trim())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                // Filter the global model mappings to include only permitted models
+                if (settings.ModelMappings != null)
+                {
+                    allowedModels = settings.ModelMappings
+                        .Where(m => permittedModelAliases.Contains(m.ModelAlias))
+                        .ToList();
+                }
+                
+                logger.LogInformation("Filtered to {Count} models allowed for this virtual key", allowedModels.Count);
+            }
+            else
+            {
+                // If AllowedModels is empty, no models are allowed
+                logger.LogInformation("Virtual key has no allowed models specified");
+                allowedModels = new List<ModelProviderMapping>();
+            }
+        }
+        else
+        {
+            // Direct provider key - return all configured models
+            logger.LogInformation("Using direct provider key, returning all configured models");
+            if (settings.ModelMappings != null)
+            {
+                allowedModels = settings.ModelMappings.ToList();
+            }
+        }
+
+        // Format response according to OpenAI API specification
+        var response = new
+        {
+            Object = "list",
+            Data = allowedModels.Select(model => new
+            {
+                Id = model.ModelAlias,
+                Object = "model",
+                Created = 1677610602, // Fixed timestamp placeholder
+                OwnedBy = "conduitllm" // Placeholder owner
+            }).ToArray()
+        };
+
+        return Results.Json(response, options: jsonSerializerOptions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error processing model listing request");
+        return MapExceptionToHttpResult(ex, logger);
+    }
+}).WithTags("LLM Proxy");
 
 // Helper function to map exceptions to IResult
 // Removed 'static' modifier to allow access to jsonSerializerOptions
