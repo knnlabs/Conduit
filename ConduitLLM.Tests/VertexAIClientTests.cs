@@ -140,8 +140,16 @@ public class VertexAIClientTests
         // Assert
         Assert.NotNull(response);
         Assert.Equal(request.Model, response.Model); // Should return original alias
-        Assert.Equal("assistant", response.Choices[0].Message.Role);
-        Assert.Contains("Hello! I'm Gemini", response.Choices[0].Message.Content);
+        var firstChoice = response.Choices.FirstOrDefault();
+        Assert.NotNull(firstChoice);
+        var message = firstChoice?.Message;
+        Assert.NotNull(message);
+        Assert.Equal("assistant", message?.Role);
+
+        // Extract content as string for assertion
+        string? contentStr = message?.Content as string;
+        Assert.NotNull(contentStr);
+        Assert.Contains("Hello! I'm Gemini", contentStr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -174,8 +182,16 @@ public class VertexAIClientTests
         // Assert
         Assert.NotNull(response);
         Assert.Equal(request.Model, response.Model); // Should return original alias
-        Assert.Equal("assistant", response.Choices[0].Message.Role);
-        Assert.Contains("Hello! I'm PaLM", response.Choices[0].Message.Content);
+        var firstChoice = response.Choices.FirstOrDefault();
+        Assert.NotNull(firstChoice);
+        var message = firstChoice?.Message;
+        Assert.NotNull(message);
+        Assert.Equal("assistant", message?.Role);
+
+        // Extract content as string for assertion
+        string? contentStr = message?.Content as string;
+        Assert.NotNull(contentStr); 
+        Assert.Contains("Hello! I'm PaLM", contentStr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

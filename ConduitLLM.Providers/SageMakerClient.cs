@@ -16,6 +16,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
@@ -76,22 +77,7 @@ public class SageMakerClient : ILLMClient
         try
         {
             // Convert the core chat request to SageMaker format
-            var sageMakerRequest = new SageMakerChatRequest
-            {
-                Inputs = request.Messages.Select(m => new SageMakerChatMessage
-                {
-                    Role = MapCoreRoleToSageMakerRole(m.Role),
-                    Content = m.Content ?? string.Empty
-                }).ToList(),
-                Parameters = new SageMakerParameters
-                {
-                    MaxNewTokens = request.MaxTokens,
-                    Temperature = request.Temperature,
-                    TopP = request.TopP,
-                    DoSample = true,
-                    ReturnFullText = false
-                }
-            };
+            var sageMakerRequest = MapToSageMakerRequest(request);
             
             // In a real implementation, use AWS SDK with AWS Signature v4
             string apiUrl = $"{GetSageMakerRuntimeEndpoint(_credentials.ApiBase ?? "us-east-1")}/endpoints/{_endpointName}/invocations";
@@ -149,7 +135,7 @@ public class SageMakerClient : ILLMClient
                 {
                     // SageMaker doesn't provide token usage, so estimate based on text length
                     // This is a very rough approximation
-                    PromptTokens = EstimateTokenCount(string.Join(" ", request.Messages.Select(m => m.Content))),
+                    PromptTokens = EstimateTokenCount(string.Join(" ", request.Messages.Select(m => ContentHelper.GetContentAsString(m.Content)))),
                     CompletionTokens = EstimateTokenCount(sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Content ?? string.Empty),
                     TotalTokens = 0 // Will be calculated below
                 }
@@ -190,22 +176,17 @@ public class SageMakerClient : ILLMClient
         string? apiKey = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        
-        _logger.LogInformation("Streaming chat completion with AWS SageMaker is not natively supported. Using non-streaming endpoint with simulated streaming");
-        
-        // SageMaker doesn't natively support streaming, so we'll simulate it
-        // Get the full response first
+        // Simulate streaming by breaking up the response
         var fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
         
-        if (fullResponse.Choices == null || !fullResponse.Choices.Any() || 
-            string.IsNullOrEmpty(fullResponse.Choices[0].Message?.Content))
+        if (fullResponse.Choices == null || !fullResponse.Choices.Any() ||
+            fullResponse.Choices[0].Message?.Content == null)
         {
             yield break;
         }
         
         // Simulate streaming by breaking up the content
-        string content = fullResponse.Choices[0].Message!.Content!;
+        string content = ContentHelper.GetContentAsString(fullResponse.Choices[0].Message!.Content);
         
         // Generate a random ID for this streaming session
         string streamId = Guid.NewGuid().ToString();
@@ -315,15 +296,46 @@ public class SageMakerClient : ILLMClient
     
     #region Helper Methods
     
-    private string MapCoreRoleToSageMakerRole(string? coreRole)
+    private SageMakerRequest MapToSageMakerRequest(ChatCompletionRequest request)
     {
-        return coreRole?.ToLowerInvariant() switch
+        var sageMakerRequest = new SageMakerRequest
         {
-            "user" => "user",
-            "assistant" => "assistant",
-            "system" => "system",
-            _ => coreRole ?? "user" // Default to user for unknown roles
+            Inputs = FormatMessages(request.Messages),
+            Parameters = new SageMakerParameters
+            {
+                Temperature = request.Temperature,
+                MaxNewTokens = request.MaxTokens,
+                TopP = request.TopP,
+                ReturnFullText = false // Don't echo the prompt
+            }
         };
+        
+        return sageMakerRequest;
+    }
+    
+    private string FormatMessages(List<Message> messages)
+    {
+        var formatted = new StringBuilder();
+        
+        // Extract system message first
+        var systemMessage = messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+        if (systemMessage != null)
+        {
+            formatted.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content));
+            formatted.AppendLine();
+        }
+        
+        // Format user/assistant conversation
+        foreach (var message in messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+        {
+            string role = message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
+                ? "Assistant"
+                : "Human";
+            
+            formatted.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content)}");
+        }
+        
+        return formatted.ToString().Trim();
     }
     
     private int EstimateTokenCount(string text)

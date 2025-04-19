@@ -80,8 +80,8 @@ public class HuggingFaceClientTests
         
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(), 
-                Moq.Protected.ItExpr.IsAny<CancellationToken>())
+                MoqIt.IsAny<HttpRequestMessage>(), 
+                MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK,
@@ -105,13 +105,17 @@ public class HuggingFaceClientTests
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
-        Assert.Contains(modelId, message?.Content, StringComparison.OrdinalIgnoreCase);
+
+        // Extract content as string for assertion
+        string? contentStr = message?.Content as string;
+        Assert.NotNull(contentStr);
+        Assert.Contains(modelId, contentStr, StringComparison.OrdinalIgnoreCase);
         
         _handlerMock.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
-            Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
-            Moq.Protected.ItExpr.IsAny<CancellationToken>());
+            MoqIt.IsAny<HttpRequestMessage>(),
+            MoqIt.IsAny<CancellationToken>());
     }
 
     [Fact]
@@ -132,8 +136,8 @@ public class HuggingFaceClientTests
         
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(), 
-                Moq.Protected.ItExpr.IsAny<CancellationToken>())
+                MoqIt.IsAny<HttpRequestMessage>(), 
+                MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK,
@@ -156,7 +160,11 @@ public class HuggingFaceClientTests
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
-        Assert.Contains("GPT-2", message?.Content, StringComparison.OrdinalIgnoreCase);
+
+        // Extract content as string for assertion
+        string? contentStr = message?.Content as string;
+        Assert.NotNull(contentStr);
+        Assert.Contains("GPT-2", contentStr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -171,8 +179,8 @@ public class HuggingFaceClientTests
         
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(), 
-                Moq.Protected.ItExpr.IsAny<CancellationToken>())
+                MoqIt.IsAny<HttpRequestMessage>(), 
+                MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK,
@@ -195,7 +203,11 @@ public class HuggingFaceClientTests
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
-        Assert.Contains("Llama", message?.Content, StringComparison.OrdinalIgnoreCase);
+
+        // Extract content as string for assertion
+        string? contentStr = message?.Content as string;
+        Assert.NotNull(contentStr);
+        Assert.Contains("Llama", contentStr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -195,7 +195,7 @@ public class OpenAIClient : ILLMClient
             {
                 // Ensure Role is not null before assigning
                 Role = m.Role ?? throw new ArgumentNullException(nameof(m.Role), "Message role cannot be null"),
-                // Content can be null for tool calls
+                // Content can be null for tool calls, or be either string or list of content parts
                 Content = m.Content,
                 Name = m.Name,
                 ToolCalls = m.ToolCalls != null ? MapCoreToolCallsToInternal(m.ToolCalls) : null,

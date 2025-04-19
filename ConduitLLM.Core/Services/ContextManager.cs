@@ -1,8 +1,10 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ConduitLLM.Core.Services
@@ -93,7 +95,7 @@ namespace ConduitLLM.Core.Services
                 var messageToRemove = trimmedMessages[indexToRemove];
                 _logger.LogDebug("Trimming message with role {Role}, content starts with: {ContentPreview}",
                     messageToRemove.Role, 
-                    messageToRemove.Content?.Substring(0, System.Math.Min(20, messageToRemove.Content?.Length ?? 0)));
+                    GetContentPreview(messageToRemove.Content, 20));
                 
                 // Remove the message
                 trimmedMessages.RemoveAt(indexToRemove);
@@ -132,6 +134,57 @@ namespace ConduitLLM.Core.Services
             
             // If no trimming was done, return the original request
             return request;
+        }
+
+        /// <summary>
+        /// Gets a preview of message content, handling both string and multimodal content.
+        /// </summary>
+        private string GetContentPreview(object? content, int maxLength)
+        {
+            if (content == null)
+                return "[null]";
+                
+            if (content is string textContent)
+            {
+                // Simple string content
+                return textContent.Length <= maxLength 
+                    ? textContent 
+                    : textContent.Substring(0, maxLength) + "...";
+            }
+            
+            if (content is JsonElement jsonElement)
+            {
+                // Handle JsonElement (common when deserialized from JSON)
+                if (jsonElement.ValueKind == JsonValueKind.String)
+                {
+                    string? stringValue = jsonElement.GetString();
+                    if (!string.IsNullOrEmpty(stringValue) && stringValue.Length > maxLength)
+                        return stringValue.Substring(0, maxLength) + "...";
+                    return stringValue ?? "[empty]";
+                }
+                else if (jsonElement.ValueKind == JsonValueKind.Array)
+                {
+                    return "[Multimodal content with " + jsonElement.GetArrayLength() + " parts]";
+                }
+                else
+                {
+                    return jsonElement.ToString() ?? "[JsonElement]";
+                }
+            }
+            
+            try
+            {
+                // Try to provide a sensible preview for other object types
+                string json = JsonSerializer.Serialize(content);
+                if (json.Length > maxLength)
+                    return json.Substring(0, maxLength) + "...";
+                return json;
+            }
+            catch
+            {
+                // Fallback
+                return content.ToString() ?? "[object]";
+            }
         }
     }
 }

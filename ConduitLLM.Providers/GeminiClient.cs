@@ -1,13 +1,21 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
@@ -360,77 +368,62 @@ public class GeminiClient : ILLMClient
     private GeminiGenerateContentRequest MapToGeminiRequest(ChatCompletionRequest coreRequest)
     {
         var contents = new List<GeminiContent>();
-        // Gemini requires alternating user/model roles. Handle system prompt separately.
-        string? systemInstruction = null; // Gemini v1.5 supports system_instruction at the top level
-
-        foreach (var msg in coreRequest.Messages)
+        
+        // Extract system message if present
+        var systemMessage = coreRequest.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+        if (systemMessage != null)
         {
-            if (string.IsNullOrWhiteSpace(msg.Role)) throw new ArgumentException("Message role cannot be null or empty.", nameof(coreRequest.Messages));
-            if (string.IsNullOrWhiteSpace(msg.Content)) throw new ArgumentException("Message content cannot be null or empty.", nameof(coreRequest.Messages));
-
-            string geminiRole;
-            if (msg.Role.Equals(MessageRole.System, StringComparison.OrdinalIgnoreCase))
-            {
-                // Handle system message - Gemini v1.5 prefers system_instruction
-                // For older models, prepend to the first user message or handle as context.
-                // Assuming v1.5+ for now. If multiple system messages, maybe concatenate? Use last one?
-                systemInstruction = msg.Content;
-                continue; // Don't add system messages to 'contents'
-            }
-            else if (msg.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))
-            {
-                geminiRole = "user";
-            }
-            else if (msg.Role.Equals(MessageRole.Assistant, StringComparison.OrdinalIgnoreCase))
-            {
-                geminiRole = "model"; // Gemini uses "model" for assistant role
-            }
-            else
-            {
-                 _logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", msg.Role);
-                 continue;
-            }
-
+            // Create a special system message
             contents.Add(new GeminiContent
             {
-                Role = geminiRole,
-                Parts = new List<GeminiPart> { new GeminiPart { Text = msg.Content } }
+                Role = "user", // Gemini doesn't have a system role, use user
+                Parts = new List<GeminiPart>
+                {
+                    new GeminiPart { Text = ContentHelper.GetContentAsString(systemMessage.Content) }
+                }
             });
         }
-
-        // Basic validation for Gemini's turn structure
-        if (contents.Count == 0 && string.IsNullOrWhiteSpace(systemInstruction)) // Need at least one user message if no system instruction
+        
+        // Process user/assistant messages
+        foreach (var message in coreRequest.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
         {
-             throw new ArgumentException("No user messages provided for Gemini request.", nameof(coreRequest.Messages));
+            string role = message.Role.ToLowerInvariant() switch
+            {
+                "user" => "user",
+                "assistant" => "model",
+                _ => string.Empty
+            };
+            
+            if (string.IsNullOrEmpty(role))
+            {
+                _logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", message.Role);
+                continue;
+            }
+            
+            contents.Add(new GeminiContent
+            {
+                Role = role,
+                Parts = new List<GeminiPart>
+                {
+                    new GeminiPart { Text = ContentHelper.GetContentAsString(message.Content) }
+                }
+            });
         }
-        if (contents.Count > 0 && contents.Last().Role != "user")
+        
+        return new GeminiGenerateContentRequest
         {
-            // Gemini requires the last message to be from the user if contents are present
-            throw new ArgumentException("Invalid message sequence for Gemini. The last message must be from the 'user'.", nameof(coreRequest.Messages));
-        }
-        // TODO: Add validation for strictly alternating user/model roles if needed.
-
-        var config = new GeminiGenerationConfig
-        {
-            Temperature = (float?)coreRequest.Temperature,
-            TopP = (float?)coreRequest.TopP,
-            // TopK = coreRequest.TopK, // Map if added to Core model
-            CandidateCount = coreRequest.N, // Map N to candidateCount
-            MaxOutputTokens = coreRequest.MaxTokens,
-            StopSequences = coreRequest.Stop
+            Contents = contents,
+            GenerationConfig = new GeminiGenerationConfig
+            {
+                Temperature = (float?)coreRequest.Temperature,
+                TopP = (float?)coreRequest.TopP,
+                // TopK = coreRequest.TopK, // Map if added to Core model
+                CandidateCount = coreRequest.N, // Map N to candidateCount
+                MaxOutputTokens = coreRequest.MaxTokens,
+                StopSequences = coreRequest.Stop
+            }
         };
-
-         return new GeminiGenerateContentRequest
-         {
-             Contents = contents,
-             GenerationConfig = (config.Temperature.HasValue || config.TopP.HasValue || config.TopK.HasValue ||
-                                config.CandidateCount.HasValue || config.MaxOutputTokens.HasValue || config.StopSequences != null)
-                                ? config : null
-             // SafetySettings = ... // Map if needed
-             // SystemInstruction = ... // Add if supporting v1.5+ explicitly
-         };
     }
-
 
     private ChatCompletionResponse MapToCoreResponse(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)
     {

@@ -1,9 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Amazon.BedrockRuntime;
 using Amazon.BedrockRuntime.Model;
@@ -112,7 +118,8 @@ public class BedrockClient : ILLMClient
         var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
         if (systemMessage != null)
         {
-            claudeRequest.System = systemMessage.Content;
+            // Handle system message content, which could be string or content parts
+            claudeRequest.System = GetContentAsString(systemMessage.Content);
         }
         
         // Map user and assistant messages
@@ -128,7 +135,7 @@ public class BedrockClient : ILLMClient
                 },
                 Content = new List<BedrockClaudeContent>
                 {
-                    new BedrockClaudeContent { Type = "text", Text = message.Content }
+                    new BedrockClaudeContent { Type = "text", Text = GetContentAsString(message.Content) }
                 }
             });
         }
@@ -229,7 +236,7 @@ public class BedrockClient : ILLMClient
             Messages = request.Messages.Select(m => new BedrockClaudeMessage
             {
                 Role = m.Role,
-                Content = new List<BedrockClaudeContent> { new BedrockClaudeContent { Text = m.Content } }
+                Content = new List<BedrockClaudeContent> { new BedrockClaudeContent { Text = GetContentAsString(m.Content) } }
             }).ToList()
         };
         var requestBody = JsonSerializer.Serialize(bedrockRequest);
@@ -346,6 +353,75 @@ public class BedrockClient : ILLMClient
         // For demo purpose, we'll just add placeholder headers
         request.Headers.Add("X-Amz-Date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
         request.Headers.Add("Authorization", "AWS4-HMAC-SHA256 Credential=PLACEHOLDER");
+    }
+    
+    /// <summary>
+    /// Converts a message content (which could be a string or content parts) to a simple string.
+    /// </summary>
+    /// <param name="content">The message content (can be string or content parts)</param>
+    /// <returns>String representation of the content</returns>
+    private string GetContentAsString(object? content)
+    {
+        if (content == null)
+            return string.Empty;
+        
+        if (content is string textContent)
+            return textContent;
+        
+        // Handle JSON Element or list of content parts
+        if (content is JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.String)
+                return jsonElement.GetString() ?? string.Empty;
+            
+            if (jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                // Combine all text content parts
+                var sb = new StringBuilder();
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (element.TryGetProperty("type", out var typeElement) && 
+                        typeElement.GetString() == "text" &&
+                        element.TryGetProperty("text", out var textElement))
+                    {
+                        sb.AppendLine(textElement.GetString());
+                    }
+                    // For now, we ignore image_url parts in providers that don't support them
+                }
+                return sb.ToString();
+            }
+        }
+        
+        // Try to serialize and then extract text parts (for collections or other objects)
+        try
+        {
+            var json = JsonSerializer.Serialize(content);
+            var contentParts = JsonSerializer.Deserialize<List<object>>(json);
+            if (contentParts != null)
+            {
+                var sb = new StringBuilder();
+                foreach (var part in contentParts)
+                {
+                    var partJson = JsonSerializer.Serialize(part);
+                    var element = JsonDocument.Parse(partJson).RootElement;
+                    
+                    if (element.TryGetProperty("type", out var typeElement) && 
+                        typeElement.GetString() == "text" &&
+                        element.TryGetProperty("text", out var textElement))
+                    {
+                        sb.AppendLine(textElement.GetString());
+                    }
+                }
+                return sb.ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract text from complex content structure");
+        }
+        
+        // Fallback: Just return the string representation
+        return content.ToString() ?? string.Empty;
     }
     
     #endregion

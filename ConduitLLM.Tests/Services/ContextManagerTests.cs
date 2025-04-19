@@ -150,8 +150,8 @@ namespace ConduitLLM.Tests.Services
             // Assert
             Assert.Equal(3, result.Messages.Count);
             Assert.Contains(result.Messages, m => m.Role == MessageRole.System);
-            Assert.DoesNotContain(result.Messages, m => m.Content == "First message");
-            Assert.DoesNotContain(result.Messages, m => m.Content == "First response");
+            Assert.DoesNotContain(result.Messages, m => (string?)m.Content == "First message");
+            Assert.DoesNotContain(result.Messages, m => (string?)m.Content == "First response");
         }
 
         [Fact]

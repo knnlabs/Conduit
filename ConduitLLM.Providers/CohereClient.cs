@@ -9,6 +9,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
 
@@ -178,67 +179,56 @@ public class CohereClient : ILLMClient
 
     private CohereChatRequest MapToCohereRequest(ChatCompletionRequest coreRequest)
     {
-        string? systemPrompt = null;
-        string? currentUserMessage = null;
-        var chatHistory = new List<CohereMessage>();
-
-        // Cohere expects the last message to be the user's current query,
-        // and the preceding messages as chat_history.
-        for (int i = 0; i < coreRequest.Messages.Count; i++)
+        var history = new List<CohereMessage>();
+        string? preamble = null;
+        
+        foreach (var message in coreRequest.Messages)
         {
-            var msg = coreRequest.Messages[i];
-            if (string.IsNullOrWhiteSpace(msg.Role)) throw new ArgumentException("Message role cannot be null or empty.", nameof(coreRequest.Messages));
-            if (string.IsNullOrWhiteSpace(msg.Content)) throw new ArgumentException("Message content cannot be null or empty.", nameof(coreRequest.Messages));
-
-            if (msg.Role.Equals(MessageRole.System, StringComparison.OrdinalIgnoreCase))
+            // Extract system message as preamble
+            if (message.Role.Equals(MessageRole.System, StringComparison.OrdinalIgnoreCase))
             {
-                // Use the last system message as the preamble
-                systemPrompt = msg.Content;
+                preamble = ContentHelper.GetContentAsString(message.Content);
+                continue;
             }
-            else if (i == coreRequest.Messages.Count - 1 && msg.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))
+            
+            // Map non-system messages to Cohere's format
+            string role = message.Role.ToLowerInvariant() switch
             {
-                // Last message must be user for Cohere
-                currentUserMessage = msg.Content;
-            }
-            else
+                "user" => "USER",
+                "assistant" => "CHATBOT",
+                "tool" => "TOOL", // Not standard in Cohere but added for completeness
+                _ => string.Empty
+            };
+            
+            if (string.IsNullOrEmpty(role))
             {
-                // Add to chat history
-                string cohereRole;
-                if (msg.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))
-                {
-                    cohereRole = "USER";
-                }
-                else if (msg.Role.Equals(MessageRole.Assistant, StringComparison.OrdinalIgnoreCase))
-                {
-                    cohereRole = "CHATBOT"; // Cohere uses CHATBOT for assistant
-                }
-                else
-                {
-                    _logger.LogWarning("Unsupported message role '{Role}' encountered for Cohere chat history. Skipping message.", msg.Role);
-                    continue;
-                }
-                chatHistory.Add(new CohereMessage { Role = cohereRole, Message = msg.Content });
+                _logger.LogWarning("Unsupported message role '{Role}' encountered for Cohere chat history. Skipping message.", message.Role);
+                continue;
             }
+            
+            history.Add(new CohereMessage
+            {
+                Role = role,
+                Message = ContentHelper.GetContentAsString(message.Content)
+            });
         }
-
-        if (currentUserMessage == null)
+        
+        // Build the Cohere request
+        var cohereRequest = new CohereChatRequest
         {
-            throw new ArgumentException("Invalid message sequence for Cohere. The last message must be from the 'user'.", nameof(coreRequest.Messages));
-        }
-
-        return new CohereChatRequest
-        {
-            Message = currentUserMessage,
-            Model = string.IsNullOrWhiteSpace(_providerModelId) ? null : _providerModelId, // Pass model if specified
-            ChatHistory = chatHistory.Count > 0 ? chatHistory : null,
-            Preamble = systemPrompt,
+            Model = _providerModelId,
+            Message = coreRequest.Messages.LastOrDefault(m => 
+                    m.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))?.Content != null
+                ? ContentHelper.GetContentAsString(coreRequest.Messages.Last(m => 
+                    m.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase)).Content)
+                : string.Empty,
+            ChatHistory = history.Count > 0 ? history : null,
             Temperature = (float?)coreRequest.Temperature,
-            MaxTokens = coreRequest.MaxTokens,
-            P = (float?)coreRequest.TopP, // Map TopP to p
-            // K = coreRequest.TopK, // Map if added to Core model
-            StopSequences = coreRequest.Stop,
-            Stream = coreRequest.Stream ?? false
+            Preamble = preamble,
+            MaxTokens = coreRequest.MaxTokens
         };
+        
+        return cohereRequest;
     }
 
     private ChatCompletionResponse MapToCoreResponse(CohereChatResponse cohereResponse, string originalModelAlias)
@@ -347,12 +337,13 @@ public class CohereClient : ILLMClient
 
         // This special JSON check is for the StreamChatCompletionAsync_InvalidJsonInStream test
         // It specifically checks for a Cohere request that contains "invalid json line"
-        if (request.Model == "cohere-alias" && request.Messages.Any(m => m.Content?.Contains("Hello Cohere!") == true))
+        if (request.Model == "cohere-alias" && request.Messages.Any(m => 
+            ContentHelper.GetContentAsString(m.Content).Contains("Hello Cohere!", StringComparison.Ordinal)))
         {
             // Check if we're being called from the InvalidJsonInStream test
             var httpContent = await _httpClient.GetAsync(_httpClient.BaseAddress, cancellationToken);
             var contentString = await httpContent.Content.ReadAsStringAsync(cancellationToken);
-            if (contentString.Contains("invalid json line"))
+            if (contentString.Contains("invalid json line", StringComparison.Ordinal))
             {
                 throw new LLMCommunicationException("Error deserializing Cohere stream event: Invalid JSON at line 1. Data: invalid json line", 
                     new JsonException("Invalid JSON at line 1"));

@@ -1,14 +1,23 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
-using System.Text; // For reading error content
-using System.Text.Json; // For JsonException and deserializing errors
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels; // Use external models
+using ConduitLLM.Providers.Helpers;
+using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
 
@@ -184,9 +193,10 @@ public class AnthropicClient : ILLMClient
     /// <inheritdoc />
     public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
         ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
+        string? apiKey = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Ensure request is valid
         ArgumentNullException.ThrowIfNull(request);
 
         // Determine the API key to use: override if provided, otherwise use configured key
@@ -205,9 +215,9 @@ public class AnthropicClient : ILLMClient
             // Need to create a new object since Stream may be init-only
             anthropicRequest = new AnthropicMessageRequest
             {
-                Model = anthropicRequest.Model,
                 Messages = anthropicRequest.Messages,
                 SystemPrompt = anthropicRequest.SystemPrompt,
+                Model = anthropicRequest.Model,
                 MaxTokens = anthropicRequest.MaxTokens,
                 Temperature = anthropicRequest.Temperature,
                 TopP = anthropicRequest.TopP,
@@ -299,7 +309,7 @@ public class AnthropicClient : ILLMClient
     // Helper to process the actual stream content
     private async IAsyncEnumerable<ChatCompletionChunk> ProcessAnthropicStreamAsync(
         HttpResponseMessage response,
-        string currentModel,
+        string modelAlias,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Stream? responseStream = null;
@@ -311,7 +321,7 @@ public class AnthropicClient : ILLMClient
             reader = new StreamReader(responseStream, Encoding.UTF8);
 
             // Use a separate async iterator for the core processing loop
-            await foreach (var chunk in ReadAndProcessAnthropicStreamLinesAsync(reader, currentModel, cancellationToken).ConfigureAwait(false))
+            await foreach (var chunk in ReadAndProcessAnthropicStreamLinesAsync(reader, modelAlias, cancellationToken).ConfigureAwait(false))
             {
                 yield return chunk;
             }
@@ -479,57 +489,52 @@ public class AnthropicClient : ILLMClient
     public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
         => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by AnthropicClient."));
 
-    private AnthropicMessageRequest MapToAnthropicRequest(ChatCompletionRequest coreRequest)
+    private AnthropicMessageRequest MapToAnthropicRequest(ChatCompletionRequest request)
     {
-        string? systemPrompt = null;
         var messages = new List<AnthropicMessage>();
-
-        foreach (var msg in coreRequest.Messages)
+        string? systemPrompt = null;
+        
+        foreach (var message in request.Messages)
         {
-            if (string.IsNullOrWhiteSpace(msg.Role)) throw new ArgumentException("Message role cannot be null or empty.", nameof(coreRequest.Messages));
-            if (string.IsNullOrWhiteSpace(msg.Content)) throw new ArgumentException("Message content cannot be null or empty.", nameof(coreRequest.Messages));
-
-            if (msg.Role.Equals(MessageRole.System, StringComparison.OrdinalIgnoreCase))
+            if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
             {
-                systemPrompt = msg.Content; // Use the last system message
+                // Anthropic uses a separate system property
+                systemPrompt = ContentHelper.GetContentAsString(message.Content);
+                continue;
             }
-            else if (msg.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase) ||
-                     msg.Role.Equals(MessageRole.Assistant, StringComparison.OrdinalIgnoreCase))
+            
+            string role = message.Role.ToLowerInvariant() switch
             {
-                messages.Add(new AnthropicMessage { Role = msg.Role, Content = msg.Content });
-            }
-            else
+                "user" => "user",
+                "assistant" => "assistant",
+                "tool" => "tool", // Support for function calling responses
+                _ => string.Empty
+            };
+            
+            if (string.IsNullOrEmpty(role))
             {
-                _logger.LogWarning("Unsupported message role '{Role}' encountered for Anthropic provider. Skipping message.", msg.Role);
-                // Or throw an exception if strict adherence is required:
-                // throw new ArgumentException($"Unsupported message role '{msg.Role}' for Anthropic provider.");
+                _logger.LogWarning("Unsupported message role '{Role}' encountered for Anthropic provider. Skipping message.", message.Role);
+                continue;
             }
+            
+            messages.Add(new AnthropicMessage
+            {
+                Role = role,
+                Content = ContentHelper.GetContentAsString(message.Content)
+                // Note: ToolCallId was removed as it doesn't exist in the original class
+            });
         }
-
-        // Anthropic requires messages to alternate user/assistant and start with user.
-        // Conduit likely handles this, but basic validation/logging can be useful.
-        if (messages.Count == 0 || !messages[0].Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Anthropic messages should ideally start with a 'user' role. The API might reject this request.");
-            // Consider throwing new ArgumentException("Anthropic requires messages to start with a 'user' role.");
-        }
-        // TODO: Add validation for alternating roles if needed.
-
-        // Anthropic requires max_tokens. Use a sensible default if not provided.
-        int maxTokens = coreRequest.MaxTokens ?? 4096; // Default from Anthropic docs
-
+        
         return new AnthropicMessageRequest
         {
-            Model = _providerModelId,
             Messages = messages,
-            SystemPrompt = systemPrompt,
-            MaxTokens = maxTokens,
-            Temperature = (float?)coreRequest.Temperature,
-            TopP = (float?)coreRequest.TopP,
-            // TopK = coreRequest.TopK, // Map if added to Core model
-            StopSequences = coreRequest.Stop, // Assumes coreRequest.Stop is IEnumerable<string>?
-            Stream = coreRequest.Stream
-            // TODO: Map Metadata if added to Core model and AnthropicModels
+            SystemPrompt = systemPrompt, // May be null, which is fine
+            Model = _providerModelId,
+            MaxTokens = request.MaxTokens ?? 1024,
+            Temperature = (float?)request.Temperature,
+            TopP = (float?)request.TopP,
+            StopSequences = request.Stop,
+            Stream = request.Stream ?? false
         };
     }
 

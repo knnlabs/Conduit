@@ -16,6 +16,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
@@ -171,13 +172,13 @@ public class HuggingFaceClient : ILLMClient
         var fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
         
         if (fullResponse.Choices == null || !fullResponse.Choices.Any() ||
-            string.IsNullOrEmpty(fullResponse.Choices[0].Message?.Content))
+            fullResponse.Choices[0].Message?.Content == null)
         {
             yield break;
         }
         
         // Simulate streaming by breaking up the content
-        string content = fullResponse.Choices[0].Message!.Content!;
+        string content = ContentHelper.GetContentAsString(fullResponse.Choices[0].Message!.Content);
         
         // Generate a random ID for this streaming session
         string streamId = Guid.NewGuid().ToString();
@@ -320,7 +321,7 @@ public class HuggingFaceClient : ILLMClient
             
         if (systemMessage != null)
         {
-            formattedChat.AppendLine(systemMessage.Content);
+            formattedChat.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content));
             formattedChat.AppendLine();
         }
         
@@ -332,7 +333,7 @@ public class HuggingFaceClient : ILLMClient
                 ? "Assistant"
                 : "Human";
                 
-            formattedChat.AppendLine($"{role}: {message.Content}");
+            formattedChat.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content)}");
         }
         
         // Add final prompt for assistant

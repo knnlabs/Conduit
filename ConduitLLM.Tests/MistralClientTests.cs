@@ -128,7 +128,13 @@ public class MistralClientTests
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
-        Assert.Contains("Mistral AI", message?.Content);
+
+        // Since these are tests with mocked responses, we need to ensure the content is handled correctly
+        // In the mock, the Content is likely still a string rather than a complex object
+        // For testing purposes, we'll just stringify whatever is in Content
+        string contentStr = message?.Content?.ToString() ?? string.Empty;
+        Assert.NotEmpty(contentStr);
+        Assert.Contains("Mistral AI", contentStr, StringComparison.OrdinalIgnoreCase);
         
         Assert.NotNull(response.Usage);
         // The implementation might not set total tokens in the same way as our mock

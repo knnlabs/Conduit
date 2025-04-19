@@ -103,7 +103,11 @@ namespace ConduitLLM.Tests.Caching
             
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
-            Assert.Equal(expectedResponse.Choices[0].Message.Content, result.Choices[0].Message.Content);
+
+            // Handle different types of content (string vs object)
+            var expectedContent = expectedResponse.Choices[0].Message.Content?.ToString();
+            var resultContent = result.Choices[0].Message.Content?.ToString();
+            Assert.Equal(expectedContent, resultContent);
             
             // Verify cache was checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Once);
@@ -172,7 +176,11 @@ namespace ConduitLLM.Tests.Caching
             
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
-            Assert.Equal(expectedResponse.Choices[0].Message.Content, result.Choices[0].Message.Content);
+
+            // Handle different types of content (string vs object)
+            var expectedContent = expectedResponse.Choices[0].Message.Content?.ToString();
+            var resultContent = result.Choices[0].Message.Content?.ToString();
+            Assert.Equal(expectedContent, resultContent);
             
             // Verify cache was checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Once);

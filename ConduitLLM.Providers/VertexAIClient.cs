@@ -16,6 +16,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
 using Microsoft.Extensions.Logging;
@@ -422,9 +423,51 @@ public class VertexAIClient : ILLMClient
     
     private VertexAIGeminiRequest PrepareGeminiRequest(ChatCompletionRequest request)
     {
-        var geminiRequest = new VertexAIGeminiRequest
+        // With the Vertex AI Gemini model, we need to convert the messages to a specific format
+        var contents = new List<VertexAIGeminiContent>();
+        
+        foreach (var message in request.Messages)
         {
-            Contents = new List<VertexAIGeminiContent>(),
+            string role = message.Role.ToLowerInvariant();
+            
+            // For Gemini, only user and model roles are supported
+            if (role == "user")
+            {
+                contents.Add(new VertexAIGeminiContent
+                {
+                    Role = "user",
+                    Parts = new List<VertexAIGeminiPart>
+                    {
+                        new VertexAIGeminiPart
+                        {
+                            Text = ContentHelper.GetContentAsString(message.Content)
+                        }
+                    }
+                });
+            }
+            else if (role == "assistant")
+            {
+                contents.Add(new VertexAIGeminiContent
+                {
+                    Role = "model",
+                    Parts = new List<VertexAIGeminiPart>
+                    {
+                        new VertexAIGeminiPart
+                        {
+                            Text = ContentHelper.GetContentAsString(message.Content)
+                        }
+                    }
+                });
+            }
+            else
+            {
+                _logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", message.Role);
+            }
+        }
+        
+        return new VertexAIGeminiRequest
+        {
+            Contents = contents,
             GenerationConfig = new VertexAIGenerationConfig
             {
                 Temperature = (float?)request.Temperature,
@@ -432,76 +475,50 @@ public class VertexAIClient : ILLMClient
                 TopP = (float?)request.TopP
             }
         };
-        
-        // Map messages
-        foreach (var message in request.Messages)
-        {
-            var geminiContent = new VertexAIGeminiContent
-            {
-                Role = MapCoreRoleToGeminiRole(message.Role),
-                Parts = new List<VertexAIGeminiPart>
-                {
-                    new VertexAIGeminiPart
-                    {
-                        Text = message.Content
-                    }
-                }
-            };
-            
-            geminiRequest.Contents.Add(geminiContent);
-        }
-        
-        return geminiRequest;
     }
     
     private VertexAIPredictionRequest PreparePaLMRequest(ChatCompletionRequest request)
     {
-        // Format messages for PaLM
-        StringBuilder prompt = new StringBuilder();
+        // For PaLM, we need to construct a prompt from the conversation
+        var prompt = new StringBuilder();
         
-        // Extract system message if present
-        var systemMessage = request.Messages.FirstOrDefault(m => 
-            m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
-            
+        // Extract system message if present and put at the beginning
+        var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
         if (systemMessage != null)
         {
-            prompt.AppendLine(systemMessage.Content);
+            prompt.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content));
             prompt.AppendLine();
         }
         
-        // Format the conversation
-        foreach (var message in request.Messages.Where(m => 
-            !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+        // Add conversation history
+        foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
         {
             string role = message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
                 ? "Assistant"
                 : "Human";
                 
-            prompt.AppendLine($"{role}: {message.Content}");
+            prompt.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content)}");
         }
         
-        // Add the final assistant prompt
-        prompt.AppendLine("Assistant:");
+        // Add a final prompt for the assistant to continue
+        prompt.Append("Assistant: ");
         
-        // Create the PaLM request
-        var palmRequest = new VertexAIPredictionRequest
+        return new VertexAIPredictionRequest
         {
             Instances = new List<object>
             {
                 new VertexAIPaLMInstance
                 {
-                    Prompt = prompt.ToString().Trim()
+                    Prompt = prompt.ToString()
                 }
             },
             Parameters = new VertexAIParameters
             {
-                Temperature = (float?)request.Temperature,
-                MaxOutputTokens = request.MaxTokens,
-                TopP = (float?)request.TopP
+                Temperature = (float?)(request.Temperature ?? 0.7f),
+                MaxOutputTokens = request.MaxTokens ?? 1024,
+                TopP = (float?)(request.TopP ?? 0.95f)
             }
         };
-        
-        return palmRequest;
     }
     
     private async Task<HttpResponseMessage> SendGeminiRequestAsync(

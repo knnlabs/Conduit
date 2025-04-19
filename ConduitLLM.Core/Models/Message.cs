@@ -15,11 +15,12 @@ public class Message
     public required string Role { get; set; }
 
     /// <summary>
-    /// The contents of the message.
+    /// The contents of the message. Can be a simple string or, for multimodal models,
+    /// a list containing text and image_url content parts.
     /// </summary>
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Content { get; set; }
+    public object? Content { get; set; }
 
     /// <summary>
     /// The name of the author of this message. May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
