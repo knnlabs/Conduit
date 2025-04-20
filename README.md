@@ -138,8 +138,16 @@ response = client.chat.completions.create(
 
 See the `docs/` directory for detailed documentation:
 
+- [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
+- [Budget Management](docs/Budget-Management.md)
+- [Cache Configuration](docs/Cache-Configuration.md)
 - [Configuration Guide](docs/Configuration-Guide.md)
+- [Dashboard Features](docs/Dashboard-Features.md)
+- [Environment Variables](docs/Environment-Variables.md)
+- [Getting Started](docs/Getting-Started.md)
+- [LLM Routing](docs/LLM-Routing.md)
+- [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
