@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -148,6 +147,12 @@ else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 
 // Register HttpClient for calling the API proxy
 builder.Services.AddHttpClient();
+
+// Register default HttpClient for Razor components with BaseAddress set to correct HTTP URI
+builder.Services.AddHttpClient("", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:5002/"); // Use your actual dev/prod base URL as needed
+});
 
 // Register Cache Service
 builder.Services.AddCacheService(builder.Configuration);
