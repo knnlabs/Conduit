@@ -76,14 +76,14 @@ flowchart LR
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/ConduitLLM.git
-   cd ConduitLLM
+   git clone https://github.com/knnlabs/Conduit.git
+   cd Conduit/ConduitLLM.WebUI
    ```
 
 2. **Configure LLM Providers**
    - Add your provider API keys via:
      - Environment variables (see `docs/Environment-Variables.md`)
-     - Edit `ConduitLLM.Http/appsettings.json`
+     - Edit `appsettings.json`
      - Use the WebUI after startup
 
 3. **Start the Services**
