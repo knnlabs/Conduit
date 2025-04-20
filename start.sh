@@ -1,26 +1,22 @@
 #!/bin/bash
 
-# Default: Generate and use a master key
-GENERATE_KEY=true
-
 # Check if --no-master-key flag is provided
 if [ "$1" == "--no-master-key" ]; then
   echo "Starting without generating a Master Key."
-  GENERATE_KEY=false
-fi
-
-# Generate and export master key if enabled
-if [ "$GENERATE_KEY" = true ]; then
-  # Generate a 32-byte (256-bit) random key and convert to hex
-  GENERATED_MASTER_KEY=$(openssl rand -hex 32)
-  export CONDUIT_MASTER_KEY=$GENERATED_MASTER_KEY
-  echo "--------------------------------------------------"
-  echo "Generated Master Key (set as CONDUIT_MASTER_KEY env var):"
-  echo "$GENERATED_MASTER_KEY"
-  echo "--------------------------------------------------"
-  echo "Starting services with Master Key..."
 else
-    echo "Starting services without Master Key..."
+  if [ -z "$CONDUIT_MASTER_KEY" ]; then
+    # Generate a 32-byte (256-bit) random key and convert to hex
+    GENERATED_MASTER_KEY=$(openssl rand -hex 32)
+    export CONDUIT_MASTER_KEY=$GENERATED_MASTER_KEY
+    echo "--------------------------------------------------"
+    echo "Generated Master Key (set as CONDUIT_MASTER_KEY env var):"
+    echo "$GENERATED_MASTER_KEY"
+    echo "--------------------------------------------------"
+    echo "Starting services with new Master Key..."
+  else
+    echo "Using existing CONDUIT_MASTER_KEY."
+    echo "Starting services with provided Master Key..."
+  fi
 fi
 
 echo "Using launch settings from ./ConduitLLM.WebUI/Properties/launchSettings.json..."
