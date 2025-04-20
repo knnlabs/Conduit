@@ -7,13 +7,14 @@ This document provides comprehensive information about all environment variables
 - [Core Application Variables](#core-application-variables)
 - [Cache Configuration](#cache-configuration)
 - [Security Configuration](#security-configuration)
+- [Database](#database)
 - [Docker Configuration Examples](#docker-configuration-examples)
 
 ## Core Application Variables
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Generated on first start* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
+| `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
 | `ASPNETCORE_ENVIRONMENT` | String | `Production` | Controls the .NET runtime environment. Set to `Development` for detailed error information or `Production` for optimized performance. |
 | `ASPNETCORE_URLS` | String | `http://localhost:5000` | The URL(s) on which the application will listen for requests. |
 
@@ -35,9 +36,19 @@ ConduitLLM provides environment variables for configuring security-related aspec
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Generated on first start* | Master key for administrative operations. Required for certain API endpoints. |
+| `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | Master key for administrative operations. Required for certain API endpoints. |
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. Set to false in development or behind a proxy that handles HTTPS. |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
+
+## Database
+
+| Variable           | Description                                           | Example Value                |
+|--------------------|-------------------------------------------------------|------------------------------|
+| `CONDUIT_DB_PATH`  | Path or connection string to the database             | `/data/conduit.db` or `Host=localhost;Port=5432;Database=conduit;Username=postgres;Password=secret` |
+| `CONDUIT_DB_TYPE`  | Database type to use (`Postgres`, `Sqlite`, etc.)     | `Postgres` or `Sqlite`       |
+
+- `CONDUIT_DB_PATH` is required for both Sqlite (file path) and Postgres (connection string).
+- `CONDUIT_DB_TYPE` determines which database provider is used by Conduit.
 
 ## Docker Configuration Examples
 
@@ -63,6 +74,10 @@ services:
       # Security settings
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+      
+      # Database settings
+      - CONDUIT_DB_PATH=/data/conduit.db
+      - CONDUIT_DB_TYPE=Sqlite
     ports:
       - "80:80"
     volumes:
@@ -82,6 +97,8 @@ ENV ASPNETCORE_URLS=http://+:80
 ENV CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
 ENV CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
 ENV CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
+ENV CONDUIT_DB_PATH=/data/conduit.db
+ENV CONDUIT_DB_TYPE=Sqlite
 
 EXPOSE 80
 ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
