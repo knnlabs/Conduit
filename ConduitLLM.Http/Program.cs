@@ -61,23 +61,42 @@ builder.Services.AddMemoryCache();
 // 2. Register DbContext Factory (using connection string from appsettings.json)
 // Get database provider configuration from environment variables
 string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
-string? dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+string? dbConnectionString = null;
 
-// Default connection string for SQLite if not specified and SQLite is selected
-if (string.IsNullOrEmpty(dbConnectionString))
+// Prefer CONDUIT_SQLITE_PATH for SQLite, fallback to DB_CONNECTION_STRING, then appsettings.json
+if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 {
-    if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+    string? sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
+    if (!string.IsNullOrEmpty(sqlitePath))
     {
-        throw new InvalidOperationException("DB_CONNECTION_STRING environment variable must be set when using PostgreSQL provider");
+        dbConnectionString = $"Data Source={sqlitePath}";
+        Console.WriteLine($"[Conduit] Using SQLite path from CONDUIT_SQLITE_PATH: {sqlitePath}");
     }
-    
-    // Use the connection string from configuration for SQLite
-    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    else
+    {
+        dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        if (!string.IsNullOrEmpty(dbConnectionString))
+        {
+            Console.WriteLine($"[Conduit] Using SQLite path from DB_CONNECTION_STRING: {dbConnectionString}");
+        }
+        else
+        {
+            dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            Console.WriteLine($"[Conduit] Using SQLite path from default/appsettings.json: {dbConnectionString}");
+        }
+    }
+}
+else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
     if (string.IsNullOrEmpty(dbConnectionString))
     {
-        // Handle missing connection string
-        throw new InvalidOperationException("Connection string 'DefaultConnection' not found in configuration.");
+        dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     }
+}
+else
+{
+    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
 // Configure DbContext Factory based on the database provider

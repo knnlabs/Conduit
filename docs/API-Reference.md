@@ -188,6 +188,36 @@ Generates images from a prompt (if supported by the model/provider).
 
 ---
 
+## Environment Variables for Database Location
+
+### SQLite Database Path
+
+To specify a custom location for the SQLite database file (e.g., when using Docker with a mounted volume), set the `CONDUIT_SQLITE_PATH` environment variable:
+
+```bash
+export CONDUIT_SQLITE_PATH=/data/conduit.db
+```
+
+If `CONDUIT_SQLITE_PATH` is set, it will override the default location and any value in `DB_CONNECTION_STRING` for SQLite. This ensures your database is stored on persistent storage, such as a Docker volume.
+
+- If not set, the application falls back to `DB_CONNECTION_STRING` or the default path from `appsettings.json`.
+
+#### Example (Docker Compose)
+```yaml
+environment:
+  - DB_PROVIDER=sqlite
+  - CONDUIT_SQLITE_PATH=/data/conduit.db
+volumes:
+  - ./my-data:/data
+```
+
+### Other Providers
+- For PostgreSQL, use `DB_CONNECTION_STRING` as before.
+
+See the Configuration Guide for more details on environment variable usage.
+
+---
+
 ## Error Responses
 
 All endpoints may return the following error responses:

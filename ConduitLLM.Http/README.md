@@ -63,6 +63,33 @@ Example snippet:
 - Designed for containerization. Ports are set via environment variables for flexible deployment.
 - The `start.sh` script configures ports and launches the API with correct settings.
 
+## Persistent Database Storage (Docker)
+
+To ensure your SQLite database persists across container restarts, set the `CONDUIT_SQLITE_PATH` environment variable and mount a persistent volume:
+
+```yaml
+environment:
+  - DB_PROVIDER=sqlite
+  - CONDUIT_SQLITE_PATH=/data/conduit.db
+volumes:
+  - ./my-data:/data
+```
+
+This will store the database at `/data/conduit.db` inside the container, mapped to your host directory `./my-data`.
+
+### Best Practices
+- Always use a persistent volume for `/data` in production or testing containers.
+- Make sure the volume is writable by the app user (check Docker UID/GID).
+- Use `CONDUIT_SQLITE_PATH` for clarity and to avoid accidental data loss.
+
+### Troubleshooting
+- **File not created or missing**: Check that the volume is mounted and the path is correct.
+- **Permission denied**: Ensure the directory and file are writable by the container user.
+- **Database is read-only**: The file or directory may be mounted as read-only or lack write permissions.
+- **App uses wrong database file**: Double-check environment variable spelling and container/service environment.
+
+For more help, see the Database Status page in the WebUI.
+
 ## Running the API
 
 1. **With .NET CLI:**

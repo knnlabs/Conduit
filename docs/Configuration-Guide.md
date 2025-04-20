@@ -27,6 +27,30 @@ The simplest configuration uses SQLite:
 }
 ```
 
+### SQLite Database Path (Persistent Storage)
+
+To store your SQLite database on a persistent volume (e.g., in Docker), set the `CONDUIT_SQLITE_PATH` environment variable:
+
+```bash
+export CONDUIT_SQLITE_PATH=/data/conduit.db
+```
+
+If set, this will override the default location and any value in `DB_CONNECTION_STRING` for SQLite. This is recommended for Docker and production deployments.
+
+#### Docker Example
+```yaml
+environment:
+  - DB_PROVIDER=sqlite
+  - CONDUIT_SQLITE_PATH=/data/conduit.db
+volumes:
+  - ./my-data:/data
+```
+
+#### Best Practices
+- Always mount a persistent volume for `/data` in Docker to avoid data loss.
+- Ensure the directory is writable by the container user.
+- Use `CONDUIT_SQLITE_PATH` for clarity and portability.
+
 ### SQL Server
 
 For production environments, SQL Server is recommended:
@@ -38,6 +62,16 @@ For production environments, SQL Server is recommended:
   }
 }
 ```
+
+## Troubleshooting Database Path Issues
+
+- **Database file not found or not created**: Ensure the volume is mounted and the path in `CONDUIT_SQLITE_PATH` is correct.
+- **Permission denied**: Make sure the directory and file are writable by the user running the app (check Docker UID/GID).
+- **Database is read-only**: The file or directory may be mounted as read-only or lack write permissions.
+- **App uses wrong database file**: Double-check environment variable spelling and container/service environment.
+- **Switching between SQLite and PostgreSQL**: Ensure you set `DB_PROVIDER` and the correct connection string/variable for your provider.
+
+For more diagnostics, use the Database Status page in the WebUI.
 
 ## Provider Configuration
 
@@ -199,6 +233,7 @@ Key environment variables for configuration:
 | `CONDUITLLM_CACHE_ENABLED` | Enable response caching | `true` |
 | `CONDUITLLM_PORT` | Port for the HTTP server | `5000` |
 | `CONDUITLLM_LOG_LEVEL` | Logging level | `Information` |
+| `CONDUIT_SQLITE_PATH` | SQLite database path | None |
 
 See [Environment-Variables.md](Environment-Variables.md) for a complete list.
 

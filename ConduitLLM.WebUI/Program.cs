@@ -1,9 +1,8 @@
 using System;
-using System;
 using System.IO;
 using ConduitLLM.Configuration;
 using ConduitLLM.WebUI;
-using Microsoft.AspNetCore.Authentication; // <-- Add this using directive
+using Microsoft.AspNetCore.Authentication; 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -41,16 +40,44 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Get database provider configuration from environment variables
 string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
-string? dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+string? dbConnectionString = null;
 
-// Default connection string for SQLite if not specified and SQLite is selected
-if (string.IsNullOrEmpty(dbConnectionString) && dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+// Prefer CONDUIT_SQLITE_PATH for SQLite, fallback to DB_CONNECTION_STRING, then appsettings.json
+if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
 {
-    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=ConduitConfig.db";
+    string? sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
+    if (!string.IsNullOrEmpty(sqlitePath))
+    {
+        dbConnectionString = $"Data Source={sqlitePath}";
+        builder.Logging.AddConsole();
+        builder.Logging.Configure(options => { }); // Ensure logging is enabled
+        Console.WriteLine($"[Conduit] Using SQLite path from CONDUIT_SQLITE_PATH: {sqlitePath}");
+    }
+    else
+    {
+        dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+        if (!string.IsNullOrEmpty(dbConnectionString))
+        {
+            Console.WriteLine($"[Conduit] Using SQLite path from DB_CONNECTION_STRING: {dbConnectionString}");
+        }
+        else
+        {
+            dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=ConduitConfig.db";
+            Console.WriteLine($"[Conduit] Using SQLite path from default/appsettings.json: {dbConnectionString}");
+        }
+    }
 }
-else if (string.IsNullOrEmpty(dbConnectionString) && dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
-    throw new InvalidOperationException("DB_CONNECTION_STRING environment variable must be set when using PostgreSQL provider");
+    dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+    if (string.IsNullOrEmpty(dbConnectionString))
+    {
+        dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    }
+}
+else
+{
+    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
 // Add the custom EF configuration provider

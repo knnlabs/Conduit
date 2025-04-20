@@ -1,0 +1,180 @@
+@page "/db-status"
+@using System.IO
+@using Npgsql
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+
+@functions {
+    private string? DatabasePath;
+    private string? Source;
+    private bool Exists;
+    private bool Readable;
+    private bool Writable;
+    private string? Error;
+    private string? FileSize;
+    private string? DbProvider;
+    private string? PgHost;
+    private string? PgDatabase;
+    private bool PgReachable;
+    private string? PgError;
+    private string? PgConnStrMasked;
+
+    protected override void OnInitialized()
+    {
+        string? dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+        DbProvider = dbProvider;
+        if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            string? path = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
+            if (!string.IsNullOrEmpty(path))
+            {
+                Source = "CONDUIT_SQLITE_PATH";
+            }
+            else
+            {
+                string? connStr = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+                if (!string.IsNullOrEmpty(connStr) && connStr.Contains("Data Source="))
+                {
+                    path = connStr.Split("Data Source=")[1].Split(';')[0].Trim();
+                    Source = "DB_CONNECTION_STRING";
+                }
+                else
+                {
+                    // Try default/appsettings.json
+                    path = "ConduitConfig.db"; // fallback name
+                    Source = "Default/appsettings.json";
+                }
+            }
+            DatabasePath = path;
+            if (!string.IsNullOrEmpty(path))
+            {
+                try
+                {
+                    Exists = File.Exists(path);
+                    if (Exists)
+                    {
+                        // Try read
+                        try { using var fs = File.Open(path, FileMode.Open, FileAccess.Read); Readable = true; } catch { Readable = false; }
+                        // Try write
+                        try { using var fs = File.Open(path, FileMode.Open, FileAccess.Write); Writable = true; } catch { Writable = false; }
+                        var info = new FileInfo(path);
+                        FileSize = $"{info.Length / 1024.0:F1} KB";
+                    }
+                    else
+                    {
+                        Readable = false;
+                        Writable = false;
+                        FileSize = "-";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Error = ex.Message;
+                }
+            }
+            else
+            {
+                Error = "Database path could not be determined.";
+            }
+        }
+        else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            string? connStr = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Configuration.GetConnectionString("DefaultConnection");
+            PgConnStrMasked = MaskPgConnectionString(connStr);
+            if (!string.IsNullOrEmpty(connStr))
+            {
+                try
+                {
+                    var builder = new NpgsqlConnectionStringBuilder(connStr);
+                    PgHost = builder.Host;
+                    PgDatabase = builder.Database;
+                    // Try to connect
+                    using var conn = new NpgsqlConnection(connStr);
+                    conn.Open();
+                    PgReachable = conn.State == System.Data.ConnectionState.Open;
+                    conn.Close();
+                }
+                catch (Exception ex)
+                {
+                    PgError = ex.Message;
+                    PgReachable = false;
+                }
+            }
+            else
+            {
+                PgError = "No PostgreSQL connection string found.";
+            }
+        }
+    }
+
+    private string MaskPgConnectionString(string? connStr)
+    {
+        if (string.IsNullOrEmpty(connStr)) return string.Empty;
+        var parts = connStr.Split(';');
+        var maskedParts = new List<string>();
+        foreach (var part in parts)
+        {
+            if (part.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) || part.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
+            {
+                maskedParts.Add(part.Split('=')[0] + "=****");
+            }
+            else
+            {
+                maskedParts.Add(part);
+            }
+        }
+        return string.Join(';', maskedParts);
+    }
+}
+
+<h3>Database Status</h3>
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Provider</dt>
+            <dd class="col-sm-9">@DbProvider</dd>
+            @if (DbProvider == "sqlite")
+            {
+                <dt class="col-sm-3">Path Source</dt>
+                <dd class="col-sm-9">@Source</dd>
+                <dt class="col-sm-3">File Path</dt>
+                <dd class="col-sm-9">@DatabasePath</dd>
+                <dt class="col-sm-3">Exists</dt>
+                <dd class="col-sm-9">@Exists</dd>
+                <dt class="col-sm-3">Readable</dt>
+                <dd class="col-sm-9">@Readable</dd>
+                <dt class="col-sm-3">Writable</dt>
+                <dd class="col-sm-9">@Writable</dd>
+                <dt class="col-sm-3">File Size</dt>
+                <dd class="col-sm-9">@FileSize</dd>
+                @if (!string.IsNullOrEmpty(Error))
+                {
+                    <dt class="col-sm-3">Error</dt>
+                    <dd class="col-sm-9 text-danger">@Error</dd>
+                }
+            }
+            else if (DbProvider == "postgres")
+            {
+                <dt class="col-sm-3">Conn String</dt>
+                <dd class="col-sm-9">@PgConnStrMasked</dd>
+                <dt class="col-sm-3">Host</dt>
+                <dd class="col-sm-9">@PgHost</dd>
+                <dt class="col-sm-3">Database</dt>
+                <dd class="col-sm-9">@PgDatabase</dd>
+                <dt class="col-sm-3">Reachable</dt>
+                <dd class="col-sm-9">@PgReachable</dd>
+                @if (!string.IsNullOrEmpty(PgError))
+                {
+                    <dt class="col-sm-3">Error</dt>
+                    <dd class="col-sm-9 text-danger">@PgError</dd>
+                }
+            }
+        </dl>
+    </div>
+</div>
+
+<button class="btn btn-secondary" @onclick="GoToSystemInfo">Back to System Info</button>
+
+@code {
+    private void GoToSystemInfo() => Navigation.NavigateTo("/system-info");
+}
