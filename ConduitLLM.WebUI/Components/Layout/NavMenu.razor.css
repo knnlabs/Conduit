@@ -47,15 +47,20 @@
 }
 
 /* Category styling */
-.nav-category {
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.05rem;
-    color: #8a8a8a;
-    padding: 1.25rem 0 0.5rem 1rem;
-    margin-bottom: 0;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+.nav-category,
+:deep(.nav-category) {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08rem !important;
+    color: #fff !important;
+    background: rgba(0,0,0,0.35) !important;
+    padding: 1.2rem 0 0.7rem 1.2rem !important;
+    margin: 1.2rem 0 0.5rem 0 !important;
+    border-bottom: 2px solid #ff0 !important; /* TEMP: yellow border for debug */
+    border-radius: 3px 3px 0 0 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
 }
 
 .nav-item {
@@ -99,6 +104,15 @@
 
 .navbar-toggler:checked ~ .nav-scrollable {
     display: block;
+}
+
+/* TEST STYLE - Should be very visible if working */
+.nav-category-test {
+    color: #f00 !important; /* Bright red */
+    font-size: 1.2rem !important;
+    background: #000 !important;
+    border: 3px solid #0f0 !important; /* Bright green */
+    padding: 1rem !important;
 }
 
 @media (min-width: 641px) {
