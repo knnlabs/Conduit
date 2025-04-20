@@ -92,13 +92,13 @@ public class ResiliencePolicyTests
         services.AddSingleton(new ProviderCredentials { ProviderName = "openai", ApiKey = "test-key" });
 
         var serviceProvider = services.BuildServiceProvider();
-        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient));
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>(); // Get the factory
+        // var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient)); // Remove direct client creation here
         var logger = serviceProvider.GetRequiredService<ILogger<OpenAIClient>>();
         var credentials = serviceProvider.GetRequiredService<ProviderCredentials>();
 
-        // Create the client using the HttpClient with retry policy
-        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClient: httpClient);
+        // Create the client passing the factory
+        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClientFactory); // Pass factory
 
         // Act
         var request = new ConduitLLM.Core.Models.ChatCompletionRequest
@@ -188,13 +188,13 @@ public class ResiliencePolicyTests
         services.AddSingleton(new ProviderCredentials { ProviderName = "openai", ApiKey = "test-key" });
 
         var serviceProvider = services.BuildServiceProvider();
-        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient));
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>(); // Get the factory
+        // var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient)); // Remove direct client creation here
         var logger = serviceProvider.GetRequiredService<ILogger<OpenAIClient>>();
         var credentials = serviceProvider.GetRequiredService<ProviderCredentials>();
 
-        // Create the client using the HttpClient with timeout policy
-        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClient: httpClient);
+        // Create the client passing the factory
+        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClientFactory); // Pass factory
 
         // Act & Assert
         var request = new ConduitLLM.Core.Models.ChatCompletionRequest
@@ -297,13 +297,13 @@ public class ResiliencePolicyTests
         services.AddSingleton(new ProviderCredentials { ProviderName = "openai", ApiKey = "test-key" });
 
         var serviceProvider = services.BuildServiceProvider();
-        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient));
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>(); // Get the factory
+        // var httpClient = httpClientFactory.CreateClient(nameof(OpenAIClient)); // Remove direct client creation here
         var logger = serviceProvider.GetRequiredService<ILogger<OpenAIClient>>();
         var credentials = serviceProvider.GetRequiredService<ProviderCredentials>();
 
-        // Create the client using the HttpClient with both policies
-        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClient: httpClient);
+        // Create the client passing the factory
+        var openAIClient = new OpenAIClient(credentials, "gpt-4", logger, httpClientFactory); // Pass factory
 
         // Act & Assert
         var request = new ConduitLLM.Core.Models.ChatCompletionRequest

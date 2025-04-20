@@ -16,17 +16,23 @@ namespace ConduitLLM.Providers;
 public class LLMClientFactory : ILLMClientFactory
 {
     private readonly ConduitSettings _settings;
-    private readonly ILoggerFactory _loggerFactory; // Added logger factory
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IHttpClientFactory _httpClientFactory; // Added HttpClientFactory
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LLMClientFactory"/> class.
     /// </summary>
     /// <param name="settingsOptions">The configuration settings.</param>
     /// <param name="loggerFactory">The logger factory.</param>
-    public LLMClientFactory(IOptions<ConduitSettings> settingsOptions, ILoggerFactory loggerFactory)
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    public LLMClientFactory(
+        IOptions<ConduitSettings> settingsOptions, 
+        ILoggerFactory loggerFactory,
+        IHttpClientFactory httpClientFactory) // Added httpClientFactory parameter
     {
         _settings = settingsOptions.Value ?? throw new ArgumentNullException(nameof(settingsOptions), "Conduit settings cannot be null.");
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory)); // Store logger factory
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory)); // Store httpClientFactory
     }
 
     /// <inheritdoc />
@@ -86,12 +92,13 @@ public class LLMClientFactory : ILLMClientFactory
         switch (providerName.ToLowerInvariant())
         {
             case "openai":
-                // Create and pass logger
                 var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                return new OpenAIClient(credentials, modelId, openAiLogger);
+                // Pass the httpClientFactory
+                return new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory); 
 
             case "anthropic":
                  // Create and pass logger
+                 // Assuming AnthropicClient does NOT need IHttpClientFactory yet, otherwise update similarly
                  var anthropicLogger = _loggerFactory.CreateLogger<AnthropicClient>();
                  return new AnthropicClient(credentials, modelId, anthropicLogger);
 
@@ -106,22 +113,34 @@ public class LLMClientFactory : ILLMClientFactory
             case "mistral":
             case "mistralai": // Alias
                  var compatibleLogger = _loggerFactory.CreateLogger<OpenAIClient>();
+                 // Pass the httpClientFactory
                  // Credentials should contain the correct ApiBase (e.g., https://api.mistral.ai/) and ApiKey for the specific provider
-                 return new OpenAIClient(credentials, modelId, compatibleLogger);
+                 return new OpenAIClient(credentials, modelId, compatibleLogger, _httpClientFactory); 
 
             case "google":
             case "gemini": // Alias
+                 // Assuming GeminiClient does NOT need IHttpClientFactory yet, otherwise update similarly
                  var geminiLogger = _loggerFactory.CreateLogger<GeminiClient>();
                  return new GeminiClient(credentials, modelId, geminiLogger);
 
             case "azure":
                  var azureLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                 // Instantiate the modified OpenAIClient, passing "azure" as the provider name
-                 return new OpenAIClient(credentials, modelId, azureLogger, providerName: "azure");
+                 // Pass the httpClientFactory and providerName
+                 return new OpenAIClient(credentials, modelId, azureLogger, _httpClientFactory, providerName: "azure"); 
 
             case "cohere":
+                 // Assuming CohereClient does NOT need IHttpClientFactory yet, otherwise update similarly
                  var cohereLogger = _loggerFactory.CreateLogger<CohereClient>();
                  return new CohereClient(credentials, modelId, cohereLogger);
+
+            // --- Add cases for new providers ---
+            case "ollama":
+                 var ollamaLogger = _loggerFactory.CreateLogger<OllamaClient>();
+                 return new OllamaClient(credentials, modelId, ollamaLogger, _httpClientFactory);
+
+            case "replicate":
+                 var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
+                 return new ReplicateClient(credentials, modelId, replicateLogger, _httpClientFactory);
 
             // Add cases for other providers as they are implemented
 

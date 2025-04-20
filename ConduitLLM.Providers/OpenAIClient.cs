@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO; // For StreamReader
 using System.Linq;
+using System.Net; // For HttpStatusCode
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json; // Required for PostAsJsonAsync, ReadFromJsonAsync
@@ -11,6 +12,7 @@ using System.Text.Json; // For JsonException
 using System.Text.Json.Serialization; // For JsonPropertyName
 using System.Threading;
 using System.Threading.Tasks;
+using Polly.Timeout; // Added Polly.Timeout namespace import
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
@@ -27,8 +29,7 @@ namespace ConduitLLM.Providers;
 /// </summary>
 public class OpenAIClient : ILLMClient
 {
-    // TODO: Refactor to use IHttpClientFactory for better resilience and management
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory; // Use factory
     private readonly ProviderCredentials _credentials;
     private readonly string _providerModelId; // The actual model ID (OpenAI) or deployment name (Azure)
     private readonly ILogger<OpenAIClient> _logger;
@@ -42,26 +43,21 @@ public class OpenAIClient : ILLMClient
     public OpenAIClient(
         ProviderCredentials credentials, 
         string providerModelId, 
-        ILogger<OpenAIClient> logger, 
-        string? providerName = null,
-        HttpClient? httpClient = null)
+        ILogger<OpenAIClient> logger,
+        IHttpClientFactory httpClientFactory, // Inject IHttpClientFactory
+        string? providerName = null)
     {
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId)); // For Azure, this is the deployment name
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory)); // Store the factory
         _providerName = providerName ?? credentials.ProviderName ?? "openai"; // Default to "openai" if not specified
 
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+        // Allow API key to be null for Azure AD authentication scenarios (though not implemented here yet)
+        if (_credentials.ProviderName == null && string.IsNullOrWhiteSpace(_credentials.ApiKey) && providerName != "azure")
         {
-            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}'.");
+            throw new ConfigurationException("API key is required for non-azure providers.");
         }
-
-        // Allow injection of HttpClient for testing
-        _httpClient = httpClient ?? new HttpClient();
-
-        // Base address and default headers are set per-request now due to differences
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
     }
 
     /// <inheritdoc />
@@ -71,10 +67,10 @@ public class OpenAIClient : ILLMClient
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-
+        
         // Determine the API key to use: override if provided, otherwise use configured key
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+        apiKey ??= _credentials.ApiKey;
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
              // This should ideally not happen if constructor validation is correct, but double-check
              throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
@@ -86,6 +82,9 @@ public class OpenAIClient : ILLMClient
         HttpResponseMessage? response = null;
         try
         {
+            // Create HttpClient instance from factory for this request
+            using var httpClient = _httpClientFactory.CreateClient(nameof(OpenAIClient));
+            
             // Construct request message manually to handle provider differences
             using var requestMessage = new HttpRequestMessage();
             requestMessage.Method = HttpMethod.Post;
@@ -103,30 +102,38 @@ public class OpenAIClient : ILLMClient
                 string deploymentName = _providerModelId; // For Azure, providerModelId is the deployment name
                 string apiVersion = !string.IsNullOrWhiteSpace(_credentials.ApiVersion) ? _credentials.ApiVersion : DefaultAzureApiVersion;
                 requestMessage.RequestUri = new Uri($"{azureApiBase}/openai/deployments/{deploymentName}/chat/completions?api-version={apiVersion}");
-                requestMessage.Headers.Add("api-key", effectiveApiKey); // Use effectiveApiKey
+                requestMessage.Headers.Add("api-key", apiKey); 
                 _logger.LogDebug("Sending request to Azure OpenAI endpoint: {Endpoint}", requestMessage.RequestUri);
             }
             else
             {
                 // OpenAI or other compatible (OpenRouter, FireworksAI)
                 string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
-                // Ensure ApiBase ends with a slash
                 if (!apiBase.EndsWith('/')) apiBase += "/";
                 // Use relative path for standard OpenAI-like structure
                 requestMessage.RequestUri = new Uri(new Uri(apiBase), "v1/chat/completions");
-                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey); // Use effectiveApiKey
-                 _logger.LogDebug("Sending request to OpenAI-compatible endpoint: {Endpoint}", requestMessage.RequestUri);
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                _logger.LogDebug("Sending request to OpenAI-compatible endpoint: {Endpoint}", requestMessage.RequestUri);
             }
 
+            // Set headers that might not be configured globally via factory options
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
-            response = await _httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+            response = await httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
                 // Attempt to read error content for better diagnostics
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
                 _logger.LogError("openai API request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                // TODO: Parse OpenAI specific error structure from errorContent
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                    response.StatusCode == HttpStatusCode.TooManyRequests ||
+                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                    response.StatusCode == HttpStatusCode.RequestTimeout)
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                }
                 throw new LLMCommunicationException($"openai API request failed with status code {response.StatusCode}. Response: {errorContent}");
             }
 
@@ -154,32 +161,444 @@ public class OpenAIClient : ILLMClient
             _logger.LogInformation("Mapping openai response back to Core response for model alias '{ModelAlias}'", request.Model);
             return MapToCoreResponse(openAIResponse, request.Model);
         }
+        catch (LLMCommunicationException)
+        {
+            // Let LLMCommunicationExceptions propagate up as-is
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred creating chat completion");
+            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+        }
+    }
+
+    /// <inheritdoc />
+    public virtual async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        // Azure openai does not support the /v1/models endpoint directly via API key auth.
+        // Listing models typically requires Azure RBAC permissions and uses Azure management libraries,
+        // which is beyond the scope of simple API key interaction.
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Listing models is not supported for Azure openai provider via this client."); // Corrected: Removed extra args
+            // Return an empty list or throw an exception? Let's return empty for now.
+            // Consider throwing UnsupportedProviderException if this is a hard requirement.
+            return new List<string>();
+            // throw new UnsupportedProviderException("Listing models is not directly supported for Azure openai via API key authentication.");
+        }
+
+        // Determine the API key to use
+        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+        {
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
+        }
+
+        // Determine base URL (openai or compatible)
+        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+        if (!apiBase.EndsWith('/')) apiBase += "/";
+        var requestUri = new Uri(new Uri(apiBase), "v1/models"); // Use relative path
+
+        _logger.LogDebug("Sending request to list models from: {Endpoint}", requestUri);
+
+        try
+        {
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            // Set auth header based on provider (only non-Azure uses Bearer here)
+             if (!_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+             {
+                  requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+             }
+             // Note: Azure model listing via management plane needs different auth (RBAC/Managed Identity),
+             // so api-key or Bearer token won't work here anyway. The check at the start handles this.
+
+            // Create HttpClient instance from factory for this request
+            using var httpClient = _httpClientFactory.CreateClient(_providerName);
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+
+            using var response = await ExecuteRequestWithErrorHandling(requestMessage, _providerName, cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                _logger.LogError("openai API list models request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                    response.StatusCode == HttpStatusCode.TooManyRequests ||
+                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                    response.StatusCode == HttpStatusCode.RequestTimeout)
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                }
+                throw new LLMCommunicationException($"openai API list models request failed with status code {response.StatusCode}. Response: {errorContent}");
+            }
+
+            var modelListResponse = await response.Content.ReadFromJsonAsync<OpenAIModelListResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (modelListResponse == null || modelListResponse.Data == null)
+            {
+                 _logger.LogError("Failed to deserialize the successful model list response from openai API.");
+                 throw new LLMCommunicationException("Failed to deserialize the model list response from openai API.");
+            }
+
+            // Extract just the model IDs
+            var modelIds = modelListResponse.Data.Select(m => m.Id).ToList();
+            _logger.LogInformation("Successfully retrieved {ModelCount} models from {ProviderName}.", modelIds.Count, _providerName);
+            return modelIds;
+        }
         catch (JsonException ex)
         {
-             _logger.LogError(ex, "JSON deserialization error processing openai response.");
-             throw new LLMCommunicationException("Error deserializing openai response.", ex);
+             _logger.LogError(ex, "JSON deserialization error processing openai model list response.");
+             throw new LLMCommunicationException("Error deserializing openai model list response.", ex);
         }
         catch (HttpRequestException ex)
         {
             // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
-            _logger.LogError(ex, "HTTP request error communicating with openai API.");
+            _logger.LogError(ex, "HTTP request error communicating with openai API for model list.");
+            
+            // For status codes that should be retried (like 503), we need to re-throw the original
+            // HttpRequestException to allow Polly retry policies to catch them
+            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                ex.StatusCode == HttpStatusCode.TooManyRequests ||
+                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
+                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+            }
+            
             throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            _logger.LogWarning(ex, "openai API request timed out.");
-            throw new LLMCommunicationException("openai API request timed out.", ex);
+            _logger.LogWarning(ex, "openai API list models request timed out.");
+            throw;
         }
         catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
         {
-             _logger.LogInformation(ex, "openai API request was canceled.");
+             _logger.LogInformation(ex, "openai API list models request was canceled.");
              throw; // Re-throw cancellation
         }
-        catch (Exception ex) // Catch-all for unexpected errors
+        catch (TimeoutRejectedException ex)
         {
-            _logger.LogError(ex, "An unexpected error occurred while processing openai chat completion.");
-            // Avoid throwing raw Exception, wrap it
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            // Explicitly handle Polly timeout exception
+            _logger.LogWarning(ex, "openai API list models request timed out (Polly timeout).");
+            throw;
+        }
+        catch (Exception ex) // Catch-all
+        {
+            _logger.LogError(ex, "An unexpected error occurred while listing openai models.");
+            throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
+        }
+    }
+
+    // Embeddings
+    public async Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
+
+        // Determine URL based on provider
+        Uri requestUri;
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(_credentials.ApiBase)) throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for the 'azure' provider for embeddings.");
+            string azureApiBase = _credentials.ApiBase.TrimEnd('/');
+            // For embeddings, the model is the deployment name
+            string deploymentName = request.Model ?? throw new ArgumentNullException(nameof(request.Model), "Model (deployment name) is required for Azure embeddings.");
+            string apiVersion = !string.IsNullOrWhiteSpace(_credentials.ApiVersion) ? _credentials.ApiVersion : DefaultAzureApiVersion;
+            requestUri = new Uri($"{azureApiBase}/openai/deployments/{deploymentName}/embeddings?api-version={apiVersion}");
+             _logger.LogDebug("Sending embeddings request to Azure OpenAI endpoint: {Endpoint}", requestUri);
+        }
+        else
+        {
+            string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+            if (!apiBase.EndsWith('/')) apiBase += "/";
+            requestUri = new Uri(new Uri(apiBase), "v1/embeddings");
+             _logger.LogDebug("Sending embeddings request to OpenAI-compatible endpoint: {Endpoint}", requestUri);
+        }
+
+
+        var openAIRequest = new
+        {
+            input = request.Input,
+            model = request.Model,
+            encoding_format = request.EncodingFormat,
+            dimensions = request.Dimensions,
+            user = request.User
+        };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = JsonContent.Create(openAIRequest)
+        };
+
+        // Set authentication header based on provider
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+            httpRequest.Headers.Add("api-key", effectiveApiKey);
+        }
+        else
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+        }
+
+        // Create HttpClient instance from factory for this request
+        using var httpClient = _httpClientFactory.CreateClient(_providerName);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+
+        try
+        {
+            using var response = await ExecuteRequestWithErrorHandling(httpRequest, _providerName, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                _logger.LogError("openai API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                    response.StatusCode == HttpStatusCode.TooManyRequests ||
+                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                    response.StatusCode == HttpStatusCode.RequestTimeout)
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                }
+                throw new LLMCommunicationException($"openai API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
+            }
+            var embeddingResponse = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (embeddingResponse == null)
+            {
+                _logger.LogError("Failed to deserialize embeddings response from openai API.");
+                throw new LLMCommunicationException("Failed to deserialize embeddings response from openai API.");
+            }
+            
+            // Ensure usage data is properly set for embeddings
+            // For embeddings, we typically only have prompt tokens since there's no completion
+            embeddingResponse.Usage ??= new Usage
+            {
+                PromptTokens = embeddingResponse.Usage?.PromptTokens ?? 0,
+                CompletionTokens = 0, // Embeddings don't have completion tokens
+                TotalTokens = embeddingResponse.Usage?.TotalTokens ?? embeddingResponse.Usage?.PromptTokens ?? 0
+            };
+            
+            // If we have total tokens but no prompt tokens (unusual), use total tokens as prompt tokens
+            if (embeddingResponse.Usage.PromptTokens == 0 && embeddingResponse.Usage.TotalTokens > 0)
+            {
+                embeddingResponse.Usage.PromptTokens = embeddingResponse.Usage.TotalTokens;
+            }
+            
+            return embeddingResponse;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error processing openai embeddings response.");
+            throw new LLMCommunicationException("Error deserializing openai embeddings response.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
+            _logger.LogError(ex, "HTTP request error communicating with openai API for embeddings.");
+            
+            // For status codes that should be retried (like 503), we need to re-throw the original
+            // HttpRequestException to allow Polly retry policies to catch them
+            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                ex.StatusCode == HttpStatusCode.TooManyRequests ||
+                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
+                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+            }
+            
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogWarning(ex, "openai API embeddings request timed out.");
+            throw;
+        }
+        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+             _logger.LogInformation(ex, "openai API embeddings request was canceled.");
+             throw; // Re-throw cancellation
+        }
+        catch (TimeoutRejectedException ex)
+        {
+            // Explicitly handle Polly timeout exception
+            _logger.LogWarning(ex, "openai API embeddings request timed out (Polly timeout).");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while creating openai embeddings.");
+            throw new LLMCommunicationException($"An unexpected error occurred while creating embeddings: {ex.Message}", ex);
+        }
+    }
+
+    // Image Generation
+    public async Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
+        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
+
+        // Determine URL based on provider
+        Uri requestUri;
+        // NOTE: Azure OpenAI Image Generation API path might differ slightly or have different versioning.
+        // Assuming standard path for now, but this might need verification against specific Azure API versions.
+        // Example path format: {endpoint}/openai/images/generations:submit?api-version={api-version} (for DALL-E 3)
+        // or {endpoint}/openai/deployments/{deployment-name}/images/generations?api-version={api-version} (if using deployments)
+        // Sticking to the simpler /v1/ path assumption for now, similar to non-Azure. Needs validation.
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+             if (string.IsNullOrWhiteSpace(_credentials.ApiBase)) throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for the 'azure' provider for image generation.");
+             string azureApiBase = _credentials.ApiBase.TrimEnd('/');
+             // Azure image generation might not use deployment names in the same way as chat/embeddings.
+             // It might use a standard path with the resource endpoint. Let's use a common path structure.
+             // TODO: Verify the correct Azure image generation endpoint structure and API version requirements.
+             string apiVersion = !string.IsNullOrWhiteSpace(_credentials.ApiVersion) ? _credentials.ApiVersion : "2024-02-01"; // Use a relevant API version
+             // Using a potential path, adjust if needed based on Azure docs for the specific model/API version
+             requestUri = new Uri($"{azureApiBase}/openai/images/generations?api-version={apiVersion}");
+             _logger.LogDebug("Sending image generation request to Azure OpenAI endpoint: {Endpoint}", requestUri);
+        }
+        else
+        {
+            string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
+            if (!apiBase.EndsWith('/')) apiBase += "/";
+            requestUri = new Uri(new Uri(apiBase), "v1/images/generations");
+             _logger.LogDebug("Sending image generation request to OpenAI-compatible endpoint: {Endpoint}", requestUri);
+        }
+
+
+        var openAIRequest = new
+        {
+            prompt = request.Prompt,
+            model = request.Model,
+            n = request.N,
+            quality = request.Quality,
+            response_format = request.ResponseFormat,
+            size = request.Size,
+            style = request.Style,
+            user = request.User
+        };
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+        {
+            Content = JsonContent.Create(openAIRequest)
+        };
+
+        // Set authentication header based on provider
+        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+        {
+            httpRequest.Headers.Add("api-key", effectiveApiKey);
+        }
+        else
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+        }
+
+        // Create HttpClient instance from factory for this request
+        using var httpClient = _httpClientFactory.CreateClient(_providerName);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+
+        try
+        {
+            using var response = await ExecuteRequestWithErrorHandling(httpRequest, _providerName, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                _logger.LogError("openai API image generation request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                    response.StatusCode == HttpStatusCode.TooManyRequests ||
+                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                    response.StatusCode == HttpStatusCode.RequestTimeout)
+                {
+                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                }
+                throw new LLMCommunicationException($"openai API image generation request failed with status code {response.StatusCode}. Response: {errorContent}");
+            }
+            var imageResponse = await response.Content.ReadFromJsonAsync<ImageGenerationResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (imageResponse == null)
+            {
+                _logger.LogError("Failed to deserialize image generation response from openai API.");
+                throw new LLMCommunicationException("Failed to deserialize image generation response from openai API.");
+            }
+            
+            // Set usage information for image generation
+            imageResponse.Usage ??= new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                ImageCount = imageResponse.Data?.Count ?? 0
+            };
+            
+            // Create image metadata
+            return new ImageGenerationResponse 
+            {
+                Created = imageResponse.Created,
+                Data = imageResponse.Data
+            };
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error processing openai image generation response.");
+            throw new LLMCommunicationException("Error deserializing openai image generation response.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
+            _logger.LogError(ex, "HTTP request error communicating with openai API for image generation.");
+            
+            // For status codes that should be retried (like 503), we need to re-throw the original
+            // HttpRequestException to allow Polly retry policies to catch them
+            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                ex.StatusCode == HttpStatusCode.TooManyRequests ||
+                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
+                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+            }
+            
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogWarning(ex, "openai API image generation request timed out.");
+            throw;
+        }
+        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(ex, "openai API image generation request was canceled.");
+            throw;
+        }
+        catch (TimeoutRejectedException ex)
+        {
+            // Explicitly handle Polly timeout exception
+            _logger.LogWarning(ex, "openai API image generation request timed out (Polly timeout).");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while creating openai image generation.");
+            throw new LLMCommunicationException($"An unexpected error occurred while creating image generation: {ex.Message}", ex);
+        }
+    }
+
+    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Use a buffer to avoid potential issues with large error responses if needed,
+            // but ReadAsStringAsync is usually fine for typical API errors.
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Log this?
+            return $"Failed to read error content: {ex.Message}";
         }
     }
 
@@ -236,7 +655,21 @@ public class OpenAIClient : ILLMClient
             // Map to internal model
             Tool = tc.Type,
             Name = tc.Function.Name,
+            UserMessage = tc.Function.Arguments ?? "{}"
             // Map other fields
+        }).ToList();
+    }
+
+    private List<InternalModels.ToolCallChunk>? MapCoreToolCallChunksToInternal(List<Core.Models.ToolCallChunk> coreToolCallChunks)
+    {
+        if (coreToolCallChunks == null || !coreToolCallChunks.Any()) return null;
+
+        return coreToolCallChunks.Select(ctcc => new InternalModels.ToolCallChunk
+        {
+            // No need to map Id as it's generated on the response
+            Tool = ctcc.Type,
+            Name = ctcc.Function?.Name ?? string.Empty,
+            UserMessage = ctcc.Function?.Arguments ?? "{}"
         }).ToList();
     }
 
@@ -294,7 +727,7 @@ public class OpenAIClient : ILLMClient
         return internalToolCallChunks.Select((itcc, index) => new Core.Models.ToolCallChunk
         {
             Index = index,
-            Id = itcc.UserId ?? Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid().ToString(),
             Type = itcc.Tool,
             Function = new Core.Models.FunctionCallChunk
             {
@@ -304,12 +737,10 @@ public class OpenAIClient : ILLMClient
         }).ToList();
     }
 
-    // --- Removed internal DTOs as they are now in InternalModels/OpenAIModels.cs ---
-
     /// <inheritdoc />
     public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
         ChatCompletionRequest request,
-        string? apiKey = null,
+        string? apiKey = null, // Added optional API key
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -372,18 +803,30 @@ public class OpenAIClient : ILLMClient
             _logger.LogDebug("Sending streaming request to openai-compatible endpoint: {Endpoint}", requestMessage.RequestUri);
         }
 
-        // Send request and get headers first - Re-add declaration
-        HttpResponseMessage response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        // Create HttpClient instance from factory for this request
+        using var httpClient = _httpClientFactory.CreateClient(_providerName); // Use provider name
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+
+        // Send request and get headers first
+        HttpResponseMessage response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
             string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
             _logger.LogError("openai API streaming request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+            if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                response.StatusCode == HttpStatusCode.TooManyRequests ||
+                response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                response.StatusCode == HttpStatusCode.RequestTimeout)
+            {
+                throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+            }
             throw new LLMCommunicationException($"openai API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
         }
 
         _logger.LogDebug("Received successful streaming response header from openai API. Starting stream processing.");
-        return response; // Return the successful response with headers (This was the intended return after the first check)
+        return response;
     }
 
     // Helper to process the actual stream content
@@ -406,6 +849,23 @@ public class OpenAIClient : ILLMClient
         {
             throw new LLMCommunicationException($"IO error during stream setup: {ex.Message}", ex);
         }
+        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        {
+            // Just rethrow cancellation
+            throw;
+        }
+        catch (TaskCanceledException ex)
+        {
+            // Handle timeout
+            _logger.LogWarning("Timeout occurred during stream setup");
+            throw;
+        }
+        catch (TimeoutRejectedException ex)
+        {
+            // Handle Polly timeout
+            _logger.LogWarning("Polly timeout occurred during stream setup");
+            throw;
+        }
 
         // If we get here, we have a valid reader
         try // only try/finally is allowed with yield
@@ -427,6 +887,22 @@ public class OpenAIClient : ILLMClient
                 catch (IOException ex)
                 {
                     throw new LLMCommunicationException($"IO error reading from stream: {ex.Message}", ex);
+                }
+                catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw; // Rethrow cancellation
+                }
+                catch (TaskCanceledException ex)
+                {
+                    // Handle timeout
+                    _logger.LogWarning("Timeout occurred while reading stream line");
+                    throw;
+                }
+                catch (TimeoutRejectedException ex)
+                {
+                    // Handle Polly timeout
+                    _logger.LogWarning("Polly timeout occurred while reading stream line");
+                    throw;
                 }
 
                 if (string.IsNullOrWhiteSpace(line))
@@ -505,272 +981,38 @@ public class OpenAIClient : ILLMClient
         };
     }
 
-    /// <inheritdoc />
-    public virtual async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
+
+    private async Task<HttpResponseMessage> ExecuteRequestWithErrorHandling(
+        HttpRequestMessage requestMessage,
+        string providerName,
+        CancellationToken cancellationToken)
     {
-        // Azure openai does not support the /v1/models endpoint directly via API key auth.
-        // Listing models typically requires Azure RBAC permissions and uses Azure management libraries,
-        // which is beyond the scope of simple API key interaction.
-        if (_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Listing models is not supported for Azure openai provider via this client.");
-            // Return an empty list or throw an exception? Let's return empty for now.
-            // Consider throwing UnsupportedProviderException if this is a hard requirement.
-            return new List<string>();
-            // throw new UnsupportedProviderException("Listing models is not directly supported for Azure openai via API key authentication.");
-        }
-
-        // Determine the API key to use
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
-        }
-
-        // Determine base URL (openai or compatible)
-        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
-        if (!apiBase.EndsWith('/')) apiBase += "/";
-        var requestUri = new Uri(new Uri(apiBase), "v1/models"); // Use relative path
-
-        _logger.LogDebug("Sending request to list models from: {Endpoint}", requestUri);
+        using var httpClient = _httpClientFactory.CreateClient(providerName);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
         try
         {
-            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
-
-            using var response = await _httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API list models request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"openai API list models request failed with status code {response.StatusCode}. Response: {errorContent}");
-            }
-
-            var modelListResponse = await response.Content.ReadFromJsonAsync<OpenAIModelListResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (modelListResponse == null || modelListResponse.Data == null)
-            {
-                 _logger.LogError("Failed to deserialize the successful model list response from openai API.");
-                 throw new LLMCommunicationException("Failed to deserialize the model list response from openai API.");
-            }
-
-            // Extract just the model IDs
-            var modelIds = modelListResponse.Data.Select(m => m.Id).ToList();
-            _logger.LogInformation("Successfully retrieved {ModelCount} models from {ProviderName}.", modelIds.Count, _providerName);
-            return modelIds;
-        }
-        catch (JsonException ex)
-        {
-             _logger.LogError(ex, "JSON deserialization error processing openai model list response.");
-             throw new LLMCommunicationException("Error deserializing openai model list response.", ex);
+            return await httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP request error communicating with openai API for model list.");
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "openai API list models request timed out.");
-            throw new LLMCommunicationException("openai API request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "openai API list models request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (Exception ex) // Catch-all
-        {
-            _logger.LogError(ex, "An unexpected error occurred while listing openai models.");
-            throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
-        }
-    }
-
-    // Embeddings
-    public async Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
-
-        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
-        if (!apiBase.EndsWith("/")) apiBase += "/";
-        var requestUri = new Uri(new Uri(apiBase), "v1/embeddings");
-
-        var openAIRequest = new
-        {
-            input = request.Input,
-            model = request.Model,
-            encoding_format = request.EncodingFormat,
-            dimensions = request.Dimensions,
-            user = request.User
-        };
-
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(openAIRequest)
-        };
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
-
-        try
-        {
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
+            _logger.LogError(ex, "HTTP request error communicating with {Provider} API.", providerName);
+            
+            // For status codes that should be retried (like 503), we need to re-throw the original
+            // HttpRequestException to allow Polly retry policies to catch them
+            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                ex.StatusCode == HttpStatusCode.TooManyRequests ||
+                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
+                ex.StatusCode == HttpStatusCode.RequestTimeout)
             {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"openai API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
-            }
-            var embeddingResponse = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (embeddingResponse == null)
-            {
-                _logger.LogError("Failed to deserialize embeddings response from openai API.");
-                throw new LLMCommunicationException("Failed to deserialize embeddings response from openai API.");
+                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
             }
             
-            // Ensure usage data is properly set for embeddings
-            // For embeddings, we typically only have prompt tokens since there's no completion
-            embeddingResponse.Usage ??= new Usage
-            {
-                PromptTokens = embeddingResponse.Usage?.PromptTokens ?? 0,
-                CompletionTokens = 0, // Embeddings don't have completion tokens
-                TotalTokens = embeddingResponse.Usage?.TotalTokens ?? embeddingResponse.Usage?.PromptTokens ?? 0
-            };
-            
-            // If we have total tokens but no prompt tokens (unusual), use total tokens as prompt tokens
-            if (embeddingResponse.Usage.PromptTokens == 0 && embeddingResponse.Usage.TotalTokens > 0)
-            {
-                embeddingResponse.Usage.PromptTokens = embeddingResponse.Usage.TotalTokens;
-            }
-            
-            return embeddingResponse;
+            throw new LLMCommunicationException($"HTTP request error communicating with {providerName} API: {ex.Message}", ex);
         }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON deserialization error processing openai embeddings response.");
-            throw new LLMCommunicationException("Error deserializing openai embeddings response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with openai API for embeddings.");
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "openai API embeddings request timed out.");
-            throw new LLMCommunicationException("openai API embeddings request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "openai API embeddings request was canceled.");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An unexpected error occurred while creating openai embeddings.");
-            throw new LLMCommunicationException($"An unexpected error occurred while creating embeddings: {ex.Message}", ex);
-        }
-    }
-
-    // Image Generation
-    public async Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
-
-        string apiBase = string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOpenAIApiBase : _credentials.ApiBase;
-        if (!apiBase.EndsWith("/")) apiBase += "/";
-        var requestUri = new Uri(new Uri(apiBase), "v1/images/generations");
-
-        var openAIRequest = new
-        {
-            prompt = request.Prompt,
-            model = request.Model,
-            n = request.N,
-            quality = request.Quality,
-            response_format = request.ResponseFormat,
-            size = request.Size,
-            style = request.Style,
-            user = request.User
-        };
-
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(openAIRequest)
-        };
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
-
-        try
-        {
-            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API image generation request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"openai API image generation request failed with status code {response.StatusCode}. Response: {errorContent}");
-            }
-            var imageResponse = await response.Content.ReadFromJsonAsync<ImageGenerationResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (imageResponse == null)
-            {
-                _logger.LogError("Failed to deserialize image generation response from openai API.");
-                throw new LLMCommunicationException("Failed to deserialize image generation response from openai API.");
-            }
-            
-            // Set usage information for image generation
-            imageResponse.Usage ??= new Usage
-            {
-                PromptTokens = 0,
-                CompletionTokens = 0,
-                TotalTokens = 0,
-                ImageCount = imageResponse.Data?.Count ?? 0
-            };
-            
-            return imageResponse;
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON deserialization error processing openai image generation response.");
-            throw new LLMCommunicationException("Error deserializing openai image generation response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with openai API for image generation.");
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "openai API image generation request timed out.");
-            throw new LLMCommunicationException("openai API image generation request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "openai API image generation request was canceled.");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An unexpected error occurred while creating openai image generation.");
-            throw new LLMCommunicationException($"An unexpected error occurred while creating image generation: {ex.Message}", ex);
-        }
-    }
-
-    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            // Use a buffer to avoid potential issues with large error responses if needed,
-            // but ReadAsStringAsync is usually fine for typical API errors.
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // Log this?
-            return $"Failed to read error content: {ex.Message}";
-        }
+        // DO NOT CATCH TaskCanceledException or TimeoutRejectedException HERE
+        // Let these bubble up to be caught by the calling method which wraps them properly
+        // This ensures the resilience policies work correctly
     }
 }

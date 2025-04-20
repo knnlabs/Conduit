@@ -26,8 +26,9 @@ namespace ConduitLLM.Tests;
 public class OpenAIClientTests
 {
     private readonly Mock<HttpMessageHandler> _handlerMock;
-    private readonly HttpClient _httpClient;
+    private readonly HttpClient _httpClient; // Keep this to be returned by the factory mock
     private readonly Mock<ILogger<OpenAIClient>> _loggerMock;
+    private readonly Mock<IHttpClientFactory> _mockHttpClientFactory; // Added factory mock
     private readonly ProviderCredentials _openAICredentials;
     private readonly ProviderCredentials _azureCredentials;
     private readonly ProviderCredentials _mistralCredentials;
@@ -35,8 +36,13 @@ public class OpenAIClientTests
     public OpenAIClientTests()
     {
         _handlerMock = new Mock<HttpMessageHandler>();
-        _httpClient = _handlerMock.CreateClient(); // Create HttpClient from mock handler
+        _httpClient = _handlerMock.CreateClient(); // The client using the mock handler
         _loggerMock = new Mock<ILogger<OpenAIClient>>();
+        _mockHttpClientFactory = new Mock<IHttpClientFactory>(); // Initialize factory mock
+
+        // Setup the factory mock to return the HttpClient with the mock handler
+        _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
+                              .Returns(_httpClient);
 
         _openAICredentials = new ProviderCredentials { 
             ProviderName = "OpenAI", 
@@ -102,7 +108,7 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(expectedResponseDto))
             .Verifiable();
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var response = await client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None);
@@ -147,7 +153,8 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(expectedResponseDto))
             .Verifiable();
 
-        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, providerName: "azure", httpClient: _httpClient);
+        // Pass factory mock, remove httpClient named arg
+        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure"); 
 
         // Act
         var response = await client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None);
@@ -173,7 +180,7 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(expectedResponseDto))
             .Verifiable();
 
-        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, providerName: "mistral");
+        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "mistral"); // Pass factory mock
 
         // Act
         var response = await client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None);
@@ -216,7 +223,7 @@ public class OpenAIClientTests
             .ReturnsResponse(statusCode, new StringContent(errorContent, System.Text.Encoding.UTF8, "application/json")) // Return error status and content
             .Verifiable();
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
@@ -240,7 +247,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ThrowsAsync(httpRequestException); // Simulate network error
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
@@ -268,7 +275,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ThrowsAsync(taskCanceledException); // Simulate timeout via TaskCanceledException
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
@@ -291,7 +298,7 @@ public class OpenAIClientTests
         // Act & Assert
         // Exception should be thrown during client construction
         var ex = Assert.Throws<ConfigurationException>(() =>
-            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object));
+            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object)); // Pass factory mock
 
         Assert.Contains("API key is missing for provider 'openai'", ex.Message);
     }
@@ -305,7 +312,8 @@ public class OpenAIClientTests
         
         // Create client with valid key first
         var validKeyCredentials = new ProviderCredentials { ProviderName = "OpenAI", ApiKey = "valid-key" };
-        var client = new OpenAIClient(validKeyCredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        // Pass factory mock, remove httpClient named arg
+        var client = new OpenAIClient(validKeyCredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); 
 
         // Setup mock for the valid call
         _handlerMock.SetupRequest(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
@@ -317,7 +325,7 @@ public class OpenAIClientTests
         // Verify that attempting to construct a client with a null key throws exception
         var credentialsWithMissingKey = new ProviderCredentials { ProviderName = "OpenAI", ApiKey = null };
         var ex = Assert.Throws<ConfigurationException>(() =>
-            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object));
+            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object)); // Pass factory mock
         
         Assert.Contains("API key is missing for provider 'openai'", ex.Message);
     }
@@ -429,7 +437,7 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, sseContent) // Return SSE stream
             .Verifiable();
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var receivedChunks = new List<ChatCompletionChunk>();
@@ -490,8 +498,8 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
 
-        // Pass the mock HttpClient to the client constructor
-        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, providerName: "azure", httpClient: _httpClient);
+        // Pass factory mock, remove httpClient named arg
+        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure"); 
 
         // Act
         var receivedChunks = new List<ChatCompletionChunk>();
@@ -536,7 +544,11 @@ public class OpenAIClientTests
                 Content = sseContent
             });
 
-        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, providerName: "mistral", httpClient: mockClient);
+        // Need to mock the factory to return this specific mockClient
+        var tempFactoryMock = new Mock<IHttpClientFactory>();
+        tempFactoryMock.Setup(f => f.CreateClient("mistral")).Returns(mockClient);
+
+        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object, providerName: "mistral"); // Pass temp factory mock
 
         // Act
         var receivedChunks = new List<ChatCompletionChunk>();
@@ -587,7 +599,11 @@ public class OpenAIClientTests
                 Content = JsonContent.Create(errorResponse)
             });
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: mockClient);
+        // Need to mock the factory to return this specific mockClient
+        var tempFactoryMock = new Mock<IHttpClientFactory>();
+        tempFactoryMock.Setup(f => f.CreateClient("OpenAI")).Returns(mockClient); // Assuming default provider name if not specified
+
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object); // Pass temp factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
@@ -632,7 +648,11 @@ public class OpenAIClientTests
                 Content = new StringContent(streamContent, System.Text.Encoding.UTF8, "text/event-stream")
             });
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: mockClient);
+        // Need to mock the factory to return this specific mockClient
+        var tempFactoryMock = new Mock<IHttpClientFactory>();
+        tempFactoryMock.Setup(f => f.CreateClient("OpenAI")).Returns(mockClient); // Assuming default provider name
+
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object); // Pass temp factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
@@ -676,7 +696,7 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.OK, mockContent) // Return the stream that will throw
             .Verifiable();
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         // The exception might be wrapped differently depending on where ReadLineAsync catches it.
@@ -705,7 +725,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var chunks = new List<ChatCompletionChunk>();
@@ -728,7 +748,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var chunks = new List<ChatCompletionChunk>();
@@ -752,7 +772,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
         var cts = new CancellationTokenSource();
 
         // Act
@@ -785,7 +805,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
@@ -806,7 +826,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         // Act
@@ -832,7 +852,7 @@ public class OpenAIClientTests
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, sseContent)
             .Verifiable();
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: _httpClient);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var chunks = new List<ChatCompletionChunk>();
@@ -881,8 +901,11 @@ public class OpenAIClientTests
                 Content = JsonContent.Create(expectedResponseDto)
             });
 
-        // Use the dedicated mock client
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, httpClient: mockClient);
+        // Need to mock the factory to return this specific mockClient
+        var tempFactoryMock = new Mock<IHttpClientFactory>();
+        tempFactoryMock.Setup(f => f.CreateClient("OpenAI")).Returns(mockClient); // Assuming default provider name
+
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object); // Pass temp factory mock
 
         // Act
         var models = await client.ListModelsAsync(cancellationToken: CancellationToken.None);
@@ -914,8 +937,11 @@ public class OpenAIClientTests
                 Content = JsonContent.Create(expectedResponseDto)
             });
 
-        // Pass the mock HttpClient to the client constructor
-        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, providerName: "mistral", httpClient: mockClient);
+        // Need to mock the factory to return this specific mockClient
+        var tempFactoryMock = new Mock<IHttpClientFactory>();
+        tempFactoryMock.Setup(f => f.CreateClient("mistral")).Returns(mockClient);
+
+        var client = new OpenAIClient(_mistralCredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object, providerName: "mistral"); // Pass temp factory mock
 
         // Act
         var models = await client.ListModelsAsync(cancellationToken: CancellationToken.None);
@@ -932,7 +958,7 @@ public class OpenAIClientTests
         // Arrange
         var deploymentName = "my-azure-deployment";
         // No HTTP call should be made for Azure ListModels
-        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, providerName: "azure");
+        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure"); // Pass factory mock
 
         // Act
         var models = await client.ListModelsAsync(cancellationToken: CancellationToken.None);
@@ -957,7 +983,7 @@ public class OpenAIClientTests
             .ReturnsResponse(HttpStatusCode.InternalServerError, new StringContent(errorContent, System.Text.Encoding.UTF8, "application/json"))
             .Verifiable();
 
-        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object);
+        var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
@@ -979,7 +1005,7 @@ public class OpenAIClientTests
         // Act & Assert
         // Exception should be thrown during client construction
          var ex = Assert.Throws<ConfigurationException>(() =>
-            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object));
+            new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object)); // Pass factory mock
          Assert.Contains("API key is missing for provider 'openai'", ex.Message);
 
         // If constructor allowed null key, the exception would happen during the call:

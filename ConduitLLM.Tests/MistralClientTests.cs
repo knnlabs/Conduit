@@ -28,15 +28,21 @@ namespace ConduitLLM.Tests;
 public class MistralClientTests
 {
     private readonly Mock<HttpMessageHandler> _handlerMock;
-    private readonly HttpClient _httpClient;
+    private readonly HttpClient _httpClient; // Keep this to be returned by the factory mock
     private readonly Mock<ILogger<MistralClient>> _loggerMock;
+    private readonly Mock<IHttpClientFactory> _mockHttpClientFactory; // Added factory mock
     private readonly ProviderCredentials _credentials;
 
     public MistralClientTests()
     {
         _handlerMock = new Mock<HttpMessageHandler>();
-        _httpClient = new HttpClient(_handlerMock.Object);
+        _httpClient = new HttpClient(_handlerMock.Object); // The client using the mock handler
         _loggerMock = new Mock<ILogger<MistralClient>>();
+        _mockHttpClientFactory = new Mock<IHttpClientFactory>(); // Initialize factory mock
+
+        // Setup the factory mock to return the HttpClient with the mock handler
+        _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
+                              .Returns(_httpClient);
 
         _credentials = new ProviderCredentials
         {
@@ -112,7 +118,7 @@ public class MistralClientTests
             })
             .Verifiable();
 
-        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var response = await client.CreateChatCompletionAsync(request);
@@ -166,7 +172,7 @@ public class MistralClientTests
                 Content = JsonContent.Create(errorResponse)
             });
 
-        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
@@ -190,7 +196,7 @@ public class MistralClientTests
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
-        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
@@ -225,7 +231,7 @@ public class MistralClientTests
             })
             .Verifiable();
 
-        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var models = await client.ListModelsAsync();
@@ -258,7 +264,7 @@ public class MistralClientTests
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
-        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _httpClient);
+        var client = new MistralClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
 
         // Act
         var models = await client.ListModelsAsync();

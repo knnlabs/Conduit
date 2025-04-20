@@ -31,18 +31,18 @@ public class GroqClient : OpenAIClient
     /// <param name="credentials">The credentials for the Groq API.</param>
     /// <param name="providerModelId">The model ID to use.</param>
     /// <param name="logger">The logger instance.</param>
-    /// <param name="httpClient">Optional HTTP client for testing.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param> // Added factory param doc
     public GroqClient(
         ProviderCredentials credentials,
         string providerModelId,
         ILogger<GroqClient> logger,
-        HttpClient? httpClient = null)
+        IHttpClientFactory httpClientFactory) // Added factory parameter, removed httpClient
         : base(
             EnsureGroqCredentials(credentials),
             providerModelId,
-            logger,
-            providerName: "groq",
-            httpClient)
+            logger, // Base constructor expects ILogger<OpenAIClient>, but ILogger<GroqClient> is compatible
+            httpClientFactory, // Pass the factory
+            providerName: "groq") // providerName is the last optional parameter
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

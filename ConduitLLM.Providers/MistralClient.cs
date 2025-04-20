@@ -30,18 +30,18 @@ public class MistralClient : OpenAIClient
     /// <param name="credentials">The credentials for the Mistral AI API.</param>
     /// <param name="providerModelId">The model ID to use.</param>
     /// <param name="logger">The logger instance.</param>
-    /// <param name="httpClient">Optional HTTP client for testing.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param> // Added factory param doc
     public MistralClient(
         ProviderCredentials credentials,
         string providerModelId,
         ILogger<MistralClient> logger,
-        HttpClient? httpClient = null)
+        IHttpClientFactory httpClientFactory) // Added factory parameter, removed httpClient
         : base(
             EnsureMistralCredentials(credentials),
             providerModelId,
-            logger,
-            providerName: "mistral",
-            httpClient)
+            logger, // Base constructor expects ILogger<OpenAIClient>, but ILogger<MistralClient> is compatible
+            httpClientFactory, // Pass the factory
+            providerName: "mistral") // providerName is the last optional parameter
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

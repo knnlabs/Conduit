@@ -19,12 +19,14 @@ public class LLMClientFactoryTests
 {
     private readonly Mock<IOptions<ConduitSettings>> _mockSettingsOptions;
     private readonly Mock<ILoggerFactory> _mockLoggerFactory;
+    private readonly Mock<IHttpClientFactory> _mockHttpClientFactory; // Added mock for HttpClientFactory
     private readonly ConduitSettings _settings;
 
     public LLMClientFactoryTests()
     {
         _mockSettingsOptions = new Mock<IOptions<ConduitSettings>>();
         _mockLoggerFactory = new Mock<ILoggerFactory>();
+        _mockHttpClientFactory = new Mock<IHttpClientFactory>(); // Initialize the mock
         _settings = new ConduitSettings // Initialize with some default test data
         {
             ModelMappings = new List<ModelProviderMapping>
@@ -60,7 +62,12 @@ public class LLMClientFactoryTests
 
     private LLMClientFactory CreateFactory()
     {
-        return new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object);
+        // Setup the mock HttpClientFactory to return a default HttpClient when CreateClient is called.
+        // Tests that need specific handler behavior will need to configure this further.
+        _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
+                              .Returns(new HttpClient()); 
+                              
+        return new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object, _mockHttpClientFactory.Object); // Pass the mock factory object
     }
 
     [Theory]
@@ -197,7 +204,7 @@ public class LLMClientFactoryTests
         _mockSettingsOptions.Setup(o => o.Value).Returns((ConduitSettings)null!);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>("settingsOptions", () => new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object));
+        Assert.Throws<ArgumentNullException>("settingsOptions", () => new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object, _mockHttpClientFactory.Object)); // Pass mock factory
     }
 
     [Fact]
@@ -207,6 +214,16 @@ public class LLMClientFactoryTests
         // Settings are valid
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>("loggerFactory", () => new LLMClientFactory(_mockSettingsOptions.Object, null!));
+        Assert.Throws<ArgumentNullException>("loggerFactory", () => new LLMClientFactory(_mockSettingsOptions.Object, null!, _mockHttpClientFactory.Object)); // Pass mock factory
+    }
+
+    [Fact]
+    public void Constructor_NullHttpClientFactory_ThrowsArgumentNullException()
+    {
+        // Arrange
+        // Settings and logger factory are valid
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>("httpClientFactory", () => new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object, null!)); // Pass null factory
     }
 }
