@@ -160,9 +160,8 @@ public class GroqClientTests
         // Arrange
         var request = CreateTestRequest("groq-llama3");
         var modelId = "llama3-70b-8192";
-        
+        // Inject a rate limit error in the error response
         var errorResponse = new { error = new { message = "Rate limit exceeded", type = "rate_limit_error", code = "rate_limit_exceeded" } };
-        
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>("SendAsync", 
                 MoqIt.Is<HttpRequestMessage>(req => req != null), 
@@ -172,14 +171,10 @@ public class GroqClientTests
                 StatusCode = HttpStatusCode.TooManyRequests,
                 Content = JsonContent.Create(errorResponse)
             });
-
-        var client = new GroqClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object); // Pass factory mock
-
+        var client = new GroqClient(_credentials, modelId, _loggerMock.Object, _mockHttpClientFactory.Object);
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
             () => client.CreateChatCompletionAsync(request));
-        
-        // Check for a more generic error message instead of specific status code
         Assert.Contains("limit", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 

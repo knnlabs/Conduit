@@ -53,15 +53,16 @@ public class OpenAIClient : ILLMClient
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory)); // Store the factory
         _providerName = providerName ?? credentials.ProviderName ?? "openai"; // Default to "openai" if not specified
 
-        // Allow API key to be null for Azure AD authentication scenarios (though not implemented here yet)
-        if (_credentials.ProviderName == null && string.IsNullOrWhiteSpace(_credentials.ApiKey) && providerName != "azure")
+        // Guard: API key must not be null or empty for non-azure providers
+        if (!_providerName.Equals("azure", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(_credentials.ApiKey))
         {
-            throw new ConfigurationException("API key is required for non-azure providers.");
+            throw new ConfigurationException($"API key is missing for provider '{_providerName.ToLowerInvariant()}' and no override was provided.");
         }
     }
 
     /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+    public virtual async Task<ChatCompletionResponse> CreateChatCompletionAsync(
         ChatCompletionRequest request,
         string? apiKey = null, // Added optional API key
         CancellationToken cancellationToken = default)
@@ -126,15 +127,11 @@ public class OpenAIClient : ILLMClient
             {
                 // Attempt to read error content for better diagnostics
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                    response.StatusCode == HttpStatusCode.TooManyRequests ||
-                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                    response.StatusCode == HttpStatusCode.RequestTimeout)
-                {
-                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
-                }
-                throw new LLMCommunicationException($"openai API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                var msg = ExtractRateLimitError(errorContent);
+                _logger.LogError("openai API request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, msg);
+                var ex = new HttpRequestException($"openai API request failed with status code {response.StatusCode}. Response: {msg}", null, response.StatusCode);
+                ex.Data["Body"] = errorContent;
+                throw ex;
             }
 
             _logger.LogDebug("Received successful response from openai API.");
@@ -160,6 +157,16 @@ public class OpenAIClient : ILLMClient
 
             _logger.LogInformation("Mapping openai response back to Core response for model alias '{ModelAlias}'", request.Model);
             return MapToCoreResponse(openAIResponse, request.Model);
+        }
+        catch (HttpRequestException ex)
+        {
+            // Try to extract error content from ex.Data["Body"] if present
+            var errorMsg = ex.Message;
+            if (ex.Data["Body"] is string body)
+            {
+                errorMsg = ExtractRateLimitError(body);
+            }
+            throw new LLMCommunicationException($"HTTP request error communicating with {_providerName} API: {errorMsg}", ex);
         }
         catch (LLMCommunicationException)
         {
@@ -223,15 +230,11 @@ public class OpenAIClient : ILLMClient
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API list models request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                    response.StatusCode == HttpStatusCode.TooManyRequests ||
-                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                    response.StatusCode == HttpStatusCode.RequestTimeout)
-                {
-                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
-                }
-                throw new LLMCommunicationException($"openai API list models request failed with status code {response.StatusCode}. Response: {errorContent}");
+                var msg = ExtractRateLimitError(errorContent);
+                _logger.LogError("openai API list models request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, msg);
+                var ex = new HttpRequestException($"openai API list models request failed with status code {response.StatusCode}. Response: {msg}", null, response.StatusCode);
+                ex.Data["Body"] = errorContent;
+                throw ex;
             }
 
             var modelListResponse = await response.Content.ReadFromJsonAsync<OpenAIModelListResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -257,32 +260,28 @@ public class OpenAIClient : ILLMClient
             // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
             _logger.LogError(ex, "HTTP request error communicating with openai API for model list.");
             
-            // For status codes that should be retried (like 503), we need to re-throw the original
-            // HttpRequestException to allow Polly retry policies to catch them
-            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                ex.StatusCode == HttpStatusCode.TooManyRequests ||
-                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
-                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            // Always include error content in the exception message
+            var errorMsg = ex.Message;
+            if (ex.Data["Body"] is string body)
             {
-                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                errorMsg = ExtractRateLimitError(body);
             }
-            
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {errorMsg}", ex);
         }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "openai API list models request timed out.");
-            throw;
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "openai API list models request was canceled.");
+             _logger.LogInformation("openai API list models request was canceled.");
              throw; // Re-throw cancellation
         }
-        catch (TimeoutRejectedException ex)
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("openai API list models request timed out.");
+            throw;
+        }
+        catch (TimeoutRejectedException)
         {
             // Explicitly handle Polly timeout exception
-            _logger.LogWarning(ex, "openai API list models request timed out (Polly timeout).");
+            _logger.LogWarning("openai API list models request timed out (Polly timeout).");
             throw;
         }
         catch (Exception ex) // Catch-all
@@ -356,15 +355,11 @@ public class OpenAIClient : ILLMClient
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                    response.StatusCode == HttpStatusCode.TooManyRequests ||
-                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                    response.StatusCode == HttpStatusCode.RequestTimeout)
-                {
-                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
-                }
-                throw new LLMCommunicationException($"openai API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
+                var msg = ExtractRateLimitError(errorContent);
+                _logger.LogError("openai API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, msg);
+                var ex = new HttpRequestException($"openai API embeddings request failed with status code {response.StatusCode}. Response: {msg}", null, response.StatusCode);
+                ex.Data["Body"] = errorContent;
+                throw ex;
             }
             var embeddingResponse = await response.Content.ReadFromJsonAsync<EmbeddingResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
             if (embeddingResponse == null)
@@ -400,32 +395,28 @@ public class OpenAIClient : ILLMClient
             // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
             _logger.LogError(ex, "HTTP request error communicating with openai API for embeddings.");
             
-            // For status codes that should be retried (like 503), we need to re-throw the original
-            // HttpRequestException to allow Polly retry policies to catch them
-            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                ex.StatusCode == HttpStatusCode.TooManyRequests ||
-                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
-                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            // Always include error content in the exception message
+            var errorMsg = ex.Message;
+            if (ex.Data["Body"] is string body)
             {
-                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                errorMsg = ExtractRateLimitError(body);
             }
-            
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {errorMsg}", ex);
         }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "openai API embeddings request timed out.");
+            _logger.LogInformation("openai API embeddings request was canceled.");
+            throw; // Re-throw cancellation
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("openai API embeddings request timed out.");
             throw;
         }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "openai API embeddings request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (TimeoutRejectedException ex)
+        catch (TimeoutRejectedException)
         {
             // Explicitly handle Polly timeout exception
-            _logger.LogWarning(ex, "openai API embeddings request timed out (Polly timeout).");
+            _logger.LogWarning("openai API embeddings request timed out (Polly timeout).");
             throw;
         }
         catch (Exception ex)
@@ -509,15 +500,11 @@ public class OpenAIClient : ILLMClient
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("openai API image generation request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                    response.StatusCode == HttpStatusCode.TooManyRequests ||
-                    response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                    response.StatusCode == HttpStatusCode.RequestTimeout)
-                {
-                    throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
-                }
-                throw new LLMCommunicationException($"openai API image generation request failed with status code {response.StatusCode}. Response: {errorContent}");
+                var msg = ExtractRateLimitError(errorContent);
+                _logger.LogError("openai API image generation request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, msg);
+                var ex = new HttpRequestException($"openai API image generation request failed with status code {response.StatusCode}. Response: {msg}", null, response.StatusCode);
+                ex.Data["Body"] = errorContent;
+                throw ex;
             }
             var imageResponse = await response.Content.ReadFromJsonAsync<ImageGenerationResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
             if (imageResponse == null)
@@ -539,7 +526,7 @@ public class OpenAIClient : ILLMClient
             return new ImageGenerationResponse 
             {
                 Created = imageResponse.Created,
-                Data = imageResponse.Data
+                Data = imageResponse.Data ?? throw new LLMCommunicationException("Image generation response is missing data.")
             };
         }
         catch (JsonException ex)
@@ -552,32 +539,28 @@ public class OpenAIClient : ILLMClient
             // Handle fundamental HTTP errors (network issues, DNS errors, etc.)
             _logger.LogError(ex, "HTTP request error communicating with openai API for image generation.");
             
-            // For status codes that should be retried (like 503), we need to re-throw the original
-            // HttpRequestException to allow Polly retry policies to catch them
-            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                ex.StatusCode == HttpStatusCode.TooManyRequests ||
-                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
-                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            // Always include error content in the exception message
+            var errorMsg = ex.Message;
+            if (ex.Data["Body"] is string body)
             {
-                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                errorMsg = ExtractRateLimitError(body);
             }
-            
-            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {ex.Message}", ex);
+            throw new LLMCommunicationException($"HTTP request error communicating with openai API: {errorMsg}", ex);
         }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "openai API image generation request timed out.");
+            _logger.LogInformation("openai API image generation request was canceled.");
             throw;
         }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        catch (TaskCanceledException)
         {
-            _logger.LogInformation(ex, "openai API image generation request was canceled.");
+            _logger.LogWarning("openai API image generation request timed out.");
             throw;
         }
-        catch (TimeoutRejectedException ex)
+        catch (TimeoutRejectedException)
         {
             // Explicitly handle Polly timeout exception
-            _logger.LogWarning(ex, "openai API image generation request timed out (Polly timeout).");
+            _logger.LogWarning("openai API image generation request timed out (Polly timeout).");
             throw;
         }
         catch (Exception ex)
@@ -600,6 +583,16 @@ public class OpenAIClient : ILLMClient
             // Log this?
             return $"Failed to read error content: {ex.Message}";
         }
+    }
+
+    private static string ExtractRateLimitError(string errorContent)
+    {
+        // Try to extract a rate limit message if present
+        if (errorContent != null && (errorContent.Contains("rate limit", StringComparison.OrdinalIgnoreCase) || errorContent.Contains("quota", StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"Rate limit error: {errorContent}";
+        }
+        return errorContent;
     }
 
     // --- Mapping Logic ---
@@ -667,7 +660,7 @@ public class OpenAIClient : ILLMClient
         return coreToolCallChunks.Select(ctcc => new InternalModels.ToolCallChunk
         {
             // No need to map Id as it's generated on the response
-            Tool = ctcc.Type,
+            Tool = ctcc.Type ?? throw new LLMCommunicationException("Tool call chunk type is missing."),
             Name = ctcc.Function?.Name ?? string.Empty,
             UserMessage = ctcc.Function?.Arguments ?? "{}"
         }).ToList();
@@ -761,8 +754,10 @@ public class OpenAIClient : ILLMClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set up or send streaming request");
-            throw new LLMCommunicationException($"Failed to set up or send streaming request: {ex.Message}", ex);
+            string? errorContent = ex is HttpRequestException httpEx && httpEx.Data["Body"] is string body ? ExtractRateLimitError(body) : null;
+            string message = errorContent != null ? $"Failed to set up or send streaming request: {errorContent}" : $"Failed to set up or send streaming request: {ex.Message}";
+            _logger.LogError(ex, message);
+            throw new LLMCommunicationException(message, ex);
         }
 
         // Process the stream
@@ -808,25 +803,25 @@ public class OpenAIClient : ILLMClient
         httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
-        // Send request and get headers first
-        HttpResponseMessage response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-            _logger.LogError("openai API streaming request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-            if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                response.StatusCode == HttpStatusCode.TooManyRequests ||
-                response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                response.StatusCode == HttpStatusCode.RequestTimeout)
+            var response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"Transient error: {response.StatusCode}", null, response.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                var msg = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                // Always attach error content to HttpRequestException.Data["Body"] for all error codes
+                var ex = new HttpRequestException($"openai API streaming request failed with status code {response.StatusCode}. Response: {msg}", null, response.StatusCode);
+                ex.Data["Body"] = msg;
+                throw ex;
             }
-            throw new LLMCommunicationException($"openai API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
+            _logger.LogDebug("Received successful streaming response header from openai API. Starting stream processing.");
+            return response;
         }
-
-        _logger.LogDebug("Received successful streaming response header from openai API. Starting stream processing.");
-        return response;
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request error during streaming setup");
+            throw;
+        }
     }
 
     // Helper to process the actual stream content
@@ -849,18 +844,17 @@ public class OpenAIClient : ILLMClient
         {
             throw new LLMCommunicationException($"IO error during stream setup: {ex.Message}", ex);
         }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // Just rethrow cancellation
             throw;
         }
-        catch (TaskCanceledException ex)
+        catch (TaskCanceledException)
         {
-            // Handle timeout
             _logger.LogWarning("Timeout occurred during stream setup");
             throw;
         }
-        catch (TimeoutRejectedException ex)
+        catch (TimeoutRejectedException)
         {
             // Handle Polly timeout
             _logger.LogWarning("Polly timeout occurred during stream setup");
@@ -888,17 +882,16 @@ public class OpenAIClient : ILLMClient
                 {
                     throw new LLMCommunicationException($"IO error reading from stream: {ex.Message}", ex);
                 }
-                catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+                catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
                     throw; // Rethrow cancellation
                 }
-                catch (TaskCanceledException ex)
+                catch (TaskCanceledException)
                 {
-                    // Handle timeout
                     _logger.LogWarning("Timeout occurred while reading stream line");
                     throw;
                 }
-                catch (TimeoutRejectedException ex)
+                catch (TimeoutRejectedException)
                 {
                     // Handle Polly timeout
                     _logger.LogWarning("Polly timeout occurred while reading stream line");
@@ -997,19 +990,13 @@ public class OpenAIClient : ILLMClient
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP request error communicating with {Provider} API.", providerName);
-            
-            // For status codes that should be retried (like 503), we need to re-throw the original
-            // HttpRequestException to allow Polly retry policies to catch them
-            if (ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                ex.StatusCode == HttpStatusCode.TooManyRequests ||
-                ex.StatusCode == HttpStatusCode.GatewayTimeout ||
-                ex.StatusCode == HttpStatusCode.RequestTimeout)
+            // Try to extract error content from ex.Data["Body"] if present
+            var errorMsg = ex.Message;
+            if (ex.Data["Body"] is string body)
             {
-                throw new HttpRequestException($"Transient error: {ex.StatusCode}", null, ex.StatusCode); // Create a new HttpRequestException with the status code that will be caught by Polly
+                errorMsg = ExtractRateLimitError(body);
             }
-            
-            throw new LLMCommunicationException($"HTTP request error communicating with {providerName} API: {ex.Message}", ex);
+            throw new LLMCommunicationException($"HTTP request error communicating with {_providerName} API: {errorMsg}", ex);
         }
         // DO NOT CATCH TaskCanceledException or TimeoutRejectedException HERE
         // Let these bubble up to be caught by the calling method which wraps them properly

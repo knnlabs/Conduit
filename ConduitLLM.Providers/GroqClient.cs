@@ -45,6 +45,11 @@ public class GroqClient : OpenAIClient
             providerName: "groq") // providerName is the last optional parameter
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        // Guard: API key must not be null or empty
+        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+        {
+            throw new ConfigurationException("API key is missing for provider 'groq' and no override was provided.");
+        }
     }
 
     private static ProviderCredentials EnsureGroqCredentials(ProviderCredentials credentials)
@@ -89,6 +94,48 @@ public class GroqClient : OpenAIClient
                 "mixtral-8x7b-32768",
                 "gemma-7b-it"
             };
+        }
+    }
+
+    public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.CreateChatCompletionAsync(request, apiKey, cancellationToken);
+        }
+        catch (LLMCommunicationException ex)
+        {
+            // Always try to extract the error body from the message if 'Response:' is present
+            var msg = ex.Message;
+            var idx = msg.IndexOf("Response:");
+            if (idx >= 0)
+            {
+                var extracted = msg.Substring(idx + "Response:".Length).Trim();
+                if (!string.IsNullOrEmpty(extracted))
+                    throw new LLMCommunicationException(extracted, ex);
+            }
+            // Fallback: try Data["Body"]
+            if (ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
+                throw new LLMCommunicationException(body, ex);
+            // Fallback: try inner exception
+            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+                throw new LLMCommunicationException(ex.InnerException.Message, ex.InnerException);
+            // Final fallback: just use the original message
+            throw new LLMCommunicationException(msg, ex);
+        }
+        catch (Exception ex)
+        {
+            // Try to extract error content from HttpRequestException (if available)
+            string? errorContent = ex is HttpRequestException httpEx && httpEx.Data["Body"] is string body ? body : null;
+            if (!string.IsNullOrEmpty(errorContent))
+                throw new LLMCommunicationException(errorContent, ex);
+            if (!string.IsNullOrEmpty(ex.Message))
+                throw new LLMCommunicationException(ex.Message, ex);
+            string message = errorContent != null
+                ? $"Groq API error: {errorContent}"
+                : $"Groq API error: {ex.Message}";
+            _logger.LogError(ex, message);
+            throw new LLMCommunicationException(message, ex);
         }
     }
 }

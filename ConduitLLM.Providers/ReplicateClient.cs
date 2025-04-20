@@ -110,6 +110,13 @@ public class ReplicateClient : ILLMClient
     /// <inheritdoc />
     public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
     {
+        // Defensive: Check for nulls and unreachable code
+        string _apiBase = GetEffectiveApiBase();
+        if (string.IsNullOrWhiteSpace(_apiBase))
+        {
+            _logger.LogWarning("Replicate API base URL is not configured.");
+            return Task.FromResult(new List<string>());
+        }
         // Replicate doesn't offer a simple API endpoint to list all model *versions* accessible via API key.
         // Model discovery is typically done via the website or specific collection APIs.
         _logger.LogWarning("Listing specific model versions is not directly supported by the Replicate API via this client.");
