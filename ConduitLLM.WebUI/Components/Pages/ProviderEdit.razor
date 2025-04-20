@@ -3,6 +3,7 @@
 @using ConduitLLM.WebUI.Services
 @using Microsoft.EntityFrameworkCore 
 @using Microsoft.Extensions.Logging 
+@using System.Text.Json
 @inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
@@ -390,19 +391,16 @@ else
 
         try
         {
-            // Make a copy of the provider with current form values for testing
             var testProvider = new DbProviderCredentials
             {
                 ProviderName = provider.ProviderName,
                 ApiKey = provider.ApiKey,
-                ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
-                ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion
+                ApiBase = provider.ApiBase,
+                ApiVersion = provider.ApiVersion,
+                Name = provider.Name
             };
-
-            // Test the connection
-            connectionStatus = await ProviderStatusService.CheckProviderStatusAsync(testProvider);
+            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
             showConnectionStatus = true;
-            
             if (connectionStatus.IsOnline)
             {
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
@@ -411,11 +409,6 @@ else
             {
                 connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
             }
-        }
-        catch (Exception ex)
-        {
-            connectionStatusMessage = $"Error testing connection: {ex.Message}";
-            showConnectionStatus = true;
         }
         finally
         {

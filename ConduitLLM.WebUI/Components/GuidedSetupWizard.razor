@@ -2,6 +2,7 @@
 @using ConduitLLM.WebUI.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging 
+@using System.Text.Json
 @inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject ProviderStatusService ProviderStatusService
 @inject NavigationManager NavigationManager
@@ -260,24 +261,12 @@
 
     private async Task TestConnection()
     {
-        if (providerModel == null || string.IsNullOrWhiteSpace(providerModel.ApiKey))
-        {
-            testStatus = new ProviderStatus
-            {
-                IsOnline = false,
-                StatusMessage = "API key is required",
-                LastCheckedUtc = DateTime.UtcNow
-            };
+        if (providerModel == null)
             return;
-        }
-
         isTesting = true;
         StateHasChanged();
-
         try
         {
-            Logger.LogDebug("GuidedSetupWizard.TestConnection - Testing with providerModel.ProviderName: '{ModelProviderName}'", providerModel.ProviderName);
-            // Pass a copy to avoid potential modification issues if service holds reference? Unlikely but safer.
             var testCredentials = new DbProviderCredentials
             {
                 ProviderName = providerModel.ProviderName,
@@ -285,16 +274,7 @@
                 ApiBase = providerModel.ApiBase,
                 ApiVersion = providerModel.ApiVersion
             };
-            testStatus = await ProviderStatusService.CheckProviderStatusAsync(testCredentials);
-        }
-        catch (Exception ex)
-        {
-            testStatus = new ProviderStatus
-            {
-                IsOnline = false,
-                StatusMessage = $"Error: {ex.Message}",
-                LastCheckedUtc = DateTime.UtcNow
-            };
+            testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials);
         }
         finally
         {
