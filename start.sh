@@ -41,7 +41,22 @@ echo "HTTP API HTTPS: ${HttpApiHttpsPort}"
 echo "Environment: ${ASPNETCORE_ENVIRONMENT}"
 
 # Run the Http project with its own URLs
-ASPNETCORE_URLS="http://127.0.0.1:${HttpApiHttpPort};https://127.0.0.1:${HttpApiHttpsPort}" dotnet ConduitLLM.Http.dll &
+echo "Starting ConduitLLM.Http API and waiting for database migrations to complete..."
+ASPNETCORE_URLS="http://127.0.0.1:${HttpApiHttpPort};https://127.0.0.1:${HttpApiHttpsPort}" dotnet ConduitLLM.Http.dll --apply-migrations &
+HTTP_PID=$!
+
+# Wait for database preparation to complete
+echo "Waiting for database migrations to complete (10 seconds)..."
+sleep 10  # Give HTTP API time to apply migrations
+
+# Check if HTTP process is still running
+if kill -0 $HTTP_PID 2>/dev/null; then
+    echo "HTTP API successfully started. Migrations should be complete."
+else
+    echo "ERROR: HTTP API process failed to start properly. Check logs for migration errors."
+    exit 1
+fi
 
 # Run the WebUI project with its own URLs
+echo "Starting ConduitLLM.WebUI..."
 ASPNETCORE_URLS="http://127.0.0.1:${WebUIHttpPort};https://127.0.0.1:${WebUIHttpsPort}" dotnet ConduitLLM.WebUI.dll

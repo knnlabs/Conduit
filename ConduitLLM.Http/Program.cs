@@ -23,6 +23,13 @@ using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Check if --apply-migrations flag is passed
+bool explicitMigration = args.Contains("--apply-migrations");
+if (explicitMigration)
+{
+    Console.WriteLine("[Conduit] Running with --apply-migrations flag. Will prioritize database migration.");
+}
+
 // Configure JSON options for snake_case serialization (OpenAI compatibility)
 var jsonSerializerOptions = new JsonSerializerOptions
 {
@@ -145,11 +152,21 @@ var app = builder.Build();
 // --- AUTOMATIC DATABASE MIGRATION ---
 using (var scope = app.Services.CreateScope())
 {
-    // Apply migrations for all relevant DbContexts
-    var configDb = scope.ServiceProvider.GetService<ConduitLLM.Configuration.ConfigurationDbContext>();
-    configDb?.Database.Migrate();
-    var webUiConfigDb = scope.ServiceProvider.GetService<ConduitLLM.WebUI.Data.ConfigurationDbContext>();
-    webUiConfigDb?.Database.Migrate();
+    try
+    {
+        // Apply migrations for all relevant DbContexts
+        var configDb = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.ConfigurationDbContext>();
+        configDb.Database.Migrate();
+        var webUiConfigDb = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Data.ConfigurationDbContext>();
+        webUiConfigDb.Database.Migrate();
+        
+        Console.WriteLine("[Conduit] Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Conduit] Error applying database migrations: {ex.Message}");
+        throw; // Re-throw to prevent application from starting with bad database state
+    }
 }
 
 // Configure the HTTP request pipeline.
