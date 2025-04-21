@@ -35,6 +35,9 @@ RUN mkdir -p /data
 # Expose ports for WebUI (5001, 5002) and API (5000, 5003)
 EXPOSE 80 5000 5001 5002 5003
 
+# Copy start.sh into the image
+COPY start.sh ./start.sh
+
 # Make sure start.sh is executable
 RUN chmod +x ./start.sh
 
