@@ -35,5 +35,8 @@ RUN mkdir -p /data
 # Expose ports for WebUI (5001, 5002) and API (5000, 5003)
 EXPOSE 80 5000 5001 5002 5003
 
-# Set the entry point
-ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
+# Make sure start.sh is executable
+RUN chmod +x /home/nick/Conduit/start.sh
+
+# Set the entrypoint to start.sh
+ENTRYPOINT ["/home/nick/Conduit/start.sh"]

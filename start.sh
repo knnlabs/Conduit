@@ -23,15 +23,15 @@ echo "Using launch settings from ./ConduitLLM.WebUI/Properties/launchSettings.js
 echo "Building..."
 
 # Set port environment variables for the WebUI project
-export WebUIHttpPort=5001
-export WebUIHttpsPort=5002
+export WebUIHttpPort="${WebUIHttpPort:-5001}"
+export WebUIHttpsPort="${WebUIHttpsPort:-5002}"
 
 # Set port environment variables for the Http project
-export HttpApiHttpPort=5000
-export HttpApiHttpsPort=5003
+export HttpApiHttpPort="${HttpApiHttpPort:-5000}"
+export HttpApiHttpsPort="${HttpApiHttpsPort:-5003}"
 
 # Set development environment
-export ASPNETCORE_ENVIRONMENT=Development
+export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
 
 echo "Starting ConduitLLM with the following ports:"
 echo "WebUI HTTP: ${WebUIHttpPort}"
