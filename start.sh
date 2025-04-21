@@ -40,9 +40,8 @@ echo "HTTP API HTTP: ${HttpApiHttpPort}"
 echo "HTTP API HTTPS: ${HttpApiHttpsPort}"
 echo "Environment: ${ASPNETCORE_ENVIRONMENT}"
 
-# Run in separate terminals or use & to run in background
 # Run the Http project with its own URLs
-ASPNETCORE_URLS="http://127.0.0.1:${HttpApiHttpPort};https://127.0.0.1:${HttpApiHttpsPort}" dotnet run --project ./ConduitLLM.Http &
+ASPNETCORE_URLS="http://127.0.0.1:${HttpApiHttpPort};https://127.0.0.1:${HttpApiHttpsPort}" dotnet ConduitLLM.Http.dll &
 
 # Run the WebUI project with its own URLs
-ASPNETCORE_URLS="http://127.0.0.1:${WebUIHttpPort};https://127.0.0.1:${WebUIHttpsPort}" dotnet run --project ./ConduitLLM.WebUI
+ASPNETCORE_URLS="http://127.0.0.1:${WebUIHttpPort};https://127.0.0.1:${WebUIHttpsPort}" dotnet ConduitLLM.WebUI.dll
