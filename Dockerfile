@@ -29,6 +29,9 @@ ENV ASPNETCORE_URLS=http://+:80
 ENV DB_PROVIDER=sqlite
 ENV DB_CONNECTION_STRING=Data Source=/data/conduit.db
 
+# Ensure the /data directory exists for SQLite database file
+RUN mkdir -p /data
+
 # Expose ports for WebUI (5001, 5002) and API (5000, 5003)
 EXPOSE 80 5000 5001 5002 5003
 
