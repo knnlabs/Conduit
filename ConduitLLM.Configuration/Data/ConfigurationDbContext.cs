@@ -88,13 +88,13 @@ namespace ConduitLLM.Configuration
                 
                 // Configure navigation property for SpendHistory
                 entity.HasMany(e => e.SpendHistory)
-                      .WithOne()
+                      .WithOne(e => e.VirtualKey)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
                 
                 // Configure navigation property for Notifications
                 entity.HasMany(e => e.Notifications)
-                      .WithOne()
+                      .WithOne(e => e.VirtualKey)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
@@ -125,20 +125,14 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<VirtualKeySpendHistory>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasOne<VirtualKey>()
-                      .WithMany(e => e.SpendHistory)
-                      .HasForeignKey(e => e.VirtualKeyId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                // Remove redundant relationship configuration as it's already defined by annotations and the VirtualKey configuration
             });
 
             // Configure Notification entity
             modelBuilder.Entity<Notification>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.HasOne<VirtualKey>()
-                      .WithMany(e => e.Notifications)
-                      .HasForeignKey(e => e.VirtualKeyId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                // Remove redundant relationship configuration as it's already defined by annotations and the VirtualKey configuration
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);
