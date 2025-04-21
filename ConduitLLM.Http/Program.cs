@@ -142,6 +142,16 @@ builder.Services.AddLLMProviderHttpClients();
 
 var app = builder.Build();
 
+// --- AUTOMATIC DATABASE MIGRATION ---
+using (var scope = app.Services.CreateScope())
+{
+    // Apply migrations for all relevant DbContexts
+    var configDb = scope.ServiceProvider.GetService<ConduitLLM.Configuration.ConfigurationDbContext>();
+    configDb?.Database.Migrate();
+    var webUiConfigDb = scope.ServiceProvider.GetService<ConduitLLM.WebUI.Data.ConfigurationDbContext>();
+    webUiConfigDb?.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
