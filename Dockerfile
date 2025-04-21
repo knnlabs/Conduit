@@ -1,47 +1,72 @@
+# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /app
+WORKDIR /src
 
-# Copy csproj files and restore dependencies
-COPY *.sln .
+# Copy solution and project files first for layer caching
+COPY Conduit.sln .
 COPY ConduitLLM.Configuration/*.csproj ./ConduitLLM.Configuration/
 COPY ConduitLLM.Core/*.csproj ./ConduitLLM.Core/
-COPY ConduitLLM.Examples/*.csproj ./ConduitLLM.Examples/
-COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
 COPY ConduitLLM.Providers/*.csproj ./ConduitLLM.Providers/
-COPY ConduitLLM.Tests/*.csproj ./ConduitLLM.Tests/
+COPY ConduitLLM.Http/*.csproj ./ConduitLLM.Http/
 COPY ConduitLLM.WebUI/*.csproj ./ConduitLLM.WebUI/
+# Add other projects referenced by the solution for restore step
+COPY ConduitLLM.Examples/*.csproj ./ConduitLLM.Examples/
+COPY ConduitLLM.Tests/*.csproj ./ConduitLLM.Tests/
 
-# Restore as distinct layers
-RUN dotnet restore
+# Restore dependencies
+RUN dotnet restore Conduit.sln
 
-# Copy everything else and build
+# Copy the rest of the source code
 COPY . .
-# Publish BOTH projects to the same output folder
-RUN dotnet publish -c Release -o out ConduitLLM.Http/ConduitLLM.Http.csproj
-RUN dotnet publish -c Release -o out ConduitLLM.WebUI/ConduitLLM.WebUI.csproj
 
-# Build runtime image
+# Publish the WebUI project first
+WORKDIR /src/ConduitLLM.WebUI
+RUN dotnet restore ConduitLLM.WebUI.csproj # Ensure project-specific restore before publish
+RUN dotnet publish ConduitLLM.WebUI.csproj -c Release -o /app/publish/webui --no-restore
+
+# Publish the Http API project
+WORKDIR /src/ConduitLLM.Http
+RUN dotnet restore ConduitLLM.Http.csproj # Ensure project-specific restore before publish
+# Temporarily remove conflicting file from WebUI source *before* publishing Http
+# The WebUI project is already published correctly with its appsettings.json
+RUN rm ../ConduitLLM.WebUI/appsettings.json
+RUN dotnet publish ConduitLLM.Http.csproj -c Release -o /app/publish/http --no-restore
+
+# Stage 2: Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-COPY --from=build /app/out .
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:80
-# Default to SQLite but allow for PostgreSQL configuration via environment variables
-ENV DB_PROVIDER=sqlite
-ENV DB_CONNECTION_STRING=Data Source=/data/conduit.db
+# Install openssl needed by start.sh for key generation
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
-# Ensure the /data directory exists for SQLite database file
-RUN mkdir -p /data
+# Copy published application files from the build stage
+# Copy WebUI first, then Http API (Http's appsettings.json will overwrite WebUI's if present)
+COPY --from=build /app/publish/webui .
+COPY --from=build /app/publish/http .
 
-# Expose ports for WebUI (5001, 5002) and API (5000, 5003)
-EXPOSE 80 5000 5001 5002 5003
-
-# Copy start.sh into the image
-COPY start.sh ./start.sh
-
-# Make sure start.sh is executable
+# Copy the start script
+COPY start.sh .
 RUN chmod +x ./start.sh
 
-# Set the entrypoint to start.sh
+# Define default environment variables
+# These can be overridden at runtime (e.g., via docker-compose.yml or docker run -e)
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV WebUIHttpPort=5001
+ENV WebUIHttpsPort=5002
+ENV HttpApiHttpPort=5000
+ENV HttpApiHttpsPort=5003
+ENV DB_PROVIDER=sqlite
+# Recommend mounting /data as a volume for persistent storage
+ENV CONDUIT_SQLITE_PATH=/data/conduit.db
+
+# Expose the ports the application listens on
+EXPOSE 5000
+EXPOSE 5001
+EXPOSE 5002
+EXPOSE 5003
+
+# Set the entrypoint to the start script
 ENTRYPOINT ["./start.sh"]
+
+# Optional: Add healthcheck if needed
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD curl --fail http://localhost:5000/healthz || exit 1
