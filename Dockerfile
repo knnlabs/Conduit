@@ -16,6 +16,8 @@ RUN dotnet restore
 
 # Copy everything else and build
 COPY . .
+# Publish BOTH projects to the same output folder
+RUN dotnet publish -c Release -o out ConduitLLM.Http/ConduitLLM.Http.csproj
 RUN dotnet publish -c Release -o out ConduitLLM.WebUI/ConduitLLM.WebUI.csproj
 
 # Build runtime image
