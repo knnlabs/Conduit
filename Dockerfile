@@ -36,7 +36,7 @@ RUN mkdir -p /data
 EXPOSE 80 5000 5001 5002 5003
 
 # Make sure start.sh is executable
-RUN chmod +x /home/nick/Conduit/start.sh
+RUN chmod +x ./start.sh
 
 # Set the entrypoint to start.sh
-ENTRYPOINT ["/home/nick/Conduit/start.sh"]
+ENTRYPOINT ["./start.sh"]
