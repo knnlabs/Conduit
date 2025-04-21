@@ -14,16 +14,18 @@ namespace ConduitLLM.WebUI.Services;
 /// </summary>
 public class HttpRetryConfigurationService
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+    // Inject the factory for the CORRECT DbContext that manages GlobalSettings
+    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
     private readonly ILogger<HttpRetryConfigurationService> _logger;
     private readonly IOptionsMonitor<RetryOptions> _options;
 
+    // Update constructor signature
     public HttpRetryConfigurationService(
-        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
         ILogger<HttpRetryConfigurationService> logger,
         IOptionsMonitor<RetryOptions> options)
     {
-        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+        _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory)); // Assign the correct factory
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
@@ -51,7 +53,8 @@ public class HttpRetryConfigurationService
 
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
             
             // Save MaxRetries setting
             await UpdateSettingAsync(dbContext, "HttpRetry:MaxRetries", retryOptions.MaxRetries.ToString());
@@ -85,7 +88,8 @@ public class HttpRetryConfigurationService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
             
             // Get all retry-related settings
             var settings = await dbContext.GlobalSettings
@@ -134,14 +138,16 @@ public class HttpRetryConfigurationService
         }
     }
 
-    private async Task UpdateSettingAsync(ConfigurationDbContext dbContext, string key, string value)
+    // Update DbContext type in parameter
+    private async Task UpdateSettingAsync(ConduitLLM.Configuration.ConfigurationDbContext dbContext, string key, string value) 
     {
         var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
         
         if (setting == null)
         {
             // Create new setting if it doesn't exist
-            setting = new GlobalSetting { Key = key, Value = value };
+            // Use the correct GlobalSetting entity type
+            setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
             dbContext.GlobalSettings.Add(setting);
         }
         else

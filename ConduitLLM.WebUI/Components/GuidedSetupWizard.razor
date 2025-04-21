@@ -3,7 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging 
 @using System.Text.Json
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 @inject ProviderStatusService ProviderStatusService
 @inject NavigationManager NavigationManager
 @inject ILogger<GuidedSetupWizard> Logger // Inject logger
@@ -79,7 +79,7 @@
                                 <div class="mb-3">
                                     <label for="wizardApiBase" class="form-label">API Base URL (Optional)</label>
                                     <input type="text" class="form-control" id="wizardApiBase"
-                                        @bind="providerModel!.ApiBase" placeholder="Leave empty for default" />
+                                        @bind="providerModel!.BaseUrl" placeholder="Leave empty for default" />
                                     <small class="form-text text-muted">
                                         Usually you can leave this empty to use the default.
                                     </small>
@@ -184,12 +184,13 @@
     public EventCallback<bool> IsOpenChanged { get; set; }
 
     [Parameter]
-    public EventCallback<DbProviderCredentials> OnSetupComplete { get; set; }
+    // Update EventCallback parameter type to use the Configuration entity
+    public EventCallback<ConduitLLM.Configuration.Entities.ProviderCredential> OnSetupComplete { get; set; } 
 
     private int currentStep = 0;
     private int totalSteps = 3; // Welcome, Configure, Test
-    // Initialize with a required property set, even if it's temporary. OpenForProvider will set the real one.
-    private DbProviderCredentials providerModel = new DbProviderCredentials { ProviderName = string.Empty };
+    // Update internal model type to use the Configuration entity
+    private ConduitLLM.Configuration.Entities.ProviderCredential providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
     private bool attemptedNext = false;
     private bool isTesting = false;
     private ProviderStatus? testStatus = null;
@@ -204,7 +205,8 @@
     {
         Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Called with providerName: '{ProviderName}'", providerName);
         // Reset internal state for a fresh setup
-        providerModel = new DbProviderCredentials { ProviderName = providerName }; // Create new model instance
+        // Use the Configuration entity type
+        providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = providerName }; 
         currentStep = 0;
         testStatus = null;
         attemptedNext = false;
@@ -267,14 +269,16 @@
         StateHasChanged();
         try
         {
-            var testCredentials = new DbProviderCredentials
+            // Use the Configuration entity type for testing
+            var testCredentials = new ConduitLLM.Configuration.Entities.ProviderCredential 
             {
                 ProviderName = providerModel.ProviderName,
                 ApiKey = providerModel.ApiKey,
-                ApiBase = providerModel.ApiBase,
+                BaseUrl = providerModel.BaseUrl, // Use BaseUrl
                 ApiVersion = providerModel.ApiVersion
             };
-            testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials);
+            // Assuming ProviderConnectionTester can handle the Configuration entity type
+            testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials); 
         }
         finally
         {
@@ -299,7 +303,8 @@
         }
 
         // Check if this provider already exists before invoking the callback
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        // Use the Config context
+        using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
         var existingProvider = await dbContext.ProviderCredentials
             .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
 
@@ -315,15 +320,19 @@
             return;
         }
 
-        // Create a new instance to avoid EF tracking issues
+        // Create a new instance of the Configuration entity type to pass to the callback
         if (providerModel != null)
         {
-            var newProvider = new DbProviderCredentials
+            var newProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
             {
                 ProviderName = providerModel.ProviderName,
                 ApiKey = providerModel.ApiKey,
-                ApiBase = providerModel.ApiBase,
-                ApiVersion = providerModel.ApiVersion
+                BaseUrl = providerModel.BaseUrl, // Use BaseUrl
+                ApiVersion = providerModel.ApiVersion,
+                // Set defaults for non-nullable properties if needed
+                IsEnabled = true, 
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await OnSetupComplete.InvokeAsync(newProvider);
@@ -339,8 +348,8 @@
         currentStep = 0;
         testStatus = null;
         attemptedNext = false;
-        // Reset model with required property set
-        providerModel = new DbProviderCredentials { ProviderName = string.Empty };
+        // Reset model with required property set using the Configuration entity type
+        providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
         await IsOpenChanged.InvokeAsync(false);
     }
 }

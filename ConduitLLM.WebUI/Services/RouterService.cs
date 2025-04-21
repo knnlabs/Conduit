@@ -22,7 +22,8 @@ namespace ConduitLLM.WebUI.Services
     /// </summary>
     public class RouterService : IRouterService
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        // Inject the factory for the CORRECT DbContext that manages GlobalSettings
+        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<RouterService> _logger;
         private readonly IOptionsMonitor<RouterOptions> _routerOptions;
@@ -34,14 +35,15 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Creates a new instance of the RouterService
         /// </summary>
+        // Update constructor signature
         public RouterService(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
             ILLMClientFactory clientFactory,
             ILogger<RouterService> logger,
             IOptionsMonitor<RouterOptions> routerOptions,
             IServiceProvider serviceProvider)
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+            _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory)); // Assign the correct factory
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _routerOptions = routerOptions ?? throw new ArgumentNullException(nameof(routerOptions));
@@ -223,7 +225,8 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc/>
         public async Task<RouterConfig> GetRouterConfigAsync()
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
             
             // Try to load the configuration from the database
             var dbSetting = await dbContext.GlobalSettings
@@ -366,7 +369,8 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         private async Task SaveRouterConfigAsync(RouterConfig config)
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
 
             // Serialize the configuration
             string serializedConfig = System.Text.Json.JsonSerializer.Serialize(config);
@@ -383,7 +387,8 @@ namespace ConduitLLM.WebUI.Services
             else
             {
                 // Create a new setting
-                dbContext.GlobalSettings.Add(new GlobalSetting
+                // Use the correct GlobalSetting entity type
+                dbContext.GlobalSettings.Add(new ConduitLLM.Configuration.Entities.GlobalSetting 
                 {
                     Key = ROUTER_CONFIG_KEY,
                     Value = serializedConfig

@@ -20,7 +20,8 @@ namespace ConduitLLM.WebUI.Services
     /// </summary>
     public class CacheStatusService : ICacheStatusService, IDisposable
     {
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        // Inject the factory for the CORRECT DbContext that manages GlobalSettings
+        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
         private readonly ILogger<CacheStatusService> _logger;
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
@@ -34,14 +35,15 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Creates a new instance of the CacheStatusService
         /// </summary>
+        // Update constructor signature
         public CacheStatusService(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
             Configuration.Services.ICacheService cacheService,
             ICacheMetricsService metricsService,
             IOptions<CacheOptions> cacheOptions,
             ILogger<CacheStatusService> logger)
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+            _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory)); // Assign the correct factory
             _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
@@ -180,7 +182,8 @@ namespace ConduitLLM.WebUI.Services
                 
                 try
                 {
-                    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    // Use the correct context factory
+                    await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
                     
                     // Get cache configuration from settings
                     var cacheSetting = await dbContext.GlobalSettings
@@ -334,7 +337,8 @@ namespace ConduitLLM.WebUI.Services
                 
                 try
                 {
-                    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    // Use the correct context factory
+                    await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
                     
                     // Get existing config or create new one
                     var cacheSetting = await dbContext.GlobalSettings
@@ -350,7 +354,8 @@ namespace ConduitLLM.WebUI.Services
                     {
                         // Create new default config
                         config = new CacheConfig();
-                        cacheSetting = new GlobalSetting
+                        // Use the correct GlobalSetting entity type
+                        cacheSetting = new ConduitLLM.Configuration.Entities.GlobalSetting 
                         {
                             Key = CACHE_CONFIG_KEY,
                             Value = "{}"

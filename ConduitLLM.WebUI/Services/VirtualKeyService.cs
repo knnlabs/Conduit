@@ -14,13 +14,15 @@ namespace ConduitLLM.WebUI.Services;
 
 public class VirtualKeyService : IVirtualKeyService
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _contextFactory;
+    // Inject the factory for the CORRECT DbContext that manages VirtualKeys
+    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
     private readonly ILogger<VirtualKeyService> _logger;
     private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
-    public VirtualKeyService(IDbContextFactory<ConfigurationDbContext> contextFactory, ILogger<VirtualKeyService> logger)
+    // Update constructor signature
+    public VirtualKeyService(IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, ILogger<VirtualKeyService> logger)
     {
-        _contextFactory = contextFactory;
+        _configContextFactory = configContextFactory; // Assign the correct factory
         _logger = logger;
     }
 
@@ -49,7 +51,8 @@ public class VirtualKeyService : IVirtualKeyService
             RateLimitRpd = request.RateLimitRpd
         };
 
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         context.VirtualKeys.Add(virtualKeyEntity);
         await context.SaveChangesAsync();
 
@@ -71,7 +74,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>A DTO with key details, or null if not found.</returns>
     public async Task<VirtualKeyDto?> GetVirtualKeyInfoAsync(int id)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys
                                          .AsNoTracking() // Read-only operation
                                          .FirstOrDefaultAsync(vk => vk.Id == id);
@@ -85,7 +89,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>A list of DTOs representing the keys.</returns>
     public async Task<List<VirtualKeyDto>> ListVirtualKeysAsync()
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         List<ConduitLLM.Configuration.Entities.VirtualKey> virtualKeys = await context.VirtualKeys
                                           .AsNoTracking()
                                           .OrderBy(vk => vk.KeyName)
@@ -102,7 +107,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>True if update was successful, false if key not found.</returns>
     public async Task<bool> UpdateVirtualKeyAsync(int id, UpdateVirtualKeyRequestDto request)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         var virtualKey = await context.VirtualKeys.FindAsync(id);
         if (virtualKey == null) return false;
         virtualKey.KeyName = request.KeyName ?? virtualKey.KeyName;
@@ -129,7 +135,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>True if deletion was successful, false if key not found.</returns>
     public async Task<bool> DeleteVirtualKeyAsync(int id)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(id);
         
         if (virtualKey == null)
@@ -158,7 +165,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>True if reset was successful, false if key not found.</returns>
     public async Task<bool> ResetSpendAsync(int id)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(id);
 
         if (virtualKey == null)
@@ -214,7 +222,8 @@ public class VirtualKeyService : IVirtualKeyService
         // Hash the key for comparison
         string keyHash = HashKey(key);
 
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         var virtualKey = await context.VirtualKeys
             .AsNoTracking() // To ensure we're not tracking this entity (read-only)
             .FirstOrDefaultAsync(vk => vk.KeyHash == keyHash);
@@ -308,7 +317,8 @@ public class VirtualKeyService : IVirtualKeyService
     {
         if (cost <= 0) return true; // No cost to add, consider it successful
 
-        using var context = await _contextFactory.CreateDbContextAsync();
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
         ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(keyId);
 
         if (virtualKey == null)
@@ -377,7 +387,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>True if the budget was reset, false otherwise.</returns>
     public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
     {
-        using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(cancellationToken); 
         ConduitLLM.Configuration.Entities.VirtualKey? virtualKey = await context.VirtualKeys.FindAsync(
             new object[] { keyId }, 
             cancellationToken);
@@ -473,7 +484,8 @@ public class VirtualKeyService : IVirtualKeyService
     /// <returns>The virtual key entity if found, otherwise null.</returns>
     public async Task<ConduitLLM.Configuration.Entities.VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
     {
-        using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(cancellationToken); 
         return await context.VirtualKeys.FindAsync(new object[] { keyId }, cancellationToken);
     }
 

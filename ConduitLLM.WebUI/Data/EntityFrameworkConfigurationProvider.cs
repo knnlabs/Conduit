@@ -27,7 +27,13 @@ public class EntityFrameworkConfigurationProvider : ConfigurationProvider
         var builder = new DbContextOptionsBuilder<ConfigurationDbContext>();
         _optionsAction(builder);
 
-        using var dbContext = new ConfigurationDbContext(builder.Options);
+        // Create instances for both contexts using the same options builder
+        // This assumes the DI setup correctly configures options for both
+        using var webUiDbContext = new ConfigurationDbContext(builder.Options); 
+        // Need options specifically for the Configuration context
+        var configBuilder = new DbContextOptionsBuilder<ConduitLLM.Configuration.ConfigurationDbContext>();
+        _optionsAction(configBuilder); // Apply the same configuration action
+        using var configDbContext = new ConduitLLM.Configuration.ConfigurationDbContext(configBuilder.Options);
 
         // Ensure the database exists - might be redundant if EnsureCreated/Migrate is called elsewhere,
         // but safe to include here for direct provider usage scenarios.
@@ -38,23 +44,25 @@ public class EntityFrameworkConfigurationProvider : ConfigurationProvider
 
         try
         {
-            // Load Provider Credentials
-            var credentials = dbContext.ProviderCredentials.ToList();
+            // Load Provider Credentials from the Config context
+            var credentials = configDbContext.ProviderCredentials.ToList(); 
             for (int i = 0; i < credentials.Count; i++)
             {
                 var cred = credentials[i];
                 string prefix = $"{nameof(ConduitLLM.Configuration.ConduitSettings)}:{nameof(ConduitLLM.Configuration.ConduitSettings.ProviderCredentials)}:{i}";
-                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ProviderCredentials.ProviderName)}"] = cred.ProviderName;
+                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ProviderName)}"] = cred.ProviderName;
                 if (cred.ApiKey != null)
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ProviderCredentials.ApiKey)}"] = cred.ApiKey;
-                if (cred.ApiBase != null)
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ProviderCredentials.ApiBase)}"] = cred.ApiBase;
+                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ApiKey)}"] = cred.ApiKey;
+                // Correct property name: BaseUrl instead of ApiBase
+                if (cred.BaseUrl != null) 
+                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.BaseUrl)}"] = cred.BaseUrl; 
                 if (cred.ApiVersion != null)
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ProviderCredentials.ApiVersion)}"] = cred.ApiVersion;
+                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ApiVersion)}"] = cred.ApiVersion;
+                // Remove access to non-existent 'Name' property
             }
 
-            // Load Model Mappings
-            var mappings = dbContext.ModelMappings.ToList();
+            // Load Model Mappings from the WebUI context
+            var mappings = webUiDbContext.ModelMappings.ToList(); 
             for (int i = 0; i < mappings.Count; i++)
             {
                 var map = mappings[i];

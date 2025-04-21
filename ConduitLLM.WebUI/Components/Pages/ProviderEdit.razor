@@ -4,7 +4,8 @@
 @using Microsoft.EntityFrameworkCore 
 @using Microsoft.Extensions.Logging 
 @using System.Text.Json
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
 @inject ConfigurationChangeNotifier ConfigNotifier 
@@ -53,19 +54,17 @@ else
                 </div>
 
                 <div class="mb-3">
-                    <label for="name" class="form-label">Display Name:</label>
-                    <InputText @bind-Value="provider.Name" id="name" class="form-control" placeholder="Custom name for this provider" />
-                    <ValidationMessage For="@(() => provider.Name)" />
-                    <small class="form-text text-muted">A friendly name to identify this provider in the UI.</small>
+                    @* The 'Name' property does not exist on the Configuration entity. Removing this field. *@
+                    @* Consider adding a 'Name' property to ConduitLLM.Configuration.Entities.ProviderCredential if needed. *@
                 </div>
 
-                @* Conditionally hide ApiBase for OpenRouter *@
+                @* Conditionally hide BaseUrl for OpenRouter *@
                 @if (provider.ProviderName != "OpenRouter")
                 {
                     <div class="mb-3">
-                        <label for="apiBase" class="form-label">API Base URL (Optional, leave empty for default)</label>
-                        <InputText @bind-Value="provider.ApiBase" id="apiBase" class="form-control" placeholder="https://api.example.com" />
-                        <ValidationMessage For="@(() => provider.ApiBase)" />
+                        <label for="baseUrl" class="form-label">API Base URL (Optional, leave empty for default)</label> @* Changed label 'for' and InputText @bind-Value *@
+                        <InputText @bind-Value="provider.BaseUrl" id="baseUrl" class="form-control" placeholder="https://api.example.com" />
+                        <ValidationMessage For="@(() => provider.BaseUrl)" />
                     </div>
                 }
 
@@ -194,7 +193,7 @@ else
     [Parameter]
     public int? Id { get; set; }
 
-    private DbProviderCredentials provider = new DbProviderCredentials { ProviderName = "" };
+    private ConduitLLM.Configuration.Entities.ProviderCredential provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; // Use correct entity type
     private string? errorMessage;
     private bool isLoading = true;
     private bool isSaving = false;
@@ -217,21 +216,14 @@ else
             
             try
             {
-                using var dbContext = await DbContextFactory.CreateDbContextAsync();
+                // Use Config context for ProviderCredentials
+                using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
                 var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
                 
                 if (existingProvider != null)
                 {
-                    // Clone the object - we don't want to track the original entity
-                    provider = new DbProviderCredentials
-                    {
-                        Id = existingProvider.Id,
-                        ProviderName = existingProvider.ProviderName,
-                        ApiBase = existingProvider.ApiBase,
-                        ApiVersion = existingProvider.ApiVersion,
-                        Name = existingProvider.Name
-                        // Don't copy API key for security reasons
-                    };
+                    // Directly use the loaded entity from Config context
+                    provider = existingProvider; 
                     
                     // Keep track of the original API key existence
                     if (!string.IsNullOrEmpty(existingProvider.ApiKey))
@@ -258,7 +250,8 @@ else
         }
         else
         {
-            // For new providers, provider object is already initialized
+            // Initialize a new Configuration entity for adding
+            provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; 
             isLoading = false;
         }
         
@@ -271,40 +264,48 @@ else
         errorMessage = null;
         StateHasChanged();
         
-        try 
-        {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            
-            if (Id.HasValue) // Edit
+            try 
             {
+                // Use Config context for ProviderCredentials
+                await using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                
+                if (Id.HasValue) // Edit
+                {
                 var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
                 
                 if (existingProvider != null)
                 {
                     // Update the entity with form values
-                    existingProvider.ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase;
+                    existingProvider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
                     existingProvider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
-                    existingProvider.Name = string.IsNullOrWhiteSpace(provider.Name) ? null : provider.Name;
+                    // Name doesn't exist
                     
                     // Only update API key if provided (not empty)
                     if (!string.IsNullOrWhiteSpace(provider.ApiKey))
                     {
                         existingProvider.ApiKey = provider.ApiKey;
                     }
-                    else if (originalApiKey == null)
+                    // The logic for handling existing API key needs adjustment as we're now using the Config context entity
+                    // If provider.ApiKey is blank, we want to keep the existing key from the database.
+                    // If originalApiKey was null (meaning no key existed before), and provider.ApiKey is blank, set it to null.
+                    else if (string.IsNullOrWhiteSpace(provider.ApiKey)) 
                     {
-                         // No change needed, existingProvider.ApiKey retains its value from the DB load
-                         // We just need to ensure it wasn't cleared if originalApiKey was set
-                         // Re-fetch might be safer if complex logic evolves
-                         var freshProvider = await dbContext.ProviderCredentials.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id.Value);
-                         existingProvider.ApiKey = freshProvider?.ApiKey;
+                        if (originalApiKey != null) // A key existed before, keep it
+                        {
+                            // Re-fetch the existing key from the database to avoid overwriting it with null
+                            var freshProvider = await dbContext.ProviderCredentials.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id.Value);
+                            existingProvider.ApiKey = freshProvider?.ApiKey;
+                        }
+                        else // No original key, and input is blank, so set to null
+                        {
+                            existingProvider.ApiKey = null;
+                        }
                     }
-                    else // Field blank, and no original key -> set to null
-                    {
-                         existingProvider.ApiKey = null;
-                    }
+                    // If provider.ApiKey has a value, it was already assigned above.
 
-                    dbContext.ProviderCredentials.Update(existingProvider);
+                    // Removed incorrect null assignment here
+
+                    dbContext.ProviderCredentials.Update(existingProvider); 
                 }
                 else
                 {
@@ -317,12 +318,18 @@ else
             }
             else // Add
             {
+                 // The 'provider' object is already the correct type (ConduitLLM.Configuration.Entities.ProviderCredential)
                  // Ensure optional fields are null if empty/whitespace
-                 provider.ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase;
+                 provider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
                  provider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
                  provider.ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey;
+                 // Name doesn't exist
+                 // Set default values for non-nullable properties if needed (assuming they are not set by default in the entity)
+                 provider.IsEnabled = true; 
+                 provider.CreatedAt = DateTime.UtcNow;
+                 provider.UpdatedAt = DateTime.UtcNow;
 
-                await dbContext.ProviderCredentials.AddAsync(provider);
+                await dbContext.ProviderCredentials.AddAsync(provider); // Add the provider object directly
             }
             
             await dbContext.SaveChangesAsync();
@@ -330,8 +337,9 @@ else
             // Notify the Conduit HTTP proxy about configuration changes
             try
             {
-                // Get the proxy base URL from global settings
-                var proxyUrlSetting = await dbContext.GlobalSettings
+                // Get the proxy base URL from global settings (using Config context)
+                await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                var proxyUrlSetting = await configContext.GlobalSettings
                     .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
                 
                 string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
@@ -391,15 +399,17 @@ else
 
         try
         {
-            var testProvider = new DbProviderCredentials
+            // Use the correct properties for testing
+            var testProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
             {
                 ProviderName = provider.ProviderName,
                 ApiKey = provider.ApiKey,
-                ApiBase = provider.ApiBase,
-                ApiVersion = provider.ApiVersion,
-                Name = provider.Name
+                BaseUrl = provider.BaseUrl, // Use BaseUrl
+                ApiVersion = provider.ApiVersion
+                // Name doesn't exist
             };
-            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
+            // Assuming ProviderConnectionTester can handle the Configuration entity type
+            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider); 
             showConnectionStatus = true;
             if (connectionStatus.IsOnline)
             {

@@ -13,31 +13,38 @@ namespace ConduitLLM.WebUI.Services;
 
 public class GlobalSettingService : IGlobalSettingService
 {
-    private readonly ConfigurationDbContext _context;
+    // Inject the factory for the CORRECT DbContext that manages GlobalSettings
+    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
     private readonly ILogger<GlobalSettingService> _logger;
     private const string MasterKeyHashSettingKey = "MasterKeyHash";
     private const string MasterKeyHashAlgorithmSettingKey = "MasterKeyHashAlgorithm";
     private const string DefaultHashAlgorithm = "SHA256"; // Default algorithm
 
-    public GlobalSettingService(ConfigurationDbContext context, ILogger<GlobalSettingService> logger)
+    // Update constructor signature
+    public GlobalSettingService(IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, ILogger<GlobalSettingService> logger)
     {
-        _context = context;
+        _configContextFactory = configContextFactory; // Assign the correct factory
         _logger = logger;
     }
 
     public async Task<string?> GetSettingAsync(string key)
     {
-        var setting = await _context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
+        var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
         return setting?.Value;
     }
 
     public async Task SetSettingAsync(string key, string value)
     {
-        var setting = await _context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+        // Use the correct context factory
+        using var context = await _configContextFactory.CreateDbContextAsync(); 
+        var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
         if (setting == null)
         {
-            setting = new GlobalSetting { Key = key, Value = value };
-            _context.GlobalSettings.Add(setting);
+            // Need to use the correct GlobalSetting entity type from the Configuration namespace
+            setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
+            context.GlobalSettings.Add(setting);
         }
         else
         {
@@ -46,7 +53,7 @@ public class GlobalSettingService : IGlobalSettingService
         
         try
         {
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         catch (DbUpdateException dbEx)
         {

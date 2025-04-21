@@ -39,7 +39,8 @@ public class HttpTimeoutConfigurationStartupFilter : IStartupFilter
             // Apply the timeout configuration during startup
             using (var scope = builder.ApplicationServices.CreateScope())
             {
-                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
+                // Resolve the CORRECT DbContext factory
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>(); 
                 
                 try
                 {
@@ -63,7 +64,8 @@ public class HttpTimeoutConfigurationStartupFilter : IStartupFilter
                         // Create default settings if they don't exist
                         if (!hasTimeoutSeconds)
                         {
-                            dbContext.GlobalSettings.Add(new GlobalSetting
+                            // Use the correct GlobalSetting entity type
+                            dbContext.GlobalSettings.Add(new ConduitLLM.Configuration.Entities.GlobalSetting 
                             {
                                 Key = timeoutSecondsKey,
                                 Value = "100" // Default timeout of 100 seconds
@@ -72,7 +74,8 @@ public class HttpTimeoutConfigurationStartupFilter : IStartupFilter
                         
                         if (!hasEnableLogging)
                         {
-                            dbContext.GlobalSettings.Add(new GlobalSetting
+                            // Use the correct GlobalSetting entity type
+                            dbContext.GlobalSettings.Add(new ConduitLLM.Configuration.Entities.GlobalSetting 
                             {
                                 Key = enableLoggingKey,
                                 Value = "true" // Enable logging by default

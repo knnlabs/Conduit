@@ -3,7 +3,7 @@
 @using ConduitLLM.WebUI.Services
 @using Microsoft.EntityFrameworkCore
 @using System.Globalization
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject correct factory
 @inject ILogger<VirtualKeyUsageDetails> Logger
 
 <div class="card shadow-sm mb-4">
@@ -153,7 +153,8 @@
         
         try
         {
-            using var context = await DbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
             
             // This assumes we have a RequestLogs table that tracks API requests
             // You'll need to adapt this to your actual data model

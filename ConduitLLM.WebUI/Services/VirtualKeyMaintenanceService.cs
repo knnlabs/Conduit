@@ -62,7 +62,8 @@ public class VirtualKeyMaintenanceService : BackgroundService
         {
             // Create a new scope for database operations
             using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
+            // Resolve the CORRECT DbContext
+            var dbContext = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.ConfigurationDbContext>(); 
             
             await ResetExpiredBudgets(dbContext, scope.ServiceProvider, stoppingToken);
             await HandleExpiredKeys(dbContext, scope.ServiceProvider, stoppingToken);
@@ -74,7 +75,8 @@ public class VirtualKeyMaintenanceService : BackgroundService
         }
     }
 
-    private async Task ResetExpiredBudgets(ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken)
+    // Update DbContext type in parameter
+    private async Task ResetExpiredBudgets(ConduitLLM.Configuration.ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken) 
     {
         var utcNow = DateTime.UtcNow;
 
@@ -141,7 +143,8 @@ public class VirtualKeyMaintenanceService : BackgroundService
         }
     }
 
-    private async Task HandleExpiredKeys(ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken)
+    // Update DbContext type in parameter
+    private async Task HandleExpiredKeys(ConduitLLM.Configuration.ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken) 
     {
         var utcNow = DateTime.UtcNow;
         
@@ -172,7 +175,8 @@ public class VirtualKeyMaintenanceService : BackgroundService
         }
     }
 
-    private async Task CheckKeysApproachingBudgetLimits(ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken)
+    // Update DbContext type in parameter
+    private async Task CheckKeysApproachingBudgetLimits(ConduitLLM.Configuration.ConfigurationDbContext dbContext, IServiceProvider serviceProvider, CancellationToken stoppingToken) 
     {
         // Find keys that are approaching their budget limits (e.g., 80% used)
         var keysApproachingLimits = await dbContext.VirtualKeys

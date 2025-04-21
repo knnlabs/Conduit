@@ -6,13 +6,13 @@
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.Core.Caching
 @using ConduitLLM.Core.Models.Routing
-@inject ConfigurationDbContext DbContext
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
 @inject IConfiguration Configuration
 @inject IRouterService RouterService
 @inject ICacheStatusService CacheStatusService
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Use the correct factory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Re-add WebUI factory for ModelMappings
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -341,7 +341,7 @@
 </div>
 
 @code {
-    private List<DbProviderCredentials> providers = new();
+    private List<ConduitLLM.Configuration.Entities.ProviderCredential> providers = new(); // Use correct entity type
     private int providerCount;
     private int mappingCount;
     private bool isLoading = true;
@@ -427,10 +427,12 @@
         {
             // First load the providers and model counts from a factory-created context
             // which will be properly disposed when done with the using block
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            providers = await dbContext.ProviderCredentials.ToListAsync();
+            await using var configDbContext = await ConfigDbContextFactory.CreateDbContextAsync(); // Use correct factory
+            providers = await configDbContext.ProviderCredentials.ToListAsync();
             providerCount = providers.Count;
-            mappingCount = await dbContext.ModelMappings.CountAsync();
+            // Use WebUI context for ModelMappings count
+            await using var webUiDbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
+            mappingCount = await webUiDbContext.ModelMappings.CountAsync(); 
             
             // Update UI after loading basic data
             isLoading = false;
@@ -470,10 +472,12 @@
         {
             // Create a new DbContext instance from the factory
             // This will be properly disposed when done with the using block
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            providers = await dbContext.ProviderCredentials.ToListAsync();
+            await using var configDbContext = await ConfigDbContextFactory.CreateDbContextAsync(); // Use correct factory
+            providers = await configDbContext.ProviderCredentials.ToListAsync();
             providerCount = providers.Count;
-            mappingCount = await dbContext.ModelMappings.CountAsync();
+            // Use WebUI context for ModelMappings count
+            await using var webUiDbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
+            mappingCount = await webUiDbContext.ModelMappings.CountAsync(); 
             
             // Then load each status sequentially to avoid timing issues
             // Start with provider status if we have providers

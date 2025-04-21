@@ -8,16 +8,16 @@ namespace ConduitLLM.WebUI.Data;
 
 public class ConfigurationDbContext : DbContext
 {
-    public DbSet<DbProviderCredentials> ProviderCredentials { get; set; } = null!;
+    // Removed DbSet<DbProviderCredentials> ProviderCredentials
     public DbSet<DbModelProviderMapping> ModelMappings { get; set; } = null!;
-    public DbSet<GlobalSetting> GlobalSettings { get; set; } = null!;
-    public DbSet<ConduitLLM.Configuration.Entities.VirtualKey> VirtualKeys { get; set; } = null!;
-    public DbSet<RequestLog> RequestLogs { get; set; } = null!;
+    // Removed DbSet<GlobalSetting> GlobalSettings
+    // Removed DbSet<ConduitLLM.Configuration.Entities.VirtualKey> VirtualKeys
+    // Removed DbSet<RequestLog> RequestLogs
     public DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
     public DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
     public DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
     public DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
-    public DbSet<ModelCost> ModelCosts { get; set; } = null!;
+    // Removed DbSet<ModelCost> ModelCosts
 
     public ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> options)
         : base(options)
@@ -30,43 +30,15 @@ public class ConfigurationDbContext : DbContext
 
         modelBuilder.ApplyConfigurationEntityConfigurations();
 
-        // Add unique constraints to prevent duplicate entries
-        modelBuilder.Entity<DbProviderCredentials>()
-            .HasIndex(p => p.ProviderName)
-            .IsUnique();
+        // Removed configuration for DbProviderCredentials
 
         modelBuilder.Entity<DbModelProviderMapping>()
             .HasIndex(m => m.ModelAlias)
             .IsUnique();
 
-        modelBuilder.Entity<ConduitLLM.Configuration.Entities.VirtualKey>(entity =>
-        {
-            entity.HasIndex(e => e.KeyName).IsUnique();
-            entity.HasIndex(e => e.KeyHash).IsUnique();
-            entity.HasIndex(e => e.IsEnabled);
-            entity.HasIndex(e => e.ExpiresAt);
-
-            // Configure precision for decimal properties
-            entity.Property(e => e.MaxBudget).HasPrecision(18, 8);
-            entity.Property(e => e.CurrentSpend).HasPrecision(18, 8);
-        });
+        // Removed configuration for VirtualKey
         
-        modelBuilder.Entity<RequestLog>(entity =>
-        {
-            entity.HasIndex(e => e.VirtualKeyId);
-            entity.HasIndex(e => e.Timestamp);
-            entity.HasIndex(e => e.RequestType);
-            entity.HasIndex(e => e.ModelName);
-            
-            // Configure precision for Cost
-            entity.Property(e => e.Cost).HasPrecision(10, 6);
-            
-            // Configure relationship with VirtualKey
-            entity.HasOne(e => e.VirtualKey)
-                  .WithMany(v => v.RequestLogs)
-                  .HasForeignKey(e => e.VirtualKeyId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
+        // Removed configuration for RequestLog
         
         // Configure Router entities
         modelBuilder.Entity<RouterConfigEntity>(entity =>
@@ -110,11 +82,7 @@ public class ConfigurationDbContext : DbContext
             entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
         });
 
-        modelBuilder.Entity<ModelCost>(entity =>
-        {
-            entity.HasIndex(e => e.ModelIdPattern)
-                  .IsUnique(false); // Patterns might not be unique if we allow overlaps
-        });
+        // Removed configuration for ModelCost
     }
 
     // It's generally better to configure the database connection in Program.cs

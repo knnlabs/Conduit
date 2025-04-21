@@ -17,237 +17,83 @@ namespace ConduitLLM.WebUI.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("EmbeddingTokenCost")
-                        .HasColumnType("decimal(18, 10)");
-
-                    b.Property<decimal?>("ImageCostPerImage")
-                        .HasColumnType("decimal(18, 4)");
-
-                    b.Property<decimal>("InputTokenCost")
-                        .HasColumnType("decimal(18, 10)");
-
-                    b.Property<string>("ModelIdPattern")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("OutputTokenCost")
-                        .HasColumnType("decimal(18, 10)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ModelIdPattern");
-
-                    b.ToTable("ModelCosts");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Severity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("VirtualKeyId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("VirtualKeyId");
-
-                    b.ToTable("Notification");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ClientIp")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("Cost")
-                        .HasPrecision(10, 6)
-                        .HasColumnType("decimal(10, 6)");
-
-                    b.Property<int>("InputTokens")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ModelName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("OutputTokens")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("RequestPath")
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RequestType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<double>("ResponseTimeMs")
-                        .HasColumnType("REAL");
-
-                    b.Property<int?>("StatusCode")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UserId")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("VirtualKeyId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ModelName");
-
-                    b.HasIndex("RequestType");
-
-                    b.HasIndex("Timestamp");
-
-                    b.HasIndex("VirtualKeyId");
-
-                    b.ToTable("RequestLogs");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AllowedModels")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BudgetDuration")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("BudgetStartDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("CurrentSpend")
-                        .HasPrecision(18, 8)
-                        .HasColumnType("decimal(18, 8)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("KeyHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("MaxContextTokens")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<string>("KeyName")
+                    b.Property<string>("ModelAlias")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal?>("MaxBudget")
-                        .HasPrecision(18, 8)
-                        .HasColumnType("decimal(18, 8)");
+                    b.Property<int>("ProviderCredentialId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<string>("Metadata")
+                    b.Property<string>("ProviderModelName")
+                        .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("RateLimitRpd")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("RateLimitRpm")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("BLOB");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExpiresAt");
+                    b.HasIndex("ProviderCredentialId");
 
-                    b.HasIndex("IsEnabled");
-
-                    b.HasIndex("KeyHash")
+                    b.HasIndex("ModelAlias", "ProviderCredentialId")
                         .IsUnique();
 
-                    b.HasIndex("KeyName")
-                        .IsUnique();
-
-                    b.ToTable("VirtualKeys");
+                    b.ToTable("ModelProviderMapping");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderCredential", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(10, 6)");
-
-                    b.Property<DateTime>("Date")
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("VirtualKeyId")
+                    b.Property<string>("ApiVersion")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BaseUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VirtualKeyId");
+                    b.HasIndex("ProviderName")
+                        .IsUnique();
 
-                    b.ToTable("VirtualKeySpendHistory");
+                    b.ToTable("ProviderCredential");
                 });
 
             modelBuilder.Entity("ConduitLLM.WebUI.Data.DbModelProviderMapping", b =>
@@ -277,41 +123,6 @@ namespace ConduitLLM.WebUI.Migrations
                         .IsUnique();
 
                     b.ToTable("ModelMappings");
-                });
-
-            modelBuilder.Entity("ConduitLLM.WebUI.Data.DbProviderCredentials", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ApiBase")
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiKey")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ApiVersion")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProviderName")
-                        .IsUnique();
-
-                    b.ToTable("ProviderCredentials");
                 });
 
             modelBuilder.Entity("ConduitLLM.WebUI.Data.Entities.FallbackConfigurationEntity", b =>
@@ -461,50 +272,15 @@ namespace ConduitLLM.WebUI.Migrations
                     b.ToTable("RouterConfigurations");
                 });
 
-            modelBuilder.Entity("ConduitLLM.WebUI.Data.GlobalSetting", b =>
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
-                    b.Property<string>("Key")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Key");
-
-                    b.ToTable("GlobalSettings");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany("Notifications")
-                        .HasForeignKey("VirtualKeyId");
-
-                    b.Navigation("VirtualKey");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany("RequestLogs")
-                        .HasForeignKey("VirtualKeyId")
+                    b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
+                        .WithMany()
+                        .HasForeignKey("ProviderCredentialId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("VirtualKey");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany("SpendHistory")
-                        .HasForeignKey("VirtualKeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("VirtualKey");
+                    b.Navigation("ProviderCredential");
                 });
 
             modelBuilder.Entity("ConduitLLM.WebUI.Data.Entities.FallbackConfigurationEntity", b =>
@@ -538,15 +314,6 @@ namespace ConduitLLM.WebUI.Migrations
                         .IsRequired();
 
                     b.Navigation("RouterConfig");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
-                {
-                    b.Navigation("Notifications");
-
-                    b.Navigation("RequestLogs");
-
-                    b.Navigation("SpendHistory");
                 });
 
             modelBuilder.Entity("ConduitLLM.WebUI.Data.Entities.FallbackConfigurationEntity", b =>

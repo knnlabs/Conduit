@@ -12,7 +12,8 @@
 @using ConduitLLM.WebUI.Components.Shared
 @inject IHttpClientFactory HttpClientFactory
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
@@ -174,7 +175,8 @@ else
     {
         try
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use WebUI context for ModelMappings
+            await using var dbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
             var dbMappings = await dbContext.ModelMappings.ToListAsync();
             
             // Convert database mappings to Configuration model mappings
@@ -195,8 +197,9 @@ else
     {
         try
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var setting = await dbContext.GlobalSettings.FindAsync("ConduitProxyBaseUrl");
+            // Use Config context for GlobalSettings
+            await using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitProxyBaseUrl"); // Use FirstOrDefaultAsync for potentially non-PK lookup
             _proxyBaseUrl = setting?.Value ?? "http://localhost:5000"; 
         }
         catch (Exception ex)

@@ -14,7 +14,7 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         public static async Task<ProviderStatus> TestConnectionAsync(
             ProviderStatusService providerStatusService,
-            DbProviderCredentials credentials)
+            ConduitLLM.Configuration.Entities.ProviderCredential credentials) // Use correct entity type
         {
             if (string.IsNullOrWhiteSpace(credentials.ApiKey))
             {

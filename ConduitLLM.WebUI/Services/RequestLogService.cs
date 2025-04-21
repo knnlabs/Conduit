@@ -13,16 +13,18 @@ namespace ConduitLLM.WebUI.Services;
 /// </summary>
 public class RequestLogService
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+    // Inject the factory for the CORRECT DbContext that manages RequestLogs and VirtualKeys
+    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
     private readonly ILogger<RequestLogService> _logger;
     private readonly IMemoryCache _memoryCache;
 
+    // Update constructor signature
     public RequestLogService(
-        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
         ILogger<RequestLogService> logger,
         IMemoryCache memoryCache)
     {
-        _dbContextFactory = dbContextFactory;
+        _configContextFactory = configContextFactory; // Assign the correct factory
         _logger = logger;
         _memoryCache = memoryCache;
     }
@@ -61,7 +63,8 @@ public class RequestLogService
                 StatusCode = statusCode
             };
 
-            using var context = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await _configContextFactory.CreateDbContextAsync(); 
             using var transaction = await context.Database.BeginTransactionAsync();
             
             try
@@ -110,7 +113,8 @@ public class RequestLogService
     {
         try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await _configContextFactory.CreateDbContextAsync(); 
             var query = context.RequestLogs
                 .AsNoTracking()
                 .Where(r => r.VirtualKeyId == virtualKeyId)
@@ -148,7 +152,8 @@ public class RequestLogService
         
         try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await _configContextFactory.CreateDbContextAsync(); 
             
             // Use server-side aggregation instead of loading all entities
             var summary = await context.RequestLogs
@@ -200,7 +205,8 @@ public class RequestLogService
         
         try
         {
-            using var context = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await _configContextFactory.CreateDbContextAsync(); 
             
             // Get all virtual key IDs
             var keyIds = await context.VirtualKeys
@@ -269,7 +275,8 @@ public class RequestLogService
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
 
-            using var context = await _dbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await _configContextFactory.CreateDbContextAsync(); 
             var query = context.RequestLogs.AsNoTracking().AsQueryable();
 
             if (virtualKeyId.HasValue)

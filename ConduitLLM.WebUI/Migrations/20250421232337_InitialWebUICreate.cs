@@ -1,5 +1,4 @@
 ﻿using System;
-
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,11 +6,45 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ConduitLLM.WebUI.Migrations
 {
     /// <inheritdoc />
-    public partial class AddRouterConfigEntities : Migration
+    public partial class InitialWebUICreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "ModelMappings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ModelAlias = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ProviderName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ProviderModelId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModelMappings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProviderCredential",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ProviderName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ApiKey = table.Column<string>(type: "TEXT", nullable: false),
+                    BaseUrl = table.Column<string>(type: "TEXT", nullable: true),
+                    ApiVersion = table.Column<string>(type: "TEXT", nullable: true),
+                    IsEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProviderCredential", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "RouterConfigurations",
                 columns: table => new
@@ -28,6 +61,31 @@ namespace ConduitLLM.WebUI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_RouterConfigurations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModelProviderMapping",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ModelAlias = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ProviderModelName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    ProviderCredentialId = table.Column<int>(type: "INTEGER", nullable: false),
+                    IsEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    MaxContextTokens = table.Column<int>(type: "INTEGER", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModelProviderMapping", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ModelProviderMapping_ProviderCredential_ProviderCredentialId",
+                        column: x => x.ProviderCredentialId,
+                        principalTable: "ProviderCredential",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -149,6 +207,29 @@ namespace ConduitLLM.WebUI.Migrations
                 column: "RouterConfigId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ModelMappings_ModelAlias",
+                table: "ModelMappings",
+                column: "ModelAlias",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelProviderMapping_ModelAlias_ProviderCredentialId",
+                table: "ModelProviderMapping",
+                columns: new[] { "ModelAlias", "ProviderCredentialId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelProviderMapping_ProviderCredentialId",
+                table: "ModelProviderMapping",
+                column: "ProviderCredentialId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProviderCredential_ProviderName",
+                table: "ProviderCredential",
+                column: "ProviderName",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RouterConfigurations_LastUpdated",
                 table: "RouterConfigurations",
                 column: "LastUpdated");
@@ -164,7 +245,16 @@ namespace ConduitLLM.WebUI.Migrations
                 name: "ModelDeployments");
 
             migrationBuilder.DropTable(
+                name: "ModelMappings");
+
+            migrationBuilder.DropTable(
+                name: "ModelProviderMapping");
+
+            migrationBuilder.DropTable(
                 name: "FallbackConfigurations");
+
+            migrationBuilder.DropTable(
+                name: "ProviderCredential");
 
             migrationBuilder.DropTable(
                 name: "RouterConfigurations");

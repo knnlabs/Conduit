@@ -4,7 +4,7 @@
 @using System.IO
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject correct factory
 @inject IProviderCredentialService ProviderCredentialService
 @inject IModelProviderMappingService ModelMappingService
 
@@ -191,7 +191,8 @@
     {
         try
         {
-            using var context = await DbContextFactory.CreateDbContextAsync();
+            // Use the correct context factory
+            using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
             
             // Get database provider info
             var connectionType = context.Database.ProviderName;

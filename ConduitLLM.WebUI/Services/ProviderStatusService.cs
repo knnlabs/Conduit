@@ -18,16 +18,18 @@ namespace ConduitLLM.WebUI.Services
     public class ProviderStatusService
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+        // Inject the factory for the CORRECT DbContext that manages ProviderCredentials
+        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
         private readonly ILogger<ProviderStatusService> _logger;
 
+        // Update constructor signature
         public ProviderStatusService(
             IHttpClientFactory httpClientFactory,
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+            IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
             ILogger<ProviderStatusService> logger)
         {
             _httpClientFactory = httpClientFactory;
-            _dbContextFactory = dbContextFactory;
+            _configContextFactory = configContextFactory; // Assign the correct factory
             _logger = logger;
         }
 
@@ -41,8 +43,10 @@ namespace ConduitLLM.WebUI.Services
             
             try
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                var providers = await dbContext.ProviderCredentials.ToListAsync();
+                // Use the correct context factory
+                using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
+                // Use the correct entity type
+                var providers = await dbContext.ProviderCredentials.ToListAsync(); 
                 
                 foreach (var provider in providers)
                 {
@@ -76,7 +80,8 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         /// <param name="provider">The provider credentials to check</param>
         /// <returns>The status of the provider</returns>
-        public async Task<ProviderStatus> CheckProviderStatusAsync(DbProviderCredentials provider)
+        // Update parameter type to use the Configuration entity
+        public async Task<ProviderStatus> CheckProviderStatusAsync(ConduitLLM.Configuration.Entities.ProviderCredential provider) 
         {
             if (string.IsNullOrEmpty(provider.ApiKey))
             {
@@ -232,10 +237,12 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Gets the appropriate endpoint URL for a provider to test connectivity
         /// </summary>
-        private string GetProviderTestEndpoint(DbProviderCredentials provider)
+        // Update parameter type to use the Configuration entity
+        private string GetProviderTestEndpoint(ConduitLLM.Configuration.Entities.ProviderCredential provider) 
         {
-            _logger.LogDebug("GetProviderTestEndpoint called for ProviderName: '{ProviderName}', ApiBase: '{ApiBase}'", provider.ProviderName, provider.ApiBase);
-            var baseUrl = provider.ApiBase;
+            // Use BaseUrl property from the Configuration entity
+            _logger.LogDebug("GetProviderTestEndpoint called for ProviderName: '{ProviderName}', BaseUrl: '{BaseUrl}'", provider.ProviderName, provider.BaseUrl); 
+            var baseUrl = provider.BaseUrl; // Use BaseUrl
             var providerNameLower = provider.ProviderName.ToLowerInvariant(); // Convert to lowercase for case-insensitive comparison
             _logger.LogDebug("Calculated providerNameLower: '{ProviderNameLower}'", providerNameLower);
 

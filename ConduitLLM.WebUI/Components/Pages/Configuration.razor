@@ -14,7 +14,8 @@
 @using System.Net.Http
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject ILogger<Configuration> Logger
@@ -88,7 +89,7 @@
                 <thead>
                     <tr>
                         <th>Provider</th>
-                        <th>Name</th>
+                        @*<th>Name</th>*@ @* Removed Name column *@
                         <th>API Key</th>
                         <th>Base URL</th>
                         <th>Actions</th>
@@ -99,9 +100,8 @@
                     {
                         <tr>
                             <td>@cred.ProviderName</td>
-                            <td>@(string.IsNullOrEmpty(cred.Name) ? "—" : cred.Name)</td>
                             <td class="text-muted">@(string.IsNullOrEmpty(cred.ApiKey) ? "Not set" : "••••••••")</td>
-                            <td>@(string.IsNullOrEmpty(cred.ApiBase) ? "Default" : cred.ApiBase)</td>
+                            <td>@(string.IsNullOrEmpty(cred.BaseUrl) ? "Default" : cred.BaseUrl)</td>
                             <td>
                                 <div class="btn-group">
                                     <button class="btn btn-sm btn-outline-primary" @onclick="() => EditProvider(cred.Id)">Edit</button>
@@ -154,10 +154,9 @@ else
                         <td>@mapping.ModelAlias</td>
                         <td>
                             @{
+                                // Use ProviderName directly as Name doesn't exist
                                 var providerInfo = providerCredentials?.FirstOrDefault(p => p.ProviderName == mapping.ProviderName);
-                                var displayName = providerInfo != null && !string.IsNullOrEmpty(providerInfo.Name) 
-                                                ? providerInfo.Name 
-                                                : mapping.ProviderName;
+                                var displayName = providerInfo?.ProviderName ?? mapping.ProviderName; // Fallback to mapping's provider name
                             }
                             @displayName
                         </td>
@@ -361,7 +360,7 @@ else
 
 @code {
     // --- Providers and Mappings State ---
-    private List<DbProviderCredentials>? providerCredentials;
+    private List<ConduitLLM.Configuration.Entities.ProviderCredential>? providerCredentials; // Use correct entity type
     private List<DbModelProviderMapping>? modelMappings;
     private string? deleteErrorMessage;
 
@@ -411,13 +410,15 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use Config context for ProviderCredentials
+            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            // Directly assign the loaded entities, no mapping needed as the list type is now correct
             providerCredentials = await dbContext.ProviderCredentials.ToListAsync();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider credentials");
-            providerCredentials = new List<DbProviderCredentials>();
+            providerCredentials = new List<ConduitLLM.Configuration.Entities.ProviderCredential>(); // Use correct type
         }
     }
     
@@ -425,7 +426,8 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use WebUI context for ModelMappings
+            using var dbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
             modelMappings = await dbContext.ModelMappings.ToListAsync();
         }
         catch (Exception ex)
@@ -439,7 +441,8 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use Config context for GlobalSettings
+            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
             var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
             proxyBaseUrlInput = proxyUrlSetting?.Value;
         }
@@ -467,20 +470,20 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use Config context for GlobalSettings
+            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
             var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
             
             if (proxyUrlSetting == null)
             {
                 // Create new setting
-                // Defensive: ensure proxyBaseUrlInput is not null
-                proxyUrlSetting = new GlobalSetting { Key = "ConduitSettings:ProxyBaseUrl", Value = proxyBaseUrlInput ?? string.Empty };
+                // Use the correct GlobalSetting entity type
+                proxyUrlSetting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = "ConduitSettings:ProxyBaseUrl", Value = proxyBaseUrlInput ?? string.Empty }; 
                 dbContext.GlobalSettings.Add(proxyUrlSetting);
             }
             else
             {
                 // Update existing setting
-                // Defensive: ensure proxyBaseUrlInput is not null
                 proxyUrlSetting.Value = proxyBaseUrlInput ?? string.Empty;
                 dbContext.GlobalSettings.Update(proxyUrlSetting);
             }
@@ -549,28 +552,36 @@ else
         try
         {
             deleteErrorMessage = null;
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var providerToDelete = await dbContext.ProviderCredentials.FindAsync(id);
+            // Use Config context for ProviderCredentials deletion
+            using var configDbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            var providerToDelete = await configDbContext.ProviderCredentials.FindAsync(id);
             if (providerToDelete == null) return;
+
+            // Use WebUI context for related ModelMappings deletion
+            using var webUiDbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
                 $"Are you sure you want to delete the provider '{providerToDelete.ProviderName}'? This cannot be undone.");
 
             if (!confirmed) return;
 
-            var relatedMappings = await dbContext.ModelMappings
+            // Delete related mappings from WebUI context
+            var relatedMappings = await webUiDbContext.ModelMappings
                 .Where(m => m.ProviderName == providerToDelete.ProviderName)
                 .ToListAsync();
 
             if (relatedMappings.Any())
             {
-                dbContext.ModelMappings.RemoveRange(relatedMappings);
+                webUiDbContext.ModelMappings.RemoveRange(relatedMappings);
+                await webUiDbContext.SaveChangesAsync(); // Save changes in WebUI context first
             }
 
-            dbContext.ProviderCredentials.Remove(providerToDelete);
-            await dbContext.SaveChangesAsync();
-            await LoadProvidersAsync();
-            await LoadModelMappingsAsync();
+            // Delete provider from Config context
+            configDbContext.ProviderCredentials.Remove(providerToDelete);
+            await configDbContext.SaveChangesAsync(); // Save changes in Config context
+
+            await LoadProvidersAsync(); // Reload providers (now from Config context)
+            await LoadModelMappingsAsync(); // Reload mappings (from WebUI context)
         }
         catch (Exception ex)
         {
@@ -595,7 +606,8 @@ else
         try
         {
             deleteErrorMessage = null;
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use WebUI context for ModelMappings
+            using var dbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
             var mappingToDelete = await dbContext.ModelMappings.FindAsync(id);
             if (mappingToDelete == null) return;
 
@@ -631,11 +643,13 @@ else
          }
     }
 
-    private async Task HandleSetupComplete(DbProviderCredentials newProvider)
+    // Update parameter type to match the entity from Configuration context
+    private async Task HandleSetupComplete(ConduitLLM.Configuration.Entities.ProviderCredential newProvider) 
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Use Config context for adding ProviderCredentials
+            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
             await dbContext.ProviderCredentials.AddAsync(newProvider);
             await dbContext.SaveChangesAsync();
 

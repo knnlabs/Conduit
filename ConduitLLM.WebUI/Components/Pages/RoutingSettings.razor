@@ -11,7 +11,8 @@
 @inject IOptions<RouterOptions> RouterOptions
 @inject RouterOptionsService RouterOptionsService
 @inject ILogger<RoutingSettings> Logger
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 
 <PageTitle>ConduitLLM - Routing Settings</PageTitle>
 
@@ -280,7 +281,7 @@ else
                                 <option value="">-- Select Provider --</option>
                                 @foreach (var provider in _availableProviders)
                                 {
-                                    <option value="@provider.ProviderName">@(string.IsNullOrEmpty(provider.Name) ? provider.ProviderName : $"{provider.ProviderName} ({provider.Name})")</option>
+                                    <option value="@provider.ProviderName">@provider.ProviderName</option> // Display only ProviderName
                                 }
                             </select>
                         </div>
@@ -850,15 +851,22 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            
-            // Load providers with their display names
-            _availableProviders = await dbContext.ProviderCredentials
+            // Load providers from Config context
+            using var configDbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            var configCreds = await configDbContext.ProviderCredentials
                 .OrderBy(p => p.ProviderName)
                 .ToListAsync();
-                
-            // Load model mappings
-            _availableModelMappings = await dbContext.ModelMappings
+            // Map to WebUI entity type for the dropdown
+            _availableProviders = configCreds.Select(c => new DbProviderCredentials {
+                Id = c.Id,
+                ProviderName = c.ProviderName
+                // Removed mapping for Name as it doesn't exist on the source ProviderCredential
+                // Map other needed properties if any
+            }).ToList();
+
+            // Load model mappings from WebUI context
+            using var webUiDbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
+            _availableModelMappings = await webUiDbContext.ModelMappings
                 .OrderBy(m => m.ModelAlias)
                 .ToListAsync();
         }

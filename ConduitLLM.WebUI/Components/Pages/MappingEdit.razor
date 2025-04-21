@@ -5,7 +5,8 @@
 @using System.Net.Http.Headers 
 @using Microsoft.Extensions.Logging 
 @using ConduitLLM.WebUI.Services 
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject correct factory
+@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory for non-global settings
 @inject NavigationManager NavigationManager
 @inject IHttpClientFactory HttpClientFactory 
 @inject IMemoryCache MemoryCache 
@@ -56,7 +57,7 @@ else
                     <option value="">-- Select Provider --</option>
                     @foreach (var provider in availableProviders)
                     {
-                        <option value="@provider.ProviderName">@(string.IsNullOrEmpty(provider.Name) ? provider.ProviderName : $"{provider.ProviderName} ({provider.Name})")</option>
+                        <option value="@provider.ProviderName">@provider.ProviderName</option> @* Display only ProviderName *@
                     }
                 </InputSelect>
                 <ValidationMessage For="@(() => mapping.ProviderName)" />
@@ -130,7 +131,7 @@ else
     public int? Id { get; set; }
 
     private DbModelProviderMapping? mapping;
-    private List<DbProviderCredentials>? availableProviders;
+    private List<ConduitLLM.Configuration.Entities.ProviderCredential>? availableProviders; // Use correct entity type
     private bool isLoading = true; // Initial page load
     private bool isSaving = false; // Saving the mapping
     private bool isLoadingModels = false; // Loading models for selected provider
@@ -146,13 +147,15 @@ else
         errorMessage = null;
         try
         {
-            // Load available providers for the dropdown first (using factory)
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            availableProviders = await dbContext.ProviderCredentials.OrderBy(p => p.ProviderName).ToListAsync();
+            // Load available providers (from Config context)
+            await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            availableProviders = await configContext.ProviderCredentials.OrderBy(p => p.ProviderName).ToListAsync();
 
             if (Id.HasValue)
             {
-                mapping = await dbContext.ModelMappings.FindAsync(Id.Value);
+                // Load mapping from WebUI context
+                await using var webUiContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
+                mapping = await webUiContext.ModelMappings.FindAsync(Id.Value); 
                  if (mapping != null)
                  {
                     editContext = new EditContext(mapping);
@@ -233,10 +236,10 @@ else
             _logger.LogInformation("Fetching models for provider '{ProviderName}' from API.", providerName);
             try
             {
-                // Need API key for the selected provider to potentially call the proxy
+                // Need API key for the selected provider (from Config context)
                 string? apiKey = null;
-                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-                var providerCreds = await dbContext.ProviderCredentials
+                await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                var providerCreds = await configContext.ProviderCredentials
                                             .FirstOrDefaultAsync(p => p.ProviderName == providerName);
                 apiKey = providerCreds?.ApiKey; // Use configured key
 
@@ -248,8 +251,9 @@ else
                 }
 
                 var httpClient = HttpClientFactory.CreateClient();
-                // TODO: Get Proxy URL from DB setting instead of hardcoding/config
-                var proxyUrlSetting = await dbContext.GlobalSettings.FindAsync("ConduitProxyBaseUrl");
+                // Get Proxy URL from DB setting (using the existing configContext)
+                // Removed duplicate: await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                var proxyUrlSetting = await configContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitProxyBaseUrl"); 
                 var proxyBaseUrl = proxyUrlSetting?.Value ?? "http://localhost:5000"; // Use configured or default
 
                 var requestUri = $"{proxyBaseUrl}/api/providers/{Uri.EscapeDataString(providerName)}/models";
@@ -363,18 +367,19 @@ else
 
         try
         {
-             await using var dbContext = await DbContextFactory.CreateDbContextAsync(); // Use factory
+             // Use WebUI context for ModelMappings
+             await using var webUiContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
 
              // Check for duplicate ModelAlias before saving
             bool aliasExists = false;
             if (Id.HasValue) // Editing existing
             {
-                 aliasExists = await dbContext.ModelMappings
+                 aliasExists = await webUiContext.ModelMappings
                                         .AnyAsync(m => m.ModelAlias == mapping.ModelAlias && m.Id != Id.Value);
             }
             else // Adding new
             {
-                 aliasExists = await dbContext.ModelMappings
+                 aliasExists = await webUiContext.ModelMappings
                                         .AnyAsync(m => m.ModelAlias == mapping.ModelAlias);
             }
 
@@ -386,16 +391,16 @@ else
                  return; // Stop processing
             }
 
-            // --- Database Operations ---
+            // --- Database Operations (on WebUI context) ---
             if (Id.HasValue) // Update
             {
-                var existingMapping = await dbContext.ModelMappings.FindAsync(Id.Value);
+                var existingMapping = await webUiContext.ModelMappings.FindAsync(Id.Value);
                 if (existingMapping != null)
                 {
                     existingMapping.ModelAlias = mapping.ModelAlias;
                     existingMapping.ProviderName = mapping.ProviderName;
                     existingMapping.ProviderModelId = mapping.ProviderModelId;
-                    dbContext.ModelMappings.Update(existingMapping);
+                    webUiContext.ModelMappings.Update(existingMapping);
                 }
                  else
                 {
@@ -406,16 +411,17 @@ else
             }
             else // Add
             {
-                dbContext.ModelMappings.Add(mapping);
+                webUiContext.ModelMappings.Add(mapping);
             }
 
-            await dbContext.SaveChangesAsync();
+            await webUiContext.SaveChangesAsync();
             
             // Notify the Conduit HTTP proxy about configuration changes
             try
             {
-                // Get the proxy base URL from global settings
-                var proxyUrlSetting = await dbContext.GlobalSettings
+                // Get the proxy base URL from global settings (from Config context)
+                await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                var proxyUrlSetting = await configContext.GlobalSettings
                     .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
                 
                 string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";

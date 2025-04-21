@@ -806,24 +806,23 @@ app.MapPost("/v1/images/generations", async (
 app.MapPost("/admin/refresh-configuration", async (
     [FromServices] IOptions<ConduitSettings> settingsOptions,
     [FromServices] ILogger<Program> logger,
-    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory) =>
+    [FromServices] IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject Config factory
+    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> webUiDbContextFactory) => // Inject WebUI factory
 {
-    logger.LogInformation("Received configuration refresh request");
+    logger.LogInformation("Received configuration refresh request"); // Correct LogInformation call
     
     try
     {
         // Get the settings instance from IOptions
         var settings = settingsOptions.Value;
         
-        // Load the latest configuration from database
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-        
-        // Load provider credentials
-        var providerCredsList = await dbContext.ProviderCredentials.ToListAsync();
+        // Load provider credentials from Config context
+        await using var configDbContext = await configDbContextFactory.CreateDbContextAsync();
+        var providerCredsList = await configDbContext.ProviderCredentials.ToListAsync();
         
         if (providerCredsList.Any())
         {
-            logger.LogInformation("Refreshing {Count} provider credentials from database", providerCredsList.Count);
+            logger.LogInformation("Refreshing {Count} provider credentials from database", providerCredsList.Count); // Correct LogInformation call
             
             // Convert database provider credentials to Core provider credentials
             var providersList = providerCredsList.Select(p => new ProviderCredentials
@@ -831,7 +830,7 @@ app.MapPost("/admin/refresh-configuration", async (
                 ProviderName = p.ProviderName,
                 ApiKey = p.ApiKey,
                 ApiVersion = p.ApiVersion,
-                ApiBase = p.ApiBase
+                ApiBase = p.BaseUrl // Correctly map BaseUrl from DB entity
             }).ToList();
             
             // Now integrate these with existing settings
@@ -859,12 +858,13 @@ app.MapPost("/admin/refresh-configuration", async (
             }
         }
         
-        // Load model mappings from database
-        var modelMappings = await dbContext.ModelMappings.ToListAsync();
+        // Load model mappings from WebUI context
+        await using var webUiDbContext = await webUiDbContextFactory.CreateDbContextAsync();
+        var modelMappings = await webUiDbContext.ModelMappings.ToListAsync();
         
         if (modelMappings.Any())
         {
-            logger.LogInformation("Refreshing {Count} model mappings from database", modelMappings.Count);
+            logger.LogInformation("Refreshing {Count} model mappings from database", modelMappings.Count); // Correct LogInformation call
             
             // Convert database model mappings to settings model mappings
             var mappingsList = modelMappings.Select(m => new ModelProviderMapping
@@ -915,7 +915,7 @@ app.MapPost("/admin/refresh-configuration", async (
 app.MapGet("/api/providers/{providerName}/models", async (
     string providerName,
     [FromServices] ILLMClientFactory clientFactory,
-    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory, // Inject DbContextFactory
+    [FromServices] IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject Config factory
     [FromServices] ILogger<Program> logger,
     HttpRequest httpRequest) =>
 {
@@ -932,13 +932,13 @@ app.MapGet("/api/providers/{providerName}/models", async (
     string? apiKeyFromDb = null;
     try
     {
-        // Get credentials from the database
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync(httpRequest.HttpContext.RequestAborted);
+        // Get credentials from the Config database
+        await using var configDbContext = await configDbContextFactory.CreateDbContextAsync(httpRequest.HttpContext.RequestAborted);
         
-        // Load provider credentials
-        var providerCreds = await dbContext.ProviderCredentials
+        // Load provider credentials using the correct context and entity
+        var providerCreds = await configDbContext.ProviderCredentials
                                     .AsNoTracking() // Read-only operation
-                                    .FirstOrDefaultAsync(p => p.ProviderName.ToLower() == providerName.ToLower(),
+                                    .FirstOrDefaultAsync(p => p.ProviderName.ToLower() == providerName.ToLower(), // Use correct property
                                                          httpRequest.HttpContext.RequestAborted);
 
         if (providerCreds == null)
@@ -1177,16 +1177,20 @@ public class OpenAIError
 // Helper for triggering database settings load on startup
 public class DatabaseSettingsStartupFilter : IStartupFilter
 {
-    private readonly IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> _dbContextFactory;
+    // Inject both factories
+    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configDbContextFactory;
+    private readonly IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> _webUiDbContextFactory;
     private readonly IOptions<ConduitSettings> _settingsOptions;
     private readonly ILogger<DatabaseSettingsStartupFilter> _logger;
 
     public DatabaseSettingsStartupFilter(
-        IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> dbContextFactory,
+        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject correct factory
+        IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> webUiDbContextFactory, // Inject WebUI factory
         IOptions<ConduitSettings> settingsOptions,
         ILogger<DatabaseSettingsStartupFilter> logger)
     {
-        _dbContextFactory = dbContextFactory;
+        _configDbContextFactory = configDbContextFactory; // Assign correct factory
+        _webUiDbContextFactory = webUiDbContextFactory; // Assign WebUI factory
         _settingsOptions = settingsOptions;
         _logger = logger;
     }
@@ -1203,20 +1207,20 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
         var settings = _settingsOptions.Value;
         try
         {
-            // Load provider credentials
-            var providerCredsList = await _dbContextFactory.CreateDbContextAsync();
-            var providerCredsList2 = await providerCredsList.ProviderCredentials.ToListAsync();
-            if (providerCredsList2.Any())
+            // Load provider credentials from Config context
+            await using var configDbContext = await _configDbContextFactory.CreateDbContextAsync();
+            var providerCredsList = await configDbContext.ProviderCredentials.ToListAsync();
+            if (providerCredsList.Any())
             {
-                _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList2.Count);
+                _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
                 
                 // Convert database provider credentials to Core provider credentials
-                var providersList = providerCredsList2.Select(p => new ProviderCredentials
+                var providersList = providerCredsList.Select(p => new ProviderCredentials
                 {
                     ProviderName = p.ProviderName,
                     ApiKey = p.ApiKey,
                     ApiVersion = p.ApiVersion,
-                    ApiBase = p.ApiBase
+                    ApiBase = p.BaseUrl // Map BaseUrl from DB entity to ApiBase in settings entity
                 }).ToList();
                 
                 // Now integrate these with existing settings
@@ -1248,8 +1252,9 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                 _logger.LogWarning("No provider credentials found in database");
             }
 
-            // Load model mappings from database
-            var modelMappings = await providerCredsList.ModelMappings.ToListAsync();
+            // Load model mappings from WebUI context
+            await using var webUiDbContext = await _webUiDbContextFactory.CreateDbContextAsync();
+            var modelMappings = await webUiDbContext.ModelMappings.ToListAsync();
             if (modelMappings.Any())
             {
                 _logger.LogInformation("Found {Count} model mappings in database", modelMappings.Count);
