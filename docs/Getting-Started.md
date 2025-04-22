@@ -46,7 +46,9 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
 
 ## Initial Configuration
 
-1. Open your browser and navigate to `http://localhost:5000` (or the port specified in your configuration).
+1. Open your browser and navigate to the WebUI.
+   - **Local Development (`./start.sh`):** `http://localhost:5001`
+   - **Docker/Deployed:** Access via the URL configured in the `CONDUIT_API_BASE_URL` environment variable (e.g., `https://conduit.yourdomain.com`), typically through an HTTPS reverse proxy.
 
 2. Navigate to the Configuration page to set up:
    - LLM providers (API keys and endpoints)

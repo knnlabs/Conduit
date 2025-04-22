@@ -16,7 +16,8 @@ This document provides comprehensive information about all environment variables
 |---------------------|------|---------|-------------|
 | `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
 | `ASPNETCORE_ENVIRONMENT` | String | `Production` | Controls the .NET runtime environment. Set to `Development` for detailed error information or `Production` for optimized performance. |
-| `ASPNETCORE_URLS` | String | `http://localhost:5000` | The URL(s) on which the application will listen for requests. |
+| `ASPNETCORE_URLS` | String | `http://+:80` | The URL(s) on which the application will listen for HTTP requests inside the container. Use `http://+:80` for Docker. |
+| `CONDUIT_API_BASE_URL` | String | `null` | Specifies the public base URL where the Conduit API and WebUI are accessible, especially when deployed behind a reverse proxy (e.g., `https://conduit.yourdomain.com`). This is used for generating correct absolute URLs. |
 
 ## Cache Configuration
 
@@ -37,7 +38,7 @@ ConduitLLM provides environment variables for configuring security-related aspec
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
 | `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | Master key for administrative operations. Required for certain API endpoints. |
-| `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. Set to false in development or behind a proxy that handles HTTPS. |
+| `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
 
 ## Database
@@ -63,8 +64,9 @@ services:
     environment:
       # Core settings
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_URLS=http://+:80 # Listen on port 80 inside the container
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_API_BASE_URL=https://your-public-conduit-url.com # IMPORTANT: Set this to your public URL
       
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
@@ -72,16 +74,17 @@ services:
       - CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
       
       # Security settings
-      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false # HTTPS is handled by the reverse proxy
       - CONDUIT_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
       
       # Database settings
       - CONDUIT_DB_PATH=/data/conduit.db
       - CONDUIT_DB_TYPE=Sqlite
     ports:
-      - "80:80"
+      - "80:80" # Expose container's HTTP port 80 to host's port 80
+                # Assumes a reverse proxy forwards external HTTPS (443) traffic to this port (80)
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data # Persist database and configuration
 ```
 
 Or in a Dockerfile:
@@ -94,13 +97,17 @@ COPY --from=build /app/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:80
+ENV CONDUIT_API_BASE_URL="" # Set via docker run -e or docker-compose
+ENV CONDUIT_MASTER_KEY="" # Set via docker run -e or docker-compose
 ENV CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
 ENV CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
 ENV CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
+ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false # Assume reverse proxy handles HTTPS
 ENV CONDUIT_DB_PATH=/data/conduit.db
 ENV CONDUIT_DB_TYPE=Sqlite
 
-EXPOSE 80
+EXPOSE 80 # Expose the HTTP port
+VOLUME /data # Define volume for persistent data
 ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
 ```
 

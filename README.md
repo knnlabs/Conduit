@@ -92,15 +92,18 @@ flowchart LR
    ```
 
 4. **Access ConduitLLM**
-   - **API**: `http://localhost:5000` / `https://localhost:5003`
-   - **WebUI**: `http://localhost:5001` / `https://localhost:5002`
-   - **API Docs**: `http://localhost:5000/swagger` (Development Mode)
+   - **Local API**: `http://localhost:5000`
+   - **Local WebUI**: `http://localhost:5001`
+   - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
+   
+   *Note: When running locally via `start.sh`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
 
 ### Docker Installation
 
 ```bash
 docker compose up -d
 ```
+*Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The container exposes HTTP ports only.*
 
 ## Usage
 
@@ -125,7 +128,9 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="condt_yourvirtualkey",
-    base_url="http://localhost:5000/v1"
+    # Use http://localhost:5000/v1 for local testing,
+    # or your configured CONDUIT_API_BASE_URL for deployed instances
+    base_url="http://localhost:5000/v1" 
 )
 
 response = client.chat.completions.create(
