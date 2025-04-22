@@ -2,7 +2,7 @@ name: Publish Docker image to GHCR
 
 on:
   push:
-    branches: ['main'] # Trigger on pushes to the main branch
+    branches: ['master'] # Trigger on pushes to the master branch
 
 permissions:
   contents: read
