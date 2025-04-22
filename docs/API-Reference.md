@@ -56,6 +56,17 @@ Creates a chat completion for the provided conversation.
 ```
 - `messages.content` may be a string or multimodal object (see Multimodal Vision Support).
 
+**Example of multimodal message:**
+```json
+{
+  "role": "user",
+  "content": [
+    { "type": "text", "text": "What is in this image?" },
+    { "type": "image_url", "image_url": { "url": "https://example.com/cat.png" } }
+  ]
+}
+```
+
 **Response**:
 ```json
 {
@@ -244,6 +255,6 @@ Error response format:
 ## Notes
 
 - **Model Aliases**: Use model aliases as configured in your admin panel or `appsettings.json`.
-- **Multimodal Vision**: For models supporting vision/multimodal, pass image URLs or objects in `messages.content` (see Multimodal Vision Support doc).
+- **Multimodal Vision**: For models supporting vision/multimodal, pass image URLs or multimodal objects (see example above) in `messages.content`. The property type is `object?` and supports both plain strings and objects.
 - **Streaming**: Set `"stream": true` for streaming responses.
 - **API Compatibility**: ConduitLLM aims for API compatibility with OpenAI clients and SDKs.

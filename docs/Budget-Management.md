@@ -76,7 +76,7 @@ Manages automated budget operations:
 
 #### RequestLogService
 
-Provides analytics for budget monitoring:
+Provides analytics for budget monitoring and reporting:
 
 - Usage trends analysis
 - Cost projection
@@ -107,6 +107,8 @@ Proactive limits on spending:
 - **Request Validation**: Check budget before processing
 - **Request Rejection**: Block requests that would exceed budget
 - **Grace Margin**: Optional buffer beyond strict limit
+
+> **Note:** Budget management and enforcement are active regardless of deployment method (cloud, Docker, etc.).
 
 ### Automatic Budget Reset
 
@@ -242,6 +244,8 @@ decimal CalculateCost(string provider, string model, int promptTokens, int compl
     
     decimal promptCost = (promptTokens / 1000.0m) * pricing.PromptPricePerThousandTokens;
     decimal completionCost = (completionTokens / 1000.0m) * pricing.CompletionPricePerThousandTokens;
+    
+    // If using multimodal/vision models, ensure your cost calculation accounts for image or multimodal token pricing if applicable.
     
     return promptCost + completionCost;
 }

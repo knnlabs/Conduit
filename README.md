@@ -99,8 +99,15 @@ flowchart LR
 ### Docker Installation
 
 ```bash
+docker pull ghcr.io/knnlabs/conduit:latest
+```
+
+Or use with Docker Compose:
+
+```bash
 docker compose up -d
 ```
+
 *Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The container exposes HTTP ports only.*
 
 ## Usage

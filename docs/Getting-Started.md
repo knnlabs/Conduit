@@ -6,38 +6,69 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
 
 ## Prerequisites
 
-- .NET 9.0 SDK or later
-- SQL Server or SQLite for database storage
+- .NET 9.0 SDK or later (for local development)
+- SQLite or PostgreSQL for database storage
+- Docker (recommended for deployment)
 - API keys for any LLM providers you plan to use (OpenAI, Anthropic, Cohere, Gemini, Fireworks, OpenRouter)
 
 ## Installation
 
-### Option 1: Using the scripts
+### Option 1: Docker (Recommended)
+
+1. Pull the latest public Docker image:
+   ```bash
+   docker pull ghcr.io/knnlabs/conduit:latest
+   ```
+
+2. Create a directory for persistent data:
+   ```bash
+   mkdir -p ./data
+   ```
+
+3. Run the container (SQLite example):
+   ```bash
+   docker run -d \
+     -p 5000:5000 \
+     -v $(pwd)/data:/data \
+     -e DB_PROVIDER=sqlite \
+     -e CONDUIT_SQLITE_PATH=/data/conduit.db \
+     -e CONDUIT_MASTER_KEY=your_secure_master_key \
+     ghcr.io/knnlabs/conduit:latest
+   ```
+
+   For PostgreSQL, use:
+   ```bash
+   docker run -d \
+     -p 5000:5000 \
+     -e DB_PROVIDER=postgres \
+     -e CONDUIT_POSTGRES_CONNECTION_STRING=Host=yourhost;Port=5432;Database=conduitllm;Username=youruser;Password=yourpassword \
+     -e CONDUIT_MASTER_KEY=your_secure_master_key \
+     ghcr.io/knnlabs/conduit:latest
+   ```
+
+### Option 2: Using the scripts (Local Development)
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/your-org/ConduitLLM.git
    cd ConduitLLM
    ```
-
 2. Run the start script:
    ```bash
    ./start.sh
    ```
 
-### Option 2: Manual setup
+### Option 3: Manual setup (Advanced)
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/your-org/ConduitLLM.git
    cd ConduitLLM
    ```
-
 2. Build the solution:
    ```bash
    dotnet build
    ```
-
 3. Run the WebUI project:
    ```bash
    cd ConduitLLM.WebUI
@@ -48,7 +79,7 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
 
 1. Open your browser and navigate to the WebUI.
    - **Local Development (`./start.sh`):** `http://localhost:5001`
-   - **Docker/Deployed:** Access via the URL configured in the `CONDUIT_API_BASE_URL` environment variable (e.g., `https://conduit.yourdomain.com`), typically through an HTTPS reverse proxy.
+   - **Docker/Deployed:** Access via the URL configured in the `CONDUIT_API_BASE_URL` environment variable (e.g., `https://conduit.yourdomain.com`), typically through an HTTPS reverse proxy, or `http://localhost:5000` if running locally.
 
 2. Navigate to the Configuration page to set up:
    - LLM providers (API keys and endpoints)

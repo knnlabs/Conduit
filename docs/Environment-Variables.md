@@ -43,13 +43,15 @@ ConduitLLM provides environment variables for configuring security-related aspec
 
 ## Database
 
-| Variable           | Description                                           | Example Value                |
-|--------------------|-------------------------------------------------------|------------------------------|
-| `CONDUIT_DB_PATH`  | Path or connection string to the database             | `/data/conduit.db` or `Host=localhost;Port=5432;Database=conduit;Username=postgres;Password=secret` |
-| `CONDUIT_DB_TYPE`  | Database type to use (`Postgres`, `Sqlite`, etc.)     | `Postgres` or `Sqlite`       |
+| Variable | Description | Example Value |
+|----------|-------------|--------------|
+| `DB_PROVIDER` | Database provider: `sqlite` or `postgres` | `sqlite` |
+| `CONDUIT_SQLITE_PATH` | SQLite database file path | `/data/conduit.db` |
+| `CONDUIT_POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | `Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret` |
 
-- `CONDUIT_DB_PATH` is required for both Sqlite (file path) and Postgres (connection string).
-- `CONDUIT_DB_TYPE` determines which database provider is used by Conduit.
+- `DB_PROVIDER` determines which database backend is used. Supported values: `sqlite` or `postgres` (all lowercase).
+- For SQLite, set `CONDUIT_SQLITE_PATH`.
+- For PostgreSQL, set `CONDUIT_POSTGRES_CONNECTION_STRING`.
 
 ## Docker Configuration Examples
 
@@ -64,27 +66,26 @@ services:
     environment:
       # Core settings
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80 # Listen on port 80 inside the container
+      - ASPNETCORE_URLS=http://+:80
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
-      - CONDUIT_API_BASE_URL=https://your-public-conduit-url.com # IMPORTANT: Set this to your public URL
-      
+      - CONDUIT_API_BASE_URL=https://your-public-conduit-url.com
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
       - CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
-      
       # Security settings
-      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false # HTTPS is handled by the reverse proxy
+      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
-      
-      # Database settings
-      - CONDUIT_DB_PATH=/data/conduit.db
-      - CONDUIT_DB_TYPE=Sqlite
+      # Database settings (SQLite example)
+      - DB_PROVIDER=sqlite
+      - CONDUIT_SQLITE_PATH=/data/conduit.db
+      # Database settings (PostgreSQL example)
+      # - DB_PROVIDER=postgres
+      # - CONDUIT_POSTGRES_CONNECTION_STRING=Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret
     ports:
-      - "80:80" # Expose container's HTTP port 80 to host's port 80
-                # Assumes a reverse proxy forwards external HTTPS (443) traffic to this port (80)
+      - "80:80"
     volumes:
-      - ./data:/app/data # Persist database and configuration
+      - ./data:/app/data
 ```
 
 Or in a Dockerfile:
@@ -97,17 +98,21 @@ COPY --from=build /app/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:80
-ENV CONDUIT_API_BASE_URL="" # Set via docker run -e or docker-compose
-ENV CONDUIT_MASTER_KEY="" # Set via docker run -e or docker-compose
+ENV CONDUIT_API_BASE_URL=""
+ENV CONDUIT_MASTER_KEY=""
 ENV CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
 ENV CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
 ENV CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
-ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false # Assume reverse proxy handles HTTPS
-ENV CONDUIT_DB_PATH=/data/conduit.db
-ENV CONDUIT_DB_TYPE=Sqlite
+ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+# Database (SQLite)
+ENV DB_PROVIDER=sqlite
+ENV CONDUIT_SQLITE_PATH=/data/conduit.db
+# Database (PostgreSQL)
+# ENV DB_PROVIDER=postgres
+# ENV CONDUIT_POSTGRES_CONNECTION_STRING=Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret
 
-EXPOSE 80 # Expose the HTTP port
-VOLUME /data # Define volume for persistent data
+EXPOSE 80
+VOLUME /data
 ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
 ```
 

@@ -51,14 +51,21 @@ volumes:
 - Ensure the directory is writable by the container user.
 - Use `CONDUIT_SQLITE_PATH` for clarity and portability.
 
-### SQL Server
+### PostgreSQL (Production Recommended)
 
-For production environments, SQL Server is recommended:
+For production or high-traffic environments, PostgreSQL is recommended:
 
+```yaml
+environment:
+  - DB_PROVIDER=postgres
+  - CONDUIT_POSTGRES_CONNECTION_STRING=Host=yourhost;Port=5432;Database=conduitllm;Username=youruser;Password=yourpassword
+```
+
+Or in `appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=myserver;Database=ConduitLLM;User Id=myuser;Password=mypassword;TrustServerCertificate=True"
+    "DefaultConnection": "Host=yourhost;Port=5432;Database=conduitllm;Username=youruser;Password=yourpassword"
   }
 }
 ```
@@ -229,11 +236,12 @@ Key environment variables for configuration:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CONDUITLLM_MASTER_KEY` | Master key for administrative access | None (required) |
-| `CONDUITLLM_CONNECTION_STRING` | Database connection string | `Data Source=configuration.db` |
+| `DB_PROVIDER` | Database provider: `sqlite` or `postgres` | `sqlite` |
+| `CONDUIT_SQLITE_PATH` | SQLite database path | None |
+| `CONDUIT_POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | None |
 | `CONDUITLLM_CACHE_ENABLED` | Enable response caching | `true` |
 | `CONDUITLLM_PORT` | Port for the HTTP server | `5000` |
 | `CONDUITLLM_LOG_LEVEL` | Logging level | `Information` |
-| `CONDUIT_SQLITE_PATH` | SQLite database path | None |
 
 See [Environment-Variables.md](Environment-Variables.md) for a complete list.
 
@@ -301,7 +309,7 @@ The WebUI provides an interactive way to configure all aspects of the system:
 2. **Performance**:
    - Enable caching for frequently used prompts
    - Configure appropriate router weights for load balancing
-   - Use SQL Server for high-traffic production environments
+   - Use **PostgreSQL** for high-traffic production environments
 
 3. **Cost Management**:
    - Set appropriate budgets for virtual keys

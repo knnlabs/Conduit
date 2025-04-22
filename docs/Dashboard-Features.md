@@ -57,6 +57,7 @@ Summary of important system metrics:
 - **Success Rate**: Percentage of successful requests
 - **Average Response Time**: Mean time to fulfill requests
 - **Active Models**: Count of actively used models
+- **Content Type Breakdown**: Analyze usage by content type (e.g., text vs. multimodal/vision tokens)
 
 ## Provider Status
 
@@ -89,6 +90,7 @@ Charts showing API request patterns:
 - **Peak Usage**: Highlights periods of highest activity
 - **Request Types**: Breakdown of completion vs. chat requests
 - **User Agent Analysis**: Requests by client application
+- **Advanced Filtering**: Filter analytics by model type, provider, or multimodal capability
 
 ### Token Usage
 
@@ -174,6 +176,7 @@ The dashboard includes several interactive elements:
 - **Expandable Panels**: Reveal additional information
 - **Detailed Reports**: Generate comprehensive reports
 - **Export Options**: Download data in CSV/JSON formats
+- **Export/Integration**: Export data and analytics to CSV, JSON, or integrate with external systems (where supported)
 
 ### Alerts Configuration
 

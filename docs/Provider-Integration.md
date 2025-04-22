@@ -8,14 +8,23 @@ ConduitLLM supports integration with multiple LLM providers through a unified in
 
 ConduitLLM currently supports the following LLM providers:
 
-| Provider | Description | Documentation | API Key URL |
-|----------|-------------|---------------|-------------|
-| OpenAI | Provider of GPT models | [OpenAI API Docs](https://platform.openai.com/docs/api-reference) | [Get API Key](https://platform.openai.com/api-keys) |
-| Anthropic | Provider of Claude models | [Anthropic API Docs](https://docs.anthropic.com/claude/reference) | [Get API Key](https://console.anthropic.com/keys) |
-| Cohere | Provider of Command models | [Cohere API Docs](https://docs.cohere.com/reference/about) | [Get API Key](https://dashboard.cohere.com/api-keys) |
-| Gemini | Google's generative AI | [Gemini API Docs](https://ai.google.dev/docs) | [Get API Key](https://makersuite.google.com/app/apikey) |
-| Fireworks | Provider of various fine-tuned models | [Fireworks API Docs](https://docs.fireworks.ai/api) | [Get API Key](https://app.fireworks.ai/users/settings/api-keys) |
-| OpenRouter | Meta-provider that routes to multiple models | [OpenRouter API Docs](https://openrouter.ai/docs) | [Get API Key](https://openrouter.ai/keys) |
+| Provider   | Description                         | Vision Support | Documentation | API Key URL |
+|------------|-------------------------------------|---------------|---------------|-------------|
+| OpenAI     | Provider of GPT models              | Yes           | [OpenAI API Docs](https://platform.openai.com/docs/api-reference) | [Get API Key](https://platform.openai.com/api-keys) |
+| Anthropic  | Provider of Claude models           | Planned       | [Anthropic API Docs](https://docs.anthropic.com/claude/reference) | [Get API Key](https://console.anthropic.com/keys) |
+| Cohere     | Provider of Command models          | No            | [Cohere API Docs](https://docs.cohere.com/reference/about) | [Get API Key](https://dashboard.cohere.com/api-keys) |
+| Gemini     | Google's generative AI              | Partial       | [Gemini API Docs](https://ai.google.dev/docs) | [Get API Key](https://makersuite.google.com/app/apikey) |
+| Fireworks  | Various fine-tuned models           | No            | [Fireworks API Docs](https://docs.fireworks.ai/api) | [Get API Key](https://app.fireworks.ai/users/settings/api-keys) |
+| OpenRouter | Meta-provider (routes to many)      | Dependent     | [OpenRouter API Docs](https://openrouter.ai/docs) | [Get API Key](https://openrouter.ai/keys) |
+
+- Only providers with "Yes" or "Partial" vision support will process image content. Others will ignore images and process only text parts of a message.
+- If a vision request is routed to a provider without vision support, ConduitLLM will fallback to text-only handling or return an error, depending on your router configuration.
+- For OpenRouter, vision/model support depends on the selected backend provider.
+
+> **Router and Budget Awareness:**
+> - Routing and budget management are vision-aware and cost-aware. Vision model usage and pricing are tracked and can influence routing and fallback decisions.
+
+For provider-specific options, message formats, and endpoint details, see the [API Reference](./API-Reference.md).
 
 ## Provider Configuration
 

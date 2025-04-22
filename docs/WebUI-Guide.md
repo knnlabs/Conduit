@@ -179,6 +179,8 @@ Test LLM interactions directly:
 
 ![Provider Edit Form](https://example.com/images/provider-edit.png)
 
+*Screenshot pending: This is a placeholder. Please add a real screenshot of the Provider Edit Form.*
+
 This form includes:
 - Provider type selection
 - Name field
@@ -191,6 +193,8 @@ This form includes:
 
 ![Model Mapping Manager](https://example.com/images/model-mapping.png)
 
+*Screenshot pending: This is a placeholder. Please add a real screenshot of the Model Mapping Manager.*
+
 Features:
 - Generic model name field
 - Provider selection
@@ -201,6 +205,8 @@ Features:
 ### Virtual Key Creator
 
 ![Virtual Key Creator](https://example.com/images/virtual-key.png)
+
+*Screenshot pending: This is a placeholder. Please add a real screenshot of the Virtual Key Creator.*
 
 Includes:
 - Name field
@@ -213,6 +219,8 @@ Includes:
 ### Chat Interface
 
 ![Chat Interface](https://example.com/images/chat.png)
+
+*Screenshot pending: This is a placeholder. Please add a real screenshot of the Chat Interface.*
 
 Provides:
 - Model selection dropdown
@@ -271,10 +279,13 @@ The WebUI supports several customization options:
 
 The WebUI can be configured with different authentication methods:
 
-- Local authentication
-- OAuth/OpenID Connect
-- LDAP/Active Directory
-- Single Sign-On integration
+- Local authentication *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
+- OAuth/OpenID Connect *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
+- LDAP/Active Directory *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
+- Single Sign-On integration *(coming soon – [see issue #17](https://github.com/knnlabs/Conduit/issues/17))*
+- **Current:** Master key authentication for admin access
+
+> Only master key authentication is currently available. Additional authentication methods are planned and tracked in [issue #17](https://github.com/knnlabs/Conduit/issues/17).
 
 ### Authorization
 

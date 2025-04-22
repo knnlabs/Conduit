@@ -193,7 +193,27 @@ else
     // Fallback
     textContent = messageContent?.ToString() ?? string.Empty;
 }
-```
+
+## Provider Support
+
+The following providers support multimodal (vision) capabilities:
+
+| Provider   | Vision Support | Notes |
+|------------|---------------|-------|
+| OpenAI     | Yes           | Full support for GPT-4 Vision models |
+| Gemini     | Partial       | May support image input in select models (check provider docs) |
+| Anthropic  | Planned       | Vision support may be added in future releases |
+| Cohere     | No            | Text-only models |
+| Fireworks  | No            | Text-only models |
+| OpenRouter | Dependent     | Depends on routed backend provider |
+
+- Providers without vision support will ignore image content and process only the text parts of a message.
+- If a vision request is routed to a provider that does not support images, ConduitLLM will fallback to text-only handling or return an error, depending on your router configuration.
+
+> **Router and Budget Awareness:**
+> - The router and budget management in ConduitLLM are vision-aware. Requests to vision-enabled models are routed appropriately, and vision model usage is tracked for cost/budgeting.
+
+For details on the message format and endpoints, see the [API Reference](./API-Reference.md).
 
 ## Using Base64-Encoded Images
 
@@ -239,15 +259,6 @@ private string GetMimeTypeFromPath(string imagePath)
         _ => "application/octet-stream"
     };
 }
-```
-
-## Supported Providers
-
-Currently, the following providers support vision capabilities:
-
-- OpenAI (via gpt-4-vision-preview and later models)
-
-Other providers will extract text-only content from multimodal messages and operate in text-only mode.
 
 ## Token Counting
 

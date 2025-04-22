@@ -4,6 +4,10 @@
 
 ConduitLLM's router provides intelligent distribution of requests across different LLM providers and models. This functionality enables failover capabilities, load balancing, and cost optimization by directing requests to the most appropriate model deployment based on availability, cost, and performance.
 
+> **Note:** The router supports both text and multimodal (vision) models. Routing, fallback, and cost optimization features apply to all supported model types.
+
+> **Supported Providers:** ConduitLLM supports routing across providers including OpenAI, Anthropic, Cohere, Gemini, Fireworks, and OpenRouter.
+
 ## Router Components
 
 The routing system consists of three main components:
@@ -323,3 +327,4 @@ The Router can be configured through the WebUI:
 3. **Weights**: Use weights to control traffic distribution based on cost and performance
 4. **Health Monitoring**: Regularly review deployment health in the WebUI
 5. **Testing**: Test fallback behavior before relying on it in production
+6. **Cost Optimization:** The router can optimize for cost by considering model pricing, including vision/multimodal models, when distributing requests and configuring fallbacks.

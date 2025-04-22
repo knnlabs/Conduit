@@ -22,19 +22,19 @@ ConduitLLM
 - Manages database schema for configuration and usage tracking
 
 ### ConduitLLM.Core
-- Defines LLM API models (including multimodal/vision content)
+- Defines LLM API models (including multimodal/vision content; message content uses `object?` to support both plain text and multimodal objects)
 - Implements routing, provider selection, and spend/budget logic
 - Interfaces for extensibility (custom providers, routing strategies)
 
 ### ConduitLLM.Http
 - Exposes OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`, etc.)
 - Handles authentication (virtual keys), rate limiting, and error handling
-- Middleware for request tracking, usage, and spend enforcement
+- Middleware for request tracking, usage, and spend enforcement (now logs detailed usage and analytics, including virtual key and model usage)
 
 ### ConduitLLM.Providers
 - Integrates with multiple LLM providers (OpenAI, Anthropic, Gemini, Cohere, etc.)
 - Maps generic model names to provider-specific models
-- Supports multimodal (vision) and streaming APIs where available
+- Supports multimodal (vision) and streaming APIs where available (including flexible object-based content)
 - Handles provider-specific request/response formatting
 
 ### ConduitLLM.WebUI
@@ -100,4 +100,4 @@ A .NET Blazor web application for system configuration:
 - OpenAI API compatibility: Use existing OpenAI SDKs and tools
 - Multimodal/vision support for compatible models/providers
 - Easily add new providers, models, or routing strategies
-- Designed for containerization and scalable deployment
+- Designed for containerization and scalable deployment (official public Docker images available)

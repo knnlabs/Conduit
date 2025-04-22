@@ -187,9 +187,13 @@ Sensitive virtual key operations are protected by master key authentication:
 
 All virtual key data is securely stored:
 
-- **Database Encryption**: Sensitive fields are encrypted at rest
-- **API Key Security**: Provider API keys are never exposed via virtual keys
-- **Audit Logging**: Changes to virtual keys are logged for security review
+- **Virtual Key Hashing**: Virtual key values are never stored in plaintext. Only a secure hash (e.g., SHA-256) of each key is persisted in the database for validation purposes.
+- **Provider API Key Security**: Provider API keys are never exposed via virtual keys. Storage of provider API keys depends on your database and deployment environment.
+- **Audit Logging**: Changes to virtual keys are logged for security review.
+
+> **Note:** ConduitLLM does not perform field-level encryption or full database encryption by default. For additional protection, use full-disk or database encryption at the infrastructure level as appropriate for your environment.
+> 
+> Hashing is used for virtual key values to prevent recovery of the original key from the database. Encryption, if required, should be implemented at the storage or infrastructure layer.
 
 ## WebUI Management
 
