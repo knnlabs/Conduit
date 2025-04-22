@@ -173,12 +173,16 @@ else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 #endif
 
 // Register HttpClient for calling the API proxy
-builder.Services.AddHttpClient();
+// Default client for general use - REMOVED incorrect default registration with hardcoded base address
+// builder.Services.AddHttpClient(); 
 
-// Register default HttpClient for Razor components with BaseAddress set to correct HTTP URI
-builder.Services.AddHttpClient("", client =>
+// Named client specifically for calling the Conduit HTTP API
+builder.Services.AddHttpClient("ApiClient", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:5002/"); // Use your actual dev/prod base URL as needed
+    // Read the base URL from environment variable, fallback to default for local dev
+    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? "http://localhost:5000";
+    client.BaseAddress = new Uri(apiBaseUrl);
+    Console.WriteLine($"[Conduit WebUI] Configuring ApiClient with BaseAddress: {apiBaseUrl}");
 });
 
 // Register Cache Service
@@ -330,6 +334,8 @@ else
 // Ensure static files are served properly for development
 app.UseStaticFiles();
 app.UseDefaultFiles();
+
+// app.UseHttpsRedirection(); // Removed as HTTPS is handled by external proxy (e.g., Railway)
 
 app.UseAntiforgery();
 

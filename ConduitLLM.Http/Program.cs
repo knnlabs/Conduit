@@ -185,7 +185,7 @@ else
 app.UseStaticFiles();
 app.UseDefaultFiles();
 
-app.UseHttpsRedirection(); // Consider if needed depending on deployment
+// app.UseHttpsRedirection(); // Removed as HTTPS is handled by external proxy (e.g., Railway)
 
 app.UseAuthentication();
 app.UseAuthorization();

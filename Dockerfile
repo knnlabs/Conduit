@@ -52,18 +52,20 @@ RUN chmod +x ./start.sh
 # These can be overridden at runtime (e.g., via docker-compose.yml or docker run -e)
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV WebUIHttpPort=5001
-ENV WebUIHttpsPort=5002
+# ENV WebUIHttpsPort=5002 # Removed HTTPS
 ENV HttpApiHttpPort=5000
-ENV HttpApiHttpsPort=5003
+# ENV HttpApiHttpsPort=5003 # Removed HTTPS
 ENV DB_PROVIDER=sqlite
 # Recommend mounting /data as a volume for persistent storage
 ENV CONDUIT_SQLITE_PATH=/data/conduit.db
+# Base URL for the HTTP API, used by WebUI. Set to public HTTPS URL in deployment.
+ENV CONDUIT_API_BASE_URL=http://localhost:5000
 
 # Expose the ports the application listens on
 EXPOSE 5000
 EXPOSE 5001
-EXPOSE 5002
-EXPOSE 5003
+# EXPOSE 5002 # Removed HTTPS
+# EXPOSE 5003 # Removed HTTPS
 
 # Set the entrypoint to the start script
 ENTRYPOINT ["./start.sh"]

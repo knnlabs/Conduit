@@ -9,8 +9,8 @@ services:
       # Format: HOST:CONTAINER
       - "5000:5000" # Http API HTTP
       - "5001:5001" # WebUI HTTP
-      - "5002:5002" # WebUI HTTPS (Requires cert handling, see notes)
-      - "5003:5003" # Http API HTTPS (Requires cert handling, see notes)
+      # - "5002:5002" # WebUI HTTPS (Removed)
+      # - "5003:5003" # Http API HTTPS (Removed)
     volumes:
       # Mount a named volume for persistent data (e.g., SQLite DB)
       - conduit-data:/data
@@ -24,10 +24,11 @@ services:
       # DB_PROVIDER: postgres # Uncomment to switch to PostgreSQL
       # DB_CONNECTION_STRING: postgresql://user:password@host:port/database # Set if using PostgreSQL
       # CONDUIT_SQLITE_PATH: /data/conduit.db # Default path inside volume
+      # CONDUIT_API_BASE_URL: https://your-public-api-url.example.com # IMPORTANT: Set this in deployment (e.g., Railway) to the public HTTPS URL of the API service
       # WebUIHttpPort: 5001
-      # WebUIHttpsPort: 5002
+      # WebUIHttpsPort: 5002 # Removed
       # HttpApiHttpPort: 5000
-      # HttpApiHttpsPort: 5003
+      # HttpApiHttpsPort: 5003 # Removed
       # --- Cache Settings (Optional) ---
       # CONDUIT_CACHE_ENABLED: true
       # CONDUIT_CACHE_TYPE: Memory # Or Redis, etc.

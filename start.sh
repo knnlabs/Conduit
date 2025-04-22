@@ -24,25 +24,25 @@ echo "Building..."
 
 # Set port environment variables for the WebUI project
 export WebUIHttpPort="${WebUIHttpPort:-5001}"
-export WebUIHttpsPort="${WebUIHttpsPort:-5002}"
+# export WebUIHttpsPort="${WebUIHttpsPort:-5002}" # Removed HTTPS
 
 # Set port environment variables for the Http project
 export HttpApiHttpPort="${HttpApiHttpPort:-5000}"
-export HttpApiHttpsPort="${HttpApiHttpsPort:-5003}"
+# export HttpApiHttpsPort="${HttpApiHttpsPort:-5003}" # Removed HTTPS
 
 # Set development environment
 export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
 
 echo "Starting ConduitLLM with the following ports:"
 echo "WebUI HTTP: ${WebUIHttpPort}"
-echo "WebUI HTTPS: ${WebUIHttpsPort}"
+# echo "WebUI HTTPS: ${WebUIHttpsPort}" # Removed HTTPS
 echo "HTTP API HTTP: ${HttpApiHttpPort}"
-echo "HTTP API HTTPS: ${HttpApiHttpsPort}"
+# echo "HTTP API HTTPS: ${HttpApiHttpsPort}" # Removed HTTPS
 echo "Environment: ${ASPNETCORE_ENVIRONMENT}"
 
 # Run the Http project with its own URLs
 echo "Starting ConduitLLM.Http API and waiting for database migrations to complete..."
-ASPNETCORE_URLS="http://127.0.0.1:${HttpApiHttpPort};https://127.0.0.1:${HttpApiHttpsPort}" dotnet ConduitLLM.Http.dll --apply-migrations &
+ASPNETCORE_URLS="http://0.0.0.0:${HttpApiHttpPort}" dotnet ConduitLLM.Http.dll --apply-migrations &
 HTTP_PID=$!
 
 # Wait for database preparation to complete
@@ -59,4 +59,4 @@ fi
 
 # Run the WebUI project with its own URLs
 echo "Starting ConduitLLM.WebUI..."
-ASPNETCORE_URLS="http://127.0.0.1:${WebUIHttpPort};https://127.0.0.1:${WebUIHttpsPort}" dotnet ConduitLLM.WebUI.dll
+ASPNETCORE_URLS="http://0.0.0.0:${WebUIHttpPort}" dotnet ConduitLLM.WebUI.dll
