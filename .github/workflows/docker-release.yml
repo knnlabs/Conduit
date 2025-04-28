@@ -27,24 +27,52 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Add metadata for the WebUI image
+      - name: Extract metadata for WebUI
+        id: meta-webui
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/knnlabs/conduit-webui
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+
       # Build and push WebUI Docker image
       - name: Build and push WebUI Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./ConduitLLM.WebUI
+          context: .
           file: ./ConduitLLM.WebUI/Dockerfile
           push: true
+          tags: ${{ steps.meta-webui.outputs.tags }}
+          labels: ${{ steps.meta-webui.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Add metadata for the HTTP API image
+      - name: Extract metadata for HTTP API
+        id: meta-http
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/knnlabs/conduit-http
           tags: |
-            ghcr.io/knnlabs/conduit-webui:${{ github.ref_name }}
-            ghcr.io/knnlabs/conduit-webui:latest
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
 
       # Build and push Http Docker image
       - name: Build and push Http Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./ConduitLLM.Http
+          context: .
           file: ./ConduitLLM.Http/Dockerfile
           push: true
-          tags: |
-            ghcr.io/knnlabs/conduit-http:${{ github.ref_name }}
-            ghcr.io/knnlabs/conduit-http:latest
+          tags: ${{ steps.meta-http.outputs.tags }}
+          labels: ${{ steps.meta-http.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

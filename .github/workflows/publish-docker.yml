@@ -1,8 +1,10 @@
-name: Publish Docker image to GHCR
+# DEPRECATED - Use docker-release.yml instead
+# This file is kept for reference but should not be used
+
+name: DEPRECATED - Publish Docker image to GHCR
 
 on:
-  push:
-    branches: ['master', 'dev'] # Trigger on pushes to the master and dev branches
+  workflow_dispatch: # Only manual trigger, since we're using docker-release.yml now
 
 permissions:
   contents: read

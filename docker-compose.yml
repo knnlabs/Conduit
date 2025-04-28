@@ -12,32 +12,44 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conduit -d conduitdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
       context: .
       dockerfile: ConduitLLM.Http/Dockerfile
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_PROVIDER: postgres
       DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
       ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
     ports:
       - "5000:8080"
+    restart: always
 
   webui:
     build:
       context: .
       dockerfile: ConduitLLM.WebUI/Dockerfile
     depends_on:
+      - api
       - postgres
     environment:
       DB_PROVIDER: postgres
       DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
       ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      API_BASE_URL: http://api:8080 # Configure WebUI to talk to the API service
     ports:
       - "5001:8080"
+    restart: always
 
 volumes:
   pgdata:
