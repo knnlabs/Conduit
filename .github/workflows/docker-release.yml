@@ -59,6 +59,9 @@ jobs:
           labels: ${{ steps.meta-webui.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Add build args for better diagnostics
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
       # Add metadata for the HTTP API image
       - name: Extract metadata for HTTP API
@@ -84,3 +87,6 @@ jobs:
           labels: ${{ steps.meta-http.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Add build args for better diagnostics
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
