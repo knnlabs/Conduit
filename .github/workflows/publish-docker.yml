@@ -2,7 +2,7 @@ name: Publish Docker image to GHCR
 
 on:
   push:
-    branches: ['master'] # Trigger on pushes to the master branch
+    branches: ['master', 'dev'] # Trigger on pushes to the master and dev branches
 
 permissions:
   contents: read
@@ -29,7 +29,9 @@ jobs:
           images: ghcr.io/${{ github.repository }} # Uses owner/repo format like knnlabs/Conduit
           tags: |
             type=sha # Tag with the git commit SHA
-            type=raw,value=latest # Tag with 'latest'
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }} # 'latest' only for master
+            type=raw,value=master,enable=${{ github.ref_name == 'master' }} # 'master' tag only for master
+            type=raw,value=dev,enable=${{ github.ref_name == 'dev' }} # 'dev' tag only for dev
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
