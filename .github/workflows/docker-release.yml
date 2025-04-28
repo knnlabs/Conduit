@@ -19,6 +19,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # List contents for debugging
+      - name: List repository contents
+        run: |
+          ls -la
+          find . -type d -maxdepth 2 | sort
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
