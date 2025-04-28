@@ -1,17 +1,22 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy project files first (keeping paths relative to build context)
-COPY ConduitLLM.WebUI/. /src/ConduitLLM.WebUI/
-COPY ConduitLLM.Core/. /src/ConduitLLM.Core/
-COPY ConduitLLM.Common/. /src/ConduitLLM.Common/
-COPY ConduitLLM.Configuration/. /src/ConduitLLM.Configuration/
-COPY ConduitLLM.Providers/. /src/ConduitLLM.Providers/
-COPY *.sln /src/
+# First copy everything in separate commands to handle missing directories gracefully
+COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
+COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
+COPY ["ConduitLLM.Common", "/src/ConduitLLM.Common"]
+COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
+COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
+COPY ["*.sln", "/src/"]
 
-# Restore and build WebUI project only
-RUN dotnet restore "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj"
-RUN dotnet publish "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" -c Release -o /app/publish --no-restore
+# List what was actually copied (for debugging)
+RUN ls -la /src && ls -la /src/ConduitLLM.WebUI || echo "WebUI directory listing failed"
+
+# Restore and build WebUI project
+RUN dotnet restore "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" || \
+    (echo "Restore failed - check directory structure" && exit 1)
+
+RUN dotnet publish "ConduitLLM.WebUI/ConduitLLM.WebUI.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app

@@ -19,11 +19,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # List contents for debugging
-      - name: List repository contents
+      # Enhanced diagnostics for troubleshooting
+      - name: Check repository structure
         run: |
+          echo "==== Repository root structure ===="
           ls -la
-          find . -type d -maxdepth 2 | sort
+          echo "==== Project directories ===="
+          find . -maxdepth 1 -type d -name "ConduitLLM*" | sort
+          for dir in $(find . -maxdepth 1 -type d -name "ConduitLLM*"); do
+            echo "==== Contents of $dir ===="
+            ls -la $dir | head -n 10
+          done
+          echo "==== Solution files ===="
+          find . -maxdepth 1 -name "*.sln"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
