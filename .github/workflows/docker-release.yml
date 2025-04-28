@@ -1,4 +1,4 @@
-name: Build and Publish Docker image
+name: Build and Publish Docker images
 
 on:
   push:
@@ -27,21 +27,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=raw,value=${{ github.ref_name }}
-            type=raw,value=${{ github.ref_name }}-${{ github.sha }}
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
-
-      - name: Build and push Docker image
+      # Build and push WebUI Docker image
+      - name: Build and push WebUI Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./ConduitLLM.WebUI
+          file: ./ConduitLLM.WebUI/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/${{ github.repository }}-webui:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}-webui:latest
+
+      # Build and push Http Docker image
+      - name: Build and push Http Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ConduitLLM.Http
+          file: ./ConduitLLM.Http/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-http:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}-http:latest

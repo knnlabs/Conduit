@@ -75,6 +75,54 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
    dotnet run
    ```
 
+## Docker Images: WebUI and Http Separation
+
+As of April 2025, ConduitLLM is distributed as two separate Docker images:
+
+- **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
+- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
+
+Each image is published independently:
+
+- `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
+
+### Running with Docker Compose
+
+Create a `docker-compose.yml`:
+
+```yaml
+services:
+  webui:
+    image: ghcr.io/knnlabs/conduit-webui:latest
+    ports:
+      - "5001:8080"
+    environment:
+      # ... WebUI environment variables
+
+  http:
+    image: ghcr.io/knnlabs/conduit-http:latest
+    ports:
+      - "5000:8080"
+    environment:
+      # ... API Gateway environment variables
+```
+
+Then start both services:
+
+```bash
+docker compose up -d
+```
+
+Or run separately:
+
+```bash
+docker run -d --name conduit-webui -p 5001:8080 ghcr.io/knnlabs/conduit-webui:latest
+docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:latest
+```
+
+> **Note:** Update all deployment scripts and CI/CD workflows to use the new image tags. See `.github/workflows/docker-release.yml` for reference.
+
 ## Initial Configuration
 
 1. Open your browser and navigate to the WebUI.

@@ -63,6 +63,55 @@ flowchart LR
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
 
+### Docker Images: WebUI and Http Separation
+
+As of April 2025, ConduitLLM is split into two separate Docker images:
+
+- **WebUI Image**: Contains the Blazor-based administrative dashboard (`ConduitLLM.WebUI`).
+- **Http Image**: Contains the OpenAI-compatible REST API gateway (`ConduitLLM.Http`).
+
+Each service is built, tagged, and published as an independent container:
+
+- `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
+
+#### Why this change?
+- **Separation of concerns**: Web UI and API gateway can be scaled, deployed, and maintained independently.
+- **Improved security**: You can isolate the WebUI from the API gateway if desired.
+- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage.
+
+#### How to use the new images
+
+With Docker Compose:
+
+```yaml
+docker-compose.yml
+
+services:
+  webui:
+    image: ghcr.io/knnlabs/conduit-webui:latest
+    ports:
+      - "5001:8080"
+    environment:
+      # ... WebUI environment variables
+
+  http:
+    image: ghcr.io/knnlabs/conduit-http:latest
+    ports:
+      - "5000:8080"
+    environment:
+      # ... API Gateway environment variables
+```
+
+Or run separately:
+
+```bash
+docker run -d --name conduit-webui -p 5001:8080 ghcr.io/knnlabs/conduit-webui:latest
+docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:latest
+```
+
+> **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
+
 ## Quick Start
 
 ### Prerequisites
