@@ -35,8 +35,8 @@ jobs:
           file: ./ConduitLLM.WebUI/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-webui:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}-webui:latest
+            ghcr.io/knnlabs/conduit-webui:${{ github.ref_name }}
+            ghcr.io/knnlabs/conduit-webui:latest
 
       # Build and push Http Docker image
       - name: Build and push Http Docker image
@@ -46,5 +46,5 @@ jobs:
           file: ./ConduitLLM.Http/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-http:${{ github.ref_name }}
-            ghcr.io/${{ github.repository }}-http:latest
+            ghcr.io/knnlabs/conduit-http:${{ github.ref_name }}
+            ghcr.io/knnlabs/conduit-http:latest
