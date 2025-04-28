@@ -1,44 +1,43 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  conduit:
-    build: .
-    container_name: conduitllm
-    ports:
-      # Map host ports to container ports
-      # Format: HOST:CONTAINER
-      - "5000:5000" # Http API HTTP
-      - "5001:5001" # WebUI HTTP
-      # - "5002:5002" # WebUI HTTPS (Removed)
-      # - "5003:5003" # Http API HTTPS (Removed)
-    volumes:
-      # Mount a named volume for persistent data (e.g., SQLite DB)
-      - conduit-data:/data
+  postgres:
+    image: postgres:16
+    restart: always
     environment:
-      # Add a placeholder to ensure 'environment' is a valid mapping
-      # You can remove this if you uncomment any variables below.
-      PLACEHOLDER_VAR: "remove_or_replace_me"
-      # Override environment variables defined in Dockerfile if needed
-      # ASPNETCORE_ENVIRONMENT: Development # Uncomment for development
-      # CONDUIT_MASTER_KEY: your_strong_master_key # Set a fixed key if desired
-      # DB_PROVIDER: postgres # Uncomment to switch to PostgreSQL
-      # DB_CONNECTION_STRING: postgresql://user:password@host:port/database # Set if using PostgreSQL
-      # CONDUIT_SQLITE_PATH: /data/conduit.db # Default path inside volume
-      # CONDUIT_API_BASE_URL: https://your-public-api-url.example.com # IMPORTANT: Set this in deployment (e.g., Railway) to the public HTTPS URL of the API service
-      # WebUIHttpPort: 5001
-      # WebUIHttpsPort: 5002 # Removed
-      # HttpApiHttpPort: 5000
-      # HttpApiHttpsPort: 5003 # Removed
-      # --- Cache Settings (Optional) ---
-      # CONDUIT_CACHE_ENABLED: true
-      # CONDUIT_CACHE_TYPE: Memory # Or Redis, etc.
-      # CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES: 60
-      # CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES: 15
-    restart: unless-stopped
-    # Note on HTTPS: The default ASP.NET Core development certificate won't be trusted
-    # by default outside the container. For production or trusted HTTPS, you'll need
-    # to configure certificate management (e.g., mount certs, use a reverse proxy).
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Http/Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      DB_PROVIDER: postgres
+      DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5000:8080"
+
+  webui:
+    build:
+      context: .
+      dockerfile: ConduitLLM.WebUI/Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      DB_PROVIDER: postgres
+      DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5001:8080"
 
 volumes:
-  conduit-data:
-    driver: local # Use local driver for the named volume
+  pgdata:
