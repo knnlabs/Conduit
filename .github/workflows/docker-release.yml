@@ -31,7 +31,7 @@ jobs:
       - name: Build and push WebUI Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./ConduitLLM.WebUI
+          context: .
           file: ./ConduitLLM.WebUI/Dockerfile
           push: true
           tags: |
@@ -42,7 +42,7 @@ jobs:
       - name: Build and push Http Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./ConduitLLM.Http
+          context: .
           file: ./ConduitLLM.Http/Dockerfile
           push: true
           tags: |
