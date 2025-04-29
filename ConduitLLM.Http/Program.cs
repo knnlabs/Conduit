@@ -9,9 +9,6 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
-using ConduitLLM.WebUI.Data; // Added for DbContext and models
-using ConduitLLM.WebUI.Interfaces; // Added for IVirtualKeyService
-using ConduitLLM.WebUI.Services;  // Added for VirtualKeyService
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -71,14 +68,10 @@ if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseSqlite(dbConnectionString));
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
 }
 else if (dbProvider == "postgres")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
         options.UseNpgsql(dbConnectionString));
 }
 else
@@ -100,8 +93,6 @@ using (var scope = app.Services.CreateScope())
         // Apply migrations for all relevant DbContexts
         var configDb = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.ConfigurationDbContext>();
         configDb.Database.Migrate();
-        var webUiConfigDb = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Data.ConfigurationDbContext>();
-        webUiConfigDb.Database.Migrate();
         
         Console.WriteLine("[Conduit] Database migrations applied successfully.");
     }
@@ -750,7 +741,7 @@ app.MapPost("/admin/refresh-configuration", async (
     [FromServices] IOptions<ConduitSettings> settingsOptions,
     [FromServices] ILogger<Program> logger,
     [FromServices] IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject Config factory
-    [FromServices] IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> webUiDbContextFactory) => // Inject WebUI factory
+    HttpRequest httpRequest) => // Removed WebUI factory injection
 {
     logger.LogInformation("Received configuration refresh request"); // Correct LogInformation call
     
@@ -798,43 +789,6 @@ app.MapPost("/admin/refresh-configuration", async (
             foreach (var cred in providersList)
             {
                 logger.LogInformation("Refreshed credentials for provider: {ProviderName}", cred.ProviderName);
-            }
-        }
-        
-        // Load model mappings from WebUI context
-        await using var webUiDbContext = await webUiDbContextFactory.CreateDbContextAsync();
-        var modelMappings = await webUiDbContext.ModelMappings.ToListAsync();
-        
-        if (modelMappings.Any())
-        {
-            logger.LogInformation("Refreshing {Count} model mappings from database", modelMappings.Count); // Correct LogInformation call
-            
-            // Convert database model mappings to settings model mappings
-            var mappingsList = modelMappings.Select(m => new ModelProviderMapping
-            {
-                ModelAlias = m.ModelAlias,
-                ProviderName = m.ProviderName,
-                ProviderModelId = m.ProviderModelId
-            }).ToList();
-            
-            // Initialize or clear the existing mappings
-            if (settings.ModelMappings == null)
-            {
-                settings.ModelMappings = new List<ModelProviderMapping>();
-            }
-            else
-            {
-                // Replace all in-memory mappings with database ones
-                settings.ModelMappings.Clear();
-            }
-            
-            // Add all database mappings
-            settings.ModelMappings.AddRange(mappingsList);
-            
-            foreach (var mapping in mappingsList)
-            {
-                logger.LogInformation("Refreshed model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
-                    mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
             }
         }
         
@@ -934,7 +888,6 @@ app.MapGet("/v1/models", async (
     [FromServices] ILogger<Program> logger,
     [FromServices] IVirtualKeyService virtualKeyService,
     [FromServices] IOptions<ConduitSettings> settingsOptions,
-    [FromServices] IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> dbContextFactory,
     HttpRequest httpRequest) =>
 {
     logger.LogInformation("Received /v1/models request");
@@ -1122,18 +1075,15 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
 {
     // Inject both factories
     private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configDbContextFactory;
-    private readonly IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> _webUiDbContextFactory;
     private readonly IOptions<ConduitSettings> _settingsOptions;
     private readonly ILogger<DatabaseSettingsStartupFilter> _logger;
 
     public DatabaseSettingsStartupFilter(
         IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configDbContextFactory, // Inject correct factory
-        IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> webUiDbContextFactory, // Inject WebUI factory
         IOptions<ConduitSettings> settingsOptions,
         ILogger<DatabaseSettingsStartupFilter> logger)
     {
         _configDbContextFactory = configDbContextFactory; // Assign correct factory
-        _webUiDbContextFactory = webUiDbContextFactory; // Assign WebUI factory
         _settingsOptions = settingsOptions;
         _logger = logger;
     }
@@ -1193,47 +1143,6 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             else
             {
                 _logger.LogWarning("No provider credentials found in database");
-            }
-
-            // Load model mappings from WebUI context
-            await using var webUiDbContext = await _webUiDbContextFactory.CreateDbContextAsync();
-            var modelMappings = await webUiDbContext.ModelMappings.ToListAsync();
-            if (modelMappings.Any())
-            {
-                _logger.LogInformation("Found {Count} model mappings in database", modelMappings.Count);
-                
-                // Convert database model mappings to settings model mappings
-                var mappingsList = modelMappings.Select(m => new ModelProviderMapping
-                {
-                    ModelAlias = m.ModelAlias,
-                    ProviderName = m.ProviderName,
-                    ProviderModelId = m.ProviderModelId
-                }).ToList();
-                
-                // Initialize or clear the existing mappings
-                if (settings.ModelMappings == null)
-                {
-                    settings.ModelMappings = new List<ModelProviderMapping>();
-                }
-                else
-                {
-                    // Replace all in-memory mappings with database ones
-                    settings.ModelMappings.Clear();
-                }
-                
-                // Add all database mappings
-                settings.ModelMappings.AddRange(mappingsList);
-                
-                // Log the loaded mappings
-                foreach (var mapping in mappingsList)
-                {
-                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
-                        mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("No model mappings found in database");
             }
         }
         catch (Exception ex)
