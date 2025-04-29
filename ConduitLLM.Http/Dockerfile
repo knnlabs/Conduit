@@ -15,6 +15,7 @@ COPY ["ConduitLLM.Http", "/src/ConduitLLM.Http"]
 COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
 COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
 COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
+COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
 # Copy solution file if it exists
 COPY ["*.sln", "/src/"]
 
