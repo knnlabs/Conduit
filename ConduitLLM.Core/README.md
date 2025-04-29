@@ -26,6 +26,17 @@
 - `Routing/`: Routing logic and strategies.
 - `Repositories/`, `Services/`, `Caching/`: Support for advanced features and extensibility.
 
+## Database Helper
+
+The `DbConnectionHelper` class provides unified detection and parsing of database configuration via environment variables:
+
+- **Postgres:**
+  - Set `DATABASE_URL` (e.g., `postgresql://user:password@host:5432/database`)
+- **SQLite:**
+  - Set `CONDUIT_SQLITE_PATH` (e.g., `/data/ConduitConfig.db`)
+
+No other DB-related variables are needed. The helper will auto-detect the provider and parse the connection string for use with EF Core.
+
 ## Usage
 
 Typically, you do not use `ConduitLLM.Core` directly. Instead, reference it from API or service projects. However, for direct use:

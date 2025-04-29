@@ -1,3 +1,12 @@
+# --- Database Configuration ---
+# For Postgres, set DATABASE_URL in the format:
+#   DATABASE_URL=postgresql://user:password@host:port/database
+# For SQLite, set CONDUIT_SQLITE_PATH to the desired file path (default: ConduitConfig.db)
+# Example (Postgres):
+#   ENV DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb
+# Example (SQLite):
+#   ENV CONDUIT_SQLITE_PATH=/data/ConduitConfig.db
+
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 

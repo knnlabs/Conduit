@@ -38,65 +38,26 @@ using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Get database provider configuration from environment variables
-string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
-string? dbConnectionString = null;
-
-// Prefer CONDUIT_SQLITE_PATH for SQLite, fallback to DB_CONNECTION_STRING, then appsettings.json
-if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+// Database configuration
+var (dbProvider, dbConnectionString) = DbConnectionHelper.GetProviderAndConnectionString();
+if (dbProvider == "sqlite")
 {
-    string? sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
-    if (!string.IsNullOrEmpty(sqlitePath))
-    {
-        dbConnectionString = $"Data Source={sqlitePath}";
-        builder.Logging.AddConsole();
-        builder.Logging.Configure(options => { }); // Ensure logging is enabled
-        Console.WriteLine($"[Conduit] Using SQLite path from CONDUIT_SQLITE_PATH: {sqlitePath}");
-    }
-    else
-    {
-        dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-        if (!string.IsNullOrEmpty(dbConnectionString))
-        {
-            Console.WriteLine($"[Conduit] Using SQLite path from DB_CONNECTION_STRING: {dbConnectionString}");
-        }
-        else
-        {
-            dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=ConduitConfig.db";
-            Console.WriteLine($"[Conduit] Using SQLite path from default/appsettings.json: {dbConnectionString}");
-        }
-    }
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString));
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString));
 }
-else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+else if (dbProvider == "postgres")
 {
-    dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-    if (string.IsNullOrEmpty(dbConnectionString))
-    {
-        dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    }
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
+    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
 }
 else
 {
-    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
 }
-
-// Add the custom EF configuration provider
-if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
-{
-    // Default to SQLite
-    builder.Configuration.AddEntityFrameworkConfiguration(options => options.UseSqlite(dbConnectionString));
-}
-#if POSTGRES
-// PostgreSQL configuration will be handled by the Dockerfile and runtime configuration
-else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
-{
-    // This will be set up at runtime with the proper dependencies
-    builder.Configuration.AddEntityFrameworkConfiguration(options => {
-        // This requires the Npgsql EF Core package to be referenced correctly
-        options.UseNpgsql(dbConnectionString);
-    });
-}
-#endif
 
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -130,47 +91,6 @@ builder.Services.AddHttpContextAccessor();
 
 // Configure ConduitSettings to be bound from the application's configuration
 builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nameof(ConduitSettings)));
-
-// Configure DbContext Factory based on the provider
-if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-    {
-        options.UseSqlite(dbConnectionString);
-        if (builder.Environment.IsDevelopment())
-        {
-            // Suppress the pending model changes warning in development
-            options.ConfigureWarnings(warnings => 
-                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        }
-    });
-    
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-    {
-        options.UseSqlite(dbConnectionString);
-        if (builder.Environment.IsDevelopment())
-        {
-            // Suppress the pending model changes warning in development
-            options.ConfigureWarnings(warnings => 
-                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        }
-        
-        // Configure entity types that need explicit configuration
-        options.UseModel(new ConduitLLM.Configuration.ConfigurationDbContext(
-            new DbContextOptionsBuilder<ConduitLLM.Configuration.ConfigurationDbContext>()
-                .UseSqlite(dbConnectionString)
-                .Options).Model);
-    });
-}
-#if POSTGRES
-else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-}
-#endif
 
 // Register HttpClient for calling the API proxy
 // Default client for general use - REMOVED incorrect default registration with hardcoded base address
@@ -256,6 +176,10 @@ builder.Services.AddControllers();
 builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
+
+// Log database configuration ONCE, avoid duplicate logger declarations
+var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbConnection");
+DbConnectionHelper.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
 
 // Print master key for debugging purposes
 var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");

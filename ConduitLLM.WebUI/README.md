@@ -40,6 +40,17 @@ export WebUIHttpsPort=8443
 ### App Settings
 Configuration files like `appsettings.json` and `appsettings.Development.json` provide additional options for customizing the WebUI (e.g., logging, connection strings, feature toggles).
 
+## Database Configuration
+
+This service supports both Postgres and SQLite, configured via environment variables ONLY (no appsettings.json required):
+
+- **Postgres:**
+  - Set `DATABASE_URL` (e.g., `postgresql://user:password@host:5432/database`)
+- **SQLite:**
+  - Set `CONDUIT_SQLITE_PATH` (e.g., `/data/ConduitConfig.db`)
+
+No other DB-related variables are needed. The service will auto-detect the provider.
+
 ## Building and Running
 
 ### Prerequisites

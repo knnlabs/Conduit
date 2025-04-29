@@ -65,89 +65,32 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, 
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 builder.Services.AddMemoryCache();
 
-// 2. Register DbContext Factory (using connection string from appsettings.json)
-// Get database provider configuration from environment variables
-string dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
-string? dbConnectionString = null;
-
-// Prefer CONDUIT_SQLITE_PATH for SQLite, fallback to DB_CONNECTION_STRING, then appsettings.json
-if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase))
+// 2. Register DbContext Factory (using connection string from environment variables)
+var (dbProvider, dbConnectionString) = DbConnectionHelper.GetProviderAndConnectionString();
+if (dbProvider == "sqlite")
 {
-    string? sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
-    if (!string.IsNullOrEmpty(sqlitePath))
-    {
-        dbConnectionString = $"Data Source={sqlitePath}";
-        Console.WriteLine($"[Conduit] Using SQLite path from CONDUIT_SQLITE_PATH: {sqlitePath}");
-    }
-    else
-    {
-        dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-        if (!string.IsNullOrEmpty(dbConnectionString))
-        {
-            Console.WriteLine($"[Conduit] Using SQLite path from DB_CONNECTION_STRING: {dbConnectionString}");
-        }
-        else
-        {
-            dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-            Console.WriteLine($"[Conduit] Using SQLite path from default/appsettings.json: {dbConnectionString}");
-        }
-    }
-}
-else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
-{
-    dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-    if (string.IsNullOrEmpty(dbConnectionString))
-    {
-        dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    }
-}
-else
-{
-    dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
-
-// Configure DbContext Factory based on the database provider
-if (dbProvider.Equals("sqlite", StringComparison.OrdinalIgnoreCase)) 
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString)); // Existing registration for WebUI context
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString)); // Add this for ConfigurationDbContext
-}
-else if (dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
-{
+        options.UseSqlite(dbConnectionString));
     builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString)); // Existing registration for WebUI context
+        options.UseSqlite(dbConnectionString));
+}
+else if (dbProvider == "postgres")
+{
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString)); // Add this for ConfigurationDbContext
+        options.UseNpgsql(dbConnectionString));
+    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
 }
 else
 {
     throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
 }
 
-// 3. Register Conduit Services
-// TODO: Consider creating a dedicated extension method like AddConduit() in Core or Providers
-builder.Services.AddHttpClient(); // Required by LLMClientFactory and potentially clients
-builder.Services.AddSingleton<ILLMClientFactory, LLMClientFactory>();
-builder.Services.AddScoped<Conduit>(); // Scoped might be appropriate if clients hold state per request
-
-// 4. Register Virtual Key Service (scoped as it uses DbContextFactory)
-builder.Services.AddScoped<IVirtualKeyService, VirtualKeyService>();
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Fix: Add Authentication services
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
-
-// Register HttpClient with retry policies for LLM providers
-builder.Services.AddLLMProviderHttpClients();
-
 var app = builder.Build();
+
+// Log database configuration ONCE, avoid duplicate logger declarations
+var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbConnection");
+DbConnectionHelper.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
 
 // --- AUTOMATIC DATABASE MIGRATION ---
 using (var scope = app.Services.CreateScope())

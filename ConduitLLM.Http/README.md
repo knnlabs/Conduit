@@ -58,6 +58,17 @@ Example snippet:
 }
 ```
 
+### Database Configuration
+
+This service supports both Postgres and SQLite, configured via environment variables ONLY (no appsettings.json required):
+
+- **Postgres:**
+  - Set `DATABASE_URL` (e.g., `postgresql://user:password@host:5432/database`)
+- **SQLite:**
+  - Set `CONDUIT_SQLITE_PATH` (e.g., `/data/ConduitConfig.db`)
+
+No other DB-related variables are needed. The service will auto-detect the provider.
+
 ### Docker & Port Management
 
 - Designed for containerization. Ports are set via environment variables for flexible deployment.
@@ -69,7 +80,6 @@ To ensure your SQLite database persists across container restarts, set the `COND
 
 ```yaml
 environment:
-  - DB_PROVIDER=sqlite
   - CONDUIT_SQLITE_PATH=/data/conduit.db
 volumes:
   - ./my-data:/data

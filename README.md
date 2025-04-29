@@ -112,6 +112,24 @@ docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:late
 
 > **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
 
+## Database Configuration (Postgres & SQLite)
+
+Conduit now supports robust, container-friendly database configuration via environment variables ONLY (no appsettings.json required).
+
+- **Postgres:**
+  - Set `DATABASE_URL` in the format:
+    - `postgresql://user:password@host:port/database`
+  - Example:
+    - `DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb`
+- **SQLite:**
+  - Set `CONDUIT_SQLITE_PATH` to the file path (default: `ConduitConfig.db`)
+  - Example:
+    - `CONDUIT_SQLITE_PATH=/data/ConduitConfig.db`
+
+No other database-related environment variables are needed. The application will auto-detect which provider to use.
+
+For more details, see the per-service README files.
+
 ## Quick Start
 
 ### Prerequisites
