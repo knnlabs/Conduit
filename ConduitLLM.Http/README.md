@@ -134,6 +134,60 @@ For more help, see the Database Status page in the WebUI.
 
 - POST `/admin/refresh-configuration` endpoint reloads provider credentials and model mappings from the database.
 
+## Health Checks
+
+The API provides health check endpoints for monitoring and container orchestration:
+
+### Database Health Endpoint
+
+- `GET /health/db`: Checks database connectivity and migration status
+- Returns:
+  - **200 OK**: Database is reachable and all migrations are applied
+  - **503 Service Unavailable**: Database is unreachable or migrations are pending
+  - **500 Internal Server Error**: Unexpected error occurred during health check
+
+The response is a JSON payload with the following structure:
+```json
+{
+  "status": "healthy",  // or "unhealthy"
+  "timestamp": "2025-04-30T07:30:04.5478Z",
+  "details": null  // Contains error information when unhealthy
+}
+```
+
+### Using with Docker & Kubernetes
+
+For Docker Compose health checks:
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:5000/health/db"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+```
+
+For Kubernetes readiness and liveness probes:
+```yaml
+readinessProbe:
+  httpGet:
+    path: /health/db
+    port: 5000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /health/db
+    port: 5000
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+```
+
 ## Development Notes
 
 - Uses ASP.NET Core Minimal APIs

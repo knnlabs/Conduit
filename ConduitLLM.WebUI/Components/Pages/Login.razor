@@ -5,11 +5,11 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Cryptography
 @using System.Text
-@using Microsoft.AspNetCore.Components.Forms // Add this using directive
+@using Microsoft.AspNetCore.Components.Forms
 @inject NavigationManager NavigationManager
 @inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @inject IHttpContextAccessor HttpContextAccessor
-@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery // Inject IAntiforgery
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject ILogger<Login> Logger
 
 <PageTitle>Login - ConduitLLM</PageTitle>
