@@ -1,14 +1,14 @@
-@page "/configuration/provider/edit/{Id:int?}"
-@using ConduitLLM.WebUI.Data
-@using ConduitLLM.WebUI.Services
-@using Microsoft.EntityFrameworkCore 
-@using Microsoft.Extensions.Logging 
+@page "/provider-edit/{id?}"
 @using System.Text.Json
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Logging
+@using ConduitLLM.Configuration
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.WebUI.Services
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
-@inject ConfigurationChangeNotifier ConfigNotifier 
+@inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
 @rendermode InteractiveServer
 
@@ -217,7 +217,7 @@ else
             try
             {
                 // Use Config context for ProviderCredentials
-                using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
                 var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
                 
                 if (existingProvider != null)
@@ -267,7 +267,7 @@ else
             try 
             {
                 // Use Config context for ProviderCredentials
-                await using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
                 
                 if (Id.HasValue) // Edit
                 {
@@ -338,7 +338,7 @@ else
             try
             {
                 // Get the proxy base URL from global settings (using Config context)
-                await using var configContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+                await using var configContext = await DbContextFactory.CreateDbContextAsync(); 
                 var proxyUrlSetting = await configContext.GlobalSettings
                     .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
                 

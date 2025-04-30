@@ -1,19 +1,18 @@
 @page "/chat"
-@using System.Text
-@using System.Net.Http.Headers
-@using System.Text.Json
-@using Microsoft.AspNetCore.Components.Rendering
-@using System.Text.Json.Serialization
-@using ConduitLLM.Configuration
-@using ConduitLLM.Core.Models
-@using Microsoft.Extensions.Options
-@using ConduitLLM.WebUI.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Options
+@using ConduitLLM.Core.Models
+@using ConduitLLM.Configuration
+@using ConduitLLM.Configuration.Entities
+@using Microsoft.AspNetCore.Components.Rendering
 @using ConduitLLM.WebUI.Components.Shared
-@inject IHttpClientFactory HttpClientFactory
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using System.Text
+@using System.Net.Http
+@using System.Net.Http.Headers
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
@@ -145,7 +144,7 @@ else
 
 @code {
     private ConduitSettings settings => ConduitSettingsOptions.Value;
-    private List<ModelProviderMapping> modelMappings = new();
+    private List<ConduitLLM.Configuration.ModelProviderMapping> modelMappings = new();
     private string selectedModelAlias = "";
     private string systemPrompt = "";
     private string userMessage = "";
@@ -153,8 +152,8 @@ else
     private int? maxTokens = null;
     private bool streamResponse = true;
     private string? apiKeyOverride = null;
-    private double? topP = null; 
-    private string? stopSequences = null; 
+    private double topP = 1.0;
+    private string stopSequences = "";
 
     private string errorMessage = "";
     private bool isLoading = false;
@@ -175,21 +174,23 @@ else
     {
         try
         {
-            // Use WebUI context for ModelMappings
-            await using var dbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
-            var dbMappings = await dbContext.ModelMappings.ToListAsync();
-            
-            // Convert database mappings to Configuration model mappings
-            modelMappings = dbMappings.Select(m => new ModelProviderMapping
+            // Use consolidated context for ModelMappings
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
+            var entityMappings = await dbContext.ModelProviderMappings
+                .OrderBy(m => m.ModelAlias)
+                .ToListAsync();
+                
+            modelMappings = entityMappings.Select(m => new ConduitLLM.Configuration.ModelProviderMapping 
             {
                 ModelAlias = m.ModelAlias,
-                ProviderName = m.ProviderName,
-                ProviderModelId = m.ProviderModelId
+                ProviderName = m.ProviderCredential.ProviderName,
+                ProviderModelId = m.ProviderModelName
             }).ToList();
         }
         catch (Exception ex)
         {
             errorMessage = $"Error loading model mappings: {ex.Message}";
+            Console.Error.WriteLine(ex.ToString());
         }
     }
 
@@ -197,8 +198,8 @@ else
     {
         try
         {
-            // Use Config context for GlobalSettings
-            await using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            // Use consolidated context for GlobalSettings
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
             var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitProxyBaseUrl"); // Use FirstOrDefaultAsync for potentially non-PK lookup
             _proxyBaseUrl = setting?.Value ?? "http://localhost:5000"; 
         }
@@ -245,14 +246,14 @@ else
         {
             Model = selectedModelAlias,
             Messages = messagesToSend, 
-            Temperature = (topP == null) ? temperature : (double?)null, 
+            Temperature = (topP == 0) ? temperature : (double?)null, 
             MaxTokens = maxTokens,
             TopP = topP, 
             Stop = ParseStopSequences(stopSequences), 
             Stream = streamResponse
         };
 
-        var httpClient = HttpClientFactory.CreateClient();
+        var httpClient = new HttpClient();
         var requestUri = $"{_proxyBaseUrl}/v1/chat/completions";
 
         try
@@ -428,8 +429,8 @@ else
         userMessage = "";
         errorMessage = "";
         apiKeyOverride = null;
-        topP = null; 
-        stopSequences = null; 
+        topP = 1.0; 
+        stopSequences = ""; 
         chatHistory.Clear(); 
         // Optionally reset other parameters like temperature?
         StateHasChanged();

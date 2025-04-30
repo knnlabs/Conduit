@@ -2,13 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace ConduitLLM.WebUI.Data.Entities
+namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
-    /// Database entity representing router configuration
+    /// Database entity representing router configuration for LLM routing
     /// </summary>
     public class RouterConfigEntity
     {
+        /// <summary>
+        /// Primary key for the router configuration
+        /// </summary>
         [Key]
         public int Id { get; set; }
         

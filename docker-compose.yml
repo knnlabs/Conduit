@@ -26,13 +26,13 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_PROVIDER: postgres
-      DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
+      CONDUIT_DATABASE_ENSURE_CREATED: "true"
     ports:
       - "5000:8080"
-    restart: always
+    restart: on-failure
 
   webui:
     build:
@@ -42,14 +42,14 @@ services:
       - api
       - postgres
     environment:
-      DB_PROVIDER: postgres
-      DB_CONNECTION_STRING: Host=postgres;Port=5432;Database=conduitdb;Username=conduit;Password=conduitpass
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      API_BASE_URL: http://api:8080 # Configure WebUI to talk to the API service
+      API_BASE_URL: http://api:8080
+      CONDUIT_DATABASE_ENSURE_CREATED: "true"
     ports:
       - "5001:8080"
-    restart: always
+    restart: on-failure
 
 volumes:
   pgdata:

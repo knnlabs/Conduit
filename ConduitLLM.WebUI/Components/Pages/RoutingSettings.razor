@@ -1,20 +1,17 @@
 @page "/routing-settings"
-@using ConduitLLM.Core.Models.Routing
-@using ConduitLLM.WebUI.Interfaces
-@using ConduitLLM.Configuration.Options
-@using ConduitLLM.WebUI.Services
-@using Microsoft.Extensions.Options
 @using Microsoft.EntityFrameworkCore
-@using ConduitLLM.WebUI.Data
+@using ConduitLLM.Configuration
+@using ConduitLLM.WebUI.Interfaces
+@using System.ComponentModel.DataAnnotations
+@using ConduitLLM.Core.Models.Routing
+@using ConduitLLM.Core.Routing
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.WebUI.Services
+@using Microsoft.Extensions.Logging
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject IRouterService RouterService
-@rendermode InteractiveServer
-@inject IOptions<RouterOptions> RouterOptions
 @inject RouterOptionsService RouterOptionsService
 @inject ILogger<RoutingSettings> Logger
-@inject IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext> WebUIDbContextFactory // Inject WebUI factory
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
-
-<PageTitle>ConduitLLM - Routing Settings</PageTitle>
 
 <h1>
     <span class="bi bi-shuffle" aria-hidden="true"></span> Routing Settings
@@ -395,8 +392,8 @@ else
     private Guid _selectedFallbackModelId = Guid.Empty;
     
     // Lists for dropdowns
-    private List<DbProviderCredentials> _availableProviders = new();
-    private List<DbModelProviderMapping> _availableModelMappings = new();
+    private List<ConduitLLM.Configuration.Entities.ProviderCredential> _availableProviders = new();
+    private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> _availableModelMappings = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -851,29 +848,18 @@ else
     {
         try
         {
-            // Load providers from Config context
-            using var configDbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
-            var configCreds = await configDbContext.ProviderCredentials
-                .OrderBy(p => p.ProviderName)
-                .ToListAsync();
-            // Map to WebUI entity type for the dropdown
-            _availableProviders = configCreds.Select(c => new DbProviderCredentials {
-                Id = c.Id,
-                ProviderName = c.ProviderName
-                // Removed mapping for Name as it doesn't exist on the source ProviderCredential
-                // Map other needed properties if any
-            }).ToList();
-
-            // Load model mappings from WebUI context
-            using var webUiDbContext = await WebUIDbContextFactory.CreateDbContextAsync(); 
-            _availableModelMappings = await webUiDbContext.ModelMappings
-                .OrderBy(m => m.ModelAlias)
-                .ToListAsync();
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            
+            // Load providers
+            _availableProviders = await dbContext.ProviderCredentials.ToListAsync();
+            
+            // Load model mappings
+            _availableModelMappings = await dbContext.ModelProviderMappings.ToListAsync();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading providers and model mappings");
-            // Don't set status message as this is a background operation
+            Logger.LogError(ex, "Error loading providers and mappings");
+            SetStatusMessage("Failed to load providers and mappings: " + ex.Message, true);
         }
     }
 }

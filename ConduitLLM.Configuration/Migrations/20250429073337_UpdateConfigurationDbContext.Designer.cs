@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,62 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    partial class ConfigurationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250429073337_UpdateConfigurationDbContext")]
+    partial class UpdateConfigurationDbContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("PrimaryModelDeploymentId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RouterConfigId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PrimaryModelDeploymentId");
-
-                    b.HasIndex("RouterConfigId");
-
-                    b.ToTable("FallbackConfigurations");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("FallbackConfigurationId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ModelDeploymentId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FallbackConfigurationId", "ModelDeploymentId")
-                        .IsUnique();
-
-                    b.HasIndex("FallbackConfigurationId", "Order")
-                        .IsUnique();
-
-                    b.ToTable("FallbackModelMappings");
-                });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
                 {
@@ -135,70 +88,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ModelIdPattern");
 
                     b.ToTable("ModelCosts");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("HealthCheckEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal?>("InputTokenCostPer1K")
-                        .HasColumnType("decimal(18, 8)");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsHealthy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ModelName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal?>("OutputTokenCostPer1K")
-                        .HasColumnType("decimal(18, 8)");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ProviderName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("RPM")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RouterConfigId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("TPM")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Weight")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsEnabled");
-
-                    b.HasIndex("IsHealthy");
-
-                    b.HasIndex("ModelName");
-
-                    b.HasIndex("ProviderName");
-
-                    b.HasIndex("RouterConfigId");
-
-                    b.ToTable("ModelDeployments");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
@@ -369,39 +258,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("RequestLogs");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DefaultRoutingStrategy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("FallbacksEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("MaxRetries")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RetryBaseDelayMs")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RetryMaxDelayMs")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LastUpdated");
-
-                    b.ToTable("RouterConfigurations");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
                 {
                     b.Property<int>("Id")
@@ -494,39 +350,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("VirtualKeySpendHistory");
                 });
 
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
-                        .WithMany("FallbackConfigurations")
-                        .HasForeignKey("RouterConfigId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("RouterConfig");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", "FallbackConfiguration")
-                        .WithMany("FallbackMappings")
-                        .HasForeignKey("FallbackConfigurationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("FallbackConfiguration");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.RouterConfigEntity", "RouterConfig")
-                        .WithMany("ModelDeployments")
-                        .HasForeignKey("RouterConfigId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("RouterConfig");
-                });
-
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
                 {
                     b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
@@ -568,18 +391,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired();
 
                     b.Navigation("VirtualKey");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
-                {
-                    b.Navigation("FallbackMappings");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
-                {
-                    b.Navigation("FallbackConfigurations");
-
-                    b.Navigation("ModelDeployments");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>

@@ -36,21 +36,23 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.StaticWebAssets;
 using Microsoft.Extensions.Logging;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+    Args = args,
+    // Don't load appsettings.json
+    EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
+});
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddEnvironmentVariables();
 
 // Database configuration
 var (dbProvider, dbConnectionString) = DbConnectionHelper.GetProviderAndConnectionString();
 if (dbProvider == "sqlite")
 {
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseSqlite(dbConnectionString));
 }
 else if (dbProvider == "postgres")
 {
-    builder.Services.AddDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseNpgsql(dbConnectionString));
 }
@@ -88,9 +90,6 @@ builder.Services.AddAuthorization(options =>
 
 // Add HttpContextAccessor - required for authentication in Razor components
 builder.Services.AddHttpContextAccessor();
-
-// Configure ConduitSettings to be bound from the application's configuration
-builder.Services.Configure<ConduitSettings>(builder.Configuration.GetSection(nameof(ConduitSettings)));
 
 // Register HttpClient for calling the API proxy
 // Default client for general use - REMOVED incorrect default registration with hardcoded base address
@@ -222,12 +221,22 @@ using (var scope = app.Services.CreateScope())
 
         if (routerOptions.Enabled)
         {
-            var routerService = services.GetRequiredService<IRouterService>();
-            // Initialize the router with the current configuration
-            await routerService.InitializeRouterAsync();
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Initializing LLM Router...");
             
-            var logger = services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
-            logger.LogInformation("LLM Router initialized successfully");
+            // Get the required services
+            var routerService = services.GetRequiredService<IRouterService>();
+            
+            try
+            {
+                // Initialize the router with the current configuration
+                await routerService.InitializeRouterAsync();
+                logger.LogInformation("LLM Router initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error initializing LLM Router: {Message}", ex.Message);
+            }
         }
     }
     catch (Exception ex)
@@ -237,12 +246,98 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Apply migrations automatically on startup
+// Check if using EnsureCreated mode
+bool useEnsureCreated = Environment.GetEnvironmentVariable("CONDUIT_DATABASE_ENSURE_CREATED") == "true";
+
+// Database initialization
 using (var scope = app.Services.CreateScope())
 {
-    var dbContextFactory = scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ConduitLLM.WebUI.Data.ConfigurationDbContext>>();
-    using var dbContext = dbContextFactory.CreateDbContext();
-    dbContext.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var dbContextFactory = scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
+    
+    if (useEnsureCreated)
+    {
+        logger.LogInformation("Using EnsureCreated for database initialization");
+        
+        // Retry pattern to wait for database to be ready
+        const int maxRetries = 20;
+        bool connected = false;
+        for (int retry = 0; retry < maxRetries; retry++)
+        {
+            try
+            {
+                // Initialize database context
+                using var dbContext = dbContextFactory.CreateDbContext();
+                
+                // Just check if we can connect
+                if (dbContext.Database.CanConnect())
+                {
+                    logger.LogInformation("Connected to database. Creating schema with EnsureCreated...");
+                    dbContext.Database.EnsureCreated();
+                    logger.LogInformation("Database schema created successfully");
+                    connected = true;
+                    break;
+                }
+                
+                logger.LogWarning("Cannot connect to database. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
+                    retry + 1, maxRetries);
+                    
+                Thread.Sleep(3000);
+            }
+            catch (Exception ex) when (retry < maxRetries - 1)
+            {
+                logger.LogWarning(ex, "Database connection failed. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
+                    retry + 1, maxRetries);
+                    
+                Thread.Sleep(3000);
+            }
+        }
+        
+        if (!connected)
+        {
+            logger.LogError("Failed to connect to the database after {MaxRetries} attempts. Starting application anyway, but functionality may be limited.", maxRetries);
+        }
+    }
+    else
+    {
+        // Original behavior - just check connection
+        // Retry pattern to wait for database to be ready
+        const int maxRetries = 20;
+        bool connected = false;
+        for (int retry = 0; retry < maxRetries; retry++)
+        {
+            try
+            {
+                // Check database context
+                using var dbContext = dbContextFactory.CreateDbContext();
+                
+                // Check if we can connect
+                if (dbContext.Database.CanConnect())
+                {
+                    logger.LogInformation("Successfully connected to database");
+                    connected = true;
+                    break;
+                }
+                
+                logger.LogWarning("Cannot connect to database. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
+                    retry + 1, maxRetries);
+                
+                Thread.Sleep(3000);
+            }
+            catch (Exception ex) when (retry < maxRetries - 1)
+            {
+                logger.LogWarning(ex, "Database connection failed. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
+                    retry + 1, maxRetries);
+                
+                Thread.Sleep(3000);
+            }
+        }
+        
+        if (!connected)
+        {
+            logger.LogError("Failed to connect to the database after {MaxRetries} attempts. Starting application anyway, but functionality may be limited.", maxRetries);
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.

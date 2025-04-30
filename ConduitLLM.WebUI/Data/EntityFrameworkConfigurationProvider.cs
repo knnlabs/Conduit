@@ -4,6 +4,8 @@ using System.Linq;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.WebUI.Data;
 
@@ -27,13 +29,8 @@ public class EntityFrameworkConfigurationProvider : ConfigurationProvider
         var builder = new DbContextOptionsBuilder<ConfigurationDbContext>();
         _optionsAction(builder);
 
-        // Create instances for both contexts using the same options builder
-        // This assumes the DI setup correctly configures options for both
-        using var webUiDbContext = new ConfigurationDbContext(builder.Options); 
-        // Need options specifically for the Configuration context
-        var configBuilder = new DbContextOptionsBuilder<ConduitLLM.Configuration.ConfigurationDbContext>();
-        _optionsAction(configBuilder); // Apply the same configuration action
-        using var configDbContext = new ConduitLLM.Configuration.ConfigurationDbContext(configBuilder.Options);
+        // Create a single instance of the consolidated ConfigurationDbContext
+        using var dbContext = new ConfigurationDbContext(builder.Options);
 
         // Ensure the database exists - might be redundant if EnsureCreated/Migrate is called elsewhere,
         // but safe to include here for direct provider usage scenarios.
@@ -44,32 +41,34 @@ public class EntityFrameworkConfigurationProvider : ConfigurationProvider
 
         try
         {
-            // Load Provider Credentials from the Config context
-            var credentials = configDbContext.ProviderCredentials.ToList(); 
+            // Load Provider Credentials from the consolidated context
+            var credentials = dbContext.ProviderCredentials.ToList(); 
             for (int i = 0; i < credentials.Count; i++)
             {
                 var cred = credentials[i];
-                string prefix = $"{nameof(ConduitLLM.Configuration.ConduitSettings)}:{nameof(ConduitLLM.Configuration.ConduitSettings.ProviderCredentials)}:{i}";
-                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ProviderName)}"] = cred.ProviderName;
+                string prefix = $"{nameof(ConduitSettings)}:{nameof(ConduitSettings.ProviderCredentials)}:{i}";
+                Data[$"{prefix}:{nameof(ProviderCredential.ProviderName)}"] = cred.ProviderName;
                 if (cred.ApiKey != null)
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ApiKey)}"] = cred.ApiKey;
+                    Data[$"{prefix}:{nameof(ProviderCredential.ApiKey)}"] = cred.ApiKey;
                 // Correct property name: BaseUrl instead of ApiBase
                 if (cred.BaseUrl != null) 
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.BaseUrl)}"] = cred.BaseUrl; 
+                    Data[$"{prefix}:{nameof(ProviderCredential.BaseUrl)}"] = cred.BaseUrl; 
                 if (cred.ApiVersion != null)
-                    Data[$"{prefix}:{nameof(ConduitLLM.Configuration.Entities.ProviderCredential.ApiVersion)}"] = cred.ApiVersion;
-                // Remove access to non-existent 'Name' property
+                    Data[$"{prefix}:{nameof(ProviderCredential.ApiVersion)}"] = cred.ApiVersion;
             }
 
-            // Load Model Mappings from the WebUI context
-            var mappings = webUiDbContext.ModelMappings.ToList(); 
+            // Load Model Mappings from the consolidated context
+            var mappings = dbContext.ModelProviderMappings
+                .Include(m => m.ProviderCredential)
+                .ToList(); 
+                
             for (int i = 0; i < mappings.Count; i++)
             {
                 var map = mappings[i];
-                string prefix = $"{nameof(ConduitLLM.Configuration.ConduitSettings)}:{nameof(ConduitLLM.Configuration.ConduitSettings.ModelMappings)}:{i}";
+                string prefix = $"{nameof(ConduitSettings)}:{nameof(ConduitSettings.ModelMappings)}:{i}";
                 Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ModelProviderMapping.ModelAlias)}"] = map.ModelAlias;
-                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ModelProviderMapping.ProviderName)}"] = map.ProviderName;
-                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ModelProviderMapping.ProviderModelId)}"] = map.ProviderModelId;
+                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ModelProviderMapping.ProviderName)}"] = map.ProviderCredential.ProviderName;
+                Data[$"{prefix}:{nameof(ConduitLLM.Configuration.ModelProviderMapping.ProviderModelId)}"] = map.ProviderModelName;
                 // Add optional overrides here if they were implemented
             }
 
@@ -77,7 +76,7 @@ public class EntityFrameworkConfigurationProvider : ConfigurationProvider
             // as they are simple values. They could be added to a separate 'GlobalSettings' table
             // or managed via appsettings.json if preferred, as they are less likely to change dynamically.
             // If needed, they could be added like:
-            // Data[$"{nameof(ConduitLLM.Configuration.ConduitSettings)}:{nameof(ConduitLLM.Configuration.ConduitSettings.DefaultTimeoutSeconds)}"] = globalSettings?.DefaultTimeoutSeconds?.ToString();
+            // Data[$"{nameof(ConduitSettings)}:{nameof(ConduitSettings.DefaultTimeoutSeconds)}"] = globalSettings?.DefaultTimeoutSeconds?.ToString();
 
         }
         catch (Exception ex)

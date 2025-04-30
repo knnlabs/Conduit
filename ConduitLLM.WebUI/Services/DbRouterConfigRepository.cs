@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Routing;
-using ConduitLLM.WebUI.Data;
-using ConduitLLM.WebUI.Data.Entities;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -95,7 +96,7 @@ namespace ConduitLLM.WebUI.Services
                         if (fallbackDeployments.Any())
                         {
                             config.Fallbacks[primaryDeployment.ModelName] = fallbackDeployments
-                                .Select(d => d.ModelName)
+                                .Select(m => m.ModelName)
                                 .ToList();
                         }
                     }
@@ -105,24 +106,27 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving router configuration from database");
-                return null;
+                _logger.LogError(ex, "Error getting router configuration from database");
+                throw;
             }
         }
 
         /// <inheritdoc/>
         public async Task SaveRouterConfigAsync(RouterConfig config, CancellationToken cancellationToken = default)
         {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
+                
             try
             {
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 
-                // Start a transaction to ensure consistency
+                // Use a transaction to ensure atomicity
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
                 
                 try
                 {
-                    // Create a new router configuration
+                    // Create a new router configuration entity
                     var dbConfig = new RouterConfigEntity
                     {
                         DefaultRoutingStrategy = config.DefaultRoutingStrategy,
@@ -140,22 +144,24 @@ namespace ConduitLLM.WebUI.Services
                     }
                     
                     // Add fallback configurations
-                    if (config.FallbackConfigurations != null)
+                    if (config.FallbacksEnabled && config.FallbackConfigurations.Any())
                     {
                         foreach (var fallback in config.FallbackConfigurations)
                         {
                             var dbFallback = MapToFallbackConfigurationEntity(fallback);
                             
-                            // Add fallback model mappings
+                            // Add fallback mappings
                             for (int i = 0; i < fallback.FallbackModelDeploymentIds.Count; i++)
                             {
                                 var fallbackModelId = Guid.Parse(fallback.FallbackModelDeploymentIds[i]);
                                 
-                                dbFallback.FallbackMappings.Add(new FallbackModelMappingEntity
+                                var mapping = new FallbackModelMappingEntity
                                 {
                                     ModelDeploymentId = fallbackModelId,
                                     Order = i
-                                });
+                                };
+                                
+                                dbFallback.FallbackMappings.Add(mapping);
                             }
                             
                             dbConfig.FallbackConfigurations.Add(dbFallback);

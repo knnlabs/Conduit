@@ -1,11 +1,9 @@
 @page "/about"
 @using System.Reflection
-@using ConduitLLM.WebUI.Data
+@using ConduitLLM.Core
 @using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
-@rendermode InteractiveServer
-
-<PageTitle>About ConduitLLM</PageTitle>
+@using ConduitLLM.Configuration
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 
 <div class="container mt-4">
     <div class="row">

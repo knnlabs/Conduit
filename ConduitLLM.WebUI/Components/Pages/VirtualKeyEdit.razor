@@ -1,16 +1,17 @@
-@page "/virtualkeys/edit/{Id:int?}"
-@using ConduitLLM.WebUI.Data
+@page "/virtualkey/edit/{id?}"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Services
-@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using ConduitLLM.WebUI.Components
+@using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
-@using Microsoft.EntityFrameworkCore 
-@using Microsoft.Extensions.Logging 
-@using ConduitLLM.Core.Interfaces
-@using System.Linq
-@inject IVirtualKeyService VirtualKeyService
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeyEdit> Logger
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject ConfigurationChangeNotifier ConfigChangeNotifier
+@inject VirtualKeyService VirtualKeyService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
@@ -344,7 +345,7 @@ else
     {
         try
         {
-            await LoadAvailableModels();
+            await LoadAvailableModelsAsync();
             
             if (Id.HasValue)
             {
@@ -418,30 +419,33 @@ else
         }
     }
     
-    private async Task LoadAvailableModels()
+    private async Task LoadAvailableModelsAsync()
     {
         try
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
             
-            var models = await dbContext.ModelMappings
-                .AsNoTracking()
+            // Load model mappings from the consolidated context
+            availableModels = await dbContext.ModelProviderMappings
+                .Include(m => m.ProviderCredential)
                 .Select(m => new ModelMappingViewModel
                 {
                     ModelAlias = m.ModelAlias,
-                    ProviderName = m.ProviderName,
-                    ProviderModelId = m.ProviderModelId
+                    ProviderName = m.ProviderCredential.ProviderName,
+                    ProviderModelId = m.ProviderModelName
                 })
-                .OrderBy(m => m.ProviderName)
-                .ThenBy(m => m.ModelAlias)
                 .ToListAsync();
                 
-            availableModels = models;
+            if (Id.HasValue && !string.IsNullOrEmpty(request?.AllowedModels))
+            {
+                selectedModels = new HashSet<string>(
+                    request.AllowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries));
+            }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading models: {ex.Message}";
             Logger.LogError(ex, "Error loading available models");
+            errorMessage = "Failed to load available models. See logs for details.";
         }
     }
     

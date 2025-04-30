@@ -65,6 +65,26 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for router configurations
+        /// </summary>
+        public DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for model deployments
+        /// </summary>
+        public DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for fallback configurations
+        /// </summary>
+        public DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for fallback model mappings
+        /// </summary>
+        public DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -133,6 +153,48 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasKey(e => e.Id);
                 // Remove redundant relationship configuration as it's already defined by annotations and the VirtualKey configuration
+            });
+
+            // Configure Router entities
+            modelBuilder.Entity<RouterConfigEntity>(entity =>
+            {
+                entity.HasIndex(e => e.LastUpdated);
+                
+                // Configure relationships with model deployments and fallback configurations
+                entity.HasMany(e => e.ModelDeployments)
+                      .WithOne(e => e.RouterConfig)
+                      .HasForeignKey(e => e.RouterConfigId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                      
+                entity.HasMany(e => e.FallbackConfigurations)
+                      .WithOne(e => e.RouterConfig)
+                      .HasForeignKey(e => e.RouterConfigId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+            
+            modelBuilder.Entity<ModelDeploymentEntity>(entity =>
+            {
+                entity.HasIndex(e => e.ModelName);
+                entity.HasIndex(e => e.ProviderName);
+                entity.HasIndex(e => e.IsEnabled);
+                entity.HasIndex(e => e.IsHealthy);
+            });
+            
+            modelBuilder.Entity<FallbackConfigurationEntity>(entity =>
+            {
+                entity.HasIndex(e => e.PrimaryModelDeploymentId);
+                
+                // Configure relationship with fallback model mappings
+                entity.HasMany(e => e.FallbackMappings)
+                      .WithOne(e => e.FallbackConfiguration)
+                      .HasForeignKey(e => e.FallbackConfigurationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+            
+            modelBuilder.Entity<FallbackModelMappingEntity>(entity =>
+            {
+                entity.HasIndex(e => new { e.FallbackConfigurationId, e.Order }).IsUnique();
+                entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

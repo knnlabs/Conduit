@@ -2,13 +2,16 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ConduitLLM.WebUI.Data.Entities
+namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
-    /// Database entity representing a model deployment that can be used by the router
+    /// Database entity representing a model deployment that can be used by the Conduit router
     /// </summary>
     public class ModelDeploymentEntity
     {
+        /// <summary>
+        /// Unique identifier for the model deployment
+        /// </summary>
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
         

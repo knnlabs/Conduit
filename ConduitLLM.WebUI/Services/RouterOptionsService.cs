@@ -2,8 +2,9 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.WebUI.Data;
 using ConduitLLM.WebUI.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
