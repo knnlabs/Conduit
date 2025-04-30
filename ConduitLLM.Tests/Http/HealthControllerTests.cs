@@ -174,9 +174,9 @@ namespace ConduitLLM.Tests.Http
         }
         
         // Override for testing connection status
-        protected override async Task<bool> CanConnectAsync(ConfigurationDbContext dbContext)
+        protected override Task<bool> CanConnectAsync(ConfigurationDbContext dbContext)
         {
-            return _simulateConnected;
+            return Task.FromResult(_simulateConnected); // Use Task.FromResult for async mock
         }
         
         // Override for testing migrations

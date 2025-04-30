@@ -146,7 +146,6 @@ else
     private string? modelLoadErrorMessage; // Specific error for model loading
     private bool isLoadingModels = false; // Loading provider-specific models
     private bool isLoadingPage = true;
-    private bool isLoading = false;
     private EditContext? editContext;
     private ValidationMessageStore? messageStore;
     private bool isSaving = false; // Saving the mapping
@@ -238,7 +237,7 @@ else
             if (!MemoryCache.TryGetValue(cacheKey, out List<string>? cachedModels))
             {
                 // No valid cache, load from API
-                cachedModels = await LoadModelsFromApiAsync(provider);
+                cachedModels = LoadModelsFromApi(provider);
                 
                 if (cachedModels != null && cachedModels.Any())
                 {
@@ -265,7 +264,7 @@ else
         }
     }
 
-    private async Task<List<string>> LoadModelsFromApiAsync(ProviderCredential provider)
+    private List<string> LoadModelsFromApi(ProviderCredential provider)
     {
         try
         {

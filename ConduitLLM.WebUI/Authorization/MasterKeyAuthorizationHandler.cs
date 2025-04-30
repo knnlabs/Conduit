@@ -41,17 +41,6 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
             return;
         }
 
-        // Retrieve the master key from the request header
-        if (!httpContext.Request.Headers.TryGetValue(MasterKeyHeaderName, out var providedMasterKeyValues) ||
-            string.IsNullOrWhiteSpace(providedMasterKeyValues.FirstOrDefault()))
-        {
-            _logger.LogDebug("Master key header '{HeaderName}' not found or empty.", MasterKeyHeaderName);
-            context.Fail();
-            return;
-        }
-
-        var providedMasterKey = providedMasterKeyValues.First()!;
-
         // Resolve the GlobalSettingService within the request scope
         // This is needed because AuthorizationHandlers are singletons but DbContext is scoped
         using var scope = _serviceProvider.CreateScope();
@@ -61,12 +50,27 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         var storedHash = await settingService.GetMasterKeyHashAsync();
         var storedAlgorithm = await settingService.GetMasterKeyHashAlgorithmAsync() ?? "SHA256"; // Use default if not set
 
+        // If no master key is configured in the system settings, allow access.
+        // Authentication becomes effectively optional.
         if (string.IsNullOrWhiteSpace(storedHash))
         {
-            _logger.LogWarning("Master key hash is not configured in settings.");
-            context.Fail(new AuthorizationFailureReason(this, "Master key not configured."));
+            _logger.LogInformation("No master key configured system-wide. Allowing access without master key authentication.");
+            context.Succeed(requirement); // Succeed if no key is set up
             return;
         }
+
+        // If we reach here, a master key IS configured. The header is now mandatory.
+        // Retrieve the master key from the request header
+        if (!httpContext.Request.Headers.TryGetValue(MasterKeyHeaderName, out var providedMasterKeyValues) ||
+            string.IsNullOrWhiteSpace(providedMasterKeyValues.FirstOrDefault()))
+        {
+            _logger.LogWarning("Master key is configured, but header '{HeaderName}' was not provided or was empty.", MasterKeyHeaderName);
+            // Fail explicitly stating the header is missing now that we know a key is configured
+            context.Fail(new AuthorizationFailureReason(this, $"Master key required but header '{MasterKeyHeaderName}' not provided."));
+            return;
+        }
+
+        var providedMasterKey = providedMasterKeyValues.First()!;
 
         // Hash the provided key
         string providedKeyHash;
@@ -77,7 +81,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error hashing provided master key using algorithm {Algorithm}.", storedAlgorithm);
-            context.Fail();
+            context.Fail(); // Fail on hashing error
             return;
         }
 
@@ -85,12 +89,12 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         if (string.Equals(providedKeyHash, storedHash, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogInformation("Master key validated successfully.");
-            context.Succeed(requirement);
+            context.Succeed(requirement); // Succeed on match
         }
         else
         {
             _logger.LogWarning("Provided master key failed validation.");
-            context.Fail(new AuthorizationFailureReason(this, "Invalid master key."));
+            context.Fail(new AuthorizationFailureReason(this, "Invalid master key.")); // Fail on mismatch
         }
     }
 

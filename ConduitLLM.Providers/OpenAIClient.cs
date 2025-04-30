@@ -592,7 +592,7 @@ public class OpenAIClient : ILLMClient
         {
             return $"Rate limit error: {errorContent}";
         }
-        return errorContent;
+        return errorContent!; // Added ! to suppress CS8603
     }
 
     // --- Mapping Logic ---

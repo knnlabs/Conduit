@@ -5,11 +5,14 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -102,9 +105,8 @@ public class ReplicateClient : ILLMClient
         // 5. Process SSE events, map data to Core ChatCompletionChunk.
         // 6. If streaming not supported or URL not provided, maybe fall back to polling or throw exception.
         _logger.LogWarning("Replicate StreamChatCompletionAsync not implemented.");
-         await Task.CompletedTask; // Added to allow async iteration
-        throw new NotImplementedException("Replicate StreamChatCompletionAsync is not yet implemented, or may not be supported by all models.");
-        yield break; // Necessary for async iterator methods
+        yield break; // Added to satisfy async iterator syntax requirement
+        throw new NotImplementedException("Replicate StreamChatCompletionAsync is not yet implemented.");
     }
 
     /// <inheritdoc />
@@ -112,16 +114,18 @@ public class ReplicateClient : ILLMClient
     {
         // Defensive: Check for nulls and unreachable code
         string _apiBase = GetEffectiveApiBase();
+        // string _apiKey = GetEffectiveApiKey(apiKey);
+
         if (string.IsNullOrWhiteSpace(_apiBase))
         {
             _logger.LogWarning("Replicate API base URL is not configured.");
-            return Task.FromResult(new List<string>());
+            return Task.FromResult(new List<string>()); // Return List<string>
         }
         // Replicate doesn't offer a simple API endpoint to list all model *versions* accessible via API key.
         // Model discovery is typically done via the website or specific collection APIs.
-        _logger.LogWarning("Listing specific model versions is not directly supported by the Replicate API via this client.");
+        _logger.LogInformation("Replicate ListModelsAsync is not implemented via API. Returning empty list.");
         // Returning an empty list as a convention.
-        return Task.FromResult(new List<string>());
+        return Task.FromResult(new List<string>()); // Return List<string>
         // Alternatively: throw new UnsupportedProviderException("Replicate does not support listing model versions via this API method.");
     }
 

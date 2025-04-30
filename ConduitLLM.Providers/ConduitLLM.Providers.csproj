@@ -19,7 +19,7 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>enable</Nullable> <!-- Added to enable nullable context -->
   </PropertyGroup>
 
 </Project>

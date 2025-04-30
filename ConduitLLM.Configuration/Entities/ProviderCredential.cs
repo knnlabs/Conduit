@@ -17,8 +17,8 @@ namespace ConduitLLM.Configuration.Entities
         [MaxLength(100)]
         public string ProviderName { get; set; } = string.Empty; // e.g., "OpenAI", "Anthropic"
 
-        [Required]
-        public string ApiKey { get; set; } = string.Empty;
+        // Made ApiKey nullable to allow for empty/cleared keys
+        public string? ApiKey { get; set; }
 
         // Optional: Base URL if different from default
         public string? BaseUrl { get; set; }

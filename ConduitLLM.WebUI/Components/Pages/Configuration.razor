@@ -195,9 +195,12 @@
                 <label for="providerName" class="form-label">Provider</label>
                 <select id="providerName" class="form-select" @bind="currentMapping.ProviderName">
                     <option value="">-- Select Provider --</option>
-                    @foreach (var provider in providerCredentials.OrderBy(p => p.ProviderName))
+                    @if (providerCredentials != null)
                     {
-                        <option value="@provider.ProviderName">@provider.ProviderName</option>
+                        @foreach (var provider in providerCredentials.OrderBy(p => p.ProviderName))
+                        {
+                            <option value="@provider.ProviderName">@provider.ProviderName</option>
+                        }
                     }
                 </select>
             </div>
@@ -404,9 +407,7 @@
     private List<ConduitLLM.Configuration.Entities.GlobalSetting> globalSettings = new();
 
     // Provider form state
-    private bool isEditingProvider = false;
     private ConduitLLM.Configuration.Entities.ProviderCredential currentProvider = new();
-    private string? providerErrorMessage;
 
     // Mapping form state
     private bool isEditingMapping = false;
@@ -419,9 +420,7 @@
     private string? mappingErrorMessage;
 
     // Settings state
-    private bool isEditingSettings = false;
     private ConduitLLM.Configuration.Entities.GlobalSetting currentSettings = new();
-    private string? settingsErrorMessage;
     
     // HTTP options state
     private string? proxyBaseUrlInput;
@@ -434,7 +433,6 @@
     // --- Guided Setup State ---
     private GuidedSetupWizard? guidedSetupWizardInstance;
     private bool isGuidedSetupOpen;
-    private string currentSetupProvider = "";
     private string? deleteErrorMessage;
     
     private readonly List<string> _supportedProviders = new List<string> {
@@ -787,7 +785,7 @@
         }
     }
     
-    private async Task SaveHttpRetryOptions()
+    private void SaveHttpRetryOptions()
     {
         try
         {
@@ -800,7 +798,7 @@
         }
     }
 
-    private async Task SaveHttpTimeoutOptions()
+    private void SaveHttpTimeoutOptions()
     {
         try
         {
