@@ -274,10 +274,100 @@ using (var scope = app.Services.CreateScope())
                 // Just check if we can connect
                 if (dbContext.Database.CanConnect())
                 {
-                    logger.LogInformation("Connected to database. Applying migrations...");
-                    // Use Migrate() instead of EnsureCreated() to ensure all migrations are applied
-                    dbContext.Database.Migrate();
-                    logger.LogInformation("Database migrations applied successfully");
+                    logger.LogInformation("Connected to database. Checking pending migrations...");
+                    
+                    try {
+                        // Check if there are pending migrations
+                        var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+                        if (pendingMigrations.Any())
+                        {
+                            logger.LogInformation("Found {Count} pending migrations: {Migrations}", 
+                                pendingMigrations.Count, 
+                                string.Join(", ", pendingMigrations));
+                            
+                            // Apply migrations
+                            dbContext.Database.Migrate();
+                            logger.LogInformation("Database migrations applied successfully");
+                        }
+                        else
+                        {
+                            logger.LogInformation("No pending migrations found");
+                            
+                            // Ensure the GlobalSettings table exists by checking for it explicitly
+                            try {
+                                var tableExists = false;
+                                
+                                if (dbProvider == "postgres")
+                                {
+                                    // For PostgreSQL, check if the table exists in the public schema using raw SQL
+                                    try
+                                    {
+                                        var command = dbContext.Database.GetDbConnection().CreateCommand();
+                                        command.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'GlobalSettings');";
+                                        
+                                        if (dbContext.Database.GetDbConnection().State != System.Data.ConnectionState.Open)
+                                        {
+                                            dbContext.Database.GetDbConnection().Open();
+                                        }
+                                        
+                                        var result = command.ExecuteScalar();
+                                        tableExists = result != null && (result is bool boolResult ? boolResult : Convert.ToBoolean(result));
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger.LogError(ex, "Error checking if GlobalSettings table exists in PostgreSQL");
+                                        tableExists = false;
+                                    }
+                                }
+                                else if (dbProvider == "sqlite")
+                                {
+                                    // For SQLite, check if the table exists using raw SQL
+                                    try
+                                    {
+                                        var command = dbContext.Database.GetDbConnection().CreateCommand();
+                                        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='GlobalSettings';";
+                                        
+                                        if (dbContext.Database.GetDbConnection().State != System.Data.ConnectionState.Open)
+                                        {
+                                            dbContext.Database.GetDbConnection().Open();
+                                        }
+                                        
+                                        var result = command.ExecuteScalar();
+                                        tableExists = result != null && Convert.ToInt32(result) > 0;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger.LogError(ex, "Error checking if GlobalSettings table exists in SQLite");
+                                        tableExists = false;
+                                    }
+                                }
+                                
+                                if (!tableExists)
+                                {
+                                    logger.LogWarning("GlobalSettings table not found in database. Creating schema with EnsureCreated...");
+                                    dbContext.Database.EnsureCreated();
+                                    logger.LogInformation("Database schema created successfully with EnsureCreated");
+                                }
+                                else
+                                {
+                                    logger.LogInformation("GlobalSettings table exists in database");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogError(ex, "Error checking for GlobalSettings table. Falling back to EnsureCreated...");
+                                dbContext.Database.EnsureCreated();
+                                logger.LogInformation("Database schema created successfully with EnsureCreated fallback");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error applying migrations. Falling back to EnsureCreated...");
+                        dbContext.Database.EnsureCreated();
+                        logger.LogInformation("Database schema created successfully with EnsureCreated fallback");
+                    }
+                    
                     connected = true;
                     break;
                 }
