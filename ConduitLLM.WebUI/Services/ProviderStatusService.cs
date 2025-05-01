@@ -258,6 +258,7 @@ namespace ConduitLLM.WebUI.Services
                     case "cohere": // Lowercase
                         return "https://api.cohere.ai/v1/models";
                     case "gemini": // Lowercase
+                    case "google": // Lowercase - Default generic Google to Gemini
                         return "https://generativelanguage.googleapis.com/v1beta/models";
                     case "fireworks": // Lowercase
                         return "https://api.fireworks.ai/inference/v1/models";
@@ -278,8 +279,14 @@ namespace ConduitLLM.WebUI.Services
                         return "https://api.groq.com/openai/v1/models";
                     case "mistral":
                         return "https://api.mistral.ai/v1/models";
+                    // Explicitly handle generic Azure/AWS - require BaseUrl
+                    case "azure":
+                    case "aws":
+                        _logger.LogWarning("Provider '{ProviderName}' requires a BaseUrl to be configured for connection testing.", provider.ProviderName);
+                        return string.Empty;
                     default:
                         // Return empty string for unknown providers
+                        _logger.LogWarning("Unknown provider '{ProviderName}' encountered in GetProviderTestEndpoint without a BaseUrl.", provider.ProviderName);
                         return string.Empty;
                 }
             }

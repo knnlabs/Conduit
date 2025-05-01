@@ -436,7 +436,7 @@
     private string? deleteErrorMessage;
     
     private readonly List<string> _supportedProviders = new List<string> {
-        "OpenAI", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter"
+        "OpenAI", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
     };
     
     protected override async Task OnInitializedAsync()
@@ -633,14 +633,15 @@
         {
             "OpenAI" => "Connect to GPT-3.5, GPT-4, and other OpenAI models",
             "Anthropic" => "Connect to Claude models for advanced reasoning",
-            "Cohere" => "Connect to Command models for enterprise applications",
-            "Google" => "Connect to Google's Gemini models for multimodal capabilities",
-            "Mistral" => "Connect to Mistral AI for Mixtral and Le Chat models",
-            "Groq" => "Connect to Groq for ultra-fast inference on Llama/Mixtral",
-            "HuggingFace" => "Connect to HuggingFace Hub for open-source models",
-            "AWS" => "Connect to Amazon Bedrock for foundation models",
-            "Azure" => "Connect to Azure Cognitive Services for enterprise-grade models",
-            "OpenRouter" => "Connect to OpenRouter for access to multiple models through one API",
+            "Cohere" => "Connect to Cohere's command models",
+            "Google" => "Connect to Google AI models like Gemini",
+            "Mistral" => "Connect to Mistral AI's models",
+            "Groq" => "Connect to models running on Groq's LPU Inference Engine for high speed",
+            "HuggingFace" => "Access models hosted on Hugging Face Inference Endpoints",
+            "AWS" => "Connect to models via AWS Bedrock or SageMaker (Requires Base URL)",
+            "Azure" => "Connect to models deployed on Azure OpenAI Service (Requires Base URL)",
+            "OpenRouter" => "Route requests to various models through OpenRouter",
+            "Cerebras" => "Connect to models running on Cerebras infrastructure",
             _ => "Connect to AI models through this provider"
         };
     }
