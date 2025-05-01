@@ -274,9 +274,10 @@ using (var scope = app.Services.CreateScope())
                 // Just check if we can connect
                 if (dbContext.Database.CanConnect())
                 {
-                    logger.LogInformation("Connected to database. Creating schema with EnsureCreated...");
-                    dbContext.Database.EnsureCreated();
-                    logger.LogInformation("Database schema created successfully");
+                    logger.LogInformation("Connected to database. Applying migrations...");
+                    // Use Migrate() instead of EnsureCreated() to ensure all migrations are applied
+                    dbContext.Database.Migrate();
+                    logger.LogInformation("Database migrations applied successfully");
                     connected = true;
                     break;
                 }
