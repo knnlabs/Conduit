@@ -31,6 +31,8 @@ using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
+using MudBlazor;
+using MudBlazor.Services;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.StaticWebAssets;
@@ -175,6 +177,17 @@ builder.Services.AddControllers();
 
 // Register context management services
 builder.Services.AddConduitContextManagement(builder.Configuration);
+
+// Register MudBlazor services
+builder.Services.AddMudServices(config => {
+    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    config.SnackbarConfiguration.PreventDuplicates = true;
+    config.SnackbarConfiguration.NewestOnTop = false;
+    config.SnackbarConfiguration.ShowCloseIcon = true;
+    config.SnackbarConfiguration.VisibleStateDuration = 8000;
+    config.SnackbarConfiguration.HideTransitionDuration = 500;
+    config.SnackbarConfiguration.ShowTransitionDuration = 500;
+});
 
 var app = builder.Build();
 

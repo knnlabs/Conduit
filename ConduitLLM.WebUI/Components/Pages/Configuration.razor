@@ -22,6 +22,29 @@
 
 <h1>Configuration Management</h1>
 
+<style>
+    .provider-option:hover {
+        background-color: #f8f9fa !important;
+    }
+    
+    .custom-dropdown {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .row-cols-md-2 > .col {
+        padding: 15px;
+    }
+    
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
 @if (!string.IsNullOrEmpty(deleteErrorMessage))
 {
     <div class="alert alert-danger mt-2">@deleteErrorMessage</div>
@@ -34,16 +57,23 @@
             <button class="btn btn-primary" @onclick="AddProvider">
                 <i class="bi bi-plus-lg me-1"></i> Add Provider
             </button>
-            <div class="dropdown d-inline-block ms-2">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="quickSetupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-magic me-1"></i> Quick Setup
+            <div class="quick-setup-container d-inline-block ms-2 position-relative">
+                <button type="button" class="btn btn-outline-primary" @onclick="ToggleQuickSetupDropdown">
+                    <i class="bi bi-magic me-1"></i> Quick Setup <i class="bi bi-caret-down-fill ms-1 small"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickSetupDropdown">
-                    @foreach (var provider in _supportedProviders)
-                    {
-                        <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">@provider</button></li>
-                    }
-                </ul>
+                @if (isQuickSetupOpen)
+                {
+                    <div class="custom-dropdown position-absolute mt-1 end-0 shadow-sm" style="min-width: 180px; z-index: 1000; background: white; border: 1px solid #dee2e6; border-radius: 0.25rem;">
+                        @foreach (var provider in _supportedProviders)
+                        {
+                            <button class="w-100 text-start border-0 bg-transparent px-3 py-2 provider-option" 
+                                    style="cursor: pointer; transition: background-color 0.2s ease;"
+                                    @onclick="async () => { await LaunchGuidedSetup(provider); isQuickSetupOpen = false; }">
+                                @provider
+                            </button>
+                        }
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -59,7 +89,7 @@
             <span>No providers configured yet. Add an LLM provider to get started.</span>
         </div>
 
-        <div class="row row-cols-1 row-cols-md-3 g-4 mt-2">
+        <div class="row row-cols-1 row-cols-md-2 g-4 mt-2">
             @foreach (var provider in _supportedProviders)
             {
                 <div class="col">
@@ -406,6 +436,9 @@
     private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
     private List<ConduitLLM.Configuration.Entities.GlobalSetting> globalSettings = new();
 
+    // Quick Setup Dropdown State
+    private bool isQuickSetupOpen = false;
+
     // Provider form state
     private ConduitLLM.Configuration.Entities.ProviderCredential currentProvider = new();
 
@@ -443,6 +476,10 @@
     {
         try
         {
+            // Add event listener to close dropdown when clicking outside
+            await JSRuntime.InvokeVoidAsync("addClickOutsideHandler", "quickSetupDropdown", 
+                DotNetObjectReference.Create(this));
+                
             await LoadProvidersAsync();
             await LoadModelMappingsAsync();
             await LoadProxyUrlAsync();
@@ -452,6 +489,14 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing Configuration page");
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initBootstrapComponents");
         }
     }
     
@@ -825,6 +870,22 @@
         {
             Logger.LogError(ex, "Error checking if provider has mappings");
             return false;
+        }
+    }
+
+    private void ToggleQuickSetupDropdown()
+    {
+        isQuickSetupOpen = !isQuickSetupOpen;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void CloseQuickSetupDropdown()
+    {
+        if (isQuickSetupOpen)
+        {
+            isQuickSetupOpen = false;
+            StateHasChanged();
         }
     }
 }

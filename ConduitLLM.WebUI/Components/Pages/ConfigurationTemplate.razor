@@ -1,0 +1,523 @@
+@page "/configuration-new"
+@using System.Text.Json
+@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.Configuration
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Providers.Configuration
+@using ConduitLLM.WebUI.Services
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+@using System.Threading.Tasks
+@using Microsoft.JSInterop
+@using ConduitLLM.Core.Models.Routing
+
+@inject NavigationManager NavigationManager
+@inject ILogger<Configuration> Logger
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject ConfigurationChangeNotifier ConfigChangeNotifier
+@inject HttpRetryConfigurationService HttpRetryService
+@inject HttpTimeoutConfigurationService HttpTimeoutService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Configuration Management</MudText>
+
+    @if (!string.IsNullOrEmpty(deleteErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+            @deleteErrorMessage
+        </MudAlert>
+    }
+
+    <MudCard Class="mb-6" Elevation="2">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">LLM Providers</MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.Add" 
+                          OnClick="AddProvider" Size="Size.Small">
+                    Add Provider
+                </MudButton>
+                <MudMenu Icon="@Icons.Material.Filled.AutoFixHigh" Color="Color.Secondary" 
+                        AnchorOrigin="Origin.BottomRight" 
+                        TransformOrigin="Origin.TopRight" Dense="true" Class="ml-2">
+                    <MudText Typo="Typo.subtitle2" Class="px-2 py-1">Quick Setup</MudText>
+                    <MudDivider Class="mb-1" />
+                    @foreach (var provider in _supportedProviders)
+                    {
+                        <MudMenuItem OnClick="() => LaunchGuidedSetup(provider)">@provider</MudMenuItem>
+                    }
+                </MudMenu>
+            </CardHeaderActions>
+        </MudCardHeader>
+        
+        <MudCardContent>
+            @if (providerCredentials == null)
+            {
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (!providerCredentials.Any())
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Info" Class="mb-4">
+                    No providers configured yet. Add an LLM provider to get started.
+                </MudAlert>
+
+                <MudGrid>
+                    @foreach (var provider in _supportedProviders)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Elevation="1" Class="h-100">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6">@provider</MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudText Typo="Typo.body2" Class="flex-grow-1 my-4">
+                                        @GetProviderDescription(provider)
+                                    </MudText>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                                             FullWidth="true" OnClick="() => LaunchGuidedSetup(provider)"
+                                             StartIcon="@Icons.Material.Filled.AutoFixHigh">
+                                        Setup @provider
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <MudTable Items="@providerCredentials" Hover="true" Bordered="false" Striped="false" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Provider</MudTh>
+                        <MudTh>API Key</MudTh>
+                        <MudTh>Base URL</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="cred">
+                        <MudTd DataLabel="Provider">@cred.ProviderName</MudTd>
+                        <MudTd DataLabel="API Key">
+                            <MudText Color="Color.Secondary">@(string.IsNullOrEmpty(cred.ApiKey) ? "Not set" : "••••••••")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Base URL">@(string.IsNullOrEmpty(cred.BaseUrl) ? "Default" : cred.BaseUrl)</MudTd>
+                        <MudTd>
+                            <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                             Color="Color.Primary" Size="Size.Small"
+                                             OnClick="() => EditProvider(cred)" 
+                                             title="Edit Provider" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                             Color="Color.Error" Size="Size.Small"
+                                             OnClick="() => DeleteProvider(cred)" 
+                                             title="Delete Provider" />
+                            </MudButtonGroup>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudCardContent>
+    </MudCard>
+
+    <MudDivider Class="my-6" />
+
+    <!-- Model Mappings Section -->
+    <MudCard Class="mb-6" Elevation="2">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">Model Mappings</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        
+        <MudCardContent>
+            <MudText Typo="Typo.body1" Class="mb-4">
+                Map user-friendly model names to specific provider models. For example, you can map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
+            </MudText>
+            
+            @if (modelMappings == null)
+            {
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (!modelMappings.Any())
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                    No model mappings defined yet. Add one below.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@modelMappings" Hover="true" Bordered="false" Striped="true" Elevation="0" Class="mb-4">
+                    <HeaderContent>
+                        <MudTh>Model Alias</MudTh>
+                        <MudTh>Provider</MudTh>
+                        <MudTh>Provider Model</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="mapping">
+                        <MudTd DataLabel="Model Alias">@mapping.ModelAlias</MudTd>
+                        <MudTd DataLabel="Provider">@mapping.ProviderCredential.ProviderName</MudTd>
+                        <MudTd DataLabel="Provider Model">@mapping.ProviderModelName</MudTd>
+                        <MudTd>
+                            <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                             Color="Color.Primary" Size="Size.Small"
+                                             OnClick="@(() => EditMapping(mapping))" 
+                                             title="Edit Mapping" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                             Color="Color.Error" Size="Size.Small"
+                                             OnClick="@(() => DeleteMapping(mapping))" 
+                                             title="Delete Mapping" />
+                            </MudButtonGroup>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                     StartIcon="@Icons.Material.Filled.Add" 
+                     OnClick="() => { isEditingMapping = true; currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
+                Add Model Mapping
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Global Settings Section Template -->
+    <MudCard Class="mb-6" Elevation="2">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">Global Settings</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudTextField T="string" @bind-Value="proxyUrl" Label="Proxy Base URL" 
+                        HelperText="Base URL for the proxy service (e.g., http://localhost:5000)"
+                        Variant="Variant.Outlined" Class="mb-3" />
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                     OnClick="SaveProxyUrl" Class="mb-3">
+                Save Proxy URL
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- HTTP Settings Section Template -->
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2" Class="mb-6">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">HTTP Retry Settings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudNumericField T="int" @bind-Value="httpRetryOptions.MaxRetries"
+                                    Label="Maximum Retry Attempts"
+                                    Min="0" Max="10"
+                                    Variant="Variant.Outlined"
+                                    HelperText="Number of times to retry failed requests" 
+                                    Class="mb-4" />
+                                    
+                    <MudNumericField T="int" @bind-Value="httpRetryOptions.InitialDelaySeconds"
+                                    Label="Initial Delay (seconds)"
+                                    Min="1" Max="60"
+                                    Variant="Variant.Outlined"
+                                    HelperText="Initial delay before first retry attempt"
+                                    Class="mb-4" />
+                                    
+                    <MudNumericField T="int" @bind-Value="httpRetryOptions.MaxDelaySeconds"
+                                    Label="Maximum Delay (seconds)"
+                                    Min="1" Max="300"
+                                    Variant="Variant.Outlined"
+                                    HelperText="Maximum delay cap for any retry attempt"
+                                    Class="mb-4" />
+                                    
+                    <MudCheckBox T="bool" 
+                              @bind-Checked="httpRetryOptions.EnableRetryLogging"
+                              label="Enable Retry Logging"
+                              Class="mb-4" />
+                               
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                             OnClick="SaveHttpRetryOptionsAsync"
+                             StartIcon="@Icons.Material.Filled.Save"
+                             Class="mb-2">
+                        Save Retry Settings
+                    </MudButton>
+                    
+                    @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
+                    {
+                        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mt-3">
+                            @httpRetryOptionsSaveMessage
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2" Class="mb-6">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">HTTP Timeout Settings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudNumericField T="int" @bind-Value="httpTimeoutOptions.TimeoutSeconds"
+                                    Label="Timeout Duration (seconds)"
+                                    Min="1" Max="600"
+                                    Variant="Variant.Outlined"
+                                    HelperText="Maximum time to wait for responses from LLM providers"
+                                    Class="mb-4" />
+                                    
+                    <MudCheckBox T="bool" 
+                              @bind-Checked="httpTimeoutOptions.EnableTimeoutLogging"
+                              label="Enable Timeout Logging"
+                              helpertext="Log timeout events to console"
+                              Class="mb-4" />
+                               
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                             OnClick="SaveHttpTimeoutOptionsAsync"
+                             StartIcon="@Icons.Material.Filled.Save"
+                             Class="mb-2">
+                        Save Timeout Settings
+                    </MudButton>
+                    
+                    @if (!string.IsNullOrEmpty(httpTimeoutOptionsSaveMessage))
+                    {
+                        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mt-3">
+                            @httpTimeoutOptionsSaveMessage
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Help and Information Cards -->
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1" Class="mb-6">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">About HTTP Client Settings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        These settings control how ConduitLLM handles retry logic when communicating with LLM provider APIs.
+                    </MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem Icon="@Icons.Material.Filled.Timer" Value="@("initialdelay")">
+                            <MudText>Initial Delay</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Repeat" Value="@("maxretries")">
+                            <MudText>Maximum Retry Attempts</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.AccessTime" Value="@("maxdelay")">
+                            <MudText>Maximum Delay</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.ErrorOutline" Value="@("retrylogging")">
+                            <MudText>Retry Logging</MudText>
+                        </MudListItem>
+                    </MudList>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                        These settings apply to all provider clients and provide resilience against temporary API outages and rate limiting.
+                    </MudAlert>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1" Class="mb-6">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">About HTTP Timeout Settings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Configure how ConduitLLM handles timeouts when communicating with LLM provider APIs.
+                    </MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem Icon="@Icons.Material.Filled.Timer" Value="@("timeoutduration")">
+                            <MudText>Timeout Duration</MudText>
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.ErrorOutline" Value="@("timeoutlogging")">
+                            <MudText>Timeout Logging</MudText>
+                        </MudListItem>
+                    </MudList>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                        These settings apply to all provider clients and provide resilience against slow or unresponsive APIs.
+                    </MudAlert>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // State management
+    private bool isEditingMapping = false;
+    private ConduitLLM.Configuration.Entities.ModelProviderMapping? currentMapping;
+    private string? mappingErrorMessage;
+
+    // Provider management
+    private List<ProviderCredential> providerCredentials = new();
+    private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
+    private string deleteErrorMessage = "";
+    private string[] _supportedProviders = new[] { 
+        "OpenAI", "Azure OpenAI", "Anthropic", "Gemini", "Mistral", "HuggingFace", "Ollama", "Bedrock" 
+    };
+
+    // HTTP Retry settings
+    private ConduitLLM.Providers.Configuration.RetryOptions httpRetryOptions = new();
+    private string httpRetryOptionsSaveMessage = "";
+
+    // HTTP Timeout settings
+    private ConduitLLM.Providers.Configuration.TimeoutOptions httpTimeoutOptions = new();
+    private string httpTimeoutOptionsSaveMessage = "";
+
+    // Proxy URL
+    private string proxyUrl = "";
+
+    // Required methods for model mapping
+    private async Task AddProvider()
+    {
+        Logger.LogInformation("Adding new provider");
+    }
+
+    private void EditProvider(ProviderCredential provider)
+    {
+        Logger.LogInformation($"Editing provider: {provider.ProviderName}");
+    }
+
+    private async Task DeleteProvider(ProviderCredential provider)
+    {
+        Logger.LogInformation($"Deleting provider: {provider.ProviderName}");
+    }
+
+    private void LaunchGuidedSetup(string provider)
+    {
+        Logger.LogInformation($"Launching guided setup for provider: {provider}");
+    }
+
+    private void EditMapping(ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
+    {
+        currentMapping = mapping;
+        isEditingMapping = true;
+        Logger.LogInformation($"Editing model mapping: {mapping.ModelAlias}");
+    }
+
+    private async Task DeleteMapping(ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            dbContext.ModelProviderMappings.Remove(mapping);
+            await dbContext.SaveChangesAsync();
+            
+            await LoadDataAsync();
+            
+            Logger.LogInformation($"Model mapping deleted: {mapping.ModelAlias}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting model mapping");
+            mappingErrorMessage = $"Error deleting mapping: {ex.Message}";
+        }
+    }
+
+    private string GetProviderDescription(string providerName)
+    {
+        return providerName switch
+        {
+            "OpenAI" => "OpenAI's GPT models",
+            "Anthropic" => "Anthropic's Claude models",
+            "Google" => "Google's Gemini models",
+            _ => $"{providerName} provider"
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+        await LoadHttpConfigurationsAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            providerCredentials = await dbContext.ProviderCredentials.ToListAsync();
+            modelMappings = await dbContext.ModelProviderMappings
+                .Include(m => m.ProviderCredential)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading configuration data");
+        }
+    }
+
+    private async Task LoadHttpConfigurationsAsync()
+    {
+        try
+        {
+            httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new ConduitLLM.Providers.Configuration.RetryOptions();
+            httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new ConduitLLM.Providers.Configuration.TimeoutOptions();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading HTTP configurations");
+        }
+    }
+
+    private async Task SaveHttpRetryOptionsAsync()
+    {
+        try
+        {
+            await HttpRetryService.UpdateRetryConfigurationAsync(httpRetryOptions);
+            httpRetryOptionsSaveMessage = "HTTP retry options saved successfully!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving HTTP retry options");
+            httpRetryOptionsSaveMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task SaveHttpTimeoutOptionsAsync()
+    {
+        try
+        {
+            await HttpTimeoutService.UpdateTimeoutConfigurationAsync(httpTimeoutOptions);
+            httpTimeoutOptionsSaveMessage = "HTTP timeout options saved successfully!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving HTTP timeout options");
+            httpTimeoutOptionsSaveMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task SaveProxyUrl()
+    {
+        try 
+        {
+            Logger.LogInformation($"Proxy URL saved: {proxyUrl}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving proxy URL");
+        }
+    }
+}

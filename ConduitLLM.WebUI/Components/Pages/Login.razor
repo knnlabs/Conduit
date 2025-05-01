@@ -14,64 +14,70 @@
 
 <PageTitle>Login - ConduitLLM</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">ConduitLLM Admin Login</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="/account/login"> @* Changed to standard form POST *@
-                        @* Removed DataAnnotationsValidator and ValidationSummary *@
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger mb-3">
-                                @errorMessage
-                            </div>
-                        }
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
+    <MudCard Elevation="3">
+        <MudCardHeader Class="primary darken-1 py-4">
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Color="Color.Surface">ConduitLLM Admin Login</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent Class="pa-6">
+            <form method="post" action="/account/login">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
+                        @errorMessage
+                    </MudAlert>
+                }
 
-                        @* Add hidden field for returnUrl *@
-                        <input type="hidden" name="returnUrl" value="@returnUrl" />
-                        
-                        @* Add hidden field for Antiforgery token *@
-                        @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
-                        {
-                            <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
-                        }
+                @* Add hidden field for returnUrl *@
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                
+                @* Add hidden field for Antiforgery token *@
+                @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
+                {
+                    <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
+                }
 
-                        <div class="mb-3">
-                            <label for="masterKey" class="form-label">Master Key</label>
-                            @* Changed to standard input, added name attribute *@
-                            <input id="masterKey" name="masterKey" class="form-control" type="password" autocomplete="off" required /> 
-                            @* Removed ValidationMessage, added HTML5 required attribute, changed type back to password *@
-                            <div class="form-text">Enter your master key shown above or when starting the application with ./start.sh</div>
-                        </div>
+                <MudTextField T="string" @bind-Value="masterKey" 
+                             label="Master Key" 
+                             name="masterKey"
+                             type="password"
+                             required="true"
+                             requirederror="Master key is required"
+                             fullwidth="true" 
+                             variant="Variant.Outlined" 
+                             margin="Margin.Dense"
+                             adornment="Adornment.End" 
+                             adornmenticon="@Icons.Material.Filled.Key"/>
+                             
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-4">
+                    Enter your master key shown when starting the application with ./start.sh
+                </MudText>
 
-                        <div class="mb-3 form-check">
-                            @* Changed to standard input, added name and value attributes *@
-                            <input id="rememberMe" name="rememberMe" type="checkbox" value="true" class="form-check-input" /> 
-                            <label class="form-check-label" for="rememberMe">Remember me</label>
-                        </div>
+                <MudCheckBox T="bool" @bind-Checked="rememberMe" 
+                           name="rememberMe" 
+                           label="Remember me" 
+                           color="Color.Primary" 
+                           class="mb-4"/>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                Login @* Simplified button content *@
-                            </button>
-                        </div>
-                    </form> @* Corrected closing tag *@
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" 
+                          Color="Color.Primary" Size="Size.Large" FullWidth="true">
+                    Login
+                </MudButton>
+            </form>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
 
 @code {
     private string? errorMessage;
     private string? returnUrl;
     private string displayKey = "Loading...";
-    private string? requestToken; // Field to store the antiforgery token
-    private string? requestTokenFormFieldName; // Field to store the expected form field name
+    private string? masterKey;
+    private bool rememberMe;
+    private string? requestToken; 
+    private string? requestTokenFormFieldName; 
 
     protected override async Task OnInitializedAsync()
     {
@@ -119,11 +125,6 @@
             errorMessage = "Internal security error. Please try refreshing the page.";
         }
         
-        // Removed EditContext initialization
-        // editContext = new EditContext(loginModel); 
-        
         await base.OnInitializedAsync();
     }
-
-    // Removed AttemptManualLogin, HandleLogin, HandleInvalidSubmit, HashMasterKey, and LoginModel
 }

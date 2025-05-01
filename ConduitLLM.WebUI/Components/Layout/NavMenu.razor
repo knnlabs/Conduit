@@ -1,88 +1,61 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">ConduitLLM</a>
-    </div>
-</div>
+@using Microsoft.AspNetCore.Components.Routing
+@using MudBlazor
 
-<div class="nav-scrollable">
-    <nav class="nav flex-column">
-        <!-- Core Features -->
-        <div class="nav-category nav-category-test">Core</div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="chat">
-                <span class="bi bi-chat-dots-fill-nav-menu" aria-hidden="true"></span> Chat
-            </NavLink>
-        </div>
-
-        <!-- Configuration Group -->
-        <div class="nav-category nav-category-test">Configuration</div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="configuration">
-                <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> General Config
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="routing-settings">
-                <span class="bi bi-shuffle-nav-menu" aria-hidden="true"></span> Routing
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="caching-settings">
-                <span class="bi bi-database-fill-nav-menu" aria-hidden="true"></span> Caching
-            </NavLink>
-        </div>
-
-        <!-- Keys & Cost Management -->
-        <div class="nav-category nav-category-test">Keys & Costs</div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="virtualkeys">
-                <span class="bi bi-key-fill-nav-menu" aria-hidden="true"></span> Virtual Keys
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="virtualkeys/dashboard">
-                <span class="bi bi-graph-up-arrow-nav-menu" aria-hidden="true"></span> Keys Dashboard
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cost-dashboard">
-                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span> Cost Dashboard
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="request-logs">
-                <span class="bi bi-journal-text-nav-menu" aria-hidden="true"></span> Request Logs
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="model-costs">
-                <span class="bi bi-currency-dollar-nav-menu" aria-hidden="true"></span> Model Costs
-            </NavLink>
-        </div>
-
-        <!-- System -->
-        <div class="nav-category nav-category-test">System</div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="system-info">
-                <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span> System Information
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="db-status">
-                <span class="bi bi-database-fill-nav-menu" aria-hidden="true"></span> Database Status
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<MudNavMenu Bordered="true" Rounded="true" Class="mt-2">
+    <MudText Typo="Typo.h6" Class="px-4 py-2">Menu</MudText>
+    <MudDivider Class="mb-2"/>
+    
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
+    
+    <MudNavGroup Title="Core" Icon="@Icons.Material.Filled.Extension" Expanded="true">
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
+            Home
+        </MudNavLink>
+        <MudNavLink Href="chat" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat">
+            Chat
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="Configuration" Icon="@Icons.Material.Filled.Settings" Expanded="true">
+        <MudNavLink Href="configuration" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">
+            General Config
+        </MudNavLink>
+        <MudNavLink Href="routing-settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Shuffle">
+            Routing
+        </MudNavLink>
+        <MudNavLink Href="caching-settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
+            Caching
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="Keys & Costs" Icon="@Icons.Material.Filled.Key" Expanded="true">
+        <MudNavLink Href="virtualkeys" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Key">
+            Virtual Keys
+        </MudNavLink>
+        <MudNavLink Href="virtualkeys/dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Insights">
+            Keys Dashboard
+        </MudNavLink>
+        <MudNavLink Href="cost-dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AttachMoney">
+            Cost Dashboard
+        </MudNavLink>
+        <MudNavLink Href="request-logs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">
+            Request Logs
+        </MudNavLink>
+        <MudNavLink Href="model-costs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MonetizationOn">
+            Model Costs
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="System" Icon="@Icons.Material.Filled.Info" Expanded="true">
+        <MudNavLink Href="system-info" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info">
+            System Information
+        </MudNavLink>
+        <MudNavLink Href="db-status" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
+            Database Status
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudDivider Class="my-2"/>
+</MudNavMenu>

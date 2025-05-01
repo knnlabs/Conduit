@@ -2,33 +2,46 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager NavigationManager
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h6" Class="ml-3">Conduit</MudText>
+        <MudSpacer />
+        <NotificationDisplay />
+        <CascadingAuthenticationState>
+            <AuthorizeView>
+                <Authorized>
+                    <MudText Color="Color.Success" Class="me-3">
+                        <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+                        Admin
+                    </MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Error" Edge="Edge.End" Href="/logout" />
+                </Authorized>
+            </AuthorizeView>
+        </CascadingAuthenticationState>
+        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Edge="Edge.End" Href="https://github.com/knnlabs/Conduit" Target="_blank" />
+    </MudAppBar>
+    
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
         <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <div style="margin-left: auto; display: flex; align-items: center;">
-                <NotificationDisplay />
-                <CascadingAuthenticationState>
-                    <AuthorizeView>
-                        <Authorized>
-                            <span class="me-3 text-success">
-                                <i class="bi bi-person-check"></i> Admin
-                            </span>
-                            <a href="/logout" class="btn btn-outline-danger btn-sm me-2">
-                                <i class="bi bi-box-arrow-right"></i> Logout
-                            </a>
-                        </Authorized>
-                    </AuthorizeView>
-                </CascadingAuthenticationState>
-                <a href="https://github.com/knnlabs/Conduit" target="_blank" style="margin-left: 1rem;">About</a>
-            </div>
-        </div>
-
-        <article class="content px-4">
+    </MudDrawer>
+    
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}
