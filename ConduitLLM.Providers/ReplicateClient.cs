@@ -105,8 +105,12 @@ public class ReplicateClient : ILLMClient
         // 5. Process SSE events, map data to Core ChatCompletionChunk.
         // 6. If streaming not supported or URL not provided, maybe fall back to polling or throw exception.
         _logger.LogWarning("Replicate StreamChatCompletionAsync not implemented.");
-        yield break; // Added to satisfy async iterator syntax requirement
-        throw new NotImplementedException("Replicate StreamChatCompletionAsync is not yet implemented.");
+        
+        // Add an await operation to make this method truly async
+        await Task.Yield();
+        
+        // No items to yield in this implementation
+        yield break;
     }
 
     /// <inheritdoc />

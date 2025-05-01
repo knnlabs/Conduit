@@ -98,8 +98,10 @@ builder.Services.AddHttpContextAccessor();
 // Named client specifically for calling the Conduit HTTP API
 builder.Services.AddHttpClient("ApiClient", client =>
 {
-    // Read the base URL from environment variable, fallback to default for local dev
-    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? "http://localhost:5000";
+    // Read the base URL from environment variable, fallback to "http://api:8080" for container env
+    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
+                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
+                     "http://api:8080" : "http://localhost:5000");
     client.BaseAddress = new Uri(apiBaseUrl);
     Console.WriteLine($"[Conduit WebUI] Configuring ApiClient with BaseAddress: {apiBaseUrl}");
 });

@@ -27,8 +27,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      ASPNETCORE_URLS: http://+:8080
-      ASPNETCORE_ENVIRONMENT: Production
       CONDUIT_DATABASE_ENSURE_CREATED: "true"
     ports:
       - "5000:8080"
@@ -43,9 +41,6 @@ services:
       - postgres
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      ASPNETCORE_URLS: http://+:8080
-      ASPNETCORE_ENVIRONMENT: Production
-      API_BASE_URL: http://api:8080
       CONDUIT_DATABASE_ENSURE_CREATED: "true"
     ports:
       - "5001:8080"
