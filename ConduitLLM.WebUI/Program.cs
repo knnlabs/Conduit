@@ -63,6 +63,9 @@ else
     throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
 }
 
+// Check for insecure mode
+bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
+
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
@@ -80,15 +83,34 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 // Add authorization with policy requirements
 builder.Services.AddAuthorization(options =>
 {
-    // Define policy that requires master key authentication
-    options.AddPolicy("MasterKeyPolicy", policy =>
-        policy.RequireClaim("MasterKeyAuthenticated", "true"));
+    // Create a policy based on insecure mode state
+    var masterKeyPolicy = new AuthorizationPolicyBuilder();
+    
+    if (insecureMode)
+    {
+        // In insecure mode, no requirements needed - always passes
+        masterKeyPolicy.RequireAssertion(_ => true);
+    }
+    else
+    {
+        // Normal authentication requires the claim
+        masterKeyPolicy.RequireClaim("MasterKeyAuthenticated", "true");
+    }
+    
+    // Register the policy
+    options.AddPolicy("MasterKeyPolicy", masterKeyPolicy.Build());
+    
+    // Set this as the default policy so it applies to all [Authorize] attributes without parameters
+    options.DefaultPolicy = masterKeyPolicy.Build();
     
     // Configure a fallback policy that allows anonymous access by default
     // This allows public pages like Login and AccessDenied to be accessed without authentication
     // Individual pages will use [Authorize] attribute as needed
     options.FallbackPolicy = null; // Allow anonymous access by default
 });
+
+// Register InsecureModeProvider for displaying insecure mode banner
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IInsecureModeProvider>(new ConduitLLM.WebUI.Services.InsecureModeProvider { IsInsecureMode = insecureMode });
 
 // Add HttpContextAccessor - required for authentication in Razor components
 builder.Services.AddHttpContextAccessor();

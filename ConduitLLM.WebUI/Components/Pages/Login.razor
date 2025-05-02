@@ -6,78 +6,99 @@
 @using System.Security.Cryptography
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
+@using ConduitLLM.WebUI.Interfaces
 @inject NavigationManager NavigationManager
 @inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject ILogger<Login> Logger
+@inject IInsecureModeProvider InsecureModeProvider
 
 <PageTitle>Login - ConduitLLM</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
-    <MudCard Elevation="3">
-        <MudCardHeader Class="primary darken-1 py-4">
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5" Color="Color.Surface">ConduitLLM Admin Login</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent Class="pa-6">
-            <form method="post" action="/account/login">
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
-                        @errorMessage
-                    </MudAlert>
-                }
+@if (InsecureModeProvider.IsInsecureMode)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mx-auto mt-8" Style="max-width: 500px;">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Class="me-2" Size="Size.Medium" />
+            <div>
+                <MudText>Redirecting to home page...</MudText>
+                <MudText Typo="Typo.body2">Login is bypassed in insecure mode.</MudText>
+            </div>
+        </div>
+    </MudAlert>
+    NavigationManager.NavigateTo("/");
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
+        <MudCard Elevation="3">
+            <MudCardHeader Class="primary darken-1 py-4">
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h5" Color="Color.Surface">ConduitLLM Admin Login</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent Class="pa-6">
+                <form method="post" action="/account/login">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
+                            @errorMessage
+                        </MudAlert>
+                    }
 
-                @* Add hidden field for returnUrl *@
-                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                
-                @* Add hidden field for Antiforgery token *@
-                @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
-                {
-                    <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
-                }
+                    @* Add hidden field for returnUrl *@
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    
+                    @* Add hidden field for Antiforgery token *@
+                    @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
+                    {
+                        <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
+                    }
 
-                <MudTextField T="string" @bind-Value="masterKey" 
-                             label="Master Key" 
-                             name="masterKey"
-                             type="password"
-                             required="true"
-                             requirederror="Master key is required"
-                             fullwidth="true" 
-                             variant="Variant.Outlined" 
-                             margin="Margin.Dense"
-                             adornment="Adornment.End" 
-                             adornmenticon="@Icons.Material.Filled.Key"/>
-                             
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-4">
-                    Enter your master key shown when starting the application with ./start.sh
-                </MudText>
+                    <MudTextField T="string" @bind-Value="masterKey" 
+                                  label="Master Key" 
+                                  name="masterKey"
+                                  type="password"
+                                  required="true"
+                                  requirederror="Master key is required"
+                                  fullwidth="true" 
+                                  variant="Variant.Outlined" 
+                                  margin="Margin.Dense"
+                                  adornment="Adornment.End" 
+                                  adornmenticon="@Icons.Material.Filled.Key"
+                                  autocomplete="off"
+                                  class="mb-4" />
 
-                <MudCheckBox T="bool" @bind-checked="rememberMe" 
-                           name="rememberMe" 
-                           Label="Remember me" 
-                           Color="Color.Primary" 
-                           Class="mb-4"/>
-
-                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" 
-                          Color="Color.Primary" Size="Size.Large" FullWidth="true">
-                    Login
-                </MudButton>
-            </form>
-        </MudCardContent>
-    </MudCard>
-</MudContainer>
+                    <div class="mb-4">
+                        <input type="checkbox" id="rememberMe" name="rememberMe" @bind="rememberMe" />
+                        <label for="rememberMe" class="ms-2">Remember me</label>
+                    </div>
+                    
+                    <div class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled" 
+                                 Color="Color.Primary" 
+                                 Size="Size.Large"
+                                 ButtonType="ButtonType.Submit"
+                                 StartIcon="@Icons.Material.Filled.Login">
+                            Login
+                        </MudButton>
+                    </div>
+                </form>
+            </MudCardContent>
+        </MudCard>
+    </MudContainer>
+}
 
 @code {
     private string? errorMessage;
-    private string? returnUrl;
-    private string displayKey = "Loading...";
     private string? masterKey;
     private bool rememberMe;
-    private string? requestToken; 
-    private string? requestTokenFormFieldName; 
+    private string? returnUrl = string.Empty;
+    
+    // Antiforgery token state
+    private string? requestToken;
+    private string? requestTokenFormFieldName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,7 +111,7 @@
 
         // Get the master key from env var directly
         string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
-        displayKey = !string.IsNullOrEmpty(envMasterKey) ? envMasterKey : "(not found)";
+        string displayKey = !string.IsNullOrEmpty(envMasterKey) ? envMasterKey : "(not found)";
         
         // Log diagnostic info
         Logger.LogInformation("Login page loaded, looking for master key");

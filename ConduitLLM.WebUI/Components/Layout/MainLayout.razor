@@ -1,41 +1,64 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
+@using ConduitLLM.WebUI.Interfaces
 @inject NavigationManager NavigationManager
+@inject IInsecureModeProvider InsecureModeProvider
 
 <MudThemeProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h6" Class="ml-3">Conduit</MudText>
-        <MudSpacer />
-        <NotificationDisplay />
-        <CascadingAuthenticationState>
-            <AuthorizeView>
-                <Authorized>
-                    <MudText Color="Color.Success" Class="me-3">
-                        <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
-                        Admin
-                    </MudText>
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Error" Edge="Edge.End" Href="/logout" />
-                </Authorized>
-            </AuthorizeView>
-        </CascadingAuthenticationState>
-        <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Edge="Edge.End" Href="https://github.com/knnlabs/Conduit" Target="_blank" />
-    </MudAppBar>
-    
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
-        <NavMenu />
-    </MudDrawer>
-    
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+<div class="d-flex flex-column" style="min-height: 100vh;">
+    @if (InsecureModeProvider.IsInsecureMode)
+    {
+        <div class="warning-banner">
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="ma-0 rounded-0 py-2" 
+                     Icon="@Icons.Material.Filled.Security">
+                <div class="d-flex justify-center align-center text-error">
+                    <strong>Warning:</strong>&nbsp;Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+                </div>
+            </MudAlert>
+        </div>
+    }
+
+    <MudLayout Class="flex-grow-1">
+        <MudAppBar Elevation="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+            <MudText Typo="Typo.h6" Class="ml-3">Conduit</MudText>
+            <MudSpacer />
+            <NotificationDisplay />
+            <CascadingAuthenticationState>
+                <AuthorizeView>
+                    <Authorized>
+                        <MudText Color="Color.Success" Class="me-3">
+                            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+                            Admin
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Error" Edge="Edge.End" Href="/logout" />
+                    </Authorized>
+                </AuthorizeView>
+            </CascadingAuthenticationState>
+            <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Edge="Edge.End" Href="https://github.com/knnlabs/Conduit" Target="_blank" />
+        </MudAppBar>
+        
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+            <NavMenu />
+        </MudDrawer>
+        
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+</div>
+
+<style>
+    .warning-banner {
+        width: 100%;
+        z-index: 1000;
+    }
+</style>
 
 @code {
     private bool _drawerOpen = true;
