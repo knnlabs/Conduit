@@ -82,7 +82,7 @@
                                     @message.Role
                                 </MudText>
                                 <MudDivider Class="my-1" />
-                                @RenderMessageContent(message.Content)
+                                @RenderMessageContent(message.Content ?? string.Empty)
                             </MudPaper>
                         }
                         @if (isLoading && streamResponse)
@@ -182,7 +182,6 @@
     private double topP = 1.0;
     private bool streamResponse = true;
     private bool isLoading = false;
-    private bool isProxyUrlLoading = true;
     private string errorMessage = "";
     private string _proxyBaseUrl = "";
     private List<Message> chatHistory = new();
@@ -192,7 +191,6 @@
     {
         await LoadProxyUrlAsync();
         await LoadModelMappingsFromDatabase();
-        isProxyUrlLoading = false; 
         // No need to call StateHasChanged here, Blazor handles it after OnInitializedAsync
     }
 
@@ -214,8 +212,9 @@
     {
         try 
         {
-            // Use hardcoded default URL since the ApiEndpoint property doesn't exist
-            _proxyBaseUrl = "http://localhost:5000";
+            await Task.Run(() => {
+                _proxyBaseUrl = "http://localhost:5000";
+            });
         }
         catch (Exception ex)
         {
@@ -224,7 +223,6 @@
         }
         finally
         {
-            isProxyUrlLoading = false;
             StateHasChanged();
         }
     }

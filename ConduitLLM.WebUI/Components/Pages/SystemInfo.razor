@@ -4,158 +4,219 @@
 @using System.IO
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject correct factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
 @inject IProviderCredentialService ProviderCredentialService
 @inject IModelProviderMappingService ModelMappingService
 
-<PageTitle>System Information - ConduitLLM</PageTitle>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" Class="mb-4">System Information</MudText>
 
-<h1 class="mb-4">System Information</h1>
-
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Database Information</h5>
-                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshDatabaseInfo">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-            </div>
-            <div class="card-body">
-                @if (IsLoading)
-                {
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="small text-muted">Provider</div>
-                            <div class="fw-bold">@DatabaseProvider</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="small text-muted">Connection</div>
-                            <div class="fw-bold text-truncate" title="@ConnectionStringMasked">@ConnectionStringMasked</div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <div class="small text-muted">Tables</div>
-                            <div class="fw-bold">@TableCount</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted">Size</div>
-                            <div class="fw-bold">@DatabaseSize</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted">Location</div>
-                            <div class="fw-bold text-truncate" title="@DatabaseLocation">@DatabaseLocation</div>
-                        </div>
-                    </div>
-
-                    <h6 class="mt-4">Records Count</h6>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div class="small text-muted">Virtual Keys</div>
-                            <div class="fw-bold">@VirtualKeyCount</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted">Requests</div>
-                            <div class="fw-bold">@RequestCount</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="small text-muted">Global Settings</div>
-                            <div class="fw-bold">@SettingsCount</div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">LLM Configuration</h5>
-                <button class="btn btn-sm btn-outline-primary" @onclick="RefreshLlmInfo">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-            </div>
-            <div class="card-body">
-                @if (IsLoading)
-                {
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 text-center h-100">
-                                <div class="fs-1 text-primary">@ProviderCount</div>
-                                <div class="text-muted">Providers Configured</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="border rounded p-3 text-center h-100">
-                                <div class="fs-1 text-primary">@ModelCount</div>
-                                <div class="text-muted">Models Mapped</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (Providers.Any())
+    <MudGrid>
+        <!-- Database Information Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">Database Information</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                      Color="Color.Primary" 
+                                      Size="Size.Small" 
+                                      OnClick="RefreshDatabaseInfo"
+                                      aria-label="Refresh database information" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (IsLoading)
                     {
-                        <h6 class="mt-4">Configured Providers</h6>
-                        <ul class="list-group">
-                            @foreach (var provider in Providers)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    @provider
-                                    <span class="badge bg-primary rounded-pill">Provider</span>
-                                </li>
-                            }
-                        </ul>
+                        <div class="d-flex justify-center">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        </div>
                     }
                     else
                     {
-                        <div class="alert alert-info mt-3">
-                            No providers configured yet.
-                        </div>
-                    }
+                        <MudGrid Class="mb-4">
+                            <MudItem xs="12" md="6">
+                                <MudPaper Elevation="0" Class="pa-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Provider</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                        <MudIcon Icon="@(DatabaseProvider == "SQLite" 
+                                                    ? Icons.Material.Filled.Storage 
+                                                    : Icons.Material.Filled.Cloud)" 
+                                                Size="Size.Small" 
+                                                Class="mr-1" />
+                                        @DatabaseProvider
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudPaper Elevation="0" Class="pa-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connection</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;" 
+                                            Class="text-truncate"
+                                            title="@ConnectionStringMasked">
+                                        @ConnectionStringMasked
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
 
-                    @if (Models.Any())
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="pa-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Tables</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;">@TableCount</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="pa-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Size</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;">@DatabaseSize</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="pa-2">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Location</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 500;" 
+                                            Class="text-truncate"
+                                            title="@DatabaseLocation">
+                                        @DatabaseLocation
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-4" />
+
+                        <MudText Typo="Typo.h6" Class="mb-3">Records Count</MudText>
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-2">
+                                    <MudText Typo="Typo.h4" Color="Color.Primary">@VirtualKeyCount</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Virtual Keys</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-2">
+                                    <MudText Typo="Typo.h4" Color="Color.Primary">@RequestCount</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Requests</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-2">
+                                    <MudText Typo="Typo.h4" Color="Color.Primary">@SettingsCount</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Global Settings</MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- LLM Configuration Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">LLM Configuration</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                      Color="Color.Primary" 
+                                      Size="Size.Small" 
+                                      OnClick="RefreshLlmInfo"
+                                      aria-label="Refresh LLM information" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (IsLoading)
                     {
-                        <h6 class="mt-4">Model Mappings</h6>
-                        <ul class="list-group">
-                            @foreach (var model in Models)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    @model
-                                    <span class="badge bg-secondary rounded-pill">Model</span>
-                                </li>
-                            }
-                        </ul>
+                        <div class="d-flex justify-center">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        </div>
                     }
                     else
                     {
-                        <div class="alert alert-info mt-3">
-                            No model mappings configured yet.
-                        </div>
+                        <MudGrid Class="mb-4">
+                            <MudItem xs="12" md="6">
+                                <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-4">
+                                    <MudText Typo="Typo.h3" Color="Color.Primary">@ProviderCount</MudText>
+                                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Providers</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-4">
+                                    <MudText Typo="Typo.h3" Color="Color.Primary">@ModelCount</MudText>
+                                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Model Mappings</MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-4" />
+
+                        @if (Providers.Any())
+                        {
+                            <MudText Typo="Typo.h6" Class="mb-2">Provider Credentials</MudText>
+                            <MudPaper Elevation="0" Class="mb-4">
+                                @foreach (var provider in Providers)
+                                {
+                                    <MudPaper Class="d-flex align-center justify-space-between pa-2 mb-1" Elevation="0" Outlined="true">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Api" Class="mr-2" Color="Color.Primary" />
+                                            <MudText>@provider</MudText>
+                                        </div>
+                                        <MudText Color="Color.Primary" Style="font-size: 0.8rem;">Provider</MudText>
+                                    </MudPaper>
+                                }
+                            </MudPaper>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="mb-4">
+                                No providers configured yet.
+                            </MudAlert>
+                        }
+
+                        @if (Models.Any())
+                        {
+                            <MudText Typo="Typo.h6" Class="mb-2">Model Mappings</MudText>
+                            <MudPaper Elevation="0">
+                                @foreach (var model in Models)
+                                {
+                                    <MudPaper Class="d-flex align-center justify-space-between pa-2 mb-1" Elevation="0" Outlined="true">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Psychology" Class="mr-2" Color="Color.Secondary" />
+                                            <MudText>@model</MudText>
+                                        </div>
+                                        <MudText Color="Color.Secondary" Style="font-size: 0.8rem;">Mapping</MudText>
+                                    </MudPaper>
+                                }
+                            </MudPaper>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info">
+                                No model mappings configured yet.
+                            </MudAlert>
+                        }
                     }
-                }
-            </div>
-        </div>
-    </div>
-</div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Tools and Actions -->
+    <MudPaper Elevation="0" Class="d-flex justify-center mt-4">
+        <MudButton Variant="Variant.Filled"
+                  Color="Color.Secondary"
+                  StartIcon="@Icons.Material.Filled.DataObject"
+                  Href="/db-status">
+            View Database Status
+        </MudButton>
+    </MudPaper>
+</MudContainer>
 
 @code {
     private bool IsLoading = true;

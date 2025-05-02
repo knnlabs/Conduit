@@ -182,7 +182,7 @@
             
             <MudButton Variant="Variant.Filled" Color="Color.Primary" 
                      StartIcon="@Icons.Material.Filled.Add" 
-                     OnClick="() => { isEditingMapping = true; currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
+                     OnClick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
                 Add Model Mapping
             </MudButton>
         </MudCardContent>
@@ -197,7 +197,7 @@
         </MudCardHeader>
         <MudCardContent>
             <MudTextField T="string" @bind-Value="proxyUrl" Label="Proxy Base URL" 
-                        HelperText="Base URL for the proxy service (e.g., http://localhost:5000)"
+                        helperText="Base URL for the proxy service (e.g., http://localhost:5000)"
                         Variant="Variant.Outlined" Class="mb-3" />
             
             <MudButton Variant="Variant.Filled" Color="Color.Primary" 
@@ -221,26 +221,26 @@
                                     Label="Maximum Retry Attempts"
                                     Min="0" Max="10"
                                     Variant="Variant.Outlined"
-                                    HelperText="Number of times to retry failed requests" 
+                                    helperText="Number of times to retry failed requests" 
                                     Class="mb-4" />
                                     
                     <MudNumericField T="int" @bind-Value="httpRetryOptions.InitialDelaySeconds"
                                     Label="Initial Delay (seconds)"
                                     Min="1" Max="60"
                                     Variant="Variant.Outlined"
-                                    HelperText="Initial delay before first retry attempt"
+                                    helperText="Initial delay before first retry attempt"
                                     Class="mb-4" />
                                     
                     <MudNumericField T="int" @bind-Value="httpRetryOptions.MaxDelaySeconds"
                                     Label="Maximum Delay (seconds)"
                                     Min="1" Max="300"
                                     Variant="Variant.Outlined"
-                                    HelperText="Maximum delay cap for any retry attempt"
+                                    helperText="Maximum delay cap for any retry attempt"
                                     Class="mb-4" />
                                     
                     <MudCheckBox T="bool" 
-                              @bind-Checked="httpRetryOptions.EnableRetryLogging"
-                              label="Enable Retry Logging"
+                              @bind-checked="httpRetryOptions.EnableRetryLogging"
+                              Label="Enable Retry Logging"
                               Class="mb-4" />
                                
                     <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -272,13 +272,13 @@
                                     Label="Timeout Duration (seconds)"
                                     Min="1" Max="600"
                                     Variant="Variant.Outlined"
-                                    HelperText="Maximum time to wait for responses from LLM providers"
+                                    helperText="Maximum time to wait for responses from LLM providers"
                                     Class="mb-4" />
                                     
                     <MudCheckBox T="bool" 
-                              @bind-Checked="httpTimeoutOptions.EnableTimeoutLogging"
-                              label="Enable Timeout Logging"
-                              helpertext="Log timeout events to console"
+                              @bind-checked="httpTimeoutOptions.EnableTimeoutLogging"
+                              Label="Enable Timeout Logging"
+                              helperText="Log timeout events to the console"
                               Class="mb-4" />
                                
                     <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -363,7 +363,6 @@
 
 @code {
     // State management
-    private bool isEditingMapping = false;
     private ConduitLLM.Configuration.Entities.ModelProviderMapping? currentMapping;
     private string? mappingErrorMessage;
 
@@ -387,7 +386,7 @@
     private string proxyUrl = "";
 
     // Required methods for model mapping
-    private async Task AddProvider()
+    private void AddProvider()
     {
         Logger.LogInformation("Adding new provider");
     }
@@ -397,7 +396,7 @@
         Logger.LogInformation($"Editing provider: {provider.ProviderName}");
     }
 
-    private async Task DeleteProvider(ProviderCredential provider)
+    private void DeleteProvider(ProviderCredential provider)
     {
         Logger.LogInformation($"Deleting provider: {provider.ProviderName}");
     }
@@ -410,7 +409,6 @@
     private void EditMapping(ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
     {
         currentMapping = mapping;
-        isEditingMapping = true;
         Logger.LogInformation($"Editing model mapping: {mapping.ModelAlias}");
     }
 
@@ -470,8 +468,10 @@
     {
         try
         {
-            httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new ConduitLLM.Providers.Configuration.RetryOptions();
-            httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new ConduitLLM.Providers.Configuration.TimeoutOptions();
+            await Task.Run(() => {
+                httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new ConduitLLM.Providers.Configuration.RetryOptions();
+                httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new ConduitLLM.Providers.Configuration.TimeoutOptions();
+            });
         }
         catch (Exception ex)
         {
@@ -509,7 +509,7 @@
         }
     }
 
-    private async Task SaveProxyUrl()
+    private void SaveProxyUrl()
     {
         try 
         {
