@@ -8,21 +8,21 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="d-flex flex-column" style="min-height: 100vh;">
-    @if (InsecureModeProvider.IsInsecureMode)
-    {
-        <div class="warning-banner">
-            <MudAlert Severity="Severity.Warning" Dense="true" Class="ma-0 rounded-0 py-2" 
-                     Icon="@Icons.Material.Filled.Security">
-                <div class="d-flex justify-center align-center text-error">
-                    <strong>Warning:</strong>&nbsp;Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
-                </div>
-            </MudAlert>
-        </div>
-    }
+@if (InsecureModeProvider.IsInsecureMode)
+{
+    <div class="warning-banner">
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="ma-0 rounded-0 py-2" 
+                 Icon="@Icons.Material.Filled.Security">
+            <div class="d-flex justify-center align-center text-error">
+                <strong>Warning:</strong>&nbsp;Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+            </div>
+        </MudAlert>
+    </div>
+}
 
+<div class="d-flex flex-column" style="min-height: 100vh;">    
     <MudLayout Class="flex-grow-1">
-        <MudAppBar Elevation="1">
+        <MudAppBar Elevation="1" Class="appbar">
             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
             <MudText Typo="Typo.h6" Class="ml-3">Conduit</MudText>
             <MudSpacer />
@@ -56,7 +56,26 @@
 <style>
     .warning-banner {
         width: 100%;
-        z-index: 1000;
+        z-index: 1300; /* Higher than MudAppBar's z-index */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+    }
+    
+    /* Push down app bar when banner is shown */
+    .appbar {
+        top: @(InsecureModeProvider.IsInsecureMode ? "36px" : "0") !important;
+    }
+    
+    /* Push down content when banner is shown */
+    ::deep .mud-drawer {
+        top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px") !important;
+        height: @(InsecureModeProvider.IsInsecureMode ? "calc(100% - 100px)" : "calc(100% - 64px)") !important;
+    }
+    
+    ::deep .mud-main-content {
+        padding-top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px") !important;
     }
 </style>
 
