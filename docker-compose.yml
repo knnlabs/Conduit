@@ -42,6 +42,9 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      CONDUIT_MASTER_KEY: alpha
+      CONDUIT_INSECURE: "true"
+      CONDUIT_API_BASE_URL: http://api:8080
     ports:
       - "5001:8080"
     restart: on-failure
