@@ -1,0 +1,26 @@
+@using ConduitLLM.WebUI.DTOs
+@using MudBlazor
+@rendermode InteractiveServer
+
+<button type="button" @onclick="OnButtonClick" class="btn btn-link">
+    <span class="mud-icon-root mud-icon-size-small mud-icon-default" style="color: var(--mud-palette-info);">
+        visibility
+    </span>
+    @Text
+</button>
+
+@code {
+    [Parameter]
+    public int LogId { get; set; }
+    
+    [Parameter]
+    public string Text { get; set; } = "View";
+    
+    [Parameter]
+    public EventCallback<int> OnViewById { get; set; }
+    
+    private async Task OnButtonClick()
+    {
+        await OnViewById.InvokeAsync(LogId);
+    }
+}

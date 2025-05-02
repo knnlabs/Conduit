@@ -313,16 +313,16 @@
                         These settings control how ConduitLLM handles retry logic when communicating with LLM provider APIs.
                     </MudText>
                     <MudList T="string" Dense="true">
-                        <MudListItem Icon="@Icons.Material.Filled.Timer" Value="@("initialdelay")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Timer" Value="@("initialdelay")">
                             <MudText>Initial Delay</MudText>
                         </MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.Repeat" Value="@("maxretries")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Repeat" Value="@("maxretries")">
                             <MudText>Maximum Retry Attempts</MudText>
                         </MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.AccessTime" Value="@("maxdelay")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.AccessTime" Value="@("maxdelay")">
                             <MudText>Maximum Delay</MudText>
                         </MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.ErrorOutline" Value="@("retrylogging")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.ErrorOutline" Value="@("retrylogging")">
                             <MudText>Retry Logging</MudText>
                         </MudListItem>
                     </MudList>
@@ -345,10 +345,10 @@
                         Configure how ConduitLLM handles timeouts when communicating with LLM provider APIs.
                     </MudText>
                     <MudList T="string" Dense="true">
-                        <MudListItem Icon="@Icons.Material.Filled.Timer" Value="@("timeoutduration")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Timer" Value="@("timeoutduration")">
                             <MudText>Timeout Duration</MudText>
                         </MudListItem>
-                        <MudListItem Icon="@Icons.Material.Filled.ErrorOutline" Value="@("timeoutlogging")">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.ErrorOutline" Value="@("timeoutlogging")">
                             <MudText>Timeout Logging</MudText>
                         </MudListItem>
                     </MudList>

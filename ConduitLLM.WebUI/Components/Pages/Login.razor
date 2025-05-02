@@ -57,18 +57,18 @@ else
                     }
 
                     <MudTextField T="string" @bind-Value="masterKey" 
-                                  label="Master Key" 
+                                  Label="Master Key" 
                                   name="masterKey"
-                                  type="password"
-                                  required="true"
-                                  requirederror="Master key is required"
-                                  fullwidth="true" 
-                                  variant="Variant.Outlined" 
-                                  margin="Margin.Dense"
-                                  adornment="Adornment.End" 
-                                  adornmenticon="@Icons.Material.Filled.Key"
+                                  type="InputType.Password"
+                                  Required="true"
+                                  RequiredError="Master key is required"
+                                  FullWidth="true" 
+                                  Variant="Variant.Outlined" 
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.End" 
+                                  AdornmentIcon="@Icons.Material.Filled.Key"
                                   autocomplete="off"
-                                  class="mb-4" />
+                                  Class="mb-4" />
 
                     <div class="mb-4">
                         <input type="checkbox" id="rememberMe" name="rememberMe" @bind="rememberMe" />

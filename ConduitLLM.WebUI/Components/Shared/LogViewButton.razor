@@ -1,0 +1,22 @@
+@using ConduitLLM.WebUI.DTOs
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+
+<MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+              Color="Color.Info" 
+              Size="Size.Small" 
+              OnClick="ButtonClicked" />
+
+@code {
+    [Parameter, Required]
+    public RequestLogDto Log { get; set; } = default!;
+
+    [Parameter] 
+    public Action<RequestLogDto>? OnViewLog { get; set; }
+
+    private void ButtonClicked()
+    {
+        OnViewLog?.Invoke(Log);
+    }
+}

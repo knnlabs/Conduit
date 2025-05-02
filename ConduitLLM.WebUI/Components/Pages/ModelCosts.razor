@@ -5,213 +5,165 @@
 @inject IModelCostService ModelCostService
 @inject ILogger<ModelCosts> Logger
 @rendermode InteractiveServer
+@inject ISnackbar Snackbar
 
-<h1>Model Cost Management</h1>
+<PageTitle>Model Cost Management</PageTitle>
 
-<div class="alert alert-info">
-    <p><i class="bi bi-info-circle me-2"></i> Model costs are used to calculate usage spending for virtual keys and enforce budgets.</p>
-    <p class="mb-0">The <strong>ModelIdPattern</strong> supports wildcards (e.g., "openai/gpt-4*" or "*-embedding*") for matching multiple models with a single cost entry.</p>
-</div>
+<MudText Typo="Typo.h4" Class="mb-4">Model Cost Management</MudText>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
-        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+<MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined">
+    <div>
+        <MudText>Model costs are used to calculate usage spending for virtual keys and enforce budgets.</MudText>
+        <MudText>The <strong>ModelIdPattern</strong> supports wildcards (e.g., "openai/gpt-4*" or "*-embedding*") for matching multiple models with a single cost entry.</MudText>
     </div>
-}
+</MudAlert>
 
-@if (successMessage != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle-fill me-2"></i> @successMessage
-        <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
-    </div>
-}
-
-<div class="row mb-4">
-    <div class="col">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Model Costs</h5>
-                <div>
-                    <button class="btn btn-outline-secondary btn-sm me-2" @onclick="RefreshModelCosts">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm me-2" @onclick="ClearCache">
-                        <i class="bi bi-x-circle me-1"></i> Clear Cache
-                    </button>
-                    <button class="btn btn-primary btn-sm" @onclick="() => ShowAddEditModal()">
-                        <i class="bi bi-plus-circle me-1"></i> Add New Model Cost
-                    </button>
-                </div>
+<MudCard Elevation="2" Class="mb-6">
+    <MudCardHeader>
+        <MudText Typo="Typo.h6">Model Costs</MudText>
+        <MudToolBar disableGutters="true">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" 
+                     OnClick="RefreshModelCosts" StartIcon="@Icons.Material.Filled.Refresh" Class="mr-2">
+                Refresh
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" 
+                     OnClick="ClearCache" StartIcon="@Icons.Material.Filled.CleaningServices" Class="mr-2">
+                Clear Cache
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" 
+                     OnClick="() => ShowAddEditModal()" StartIcon="@Icons.Material.Filled.Add">
+                Add New Model Cost
+            </MudButton>
+        </MudToolBar>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (isLoading)
+        {
+            <div class="d-flex flex-column align-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+                <MudText Typo="Typo.body1" Class="mt-4">Loading model costs...</MudText>
             </div>
-            <div class="card-body">
-                @if (isLoading)
-                {
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading model costs...</p>
-                    </div>
-                }
-                else if (modelCosts == null || !modelCosts.Any())
-                {
-                    <div class="alert alert-secondary">
-                        <p class="mb-0">No model costs defined yet. Click 'Add New Model Cost' to create one.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Model ID Pattern</th>
-                                    <th>Input Token Cost ($)</th>
-                                    <th>Output Token Cost ($)</th>
-                                    <th>Embedding Token Cost ($)</th>
-                                    <th>Image Cost ($)</th>
-                                    <th>Created</th>
-                                    <th>Updated</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var cost in modelCosts.OrderBy(c => c.ModelIdPattern))
-                                {
-                                    <tr>
-                                        <td>@cost.ModelIdPattern</td>
-                                        <td>@FormatCost(cost.InputTokenCost)</td>
-                                        <td>@FormatCost(cost.OutputTokenCost)</td>
-                                        <td>@FormatCost(cost.EmbeddingTokenCost)</td>
-                                        <td>@FormatCost(cost.ImageCostPerImage)</td>
-                                        <td><small>@cost.CreatedAt.ToString("g")</small></td>
-                                        <td><small>@cost.UpdatedAt.ToString("g")</small></td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-primary" @onclick="() => ShowAddEditModal(cost)">
-                                                    <i class="bi bi-pencil"></i>
-                                                </button>
-                                                <button class="btn btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
+        }
+        else if (modelCosts == null || !modelCosts.Any())
+        {
+            <MudAlert Severity="Severity.Normal" Class="my-2">
+                No model costs defined yet. Click 'Add New Model Cost' to create one.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="@modelCosts.OrderBy(c => c.ModelIdPattern)" Hover="true" Striped="true" 
+                     Dense="true" Bordered="false" Class="mt-4">
+                <HeaderContent>
+                    <MudTh>Model ID Pattern</MudTh>
+                    <MudTh>Input Token Cost ($)</MudTh>
+                    <MudTh>Output Token Cost ($)</MudTh>
+                    <MudTh>Embedding Token Cost ($)</MudTh>
+                    <MudTh>Image Cost ($)</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh>Updated</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Model ID Pattern">@context.ModelIdPattern</MudTd>
+                    <MudTd DataLabel="Input Token Cost">@FormatCost(context.InputTokenCost)</MudTd>
+                    <MudTd DataLabel="Output Token Cost">@FormatCost(context.OutputTokenCost)</MudTd>
+                    <MudTd DataLabel="Embedding Token Cost">@FormatCost(context.EmbeddingTokenCost)</MudTd>
+                    <MudTd DataLabel="Image Cost">@FormatCost(context.ImageCostPerImage)</MudTd>
+                    <MudTd DataLabel="Created"><MudText Typo="Typo.caption">@context.CreatedAt.ToString("g")</MudText></MudTd>
+                    <MudTd DataLabel="Updated"><MudText Typo="Typo.caption">@context.UpdatedAt.ToString("g")</MudText></MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" 
+                                         OnClick="() => ShowAddEditModal(context)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
+                                         OnClick="() => ShowDeleteConfirmation(context)" />
+                        </MudButtonGroup>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
 
-@if (showAddEditModal)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(editingModelCost.Id == 0 ? "Add New Model Cost" : "Edit Model Cost")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body">
-                    <EditForm Model="@editingModelCost" OnValidSubmit="HandleAddEditSubmit" FormName="ModelCostForm">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
+<MudDialog @bind-isVisible="showAddEditModal" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            @(editingModelCost.Id == 0 ? "Add New Model Cost" : "Edit Model Cost")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm Model="@editingModelCost" @ref="form" @bind-IsValid="@isFormValid">
+            <MudTextField T="string" Label="Model ID Pattern" Required="true"
+                        @bind-Value="editingModelCost.ModelIdPattern" HelperText="Examples: 'openai/gpt-4o' (exact match), 'anthropic/claude-3*' (wildcard), '*-embedding*' (multi-wildcard)"
+                        Immediate="true" Margin="Margin.Dense" Variant="Variant.Outlined" Class="mt-3" />
+                        
+            <MudNumericField T="decimal" Label="Input Token Cost ($ per 1000 tokens)" Required="true"
+                           @bind-Value="inputTokenCostPerThousand" Min="0" Step="0.01m"
+                           HelperText="Cost in USD per 1,000 input tokens"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                           Immediate="true" Margin="Margin.Dense" Class="mt-3" Variant="Variant.Outlined" />
+                           
+            <MudNumericField T="decimal" Label="Output Token Cost ($ per 1000 tokens)" Required="true"
+                           @bind-Value="outputTokenCostPerThousand" Min="0" Step="0.01m"
+                           HelperText="Cost in USD per 1,000 output tokens"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                           Immediate="true" Margin="Margin.Dense" Class="mt-3" Variant="Variant.Outlined" />
+                           
+            <MudNumericField T="decimal?" Label="Embedding Token Cost ($ per 1000 tokens)"
+                           @bind-Value="embeddingTokenCostPerThousand" Min="0" Step="0.01m"
+                           HelperText="Cost in USD per 1,000 embedding tokens (leave empty if not applicable)"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                           Immediate="true" Margin="Margin.Dense" Class="mt-3" Variant="Variant.Outlined" />
+                           
+            <MudNumericField T="decimal?" Label="Image Cost ($ per image)"
+                           @bind-Value="editingModelCost.ImageCostPerImage" Min="0" Step="0.01m"
+                           HelperText="Cost in USD per generated image (leave empty if not applicable)"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                           Immediate="true" Margin="Margin.Dense" Class="mt-3" Variant="Variant.Outlined" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="CloseModal" Color="Color.Dark">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleAddEditSubmit" 
+                 Disabled="@(!isFormValid || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                <MudText>Saving...</MudText>
+            }
+            else
+            {
+                <MudText>Save</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
-                        <div class="mb-3">
-                            <label for="modelIdPattern" class="form-label">Model ID Pattern:</label>
-                            <InputText id="modelIdPattern" @bind-Value="editingModelCost.ModelIdPattern" class="form-control" />
-                            <div class="form-text">
-                                Examples: "openai/gpt-4o" (exact match), "anthropic/claude-3*" (wildcard), "*-embedding*" (multi-wildcard)
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="inputTokenCost" class="form-label">Input Token Cost ($ per 1000 tokens):</label>
-                            <InputNumber id="inputTokenCost" @bind-Value="inputTokenCostPerThousand" class="form-control" />
-                            <div class="form-text">Cost in USD per 1,000 input tokens</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="outputTokenCost" class="form-label">Output Token Cost ($ per 1000 tokens):</label>
-                            <InputNumber id="outputTokenCost" @bind-Value="outputTokenCostPerThousand" class="form-control" />
-                            <div class="form-text">Cost in USD per 1,000 output tokens</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="embeddingTokenCost" class="form-label">Embedding Token Cost ($ per 1000 tokens):</label>
-                            <InputNumber id="embeddingTokenCostPerThousand" @bind-Value="embeddingTokenCostPerThousand" class="form-control" />
-                            <div class="form-text">Cost in USD per 1,000 embedding tokens (leave empty if not applicable)</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="imageCostPerImage" class="form-label">Image Cost ($ per image):</label>
-                            <InputNumber id="imageCostPerImage" @bind-Value="editingModelCost.ImageCostPerImage" class="form-control" />
-                            <div class="form-text">Cost in USD per generated image (leave empty if not applicable)</div>
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                                @if (isSaving)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                    <span>Saving...</span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-save me-1"></i>
-                                    <span>Save</span>
-                                }
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
-@if (showDeleteConfirmation)
-{
-    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete the model cost for <strong>@deletingModelCost?.ModelIdPattern</strong>?</p>
-                    <p class="text-danger">This action cannot be undone.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="DeleteModelCost" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                            <span>Deleting...</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-trash me-1"></i>
-                            <span>Delete</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
+<MudDialog @bind-isVisible="showDeleteConfirmation" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Confirm Delete</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>Are you sure you want to delete the model cost for <strong>@deletingModelCost?.ModelIdPattern</strong>?</MudText>
+        <MudText Color="Color.Error" Class="mt-2">This action cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="CloseModal" Color="Color.Dark">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="DeleteModelCost" 
+                 Disabled="@isSaving">
+            @if (isSaving)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                <MudText>Deleting...</MudText>
+            }
+            else
+            {
+                <MudText>Delete</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private List<ModelCost>? modelCosts;
@@ -223,6 +175,8 @@
     // Add/Edit modal variables
     private bool showAddEditModal = false;
     private ModelCost editingModelCost = new();
+    private MudForm form = new();
+    private bool isFormValid;
     
     // Delete confirmation modal variables
     private bool showDeleteConfirmation = false;
@@ -232,6 +186,13 @@
     private decimal inputTokenCostPerThousand;
     private decimal outputTokenCostPerThousand;
     private decimal? embeddingTokenCostPerThousand;
+
+    // Dialog options
+    private DialogOptions dialogOptions = new() { 
+        // CloseOnEscapeKey property removed in MudBlazor v8.6.0
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -249,7 +210,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading model costs: {ex.Message}";
+            Snackbar.Add($"Error loading model costs: {ex.Message}", Severity.Error);
             Logger.LogError(ex, "Error loading model costs");
         }
         finally
@@ -268,11 +229,11 @@
         try
         {
             ModelCostService.ClearCache();
-            successMessage = "Model cost cache cleared successfully";
+            Snackbar.Add("Model cost cache cleared successfully", Severity.Success);
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error clearing cache: {ex.Message}";
+            Snackbar.Add($"Error clearing cache: {ex.Message}", Severity.Error);
             Logger.LogError(ex, "Error clearing model cost cache");
         }
     }
@@ -336,7 +297,6 @@
     private async Task HandleAddEditSubmit()
     {
         isSaving = true;
-        errorMessage = null;
         
         try
         {
@@ -351,7 +311,7 @@
             {
                 // Creating new cost
                 await ModelCostService.AddModelCostAsync(editingModelCost);
-                successMessage = $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully";
+                Snackbar.Add($"Model cost for '{editingModelCost.ModelIdPattern}' added successfully", Severity.Success);
             }
             else
             {
@@ -359,11 +319,11 @@
                 var result = await ModelCostService.UpdateModelCostAsync(editingModelCost);
                 if (result)
                 {
-                    successMessage = $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully";
+                    Snackbar.Add($"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully", Severity.Success);
                 }
                 else
                 {
-                    errorMessage = "Failed to update model cost. It may have been deleted.";
+                    Snackbar.Add("Failed to update model cost. It may have been deleted.", Severity.Error);
                 }
             }
             
@@ -373,7 +333,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error saving model cost: {ex.Message}";
+            Snackbar.Add($"Error saving model cost: {ex.Message}", Severity.Error);
             Logger.LogError(ex, "Error saving model cost: {Error}", ex.Message);
         }
         finally
@@ -387,18 +347,17 @@
         if (deletingModelCost == null) return;
         
         isSaving = true;
-        errorMessage = null;
         
         try
         {
             var result = await ModelCostService.DeleteModelCostAsync(deletingModelCost.Id);
             if (result)
             {
-                successMessage = $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully";
+                Snackbar.Add($"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully", Severity.Success);
             }
             else
             {
-                errorMessage = "Failed to delete model cost. It may have already been removed.";
+                Snackbar.Add("Failed to delete model cost. It may have already been removed.", Severity.Error);
             }
             
             // Close modal and refresh list
@@ -407,7 +366,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error deleting model cost: {ex.Message}";
+            Snackbar.Add($"Error deleting model cost: {ex.Message}", Severity.Error);
             Logger.LogError(ex, "Error deleting model cost: {Error}", ex.Message);
         }
         finally

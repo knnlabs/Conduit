@@ -130,10 +130,10 @@
                                  Class="mb-4" />
                     
                     <MudSwitch T="bool" 
-                              label="Stream response"
-                              helpertext="Receive and display LLM response in real-time" 
+                              Label="Stream response"
+                              helperText="Receive and display LLM response in real-time" 
                               checked="@streamResponse"
-                              checkedchanged="@((bool val) => streamResponse = val)" />
+                              checkedChanged="@((bool val) => streamResponse = val)" />
                     
                     <MudText Typo="Typo.subtitle2" Class="mb-1">Temperature: @temperature</MudText>
                     <MudSlider T="double" Value="@temperature" ValueChanged="@((double val) => temperature = val)" 

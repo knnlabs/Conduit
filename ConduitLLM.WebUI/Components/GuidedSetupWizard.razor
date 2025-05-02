@@ -3,223 +3,223 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging 
 @using System.Text.Json
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject Config factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
 @inject ProviderStatusService ProviderStatusService
 @inject NavigationManager NavigationManager
-@inject ILogger<GuidedSetupWizard> Logger // Inject logger
+@inject ILogger<GuidedSetupWizard> Logger
 
-<div class="guided-setup-container">
-    @if (IsOpen)
-    {
-        <div class="guided-setup-overlay">
-            <div class="guided-setup-dialog">
-                <div class="guided-setup-header">
-                    <h4>@GetWizardTitle()</h4>
-                    <button type="button" class="btn-close" @onclick="CloseWizard" aria-label="Close"></button>
-                </div>
-                <div class="guided-setup-body">
-                    @if (currentStep == 0)
+@if (IsOpen)
+{
+    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <MudPaper Elevation="4" Style="width: 600px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+            <MudAppBar Color="Color.Primary" Dense="true" Style="height: 56px;">
+                <MudText Typo="Typo.h6">@GetWizardTitle()</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CloseWizard" aria-label="Close" />
+            </MudAppBar>
+            
+            <MudContainer Class="pa-4">
+                @if (currentStep == 0)
+                {
+                    <MudText Typo="Typo.h5" Class="mb-2">Welcome to @(providerModel?.ProviderName ?? "Provider") Setup</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4">This wizard will guide you through configuring @(providerModel?.ProviderName ?? "the provider") for use with ConduitLLM.</MudText>
+                    
+                    <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">You'll need:</MudText>
+                    <MudList T="string">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"An active {providerModel?.ProviderName ?? "provider"} account") />
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"An API key from {providerModel?.ProviderName ?? "the provider"}") />
+                        @if (providerModel?.ProviderName == "OpenAI" || providerModel?.ProviderName == "Anthropic")
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"Payment method set up with {providerModel?.ProviderName}") />
+                        }
+                    </MudList>
+
+                    @if (!string.IsNullOrEmpty(providerModel?.ProviderName) && ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName) != null)
                     {
-                        <div class="step welcome-step">
-                            <h5>Welcome to @(providerModel?.ProviderName ?? "Provider") Setup</h5>
-                            <p>This wizard will guide you through configuring @(providerModel?.ProviderName ?? "the provider") for use with ConduitLLM.</p>
-
-                            <div class="step-content mt-4">
-                                <h6>You'll need:</h6>
-                                <ul class="setup-checklist">
-                                    <li>
-                                        <i class="bi bi-check-circle text-success me-2"></i>
-                                        An active @(providerModel?.ProviderName ?? "provider") account
-                                    </li>
-                                    <li>
-                                        <i class="bi bi-check-circle text-success me-2"></i>
-                                        An API key from @(providerModel?.ProviderName ?? "the provider")
-                                    </li>
-                                    @if (providerModel?.ProviderName == "OpenAI" || providerModel?.ProviderName == "Anthropic")
-                                    {
-                                        <li>
-                                            <i class="bi bi-check-circle text-success me-2"></i>
-                                            Payment method set up with @(providerModel?.ProviderName)
-                                        </li>
-                                    }
-                                </ul>
-
-                                @if (!string.IsNullOrEmpty(providerModel?.ProviderName) && ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName) != null)
-                                {
-                                    <div class="mt-3">
-                                        <a href="@ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName)" target="_blank" class="btn btn-outline-primary">
-                                            <i class="bi bi-key me-2"></i>Get @(providerModel.ProviderName) API Key
-                                        </a>
-                                        <small class="d-block mt-2 text-muted">
-                                            Opens the @(providerModel.ProviderName) website where you can create an API key
-                                        </small>
-                                    </div>
-                                }
-                            </div>
+                        <div class="mt-4">
+                            <MudButton 
+                                Variant="Variant.Outlined" 
+                                Color="Color.Primary" 
+                                StartIcon="@Icons.Material.Filled.Key"
+                                Href="@ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName)"
+                                Target="_blank">
+                                Get @(providerModel.ProviderName) API Key
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Class="mt-1">
+                                Opens the @(providerModel.ProviderName) website where you can create an API key
+                            </MudText>
                         </div>
                     }
-                    else if (currentStep == 1)
+                }
+                else if (currentStep == 1)
+                {
+                    <MudText Typo="Typo.h5" Class="mb-2">Enter API Key and Settings</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4">Provide your @(providerModel?.ProviderName ?? "provider") API key and any other required settings:</MudText>
+                    
+                    <MudTextField 
+                        @bind-Value="providerModel!.ApiKey" 
+                        Label="API Key" 
+                        Variant="Variant.Outlined" 
+                        InputType="InputType.Password"
+                        FullWidth="true"
+                        Margin="Margin.Dense"
+                        Immediate="true"
+                        Error="@(string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext)"
+                        ErrorText="@(string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext ? "API key is required" : null)" />
+                    
+                    @if (providerModel?.ProviderName == "OpenRouter" || providerModel?.ProviderName == "Fireworks")
                     {
-                        <div class="step api-key-step">
-                            <h5>Enter API Key and Settings</h5>
-                            <p>Provide your @(providerModel?.ProviderName ?? "provider") API key and any other required settings:</p>
-
-                            <div class="mb-3">
-                                <label for="wizardApiKey" class="form-label">API Key</label>
-                                <input type="password" class="form-control" id="wizardApiKey"
-                                    @bind="providerModel!.ApiKey" placeholder="Enter your API key here" />
-                                @if (string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext)
-                                {
-                                    <div class="text-danger mt-1">API key is required</div>
-                                }
-                            </div>
-
-                            @if (providerModel?.ProviderName == "OpenRouter" || providerModel?.ProviderName == "Fireworks")
-                            {
-                                <div class="mb-3">
-                                    <label for="wizardApiBase" class="form-label">API Base URL (Optional)</label>
-                                    <input type="text" class="form-control" id="wizardApiBase"
-                                        @bind="providerModel!.BaseUrl" placeholder="Leave empty for default" />
-                                    <small class="form-text text-muted">
-                                        Usually you can leave this empty to use the default.
-                                    </small>
-                                </div>
-                            }
+                        <MudTextField 
+                            @bind-Value="providerModel!.BaseUrl" 
+                            Label="API Base URL (Optional)" 
+                            Variant="Variant.Outlined" 
+                            FullWidth="true"
+                            Margin="Margin.Dense"
+                            Immediate="true"
+                            HelperText="Usually you can leave this empty to use the default." />
+                    }
+                }
+                else if (currentStep == 2)
+                {
+                    <MudText Typo="Typo.h5" Class="mb-2">Test Connection</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4">Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</MudText>
+                    
+                    @if (isTesting)
+                    {
+                        <div class="d-flex flex-column align-center my-4">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                            <MudText Class="mt-3">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</MudText>
                         </div>
                     }
-                    else if (currentStep == 2)
+                    else if (testStatus != null)
                     {
-                        <div class="step test-step">
-                            <h5>Test Connection</h5>
-                            <p>Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</p>
-
-                            @if (isTesting)
+                        <div class="my-4">
+                            @if (testStatus.IsOnline)
                             {
-                                <div class="d-flex justify-content-center my-4">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Testing connection...</span>
-                                    </div>
-                                </div>
-                                <p class="text-center">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</p>
-                            }
-                            else if (testStatus != null)
-                            {
-                                <div class="my-3">
-                                    @if (testStatus.IsOnline)
-                                    {
-                                        <div class="alert alert-success">
-                                            <i class="bi bi-check-circle-fill me-2"></i>
-                                            <strong>Connection Successful!</strong>
-                                            <p class="mb-0 mt-2">Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</p>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="alert alert-danger">
-                                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                            <strong>Connection Failed</strong>
-                                            <p class="mb-0 mt-2">Error: @testStatus.StatusMessage</p>
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (!testStatus.IsOnline)
-                                {
-                                    <button class="btn btn-primary" @onclick="TestConnection">
-                                        <i class="bi bi-arrow-clockwise me-2"></i>Try Again
-                                    </button>
-                                }
+                                <MudAlert Severity="Severity.Success" Variant="Variant.Filled">
+                                    <MudText><strong>Connection Successful!</strong></MudText>
+                                    <MudText>Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</MudText>
+                                </MudAlert>
                             }
                             else
                             {
-                                <button class="btn btn-primary" @onclick="TestConnection">
-                                    <i class="bi bi-lightning-charge me-2"></i>Test Connection
-                                </button>
+                                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+                                    <MudText><strong>Connection Failed</strong></MudText>
+                                    <MudText>Error: @testStatus.StatusMessage</MudText>
+                                </MudAlert>
+                                
+                                <div class="mt-4">
+                                    <MudButton 
+                                        Variant="Variant.Filled" 
+                                        Color="Color.Primary" 
+                                        StartIcon="@Icons.Material.Filled.Refresh"
+                                        OnClick="TestConnection">
+                                        Try Again
+                                    </MudButton>
+                                </div>
                             }
                         </div>
                     }
-                </div>
-                <div class="guided-setup-footer">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <button type="button" class="btn btn-outline-secondary"
-                            @onclick="PreviousStep" disabled="@(currentStep == 0)">
-                            <i class="bi bi-arrow-left me-1"></i>Back
-                        </button>
-
-                        <div class="step-indicators">
-                            @for (int i = 0; i < totalSteps; i++)
-                            {
-                                int stepIndex = i;
-                                <span class="step-dot @(currentStep == stepIndex ? "active" : "")"
-                                      @onclick="() => GoToStep(stepIndex)"></span>
-                            }
+                    else
+                    {
+                        <div class="d-flex justify-center my-4">
+                            <MudButton 
+                                Variant="Variant.Filled" 
+                                Color="Color.Primary" 
+                                StartIcon="@Icons.Material.Filled.Bolt"
+                                OnClick="TestConnection">
+                                Test Connection
+                            </MudButton>
                         </div>
-
-                        @if (currentStep < totalSteps - 1)
+                    }
+                }
+            </MudContainer>
+            
+            <MudDivider />
+            
+            <MudContainer Class="pa-4">
+                <div class="d-flex justify-space-between align-center">
+                    <MudButton 
+                        Variant="Variant.Outlined" 
+                        Color="Color.Default" 
+                        StartIcon="@Icons.Material.Filled.ArrowBack"
+                        OnClick="PreviousStep" 
+                        Disabled="@(currentStep == 0)">
+                        Back
+                    </MudButton>
+                    
+                    <div>
+                        @for (int i = 0; i < totalSteps; i++)
                         {
-                            <button type="button" class="btn btn-primary" @onclick="NextStep">
-                                Next<i class="bi bi-arrow-right ms-1"></i>
-                            </button>
-                        }
-                        else
-                        {
-                            <button type="button" class="btn btn-success" @onclick="FinishSetup">
-                                Finish<i class="bi bi-check-lg ms-1"></i>
-                            </button>
+                            int stepIndex = i;
+                            <MudIconButton 
+                                Icon="@(currentStep == stepIndex ? Icons.Material.Filled.Circle : Icons.Material.Filled.RadioButtonUnchecked)"
+                                Color="@(currentStep == stepIndex ? Color.Primary : Color.Default)" 
+                                Size="Size.Small"
+                                OnClick="() => GoToStep(stepIndex)"
+                                Style="margin: 0 2px;" />
                         }
                     </div>
+                    
+                    @if (currentStep < totalSteps - 1)
+                    {
+                        <MudButton 
+                            Variant="Variant.Filled" 
+                            Color="Color.Primary" 
+                            EndIcon="@Icons.Material.Filled.ArrowForward"
+                            OnClick="NextStep">
+                            Next
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton 
+                            Variant="Variant.Filled" 
+                            Color="Color.Success" 
+                            EndIcon="@Icons.Material.Filled.Check"
+                            OnClick="FinishSetup">
+                            Finish
+                        </MudButton>
+                    }
                 </div>
-            </div>
-        </div>
-    }
-</div>
+            </MudContainer>
+        </MudPaper>
+    </div>
+}
 
 @code {
     [Parameter]
     public bool IsOpen { get; set; }
 
-    // ProviderName parameter removed
-
     [Parameter]
     public EventCallback<bool> IsOpenChanged { get; set; }
 
     [Parameter]
-    // Update EventCallback parameter type to use the Configuration entity
     public EventCallback<ConduitLLM.Configuration.Entities.ProviderCredential> OnSetupComplete { get; set; } 
 
     private int currentStep = 0;
     private int totalSteps = 3; // Welcome, Configure, Test
-    // Update internal model type to use the Configuration entity
     private ConduitLLM.Configuration.Entities.ProviderCredential providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
     private bool attemptedNext = false;
     private bool isTesting = false;
     private ProviderStatus? testStatus = null;
 
-    // OnInitialized and OnParametersSet removed. Initialization is handled by OpenForProvider.
-
-    /// <summary>
-    /// Explicitly opens and initializes the wizard for a specific provider.
-    /// Called by the parent component.
-    /// </summary>
-    public async Task OpenForProvider(string providerName) // Changed to async Task
+    public async Task OpenForProvider(string providerName)
     {
         Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Called with providerName: '{ProviderName}'", providerName);
-        // Reset internal state for a fresh setup
-        // Use the Configuration entity type
         providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = providerName }; 
         currentStep = 0;
         testStatus = null;
         attemptedNext = false;
         isTesting = false;
-        IsOpen = true; // Open the dialog
-        await IsOpenChanged.InvokeAsync(true); // Notify parent
+        IsOpen = true;
+        await IsOpenChanged.InvokeAsync(true);
         Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Initialized providerModel.ProviderName to: '{ModelProviderName}'", providerModel.ProviderName);
-        StateHasChanged(); // Ensure UI reflects changes
+        StateHasChanged();
     }
 
     private string GetWizardTitle()
     {
-        // Use providerModel.ProviderName for the title
         return $"Configure {providerModel?.ProviderName ?? "Provider"} - Step {currentStep + 1} of {totalSteps}";
     }
 
@@ -229,7 +229,6 @@
 
         if (currentStep == 1 && string.IsNullOrWhiteSpace(providerModel?.ApiKey))
         {
-            // Validation for API key step
             return;
         }
 
@@ -269,15 +268,13 @@
         StateHasChanged();
         try
         {
-            // Use the Configuration entity type for testing
             var testCredentials = new ConduitLLM.Configuration.Entities.ProviderCredential 
             {
                 ProviderName = providerModel.ProviderName,
                 ApiKey = providerModel.ApiKey,
-                BaseUrl = providerModel.BaseUrl, // Use BaseUrl
+                BaseUrl = providerModel.BaseUrl,
                 ApiVersion = providerModel.ApiVersion
             };
-            // Assuming ProviderConnectionTester can handle the Configuration entity type
             testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials); 
         }
         finally
@@ -303,14 +300,13 @@
         }
 
         // Check if this provider already exists before invoking the callback
-        // Use the Config context
         using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
         var existingProvider = await dbContext.ProviderCredentials
             .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
 
         if (existingProvider != null)
         {
-            testStatus = new ProviderStatus // Re-use testStatus to display error
+            testStatus = new ProviderStatus
             {
                 IsOnline = false,
                 StatusMessage = $"A provider named '{providerModel?.ProviderName}' already exists",
@@ -320,16 +316,15 @@
             return;
         }
 
-        // Create a new instance of the Configuration entity type to pass to the callback
+        // Create a new instance to pass to the callback
         if (providerModel != null)
         {
             var newProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
             {
                 ProviderName = providerModel.ProviderName,
                 ApiKey = providerModel.ApiKey,
-                BaseUrl = providerModel.BaseUrl, // Use BaseUrl
+                BaseUrl = providerModel.BaseUrl,
                 ApiVersion = providerModel.ApiVersion,
-                // Set defaults for non-nullable properties if needed
                 IsEnabled = true, 
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -338,7 +333,7 @@
             await OnSetupComplete.InvokeAsync(newProvider);
         }
 
-        await CloseWizard(); // Close after successful completion
+        await CloseWizard();
     }
 
     private async Task CloseWizard()
@@ -348,7 +343,6 @@
         currentStep = 0;
         testStatus = null;
         attemptedNext = false;
-        // Reset model with required property set using the Configuration entity type
         providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
         await IsOpenChanged.InvokeAsync(false);
     }

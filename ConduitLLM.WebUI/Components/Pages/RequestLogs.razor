@@ -1,85 +1,102 @@
 @page "/request-logs"
 @using ConduitLLM.WebUI.DTOs
 @using System.Globalization
+@using System.Text
+@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@using ConduitLLM.WebUI.Components.Shared
+@using MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
 <PageTitle>Request Logs - ConduitLLM</PageTitle>
 
-<h1 class="mb-4">Request Logs</h1>
+<h4 class="mb-4">Request Logs</h4>
 
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Filters</h5>
+<div class="card mb-4">
+    <div class="card-header">
+        <h6>Filters</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="virtualKeySelect" class="form-label">Virtual Key</label>
+                    <select id="virtualKeySelect" class="form-select" @bind="selectedVirtualKeyId">
+                        <option value="">All Keys</option>
+                        @if (virtualKeys != null)
+                        {
+                            @foreach (var key in virtualKeys)
+                            {
+                                <option value="@key.Id">@key.KeyName</option>
+                            }
+                        }
+                    </select>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label for="virtualKeyFilter" class="form-label">Virtual Key</label>
-                        <select id="virtualKeyFilter" class="form-select" @bind="selectedVirtualKeyId">
-                            <option value="">All Keys</option>
-                            @if (virtualKeys != null)
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label for="modelSelect" class="form-label">Model</label>
+                    <select id="modelSelect" class="form-select" @bind="selectedModel">
+                        <option value="">All Models</option>
+                        @if (models != null)
+                        {
+                            @foreach (var model in models)
                             {
-                                @foreach (var key in virtualKeys)
-                                {
-                                    <option value="@key.Id">@key.KeyName</option>
-                                }
+                                <option value="@model">@model</option>
                             }
-                        </select>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="modelFilter" class="form-label">Model</label>
-                        <select id="modelFilter" class="form-select" @bind="selectedModel">
-                            <option value="">All Models</option>
-                            @if (models != null)
-                            {
-                                @foreach (var model in models)
-                                {
-                                    <option value="@model">@model</option>
-                                }
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-3">
-                        <label for="dateRangeFilter" class="form-label">Date Range</label>
-                        <select id="dateRangeFilter" class="form-select" @bind="selectedDateRange">
-                            <option value="24h">Last 24 Hours</option>
-                            <option value="7d">Last 7 Days</option>
-                            <option value="30d">Last 30 Days</option>
-                            <option value="custom">Custom Range</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-3" style="@(selectedDateRange == "custom" ? "display:block" : "display:none")">
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label for="dateRangeSelect" class="form-label">Date Range</label>
+                    <select id="dateRangeSelect" class="form-select" @bind="selectedDateRange">
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+            </div>
+            @if (selectedDateRange == "custom")
+            {
+                <div class="col-md-2">
+                    <div class="mb-3">
                         <label for="startDate" class="form-label">Start Date</label>
                         <input type="date" id="startDate" class="form-control" @bind="startDate" />
                     </div>
-                    <div class="col-md-2 mb-3" style="@(selectedDateRange == "custom" ? "display:block" : "display:none")">
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
                         <label for="endDate" class="form-label">End Date</label>
                         <input type="date" id="endDate" class="form-control" @bind="endDate" />
                     </div>
-                    <div class="col-md-2 mb-3">
-                        <label for="statusCodeFilter" class="form-label">Status Code</label>
-                        <select id="statusCodeFilter" class="form-select" @bind="selectedStatusCode">
-                            <option value="">All</option>
-                            <option value="200">200 (Success)</option>
-                            <option value="400">400 (Bad Request)</option>
-                            <option value="401">401 (Unauthorized)</option>
-                            <option value="404">404 (Not Found)</option>
-                            <option value="429">429 (Rate Limited)</option>
-                            <option value="500">500 (Server Error)</option>
-                        </select>
-                    </div>
                 </div>
-                <div class="row">
-                    <div class="col-md-12 text-end">
-                        <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
-                        <button class="btn btn-secondary ms-2" @onclick="ClearFilters">Clear Filters</button>
-                    </div>
+            }
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label for="statusCodeSelect" class="form-label">Status Code</label>
+                    <select id="statusCodeSelect" class="form-select" @bind="selectedStatusCode">
+                        <option value="">All</option>
+                        <option value="200">200 (Success)</option>
+                        <option value="400">400 (Bad Request)</option>
+                        <option value="401">401 (Unauthorized)</option>
+                        <option value="404">404 (Not Found)</option>
+                        <option value="429">429 (Rate Limited)</option>
+                        <option value="500">500 (Server Error)</option>
+                    </select>
                 </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 d-flex justify-content-end">
+                <button type="button" class="btn btn-primary me-2" @onclick="ApplyFiltersHandler">Apply Filters</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="ClearFiltersHandler">Clear Filters</button>
             </div>
         </div>
     </div>
@@ -87,206 +104,234 @@
 
 @if (isLoading)
 {
-    <div class="row">
-        <div class="col-md-12 text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading logs...</p>
+    <div class="d-flex justify-content-center align-items-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
         </div>
+        <span class="ms-3">Loading logs...</span>
     </div>
 }
 else if (logResults == null || logResults.Items.Count == 0)
 {
-    <div class="row">
-        <div class="col-md-12">
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i> No logs found for the selected filters.
-            </div>
-        </div>
+    <div class="alert alert-info my-4">
+        No logs found for the selected filters.
     </div>
 }
 else
 {
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Results (@logResults.TotalCount total logs)</h5>
-                        <div>
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="ExportToCSV">
-                                <i class="bi bi-download me-1"></i> Export to CSV
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead>
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Results (@logResults.TotalCount total logs)</h6>
+            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="ExportToCsvHandler">
+                <i class="fas fa-download me-1"></i> Export to CSV
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Virtual Key</th>
+                            <th>Model</th>
+                            <th>Type</th>
+                            <th>Tokens (In/Out)</th>
+                            <th>Cost ($)</th>
+                            <th>Time (ms)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in logResults.Items)
+                        {
                             <tr>
-                                <th>Timestamp</th>
-                                <th>Virtual Key</th>
-                                <th>Model</th>
-                                <th>Type</th>
-                                <th>Tokens (In/Out)</th>
-                                <th>Cost ($)</th>
-                                <th>Time (ms)</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@log.VirtualKeyName</td>
+                                <td>@log.ModelName</td>
+                                <td>@log.RequestType</td>
+                                <td>@log.InputTokens / @log.OutputTokens</td>
+                                <td>@log.Cost.ToString("F6")</td>
+                                <td>@log.ResponseTimeMs.ToString("F2")</td>
+                                <td>
+                                    @if (log.StatusCode.HasValue)
+                                    {
+                                        <span class="badge bg-@GetStatusColorClass(log.StatusCode.Value)">
+                                            @log.StatusCode
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-link text-primary" @onclick="@(e => ViewLogByIdHandler(log.Id))">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var log in logResults.Items)
-                            {
-                                <tr>
-                                    <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                                    <td>@log.VirtualKeyName</td>
-                                    <td>@log.ModelName</td>
-                                    <td>@log.RequestType</td>
-                                    <td>@log.InputTokens / @log.OutputTokens</td>
-                                    <td>@log.Cost.ToString("F6")</td>
-                                    <td>@log.ResponseTimeMs.ToString("F2")</td>
-                                    <td>
-                                        @if (log.StatusCode.HasValue)
-                                        {
-                                            <span class="badge @GetStatusBadgeClass(log.StatusCode.Value)">
-                                                @log.StatusCode
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info" @onclick="() => ShowLogDetails(log)">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span>Showing @((currentPage - 1) * pageSize + 1) to @Math.Min(currentPage * pageSize, logResults.TotalCount) of @logResults.TotalCount entries</span>
-                        </div>
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination mb-0">
-                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(1)" disabled="@(currentPage == 1)">First</button>
-                                </li>
-                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
-                                </li>
-
-                                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(logResults.TotalPages, currentPage + 2); i++)
-                                {
-                                    int pageNumber = i;
-                                    <li class="page-item @(pageNumber == currentPage ? "active" : "")">
-                                        <button class="page-link" @onclick="() => GoToPage(pageNumber)">@pageNumber</button>
-                                    </li>
-                                }
-
-                                <li class="page-item @(currentPage == logResults.TotalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(currentPage + 1)" disabled="@(currentPage == logResults.TotalPages)">Next</button>
-                                </li>
-                                <li class="page-item @(currentPage == logResults.TotalPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => GoToPage(logResults.TotalPages)" disabled="@(currentPage == logResults.TotalPages)">Last</button>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <div>
+                Showing @((currentPage - 1) * pageSize + 1) to @Math.Min(currentPage * pageSize, logResults.TotalCount) of @logResults.TotalCount entries
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination mb-0">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="@(e => GoToPageHandler(1))" disabled="@(currentPage == 1)">First</button>
+                    </li>
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="@(e => GoToPageHandler(currentPage - 1))" disabled="@(currentPage == 1)">Previous</button>
+                    </li>
+                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(logResults.TotalPages, currentPage + 2); i++)
+                    {
+                        int pageNumber = i;
+                        <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                            <button class="page-link" @onclick="@(e => GoToPageHandler(pageNumber))">@pageNumber</button>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == logResults.TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="@(e => GoToPageHandler(currentPage + 1))" disabled="@(currentPage == logResults.TotalPages)">Next</button>
+                    </li>
+                    <li class="page-item @(currentPage == logResults.TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="@(e => GoToPageHandler(logResults.TotalPages))" disabled="@(currentPage == logResults.TotalPages)">Last</button>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 }
 
-<!-- Log Details Modal -->
 @if (selectedLog != null && isModalOpen)
 {
-    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Request Log Details</h5>
-                    <button type="button" class="btn-close" @onclick="CloseLogDetailsModal"></button>
+                    <button type="button" class="btn-close" @onclick="CloseLogDetailsModalHandler" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="mb-2">
-                                <strong>Request ID:</strong> @selectedLog.Id
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Request ID:</div>
+                                            <div>@selectedLog.Id</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Timestamp:</div>
+                                            <div>@selectedLog.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Virtual Key:</div>
+                                            <div>@selectedLog.VirtualKeyName</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Model:</div>
+                                            <div>@selectedLog.ModelName</div>
+                                        </div>
+                                    </li>
+                                </ul>
                             </div>
-                            <div class="mb-2">
-                                <strong>Timestamp:</strong> @selectedLog.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Request Type:</div>
+                                            <div>@selectedLog.RequestType</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Status Code:</div>
+                                            <div>
+                                                <span class="badge bg-@GetStatusColorClass(selectedLog.StatusCode ?? 0)">
+                                                    @(selectedLog.StatusCode?.ToString() ?? "N/A")
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Cost:</div>
+                                            <div>$@selectedLog.Cost.ToString("0.000000")</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 120px; font-weight: 500">Tokens:</div>
+                                            <div>@selectedLog.InputTokens (input) / @selectedLog.OutputTokens (output)</div>
+                                        </div>
+                                    </li>
+                                </ul>
                             </div>
-                            <div class="mb-2">
-                                <strong>Virtual Key:</strong> @selectedLog.VirtualKeyName
+                            <div class="col-12 mt-3">
+                                <hr />
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 150px; font-weight: 500">Response Time:</div>
+                                            <div>@selectedLog.ResponseTimeMs.ToString("F2") ms</div>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="d-flex">
+                                            <div style="width: 150px; font-weight: 500">Total Tokens:</div>
+                                            <div>@selectedLog.TotalTokens</div>
+                                        </div>
+                                    </li>
+                                    @if (!string.IsNullOrEmpty(selectedLog.UserId))
+                                    {
+                                        <li class="list-group-item">
+                                            <div class="d-flex">
+                                                <div style="width: 150px; font-weight: 500">User ID:</div>
+                                                <div>@selectedLog.UserId</div>
+                                            </div>
+                                        </li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(selectedLog.ClientIp))
+                                    {
+                                        <li class="list-group-item">
+                                            <div class="d-flex">
+                                                <div style="width: 150px; font-weight: 500">Client IP:</div>
+                                                <div>@selectedLog.ClientIp</div>
+                                            </div>
+                                        </li>
+                                    }
+                                    @if (!string.IsNullOrEmpty(selectedLog.RequestPath))
+                                    {
+                                        <li class="list-group-item">
+                                            <div class="d-flex">
+                                                <div style="width: 150px; font-weight: 500">Request Path:</div>
+                                                <div>@selectedLog.RequestPath</div>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
                             </div>
-                            <div class="mb-2">
-                                <strong>Model:</strong> @selectedLog.ModelName
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-2">
-                                <strong>Request Type:</strong> @selectedLog.RequestType
-                            </div>
-                            <div class="mb-2">
-                                <strong>Status Code:</strong> 
-                                <span class="badge @GetStatusBadgeClass(selectedLog.StatusCode ?? 0)">
-                                    @(selectedLog.StatusCode?.ToString() ?? "N/A")
-                                </span>
-                            </div>
-                            <div class="mb-2">
-                                <strong>Cost:</strong> $@selectedLog.Cost.ToString("0.000000")
-                            </div>
-                            <div class="mb-2">
-                                <strong>Tokens:</strong> @selectedLog.InputTokens (input) / @selectedLog.OutputTokens (output)
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mt-3">
-                        <div class="col-md-12">
-                            <div class="mb-2">
-                                <strong>Response Time:</strong> @selectedLog.ResponseTimeMs.ToString("F2") ms
-                            </div>
-                            <div class="mb-2">
-                                <strong>Total Tokens:</strong> @selectedLog.TotalTokens
-                            </div>
-                            @if (!string.IsNullOrEmpty(selectedLog.UserId))
-                            {
-                                <div class="mb-2">
-                                    <strong>User ID:</strong> @selectedLog.UserId
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(selectedLog.ClientIp))
-                            {
-                                <div class="mb-2">
-                                    <strong>Client IP:</strong> @selectedLog.ClientIp
-                                </div>
-                            }
-                            @if (!string.IsNullOrEmpty(selectedLog.RequestPath))
-                            {
-                                <div class="mb-2">
-                                    <strong>Request Path:</strong> @selectedLog.RequestPath
-                                </div>
-                            }
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseLogDetailsModal">Close</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseLogDetailsModalHandler">Close</button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="modal-backdrop fade show"></div>
 }
 
 @code {
@@ -325,7 +370,6 @@ else
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading filter data: {ex.Message}");
-            // Could add toast notification here
         }
     }
 
@@ -335,10 +379,8 @@ else
         
         try
         {
-            // Apply date range based on selection
             SetDateRangeFromSelection();
             
-            // Build query parameters
             var queryParams = new List<string>
             {
                 $"page={currentPage}",
@@ -368,7 +410,6 @@ else
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading logs: {ex.Message}");
-            // Could add toast notification here
         }
         finally
         {
@@ -392,17 +433,16 @@ else
                 startDate = DateTime.UtcNow.AddDays(-30);
                 endDate = DateTime.UtcNow;
                 break;
-            // For "custom", we use the user-selected dates
         }
     }
 
-    private async Task ApplyFilters()
+    private async Task ApplyFiltersHandler()
     {
-        currentPage = 1; // Reset to first page when applying filters
+        currentPage = 1;
         await LoadLogsAsync();
     }
 
-    private async Task ClearFilters()
+    private async Task ClearFiltersHandler()
     {
         selectedVirtualKeyId = null;
         selectedModel = null;
@@ -415,7 +455,7 @@ else
         await LoadLogsAsync();
     }
 
-    private async Task GoToPage(int page)
+    private async Task GoToPageHandler(int page)
     {
         if (page < 1 || (logResults != null && page > logResults.TotalPages))
             return;
@@ -424,41 +464,48 @@ else
         await LoadLogsAsync();
     }
 
-    private void ShowLogDetails(RequestLogDto log)
+    private void ViewLogByIdHandler(int logId)
     {
-        selectedLog = log;
-        isModalOpen = true;
+        if (logResults != null)
+        {
+            var log = logResults.Items.FirstOrDefault(l => l.Id == logId);
+            if (log != null)
+            {
+                selectedLog = log;
+                isModalOpen = true;
+                StateHasChanged();
+            }
+        }
     }
 
-    private void CloseLogDetailsModal()
+    private void CloseLogDetailsModalHandler()
     {
         selectedLog = null;
         isModalOpen = false;
+        StateHasChanged();
     }
-
-    private string GetStatusBadgeClass(int statusCode)
+    
+    private string GetStatusColorClass(int statusCode)
     {
         return statusCode switch
         {
-            >= 200 and < 300 => "bg-success",
-            >= 300 and < 400 => "bg-info",
-            >= 400 and < 500 => "bg-warning",
-            >= 500 => "bg-danger",
-            _ => "bg-secondary"
+            >= 200 and < 300 => "success",
+            >= 300 and < 400 => "info",
+            >= 400 and < 500 => "warning",
+            >= 500 => "danger",
+            _ => "secondary"
         };
     }
 
-    private async Task ExportToCSV()
+    private async Task ExportToCsvHandler()
     {
         if (logResults == null || logResults.Items.Count == 0)
             return;
 
         var csvData = new System.Text.StringBuilder();
         
-        // Add header
         csvData.AppendLine("ID,Timestamp,Virtual Key,Model,Type,Input Tokens,Output Tokens,Cost,Response Time (ms),Status Code,User ID,Client IP,Request Path");
         
-        // Add data rows
         foreach (var log in logResults.Items)
         {
             csvData.AppendLine(
@@ -481,7 +528,6 @@ else
         var fileName = $"request_logs_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
         var fileContent = csvData.ToString();
         
-        // Use JS interop to trigger download
         await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "text/csv", fileContent);
     }
 
@@ -490,12 +536,6 @@ else
         if (string.IsNullOrEmpty(field))
             return string.Empty;
             
-        // Escape quotes by doubling them
         return field.Replace("\"", "\"\"");
-    }
-
-    private async Task CopyToClipboard(string text)
-    {
-        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 }

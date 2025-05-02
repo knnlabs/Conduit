@@ -5,103 +5,123 @@
 @using ConduitLLM.Configuration
 @inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h1>About ConduitLLM</h1>
-            <p class="lead">A unified .NET client library for interacting with various LLM providers</p>
-        </div>
-    </div>
+<PageTitle>About ConduitLLM</PageTitle>
 
-    <div class="row mt-4">
-        <div class="col-md-7">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="h5 mb-0">Project Overview</h2>
-                </div>
-                <div class="card-body">
-                    <p>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" Class="mb-2">About ConduitLLM</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">A unified .NET client library for interacting with various LLM providers</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="7">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">Project Overview</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText>
                         ConduitLLM provides a unified interface to interact with multiple LLM providers, simplifying integration 
                         and management of AI capabilities in your applications.
-                    </p>
-                    <p>Key features include:</p>
-                    <ul>
-                        <li><strong>Provider Management:</strong> Configure and manage multiple LLM providers (OpenAI, Anthropic, Cohere, Gemini, Fireworks, OpenRouter)</li>
-                        <li><strong>Model Mapping:</strong> Map generic model names to provider-specific models</li>
-                        <li><strong>Advanced Routing:</strong> Intelligent request distribution with strategies like round-robin, random, or simple direct routing</li>
-                        <li><strong>Caching:</strong> Response caching for improved performance and reduced costs</li>
-                        <li><strong>Virtual Keys:</strong> Comprehensive virtual key management system with budget tracking</li>
-                    </ul>
-                    <p>
-                        <strong>Repository:</strong> <a href="https://github.com/knnlabs/Conduit" target="_blank">https://github.com/knnlabs/Conduit</a>
-                    </p>
-                </div>
-            </div>
-        </div>
+                    </MudText>
+                    <MudText Class="mt-3">Key features include:</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Settings">
+                            <MudText><strong>Provider Management:</strong> Configure and manage multiple LLM providers (OpenAI, Anthropic, Cohere, Gemini, Fireworks, OpenRouter)</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Link">
+                            <MudText><strong>Model Mapping:</strong> Map generic model names to provider-specific models</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Route">
+                            <MudText><strong>Advanced Routing:</strong> Intelligent request distribution with strategies like round-robin, random, or simple direct routing</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Storage">
+                            <MudText><strong>Caching:</strong> Response caching for improved performance and reduced costs</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.VpnKey">
+                            <MudText><strong>Virtual Keys:</strong> Comprehensive virtual key management system with budget tracking</MudText>
+                        </MudListItem>
+                    </MudList>
+                    <MudText Class="mt-3">
+                        <strong>Repository:</strong> 
+                        <MudLink Href="https://github.com/knnlabs/Conduit" Target="_blank">https://github.com/knnlabs/Conduit</MudLink>
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
 
-        <div class="col-md-5">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h2 class="h5 mb-0">Project Components</h2>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Component</th>
-                                    <th>Version</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var component in ProjectVersions)
-                                {
-                                    <tr>
-                                        <td>@component.Key</td>
-                                        <td><code>@component.Value</code></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        <MudItem xs="12" md="5">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">Project Components</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTable Items="@ProjectVersions" Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Component</MudTh>
+                            <MudTh>Version</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Component">@context.Key</MudTd>
+                            <MudTd DataLabel="Version"><MudText Typo="Typo.body2"><code>@context.Value</code></MudText></MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <h2 class="h5 mb-0">Architecture</h2>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h4>Core Components</h4>
-                            <ul>
-                                <li><strong>Configuration:</strong> Manages provider credentials and model mappings</li>
-                                <li><strong>Core:</strong> Contains main abstractions and interfaces</li>
-                                <li><strong>Providers:</strong> Implements provider-specific integrations</li>
-                                <li><strong>Http:</strong> Handles HTTP communications</li>
-                                <li><strong>WebUI:</strong> Administration dashboard for configuration</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h4>Advanced Features</h4>
-                            <ul>
-                                <li><strong>Router:</strong> Intelligent request distribution with multiple strategies</li>
-                                <li><strong>Caching:</strong> Optimizes performance through response caching</li>
-                                <li><strong>Virtual Keys:</strong> Manages API usage with budget tracking</li>
-                                <li><strong>Request Tracking:</strong> Monitors API usage and performance</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+    <MudCard Elevation="3" Class="mb-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">Architecture</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.h6" Class="mb-2">Core Components</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Settings">
+                            <MudText><strong>Configuration:</strong> Manages provider credentials and model mappings</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Code">
+                            <MudText><strong>Core:</strong> Contains main abstractions and interfaces</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Extension">
+                            <MudText><strong>Providers:</strong> Implements provider-specific integrations</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Http">
+                            <MudText><strong>Http:</strong> Handles HTTP communications</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Dashboard">
+                            <MudText><strong>WebUI:</strong> Administration dashboard for configuration</MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.h6" Class="mb-2">Advanced Features</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Route">
+                            <MudText><strong>Router:</strong> Intelligent request distribution with multiple strategies</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Storage">
+                            <MudText><strong>Caching:</strong> Optimizes performance through response caching</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.VpnKey">
+                            <MudText><strong>Virtual Keys:</strong> Manages API usage with budget tracking</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Analytics">
+                            <MudText><strong>Request Tracking:</strong> Monitors API usage and performance</MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
 
 @code {
     private Dictionary<string, string> ProjectVersions { get; set; } = new Dictionary<string, string>();

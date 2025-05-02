@@ -3,115 +3,105 @@
 @using ConduitLLM.WebUI.Services
 @using Microsoft.EntityFrameworkCore
 @using System.Globalization
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory // Inject correct factory
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
 @inject ILogger<VirtualKeyUsageDetails> Logger
 
-<div class="card shadow-sm mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Key Usage Details</h5>
-        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-    </div>
-    <div class="card-body">
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Key Usage Details</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                         Color="Color.Default" 
+                         Size="Size.Small"
+                         OnClick="RefreshData" 
+                         aria-label="Refresh" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
         @if (isLoading)
         {
-            <div class="text-center p-3">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
+            <div class="d-flex justify-center my-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
             </div>
         }
         else if (errorMessage != null)
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <MudAlert Severity="Severity.Error" Class="mb-3">@errorMessage</MudAlert>
         }
         else if (keyId == 0)
         {
-            <div class="alert alert-info">Please select a key to view usage details.</div>
+            <MudAlert Severity="Severity.Info" Class="mb-3">Please select a key to view usage details.</MudAlert>
         }
         else if (usageData == null || !usageData.Any())
         {
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
+            <MudAlert Severity="Severity.Info" Icon="@Icons.Material.Filled.Info" Class="mb-3">
                 No usage data available for this key.
-            </div>
+            </MudAlert>
         }
         else
         {
-            <div class="mb-4">
-                <h6>Usage Over Time</h6>
-                <div class="chart-container" style="position: relative; height:200px; width:100%">
-                    <!-- This div will be used for the chart -->
-                    <canvas id="usageChart"></canvas>
-                </div>
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Usage Over Time</MudText>
+            <div style="position: relative; height:200px; width:100%" class="mb-4">
+                <canvas id="usageChart"></canvas>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h4 class="mb-0">@totalRequests</h4>
-                            <small class="text-muted">Total Requests</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h4 class="mb-0">$@totalCost.ToString("F2")</h4>
-                            <small class="text-muted">Total Cost</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light">
-                        <div class="card-body text-center">
-                            <h4 class="mb-0">@avgResponseTime.ToString("F0")ms</h4>
-                            <small class="text-muted">Avg. Response Time</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <MudGrid Spacing="2" Class="mb-4">
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="0" Class="pa-4 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
+                        <MudText Typo="Typo.h5">@totalRequests</MudText>
+                        <MudText Typo="Typo.caption">Total Requests</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="0" Class="pa-4 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
+                        <MudText Typo="Typo.h5">$@totalCost.ToString("F2")</MudText>
+                        <MudText Typo="Typo.caption">Total Cost</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="0" Class="pa-4 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
+                        <MudText Typo="Typo.h5">@avgResponseTime.ToString("F0")ms</MudText>
+                        <MudText Typo="Typo.caption">Avg. Response Time</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
 
-            <h6>Recent Activity</h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Model</th>
-                            <th>Type</th>
-                            <th>Tokens</th>
-                            <th>Cost</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var request in usageData.Take(10))
-                        {
-                            <tr>
-                                <td>@request.Timestamp.ToLocalTime().ToString("g")</td>
-                                <td>@request.ModelName</td>
-                                <td>@request.RequestType</td>
-                                <td>@request.InputTokens + @request.OutputTokens</td>
-                                <td>$@request.Cost.ToString("F4")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Recent Activity</MudText>
+            <MudTable Items="@usageData.Take(10)" Hover="true" Dense="true" Class="mb-2">
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Model</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Tokens</MudTh>
+                    <MudTh>Cost</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Date">@context.Timestamp.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd DataLabel="Model">@context.ModelName</MudTd>
+                    <MudTd DataLabel="Type">@context.RequestType</MudTd>
+                    <MudTd DataLabel="Tokens">@context.InputTokens + @context.OutputTokens</MudTd>
+                    <MudTd DataLabel="Cost">$@context.Cost.ToString("F4")</MudTd>
+                </RowTemplate>
+            </MudTable>
             
             @if (usageData.Count > 10)
             {
-                <div class="text-center mt-2">
-                    <button class="btn btn-sm btn-outline-secondary" @onclick="ShowAllActivity">
+                <div class="d-flex justify-center mt-3">
+                    <MudButton 
+                        Variant="Variant.Outlined" 
+                        Color="Color.Primary" 
+                        Size="Size.Small" 
+                        OnClick="ShowAllActivity"
+                        StartIcon="@Icons.Material.Filled.List">
                         View All (@usageData.Count) Requests
-                    </button>
+                    </MudButton>
                 </div>
             }
         }
-    </div>
-</div>
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Parameter]
@@ -153,11 +143,8 @@
         
         try
         {
-            // Use the correct context factory
             using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
             
-            // This assumes we have a RequestLogs table that tracks API requests
-            // You'll need to adapt this to your actual data model
             var logs = await context.RequestLogs
                 .Where(r => r.VirtualKeyId == keyId)
                 .OrderByDescending(r => r.Timestamp)
