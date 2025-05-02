@@ -36,4 +36,11 @@ window.addClickOutsideHandler = function (dropdownId, dotnetRef) {
     });
 };
 
+// Hide loading screen when Blazor is ready
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        document.body.classList.add('blazor-ready');
+    }, 500);
+});
+
 // Other site-wide JavaScript can be added here

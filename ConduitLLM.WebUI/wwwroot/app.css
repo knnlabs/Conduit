@@ -59,6 +59,10 @@ h1:focus {
     text-align: start;
 }
 
+#app-loading {
+    display: none !important;
+}
+
 #blazor-error-ui {
     background-color: rgba(255, 0, 0, 0.1);
     bottom: 0;
