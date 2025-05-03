@@ -54,27 +54,16 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>LLM Providers</h2>
         <div>
-            <button class="btn btn-primary" @onclick="AddProvider">
-                <i class="bi bi-plus-lg me-1"></i> Add Provider
-            </button>
-            <div class="quick-setup-container d-inline-block ms-2 position-relative">
-                <button type="button" class="btn btn-outline-primary" @onclick="ToggleQuickSetupDropdown">
-                    <i class="bi bi-magic me-1"></i> Quick Setup <i class="bi bi-caret-down-fill ms-1 small"></i>
-                </button>
-                @if (isQuickSetupOpen)
+            <MudMenu Icon="@Icons.Material.Filled.Add" Color="Color.Primary" 
+                    AnchorOrigin="Origin.BottomRight" 
+                    TransformOrigin="Origin.TopRight" 
+                    Label="Add Provider"
+                    Variant="Variant.Filled">
+                @foreach (var provider in _supportedProviders)
                 {
-                    <div class="custom-dropdown position-absolute mt-1 end-0 shadow-sm" style="min-width: 180px; z-index: 1000; background: white; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-                        @foreach (var provider in _supportedProviders)
-                        {
-                            <button class="w-100 text-start border-0 bg-transparent px-3 py-2 provider-option" 
-                                    style="cursor: pointer; transition: background-color 0.2s ease;"
-                                    @onclick="async () => { await LaunchGuidedSetup(provider); isQuickSetupOpen = false; }">
-                                @provider
-                            </button>
-                        }
-                    </div>
+                    <MudMenuItem OnClick="() => LaunchGuidedSetup(provider)">@provider</MudMenuItem>
                 }
-            </div>
+            </MudMenu>
         </div>
     </div>
 
@@ -436,8 +425,7 @@
     private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
     private List<ConduitLLM.Configuration.Entities.GlobalSetting> globalSettings = new();
 
-    // Quick Setup Dropdown State
-    private bool isQuickSetupOpen = false;
+    // No longer need the Quick Setup Dropdown State
 
     // Provider form state
     private ConduitLLM.Configuration.Entities.ProviderCredential currentProvider = new();
@@ -476,10 +464,6 @@
     {
         try
         {
-            // Add event listener to close dropdown when clicking outside
-            await JSRuntime.InvokeVoidAsync("addClickOutsideHandler", "quickSetupDropdown", 
-                DotNetObjectReference.Create(this));
-                
             await LoadProvidersAsync();
             await LoadModelMappingsAsync();
             await LoadProxyUrlAsync();
@@ -494,10 +478,8 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            await JSRuntime.InvokeVoidAsync("initBootstrapComponents");
-        }
+        // Nothing needed in OnAfterRenderAsync
+        await Task.CompletedTask;
     }
     
     // --- Settings Loading Methods ---
@@ -873,19 +855,6 @@
         }
     }
 
-    private void ToggleQuickSetupDropdown()
-    {
-        isQuickSetupOpen = !isQuickSetupOpen;
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void CloseQuickSetupDropdown()
-    {
-        if (isQuickSetupOpen)
-        {
-            isQuickSetupOpen = false;
-            StateHasChanged();
-        }
-    }
+    // Removed ToggleQuickSetupDropdown and CloseQuickSetupDropdown methods
+    // They are no longer needed with MudBlazor Menu
 }

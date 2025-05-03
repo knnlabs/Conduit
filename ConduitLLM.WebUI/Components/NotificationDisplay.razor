@@ -1,11 +1,9 @@
 @using ConduitLLM.WebUI.Models
 @using ConduitLLM.WebUI.Services
-@using Microsoft.JSInterop
 @inject NotificationService NotificationService
-@inject IJSRuntime JSRuntime
 @implements IDisposable
 
-<div style="position: relative;">
+<MudPopover Open="@IsOpen" Fixed="true" Class="pa-0">
     <MudIconButton 
         Icon="@Icons.Material.Filled.Notifications" 
         Color="Color.Inherit"
@@ -17,98 +15,92 @@
         }
     </MudIconButton>
 
-    @if (IsOpen)
-    {
-        <MudPaper Class="d-flex flex-column pa-0 notification-panel" Elevation="4">
-            <MudToolBar Dense="true" disableGutters="true" Class="px-3 py-2 gap-2">
-                <MudText Typo="Typo.h6" Class="flex-grow-1">Notifications</MudText>
-                <MudTooltip Text="Mark All Read">
-                    <MudIconButton 
-                        Size="Size.Small" 
-                        OnClick="MarkAllAsRead" 
-                        Icon="@Icons.Material.Filled.DoneAll" 
-                        Variant="Variant.Outlined" 
-                        Color="Color.Default" />
-                </MudTooltip>
-                <MudTooltip Text="Clear Read Notifications">
-                    <MudIconButton 
-                        Size="Size.Small" 
-                        OnClick="ClearReadNotifications" 
-                        Icon="@Icons.Material.Filled.DeleteOutline" 
-                        Variant="Variant.Outlined" 
-                        Color="Color.Error" />
-                </MudTooltip>
-            </MudToolBar>
-            
-            <MudDivider />
-            
-            <MudContainer Class="pa-0 overflow-y-auto notification-list">
-                @if (!Notifications.Any())
-                {
-                    <MudStack Spacing="2" Class="pa-8" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
-                        <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">No notifications</MudText>
-                    </MudStack>
-                }
-                else
-                {
-                    <MudList T="Notification" clickable="false" disablePadding="true">
-                        @foreach (var notification in Notifications)
-                        {
-                            <MudListItem T="Notification" Class="@($"notification-item {GetNotificationClass(notification)}")">
-                                <div class="d-flex align-center" style="width: 100%">
-                                    <MudAvatar Size="Size.Small" Class="mr-3" Color="@GetNotificationColor(notification)">
-                                        <MudIcon Icon="@GetNotificationIcon(notification)" Size="Size.Small" />
-                                    </MudAvatar>
+    <MudPaper Elevation="4" Class="notification-panel d-flex flex-column">
+        <MudToolBar Dense="true" disableGutters="true" Class="px-3 py-2 gap-2">
+            <MudText Typo="Typo.h6" Class="flex-grow-1">Notifications</MudText>
+            <MudTooltip Text="Mark All Read">
+                <MudIconButton 
+                    Size="Size.Small" 
+                    OnClick="MarkAllAsRead" 
+                    Icon="@Icons.Material.Filled.DoneAll" 
+                    Variant="Variant.Outlined" 
+                    Color="Color.Default" />
+            </MudTooltip>
+            <MudTooltip Text="Clear Read Notifications">
+                <MudIconButton 
+                    Size="Size.Small" 
+                    OnClick="ClearReadNotifications" 
+                    Icon="@Icons.Material.Filled.DeleteOutline" 
+                    Variant="Variant.Outlined" 
+                    Color="Color.Error" />
+            </MudTooltip>
+        </MudToolBar>
+        
+        <MudDivider />
+        
+        <MudContainer Class="pa-0 overflow-y-auto notification-list">
+            @if (!Notifications.Any())
+            {
+                <MudStack Spacing="2" Class="pa-8" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">No notifications</MudText>
+                </MudStack>
+            }
+            else
+            {
+                <MudList T="Notification" clickable="false" disablePadding="true">
+                    @foreach (var notification in Notifications)
+                    {
+                        <MudListItem T="Notification" Class="@($"notification-item {GetNotificationClass(notification)}")">
+                            <div class="d-flex align-center" style="width: 100%">
+                                <MudAvatar Size="Size.Small" Class="mr-3" Color="@GetNotificationColor(notification)">
+                                    <MudIcon Icon="@GetNotificationIcon(notification)" Size="Size.Small" />
+                                </MudAvatar>
+                                
+                                <div style="flex-grow: 1">
+                                    <MudText Typo="Typo.body1" Style="@(notification.IsRead ? "" : "font-weight: 500")">
+                                        @notification.Message
+                                    </MudText>
                                     
-                                    <div style="flex-grow: 1">
-                                        <MudText Typo="Typo.body1" Style="@(notification.IsRead ? "" : "font-weight: 500")">
-                                            @notification.Message
-                                        </MudText>
-                                        
-                                        @if (!string.IsNullOrEmpty(notification.Source))
-                                        {
-                                            <MudText Typo="Typo.caption" Color="Color.Default">
-                                                @notification.Source
-                                            </MudText>
-                                        }
-                                        
-                                        @if (!string.IsNullOrEmpty(notification.Details))
-                                        {
-                                            <MudText Typo="Typo.caption" Style="white-space: pre-wrap;" Color="Color.Dark">
-                                                @notification.Details
-                                            </MudText>
-                                        }
-                                        
-                                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-1">
-                                            @FormatTimeAgo(notification.Timestamp)
-                                        </MudText>
-                                    </div>
-                                    
-                                    @if (!notification.IsRead)
+                                    @if (!string.IsNullOrEmpty(notification.Source))
                                     {
-                                        <MudIconButton 
-                                            Size="Size.Small" 
-                                            OnClick="() => MarkAsRead(notification.Id)" 
-                                            Icon="@Icons.Material.Filled.Check" 
-                                            Color="Color.Primary" />
+                                        <MudText Typo="Typo.caption" Color="Color.Default">
+                                            @notification.Source
+                                        </MudText>
                                     }
+                                    
+                                    @if (!string.IsNullOrEmpty(notification.Details))
+                                    {
+                                        <MudText Typo="Typo.caption" Style="white-space: pre-wrap;" Color="Color.Dark">
+                                            @notification.Details
+                                        </MudText>
+                                    }
+                                    
+                                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-1">
+                                        @FormatTimeAgo(notification.Timestamp)
+                                    </MudText>
                                 </div>
-                            </MudListItem>
-                            <MudDivider />
-                        }
-                    </MudList>
-                }
-            </MudContainer>
-        </MudPaper>
-    }
-</div>
+                                
+                                @if (!notification.IsRead)
+                                {
+                                    <MudIconButton 
+                                        Size="Size.Small" 
+                                        OnClick="() => MarkAsRead(notification.Id)" 
+                                        Icon="@Icons.Material.Filled.Check" 
+                                        Color="Color.Primary" />
+                                }
+                            </div>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                </MudList>
+            }
+        </MudContainer>
+    </MudPaper>
+</MudPopover>
 
 <style>
     .notification-panel {
-        position: absolute;
-        top: 100%;
-        right: 0;
         width: 350px;
         max-height: 500px;
         z-index: 1000;
@@ -154,32 +146,12 @@
     private List<Notification> Notifications = new();
     private bool IsOpen = false;
     private int UnreadCount = 0;
-    private DotNetObjectReference<NotificationDisplay>? objRef;
 
     protected override void OnInitialized()
     {
         // Subscribe to notification event
         NotificationService.OnNotification += OnNotificationReceived;
         LoadNotifications();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            objRef = DotNetObjectReference.Create(this);
-            await JSRuntime.InvokeVoidAsync("setupClickOutsideListener", objRef);
-        }
-    }
-
-    [JSInvokable]
-    public void ClosePanel()
-    {
-        if (IsOpen)
-        {
-            IsOpen = false;
-            StateHasChanged();
-        }
     }
 
     private void OnNotificationReceived()
@@ -288,12 +260,5 @@
     {
         // Unsubscribe from notification event
         NotificationService.OnNotification -= OnNotificationReceived;
-        
-        // Dispose JS object reference
-        if (objRef != null)
-        {
-            JSRuntime.InvokeVoidAsync("removeClickOutsideListener");
-            objRef.Dispose();
-        }
     }
 }
