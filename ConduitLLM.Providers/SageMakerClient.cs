@@ -16,223 +16,232 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.InternalModels.SageMakerModels;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers;
-
-/// <summary>
-/// Client for interacting with AWS SageMaker endpoints.
-/// </summary>
-public class SageMakerClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    private readonly HttpClient _httpClient;
-    private readonly ProviderCredentials _credentials;
-    private readonly string _endpointName;
-    private readonly ILogger<SageMakerClient> _logger;
-
-    // In production, we would use the AWS SDK for .NET
-    // This is a simplified version for demonstration
-    
-    public SageMakerClient(
-        ProviderCredentials credentials,
-        string endpointName,
-        ILogger<SageMakerClient> logger,
-        HttpClient? httpClient = null)
+    /// <summary>
+    /// Client for interacting with AWS SageMaker endpoints.
+    /// </summary>
+    public class SageMakerClient : BaseLLMClient
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _endpointName = endpointName ?? throw new ArgumentNullException(nameof(endpointName));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-        {
-            throw new ConfigurationException("AWS Access Key ID (ApiKey) is missing for AWS SageMaker provider.");
-        }
-        
-        // ApiSecret doesn't exist in ProviderCredentials, so we'll have to use another approach
-        // For AWS credentials, we'll assume they're provided through environment variables or AWS credentials file
-        
-        if (string.IsNullOrWhiteSpace(credentials.ApiBase))
-        {
-            throw new ConfigurationException("AWS Region (ApiBase) is missing for AWS SageMaker provider.");
-        }
-        
-        _httpClient = httpClient ?? new HttpClient();
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-    }
+        private readonly string _endpointName;
+        private readonly string _region;
 
-    /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        
-        _logger.LogInformation("Creating chat completion with AWS SageMaker endpoint {Endpoint}", _endpointName);
-        
-        try
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SageMakerClient"/> class.
+        /// </summary>
+        /// <param name="credentials">The provider credentials.</param>
+        /// <param name="endpointName">The SageMaker endpoint name.</param>
+        /// <param name="logger">The logger to use.</param>
+        /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        public SageMakerClient(
+            ProviderCredentials credentials,
+            string endpointName,
+            ILogger<SageMakerClient> logger,
+            IHttpClientFactory? httpClientFactory = null)
+            : base(
+                  EnsureSageMakerCredentials(credentials),
+                  endpointName, // Use endpoint name as the model ID
+                  logger,
+                  httpClientFactory,
+                  "sagemaker")
         {
-            // Convert the core chat request to SageMaker format
-            var sageMakerRequest = MapToSageMakerRequest(request);
-            
-            // In a real implementation, use AWS SDK with AWS Signature v4
-            string apiUrl = $"{GetSageMakerRuntimeEndpoint(_credentials.ApiBase ?? "us-east-1")}/endpoints/{_endpointName}/invocations";
-            
-            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
-            requestMessage.Content = JsonContent.Create(sageMakerRequest, options: new JsonSerializerOptions
+            _endpointName = endpointName;
+            _region = string.IsNullOrWhiteSpace(credentials.ApiBase) ? "us-east-1" : credentials.ApiBase;
+        }
+
+        private static ProviderCredentials EnsureSageMakerCredentials(ProviderCredentials credentials)
+        {
+            if (credentials == null)
             {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
-            
-            // Add AWS signature headers
-            AddAwsAuthenticationHeaders(requestMessage, JsonSerializer.Serialize(sageMakerRequest));
-            
-            using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("AWS SageMaker API request failed with status code {StatusCode}. Response: {ErrorContent}",
-                    response.StatusCode, errorContent);
-                throw new LLMCommunicationException(
-                    $"AWS SageMaker API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                throw new ArgumentNullException(nameof(credentials));
             }
-            
-            var sageMakerResponse = await response.Content.ReadFromJsonAsync<SageMakerChatResponse>(
-                cancellationToken: cancellationToken);
-            
-            if (sageMakerResponse?.GeneratedOutputs == null || !sageMakerResponse.GeneratedOutputs.Any())
+
+            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
             {
-                _logger.LogError("Failed to deserialize the response from AWS SageMaker or response is empty");
-                throw new LLMCommunicationException("Failed to deserialize the response from AWS SageMaker or response is empty");
+                throw new ConfigurationException("AWS Access Key ID (ApiKey) is missing for AWS SageMaker provider.");
             }
-            
-            // Map to core response format
-            return new ChatCompletionResponse
+
+            if (string.IsNullOrWhiteSpace(credentials.ApiSecret))
             {
-                Id = Guid.NewGuid().ToString(),
-                Object = "chat.completion",
-                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Model = request.Model, // Return the requested model alias
-                Choices = new List<Choice>
+                throw new ConfigurationException("AWS Secret Access Key (ApiSecret) is missing for AWS SageMaker provider.");
+            }
+
+            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
+            {
+                throw new ConfigurationException("AWS Region (ApiBase) is missing for AWS SageMaker provider.");
+            }
+
+            return credentials;
+        }
+
+        /// <inheritdoc />
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // For AWS, we don't add the standard Authorization header
+            // Instead, we'll handle AWS Signature V4 auth per request
+            client.DefaultRequestHeaders.Authorization = null;
+            
+            // Set the base address to the SageMaker runtime endpoint
+            string runtimeEndpoint = GetSageMakerRuntimeEndpoint(_region);
+            client.BaseAddress = new Uri(runtimeEndpoint);
+        }
+
+        /// <inheritdoc />
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "ChatCompletion");
+            
+            return await ExecuteApiRequestAsync(async () =>
+            {
+                using var client = CreateHttpClient(apiKey);
+                
+                // Convert the core chat request to SageMaker format
+                var sageMakerRequest = MapToSageMakerRequest(request);
+                
+                // In a real implementation, use AWS SDK with AWS Signature v4
+                string endpoint = $"/endpoints/{_endpointName}/invocations";
+                
+                Logger.LogDebug("Sending chat completion request to SageMaker at {Endpoint} for endpoint {EndpointName}",
+                    endpoint, _endpointName);
+                
+                // Send request using HttpClientHelper
+                // In production, we would add AWS Signature V4 auth to these requests
+                var response = await HttpClientHelper.SendRawRequestAsync(
+                    client,
+                    HttpMethod.Post,
+                    endpoint,
+                    sageMakerRequest,
+                    CreateAWSAuthHeaders(endpoint, JsonSerializer.Serialize(sageMakerRequest), apiKey),
+                    DefaultJsonOptions,
+                    Logger,
+                    cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
                 {
-                    new Choice
+                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    Logger.LogError("SageMaker API request failed with status code {StatusCode}. Response: {ErrorContent}",
+                        response.StatusCode, errorContent);
+                    throw new LLMCommunicationException(
+                        $"SageMaker API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                }
+                
+                var sageMakerResponse = await JsonSerializer.DeserializeAsync<SageMakerChatResponse>(
+                    await response.Content.ReadAsStreamAsync(cancellationToken),
+                    DefaultJsonOptions,
+                    cancellationToken);
+                
+                if (sageMakerResponse?.GeneratedOutputs == null || !sageMakerResponse.GeneratedOutputs.Any())
+                {
+                    Logger.LogError("Failed to deserialize the response from SageMaker or response is empty");
+                    throw new LLMCommunicationException("Failed to deserialize the response from SageMaker or response is empty");
+                }
+                
+                // Map to core response format
+                return new ChatCompletionResponse
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Object = "chat.completion",
+                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Model = request.Model ?? ProviderModelId, // Return the requested model alias
+                    Choices = new List<Choice>
                     {
-                        Index = 0,
-                        Message = new Message
+                        new Choice
                         {
-                            Role = sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Role ?? "assistant",
-                            Content = sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Content ?? string.Empty
-                        },
-                        FinishReason = "stop" // SageMaker doesn't provide finish reason in this format
-                    }
-                },
-                Usage = new Usage
-                {
-                    // SageMaker doesn't provide token usage, so estimate based on text length
-                    // This is a very rough approximation
-                    PromptTokens = EstimateTokenCount(string.Join(" ", request.Messages.Select(m => ContentHelper.GetContentAsString(m.Content)))),
-                    CompletionTokens = EstimateTokenCount(sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Content ?? string.Empty),
-                    TotalTokens = 0 // Will be calculated below
-                }
-            };
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with AWS SageMaker API");
-            throw new LLMCommunicationException($"HTTP request error communicating with AWS SageMaker API: {ex.Message}", ex);
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON deserialization error processing AWS SageMaker response");
-            throw new LLMCommunicationException("Error deserializing AWS SageMaker response", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "AWS SageMaker API request timed out");
-            throw new LLMCommunicationException("AWS SageMaker API request timed out", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "AWS SageMaker API request was canceled");
-            throw; // Re-throw cancellation
-        }
-        catch (Exception ex) when (ex is not UnsupportedProviderException
-                                  && ex is not ConfigurationException
-                                  && ex is not LLMCommunicationException)
-        {
-            _logger.LogError(ex, "An unexpected error occurred while processing AWS SageMaker chat completion");
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-        }
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        // Simulate streaming by breaking up the response
-        var fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
-        
-        if (fullResponse.Choices == null || !fullResponse.Choices.Any() ||
-            fullResponse.Choices[0].Message?.Content == null)
-        {
-            yield break;
-        }
-        
-        // Simulate streaming by breaking up the content
-        string content = ContentHelper.GetContentAsString(fullResponse.Choices[0].Message!.Content);
-        
-        // Generate a random ID for this streaming session
-        string streamId = Guid.NewGuid().ToString();
-        
-        // Initial chunk with role
-        yield return new ChatCompletionChunk
-        {
-            Id = streamId,
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model,
-            Choices = new List<StreamingChoice>
-            {
-                new StreamingChoice
-                {
-                    Index = 0,
-                    Delta = new DeltaContent
+                            Index = 0,
+                            Message = new Message
+                            {
+                                Role = sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Role ?? "assistant",
+                                Content = sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Content ?? string.Empty
+                            },
+                            FinishReason = "stop" // SageMaker doesn't provide finish reason in this format
+                        }
+                    },
+                    Usage = new Usage
                     {
-                        Role = "assistant",
-                        Content = null
+                        // SageMaker doesn't provide token usage, so estimate based on text length
+                        // This is a very rough approximation
+                        PromptTokens = EstimateTokenCount(string.Join(" ", request.Messages.Select(m => ContentHelper.GetContentAsString(m.Content, Logger)))),
+                        CompletionTokens = EstimateTokenCount(sageMakerResponse.GeneratedOutputs.FirstOrDefault()?.Content ?? string.Empty),
+                        TotalTokens = 0 // Will be calculated below
                     }
-                }
-            }
-        };
-        
-        // Break content into chunks (words or sentences could be used)
-        var words = content.Split(' ');
-        
-        // Send content in chunks
-        StringBuilder currentChunk = new StringBuilder();
-        foreach (var word in words)
+                };
+            }, "ChatCompletion", cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            // Add delay to simulate real streaming
-            await Task.Delay(25, cancellationToken);
+            ValidateRequest(request, "StreamChatCompletion");
             
-            currentChunk.Append(word).Append(' ');
+            // Get all chunks outside of try/catch to avoid the "yield in try" issue
+            var chunks = await FetchStreamChunksAsync(request, apiKey, cancellationToken);
             
-            // Send every few words
-            if (currentChunk.Length > 0)
+            // Now yield the chunks outside of any try blocks
+            foreach (var chunk in chunks)
             {
-                yield return new ChatCompletionChunk
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
+                
+                yield return chunk;
+            }
+        }
+        
+        /// <summary>
+        /// Helper method to fetch all stream chunks without yielding in a try block
+        /// </summary>
+        private async Task<List<ChatCompletionChunk>> FetchStreamChunksAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+            
+            try
+            {
+                Logger.LogInformation("Streaming is not natively supported in SageMaker client. Simulating streaming.");
+                
+                // SageMaker doesn't support streaming directly
+                // Simulate streaming by breaking up the response
+                var fullResponse = await CreateChatCompletionAsync(request, apiKey, cancellationToken);
+                
+                if (fullResponse.Choices == null || !fullResponse.Choices.Any() ||
+                    fullResponse.Choices[0].Message?.Content == null)
+                {
+                    return chunks;
+                }
+                
+                // Simulate streaming by breaking up the content
+                string content = ContentHelper.GetContentAsString(fullResponse.Choices[0].Message!.Content, Logger);
+                
+                // Generate a random ID for this streaming session
+                string streamId = Guid.NewGuid().ToString();
+                
+                // Initial chunk with role
+                chunks.Add(new ChatCompletionChunk
                 {
                     Id = streamId,
                     Object = "chat.completion.chunk",
                     Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = request.Model,
+                    Model = request.Model ?? ProviderModelId,
                     Choices = new List<StreamingChoice>
                     {
                         new StreamingChoice
@@ -240,139 +249,241 @@ public class SageMakerClient : ILLMClient
                             Index = 0,
                             Delta = new DeltaContent
                             {
-                                Content = currentChunk.ToString()
+                                Role = "assistant",
+                                Content = null
                             }
                         }
                     }
-                };
+                });
                 
-                currentChunk.Clear();
-            }
-            
-            if (cancellationToken.IsCancellationRequested)
-            {
-                yield break;
-            }
-        }
-        
-        // Final chunk with finish reason
-        yield return new ChatCompletionChunk
-        {
-            Id = streamId,
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model,
-            Choices = new List<StreamingChoice>
-            {
-                new StreamingChoice
+                // Break content into chunks (words or sentences could be used)
+                var words = content.Split(' ');
+                
+                // Simulate chunks
+                StringBuilder currentChunk = new StringBuilder();
+                foreach (var word in words)
                 {
-                    Index = 0,
-                    Delta = new DeltaContent(),
-                    FinishReason = fullResponse.Choices[0].FinishReason
+                    // Add delay to simulate real streaming
+                    await Task.Delay(25, cancellationToken);
+                    
+                    currentChunk.Append(word).Append(' ');
+                    
+                    // Send every few words
+                    if (currentChunk.Length > 0)
+                    {
+                        chunks.Add(new ChatCompletionChunk
+                        {
+                            Id = streamId,
+                            Object = "chat.completion.chunk",
+                            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            Model = request.Model ?? ProviderModelId,
+                            Choices = new List<StreamingChoice>
+                            {
+                                new StreamingChoice
+                                {
+                                    Index = 0,
+                                    Delta = new DeltaContent
+                                    {
+                                        Content = currentChunk.ToString()
+                                    }
+                                }
+                            }
+                        });
+                        
+                        currentChunk.Clear();
+                    }
+                    
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                 }
+                
+                // Final chunk with finish reason
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = streamId,
+                    Object = "chat.completion.chunk",
+                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Model = request.Model ?? ProviderModelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent(),
+                            FinishReason = fullResponse.Choices[0].FinishReason
+                        }
+                    }
+                });
+                
+                return chunks;
             }
-        };
-    }
-
-    /// <inheritdoc />
-    public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Listing SageMaker endpoints is not directly supported through this interface. Returning endpoint name.");
-        
-        // In a production implementation, we would use the AWS SDK to list endpoints
-        // For this sample, we'll just return the configured endpoint
-        await Task.Delay(1, cancellationToken); // Adding await to make this truly async
-        
-        return new List<string> { _endpointName };
-    }
-
-    /// <inheritdoc />
-    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by SageMakerClient."));
-
-    /// <inheritdoc />
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by SageMakerClient."));
-    
-    #region Helper Methods
-    
-    private SageMakerRequest MapToSageMakerRequest(ChatCompletionRequest request)
-    {
-        var sageMakerRequest = new SageMakerRequest
-        {
-            Inputs = FormatMessages(request.Messages),
-            Parameters = new SageMakerParameters
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Temperature = request.Temperature,
-                MaxNewTokens = request.MaxTokens,
-                TopP = request.TopP,
-                ReturnFullText = false // Don't echo the prompt
+                Logger.LogError(ex, "Error in simulated streaming chat completion from SageMaker: {Message}", ex.Message);
+                throw new LLMCommunicationException($"Error in simulated streaming chat completion from SageMaker: {ex.Message}", ex);
             }
-        };
-        
-        return sageMakerRequest;
-    }
-    
-    private string FormatMessages(List<Message> messages)
-    {
-        var formatted = new StringBuilder();
-        
-        // Extract system message first
-        var systemMessage = messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
-        if (systemMessage != null)
-        {
-            formatted.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content));
-            formatted.AppendLine();
         }
-        
-        // Format user/assistant conversation
-        foreach (var message in messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+
+        /// <inheritdoc />
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            string role = message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
-                ? "Assistant"
-                : "Human";
+            Logger.LogInformation("Listing SageMaker endpoints is not directly supported through this interface. Returning endpoint name.");
             
-            formatted.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content)}");
-        }
-        
-        return formatted.ToString().Trim();
-    }
-    
-    private int EstimateTokenCount(string text)
-    {
-        // Very rough token count estimation
-        // In a real implementation, use a proper tokenizer
-        if (string.IsNullOrEmpty(text))
-            return 0;
+            // In a production implementation, we would use the AWS SDK to list endpoints
+            // For this sample, we'll just return the configured endpoint
+            await Task.Delay(1, cancellationToken); // Adding await to make this truly async
             
-        // Approximately 4 characters per token for English text
-        return text.Length / 4;
-    }
-    
-    private string GetSageMakerRuntimeEndpoint(string region)
-    {
-        // Ensure region is not null
-        if (string.IsNullOrWhiteSpace(region))
+            return new List<ExtendedModelInfo>
+            {
+                ExtendedModelInfo.Create(_endpointName, ProviderName, _endpointName)
+            };
+        }
+
+        /// <inheritdoc />
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            throw new ArgumentNullException(nameof(region), "AWS region cannot be null or empty");
+            ValidateRequest(request, "CreateEmbedding");
+            
+            // SageMaker can support embeddings, but it depends on the specific model deployed
+            // For now, we'll throw a not implemented exception
+            throw new NotSupportedException("Embeddings support for SageMaker is not yet implemented");
+        }
+
+        /// <inheritdoc />
+        public override async Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateImage");
+            
+            // SageMaker can support image generation, but it depends on the specific model deployed
+            // For now, we'll throw a not implemented exception
+            throw new NotSupportedException("Image generation support for SageMaker is not yet implemented");
         }
         
-        // Format the SageMaker runtime endpoint URL
-        return $"https://runtime.sagemaker.{region}.amazonaws.com";
-    }
-    
-    private void AddAwsAuthenticationHeaders(HttpRequestMessage request, string requestBody)
-    {
-        // In a real implementation, this would add AWS Signature V4 authentication headers
-        // For simplicity, we're not implementing the full AWS authentication here
+        #region Helper Methods
         
-        // Placeholder for AWS signature implementation
-        // In production, use AWS SDK for .NET or implement AWS Signature V4
+        /// <summary>
+        /// Maps a chat completion request to a SageMaker request.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <returns>A SageMaker request.</returns>
+        private SageMakerRequest MapToSageMakerRequest(ChatCompletionRequest request)
+        {
+            var sageMakerRequest = new SageMakerRequest
+            {
+                Inputs = FormatMessages(request.Messages),
+                Parameters = new SageMakerParameters
+                {
+                    Temperature = request.Temperature,
+                    MaxNewTokens = request.MaxTokens,
+                    TopP = request.TopP,
+                    ReturnFullText = false // Don't echo the prompt
+                }
+            };
+            
+            return sageMakerRequest;
+        }
         
-        // For demo purpose, we'll just add placeholder headers
-        request.Headers.Add("X-Amz-Date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
-        request.Headers.Add("Authorization", "AWS4-HMAC-SHA256 Credential=PLACEHOLDER");
+        /// <summary>
+        /// Formats a list of messages into a string format suitable for SageMaker.
+        /// </summary>
+        /// <param name="messages">The messages to format.</param>
+        /// <returns>A formatted string.</returns>
+        private string FormatMessages(List<Message> messages)
+        {
+            var formatted = new StringBuilder();
+            
+            // Extract system message first
+            var systemMessage = messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+            if (systemMessage != null)
+            {
+                formatted.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content, Logger));
+                formatted.AppendLine();
+            }
+            
+            // Format user/assistant conversation
+            foreach (var message in messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+            {
+                string role = message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
+                    ? "Assistant"
+                    : "Human";
+                
+                formatted.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content, Logger)}");
+            }
+            
+            return formatted.ToString().Trim();
+        }
+        
+        /// <summary>
+        /// Estimates the token count from text.
+        /// </summary>
+        /// <param name="text">The text to estimate tokens for.</param>
+        /// <returns>An estimated token count.</returns>
+        private int EstimateTokenCount(string text)
+        {
+            // Very rough token count estimation
+            // In a real implementation, use a proper tokenizer
+            if (string.IsNullOrEmpty(text))
+                return 0;
+                
+            // Approximately 4 characters per token for English text
+            return Math.Max(1, text.Length / 4);
+        }
+        
+        /// <summary>
+        /// Gets the SageMaker runtime endpoint URL.
+        /// </summary>
+        /// <param name="region">The AWS region.</param>
+        /// <returns>The SageMaker runtime endpoint URL.</returns>
+        private string GetSageMakerRuntimeEndpoint(string region)
+        {
+            // Ensure region is not null
+            if (string.IsNullOrWhiteSpace(region))
+            {
+                throw new ArgumentNullException(nameof(region), "AWS region cannot be null or empty");
+            }
+            
+            // Format the SageMaker runtime endpoint URL
+            return $"https://runtime.sagemaker.{region}.amazonaws.com";
+        }
+        
+        /// <summary>
+        /// Creates headers for AWS authentication.
+        /// </summary>
+        /// <param name="path">The API path.</param>
+        /// <param name="body">The request body.</param>
+        /// <param name="apiKey">Optional API key to override the one in credentials.</param>
+        /// <returns>A dictionary containing headers for AWS authentication.</returns>
+        /// <remarks>
+        /// In a real implementation, this would create AWS Signature V4 headers.
+        /// For simplicity, this implementation returns placeholder headers.
+        /// </remarks>
+        private Dictionary<string, string> CreateAWSAuthHeaders(string path, string body, string? apiKey = null)
+        {
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            
+            // In a real implementation, this would create AWS Signature V4 headers
+            // For simplicity, this returns placeholder headers
+            var headers = new Dictionary<string, string>
+            {
+                ["User-Agent"] = "ConduitLLM",
+                ["X-Amz-Date"] = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"),
+                ["Authorization"] = $"AWS4-HMAC-SHA256 Credential={effectiveApiKey}"
+                // In a real implementation, this would include a proper signature
+            };
+            
+            return headers;
+        }
+        
+        #endregion
     }
-    
-    #endregion
 }

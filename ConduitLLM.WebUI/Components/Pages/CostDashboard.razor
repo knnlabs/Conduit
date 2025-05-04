@@ -1,5 +1,6 @@
 @page "/cost-dashboard"
 @using System.Globalization
+@using System.Text
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.Configuration.Entities
@@ -150,7 +151,12 @@ else
                     @if (trendData != null && trendData.Periods.Count > 0)
                     {
                         <div style="height: 300px;">
-                            <canvas id="costTrendChart"></canvas>
+                            <MudChart ChartType="ChartType.Line" 
+                                     ChartSeries="@costTrendSeries"
+                                     XAxisLabels="@costTrendLabels"
+                                     Width="100%" 
+                                     Height="300px">
+                            </MudChart>
                         </div>
                     }
                     else
@@ -171,7 +177,12 @@ else
                     @if (dashboardData.CostByModel.Count > 0)
                     {
                         <div style="height: 300px;">
-                            <canvas id="modelDistributionChart"></canvas>
+                            <MudChart ChartType="ChartType.Pie" 
+                                     InputData="@modelDistributionData"
+                                     InputLabels="@modelDistributionLabels"
+                                     Width="100%" 
+                                     Height="300px">
+                            </MudChart>
                         </div>
                     }
                     else
@@ -466,34 +477,43 @@ else
         await LoadDashboardDataAsync();
     }
 
+    private double[] modelDistributionData = Array.Empty<double>();
+    private string[] modelDistributionLabels = Array.Empty<string>();
+    private List<ChartSeries> costTrendSeries = new List<ChartSeries>();
+    private string[] costTrendLabels = Array.Empty<string>();    
+    
     private async Task RenderChartsAsync()
     {
         try
         {
             if (dashboardData != null && dashboardData.CostByModel.Count > 0)
             {
-                // Prepare model distribution data
-                var modelLabels = dashboardData.CostByModel.Keys.ToArray();
-                var modelData = dashboardData.CostByModel.Values.Select(v => (double)v).ToArray();
-                
-                // Create a random but consistent color for each model
-                var modelColors = modelLabels.Select(m => GenerateColorFromString(m)).ToArray();
-                
-                await JSRuntime.InvokeVoidAsync("renderPieChart", "modelDistributionChart", modelLabels, modelData, modelColors);
+                // Prepare model distribution data for MudBlazor pie chart
+                modelDistributionLabels = dashboardData.CostByModel.Keys.ToArray();
+                modelDistributionData = dashboardData.CostByModel.Values.Select(v => (double)v).ToArray();
             }
             
             if (trendData != null && trendData.Periods.Count > 0)
             {
-                // Prepare trend data
-                var periodLabels = trendData.Periods.Select(p => p.Label).ToArray();
+                // Prepare trend data for MudBlazor line chart
+                costTrendLabels = trendData.Periods.Select(p => p.Label).ToArray();
                 var periodCostData = trendData.Periods.Select(p => (double)p.Cost).ToArray();
                 
-                await JSRuntime.InvokeVoidAsync("renderLineChart", "costTrendChart", periodLabels, periodCostData);
+                costTrendSeries = new List<ChartSeries>
+                {
+                    new ChartSeries 
+                    { 
+                        Name = "Cost ($)", 
+                        Data = periodCostData
+                    }
+                };
             }
+            
+            await Task.CompletedTask; // This method no longer needs to be async, but keeping it for compatibility
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error rendering charts: {ex.Message}");
+            Console.Error.WriteLine($"Error preparing chart data: {ex.Message}");
         }
     }
 

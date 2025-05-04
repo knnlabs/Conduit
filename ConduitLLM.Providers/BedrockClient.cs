@@ -14,415 +14,580 @@ using System.Threading.Tasks;
 using Amazon.BedrockRuntime;
 using Amazon.BedrockRuntime.Model;
 
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
+using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Providers.InternalModels.BedrockModels;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers;
-
-/// <summary>
-/// Client for interacting with AWS Bedrock API.
-/// </summary>
-public class BedrockClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _providerModelId;
-    private readonly ILogger<BedrockClient> _logger;
-
-    // AWS Bedrock requires AWS Signature V4
-    // In a real implementation, we'd use the AWS SDK for .NET
-    // This is a simplified version for demonstration purposes
-    
-    public BedrockClient(
-        string providerModelId,
-        ILogger<BedrockClient> logger,
-        HttpClient? httpClient = null)
+    /// <summary>
+    /// Client for interacting with AWS Bedrock API.
+    /// </summary>
+    public class BedrockClient : BaseLLMClient
     {
-        _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        _httpClient = httpClient ?? new HttpClient();
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-    }
+        private const string DefaultBedrockApiBase = "https://api.bedrock.amazonaws.com";
+        private readonly string _region;
 
-    /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        
-        _logger.LogInformation("Creating chat completion with AWS Bedrock for model {Model}", _providerModelId);
-        
-        try
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BedrockClient"/> class.
+        /// </summary>
+        /// <param name="credentials">The provider credentials.</param>
+        /// <param name="providerModelId">The provider's model identifier.</param>
+        /// <param name="logger">The logger to use.</param>
+        /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        public BedrockClient(
+            ProviderCredentials credentials, 
+            string providerModelId, 
+            ILogger<BedrockClient> logger,
+            IHttpClientFactory? httpClientFactory = null)
+            : base(
+                  EnsureBedrockCredentials(credentials), 
+                  providerModelId, 
+                  logger, 
+                  httpClientFactory, 
+                  "bedrock")
         {
-            // Determine the model provider and format request accordingly
-            if (_providerModelId.Contains("claude", StringComparison.OrdinalIgnoreCase))
+            // Extract region from credentials or use default
+            _region = string.IsNullOrWhiteSpace(credentials.ApiRegion) ? "us-east-1" : credentials.ApiRegion;
+        }
+
+        private static ProviderCredentials EnsureBedrockCredentials(ProviderCredentials credentials)
+        {
+            if (credentials == null)
             {
-                return await CreateAnthropicClaudeChatCompletionAsync(request, cancellationToken);
+                throw new ArgumentNullException(nameof(credentials));
             }
-            // Add other model providers as needed (Cohere, AI21, etc.)
+
+            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+            {
+                throw new ConfigurationException("AWS Access Key is required for Bedrock API");
+            }
+            
+            if (string.IsNullOrWhiteSpace(credentials.ApiSecret))
+            {
+                throw new ConfigurationException("AWS Secret Key is required for Bedrock API");
+            }
+
+            return credentials;
+        }
+
+        /// <inheritdoc />
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // For Bedrock, we don't add the standard Authorization header
+            // Instead, we'll handle AWS Signature V4 auth per request
+            client.DefaultRequestHeaders.Authorization = null;
+            
+            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? DefaultBedrockApiBase : Credentials.ApiBase;
+            client.BaseAddress = new Uri(apiBase);
+        }
+
+        /// <inheritdoc />
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "ChatCompletion");
+            
+            return await ExecuteApiRequestAsync(async () =>
+            {
+                // Determine which model provider is being used
+                string modelId = request.Model ?? ProviderModelId;
+                
+                if (modelId.Contains("anthropic.claude", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateAnthropicClaudeChatCompletionAsync(request, apiKey, cancellationToken);
+                }
+                else if (modelId.Contains("meta.llama", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateMetaLlamaChatCompletionAsync(request, apiKey, cancellationToken);
+                }
+                else if (modelId.Contains("amazon.titan", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateAmazonTitanChatCompletionAsync(request, apiKey, cancellationToken);
+                }
+                else if (modelId.Contains("cohere.command", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateCohereChatCompletionAsync(request, apiKey, cancellationToken);
+                }
+                else if (modelId.Contains("ai21", StringComparison.OrdinalIgnoreCase))
+                {
+                    return await CreateAI21ChatCompletionAsync(request, apiKey, cancellationToken);
+                }
+                else
+                {
+                    throw new UnsupportedProviderException($"Unsupported Bedrock model: {modelId}");
+                }
+            }, "ChatCompletion", cancellationToken);
+        }
+
+        private async Task<ChatCompletionResponse> CreateAnthropicClaudeChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Map to Bedrock Claude format
+            var claudeRequest = new BedrockClaudeChatRequest
+            {
+                MaxTokens = request.MaxTokens,
+                Temperature = (float?)request.Temperature,
+                TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                Messages = new List<BedrockClaudeMessage>()
+            };
+            
+            // Extract system message if present
+            var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+            if (systemMessage != null)
+            {
+                // Handle system message content, which could be string or content parts
+                claudeRequest.System = ContentHelper.GetContentAsString(systemMessage.Content, Logger);
+            }
+            
+            // Map user and assistant messages
+            foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+            {
+                claudeRequest.Messages.Add(new BedrockClaudeMessage
+                {
+                    Role = message.Role.ToLowerInvariant() switch
+                    {
+                        "user" => "user",
+                        "assistant" => "assistant",
+                        _ => message.Role // Keep as-is for other roles
+                    },
+                    Content = new List<BedrockClaudeContent>
+                    {
+                        new BedrockClaudeContent { Type = "text", Text = ContentHelper.GetContentAsString(message.Content, Logger) }
+                    }
+                });
+            }
+
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(apiKey);
+            
+            // In a real implementation, we'd use AWS SDK, but for demonstration we'll use HTTP
+            string apiUrl = $"/model/{modelId}/invoke";
+            
+            // Use our common HTTP client helper to send the request
+            // Note: In production, we would add AWS Signature V4 auth to these requests
+            var bedrockResponse = await HttpClientHelper.SendJsonRequestAsync<BedrockClaudeChatRequest, BedrockClaudeChatResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                claudeRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(claudeRequest), apiKey),
+                DefaultJsonOptions,
+                Logger,
+                cancellationToken);
+            
+            if (bedrockResponse == null || bedrockResponse.Content == null || !bedrockResponse.Content.Any())
+            {
+                throw new LLMCommunicationException("Failed to deserialize the response from AWS Bedrock API or response content is empty");
+            }
+            
+            // Map to core response format
+            return new ChatCompletionResponse
+            {
+                Id = bedrockResponse.Id ?? Guid.NewGuid().ToString(),
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = request.Model ?? ProviderModelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new Message
+                        {
+                            Role = bedrockResponse.Role ?? "assistant",
+                            Content = bedrockResponse.Content.FirstOrDefault()?.Text ?? string.Empty
+                        },
+                        FinishReason = MapBedrockStopReason(bedrockResponse.StopReason)
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = bedrockResponse.Usage?.InputTokens ?? 0,
+                    CompletionTokens = bedrockResponse.Usage?.OutputTokens ?? 0,
+                    TotalTokens = (bedrockResponse.Usage?.InputTokens ?? 0) + (bedrockResponse.Usage?.OutputTokens ?? 0)
+                }
+            };
+        }
+
+        private async Task<ChatCompletionResponse> CreateMetaLlamaChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Implementation for Meta Llama models through Bedrock
+            // This would follow a similar pattern to the Claude implementation above,
+            // but with Meta-specific request/response formats
+            
+            // For now, throw not implemented exception
+            // In a complete implementation, this would be filled out
+            throw new NotImplementedException("Meta Llama models through Bedrock not yet implemented");
+        }
+
+        private async Task<ChatCompletionResponse> CreateAmazonTitanChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Implementation for Amazon Titan models through Bedrock
+            // This would follow a similar pattern to the Claude implementation above,
+            // but with Titan-specific request/response formats
+            
+            // For now, throw not implemented exception
+            // In a complete implementation, this would be filled out
+            throw new NotImplementedException("Amazon Titan models through Bedrock not yet implemented");
+        }
+
+        private async Task<ChatCompletionResponse> CreateCohereChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Implementation for Cohere models through Bedrock
+            // This would follow a similar pattern to the Claude implementation above,
+            // but with Cohere-specific request/response formats
+            
+            // For now, throw not implemented exception
+            // In a complete implementation, this would be filled out
+            throw new NotImplementedException("Cohere models through Bedrock not yet implemented");
+        }
+
+        private async Task<ChatCompletionResponse> CreateAI21ChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Implementation for AI21 models through Bedrock
+            // This would follow a similar pattern to the Claude implementation above,
+            // but with AI21-specific request/response formats
+            
+            // For now, throw not implemented exception
+            // In a complete implementation, this would be filled out
+            throw new NotImplementedException("AI21 models through Bedrock not yet implemented");
+        }
+
+        /// <inheritdoc />
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "StreamChatCompletion");
+            
+            // Get all chunks outside of try/catch to avoid the "yield in try" issue
+            var chunks = await FetchStreamChunksAsync(request, apiKey, cancellationToken);
+            
+            // Now yield the chunks outside of any try blocks
+            foreach (var chunk in chunks)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
+                
+                yield return chunk;
+            }
+        }
+        
+        /// <summary>
+        /// Helper method to fetch all stream chunks without yielding in a try block
+        /// </summary>
+        private async Task<List<ChatCompletionChunk>> FetchStreamChunksAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+            
+            try
+            {
+                var modelId = request.Model ?? ProviderModelId;
+                
+                // For proper implementation, we would use AWS SDK with InvokeModelWithResponseStreamAsync
+                // This is a placeholder for the implementation
+                // In a real implementation, we would:
+                
+                var config = new AmazonBedrockRuntimeConfig
+                {
+                    RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(_region)
+                };
+                
+                // Use AWS credentials from configuration
+                using var client = new AmazonBedrockRuntimeClient(
+                    Credentials.ApiKey, 
+                    Credentials.ApiSecret, 
+                    config);
+                
+                // Create a request appropriate for the model type
+                // Example for Claude
+                var bedrockRequest = new BedrockClaudeChatRequest
+                {
+                    MaxTokens = request.MaxTokens,
+                    Temperature = (float?)request.Temperature,
+                    TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                    Stream = true,
+                    Messages = new List<BedrockClaudeMessage>()
+                };
+                
+                // Extract system message if present
+                var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+                if (systemMessage != null)
+                {
+                    bedrockRequest.System = ContentHelper.GetContentAsString(systemMessage.Content, Logger);
+                }
+                
+                // Map user and assistant messages
+                foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+                {
+                    bedrockRequest.Messages.Add(new BedrockClaudeMessage
+                    {
+                        Role = message.Role.ToLowerInvariant() switch
+                        {
+                            "user" => "user",
+                            "assistant" => "assistant",
+                            _ => message.Role // Keep as-is for other roles
+                        },
+                        Content = new List<BedrockClaudeContent>
+                        {
+                            new BedrockClaudeContent { Type = "text", Text = ContentHelper.GetContentAsString(message.Content, Logger) }
+                        }
+                    });
+                }
+                
+                var requestBody = JsonSerializer.Serialize(bedrockRequest, DefaultJsonOptions);
+                var invokeRequest = new InvokeModelWithResponseStreamRequest
+                {
+                    ModelId = modelId,
+                    Body = new System.IO.MemoryStream(Encoding.UTF8.GetBytes(requestBody)),
+                    ContentType = "application/json",
+                    Accept = "application/json"
+                };
+                
+                var response = await client.InvokeModelWithResponseStreamAsync(invokeRequest, cancellationToken);
+                
+                // Process the streaming response
+                await foreach (var ev in response.Body.WithCancellation(cancellationToken))
+                {
+                    if (ev is PayloadPart payloadPart)
+                    {
+                        string json = Encoding.UTF8.GetString(payloadPart.Bytes.ToArray());
+                        try
+                        {
+                            var chunkObj = JsonSerializer.Deserialize<BedrockStreamingResponse>(json, DefaultJsonOptions);
+                            if (chunkObj != null && !string.IsNullOrEmpty(chunkObj.Completion))
+                            {
+                                chunks.Add(new ChatCompletionChunk
+                                {
+                                    Id = Guid.NewGuid().ToString(),
+                                    Object = "chat.completion.chunk",
+                                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                                    Model = modelId,
+                                    Choices = new List<StreamingChoice>
+                                    {
+                                        new StreamingChoice
+                                        {
+                                            Index = 0,
+                                            Delta = new DeltaContent
+                                            {
+                                                Content = chunkObj.Completion
+                                            },
+                                            FinishReason = chunkObj.StopReason
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogWarning(ex, "Failed to parse Bedrock streaming chunk: {Json}", json);
+                        }
+                    }
+                }
+                
+                return chunks;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Logger.LogError(ex, "Error in streaming chat completion from Bedrock: {Message}", ex.Message);
+                throw new LLMCommunicationException($"Error in streaming chat completion from Bedrock: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            Logger.LogInformation("Getting models from AWS Bedrock");
+            
+            try
+            {
+                // In a real implementation, we would use AWS SDK to list available models
+                // For now, return a static list of commonly available models
+                
+                await Task.Delay(1, cancellationToken); // Adding await to make this truly async
+                
+                return new List<ExtendedModelInfo>
+                {
+                    ExtendedModelInfo.Create("anthropic.claude-3-opus-20240229-v1:0", ProviderName, "anthropic.claude-3-opus-20240229-v1:0"),
+                    ExtendedModelInfo.Create("anthropic.claude-3-sonnet-20240229-v1:0", ProviderName, "anthropic.claude-3-sonnet-20240229-v1:0"),
+                    ExtendedModelInfo.Create("anthropic.claude-3-haiku-20240307-v1:0", ProviderName, "anthropic.claude-3-haiku-20240307-v1:0"),
+                    ExtendedModelInfo.Create("anthropic.claude-v2", ProviderName, "anthropic.claude-v2"),
+                    ExtendedModelInfo.Create("anthropic.claude-instant-v1", ProviderName, "anthropic.claude-instant-v1"),
+                    ExtendedModelInfo.Create("amazon.titan-text-express-v1", ProviderName, "amazon.titan-text-express-v1"),
+                    ExtendedModelInfo.Create("amazon.titan-text-lite-v1", ProviderName, "amazon.titan-text-lite-v1"),
+                    ExtendedModelInfo.Create("amazon.titan-embed-text-v1", ProviderName, "amazon.titan-embed-text-v1"),
+                    ExtendedModelInfo.Create("cohere.command-text-v14", ProviderName, "cohere.command-text-v14"),
+                    ExtendedModelInfo.Create("cohere.command-light-text-v14", ProviderName, "cohere.command-light-text-v14"),
+                    ExtendedModelInfo.Create("cohere.embed-english-v3", ProviderName, "cohere.embed-english-v3"),
+                    ExtendedModelInfo.Create("cohere.embed-multilingual-v3", ProviderName, "cohere.embed-multilingual-v3"),
+                    ExtendedModelInfo.Create("meta.llama2-13b-chat-v1", ProviderName, "meta.llama2-13b-chat-v1"),
+                    ExtendedModelInfo.Create("meta.llama2-70b-chat-v1", ProviderName, "meta.llama2-70b-chat-v1"),
+                    ExtendedModelInfo.Create("meta.llama3-8b-instruct-v1:0", ProviderName, "meta.llama3-8b-instruct-v1:0"),
+                    ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0"),
+                    ExtendedModelInfo.Create("ai21.j2-mid-v1", ProviderName, "ai21.j2-mid-v1"),
+                    ExtendedModelInfo.Create("ai21.j2-ultra-v1", ProviderName, "ai21.j2-ultra-v1"),
+                    ExtendedModelInfo.Create("stability.stable-diffusion-xl-v1", ProviderName, "stability.stable-diffusion-xl-v1")
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to retrieve models from Bedrock API. Returning known models.");
+                return GetFallbackModels();
+            }
+        }
+        
+        /// <summary>
+        /// Gets a fallback list of models for Bedrock.
+        /// </summary>
+        /// <returns>A list of commonly available Bedrock models.</returns>
+        protected virtual List<ExtendedModelInfo> GetFallbackModels()
+        {
+            return new List<ExtendedModelInfo>
+            {
+                ExtendedModelInfo.Create("anthropic.claude-3-opus-20240229-v1:0", ProviderName, "anthropic.claude-3-opus-20240229-v1:0"),
+                ExtendedModelInfo.Create("anthropic.claude-3-sonnet-20240229-v1:0", ProviderName, "anthropic.claude-3-sonnet-20240229-v1:0"),
+                ExtendedModelInfo.Create("anthropic.claude-3-haiku-20240307-v1:0", ProviderName, "anthropic.claude-3-haiku-20240307-v1:0"),
+                ExtendedModelInfo.Create("meta.llama3-8b-instruct-v1:0", ProviderName, "meta.llama3-8b-instruct-v1:0"),
+                ExtendedModelInfo.Create("meta.llama3-70b-instruct-v1:0", ProviderName, "meta.llama3-70b-instruct-v1:0")
+            };
+        }
+
+        /// <inheritdoc />
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateEmbedding");
+            
+            string modelId = request.Model ?? ProviderModelId;
+            
+            if (modelId.Contains("cohere.embed", StringComparison.OrdinalIgnoreCase) ||
+                modelId.Contains("amazon.titan-embed", StringComparison.OrdinalIgnoreCase))
+            {
+                return await ExecuteApiRequestAsync(async () =>
+                {
+                    // Implementation for embedding models would go here
+                    // This is a placeholder for the actual implementation
+                    
+                    // For now, throw not implemented exception
+                    throw new NotImplementedException("Embeddings support for Bedrock is not yet implemented");
+                }, "CreateEmbedding", cancellationToken);
+            }
             else
             {
-                throw new UnsupportedProviderException($"Unsupported Bedrock model: {_providerModelId}");
+                throw new UnsupportedProviderException($"The model {modelId} does not support embeddings in Bedrock");
             }
         }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with AWS Bedrock API");
-            throw new LLMCommunicationException($"HTTP request error communicating with AWS Bedrock API: {ex.Message}", ex);
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON deserialization error processing AWS Bedrock response");
-            throw new LLMCommunicationException("Error deserializing AWS Bedrock response", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "AWS Bedrock API request timed out");
-            throw new LLMCommunicationException("AWS Bedrock API request timed out", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "AWS Bedrock API request was canceled");
-            throw; // Re-throw cancellation
-        }
-        catch (Exception ex) when (ex is not UnsupportedProviderException 
-                                  && ex is not ConfigurationException 
-                                  && ex is not LLMCommunicationException)
-        {
-            _logger.LogError(ex, "An unexpected error occurred while processing AWS Bedrock chat completion");
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-        }
-    }
 
-    private async Task<ChatCompletionResponse> CreateAnthropicClaudeChatCompletionAsync(
-        ChatCompletionRequest request,
-        CancellationToken cancellationToken)
-    {
-        // Map to Bedrock Claude format
-        var claudeRequest = new BedrockClaudeChatRequest
+        /// <inheritdoc />
+        public override async Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            MaxTokens = request.MaxTokens,
-            Temperature = (float?)request.Temperature,
-            TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
-            Messages = new List<BedrockClaudeMessage>()
-        };
-        
-        // Extract system message if present
-        var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
-        if (systemMessage != null)
-        {
-            // Handle system message content, which could be string or content parts
-            claudeRequest.System = GetContentAsString(systemMessage.Content);
-        }
-        
-        // Map user and assistant messages
-        foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
-        {
-            claudeRequest.Messages.Add(new BedrockClaudeMessage
-            {
-                Role = message.Role.ToLowerInvariant() switch
-                {
-                    "user" => "user",
-                    "assistant" => "assistant",
-                    _ => message.Role // Keep as-is for other roles
-                },
-                Content = new List<BedrockClaudeContent>
-                {
-                    new BedrockClaudeContent { Type = "text", Text = GetContentAsString(message.Content) }
-                }
-            });
-        }
-
-        // In a real implementation, we would use AWS SDK for .NET with AWS signature V4
-        // This is a simplified version for demonstration purposes
-        string modelId = GetBedrockModelId(_providerModelId);
-        string apiUrl = $"https://api.bedrock.amazonaws.com/model/{modelId}/invoke";
-        
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, apiUrl);
-        requestMessage.Content = JsonContent.Create(claudeRequest, options: new JsonSerializerOptions
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        });
-        
-        // Add AWS signature headers
-        AddAwsAuthenticationHeaders(requestMessage, JsonSerializer.Serialize(claudeRequest));
-        
-        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-        
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("AWS Bedrock API request failed with status code {StatusCode}. Response: {ErrorContent}", 
-                response.StatusCode, errorContent);
-            throw new LLMCommunicationException(
-                $"AWS Bedrock API request failed with status code {response.StatusCode}. Response: {errorContent}");
-        }
-        
-        var bedrockResponse = await response.Content.ReadFromJsonAsync<BedrockClaudeChatResponse>(
-            cancellationToken: cancellationToken);
-        
-        if (bedrockResponse == null || bedrockResponse.Content == null || !bedrockResponse.Content.Any())
-        {
-            _logger.LogError("Failed to deserialize the response from AWS Bedrock API or response content is empty");
-            throw new LLMCommunicationException("Failed to deserialize the response from AWS Bedrock API or response content is empty");
-        }
-        
-        // Map to core response format
-        return new ChatCompletionResponse
-        {
-            Id = bedrockResponse.Id ?? Guid.NewGuid().ToString(),
-            Object = "chat.completion",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = request.Model, // Return the requested model alias
-            Choices = new List<Choice>
-            {
-                new Choice
-                {
-                    Index = 0,
-                    Message = new Message
-                    {
-                        Role = bedrockResponse.Role ?? "assistant",
-                        Content = bedrockResponse.Content.FirstOrDefault()?.Text ?? string.Empty
-                    },
-                    FinishReason = MapBedrockStopReason(bedrockResponse.StopReason)
-                }
-            },
-            Usage = new Usage
-            {
-                PromptTokens = bedrockResponse.Usage?.InputTokens ?? 0,
-                CompletionTokens = bedrockResponse.Usage?.OutputTokens ?? 0,
-                TotalTokens = (bedrockResponse.Usage?.InputTokens ?? 0) + (bedrockResponse.Usage?.OutputTokens ?? 0)
-            }
-        };
-    }
-
-    private string MapBedrockStopReason(string? stopReason)
-    {
-        return stopReason?.ToLowerInvariant() switch
-        {
-            "stop_sequence" => "stop",
-            "max_tokens" => "length",
-            _ => stopReason ?? "unknown"
-        };
-    }
-
-    /// <inheritdoc />
-    public virtual async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        _logger.LogInformation("Streaming chat completion with AWS Bedrock for model {Model}", _providerModelId);
-
-        var config = new AmazonBedrockRuntimeConfig
-        {
-            RegionEndpoint = Amazon.RegionEndpoint.USEast1
-        };
-        using var client = new AmazonBedrockRuntimeClient(config);
-
-        var bedrockRequest = new BedrockClaudeChatRequest
-        {
-            MaxTokens = request.MaxTokens,
-            Temperature = (float?)request.Temperature,
-            TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
-            Messages = request.Messages.Select(m => new BedrockClaudeMessage
-            {
-                Role = m.Role,
-                Content = new List<BedrockClaudeContent> { new BedrockClaudeContent { Text = GetContentAsString(m.Content) } }
-            }).ToList()
-        };
-        var requestBody = JsonSerializer.Serialize(bedrockRequest);
-        var invokeRequest = new InvokeModelWithResponseStreamRequest
-        {
-            ModelId = _providerModelId,
-            Body = new MemoryStream(Encoding.UTF8.GetBytes(requestBody)),
-            ContentType = "application/json",
-            Accept = "application/json"
-        };
-
-        var response = await client.InvokeModelWithResponseStreamAsync(invokeRequest, cancellationToken);
-        foreach (var ev in response.Body)
-        {
-            if (ev is Amazon.BedrockRuntime.Model.PayloadPart payloadPart)
-            {
-                ChatCompletionChunk? chunk = null;
-                var json = Encoding.UTF8.GetString(payloadPart.Bytes.ToArray());
-                try
-                {
-                    var chunkObj = JsonSerializer.Deserialize<BedrockStreamingResponse>(json);
-                    if (chunkObj != null && !string.IsNullOrEmpty(chunkObj.Completion))
-                    {
-                        chunk = new ChatCompletionChunk
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Object = "chat.completion.chunk",
-                            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                            Model = request.Model,
-                            Choices = new List<StreamingChoice>
-                            {
-                                new StreamingChoice
-                                {
-                                    Index = 0,
-                                    Delta = new DeltaContent
-                                    {
-                                        Content = chunkObj.Completion
-                                    },
-                                    FinishReason = chunkObj.StopReason
-                                }
-                            }
-                        };
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse Bedrock streaming chunk: {Json}", json);
-                }
-                if (chunk != null)
-                {
-                    yield return chunk;
-                }
-            }
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Listing available models from AWS Bedrock");
-        
-        // In a real implementation, we would use AWS SDK to list available models
-        // For now, return a static list of commonly available models
-        
-        await Task.Delay(1, cancellationToken); // Adding await to make this truly async
-        
-        return new List<string>
-        {
-            "anthropic.claude-3-opus-20240229-v1:0",
-            "anthropic.claude-3-sonnet-20240229-v1:0",
-            "anthropic.claude-3-haiku-20240307-v1:0",
-            "anthropic.claude-v2",
-            "anthropic.claude-instant-v1",
-            "amazon.titan-text-express-v1",
-            "amazon.titan-text-lite-v1",
-            "amazon.titan-embed-text-v1",
-            "cohere.command-text-v14",
-            "cohere.command-light-text-v14",
-            "cohere.embed-english-v3",
-            "cohere.embed-multilingual-v3",
-            "meta.llama2-13b-chat-v1",
-            "meta.llama2-70b-chat-v1",
-            "meta.llama3-8b-instruct-v1:0",
-            "meta.llama3-70b-instruct-v1:0",
-            "ai21.j2-mid-v1",
-            "ai21.j2-ultra-v1",
-            "stability.stable-diffusion-xl-v1"
-        };
-    }
-
-    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by BedrockClient."));
-
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by BedrockClient."));
-    
-    #region Helper Methods
-    
-    private string GetBedrockModelId(string modelAlias)
-    {
-        // Map internal model aliases to actual AWS Bedrock model IDs if needed
-        // For now, we assume the model alias is the actual model ID
-        return modelAlias;
-    }
-    
-    private void AddAwsAuthenticationHeaders(HttpRequestMessage request, string requestBody)
-    {
-        // In a real implementation, this would add AWS Signature V4 authentication headers
-        // For simplicity, we're not implementing the full AWS authentication here
-        
-        // Placeholder for AWS signature implementation
-        // In production, use AWS SDK for .NET or implement AWS Signature V4
-        
-        // For demo purpose, we'll just add placeholder headers
-        request.Headers.Add("X-Amz-Date", DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"));
-        request.Headers.Add("Authorization", "AWS4-HMAC-SHA256 Credential=PLACEHOLDER");
-    }
-    
-    /// <summary>
-    /// Converts a message content (which could be a string or content parts) to a simple string.
-    /// </summary>
-    /// <param name="content">The message content (can be string or content parts)</param>
-    /// <returns>String representation of the content</returns>
-    private string GetContentAsString(object? content)
-    {
-        if (content == null)
-            return string.Empty;
-        
-        if (content is string textContent)
-            return textContent;
-        
-        // Handle JSON Element or list of content parts
-        if (content is JsonElement jsonElement)
-        {
-            if (jsonElement.ValueKind == JsonValueKind.String)
-                return jsonElement.GetString() ?? string.Empty;
+            ValidateRequest(request, "CreateImage");
             
-            if (jsonElement.ValueKind == JsonValueKind.Array)
+            string modelId = request.Model ?? ProviderModelId;
+            
+            if (modelId.Contains("stability", StringComparison.OrdinalIgnoreCase))
             {
-                // Combine all text content parts
-                var sb = new StringBuilder();
-                foreach (var element in jsonElement.EnumerateArray())
+                return await ExecuteApiRequestAsync(async () =>
                 {
-                    if (element.TryGetProperty("type", out var typeElement) && 
-                        typeElement.GetString() == "text" &&
-                        element.TryGetProperty("text", out var textElement))
-                    {
-                        sb.AppendLine(textElement.GetString());
-                    }
-                    // For now, we ignore image_url parts in providers that don't support them
-                }
-                return sb.ToString();
-            }
-        }
-        
-        // Try to serialize and then extract text parts (for collections or other objects)
-        try
-        {
-            var json = JsonSerializer.Serialize(content);
-            var contentParts = JsonSerializer.Deserialize<List<object>>(json);
-            if (contentParts != null)
-            {
-                var sb = new StringBuilder();
-                foreach (var part in contentParts)
-                {
-                    var partJson = JsonSerializer.Serialize(part);
-                    var element = JsonDocument.Parse(partJson).RootElement;
+                    // Implementation for image generation models would go here
+                    // This is a placeholder for the actual implementation
                     
-                    if (element.TryGetProperty("type", out var typeElement) && 
-                        typeElement.GetString() == "text" &&
-                        element.TryGetProperty("text", out var textElement))
-                    {
-                        sb.AppendLine(textElement.GetString());
-                    }
-                }
-                return sb.ToString();
+                    // For now, throw not implemented exception
+                    throw new NotImplementedException("Image generation support for Bedrock is not yet implemented");
+                }, "CreateImage", cancellationToken);
+            }
+            else
+            {
+                throw new UnsupportedProviderException($"The model {modelId} does not support image generation in Bedrock");
             }
         }
-        catch (Exception ex)
+        
+        #region Helper Methods
+        
+        /// <summary>
+        /// Maps Bedrock stop reasons to the standardized finish reasons used in the core models.
+        /// </summary>
+        /// <param name="stopReason">The Bedrock stop reason.</param>
+        /// <returns>The standardized finish reason.</returns>
+        private string MapBedrockStopReason(string? stopReason)
         {
-            _logger.LogWarning(ex, "Failed to extract text from complex content structure");
+            return stopReason?.ToLowerInvariant() switch
+            {
+                "stop_sequence" => "stop",
+                "max_tokens" => "length",
+                _ => stopReason ?? "unknown"
+            };
         }
         
-        // Fallback: Just return the string representation
-        return content.ToString() ?? string.Empty;
+        /// <summary>
+        /// Creates headers for AWS authentication.
+        /// </summary>
+        /// <param name="path">The API path.</param>
+        /// <param name="body">The request body.</param>
+        /// <param name="apiKey">Optional API key to override the one in credentials.</param>
+        /// <returns>A dictionary containing headers for AWS authentication.</returns>
+        /// <remarks>
+        /// In a real implementation, this would create AWS Signature V4 headers.
+        /// For simplicity, this implementation returns placeholder headers.
+        /// </remarks>
+        private Dictionary<string, string> CreateAWSAuthHeaders(string path, string body, string? apiKey = null)
+        {
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            
+            // In a real implementation, this would create AWS Signature V4 headers
+            // For simplicity, this returns placeholder headers
+            var headers = new Dictionary<string, string>
+            {
+                ["User-Agent"] = "ConduitLLM",
+                ["X-Amz-Date"] = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"),
+                ["Authorization"] = $"AWS4-HMAC-SHA256 Credential={effectiveApiKey}"
+                // In a real implementation, this would include a proper signature
+            };
+            
+            return headers;
+        }
+        
+        #endregion
     }
-    
-    #endregion
 }
