@@ -11,9 +11,11 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
+using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks;
 
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 using Moq;
 using Moq.Protected;

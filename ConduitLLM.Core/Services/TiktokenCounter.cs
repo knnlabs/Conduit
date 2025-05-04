@@ -14,6 +14,29 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Token counter implementation using TiktokenSharp for OpenAI-compatible tokenization.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The TiktokenCounter provides token counting functionality using the TiktokenSharp library,
+    /// which implements OpenAI's tokenization algorithm. This service is essential for:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description>Accurately estimating token usage for cost calculation</description></item>
+    ///   <item><description>Ensuring messages fit within model context windows</description></item>
+    ///   <item><description>Determining appropriate chunking strategies for large content</description></item>
+    /// </list>
+    /// <para>
+    /// This implementation provides robust handling for different content types including:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description>Simple string content</description></item>
+    ///   <item><description>Multimodal content with text and images</description></item>
+    ///   <item><description>Complex JSON structures</description></item>
+    /// </list>
+    /// <para>
+    /// When the exact encoding for a model cannot be determined, or when tokenization fails,
+    /// this implementation falls back to a simple character-based estimation (approximate 4 characters per token).
+    /// </para>
+    /// </remarks>
     public class TiktokenCounter : ITokenCounter
     {
         // Cache encodings for performance
@@ -21,9 +44,14 @@ namespace ConduitLLM.Core.Services
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TiktokenCounter"/> class.
+        /// </summary>
+        /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger is null.</exception>
         public TiktokenCounter(ILogger<TiktokenCounter> logger)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc />
@@ -160,6 +188,25 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets the appropriate TikToken encoding for a given model.
         /// </summary>
+        /// <param name="modelName">The name of the model to get encoding for.</param>
+        /// <returns>The appropriate TikToken encoding, or null if it cannot be determined.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method determines the appropriate encoding based on the model name using these steps:
+        /// </para>
+        /// <list type="number">
+        ///   <item><description>Identifies the encoding type based on model name patterns</description></item>
+        ///   <item><description>Uses a thread-safe caching mechanism to avoid repeatedly creating encodings</description></item>
+        ///   <item><description>Falls back to the most modern encoding (cl100k_base) when uncertain</description></item>
+        /// </list>
+        /// <para>
+        /// The current encoding mappings are:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description>cl100k_base: GPT-3.5 and GPT-4 models</description></item>
+        ///   <item><description>p50k_base: Legacy models (davinci, curie, babbage, ada)</description></item>
+        /// </list>
+        /// </remarks>
         private TikToken? GetEncodingForModel(string modelName)
         {
             try
@@ -210,8 +257,26 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Estimates tokens for content in JsonElement format (common when deserializing JSON)
+        /// Estimates tokens for content in JsonElement format (common when deserializing JSON).
         /// </summary>
+        /// <param name="element">The JsonElement to estimate token count for.</param>
+        /// <param name="encoding">The tokenizer encoding to use.</param>
+        /// <returns>The estimated token count.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method handles different types of JsonElement content:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description>String elements: Directly tokenized</description></item>
+        ///   <item><description>Arrays: Processes each element, especially for content parts</description></item>
+        ///   <item><description>Text content parts: Extracts and tokenizes text with type="text"</description></item>
+        ///   <item><description>Image content parts: Uses fixed token estimates based on type="image_url"</description></item>
+        /// </list>
+        /// <para>
+        /// For image tokens, the implementation uses a fixed estimate since actual image token
+        /// usage depends on resolution which isn't always available at counting time.
+        /// </para>
+        /// </remarks>
         private int EstimateJsonElementTokens(JsonElement element, TikToken encoding)
         {
             int tokenCount = 0;
@@ -259,8 +324,25 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Extracts text content from a complex content object
+        /// Extracts text content from a complex content object.
         /// </summary>
+        /// <param name="content">The content object to extract text from.</param>
+        /// <returns>A string representation of the textual content.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method handles various content object formats:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description>Serializes the object to JSON then parses it as a JsonDocument</description></item>
+        ///   <item><description>For arrays (likely content parts): extracts text from each part with type="text"</description></item>
+        ///   <item><description>For string values: returns them directly</description></item>
+        ///   <item><description>For other types: falls back to ToString()</description></item>
+        /// </list>
+        /// <para>
+        /// This extraction is particularly useful for multimodal content where we need to
+        /// extract only the textual parts for token counting.
+        /// </para>
+        /// </remarks>
         private string ExtractTextFromContentObject(object content)
         {
             try
@@ -311,6 +393,22 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Provides a fallback method for estimating tokens when the proper encoder can't be used.
         /// </summary>
+        /// <param name="messages">The list of messages to estimate token count for.</param>
+        /// <returns>The estimated token count.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method uses a simple character-based approximation when the proper tokenizer
+        /// cannot be used. It follows these steps:
+        /// </para>
+        /// <list type="number">
+        ///   <item><description>Counts the total characters across all message parts (content, role, name)</description></item>
+        ///   <item><description>Divides by 4 to approximate tokens (based on the heuristic that English text averages ~4 chars per token)</description></item>
+        /// </list>
+        /// <para>
+        /// While not as accurate as proper tokenization, this method provides a reasonable
+        /// estimate when the correct encoder is unavailable or fails.
+        /// </para>
+        /// </remarks>
         private int FallbackEstimateTokens(List<Message> messages)
         {
             // Very rough estimation based on characters
@@ -326,6 +424,19 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Provides a fallback method for estimating tokens for a single text string.
         /// </summary>
+        /// <param name="text">The text to estimate token count for.</param>
+        /// <returns>The estimated token count.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method provides a simple character-based approximation when the proper tokenizer
+        /// cannot be used. It divides the character count by 4, which is a reasonable
+        /// approximation for English text (average ~4 characters per token).
+        /// </para>
+        /// <para>
+        /// While not as accurate as proper tokenization, this method provides a reasonable
+        /// fallback when the correct encoder is unavailable or fails.
+        /// </para>
+        /// </remarks>
         private int FallbackEstimateTokens(string text)
         {
             // Rough approximation: average 4 characters per token

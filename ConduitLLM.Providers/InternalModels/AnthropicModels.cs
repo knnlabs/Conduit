@@ -50,8 +50,7 @@ internal record AnthropicMessage
     public required string Role { get; init; } // "user" or "assistant"
 
     [JsonPropertyName("content")]
-    public required string Content { get; init; } // Simple text content for now
-    // TODO: Support complex content (list of blocks) if needed later
+    public required object Content { get; init; } // Can be string or List<AnthropicContentBlock>
 }
 
 internal record AnthropicMessageResponse
@@ -69,7 +68,7 @@ internal record AnthropicMessageResponse
     public string? Model { get; init; } // Actual model used
 
     [JsonPropertyName("content")]
-    public required List<AnthropicContentBlock> Content { get; init; }
+    public object? Content { get; init; } // Can be string or List<AnthropicContentBlock>
 
     [JsonPropertyName("stop_reason")]
     public string? StopReason { get; init; } // e.g., "end_turn", "max_tokens", "stop_sequence"
@@ -84,11 +83,27 @@ internal record AnthropicMessageResponse
 internal record AnthropicContentBlock
 {
     [JsonPropertyName("type")]
-    public required string Type { get; init; } // e.g., "text"
+    public required string Type { get; init; } // e.g., "text", "tool_use", "tool_result"
 
     [JsonPropertyName("text")]
     public string? Text { get; init; }
-    // TODO: Add other content block types if needed (e.g., "image")
+    
+    // For tool_use blocks
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+    
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+    
+    [JsonPropertyName("input")]
+    public string? Input { get; init; }
+    
+    // For tool_result blocks
+    [JsonPropertyName("tool_call_id")]
+    public string? ToolCallId { get; init; }
+    
+    [JsonPropertyName("content")]
+    public string? Content { get; init; }
 }
 
 internal record AnthropicUsage

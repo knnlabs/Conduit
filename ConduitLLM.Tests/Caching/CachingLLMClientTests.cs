@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using Microsoft.Extensions.Options;
 
 using Moq;

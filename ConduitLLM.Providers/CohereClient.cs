@@ -1,678 +1,506 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Runtime.CompilerServices; // For IAsyncEnumerable
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-
-using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels;
-using ConduitLLM.Providers.Helpers;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Linq;
 
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Providers;
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Helpers;
+using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Core.Utilities;
 
-/// <summary>
-/// Client for interacting with the Cohere API.
-/// </summary>
-public class CohereClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    // TODO: Refactor to use IHttpClientFactory
-    private readonly HttpClient _httpClient;
-    private readonly ProviderCredentials _credentials;
-    private readonly string _providerModelId; // The actual model ID for Cohere (e.g., command-r)
-    private readonly ILogger<CohereClient> _logger;
-
-    // Base URL for Cohere API
-    private const string DefaultApiBase = "https://api.cohere.ai/";
-    private const string ChatEndpoint = "v1/chat";
-
-    public CohereClient(ProviderCredentials credentials, string providerModelId, ILogger<CohereClient> logger, HttpClient? httpClient = null)
+    /// <summary>
+    /// Client for interacting with the Cohere API.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This client implements the ILLMClient interface for Cohere's chat API.
+    /// It supports both regular and streaming chat completions.
+    /// </para>
+    /// <para>
+    /// Key features:
+    /// - Maps between Conduit's unified interface and Cohere's API structure
+    /// - Handles Cohere-specific authentication and endpoint configuration
+    /// - Provides comprehensive error handling and appropriate error messages
+    /// - Supports streaming responses with proper SSE parsing
+    /// </para>
+    /// <para>
+    /// Cohere's API differs from OpenAI's in several ways, including different
+    /// message formats and response structures. This client handles the mapping
+    /// to provide a consistent experience regardless of the underlying provider.
+    /// </para>
+    /// </remarks>
+    public class CohereClient : CustomProviderClient
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _providerModelId = providerModelId; // Can be null/empty, Cohere defaults if not specified in request
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private const string DefaultApiBase = "https://api.cohere.ai";
+        private const string ChatEndpoint = "v1/chat";
 
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CohereClientRevised"/> class.
+        /// </summary>
+        /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
+        /// <param name="providerModelId">The specific Cohere model ID to use (e.g., command-r-plus).</param>
+        /// <param name="logger">Logger for recording diagnostic information.</param>
+        /// <param name="httpClientFactory">Factory for creating HttpClient instances.</param>
+        /// <exception cref="ArgumentNullException">Thrown when credentials, providerModelId, or logger is null.</exception>
+        /// <exception cref="ConfigurationException">Thrown when API key is missing in the credentials.</exception>
+        public CohereClient(
+            ProviderCredentials credentials,
+            string providerModelId,
+            ILogger<CohereClient> logger,
+            IHttpClientFactory? httpClientFactory = null)
+            : base(
+                  credentials,
+                  providerModelId,
+                  logger,
+                  httpClientFactory,
+                  "cohere",
+                  credentials.ApiBase ?? DefaultApiBase)
         {
-            throw new ConfigurationException($"API key is missing for provider '{credentials.ProviderName}'.");
         }
 
-        // Allow injection of HttpClient for testing
-        _httpClient = httpClient ?? new HttpClient();
-        
-        // Use ApiBase from credentials if provided, otherwise default
-        string apiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase;
-        // Ensure ApiBase ends with a slash
-        if (!apiBase.EndsWith('/'))
+        /// <summary>
+        /// Configures the HttpClient with Cohere-specific settings.
+        /// </summary>
+        /// <param name="client">The HTTP client to configure.</param>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        /// <remarks>
+        /// <para>
+        /// This method adds the required headers for the Cohere API.
+        /// Cohere uses a Bearer token in the Authorization header for authentication.
+        /// </para>
+        /// </remarks>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
-            apiBase += "/";
-        }
-        _httpClient.BaseAddress = new Uri(apiBase);
-        // Remove default Authorization header - will be set per request
-        // _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", credentials.ApiKey);
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-    }
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        // Determine the API key to use: override if provided, otherwise use configured key
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-             // This should ideally not happen if constructor validation is correct, but double-check
-             throw new ConfigurationException($"API key is missing for provider '{_credentials.ProviderName}' and no override was provided.");
-        }
-
-        _logger.LogInformation("Mapping Core request to Cohere request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
-        CohereChatRequest cohereRequest;
-        try
-        {
-            cohereRequest = MapToCohereRequest(request);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Failed to map core request to Cohere request.");
-            throw new ConfigurationException($"Invalid request structure for Cohere provider: {ex.Message}", ex);
-        }
-
-        HttpResponseMessage? response = null;
-        try
-        {
-            // Construct request message manually to set header per request
-            var requestUri = new Uri(_httpClient.BaseAddress!, ChatEndpoint);
+            base.ConfigureHttpClient(client, apiKey);
             
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            requestMessage.Content = JsonContent.Create(cohereRequest);
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
+            // Set Cohere-specific headers
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
 
-            _logger.LogDebug("Sending chat completion request to Cohere API: {Endpoint}", requestUri);
-            response = await _httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
-
-            if (response.IsSuccessStatusCode)
+        /// <inheritdoc/>
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "ChatCompletion");
+            
+            return await ExecuteApiRequestAsync(async () =>
             {
-                var responseDto = await response.Content.ReadFromJsonAsync<CohereChatResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-                
-                if (responseDto == null)
-                {
-                    _logger.LogError("Failed to deserialize Cohere response despite 200 OK status");
-                    throw new LLMCommunicationException("Failed to deserialize the successful response from Cohere.");
-                }
+                using var client = CreateHttpClient(apiKey);
+                var cohereRequest = MapToCohereRequest(request);
 
-                var coreResponse = MapToCoreResponse(responseDto, request.Model);
-                _logger.LogInformation("Successfully received and mapped Cohere chat completion response.");
-                return coreResponse;
+                var endpoint = ChatEndpoint;
+                Logger.LogDebug("Sending chat completion request to Cohere API at {Endpoint}", endpoint);
+                
+                var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<CohereChatRequest, CohereChatResponse>(
+                    client,
+                    HttpMethod.Post,
+                    endpoint,
+                    cohereRequest,
+                    null,
+                    DefaultSerializerOptions,
+                    Logger,
+                    cancellationToken);
+                
+                return MapFromCohereResponse(response, request.Model);
+            }, "ChatCompletion", cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "StreamChatCompletion");
+            
+            // Initialize variables outside try/catch so they're accessible throughout the method
+            StreamReader? reader = null;
+            HttpResponseMessage? response = null;
+            
+            try
+            {
+                using var client = CreateHttpClient(apiKey);
+                
+                // Map request and ensure streaming is enabled
+                var cohereRequest = MapToCohereRequest(request) with { Stream = true };
+                
+                var endpoint = ChatEndpoint;
+                Logger.LogDebug("Sending streaming chat completion request to Cohere API at {Endpoint}", endpoint);
+                
+                response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
+                    client,
+                    HttpMethod.Post,
+                    endpoint,
+                    cohereRequest,
+                    null,
+                    DefaultSerializerOptions,
+                    Logger,
+                    cancellationToken);
+                
+                // Set up streaming resources
+                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                reader = new StreamReader(stream, Encoding.UTF8);
             }
-            else
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("Cohere API request failed with status {Status}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                
-                try
+                // Enhance the error with provider-specific details
+                Logger.LogError(ex, "Error initializing streaming chat completion from Cohere");
+                throw ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
+            }
+            
+            // Process the streaming response outside try/catch for yield returns
+            if (reader != null)
+            {
+                using (reader) // Ensure proper disposal
                 {
-                    // Try to parse the error as JSON first
-                    var errorDto = JsonSerializer.Deserialize<CohereErrorResponse>(errorContent);
-                    if (errorDto?.Message != null)
+                    string? generationId = null;
+                    bool isFirstChunk = true;
+                    
+                    while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
                     {
-                        string errorMessage = $"Cohere API Error: {errorDto.Message}";
-                        _logger.LogError(errorMessage);
-                        throw new LLMCommunicationException(errorMessage);
+                        string? line;
+                        ChatCompletionChunk? chunkToYield = null;
+                        
+                        try
+                        {
+                            line = await reader.ReadLineAsync();
+                            if (string.IsNullOrWhiteSpace(line))
+                            {
+                                continue;
+                            }
+                            
+                            Logger.LogTrace("Received stream line: {Line}", line);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            Logger.LogError(ex, "Error reading from Cohere stream");
+                            throw new LLMCommunicationException($"Error reading from Cohere stream: {ex.Message}", ex);
+                        }
+                        
+                        try
+                        {
+                            // Parse the basic event structure to get the event type
+                            var baseEvent = JsonSerializer.Deserialize<CohereStreamEventBase>(line, DefaultSerializerOptions);
+                            if (baseEvent == null || string.IsNullOrEmpty(baseEvent.EventType))
+                            {
+                                continue;
+                            }
+                            
+                            // Now process different event types and yield results
+                            // This is now outside the main try/catch block so we can safely yield
+                            
+                            switch (baseEvent.EventType)
+                            {
+                                case "stream-start":
+                                    var startEvent = JsonSerializer.Deserialize<CohereStreamStartEvent>(line, DefaultSerializerOptions);
+                                    generationId = startEvent?.GenerationId ?? $"coherestream-{Guid.NewGuid():N}";
+                                    Logger.LogDebug("Cohere stream started with generation ID: {GenerationId}", generationId);
+                                    // No chunk to yield for stream-start
+                                    break;
+                                    
+                                case "text-generation":
+                                    var textEvent = JsonSerializer.Deserialize<CohereTextGenerationEvent>(line, DefaultSerializerOptions);
+                                    if (textEvent != null && !string.IsNullOrEmpty(textEvent.Text))
+                                    {
+                                        // Prepare a chunk for this text generation event
+                                        chunkToYield = CreateChatCompletionChunk(
+                                            textEvent.Text,
+                                            request.Model ?? ProviderModelId,
+                                            isFirstChunk,
+                                            null,
+                                            request.Model
+                                        );
+                                        
+                                        // Only the first chunk needs the assistant role
+                                        if (isFirstChunk)
+                                        {
+                                            isFirstChunk = false;
+                                        }
+                                    }
+                                    break;
+                                    
+                                case "stream-end":
+                                    var endEvent = JsonSerializer.Deserialize<CohereStreamEndEvent>(line, DefaultSerializerOptions);
+                                    if (endEvent != null)
+                                    {
+                                        // Map Cohere finish reason to standardized format
+                                        string finishReason = MapFinishReason(endEvent.FinishReason);
+                                        
+                                        // Prepare a final chunk with the finish reason
+                                        chunkToYield = CreateChatCompletionChunk(
+                                            "", // Empty content for final chunk
+                                            request.Model ?? ProviderModelId,
+                                            false,
+                                            finishReason,
+                                            request.Model
+                                        );
+                                        
+                                        Logger.LogDebug("Cohere stream ended with finish reason: {FinishReason}", finishReason);
+                                    }
+                                    break;
+                                    
+                                // Ignore other event types for now
+                                default:
+                                    Logger.LogTrace("Ignoring Cohere event type: {EventType}", baseEvent.EventType);
+                                    break;
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            Logger.LogError(ex, "Error deserializing Cohere stream event: {Line}", line);
+                            throw new LLMCommunicationException($"Error processing Cohere stream: {ex.Message}", ex);
+                        }
+                        
+                        // Now we can safely yield outside the try-catch block
+                        if (chunkToYield != null)
+                        {
+                            yield return chunkToYield;
+                        }
                     }
                 }
-                catch (JsonException)
-                {
-                    // If it's not JSON, treat as plain text error
-                    _logger.LogWarning("Could not parse Cohere error response as JSON. Treating as plain text.");
-                }
-                
-                // Default error if JSON parsing failed or error structure unexpected
-                throw new LLMCommunicationException($"Cohere API request failed with status code {response.StatusCode}. Response: {errorContent}");
             }
+            
+            // No need for a final catch block since we've moved all error handling into specific contexts
         }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON error processing Cohere response.");
-            throw new LLMCommunicationException("Error deserializing Cohere response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with Cohere API.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Cohere API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "Cohere API request timed out.");
-            throw new LLMCommunicationException("Cohere API request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "Cohere API request was cancelled by the caller.");
-            throw; // Re-throw cancellation
-        }
-        catch (LLMCommunicationException)
-        {
-            // Re-throw LLMCommunicationException directly, already logged
-            throw;
-        }
-        catch (Exception ex) // This is a catch-all for unexpected exceptions
-        {
-            _logger.LogError(ex, "An unexpected error occurred during Cohere API request.");
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-        }
-        finally
-        {
-            response?.Dispose();
-        }
-    }
 
-    // --- Mapping Logic ---
-
-    private CohereChatRequest MapToCohereRequest(ChatCompletionRequest coreRequest)
-    {
-        var history = new List<CohereMessage>();
-        string? preamble = null;
-        
-        foreach (var message in coreRequest.Messages)
+        /// <inheritdoc/>
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            // Extract system message as preamble
-            if (message.Role.Equals(MessageRole.System, StringComparison.OrdinalIgnoreCase))
+            // Cohere doesn't have a public model listing endpoint, so we return a static list
+            return await Task.FromResult(new List<InternalModels.ExtendedModelInfo>
             {
-                preamble = ContentHelper.GetContentAsString(message.Content);
-                continue;
-            }
-            
-            // Map non-system messages to Cohere's format
-            string role = message.Role.ToLowerInvariant() switch
-            {
-                "user" => "USER",
-                "assistant" => "CHATBOT",
-                "tool" => "TOOL", // Not standard in Cohere but added for completeness
-                _ => string.Empty
-            };
-            
-            if (string.IsNullOrEmpty(role))
-            {
-                _logger.LogWarning("Unsupported message role '{Role}' encountered for Cohere chat history. Skipping message.", message.Role);
-                continue;
-            }
-            
-            history.Add(new CohereMessage
-            {
-                Role = role,
-                Message = ContentHelper.GetContentAsString(message.Content)
+                InternalModels.ExtendedModelInfo.Create("command-r-plus", "cohere", "command-r-plus"),
+                InternalModels.ExtendedModelInfo.Create("command-r", "cohere", "command-r"),
+                InternalModels.ExtendedModelInfo.Create("command", "cohere", "command"),
+                InternalModels.ExtendedModelInfo.Create("command-light", "cohere", "command-light"),
+                InternalModels.ExtendedModelInfo.Create("command-nightly", "cohere", "command-nightly"),
+                InternalModels.ExtendedModelInfo.Create("command-light-nightly", "cohere", "command-light-nightly")
             });
         }
-        
-        // Build the Cohere request
-        var cohereRequest = new CohereChatRequest
-        {
-            Model = _providerModelId,
-            Message = coreRequest.Messages.LastOrDefault(m => 
-                    m.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase))?.Content != null
-                ? ContentHelper.GetContentAsString(coreRequest.Messages.Last(m => 
-                    m.Role.Equals(MessageRole.User, StringComparison.OrdinalIgnoreCase)).Content)
-                : string.Empty,
-            ChatHistory = history.Count > 0 ? history : null,
-            Temperature = (float?)coreRequest.Temperature,
-            Preamble = preamble,
-            MaxTokens = coreRequest.MaxTokens
-        };
-        
-        return cohereRequest;
-    }
 
-    private ChatCompletionResponse MapToCoreResponse(CohereChatResponse cohereResponse, string originalModelAlias)
-    {
-        // Validated in caller: cohereResponse, Text are not null.
-        // Usage data (Meta) might be null.
-
-        var choice = new Choice
+        /// <inheritdoc/>
+        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            Index = 0, // Cohere typically returns one choice
-            Message = new Message
-            {
-                Role = MessageRole.Assistant, // Cohere response is always the assistant
-                Content = cohereResponse.Text ?? string.Empty // Add null check with empty string default
-            },
-            FinishReason = MapFinishReason(cohereResponse.FinishReason) ?? string.Empty // Add null check with empty string default
-        };
-
-        Usage usage = new Usage
-        {
-            PromptTokens = 0,
-            CompletionTokens = 0,
-            TotalTokens = 0
-        };
-        
-        if (cohereResponse.Meta?.Tokens != null) // Prefer newer 'tokens' field
-        {
-            usage.PromptTokens = cohereResponse.Meta.Tokens.InputTokens ?? 0;
-            usage.CompletionTokens = cohereResponse.Meta.Tokens.OutputTokens ?? 0;
-            usage.TotalTokens = (cohereResponse.Meta.Tokens.InputTokens ?? 0) + (cohereResponse.Meta.Tokens.OutputTokens ?? 0);
-        }
-        else if (cohereResponse.Meta?.BilledUnits != null) // Fallback to older 'billed_units'
-        {
-            usage.PromptTokens = cohereResponse.Meta.BilledUnits.InputTokens ?? 0;
-            usage.CompletionTokens = cohereResponse.Meta.BilledUnits.OutputTokens ?? 0;
-            usage.TotalTokens = (cohereResponse.Meta.BilledUnits.InputTokens ?? 0) + (cohereResponse.Meta.BilledUnits.OutputTokens ?? 0);
+            // The Cohere API does support embeddings but requires a separate implementation
+            // This could be implemented in the future as needed
+            throw new NotImplementedException("Embedding support for Cohere is not yet implemented");
         }
 
-        return new ChatCompletionResponse
+        /// <inheritdoc/>
+        public override Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
         {
-            Id = cohereResponse.GenerationId ?? Guid.NewGuid().ToString(), // Use generation_id
-            Object = "chat.completion", // Mimic OpenAI structure
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time
-            Model = originalModelAlias, // Return the alias the user requested
-            Choices = new List<Choice> { choice },
-            Usage = usage
-            // SystemFingerprint = null // Cohere doesn't provide this
-        };
-    }
-
-     private static string? MapFinishReason(string? cohereFinishReason)
-    {
-        // See: https://docs.cohere.com/reference/chat
-        return cohereFinishReason switch
-        {
-            "COMPLETE" => "stop",
-            "MAX_TOKENS" => "length",
-            "ERROR_TOXIC" => "content_filter",
-            "ERROR_LIMIT" => "error", // Map rate limit or other limits to a generic error?
-            "ERROR" => "error",
-            "USER_CANCEL" => "stop", // Or map differently?
-            _ => cohereFinishReason // Pass through null or unknown values
-        };
-    }
-
-    // Helper to read error content safely
-    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            return $"Failed to read error content: {ex.Message}";
-        }
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        // Determine the API key to use: override if provided, otherwise use configured key
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-         if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-             throw new ConfigurationException($"API key is missing for provider '{_credentials.ProviderName}' and no override was provided.");
+            // Cohere doesn't support image generation as of 2025
+            throw new NotSupportedException("Image generation is not supported by the Cohere API");
         }
 
-        _logger.LogInformation("Mapping Core request to Cohere streaming request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
-        CohereChatRequest cohereRequest;
-        try
+        /// <summary>
+        /// Maps the provider-agnostic request to Cohere API format.
+        /// </summary>
+        /// <param name="request">The generic chat completion request.</param>
+        /// <returns>A Cohere-specific chat request.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method transforms the standardized request format into Cohere's specific API format.
+        /// Key transformations include:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description>Converting the message array to Cohere's message + chat_history format</description></item>
+        ///   <item><description>Extracting the system message into Cohere's preamble field</description></item>
+        ///   <item><description>Mapping standardized parameters to Cohere's parameter names</description></item>
+        /// </list>
+        /// <para>
+        /// The Cohere API expects the most recent user message separate from the chat history,
+        /// unlike the unified messages array in the standard format.
+        /// </para>
+        /// </remarks>
+        private CohereChatRequest MapToCohereRequest(ChatCompletionRequest request)
         {
-            // Ensure Stream = true for the request
-            cohereRequest = MapToCohereRequest(request) with { Stream = true };
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Failed to map core request to Cohere streaming request.");
-            throw new ConfigurationException($"Invalid request structure for Cohere provider: {ex.Message}", ex);
-        }
-
-        // This special JSON check is for the StreamChatCompletionAsync_InvalidJsonInStream test
-        // It specifically checks for a Cohere request that contains "invalid json line"
-        if (request.Model == "cohere-alias" && request.Messages.Any(m => 
-            ContentHelper.GetContentAsString(m.Content).Contains("Hello Cohere!", StringComparison.Ordinal)))
-        {
-            // Check if we're being called from the InvalidJsonInStream test
-            var httpContent = await _httpClient.GetAsync(_httpClient.BaseAddress, cancellationToken);
-            var contentString = await httpContent.Content.ReadAsStringAsync(cancellationToken);
-            if (contentString.Contains("invalid json line", StringComparison.Ordinal))
-            {
-                throw new LLMCommunicationException("Error deserializing Cohere stream event: Invalid JSON at line 1. Data: invalid json line", 
-                    new JsonException("Invalid JSON at line 1"));
-            }
-        }
-
-        // Declare response outside the try block
-        HttpResponseMessage response;
-        string? generationId = null; // Store generation ID from stream-start
-
-        try
-        {
-            // Assign response inside the try block, passing effectiveApiKey
-            response = await SetupAndSendStreamingRequestAsync(cohereRequest, effectiveApiKey, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) // Catch setup/connection errors
-        {
-            _logger.LogError(ex, "Error setting up or sending initial streaming request to Cohere API.");
-            if (ex.Message.Contains("Error deserializing Cohere stream event"))
-            {
-                // Just rethrow if it's already the correct format
-                throw;
-            }
-            throw new LLMCommunicationException($"Failed to initiate Cohere stream: Cohere API Error. {ex.Message}", ex);
-        }
-
-        // 2. Process the stream, passing the assigned response
-        await foreach (var chunk in ProcessCohereStreamAsync(response, generationId, originalModelAlias: request.Model, cancellationToken).ConfigureAwait(false))
-        {
-             yield return chunk;
-        }
-    }
-
-    // Helper to setup and send the initial streaming request
-    private async Task<HttpResponseMessage> SetupAndSendStreamingRequestAsync(
-        CohereChatRequest cohereRequest,
-        string effectiveApiKey, // Pass the key to use
-        CancellationToken cancellationToken)
-    {
-        // Need to construct HttpRequestMessage manually to use ResponseHeadersRead
-         var requestUri = new Uri(_httpClient.BaseAddress!, ChatEndpoint);
-        
-        _logger.LogDebug("Sending streaming request to Cohere API: {Endpoint}", requestUri);
-
-        // Create a new request object with Stream = true since it may be init-only
-        var streamingRequest = new CohereChatRequest
-        {
-            Model = cohereRequest.Model,
-            Message = cohereRequest.Message,
-            ChatHistory = cohereRequest.ChatHistory,
-            Temperature = cohereRequest.Temperature,
-            P = cohereRequest.P,         // Correct property name for TopP
-            K = cohereRequest.K,         // Correct property name for TopK
-            MaxTokens = cohereRequest.MaxTokens,
-            StopSequences = cohereRequest.StopSequences,
-            Stream = true,               // Set streaming flag
-            Preamble = cohereRequest.Preamble
-        };
-
-        // Create request message
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(streamingRequest)
-        };
-        
-        // Set Authorization header
-        requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
-        
-        var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-            _logger.LogError("Cohere streaming request failed with status {Status}. Response: {ErrorContent}", response.StatusCode, errorContent);
+            // Extract chat history and system message (preamble)
+            var history = new List<CohereMessage>();
+            string? preamble = null;
             
-            try
+            // Process all but the last user message
+            foreach (var message in request.Messages)
             {
-                // Try to parse as JSON error first
-                var errorDto = JsonSerializer.Deserialize<CohereErrorResponse>(errorContent);
-                if (errorDto?.Message != null)
+                // Extract system message as preamble
+                if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new LLMCommunicationException($"Cohere API Error: {errorDto.Message}");
-                }
-            }
-            catch (JsonException)
-            {
-                // Not JSON, fall through to default message
-            }
-
-            throw new LLMCommunicationException($"Cohere API request failed with status code {response.StatusCode}. Response: {errorContent}");
-        }
-
-        return response;
-    }
-
-    // Helper to process the actual stream content
-    // Refactored to avoid yield within try/finally for CS1626
-    private async IAsyncEnumerable<ChatCompletionChunk> ProcessCohereStreamAsync(HttpResponseMessage response, string? initialGenerationId, string originalModelAlias, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        Stream? responseStream = null;
-        StreamReader? reader = null;
-
-        try
-        {
-            responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            reader = new StreamReader(responseStream, Encoding.UTF8);
-        }
-        catch (Exception ex)
-        {
-            response.Dispose();
-            throw new LLMCommunicationException($"Error reading Cohere stream: {ex.Message}", ex);
-        }
-
-        // Process the stream using a separate reader
-        try
-        {
-            string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                throw new LLMCommunicationException("Empty response from Cohere stream");
-            }
-
-            // If the first line is invalid JSON, this will throw right away
-            // This helps test for the specific error case
-            try
-            {
-                // Try parsing the first line as JSON to catch immediate failures
-                var parsed = JsonSerializer.Deserialize<CohereStreamEventBase>(line);
-                if (parsed == null)
-                {
-                    throw new JsonException("Failed to parse Cohere stream event");
-                }
-            }
-            catch (JsonException ex)
-            {
-                throw new LLMCommunicationException($"Error deserializing Cohere stream event: {ex.Message}. Data: {line}", ex);
-            }
-
-            // If we get here, process the full stream
-            // Reset the stream and reader
-            responseStream.Position = 0;
-            reader.DiscardBufferedData();
-
-            // Use ReadAndProcessCohereStreamLinesAsync to process the stream
-            await foreach (var chunk in ReadAndProcessCohereStreamLinesAsync(reader, initialGenerationId, originalModelAlias, cancellationToken).ConfigureAwait(false))
-            {
-                yield return chunk;
-            }
-        }
-        finally
-        {
-            // Ensure resources are disposed even if exceptions occur during processing
-            reader?.Dispose();
-            responseStream?.Dispose();
-            response.Dispose(); // Dispose the response object itself
-            _logger.LogDebug("Disposed Cohere stream resources.");
-        }
-    }
-
-    // Inner async iterator to handle the loop and yield, avoiding CS1626
-    private async IAsyncEnumerable<ChatCompletionChunk> ReadAndProcessCohereStreamLinesAsync(StreamReader reader, string? initialGenerationId, string originalModelAlias, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        string? currentGenerationId = initialGenerationId; // Use local variable within this iterator
-
-        // Process the newline-delimited JSON stream
-        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
-        {
-            string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false); // Use ReadLineAsync with CancellationToken
-
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue; // Skip empty lines
-            }
-
-            _logger.LogTrace("Received stream line: {Line}", line);
-            ChatCompletionChunk? chunk = null; // Variable to hold the chunk outside try/catch
-            string? eventType = null; // Store event type for state update
-            try
-            {
-                // Determine event type first
-                var baseEvent = JsonSerializer.Deserialize<CohereStreamEventBase>(line);
-                eventType = baseEvent?.EventType; // Store event type
-                if (baseEvent == null || string.IsNullOrWhiteSpace(eventType))
-                {
-                    _logger.LogWarning($"Could not determine event type from stream line: {line}");
+                    preamble = ContentHelper.GetContentAsString(message.Content);
                     continue;
                 }
-
-                // Deserialize based on event type and map to core chunk
-                // Pass currentGenerationId by value
-                chunk = ProcessCohereEvent(eventType, line, currentGenerationId, originalModelAlias); // Pass originalModelAlias
-
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "Error deserializing Cohere stream event.");
-                // Decide whether to throw or continue. Let's throw for now.
-                throw new LLMCommunicationException($"Error deserializing Cohere stream event: {ex.Message}. Data: {line}", ex);
-            }
-            catch (LLMCommunicationException llmEx) // Catch errors from ProcessCohereEvent
-            {
-                 _logger.LogError(llmEx, "Error processing Cohere stream event.");
-                 throw; // Re-throw specific communication errors
-            }
-
-            // Update generation ID *after* processing, outside the try block
-            if (eventType == "stream-start")
-            {
-                // Re-deserialize safely or store the startEvent from the try block
-                try {
-                    var startEvent = JsonSerializer.Deserialize<CohereStreamStartEvent>(line);
-                    currentGenerationId = startEvent?.GenerationId ?? currentGenerationId;
-                } catch (JsonException) { /* Already logged in the main try block */ }
-            }
-
-            // Yield the chunk *outside* the try/catch block (CS1626 fix)
-            if (chunk != null)
-            {
-                yield return chunk;
-            }
-        }
-         _logger.LogInformation("Finished processing Cohere stream lines.");
-    }
-
-
-    // Helper method to process different Cohere stream events
-    // Removed 'ref' from generationId parameter
-    private ChatCompletionChunk? ProcessCohereEvent(string eventType, string jsonData, string? currentGenerationId, string originalModelAlias)
-    {
-         _logger.LogTrace("Processing Cohere event: {EventType}", eventType);
-        switch (eventType)
-        {
-            case "stream-start":
-                var startEvent = JsonSerializer.Deserialize<CohereStreamStartEvent>(jsonData);
-                currentGenerationId = startEvent?.GenerationId ?? currentGenerationId; // Update local generation ID
-                _logger.LogDebug("Cohere stream started. Generation ID: {GenerationId}", currentGenerationId);
-                return null; // No content chunk
-
-            case "text-generation":
-                var textEvent = JsonSerializer.Deserialize<CohereTextGenerationEvent>(jsonData);
-                if (textEvent != null && !string.IsNullOrEmpty(textEvent.Text))
+                
+                // Skip the last user message as it will be set as the primary message
+                if (message == request.Messages.LastOrDefault(m => 
+                    m.Role.Equals("user", StringComparison.OrdinalIgnoreCase)))
                 {
-                    return new ChatCompletionChunk
-                    {
-                        Id = currentGenerationId, // Use current generation ID
-                        Model = originalModelAlias,
-                        Object = "chat.completion.chunk",
-                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        Choices = new List<StreamingChoice>
-                        {
-                            new StreamingChoice
-                            {
-                                Index = 0,
-                                Delta = new DeltaContent { Content = textEvent.Text },
-                                FinishReason = null
-                            }
-                        }
-                    };
+                    continue;
                 }
-                _logger.LogWarning("Received text-generation event with null or empty text.");
-                return null;
-
-            case "stream-end":
-                var endEvent = JsonSerializer.Deserialize<CohereStreamEndEvent>(jsonData);
-                if (endEvent != null)
+                
+                // Map non-system messages to Cohere's format
+                string role = message.Role.ToLowerInvariant() switch
                 {
-                     _logger.LogDebug("Cohere stream ended. Finish Reason: {FinishReason}", endEvent.FinishReason);
-                    // Create a final chunk with the finish reason
-                    // Optionally include final usage data if needed, but not standard OpenAI format
-                    return new ChatCompletionChunk
-                    {
-                        Id = currentGenerationId,
-                        Model = originalModelAlias,
-                        Object = "chat.completion.chunk",
-                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        Choices = new List<StreamingChoice>
-                        {
-                            new StreamingChoice
-                            {
-                                Index = 0,
-                                Delta = new DeltaContent(), // Empty delta
-                                FinishReason = MapFinishReason(endEvent.FinishReason) ?? string.Empty // Add null check with empty string default
-                            }
-                        }
-                        // We could extract usage from endEvent.Response.Meta here if desired
-                    };
+                    "user" => "USER",
+                    "assistant" => "CHATBOT",
+                    "tool" => "TOOL", // Not standard in Cohere but added for completeness
+                    _ => string.Empty
+                };
+                
+                if (string.IsNullOrEmpty(role))
+                {
+                    Logger.LogWarning("Unsupported message role '{Role}' encountered for Cohere chat history. Skipping message.", message.Role);
+                    continue;
                 }
-                 _logger.LogWarning("Could not deserialize stream-end event.");
-                return null;
+                
+                history.Add(new CohereMessage
+                {
+                    Role = role,
+                    Message = ContentHelper.GetContentAsString(message.Content)
+                });
+            }
+            
+            // Get the last user message as the primary message
+            string userMessage = request.Messages.LastOrDefault(m => 
+                m.Role.Equals("user", StringComparison.OrdinalIgnoreCase))?.Content != null
+                ? ContentHelper.GetContentAsString(request.Messages.Last(m => 
+                    m.Role.Equals("user", StringComparison.OrdinalIgnoreCase)).Content)
+                : string.Empty;
+            
+            if (string.IsNullOrEmpty(userMessage))
+            {
+                Logger.LogWarning("No user message found in request for Cohere. Using empty message.");
+            }
+            
+            // Create the Cohere request
+            var cohereRequest = new CohereChatRequest
+            {
+                Model = request.Model ?? ProviderModelId,
+                Message = userMessage,
+                ChatHistory = history.Count > 0 ? history : null,
+                Temperature = (float?)request.Temperature,
+                Preamble = preamble,
+                MaxTokens = request.MaxTokens,
+                // Map top_p to Cohere's p parameter if provided
+                P = request.TopP.HasValue ? (float?)request.TopP.Value : null,
+                // Map stop to Cohere's stop_sequences if provided
+                StopSequences = request.Stop
+            };
+            
+            return cohereRequest;
+        }
 
-            // Ignoring citation-generation and tool-calls-generation for now
-            case "citation-generation":
-            case "tool-calls-generation":
-                 _logger.LogTrace("Ignoring Cohere event type: {EventType}", eventType);
-                return null;
+        /// <summary>
+        /// Maps the Cohere API response to provider-agnostic format.
+        /// </summary>
+        /// <param name="response">The response from the Cohere API.</param>
+        /// <param name="originalModelAlias">The original model alias from the request.</param>
+        /// <returns>A provider-agnostic chat completion response.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method transforms Cohere's response format into the standardized format
+        /// used throughout the application. Key transformations include:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description>Setting the assistant role for the response message</description></item>
+        ///   <item><description>Mapping Cohere's finish reason to standardized finish reasons</description></item>
+        ///   <item><description>Extracting token usage information from Cohere's meta field</description></item>
+        /// </list>
+        /// </remarks>
+        private ChatCompletionResponse MapFromCohereResponse(CohereChatResponse response, string? originalModelAlias)
+        {
+            // Extract prompt and completion tokens from response metadata
+            int promptTokens = 0;
+            int completionTokens = 0;
+            
+            // Try both tokens and billedUnits fields
+            if (response.Meta?.Tokens != null)
+            {
+                promptTokens = response.Meta.Tokens.InputTokens ?? 0;
+                completionTokens = response.Meta.Tokens.OutputTokens ?? 0;
+            }
+            else if (response.Meta?.BilledUnits != null)
+            {
+                promptTokens = response.Meta.BilledUnits.InputTokens ?? 0;
+                completionTokens = response.Meta.BilledUnits.OutputTokens ?? 0;
+            }
+            
+            // Create and return the standardized response
+            return new ChatCompletionResponse
+            {
+                Id = response.GenerationId ?? Guid.NewGuid().ToString(),
+                Object = "chat.completion", // Mimic OpenAI structure
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time
+                Model = originalModelAlias ?? ProviderModelId, // Return the alias the user requested
+                Choices = new List<Choice> 
+                { 
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new Message
+                        {
+                            Role = "assistant",
+                            Content = response.Text
+                        },
+                        FinishReason = MapFinishReason(response.FinishReason)
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = promptTokens,
+                    CompletionTokens = completionTokens,
+                    TotalTokens = promptTokens + completionTokens
+                },
+                OriginalModelAlias = originalModelAlias
+            };
+        }
 
-            default:
-                _logger.LogWarning($"Received unknown Cohere event type: {eventType}");
-                return null;
+        /// <summary>
+        /// Maps Cohere's finish reason to the standardized format.
+        /// </summary>
+        /// <param name="cohereFinishReason">The finish reason from Cohere's API.</param>
+        /// <returns>A standardized finish reason string.</returns>
+        /// <remarks>
+        /// Cohere uses different finish reason strings than the standard format.
+        /// This method maps them to the standard values (stop, length, content_filter, etc.)
+        /// for consistency across providers.
+        /// </remarks>
+        private string MapFinishReason(string? cohereFinishReason)
+        {
+            return cohereFinishReason switch
+            {
+                "COMPLETE" => "stop",
+                "MAX_TOKENS" => "length",
+                "ERROR_TOXIC" => "content_filter",
+                "ERROR_LIMIT" => "error", // Map rate limit or other limits to a generic error
+                "ERROR" => "error",
+                "USER_CANCEL" => "stop", // Treating cancelation as a normal stop
+                null => "stop", // Default to stop for null values
+                _ => cohereFinishReason.ToLowerInvariant() // Pass through unknown values in lowercase
+            };
         }
     }
-
-     /// <inheritdoc />
-    public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // Cohere's model listing might involve different endpoints or be documentation-based.
-        // Returning a hardcoded list of common/known models for simplicity.
-        _logger.LogWarning("Cohere model listing is using a hardcoded list. This may need manual updates.");
-
-        var knownModels = new List<string>
-        {
-            "command-r-plus",
-            "command-r",
-            "command",
-            "command-light",
-            "command-nightly", // Example, check current models
-            "command-light-nightly" // Example, check current models
-            // Add other known models like embed models if relevant,
-            // but filter based on expected usage (chat vs. embed) if necessary.
-        };
-
-        // Return a completed task with the list
-        return Task.FromResult(knownModels);
-    }
-
-    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by CohereClient."));
-
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by CohereClient."));
 }

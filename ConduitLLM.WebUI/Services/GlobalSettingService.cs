@@ -1,64 +1,113 @@
+using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-
-using ConduitLLM.WebUI.Data;
 using ConduitLLM.WebUI.Interfaces;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure; // Add for DbUpdateException
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services;
 
+/// <summary>
+/// Service for managing global application settings stored in the database.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This service provides a unified interface for accessing and modifying global
+/// application settings. It uses the ConfigurationDbContext to store settings
+/// as key-value pairs in the database.
+/// </para>
+/// <para>
+/// It includes special handling for security-sensitive settings like the master key,
+/// which is never stored in plaintext but rather as a cryptographic hash.
+/// </para>
+/// </remarks>
 public class GlobalSettingService : IGlobalSettingService
 {
-    // Inject the factory for the CORRECT DbContext that manages GlobalSettings
     private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
     private readonly ILogger<GlobalSettingService> _logger;
+    
+    /// <summary>
+    /// Key for storing the master key hash in the settings database.
+    /// </summary>
     private const string MasterKeyHashSettingKey = "MasterKeyHash";
+    
+    /// <summary>
+    /// Key for storing the algorithm used to hash the master key.
+    /// </summary>
     private const string MasterKeyHashAlgorithmSettingKey = "MasterKeyHashAlgorithm";
-    private const string DefaultHashAlgorithm = "SHA256"; // Default algorithm
+    
+    /// <summary>
+    /// Default hashing algorithm to use for master keys.
+    /// </summary>
+    private const string DefaultHashAlgorithm = "SHA256";
 
-    // Update constructor signature
-    public GlobalSettingService(IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, ILogger<GlobalSettingService> logger)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GlobalSettingService"/> class.
+    /// </summary>
+    /// <param name="configContextFactory">Factory for creating database context instances.</param>
+    /// <param name="logger">Logger for recording diagnostic information.</param>
+    public GlobalSettingService(
+        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
+        ILogger<GlobalSettingService> logger)
     {
-        _configContextFactory = configContextFactory; // Assign the correct factory
-        _logger = logger;
+        _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <inheritdoc/>
     public async Task<string?> GetSettingAsync(string key)
     {
-        // Use the correct context factory
+        if (string.IsNullOrEmpty(key))
+        {
+            throw new ArgumentException("Setting key cannot be null or empty", nameof(key));
+        }
+        
         using var context = await _configContextFactory.CreateDbContextAsync(); 
         var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
         return setting?.Value;
     }
 
+    /// <inheritdoc/>
     public async Task SetSettingAsync(string key, string value)
     {
-        // Use the correct context factory
+        if (string.IsNullOrEmpty(key))
+        {
+            throw new ArgumentException("Setting key cannot be null or empty", nameof(key));
+        }
+        
+        if (value == null)
+        {
+            throw new ArgumentNullException(nameof(value), "Setting value cannot be null");
+        }
+        
         using var context = await _configContextFactory.CreateDbContextAsync(); 
         var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+        
         if (setting == null)
         {
-            // Need to use the correct GlobalSetting entity type from the Configuration namespace
+            // Create a new setting
             setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
             context.GlobalSettings.Add(setting);
+            _logger.LogDebug("Creating new setting with key '{Key}'", key);
         }
         else
         {
+            // Update existing setting
             setting.Value = value;
+            _logger.LogDebug("Updating existing setting with key '{Key}'", key);
         }
         
         try
         {
             await context.SaveChangesAsync();
+            _logger.LogDebug("Successfully saved setting with key '{Key}'", key);
         }
         catch (DbUpdateException dbEx)
         {
             _logger.LogError(dbEx, "Database update failed while setting key '{Key}'. See inner exception for details.", key);
-            // Optionally log Entries causing the error:
+            // We could log the specific entities causing the issue:
             // foreach (var entry in dbEx.Entries) { _logger.LogError("Entity: {EntityName}", entry.Entity.GetType().Name); }
             throw; // Re-throw to allow calling methods to handle
         }
@@ -69,47 +118,78 @@ public class GlobalSettingService : IGlobalSettingService
         }
     }
 
+    /// <inheritdoc/>
     public Task<string?> GetMasterKeyHashAsync()
     {
+        _logger.LogDebug("Retrieving master key hash");
         return GetSettingAsync(MasterKeyHashSettingKey);
     }
 
-    public Task<string?> GetMasterKeyHashAlgorithmAsync()
+    /// <inheritdoc/>
+    public async Task<string?> GetMasterKeyHashAlgorithmAsync()
     {
-        // Return stored algorithm or default
-        return GetSettingAsync(MasterKeyHashAlgorithmSettingKey);
-        // Could add logic here: return setting ?? DefaultHashAlgorithm;
+        _logger.LogDebug("Retrieving master key hash algorithm");
+        var algorithm = await GetSettingAsync(MasterKeyHashAlgorithmSettingKey);
+        
+        // If no algorithm is stored, we could return the default
+        // but for now, let's just return what's in the database
+        // to avoid confusion about what algorithm was actually used
+        return algorithm;
     }
 
+    /// <inheritdoc/>
     public async Task SetMasterKeyAsync(string masterKey)
     {
-        // Hash the master key before storing
-        // Use SHA256 by default for now
+        if (string.IsNullOrEmpty(masterKey))
+        {
+            throw new ArgumentException("Master key cannot be null or empty", nameof(masterKey));
+        }
+        
+        // Use the default hashing algorithm
         string hashAlgorithm = DefaultHashAlgorithm;
+        
+        // Hash the master key
         string hashedKey = HashMasterKey(masterKey, hashAlgorithm);
-
+        
+        // Store both the hash and the algorithm used
         await SetSettingAsync(MasterKeyHashSettingKey, hashedKey);
         await SetSettingAsync(MasterKeyHashAlgorithmSettingKey, hashAlgorithm);
-        _logger.LogInformation("Master key hash has been updated.");
+        
+        _logger.LogInformation("Master key hash has been updated");
     }
 
-    // Centralized hashing logic - similar to VirtualKeyService but for Master Key
+    /// <summary>
+    /// Hashes a master key using the specified algorithm.
+    /// </summary>
+    /// <param name="key">The raw master key to hash.</param>
+    /// <param name="algorithm">The hashing algorithm to use.</param>
+    /// <returns>A hexadecimal string representation of the hash.</returns>
+    /// <remarks>
+    /// This is a simple implementation that could be enhanced with salt, 
+    /// key stretching, or other security features in the future.
+    /// </remarks>
     private string HashMasterKey(string key, string algorithm)
     {
-        // Basic implementation, consider enhancing (e.g., salt)
         using var hasher = GetHashAlgorithmInstance(algorithm);
         var bytes = Encoding.UTF8.GetBytes(key);
         var hashBytes = hasher.ComputeHash(bytes);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Gets an instance of the specified hashing algorithm.
+    /// </summary>
+    /// <param name="algorithm">The name of the algorithm.</param>
+    /// <returns>An instance of the hashing algorithm.</returns>
     private HashAlgorithm GetHashAlgorithmInstance(string algorithm)
     {
         return algorithm.ToUpperInvariant() switch
         {
             "SHA256" => SHA256.Create(),
-            // Add other algorithms here if needed
-            _ => SHA256.Create() // Default
+            "SHA384" => SHA384.Create(),
+            "SHA512" => SHA512.Create(),
+            // Add other algorithms as needed
+            _ => SHA256.Create() // Default to SHA256
         };
     }
 }

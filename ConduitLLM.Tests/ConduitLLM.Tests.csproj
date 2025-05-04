@@ -32,6 +32,7 @@
     <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
+    <ProjectReference Include="..\ConduitLLM.WebUI\ConduitLLM.WebUI.csproj" />
   </ItemGroup>
 
 </Project>

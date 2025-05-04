@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 
@@ -129,9 +128,9 @@ namespace ConduitLLM.Providers
             }
             else if (request is EmbeddingRequest embeddingRequest)
             {
-                if (embeddingRequest.Input == null || embeddingRequest.Input.Count == 0)
+                if (embeddingRequest.Input == null)
                 {
-                    throw new ValidationException($"{operationName}: Input cannot be null or empty");
+                    throw new ValidationException($"{operationName}: Input cannot be null");
                 }
             }
             else if (request is ImageGenerationRequest imageRequest)
@@ -239,8 +238,7 @@ namespace ConduitLLM.Providers
                     PromptTokens = promptTokens,
                     CompletionTokens = completionTokens,
                     TotalTokens = promptTokens + completionTokens
-                },
-                OriginalModelAlias = originalModelAlias
+                }
             };
         }
 
@@ -283,8 +281,7 @@ namespace ConduitLLM.Providers
                         },
                         FinishReason = finishReason
                     }
-                },
-                OriginalModelAlias = originalModelAlias
+                }
             };
         }
     }

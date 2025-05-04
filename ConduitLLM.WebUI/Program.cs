@@ -31,6 +31,7 @@ using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
+using ConduitLLM.Configuration.Repositories;
 using MudBlazor;
 using MudBlazor.Services;
 
@@ -170,13 +171,63 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.VirtualKeyService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Services.GlobalSettingService>(); 
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
-builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>(); 
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RequestLogService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Services.ICostDashboardService, ConduitLLM.WebUI.Services.CostDashboardService>();
+// Register repositories and repository-based services
+builder.Services.AddRepositoryServices();
+
+// Determine if we should use repository-based controllers
+bool useRepositoryPattern = Environment.GetEnvironmentVariable("CONDUIT_USE_REPOSITORY_PATTERN")?.ToLowerInvariant() == "true";
+Console.WriteLine($"[Conduit WebUI] Using repository pattern: {useRepositoryPattern}");
+
+if (useRepositoryPattern)
+{
+    // Use interfaces to register repository-based services, 
+    // controllers will be registered automatically
+    
+    // Register repository-based services as default implementations of interfaces
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Services.GlobalSettingServiceNew>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.ICostDashboardService, ConduitLLM.WebUI.Services.CostDashboardServiceNew>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRouterService, ConduitLLM.WebUI.Services.RouterServiceNew>();
+    
+    // Register VirtualKeyServiceNew and the adapter that implements IVirtualKeyService
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.VirtualKeyServiceNew>();
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
+    
+    // Use RequestLogServiceNew instead of the original singleton implementation
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.RequestLogServiceNew>();
+    
+    // Register controllers explicitly to ensure repository-pattern controllers are used
+    builder.Services.AddControllers().ConfigureApplicationPartManager(manager => {
+        Console.WriteLine("[Conduit WebUI] Registering repository-based controllers");
+        
+        // Add controller mapping for specific controllers that have "New" versions
+        builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.LogsControllerNew>();
+        builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.CostDashboardControllerNew>();
+        builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.RouterControllerNew>();
+        builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.AuthControllerNew>();
+        
+        // Map routes to use the "New" controllers
+        builder.Services.AddRouting(options => {
+            options.ConstraintMap.Add("controller", typeof(string));
+        });
+    });
+    
+    // Keep NotificationService and CacheStatusService as they are
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
+    builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
+}
+else
+{
+    // LEGACY: Keep the original services for backward compatibility
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.VirtualKeyService>();
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.VirtualKeyService>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Services.GlobalSettingService>(); 
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
+    builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>(); 
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RequestLogService>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.ICostDashboardService, ConduitLLM.WebUI.Services.CostDashboardService>();
+}
 
 // Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
@@ -468,6 +519,7 @@ app.MapRazorComponents<App>()
 
 // Ensure controllers are mapped for our API endpoints
 app.MapControllers();
+Console.WriteLine("[Conduit WebUI] Controllers registered");
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)

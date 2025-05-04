@@ -1,13 +1,16 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using ConduitLLM.WebUI.Interfaces
+@using MudBlazor
 @inject NavigationManager NavigationManager
 @inject IInsecureModeProvider InsecureModeProvider
 
-<MudThemeProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-<MudPopoverProvider />
+<CascadingValue Value="this">
+    <MudThemeProvider />
+    <MudDialogProvider />
+    <MudSnackbarProvider />
+    <MudPopoverProvider />
+</CascadingValue>
 
 @if (InsecureModeProvider.IsInsecureMode)
 {

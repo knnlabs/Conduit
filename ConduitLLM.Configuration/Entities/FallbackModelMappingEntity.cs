@@ -35,5 +35,20 @@ namespace ConduitLLM.Configuration.Entities
         /// The order in which this fallback should be tried (lower values are tried first)
         /// </summary>
         public int Order { get; set; }
+        
+        /// <summary>
+        /// Source model name (alias for compatibility)
+        /// </summary>
+        public string SourceModelName { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// When this mapping was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// When this mapping was last updated
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

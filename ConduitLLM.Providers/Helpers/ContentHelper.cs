@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 
@@ -9,6 +10,80 @@ namespace ConduitLLM.Providers.Helpers
     /// </summary>
     public static class ContentHelper
     {
+        /// <summary>
+        /// Extracts multimodal content as a list of text content parts.
+        /// </summary>
+        /// <param name="content">The message content (can be string or content parts)</param>
+        /// <returns>List of string content parts</returns>
+        public static List<string> ExtractMultimodalContent(object? content)
+        {
+            var textParts = new List<string>();
+            
+            if (content == null)
+                return textParts;
+                
+            if (content is string textContent)
+            {
+                textParts.Add(textContent);
+                return textParts;
+            }
+            
+            // Handle JSON Element or list of content parts
+            if (content is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind == JsonValueKind.String)
+                {
+                    textParts.Add(jsonElement.GetString() ?? string.Empty);
+                    return textParts;
+                }
+                
+                if (jsonElement.ValueKind == JsonValueKind.Array)
+                {
+                    // Extract all text content parts
+                    foreach (var element in jsonElement.EnumerateArray())
+                    {
+                        if (element.TryGetProperty("type", out var typeElement) && 
+                            typeElement.GetString() == "text" &&
+                            element.TryGetProperty("text", out var textElement))
+                        {
+                            textParts.Add(textElement.GetString() ?? string.Empty);
+                        }
+                    }
+                    return textParts;
+                }
+            }
+            
+            // Try to serialize and then extract text parts (for collections or other objects)
+            try
+            {
+                var json = JsonSerializer.Serialize(content);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    // It's likely content parts
+                    foreach (var element in root.EnumerateArray())
+                    {
+                        if (element.TryGetProperty("type", out var typeElement) && 
+                            typeElement.GetString() == "text" &&
+                            element.TryGetProperty("text", out var textElement))
+                        {
+                            textParts.Add(textElement.GetString() ?? string.Empty);
+                        }
+                    }
+                    return textParts;
+                }
+            }
+            catch (Exception)
+            {
+                // If we can't process it properly, just use the string representation
+            }
+            
+            // Fallback: Just add the string representation
+            textParts.Add(content.ToString() ?? string.Empty);
+            return textParts;
+        }
         /// <summary>
         /// Converts message content (which could be a string or content parts) to a simple string.
         /// </summary>

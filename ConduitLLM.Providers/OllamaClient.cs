@@ -8,560 +8,683 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization; // Added for JsonIgnoreCondition
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels; // Assuming OllamaModels.cs will be populated here
+using ConduitLLM.Providers.InternalModels;
 
-using Microsoft.Extensions.Logging;
-
-namespace ConduitLLM.Providers;
-
-/// <summary>
-/// Client for interacting with Ollama APIs.
-/// </summary>
-public class OllamaClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ProviderCredentials _credentials;
-    private readonly string _providerModelId; // The specific Ollama model tag
-    private readonly ILogger<OllamaClient> _logger;
-    private readonly string _providerName = "ollama"; // Hardcoded for this client
-
-    // Default base URL for local Ollama instance
-    private const string DefaultOllamaApiBase = "http://localhost:11434";
-
-    public OllamaClient(
-        ProviderCredentials credentials,
-        string providerModelId,
-        ILogger<OllamaClient> logger,
-        IHttpClientFactory httpClientFactory)
+    /// <summary>
+    /// Revised client for interacting with self-hosted Ollama APIs using the new client hierarchy.
+    /// Provides standardized handling of API requests and responses for LLM model inference.
+    /// </summary>
+    public class OllamaClient : CustomProviderClient
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        // Default base URL for local Ollama instance
+        private const string DefaultOllamaApiBase = "http://localhost:11434";
 
-        // API Key is typically not required for local Ollama, but ApiBase might be different
-        if (string.IsNullOrWhiteSpace(_credentials.ApiBase))
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OllamaClientRevised"/> class.
+        /// </summary>
+        /// <param name="credentials">The credentials for accessing the Ollama API.</param>
+        /// <param name="providerModelId">The model identifier to use (e.g., llama3:latest).</param>
+        /// <param name="logger">The logger to use.</param>
+        /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
+        public OllamaClient(
+            ProviderCredentials credentials,
+            string providerModelId,
+            ILogger logger,
+            IHttpClientFactory? httpClientFactory = null)
+            : base(
+                credentials,
+                providerModelId,
+                logger,
+                httpClientFactory,
+                "Ollama",
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultOllamaApiBase : credentials.ApiBase)
         {
-            _logger.LogInformation("Ollama ApiBase not provided, defaulting to {DefaultBase}", DefaultOllamaApiBase);
-        }
-        else
-        {
-             _logger.LogInformation("Using provided Ollama ApiBase: {ApiBase}", _credentials.ApiBase);
-        }
-    }
-
-    private string GetEffectiveApiBase() => string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultOllamaApiBase : _credentials.ApiBase.TrimEnd('/');
-
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        // API Key is typically ignored for Ollama
-
-        _logger.LogInformation("Mapping Core request to Ollama request for model '{Model}'", _providerModelId);
-        var ollamaRequest = MapToOllamaChatRequest(request);
-
-        string apiBase = GetEffectiveApiBase();
-        var requestUri = new Uri($"{apiBase}/api/chat");
-
-        _logger.LogDebug("Sending request to Ollama endpoint: {Endpoint}", requestUri);
-
-        using var httpClient = _httpClientFactory.CreateClient(_providerName);
-        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-        HttpResponseMessage? response = null;
-        try
-        {
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
             {
-                Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull })
-            };
-            // No specific auth headers usually needed for local Ollama
-
-            response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("Ollama API request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"Ollama API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                Logger.LogInformation("Ollama API base not provided, defaulting to {DefaultBase}", DefaultOllamaApiBase);
             }
+        }
 
-            _logger.LogDebug("Received successful response from Ollama API.");
-            var ollamaResponse = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (ollamaResponse == null || !ollamaResponse.Done || ollamaResponse.Message == null)
+        /// <inheritdoc/>
+        protected override void ValidateCredentials()
+        {
+            // Ollama typically doesn't require API key, so we override the base validation
+            // to skip the API key check but ensure other validations are performed
+            
+            // We still need valid credentials, but API key is optional
+            if (Credentials == null)
             {
-                 _logger.LogError("Failed to deserialize or received incomplete response from Ollama API.");
-                 throw new LLMCommunicationException("Invalid or incomplete response structure received from Ollama API.");
+                throw new ConfigurationException($"Credentials cannot be null for provider '{ProviderName}'");
             }
-
-            _logger.LogInformation("Mapping Ollama response back to Core response for model '{Model}'", request.Model);
-            return MapToCoreChatResponse(ollamaResponse, request.Model);
-
+            
+            // No need to check API key for Ollama
         }
-        catch (JsonException ex)
+
+        /// <inheritdoc/>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
-             _logger.LogError(ex, "JSON deserialization error processing Ollama response.");
-             throw new LLMCommunicationException("Error deserializing Ollama response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with Ollama API.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Ollama API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "Ollama API request timed out.");
-            throw new LLMCommunicationException("Ollama API request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "Ollama API request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (Exception ex) // Catch-all
-        {
-            _logger.LogError(ex, "An unexpected error occurred while processing Ollama chat completion.");
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-        }
-        finally
-        {
-            response?.Dispose();
-        }
-    }
-
-    // Helper to setup and send the initial streaming request
-    private async Task<HttpResponseMessage> SetupAndSendOllamaStreamRequestAsync(
-        OllamaChatRequest ollamaRequest,
-        CancellationToken cancellationToken)
-    {
-        string apiBase = GetEffectiveApiBase();
-        var requestUri = new Uri($"{apiBase}/api/chat");
-
-        _logger.LogDebug("Sending streaming request to Ollama endpoint: {Endpoint}", requestUri);
-
-        // Create client from factory for each request
-        using var httpClient = _httpClientFactory.CreateClient(_providerName); 
-        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull })
-        };
-
-        // Send request and get headers first
-        var response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-
-        // Check for non-success status code before attempting to read stream
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-             _logger.LogError("Ollama API streaming request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-             response.Dispose(); // Dispose response before throwing
-            throw new LLMCommunicationException($"Ollama API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
-        }
-         _logger.LogDebug("Received successful streaming response header from Ollama API.");
-        return response; // Return the successful response (caller is responsible for disposal)
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        // API Key is typically ignored for Ollama
-
-        _logger.LogInformation("Mapping Core request to Ollama streaming request for model '{Model}'", _providerModelId);
-        var ollamaRequest = MapToOllamaChatRequest(request) with { Stream = true }; // Ensure Stream is true
-
-        HttpResponseMessage? response = null; 
-        StreamReader? reader = null;
-        Stream? responseStream = null;
-        IAsyncEnumerator<ChatCompletionChunk>? chunkEnumerator = null;
-
-        try
-        {
-            // Setup and send the initial request
-            response = await SetupAndSendOllamaStreamRequestAsync(ollamaRequest, cancellationToken).ConfigureAwait(false);
-            responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            reader = new StreamReader(responseStream, Encoding.UTF8);
-
-            // Get the enumerator from the helper method
-            chunkEnumerator = ProcessOllamaStreamInternalAsync(reader, request.Model, cancellationToken).GetAsyncEnumerator(cancellationToken);
-
-            // Iterate and yield chunks - This loop is now outside the try block with a catch clause
-            while (true) 
+            // Customize configuration for Ollama - no Authorization header needed
+            // but keep other standard headers
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // Set the base address if not already set
+            if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
             {
+                client.BaseAddress = new Uri(BaseUrl.TrimEnd('/'));
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateChatCompletionAsync");
+            
+            Logger.LogInformation("Mapping Core request to Ollama request for model '{Model}'", ProviderModelId);
+            var ollamaRequest = MapToOllamaChatRequest(request);
+            
+            try
+            {
+                return await ExecuteApiRequestAsync(
+                    async () =>
+                    {
+                        using var client = CreateHttpClient();
+                        var requestUri = "api/chat";
+                        Logger.LogDebug("Sending request to Ollama endpoint: {Endpoint}", requestUri);
+                        
+                        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+                        {
+                            Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions 
+                            { 
+                                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
+                            })
+                        };
+                        
+                        var response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+                        
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                            Logger.LogError("Ollama API request failed with status code {StatusCode}. Response: {ErrorContent}", 
+                                response.StatusCode, errorContent);
+                            throw new LLMCommunicationException(
+                                $"Ollama API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                        }
+                        
+                        Logger.LogDebug("Received successful response from Ollama API.");
+                        var ollamaResponse = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                        
+                        if (ollamaResponse == null || !ollamaResponse.Done || ollamaResponse.Message == null)
+                        {
+                            Logger.LogError("Failed to deserialize or received incomplete response from Ollama API.");
+                            throw new LLMCommunicationException("Invalid or incomplete response structure received from Ollama API.");
+                        }
+                        
+                        Logger.LogInformation("Mapping Ollama response back to Core response for model '{Model}'", request.Model);
+                        return MapToCoreChatResponse(ollamaResponse, request.Model);
+                    },
+                    "CreateChatCompletionAsync",
+                    cancellationToken);
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while processing Ollama chat completion.");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "StreamChatCompletionAsync");
+            
+            Logger.LogInformation($"Mapping Core request to Ollama streaming request for model '{ProviderModelId}'");
+            var ollamaRequest = MapToOllamaChatRequest(request) with { Stream = true }; // Ensure streaming is enabled
+            
+            // We need to track if we've sent any chunks yet for proper assistant message formatting
+            bool isFirstChunk = true;
+            
+            // Get the data from the API
+            List<string> allLines = await FetchStreamLinesAsync(ollamaRequest, cancellationToken);
+            
+            // Process each line and yield chunks outside any try blocks
+            foreach (var line in allLines)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                
+                // Skip empty lines
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+                
+                // Parse the line
+                OllamaStreamChunk? ollamaChunk = null;
                 try
                 {
-                    if (!await chunkEnumerator.MoveNextAsync().ConfigureAwait(false))
-                    {
-                        break; // End of stream
-                    }
+                    ollamaChunk = JsonSerializer.Deserialize<OllamaStreamChunk>(line);
                 }
-                catch (Exception ex) // Catch errors during MoveNextAsync or within the helper
+                catch (JsonException ex)
                 {
-                    _logger.LogError(ex, "Error during Ollama stream iteration.");
-                    throw new LLMCommunicationException($"Error during Ollama stream iteration: {ex.Message}", ex);
+                    Logger.LogError(ex, "Error deserializing Ollama stream chunk: {Line}", line);
+                    continue; // Skip problematic lines
                 }
-                yield return chunkEnumerator.Current;
-            }
-        }
-        finally // Ensure all resources are disposed
-        {
-            if (chunkEnumerator != null)
-            {
-                await chunkEnumerator.DisposeAsync(); 
-            }
-            // Reader, Stream, and Response are potentially created before the loop, ensure disposal
-            reader?.Dispose();
-            responseStream?.Dispose();
-            response?.Dispose();
-             _logger.LogDebug("Disposed Ollama stream resources in main method.");
-        }
-    }
-
-    // Private helper method to process the stream and yield chunks
-    // This method NO LONGER handles disposal or contains try/catch blocks.
-    private async IAsyncEnumerable<ChatCompletionChunk> ProcessOllamaStreamInternalAsync(
-        StreamReader reader, 
-        string originalModelAlias, 
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        string? line;
-        // ReadLineAsync returns null when the end of the stream is reached.
-        // Exceptions during ReadLineAsync (e.g., IOException) or Deserialize will propagate up.
-        while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
-        {
-             if (cancellationToken.IsCancellationRequested)
-                throw new OperationCanceledException("Stream processing canceled.", cancellationToken);
-
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-            
-            // Each line is a JSON object representing a chunk
-            OllamaStreamChunk? ollamaChunk = JsonSerializer.Deserialize<OllamaStreamChunk>(line);
-
-            if (ollamaChunk != null) 
-            {
-                yield return MapToCoreStreamChunk(ollamaChunk, originalModelAlias); 
                 
-                if (ollamaChunk.Done)
+                // Skip null chunks
+                if (ollamaChunk == null)
                 {
-                    _logger.LogInformation("Received 'done' marker in Ollama stream chunk, ending stream processing.");
-                    break; // Exit loop normally
+                    Logger.LogWarning($"Deserialized Ollama stream chunk was null. JSON: {line}");
+                    continue;
+                }
+                
+                // Only yield if we have actual content
+                if (ollamaChunk.Message != null && !string.IsNullOrEmpty(ollamaChunk.Message.Content))
+                {
+                    var chunk = MapToCoreStreamChunk(ollamaChunk, request.Model, isFirstChunk);
+                    isFirstChunk = false;
+                    yield return chunk;
+                }
+                
+                // If this is the final chunk, yield a chunk with the finish reason
+                if (ollamaChunk.Done && !isFirstChunk) // Avoid empty final chunk if we've had no content
+                {
+                    Logger.LogInformation("Received 'done' marker in Ollama stream, ending stream processing.");
+                    yield return CreateChatCompletionChunk(
+                        string.Empty,
+                        request.Model,
+                        false,
+                        "stop",
+                        request.Model);
+                    break;
+                }
+            }
+            
+            Logger.LogInformation("Finished processing Ollama stream.");
+        }
+        
+        /// <summary>
+        /// Fetches all lines from the Ollama streaming API.
+        /// </summary>
+        /// <param name="ollamaRequest">The request to send to Ollama.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>A list of all JSON lines from the stream.</returns>
+        private async Task<List<string>> FetchStreamLinesAsync(
+            OllamaChatRequest ollamaRequest,
+            CancellationToken cancellationToken)
+        {
+            HttpResponseMessage? response = null;
+            StreamReader? reader = null;
+            Stream? responseStream = null;
+            List<string> lines = new List<string>();
+            
+            try
+            {
+                // Setup and send the initial request
+                using var client = CreateHttpClient();
+                var requestUri = "api/chat";
+                Logger.LogDebug($"Sending streaming request to Ollama endpoint: {requestUri}");
+                
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+                {
+                    Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions 
+                    { 
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
+                    })
+                };
+                
+                // Send request with ResponseHeadersRead to enable streaming
+                response = await client.SendAsync(
+                    httpRequest, 
+                    HttpCompletionOption.ResponseHeadersRead, 
+                    cancellationToken).ConfigureAwait(false);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                    Logger.LogError($"Ollama API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
+                    throw new LLMCommunicationException(
+                        $"Ollama API streaming request failed with status code {response.StatusCode}. Response: {errorContent}");
+                }
+                
+                responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                reader = new StreamReader(responseStream, Encoding.UTF8);
+                
+                // Read all lines from the stream
+                string? line;
+                while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    
+                    lines.Add(line);
+                }
+                
+                return lines;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInformation("Ollama streaming operation was canceled.");
+                throw;
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred during Ollama stream processing.");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+            finally
+            {
+                // Ensure resources are disposed
+                reader?.Dispose();
+                responseStream?.Dispose();
+                response?.Dispose();
+                Logger.LogDebug("Disposed Ollama stream resources.");
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await ExecuteApiRequestAsync(
+                    async () =>
+                    {
+                        using var client = CreateHttpClient();
+                        var requestUri = "api/tags";
+                        Logger.LogDebug("Sending request to list Ollama models from: {Endpoint}", requestUri);
+                        
+                        using var requestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                        var response = await client.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+                        
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                            Logger.LogError("Ollama API list models request failed with status code {StatusCode}. Response: {ErrorContent}", 
+                                response.StatusCode, errorContent);
+                            throw new LLMCommunicationException(
+                                $"Ollama API list models request failed with status code {response.StatusCode}. Response: {errorContent}");
+                        }
+                        
+                        var tagsResponse = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>(
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                        
+                        if (tagsResponse == null || tagsResponse.Models == null)
+                        {
+                            Logger.LogError("Failed to deserialize the successful model list response from Ollama API.");
+                            throw new LLMCommunicationException("Failed to deserialize the model list response from Ollama API.");
+                        }
+                        
+                        // Map to ModelInfo objects using the Create factory method
+                        var models = tagsResponse.Models.Select(m => 
+                            ExtendedModelInfo.Create(m.Name, ProviderName, m.Name)
+                                .WithCapabilities(DetermineModelCapabilities(m))
+                                .WithTokenLimits(new ModelTokenLimits
+                                {
+                                    // Ollama doesn't provide token limits in API response
+                                    // Use sensible defaults based on family/parameter size
+                                    MaxInputTokens = EstimateMaxInputTokens(m),
+                                    MaxOutputTokens = EstimateMaxOutputTokens(m)
+                                })
+                        ).ToList();
+                        
+                        Logger.LogInformation($"Successfully retrieved {models.Count} models from Ollama.");
+                        return models;
+                    },
+                    "GetModelsAsync",
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while listing Ollama models.");
+                throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateEmbeddingAsync");
+            
+            // Input validation: Ollama expects a single string prompt
+            if (request.Input == null)
+            {
+                throw new ValidationException("Embedding input cannot be null for Ollama embedding request");
+            }
+            
+            // Convert input to string
+            string prompt;
+            if (request.Input is string promptStr)
+            {
+                prompt = promptStr;
+            }
+            else if (request.Input is IEnumerable<string> stringList)
+            {
+                // Join multiple strings if provided as a list (use first one for compatibility)
+                var strings = stringList.ToList();
+                if (strings.Count == 0)
+                {
+                    throw new ValidationException("Embedding input list cannot be empty for Ollama embedding request");
+                }
+                prompt = strings[0];
+                if (strings.Count > 1)
+                {
+                    Logger.LogWarning("Ollama embedding only supports a single string input. Using first item from the list.");
                 }
             }
             else
             {
-                 _logger.LogWarning("Deserialized Ollama stream chunk was null. JSON: {JsonLine}", line);
+                throw new ValidationException("Unsupported input type for Ollama embedding request");
             }
-        }
-         _logger.LogInformation("Finished processing Ollama stream lines.");
-    }
-
-
-    /// <inheritdoc />
-    public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // API Key is ignored for Ollama
-        string apiBase = GetEffectiveApiBase();
-        var requestUri = new Uri($"{apiBase}/api/tags");
-
-        _logger.LogDebug("Sending request to list Ollama models from: {Endpoint}", requestUri);
-
-        using var httpClient = _httpClientFactory.CreateClient(_providerName);
-        // Add standard headers
-        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-        try
-        {
-            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri);
-            // No authorization typically needed for local Ollama
-
-            using var response = await httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
+            
+            if (string.IsNullOrWhiteSpace(prompt))
             {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("Ollama API list models request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"Ollama API list models request failed with status code {response.StatusCode}. Response: {errorContent}");
+                throw new ValidationException("Embedding prompt cannot be empty for Ollama embedding request");
             }
-
-            var tagsResponse = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (tagsResponse == null || tagsResponse.Models == null)
+            
+            Logger.LogInformation("Mapping Core embedding request to Ollama request for model '{Model}'", ProviderModelId);
+            var ollamaRequest = new OllamaEmbeddingRequest
             {
-                 _logger.LogError("Failed to deserialize the successful model list response from Ollama API.");
-                 throw new LLMCommunicationException("Failed to deserialize the model list response from Ollama API.");
-            }
-
-            // Extract just the model names (tags)
-            var modelIds = tagsResponse.Models.Select(m => m.Name).ToList();
-            _logger.LogInformation("Successfully retrieved {ModelCount} models from Ollama.", modelIds.Count);
-            return modelIds;
-        }
-        catch (JsonException ex)
-        {
-             _logger.LogError(ex, "JSON deserialization error processing Ollama model list response.");
-             throw new LLMCommunicationException("Error deserializing Ollama model list response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with Ollama API for model list.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Ollama API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "Ollama API list models request timed out.");
-            throw new LLMCommunicationException("Ollama API request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "Ollama API list models request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (Exception ex) // Catch-all
-        {
-            _logger.LogError(ex, "An unexpected error occurred while listing Ollama models.");
-            throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
-        }
-    }
-
-    /// <inheritdoc />
-    public async Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        // Input validation: Ollama expects a single string prompt
-        if (request.Input is not string prompt || string.IsNullOrWhiteSpace(prompt))
-        {
-             throw new ArgumentException("Ollama embedding requires a single non-empty string as input.", nameof(request.Input));
-        }
-        // API Key ignored
-
-        _logger.LogInformation("Mapping Core embedding request to Ollama request for model '{Model}'", _providerModelId);
-        // Note: Ollama uses the client's configured model ID (_providerModelId), not the one from the request directly.
-        var ollamaRequest = new OllamaEmbeddingRequest
-        {
-            Model = _providerModelId,
-            Prompt = prompt 
-            // Options can be added here if needed/supported by Core request
-        };
-
-        string apiBase = GetEffectiveApiBase();
-        var requestUri = new Uri($"{apiBase}/api/embeddings");
-
-         _logger.LogDebug("Sending request to Ollama embeddings endpoint: {Endpoint}", requestUri);
-
-        using var httpClient = _httpClientFactory.CreateClient(_providerName);
-        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-        HttpResponseMessage? response = null;
-        try
-        {
-             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
-             {
-                 Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull })
-             };
-
-            response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
+                Model = ProviderModelId,
+                Prompt = prompt
+            };
+            
+            try
             {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("Ollama API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
-                throw new LLMCommunicationException($"Ollama API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
-            }
-
-            _logger.LogDebug("Received successful response from Ollama embeddings API.");
-            var ollamaResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (ollamaResponse == null || ollamaResponse.Embedding == null)
-            {
-                 _logger.LogError("Failed to deserialize or received incomplete embeddings response from Ollama API.");
-                 throw new LLMCommunicationException("Invalid or incomplete embeddings response structure received from Ollama API.");
-            }
-
-            // Map back to Core response
-            return new EmbeddingResponse
-            {
-                Object = "list", // Mimic OpenAI structure
-                Data = new List<EmbeddingData>
-                {
-                    new EmbeddingData
+                return await ExecuteApiRequestAsync(
+                    async () =>
                     {
-                        Object = "embedding",
+                        using var client = CreateHttpClient();
+                        var requestUri = "api/embeddings";
+                        Logger.LogDebug("Sending request to Ollama embeddings endpoint: {Endpoint}", requestUri);
+                        
+                        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
+                        {
+                            Content = JsonContent.Create(ollamaRequest, options: new JsonSerializerOptions 
+                            { 
+                                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull 
+                            })
+                        };
+                        
+                        var response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+                        
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                            Logger.LogError("Ollama API embeddings request failed with status code {StatusCode}. Response: {ErrorContent}", 
+                                response.StatusCode, errorContent);
+                            throw new LLMCommunicationException(
+                                $"Ollama API embeddings request failed with status code {response.StatusCode}. Response: {errorContent}");
+                        }
+                        
+                        Logger.LogDebug("Received successful response from Ollama embeddings API.");
+                        var ollamaResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
+                        
+                        if (ollamaResponse == null || ollamaResponse.Embedding == null)
+                        {
+                            Logger.LogError("Failed to deserialize or received incomplete embeddings response from Ollama API.");
+                            throw new LLMCommunicationException("Invalid or incomplete embeddings response structure received from Ollama API.");
+                        }
+                        
+                        // Map back to Core response
+                        return new EmbeddingResponse
+                        {
+                            Object = "list", // Mimic OpenAI structure
+                            Data = new List<EmbeddingData>
+                            {
+                                new EmbeddingData
+                                {
+                                    Object = "embedding",
+                                    Index = 0,
+                                    Embedding = ollamaResponse.Embedding
+                                }
+                            },
+                            Model = request.Model, // Use original requested model alias
+                            Usage = new Usage 
+                            { 
+                                PromptTokens = EstimateTokenCount(prompt),
+                                CompletionTokens = 0,
+                                TotalTokens = EstimateTokenCount(prompt)
+                            }
+                        };
+                    },
+                    "CreateEmbeddingAsync",
+                    cancellationToken);
+            }
+            catch (ValidationException)
+            {
+                // Re-throw validation exceptions directly
+                throw;
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while creating Ollama embeddings.");
+                throw new LLMCommunicationException($"An unexpected error occurred while creating embeddings: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            Logger.LogWarning("Ollama does not support image generation.");
+            return Task.FromException<ImageGenerationResponse>(
+                new NotSupportedException("Image generation is not supported by Ollama."));
+        }
+        
+        #region Helper Methods
+        
+        private OllamaChatRequest MapToOllamaChatRequest(ChatCompletionRequest coreRequest)
+        {
+            // Map options - only map supported ones from Core request
+            OllamaOptions? options = null;
+            if (coreRequest.Temperature.HasValue || coreRequest.MaxTokens.HasValue || coreRequest.TopP.HasValue || 
+                (coreRequest.Stop != null && coreRequest.Stop.Any()))
+            {
+                options = new OllamaOptions
+                {
+                    Temperature = (float?)coreRequest.Temperature,
+                    NumPredict = coreRequest.MaxTokens,
+                    TopP = (float?)coreRequest.TopP,
+                    Stop = coreRequest.Stop?.ToList()
+                };
+            }
+            
+            return new OllamaChatRequest
+            {
+                Model = ProviderModelId,
+                Messages = coreRequest.Messages.Select(m => new OllamaMessage
+                {
+                    Role = m.Role ?? throw new ArgumentNullException(nameof(m.Role), "Message role cannot be null"),
+                    Content = ConduitLLM.Providers.Helpers.ContentHelper.GetContentAsString(m.Content)
+                }).ToList(),
+                Options = options,
+                Stream = false // Will be set to true for streaming
+            };
+        }
+        
+        private ChatCompletionResponse MapToCoreChatResponse(OllamaChatResponse ollamaResponse, string originalModelAlias)
+        {
+            var usage = new Usage
+            {
+                PromptTokens = ollamaResponse.PromptEvalCount ?? 0,
+                CompletionTokens = ollamaResponse.EvalCount ?? 0,
+                TotalTokens = (ollamaResponse.PromptEvalCount ?? 0) + (ollamaResponse.EvalCount ?? 0)
+            };
+            
+            return new ChatCompletionResponse
+            {
+                Id = Guid.NewGuid().ToString(),
+                Object = "chat.completion",
+                Created = DateTimeOffset.TryParse(ollamaResponse.CreatedAt, out var createdAt) ? 
+                    createdAt.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = originalModelAlias,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
                         Index = 0,
-                        // EmbeddingData expects List<float>, Ollama provides List<float>
-                        Embedding = ollamaResponse.Embedding 
+                        Message = new Message
+                        {
+                            Role = ollamaResponse.Message?.Role ?? "assistant",
+                            Content = ollamaResponse.Message?.Content ?? string.Empty
+                        },
+                        FinishReason = "stop"
                     }
                 },
-                Model = request.Model, // Use original requested model alias
-                // Initialize all required Usage fields
-                Usage = new Usage { PromptTokens = 0, CompletionTokens = 0, TotalTokens = 0 } 
+                Usage = usage,
+                OriginalModelAlias = originalModelAlias
             };
         }
-        catch (JsonException ex)
+        
+        private ChatCompletionChunk MapToCoreStreamChunk(
+            OllamaStreamChunk ollamaChunk, 
+            string originalModelAlias,
+            bool isFirstChunk)
         {
-             _logger.LogError(ex, "JSON deserialization error processing Ollama embeddings response.");
-             throw new LLMCommunicationException("Error deserializing Ollama embeddings response.", ex);
+            string? role = isFirstChunk ? ollamaChunk.Message?.Role : null;
+            string? content = ollamaChunk.Message?.Content ?? string.Empty;
+            string? finishReason = ollamaChunk.Done ? "stop" : null;
+            
+            return CreateChatCompletionChunk(
+                content,
+                originalModelAlias,
+                isFirstChunk,
+                finishReason,
+                originalModelAlias);
         }
-        catch (HttpRequestException ex)
+        
+        private ModelCapabilities DetermineModelCapabilities(OllamaModelInfo modelInfo)
         {
-            _logger.LogError(ex, "HTTP request error communicating with Ollama API for embeddings.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Ollama API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "Ollama API embeddings request timed out.");
-            throw new LLMCommunicationException("Ollama API embeddings request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "Ollama API embeddings request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (Exception ex) // Catch-all
-        {
-            _logger.LogError(ex, "An unexpected error occurred while creating Ollama embeddings.");
-            throw new LLMCommunicationException($"An unexpected error occurred while creating embeddings: {ex.Message}", ex);
-        }
-         finally
-        {
-            response?.Dispose();
-        }
-    }
-
-    /// <inheritdoc />
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        _logger.LogWarning("Ollama does not support image generation.");
-        throw new UnsupportedProviderException("Ollama does not support image generation.");
-    }
-
-    // --- Mapping Functions ---
-
-    private OllamaChatRequest MapToOllamaChatRequest(ChatCompletionRequest coreRequest)
-    {
-        // Map options - only map supported ones from Core request
-        OllamaOptions? options = null;
-        if (coreRequest.Temperature.HasValue || coreRequest.MaxTokens.HasValue || coreRequest.TopP.HasValue) 
-        {
-            options = new OllamaOptions
+            var capabilities = new ModelCapabilities
             {
-                Temperature = (float?)coreRequest.Temperature,
-                NumPredict = coreRequest.MaxTokens,
-                TopP = (float?)coreRequest.TopP
+                Chat = true, // Most Ollama models support chat
+                TextGeneration = true,
+                Embeddings = true, // Most Ollama models support embeddings
+                ImageGeneration = false, // Ollama doesn't support image generation
+                Vision = false // Default to false
             };
-        }
-
-        return new OllamaChatRequest
-        {
-            Model = _providerModelId, 
-            Messages = coreRequest.Messages.Select(m => new OllamaMessage
+            
+            // Check family for vision capabilities
+            if (modelInfo.Details?.Families != null)
             {
-                Role = m.Role ?? throw new ArgumentNullException(nameof(m.Role), "Message role cannot be null"),
-                // Use ToString() for content, assuming it's appropriate or a string
-                Content = m.Content?.ToString() ?? string.Empty, 
-            }).ToList(),
-            Options = options,
-            Stream = false, 
-        };
-    }
-
-    private ChatCompletionResponse MapToCoreChatResponse(OllamaChatResponse ollamaResponse, string originalModelAlias)
-    {
-        var usage = new Usage
-        {
-            PromptTokens = ollamaResponse.PromptEvalCount ?? 0,
-            CompletionTokens = ollamaResponse.EvalCount ?? 0,
-            TotalTokens = (ollamaResponse.PromptEvalCount ?? 0) + (ollamaResponse.EvalCount ?? 0)
-        };
-
-        return new ChatCompletionResponse
-        {
-            Id = Guid.NewGuid().ToString(), 
-            Object = "chat.completion", 
-            Created = DateTimeOffset.TryParse(ollamaResponse.CreatedAt, out var createdAt) ? createdAt.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = originalModelAlias, 
-            Choices = new List<Choice>
-            {
-                new Choice
+                var families = modelInfo.Details.Families
+                    .Concat(new[] { modelInfo.Details.Family })
+                    .Select(f => f.ToLowerInvariant());
+                    
+                // Models with vision support typically have these in family
+                if (families.Any(f => f.Contains("vision") || 
+                    f.Contains("clip") || 
+                    f.Contains("llava") || 
+                    f.Contains("multimodal")))
                 {
-                    Index = 0,
-                    Message = new Message
-                    {
-                        Role = ollamaResponse.Message?.Role ?? "assistant",
-                        // Ensure content mapping handles potential nulls
-                        Content = ollamaResponse.Message?.Content ?? string.Empty 
-                    },
-                    FinishReason = FinishReason.Stop 
-                }
-            },
-            Usage = usage
-        };
-    }
-
-    private ChatCompletionChunk MapToCoreStreamChunk(OllamaStreamChunk ollamaChunk, string originalModelAlias)
-    {
-         Usage? usage = null;
-         if (ollamaChunk.Done)
-         {
-             usage = new Usage
-             {
-                 PromptTokens = ollamaChunk.PromptEvalCount ?? 0,
-                 CompletionTokens = ollamaChunk.EvalCount ?? 0,
-                 TotalTokens = (ollamaChunk.PromptEvalCount ?? 0) + (ollamaChunk.EvalCount ?? 0)
-             };
-         }
-
-        return new ChatCompletionChunk
-        {
-            Id = Guid.NewGuid().ToString(), 
-            Object = "chat.completion.chunk", 
-            Created = DateTimeOffset.TryParse(ollamaChunk.CreatedAt, out var createdAt) ? createdAt.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Model = originalModelAlias, 
-            Choices = new List<StreamingChoice>
-            {
-                new StreamingChoice
-                {
-                    Index = 0, 
-                    Delta = new DeltaContent
-                    {
-                        Role = ollamaChunk.Message?.Role, 
-                        Content = ollamaChunk.Message?.Content 
-                    },
-                    FinishReason = ollamaChunk.Done ? FinishReason.Stop : null 
+                    capabilities.Vision = true;
                 }
             }
-            // Usage property removed from ChatCompletionChunk
-        };
-    }
-
-    // Helper to read error content, similar to OpenAIClient
-    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            
+            return capabilities;
         }
-        catch (Exception ex)
+        
+        private int EstimateMaxInputTokens(OllamaModelInfo modelInfo)
         {
-            // Log this? Maybe pass logger instance if needed.
-            return $"Failed to read error content: {ex.Message}";
+            // Estimate based on model family/param size
+            if (modelInfo.Details?.ParameterSize != null)
+            {
+                // Extract parameter size and convert to numeric value if possible
+                if (modelInfo.Details.ParameterSize.EndsWith("B", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (float.TryParse(modelInfo.Details.ParameterSize.Substring(0, modelInfo.Details.ParameterSize.Length - 1), out float sizeInBillions))
+                    {
+                        // Rough estimate based on parameter size
+                        if (sizeInBillions >= 70) return 32000; // Very large models like Llama 70B
+                        if (sizeInBillions >= 30) return 16000; // Large models
+                        if (sizeInBillions >= 13) return 8000;  // Medium-large models
+                        if (sizeInBillions >= 7) return 4000;   // Medium models
+                        return 2000;                            // Small models
+                    }
+                }
+            }
+            
+            // Check family for context size estimation
+            var family = modelInfo.Details?.Family.ToLowerInvariant() ?? "";
+            
+            if (family.Contains("llama3"))
+                return 8000;
+            if (family.Contains("llama2"))
+                return 4000;
+            if (family.Contains("mistral"))
+                return 8000;
+            if (family.Contains("mixtral"))
+                return 32000;
+                
+            // Default for unknown models
+            return 4000;
         }
+        
+        private int EstimateMaxOutputTokens(OllamaModelInfo modelInfo)
+        {
+            // Output tokens are typically a fraction of input tokens
+            return EstimateMaxInputTokens(modelInfo) / 2;
+        }
+        
+        private int EstimateTokenCount(string text)
+        {
+            // Very rough token count estimation
+            // In a real implementation, use a proper tokenizer
+            if (string.IsNullOrEmpty(text))
+                return 0;
+                
+            // Approximately 4 characters per token for English text
+            return text.Length / 4;
+        }
+        
+        #endregion
     }
 }

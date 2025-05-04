@@ -38,6 +38,26 @@ namespace ConduitLLM.Configuration.Entities
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
         
         /// <summary>
+        /// When the configuration was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// When the configuration was last updated (alias for LastUpdated)
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Name of the configuration
+        /// </summary>
+        public string Name { get; set; } = "Default Fallback Configuration";
+        
+        /// <summary>
+        /// Whether this fallback configuration is active
+        /// </summary>
+        public bool IsActive { get; set; } = false;
+        
+        /// <summary>
         /// The fallback model deployments for this configuration, ordered by preference
         /// </summary>
         public virtual ICollection<FallbackModelMappingEntity> FallbackMappings { get; set; } = new List<FallbackModelMappingEntity>();

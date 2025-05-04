@@ -12,10 +12,10 @@ namespace ConduitLLM.WebUI.Controllers;
 [Route("api/[controller]")] // Route: /api/virtualkeys
 public class VirtualKeysController : ControllerBase
 {
-    private readonly VirtualKeyService _virtualKeyService;
+    private readonly VirtualKeyServiceNew _virtualKeyService;
     private readonly ILogger<VirtualKeysController> _logger;
 
-    public VirtualKeysController(VirtualKeyService virtualKeyService, ILogger<VirtualKeysController> logger)
+    public VirtualKeysController(VirtualKeyServiceNew virtualKeyService, ILogger<VirtualKeysController> logger)
     {
         _virtualKeyService = virtualKeyService;
         _logger = logger;
@@ -23,7 +23,7 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Generates a new virtual API key.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     /// <param name="request">Details for the key to be created.</param>
     /// <returns>The generated key details or an error response.</returns>
@@ -36,9 +36,6 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerateKey([FromBody] CreateVirtualKeyRequestDto request)
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-        // Example: Check Authorization header against stored MasterKeyHash
-
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -47,8 +44,6 @@ public class VirtualKeysController : ControllerBase
         try
         {
             var response = await _virtualKeyService.GenerateVirtualKeyAsync(request);
-            // Assuming GenerateVirtualKeyAsync now returns the response directly
-            // Use nameof(GetKeyById) for the route name
             return CreatedAtAction(nameof(GetKeyById), new { id = response.KeyInfo.Id }, response);
         }
         catch (DbUpdateException dbEx)
@@ -67,15 +62,13 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Retrieves a list of all virtual keys.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     [HttpGet] // GET /api/virtualkeys
     [ProducesResponseType(typeof(List<VirtualKeyDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ListKeys()
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-
         try
         {
             var keys = await _virtualKeyService.ListVirtualKeysAsync();
@@ -90,7 +83,7 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Retrieves details for a specific virtual key by ID.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     [HttpGet("{id}", Name = "GetKeyById")] // GET /api/virtualkeys/{id}
     [ProducesResponseType(typeof(VirtualKeyDto), StatusCodes.Status200OK)]
@@ -98,8 +91,6 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetKeyById(int id)
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-
         try
         {
             var key = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
@@ -118,7 +109,7 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Updates an existing virtual key.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     [HttpPut("{id}")] // PUT /api/virtualkeys/{id}
     [Authorize(Policy = "MasterKeyPolicy")] // Apply policy
@@ -130,8 +121,6 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateKey(int id, [FromBody] UpdateVirtualKeyRequestDto request)
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -155,7 +144,7 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Deletes a virtual key by ID.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     [HttpDelete("{id}")] // DELETE /api/virtualkeys/{id}
     [Authorize(Policy = "MasterKeyPolicy")] // Apply policy
@@ -166,8 +155,6 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteKey(int id)
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-
         try
         {
             var success = await _virtualKeyService.DeleteVirtualKeyAsync(id);
@@ -186,7 +173,7 @@ public class VirtualKeysController : ControllerBase
 
     /// <summary>
     /// Resets the spend for a virtual key.
-    /// Requires Master Key authentication (TODO).
+    /// Requires Master Key authentication.
     /// </summary>
     [HttpPost("{id}/reset-spend")] // POST /api/virtualkeys/{id}/reset-spend
     [Authorize(Policy = "MasterKeyPolicy")] // Apply policy
@@ -197,8 +184,6 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ResetKeySpend(int id)
     {
-        // TODO: Add Master Key Authentication/Authorization check here
-
         try
         {
             var success = await _virtualKeyService.ResetSpendAsync(id);
@@ -214,7 +199,4 @@ public class VirtualKeysController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-
-    // TODO: Implement other endpoints:
-
 }

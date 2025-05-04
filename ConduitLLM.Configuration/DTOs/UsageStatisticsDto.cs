@@ -1,6 +1,7 @@
+using System;
 using System.Collections.Generic;
 
-namespace ConduitLLM.Configuration.Services
+namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
     /// Data transfer object for usage statistics of a virtual key

@@ -12,6 +12,26 @@ using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Authorization;
 
+/// <summary>
+/// Authorization handler that validates requests against a configured master key.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This handler implements the verification logic for the <see cref="MasterKeyRequirement"/>
+/// authorization requirement. It validates that the request includes a valid master key
+/// in the X-Master-Key header. The master key is validated by comparing a hash of the
+/// provided key with a stored hash retrieved from the global settings.
+/// </para>
+/// <para>
+/// The master key authentication is optional if no master key hash is configured in
+/// the system. In this case, all requests will be authorized regardless of whether
+/// they include a master key.
+/// </para>
+/// <para>
+/// When a master key is configured, requests must include a valid master key in the
+/// X-Master-Key header to be authorized.
+/// </para>
+/// </remarks>
 public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequirement>
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -19,6 +39,12 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
     private readonly ILogger<MasterKeyAuthorizationHandler> _logger;
     private const string MasterKeyHeaderName = "X-Master-Key";
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MasterKeyAuthorizationHandler"/> class.
+    /// </summary>
+    /// <param name="httpContextAccessor">The HTTP context accessor.</param>
+    /// <param name="serviceProvider">The service provider for resolving scoped services.</param>
+    /// <param name="logger">The logger for recording diagnostic information.</param>
     public MasterKeyAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
         IServiceProvider serviceProvider, 
@@ -29,6 +55,21 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         _logger = logger;
     }
 
+    /// <summary>
+    /// Handles the authorization requirement by validating the master key.
+    /// </summary>
+    /// <param name="context">The authorization context.</param>
+    /// <param name="requirement">The authorization requirement.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method:
+    /// <list type="bullet">
+    /// <item>Retrieves the stored master key hash from the global settings</item>
+    /// <item>If no master key is configured, all requests are authorized</item>
+    /// <item>If a master key is configured, validates the provided master key in the X-Master-Key header</item>
+    /// <item>Authorizes the request if the hashed provided key matches the stored hash</item>
+    /// </list>
+    /// </remarks>
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         MasterKeyRequirement requirement)
@@ -98,7 +139,12 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         }
     }
 
-    // Consistent hashing logic (could be shared/refactored)
+    /// <summary>
+    /// Hashes a master key using the specified algorithm.
+    /// </summary>
+    /// <param name="key">The key to hash.</param>
+    /// <param name="algorithm">The hashing algorithm to use.</param>
+    /// <returns>The hexadecimal string representation of the hash.</returns>
     private string HashMasterKey(string key, string algorithm)
     {
         using var hasher = GetHashAlgorithmInstance(algorithm);
@@ -107,6 +153,12 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Gets an instance of the specified hash algorithm.
+    /// </summary>
+    /// <param name="algorithm">The name of the algorithm.</param>
+    /// <returns>A <see cref="HashAlgorithm"/> instance for the specified algorithm.</returns>
+    /// <exception cref="NotSupportedException">Thrown when the specified algorithm is not supported.</exception>
     private HashAlgorithm GetHashAlgorithmInstance(string algorithm)
     {
         return algorithm.ToUpperInvariant() switch

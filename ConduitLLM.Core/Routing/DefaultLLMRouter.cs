@@ -11,22 +11,114 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Routing;
+using ConduitLLM.Core.Routing.Strategies;
 
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing
 {
     /// <summary>
-    /// Default implementation of the LLM router with load balancing and fallback support
+    /// Context class for tracking attempt information during request retry logic in the LLM router.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The AttemptContext class encapsulates the mutable state used during the retry process
+    /// when executing LLM requests. This includes the current attempt count and the last exception
+    /// that occurred during request processing.
+    /// </para>
+    /// <para>
+    /// This class was introduced to replace ref parameters in async methods, as C# does not allow
+    /// ref parameters in async methods. Using this context object allows for cleaner and more
+    /// maintainable code while preserving the state across multiple retry attempts.
+    /// </para>
+    /// <para>
+    /// The router's retry logic uses this context to track how many attempts have been made
+    /// and what errors have occurred, allowing for intelligent decisions about whether to
+    /// retry a request, use a fallback model, or fail with an appropriate error message.
+    /// </para>
+    /// </remarks>
+    /// <seealso cref="DefaultLLMRouter.ExecuteWithRetriesAsync{T}"/>
+    /// <seealso cref="DefaultLLMRouter.AttemptRequestExecutionAsync{T}"/>
+    /// <seealso cref="DefaultLLMRouter.TryExecuteRequestAsync{T}"/>
+    public class AttemptContext
+    {
+        /// <summary>
+        /// Gets or sets the current attempt count for a request execution.
+        /// </summary>
+        /// <remarks>
+        /// This counter starts at 0 and is incremented for each retry attempt.
+        /// The router uses this value to determine when the maximum number of retries
+        /// has been reached and to calculate the appropriate backoff delay between retries.
+        /// </remarks>
+        public int AttemptCount { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the last exception encountered during request attempts.
+        /// </summary>
+        /// <remarks>
+        /// This property stores the most recent exception that occurred during request execution.
+        /// It's used by the router to determine whether the error is recoverable and should be
+        /// retried, or if it's a permanent failure that should be reported to the caller.
+        /// If multiple attempts fail, this will contain the exception from the most recent attempt.
+        /// </remarks>
+        public Exception? LastException { get; set; }
+        
+        /// <summary>
+        /// Creates a new instance of AttemptContext with default values.
+        /// </summary>
+        /// <remarks>
+        /// Initializes a new context with attempt count set to 0 and no last exception.
+        /// This represents the state before any execution attempts have been made.
+        /// </remarks>
+        public AttemptContext()
+        {
+            AttemptCount = 0;
+            LastException = null;
+        }
+    }
+    
+    /// <summary>
+    /// Default implementation of the LLM router with multiple routing strategies, 
+    /// load balancing, health checking, and fallback support.
+    /// </summary>
+    /// <remarks>
+    /// The DefaultLLMRouter provides sophisticated request routing capabilities for LLM requests:
+    /// 
+    /// - Multiple routing strategies (simple, round-robin, least cost, etc.)
+    /// - Automatic health checking and unhealthy model avoidance
+    /// - Fallback support for handling model failures
+    /// - Retry logic with exponential backoff for recoverable errors
+    /// - Real-time metrics tracking for models (usage count, latency, etc.)
+    /// 
+    /// The router maintains an internal registry of model deployments and their current
+    /// health status, and can automatically route requests to the most appropriate
+    /// model based on the selected strategy.
+    /// </remarks>
     public class DefaultLLMRouter : ILLMRouter
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<DefaultLLMRouter> _logger;
+        
+        /// <summary>
+        /// Tracks the health status (true = healthy, false = unhealthy) of each model
+        /// </summary>
         private readonly ConcurrentDictionary<string, bool> _modelHealthStatus = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Maps primary models to their list of fallback models
+        /// </summary>
         private readonly ConcurrentDictionary<string, List<string>> _fallbackModels = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Tracks the usage count of each model for load balancing purposes
+        /// </summary>
         private readonly ConcurrentDictionary<string, int> _modelUsageCount = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Stores the model deployment information for all registered models
+        /// </summary>
         private readonly ConcurrentDictionary<string, ModelDeployment> _modelDeployments = new(StringComparer.OrdinalIgnoreCase);
+        
         private readonly Random _random = new();
         private readonly object _lockObject = new();
 
@@ -131,107 +223,428 @@ namespace ConduitLLM.Core.Routing
             {
                 throw new ArgumentNullException(nameof(request));
             }
-
-            var strategy = routingStrategy ?? _defaultRoutingStrategy;
-
-            // Store original model for fallback logic
+            
+            // Determine routing strategy
+            var strategy = DetermineRoutingStrategy(routingStrategy);
             string? originalModelRequested = request.Model;
-
-            // Start tracking retry attempt count
-            int attemptCount = 0;
-            List<string> attemptedModels = new();
-            Exception? lastException = null;
-
-            // If the model is already specified and we're using passthrough strategy,
-            // just pass through to the normal flow
-            if (!string.IsNullOrEmpty(request.Model) &&
-                strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase))
+            
+            _logger.LogDebug("Processing chat completion request using {Strategy} strategy", strategy);
+            
+            // Check for passthrough mode first
+            if (ShouldUsePassthroughMode(request, strategy))
             {
-                try
-                {
-                    var client = _clientFactory.GetClient(request.Model);
-                    return await client.CreateChatCompletionAsync(request, apiKey, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during pass-through to model {Model}", request.Model);
-                    UpdateModelHealth(request.Model, false);
-                    throw;
-                }
+                _logger.LogDebug("Using passthrough mode for model {Model}", request.Model);
+                return await DirectModelPassthroughAsync(request, apiKey, cancellationToken);
             }
-
-            while (attemptCount <= _maxRetries)
+            
+            // Otherwise use normal routing with retries
+            return await RouteThroughLoadBalancerAsync(request, originalModelRequested, strategy, apiKey, cancellationToken);
+        }
+        
+        /// <summary>
+        /// Determines the routing strategy to use based on input and defaults.
+        /// </summary>
+        /// <param name="requestedStrategy">The strategy requested, or null to use default.</param>
+        /// <returns>The strategy name to use for routing.</returns>
+        private string DetermineRoutingStrategy(string? requestedStrategy)
+        {
+            return requestedStrategy ?? _defaultRoutingStrategy;
+        }
+        
+        /// <summary>
+        /// Determines if a request should be handled in passthrough mode.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="strategy">The routing strategy.</param>
+        /// <returns>True if the request should be handled in passthrough mode, false otherwise.</returns>
+        private bool ShouldUsePassthroughMode(ChatCompletionRequest request, string strategy)
+        {
+            return !string.IsNullOrEmpty(request.Model) &&
+                   strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        /// <summary>
+        /// Directly passes the request to the specified model without routing.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response.</returns>
+        private async Task<ChatCompletionResponse> DirectModelPassthroughAsync(
+            ChatCompletionRequest request,
+            string? apiKey, 
+            CancellationToken cancellationToken)
+        {
+            // This is just a renamed version of HandlePassthroughRequestAsync for clarity
+            try
             {
-                attemptCount++;
+                var client = _clientFactory.GetClient(request.Model);
+                return await client.CreateChatCompletionAsync(request, apiKey, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during pass-through to model {Model}", request.Model);
+                UpdateModelHealth(request.Model, false);
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Routes a request through the load balancer with retry logic.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="originalModel">The original model requested.</param>
+        /// <param name="strategy">The routing strategy to use.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response.</returns>
+        /// <exception cref="LLMCommunicationException">Thrown when all attempts fail due to communication errors.</exception>
+        /// <exception cref="ModelUnavailableException">Thrown when no suitable model is available.</exception>
+        private async Task<ChatCompletionResponse> RouteThroughLoadBalancerAsync(
+            ChatCompletionRequest request,
+            string? originalModel,
+            string strategy,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            List<string> attemptedModels = new();
+            var attemptContext = new AttemptContext();
+            
+            // Attempt to execute the request with retries
+            var result = await ExecuteWithRetriesAsync(
+                request, 
+                originalModel,
+                strategy, 
+                attemptedModels, 
+                attemptContext,
+                apiKey, 
+                cancellationToken);
+                
+            if (result != null)
+            {
+                return result;
+            }
+            
+            // Handle the case where all attempts have failed
+            HandleFailedAttempts(attemptContext.LastException, originalModel, attemptedModels, attemptContext.AttemptCount);
+            
+            // This line will never be reached, but is required for compilation
+            throw new ModelUnavailableException(
+                $"No suitable model found for {originalModel} after {attemptContext.AttemptCount} attempts");
+        }
 
-                // Get the next model based on strategy
-                string? selectedModel = await SelectModelAsync(originalModelRequested, strategy, attemptedModels, cancellationToken);
+        // Removed redundant HandlePassthroughRequestAsync method as it's been replaced by DirectModelPassthroughAsync
 
-                if (selectedModel == null)
+        /// <summary>
+        /// Executes a chat completion request with retry logic and fallback handling.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="originalModelRequested">The original model name requested.</param>
+        /// <param name="strategy">The routing strategy to use.</param>
+        /// <param name="attemptedModels">List of models that have already been attempted.</param>
+        /// <param name="attemptContext">Context object holding attempt count and exception details.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response if successful, null otherwise.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method handles the core retry logic for LLM requests, tracking attempted models
+        /// and managing backoff delays between attempts. It uses the <see cref="AttemptContext"/>
+        /// to keep track of the current state of the retry process.
+        /// </para>
+        /// <para>
+        /// For each retry attempt, the method:
+        /// 1. Updates the attempt count in the context
+        /// 2. Selects an appropriate model based on the routing strategy
+        /// 3. Executes the request with that model
+        /// 4. If successful, returns the result
+        /// 5. If unsuccessful but the error is recoverable, applies a delay and retries
+        /// 6. If the error is not recoverable or max retries reached, returns null
+        /// </para>
+        /// </remarks>
+        private async Task<ChatCompletionResponse?> ExecuteWithRetriesAsync(
+            ChatCompletionRequest request,
+            string? originalModelRequested,
+            string strategy,
+            List<string> attemptedModels,
+            AttemptContext attemptContext,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            for (int retryAttempt = 1; retryAttempt <= _maxRetries; retryAttempt++)
+            {
+                // Update attempt counter in context
+                attemptContext.AttemptCount = retryAttempt;
+                
+                // Attempt the request execution with a specific model
+                var result = await TryRequestExecutionWithSelectedModelAsync(
+                    request,
+                    originalModelRequested,
+                    strategy,
+                    attemptedModels,
+                    attemptContext,
+                    apiKey,
+                    cancellationToken);
+                
+                // If successful, return the result
+                if (result != null)
                 {
-                    _logger.LogWarning("No suitable model found after {AttemptsCount} attempts", attemptCount);
-                    break;
-                }
-
-                _logger.LogInformation("Selected model {ModelName} for request using {Strategy} strategy",
-                    selectedModel, strategy);
-
-                // Add this model to the list of attempted ones
-                attemptedModels.Add(selectedModel);
-
-                // Apply the selected model
-                request.Model = GetModelAliasForDeployment(selectedModel);
-
-                try
-                {
-                    // Track execution time for metrics
-                    Stopwatch stopwatch = Stopwatch.StartNew();
-
-                    // Get the client for this model and execute the request
-                    var client = _clientFactory.GetClient(request.Model);
-                    var result = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken);
-
-                    stopwatch.Stop();
-
-                    // Update model stats
-                    UpdateModelHealth(selectedModel, true);
-                    IncrementModelUsage(selectedModel);
-                    UpdateModelLatency(selectedModel, stopwatch.ElapsedMilliseconds);
-
                     return result;
                 }
-                catch (Exception ex)
+                
+                // Check if we should continue retrying
+                if (ShouldStopRetrying(attemptContext, retryAttempt))
                 {
-                    lastException = ex;
-                    _logger.LogWarning(ex, "Request to model {ModelName} failed, marking as unhealthy",
-                        selectedModel);
-
-                    // Mark this model as unhealthy
-                    UpdateModelHealth(selectedModel, false);
-
-                    // If we're out of retries, or if this is a non-recoverable error, don't retry
-                    if (attemptCount > _maxRetries || !IsRecoverableError(ex))
-                    {
-                        break;
-                    }
-
-                    // Calculate delay using exponential backoff
-                    int delayMs = CalculateBackoffDelay(attemptCount);
-
-                    _logger.LogInformation(
-                        "Retrying request in {DelayMs}ms (attempt {CurrentAttempt}/{MaxRetries})",
-                        delayMs, attemptCount, _maxRetries);
-
-                    await Task.Delay(delayMs, cancellationToken);
+                    break;
                 }
+                
+                // Apply backoff delay before next retry
+                await ApplyRetryDelayAsync(retryAttempt, cancellationToken);
             }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Attempts to execute a request with a selected model.
+        /// </summary>
+        private async Task<ChatCompletionResponse?> TryRequestExecutionWithSelectedModelAsync(
+            ChatCompletionRequest request,
+            string? originalModelRequested,
+            string strategy,
+            List<string> attemptedModels,
+            AttemptContext attemptContext,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            // This method is a renamed version of AttemptRequestExecutionAsync for clarity
+            return await AttemptRequestExecutionAsync(
+                request,
+                originalModelRequested,
+                strategy,
+                attemptedModels,
+                attemptContext,
+                apiKey,
+                cancellationToken);
+        }
+        
+        /// <summary>
+        /// Determines if retry attempts should stop based on the error type and retry count.
+        /// </summary>
+        private bool ShouldStopRetrying(AttemptContext attemptContext, int retryAttempt)
+        {
+            // If this is a non-recoverable error, don't retry
+            if (!IsRecoverableError(attemptContext.LastException))
+            {
+                _logger.LogWarning("Non-recoverable error encountered, stopping retry attempts");
+                return true;
+            }
+            
+            // If this is the last retry, don't continue
+            if (retryAttempt >= _maxRetries)
+            {
+                _logger.LogWarning("Maximum retry attempts reached");
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// Attempts to execute a request with a dynamically selected model.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="originalModelRequested">The original model name requested.</param>
+        /// <param name="strategy">The routing strategy to use.</param>
+        /// <param name="attemptedModels">List of models that have already been attempted.</param>
+        /// <param name="attemptContext">Context object holding attempt count and exception tracking information.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response if successful, null otherwise.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method represents a single attempt to execute a request during the retry process.
+        /// It selects an appropriate model based on the routing strategy and models that haven't
+        /// been tried yet, then attempts to execute the request with that model.
+        /// </para>
+        /// <para>
+        /// It updates the <paramref name="attemptedModels"/> list to track which models have been tried,
+        /// which ensures we don't retry with the same model if it failed previously.
+        /// </para>
+        /// <para>
+        /// This method works with the <see cref="AttemptContext"/> to maintain state between retries,
+        /// but does not directly update the attempt count (that's managed by <see cref="ExecuteWithRetriesAsync"/>).
+        /// </para>
+        /// </remarks>
+        private async Task<ChatCompletionResponse?> AttemptRequestExecutionAsync(
+            ChatCompletionRequest request,
+            string? originalModelRequested,
+            string strategy,
+            List<string> attemptedModels,
+            AttemptContext attemptContext,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            // Get the next model based on strategy
+            string? selectedModel = await SelectModelAsync(originalModelRequested, strategy, attemptedModels, cancellationToken);
+            
+            if (selectedModel == null)
+            {
+                _logger.LogWarning("No suitable model found");
+                return null;
+            }
+            
+            _logger.LogInformation("Selected model {ModelName} for request using {Strategy} strategy",
+                selectedModel, strategy);
+                
+            // Add this model to the list of attempted ones
+            attemptedModels.Add(selectedModel);
+            
+            // Try to execute with the selected model
+            return await TryExecuteRequestAsync(
+                request, 
+                selectedModel, 
+                attemptContext, 
+                apiKey, 
+                cancellationToken);
+        }
+        
+        /// <summary>
+        /// Applies a delay before the next retry attempt.
+        /// </summary>
+        /// <param name="attemptCount">The current attempt count.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous delay operation.</returns>
+        private async Task ApplyRetryDelayAsync(int attemptCount, CancellationToken cancellationToken)
+        {
+            int delayMs = CalculateBackoffDelay(attemptCount);
+            
+            _logger.LogInformation(
+                "Retrying request in {DelayMs}ms (attempt {CurrentAttempt}/{MaxRetries})",
+                delayMs, attemptCount, _maxRetries);
+                
+            await Task.Delay(delayMs, cancellationToken);
+        }
 
-            // If we get here, we've exhausted all retries or models
+        /// <summary>
+        /// Attempts to execute a chat completion request with a specific model and tracks any exceptions.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="selectedModel">The model to use for the request.</param>
+        /// <param name="attemptContext">Context object to track attempts and capture exceptions.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response if successful, null otherwise.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method performs the actual execution of the LLM request with a specific model.
+        /// It modifies the request's model property to use the selected model, then attempts to 
+        /// execute the request.
+        /// </para>
+        /// <para>
+        /// If the execution succeeds, it returns the response. If it fails with an exception,
+        /// it stores the exception in the <see cref="AttemptContext.LastException"/> property
+        /// for analysis by the retry logic, marks the model as unhealthy if appropriate,
+        /// and returns null to indicate failure.
+        /// </para>
+        /// <para>
+        /// This method represents the innermost layer of the retry mechanism, with
+        /// <see cref="AttemptRequestExecutionAsync"/> and <see cref="ExecuteWithRetriesAsync"/>
+        /// providing the higher-level retry and model selection logic.
+        /// </para>
+        /// </remarks>
+        private async Task<ChatCompletionResponse?> TryExecuteRequestAsync(
+            ChatCompletionRequest request,
+            string selectedModel,
+            AttemptContext attemptContext,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            // Apply the selected model
+            request.Model = GetModelAliasForDeployment(selectedModel);
+
+            try
+            {
+                return await ExecuteModelRequestAsync(request, selectedModel, apiKey, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                HandleExecutionException(ex, selectedModel);
+                attemptContext.LastException = ex;
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Executes a request with the specified model and tracks metrics.
+        /// </summary>
+        /// <param name="request">The chat completion request with model set.</param>
+        /// <param name="selectedModel">The model to use for tracking metrics.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The chat completion response.</returns>
+        private async Task<ChatCompletionResponse> ExecuteModelRequestAsync(
+            ChatCompletionRequest request,
+            string selectedModel,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            // Track execution time for metrics
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                // Get the client for this model and execute the request
+                var client = _clientFactory.GetClient(request.Model);
+                var result = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken);
+
+                stopwatch.Stop();
+
+                // Update model stats on success
+                UpdateModelStatistics(selectedModel, stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception)
+            {
+                stopwatch.Stop();
+                throw; // Re-throw to be handled by the caller
+            }
+        }
+        
+        /// <summary>
+        /// Handles exceptions that occur during request execution.
+        /// </summary>
+        /// <param name="exception">The exception that occurred.</param>
+        /// <param name="selectedModel">The model that was used.</param>
+        private void HandleExecutionException(Exception exception, string selectedModel)
+        {
+            _logger.LogWarning(exception, "Request to model {ModelName} failed, marking as unhealthy",
+                selectedModel);
+
+            // Mark this model as unhealthy
+            UpdateModelHealth(selectedModel, false);
+        }
+
+        /// <summary>
+        /// Handles the case where all attempts to execute a request have failed.
+        /// </summary>
+        /// <param name="lastException">The last exception that occurred.</param>
+        /// <param name="originalModelRequested">The original model name requested.</param>
+        /// <param name="attemptedModels">List of models that were attempted.</param>
+        /// <param name="attemptCount">The number of attempts that were made.</param>
+        private void HandleFailedAttempts(
+            Exception? lastException, 
+            string? originalModelRequested,
+            List<string> attemptedModels,
+            int attemptCount)
+        {
             if (lastException != null)
             {
                 _logger.LogError(lastException,
                     "All attempts failed for model {OriginalModel} after trying {ModelCount} models with {AttemptCount} attempts",
                     originalModelRequested, attemptedModels.Count, attemptCount);
+                
                 throw new LLMCommunicationException(
                     $"Failed to process request after {attemptCount} attempts across {attemptedModels.Count} models",
                     lastException);
@@ -254,8 +667,34 @@ namespace ConduitLLM.Core.Routing
             }
 
             // We need to handle streaming differently due to yield return limitations
-            // First, determine the model to use
             var strategy = routingStrategy ?? _defaultRoutingStrategy;
+            
+            // First, select the appropriate model
+            string selectedModel = await SelectModelForStreamingRequestAsync(request, strategy, cancellationToken);
+            
+            // Update the request with the selected model
+            request.Model = GetModelAliasForDeployment(selectedModel);
+            
+            // Process the streaming request
+            await foreach (var chunk in ProcessStreamingRequestAsync(request, selectedModel, apiKey, cancellationToken))
+            {
+                yield return chunk;
+            }
+        }
+        
+        /// <summary>
+        /// Selects the appropriate model for a streaming request.
+        /// </summary>
+        /// <param name="request">The chat completion request.</param>
+        /// <param name="strategy">The routing strategy to use.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The selected model name.</returns>
+        /// <exception cref="ModelUnavailableException">Thrown when no suitable model is found.</exception>
+        private async Task<string> SelectModelForStreamingRequestAsync(
+            ChatCompletionRequest request,
+            string strategy,
+            CancellationToken cancellationToken)
+        {
             string? modelToUse = null;
 
             // If we're using a passthrough strategy and have a model, just use it directly
@@ -275,13 +714,27 @@ namespace ConduitLLM.Core.Routing
                     throw new ModelUnavailableException(
                         $"No suitable model found for streaming request with original model {request.Model}");
                 }
-
-                // Set the selected model in the request
-                request.Model = GetModelAliasForDeployment(modelToUse);
             }
-
-            // Now stream from the selected model
-            _logger.LogInformation("Streaming from model {ModelName}", modelToUse);
+            
+            return modelToUse;
+        }
+        
+        /// <summary>
+        /// Processes a streaming request with the selected model.
+        /// </summary>
+        /// <param name="request">The chat completion request with the model already set.</param>
+        /// <param name="selectedModel">The selected model name for metrics and health tracking.</param>
+        /// <param name="apiKey">Optional API key to use for the request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>An async enumerable of chat completion chunks.</returns>
+        /// <exception cref="LLMCommunicationException">Thrown when streaming fails or returns no chunks.</exception>
+        private async IAsyncEnumerable<ChatCompletionChunk> ProcessStreamingRequestAsync(
+            ChatCompletionRequest request,
+            string selectedModel,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Streaming from model {ModelName}", selectedModel);
 
             var client = _clientFactory.GetClient(request.Model);
             IAsyncEnumerable<ChatCompletionChunk> stream;
@@ -295,8 +748,8 @@ namespace ConduitLLM.Core.Routing
             catch (Exception ex)
             {
                 // Handle exceptions during stream creation
-                UpdateModelHealth(modelToUse, false);
-                _logger.LogError(ex, "Error creating stream from model {ModelName}", modelToUse);
+                UpdateModelHealth(selectedModel, false);
+                _logger.LogError(ex, "Error creating stream from model {ModelName}", selectedModel);
                 throw;
             }
 
@@ -315,17 +768,27 @@ namespace ConduitLLM.Core.Routing
             // After streaming completes, update model statistics
             if (receivedAnyChunks)
             {
-                // Success
-                UpdateModelHealth(modelToUse, true);
-                IncrementModelUsage(modelToUse);
-                UpdateModelLatency(modelToUse, stopwatch.ElapsedMilliseconds);
+                // Success case - update metrics
+                UpdateModelStatistics(selectedModel, stopwatch.ElapsedMilliseconds);
             }
             else
             {
                 // No chunks received - update health status
-                UpdateModelHealth(modelToUse, false);
-                throw new LLMCommunicationException($"No chunks received from model {modelToUse}");
+                UpdateModelHealth(selectedModel, false);
+                throw new LLMCommunicationException($"No chunks received from model {selectedModel}");
             }
+        }
+        
+        /// <summary>
+        /// Updates all statistics for a model after successful request completion.
+        /// </summary>
+        /// <param name="modelName">The name of the model.</param>
+        /// <param name="latencyMs">The request latency in milliseconds.</param>
+        private void UpdateModelStatistics(string modelName, long latencyMs)
+        {
+            UpdateModelHealth(modelName, true);
+            IncrementModelUsage(modelName);
+            UpdateModelLatency(modelName, latencyMs);
         }
 
         /// <inheritdoc/>
@@ -367,6 +830,16 @@ namespace ConduitLLM.Core.Routing
         /// <summary>
         /// Select a model for streaming, handling retries and fallbacks
         /// </summary>
+        /// <param name="requestedModel">The model name originally requested by the client, or null if no specific model was requested.</param>
+        /// <param name="strategy">The routing strategy to use for selection.</param>
+        /// <param name="maxRetries">Maximum number of retry attempts.</param>
+        /// <param name="cancellationToken">A token for cancelling the operation.</param>
+        /// <returns>The name of the selected model, or null if no suitable model could be found.</returns>
+        /// <remarks>
+        /// This method specifically handles model selection for streaming requests, with retry logic
+        /// to ensure a healthy model is selected. It reuses the core SelectModelAsync method,
+        /// which delegates to the strategy pattern implementation.
+        /// </remarks>
         private async Task<string?> SelectModelForStreamingAsync(
             string? requestedModel,
             string strategy,
@@ -381,7 +854,8 @@ namespace ConduitLLM.Core.Routing
             {
                 attemptCount++;
 
-                // Select a model based on strategy
+                // Select a model based on strategy using the same SelectModelAsync method
+                // that now delegates to our strategy pattern
                 string? selectedModel = await SelectModelAsync(requestedModel, strategy, attemptedModels, cancellationToken);
 
                 if (selectedModel == null)
@@ -551,8 +1025,24 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <summary>
-        /// Selects a model based on the specified strategy
+        /// Selects the most appropriate model based on the specified strategy and current system state.
         /// </summary>
+        /// <param name="requestedModel">The model name originally requested by the client, or null if no specific model was requested.</param>
+        /// <param name="strategy">The routing strategy to use for selection (e.g., "simple", "roundrobin", "leastcost").</param>
+        /// <param name="excludeModels">List of model names to exclude from consideration (typically models that have already been attempted).</param>
+        /// <param name="cancellationToken">A token for cancelling the operation.</param>
+        /// <returns>The name of the selected model, or null if no suitable model could be found.</returns>
+        /// <remarks>
+        /// This method implements the core model selection logic:
+        /// 
+        /// 1. Builds a candidate list based on the requested model and available fallbacks
+        /// 2. Filters out excluded models and unhealthy models
+        /// 3. Gets the appropriate strategy from the factory
+        /// 4. Delegates model selection to the strategy implementation
+        /// 
+        /// If no specific model was requested, it will consider all available models.
+        /// If the strategy is not recognized, it defaults to the "simple" strategy.
+        /// </remarks>
         private async Task<string?> SelectModelAsync(
             string? requestedModel,
             string strategy,
@@ -562,7 +1052,83 @@ namespace ConduitLLM.Core.Routing
             // Small delay to make this actually async
             await Task.Delay(1, cancellationToken);
 
-            // Create a list of candidate models based on the requested model and strategy
+            // Get filtered list of available models
+            var (availableModels, availableDeployments) = await GetFilteredAvailableModelsAsync(
+                requestedModel, excludeModels, cancellationToken);
+
+            if (!availableModels.Any())
+            {
+                _logger.LogWarning("No available models found for requestedModel={RequestedModel}", requestedModel);
+                return null;
+            }
+
+            // Handle passthrough strategy as a special case
+            if (IsPassthroughStrategy(strategy))
+            {
+                return availableModels.FirstOrDefault();
+            }
+
+            // Select model using the appropriate strategy
+            return SelectModelUsingStrategy(strategy, availableModels, availableDeployments);
+        }
+        
+        /// <summary>
+        /// Gets a filtered list of available models based on requested model and exclusions.
+        /// </summary>
+        private async Task<(List<string> AvailableModels, Dictionary<string, ModelDeployment> AvailableDeployments)> 
+            GetFilteredAvailableModelsAsync(string? requestedModel, List<string> excludeModels, CancellationToken cancellationToken)
+        {
+            // Add small delay to ensure method is truly async
+            await Task.Delay(1, cancellationToken);
+            
+            // Build candidate models list
+            var candidateModels = BuildCandidateModelsList(requestedModel, excludeModels);
+            
+            // Filter to only healthy models
+            var availableModels = FilterHealthyModels(candidateModels);
+            
+            // Get deployment information for available models
+            var availableDeployments = GetAvailableDeployments(availableModels);
+            
+            return (availableModels, availableDeployments);
+        }
+        
+        /// <summary>
+        /// Determines if the strategy is a passthrough strategy.
+        /// </summary>
+        private bool IsPassthroughStrategy(string strategy)
+        {
+            return strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        /// <summary>
+        /// Selects a model using the appropriate strategy implementation.
+        /// </summary>
+        private string? SelectModelUsingStrategy(
+            string strategy, 
+            List<string> availableModels, 
+            Dictionary<string, ModelDeployment> availableDeployments)
+        {
+            // Use the strategy factory to get the appropriate strategy and delegate selection
+            var modelSelectionStrategy = ModelSelectionStrategyFactory.GetStrategy(strategy);
+            
+            _logger.LogDebug("Using {Strategy} strategy to select from {ModelCount} models", 
+                strategy, availableModels.Count);
+                
+            return modelSelectionStrategy.SelectModel(
+                availableModels,
+                availableDeployments,
+                _modelUsageCount);
+        }
+        
+        /// <summary>
+        /// Builds a list of candidate models based on the requested model and available fallbacks.
+        /// </summary>
+        /// <param name="requestedModel">The model name originally requested by the client.</param>
+        /// <param name="excludeModels">List of model names to exclude from consideration.</param>
+        /// <returns>A list of candidate model names.</returns>
+        private List<string> BuildCandidateModelsList(string? requestedModel, List<string> excludeModels)
+        {
             List<string> candidateModels = new();
 
             // If we have a specific requested model and it's not in the excluded list, start with that
@@ -598,85 +1164,38 @@ namespace ConduitLLM.Core.Routing
                     .Where(m => !excludeModels.Contains(m))
                     .ToList();
             }
-
-            // Filter to only healthy models
-            var availableModels = candidateModels
+            
+            return candidateModels;
+        }
+        
+        /// <summary>
+        /// Filters a list of candidate models to include only healthy ones.
+        /// </summary>
+        /// <param name="candidateModels">The list of candidate model names.</param>
+        /// <returns>A filtered list containing only healthy models.</returns>
+        private List<string> FilterHealthyModels(List<string> candidateModels)
+        {
+            return candidateModels
                 .Where(m => !_modelHealthStatus.TryGetValue(m, out var healthy) || healthy)
                 .ToList();
-
-            if (!availableModels.Any())
-            {
-                return null;
-            }
-
-            // Get deployments for the available models
-            var availableDeployments = availableModels
-                .Select(m => _modelDeployments.TryGetValue(m, out var deployment) ? deployment : null)
-                .Where(d => d != null)
-                .ToList();
-
-            // Parse strategy string to enum if possible
-            if (Enum.TryParse<RoutingStrategy>(strategy, true, out var routingStrategyEnum))
-            {
-                return routingStrategyEnum switch
-                {
-                    RoutingStrategy.Simple => availableModels.FirstOrDefault(),
-
-                    RoutingStrategy.RoundRobin => SelectRoundRobin(availableModels),
-
-                    RoutingStrategy.LeastCost => availableDeployments.Any() ?
-                        availableDeployments
-                            .OrderBy(d => d!.InputTokenCostPer1K ?? decimal.MaxValue)
-                            .ThenBy(d => d!.OutputTokenCostPer1K ?? decimal.MaxValue)
-                            .Select(d => d!.DeploymentName)
-                            .FirstOrDefault() :
-                        availableModels.FirstOrDefault(),
-
-                    RoutingStrategy.LeastLatency => availableDeployments.Any() ?
-                        availableDeployments
-                            .OrderBy(d => d!.AverageLatencyMs)
-                            .Select(d => d!.DeploymentName)
-                            .FirstOrDefault() :
-                        availableModels.FirstOrDefault(),
-
-                    RoutingStrategy.HighestPriority => availableDeployments.Any() ?
-                        availableDeployments
-                            .OrderBy(d => d!.Priority)
-                            .Select(d => d!.DeploymentName)
-                            .FirstOrDefault() :
-                        availableModels.FirstOrDefault(),
-
-                    _ => availableModels.FirstOrDefault()
-                };
-            }
-
-            // Fall back to string-based strategies for backward compatibility
-            return strategy.ToLowerInvariant() switch
-            {
-                "simple" => availableModels.FirstOrDefault(),
-
-                "random" => availableModels[_random.Next(availableModels.Count)],
-
-                "roundrobin" => SelectRoundRobin(availableModels),
-
-                "leastused" => availableModels
-                    .OrderBy(m => _modelUsageCount.TryGetValue(m, out var count) ? count : 0)
-                    .FirstOrDefault(),
-
-                _ => availableModels.FirstOrDefault() // Default to simple strategy
-            };
         }
-
+        
         /// <summary>
-        /// Selects a model using round-robin strategy
+        /// Converts a list of model names to a dictionary of their deployment information.
         /// </summary>
-        private string SelectRoundRobin(List<string> availableModels)
+        /// <param name="modelNames">The list of model names to convert.</param>
+        /// <returns>A dictionary mapping model names to their deployment information.</returns>
+        private Dictionary<string, ModelDeployment> GetAvailableDeployments(List<string> modelNames)
         {
-            // Simple round-robin by selecting the least recently used model
-            return availableModels
-                .OrderBy(m => _modelUsageCount.TryGetValue(m, out var count) ? count : 0)
-                .First();
+            return modelNames
+                .Where(m => _modelDeployments.ContainsKey(m))
+                .ToDictionary(
+                    m => m,
+                    m => _modelDeployments[m],
+                    StringComparer.OrdinalIgnoreCase);
         }
+
+        // SelectRoundRobin method removed as it's now handled by RoundRobinModelSelectionStrategy
 
         /// <summary>
         /// Calculates the backoff delay for retries using exponential backoff
@@ -696,8 +1215,14 @@ namespace ConduitLLM.Core.Routing
         /// <summary>
         /// Determines if an error is recoverable (should be retried)
         /// </summary>
-        private bool IsRecoverableError(Exception ex)
+        private bool IsRecoverableError(Exception? ex)
         {
+            // If exception is null, treat it as non-recoverable
+            if (ex == null)
+            {
+                return false;
+            }
+            
             // Categorize exception types as recoverable or not
             // Some errors should not be retried as they will always fail (e.g., validation errors)
             return ex switch

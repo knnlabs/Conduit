@@ -85,7 +85,7 @@
                                 @RenderMessageContent(message.Content ?? string.Empty)
                             </MudPaper>
                         }
-                        @if (isLoading && streamResponse)
+                        @if (isLoading && _streamResponse)
                         {
                             <MudPaper Elevation="0" Class="mb-3 pa-3 assistant-message">
                                 <MudText Typo="Typo.subtitle2">
@@ -95,7 +95,7 @@
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" />
                             </MudPaper>
                         }
-                        @if (isLoading && !streamResponse)
+                        @if (isLoading && !_streamResponse)
                         {
                             <MudPaper Elevation="0" Class="mb-3 pa-3 assistant-message">
                                 <MudText Typo="Typo.subtitle2">
@@ -129,11 +129,31 @@
                                  HelperText="Overrides key from configuration for this request."
                                  Class="mb-4" />
                     
-                    <MudSwitch T="bool" 
-                              Label="Stream response"
-                              helperText="Receive and display LLM response in real-time" 
-                              checked="@streamResponse"
-                              checkedChanged="@((bool val) => streamResponse = val)" />
+                    <MudSwitch T="bool"
+                               Label="Stream Response"
+                               Color="Color.Primary"
+                               HelperText="Stream the response word-by-word, like ChatGPT."
+                               @bind-Checked="_streamResponse"
+                               Style="width: 100%"
+                               Class="mb-2" />
+                    
+                    <MudSwitch T="bool"
+                               Label="Show Raw Message"
+                               Color="Color.Primary"
+                               @bind-Checked="_showRawMessage"
+                               Style="width: 100%"
+                               Class="mb-2" />
+                    
+                    <MudSwitch T="bool"
+                               Label="Append Function Result"
+                               HelperText="Append the result of successful function calls to the chat history."
+                               Color="Color.Primary"
+                               @bind-Checked="_appendFunctionResult" />
+                    
+                    <MudSwitch T="bool"
+                               Label="Execute Functions"
+                               Color="Color.Primary"
+                               @bind-Checked="_executeFunctions" />
                     
                     <MudText Typo="Typo.subtitle2" Class="mb-1">Temperature: @temperature</MudText>
                     <MudSlider T="double" Value="@temperature" ValueChanged="@((double val) => temperature = val)" 
@@ -147,6 +167,14 @@
                                  @bind-Value="stopSequences" Variant="Variant.Outlined" 
                                  HelperText="Comma-separated list of sequences to stop generation."
                                  Class="mb-4" />
+                    
+                    <MudSwitch T="bool" 
+                               Label="Auto Scroll"
+                               HelperText="Automatically scroll to the bottom when new messages arrive."
+                               @bind-Checked="_autoScroll"
+                               Class="mb-2" />
+                    
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ClearChat" Class="mt-4">Clear Chat</MudButton>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -180,12 +208,16 @@
     private string stopSequences = "";
     private double temperature = 0.7;
     private double topP = 1.0;
-    private bool streamResponse = true;
+    private bool _streamResponse = true;
     private bool isLoading = false;
     private string errorMessage = "";
     private string _proxyBaseUrl = "";
     private List<Message> chatHistory = new();
     private string? streamedResponse = null;
+    private bool _autoScroll = true;
+    private bool _showRawMessage = false;
+    private bool _appendFunctionResult = false;
+    private bool _executeFunctions = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -268,7 +300,7 @@
                 TopP = topP, 
                 Stop = !string.IsNullOrEmpty(stopSequences) ? 
                     stopSequences.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() : null,
-                Stream = streamResponse
+                Stream = _streamResponse
             };
 
             var httpClient = new HttpClient();
@@ -290,7 +322,7 @@
             
             var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
             
-            if (streamResponse)
+            if (_streamResponse)
             {
                 // Handle streaming response
                 streamedResponse = ""; // Reset the streamed response

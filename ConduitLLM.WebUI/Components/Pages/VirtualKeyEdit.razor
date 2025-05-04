@@ -15,36 +15,37 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<h1>@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")</h1>
+<MudText Typo="Typo.h3" Class="mb-4">@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")</MudText>
 
 @if (isLoading)
 {
-    <p><em>Loading...</em></p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else if (request == null && Id.HasValue)
 {
-    <p class="text-danger">Virtual key not found or error loading.</p>
+    <MudAlert Severity="Severity.Error">Virtual key not found or error loading.</MudAlert>
 }
 else if (showCreatedKey)
 {
-    <div class="alert alert-success">
-        <h4 class="alert-heading">Virtual Key Created Successfully!</h4>
-        <p>Your new virtual key has been created. Please save this key as it will only be shown once:</p>
-        <div class="input-group mb-3">
-            <input type="text" readonly class="form-control bg-light" value="@createdKey" id="newKeyInput" />
-            <button class="btn btn-outline-secondary" type="button" @onclick="CopyKeyToClipboard">
-                <i class="bi bi-clipboard"></i> Copy
-            </button>
+    <MudAlert Severity="Severity.Success" Class="mb-4">
+        <MudText Typo="Typo.h5" Class="mb-2">Virtual Key Created Successfully!</MudText>
+        <MudText>Your new virtual key has been created. Please save this key as it will only be shown once:</MudText>
+        <div class="d-flex align-center mt-3 mb-3">
+            <MudTextField ReadOnly="true" Value="@createdKey" Class="flex-grow-1 mr-2" Variant="Variant.Outlined" id="newKeyInput" />
+            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Secondary" OnClick="CopyKeyToClipboard" />
         </div>
-        <p class="mb-0">This key can be used to authenticate API requests. For security reasons, we only show this key once and store a secure hash.</p>
-    </div>
+        <MudText>This key can be used to authenticate API requests. For security reasons, we only show this key once and store a secure hash.</MudText>
+    </MudAlert>
     
-    <div class="alert alert-warning">
-        <p><i class="bi bi-exclamation-triangle-fill me-2"></i> Make sure to securely store this key. You won't be able to retrieve it again.</p>
-    </div>
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        <div class="d-flex">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+            <MudText>Make sure to securely store this key. You won't be able to retrieve it again.</MudText>
+        </div>
+    </MudAlert>
     
     <div class="mt-4">
-        <button class="btn btn-primary" @onclick="ReturnToList">Return to Virtual Keys List</button>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReturnToList">Return to Virtual Keys List</MudButton>
     </div>
 }
 else
@@ -55,272 +56,292 @@ else
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
         }
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Key Details</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="keyName" class="form-label">Key Name:</label>
-                            <InputText id="keyName" @bind-Value="request!.KeyName" class="form-control" />
-                            <ValidationMessage For="@(() => request!.KeyName)" />
-                            <div class="form-text">A friendly name to identify this key</div>
-                        </div>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Key Details</MudText>
+                    
+                    <MudTextField Label="Key Name" 
+                                @bind-Value="request!.KeyName" 
+                                For="@(() => request!.KeyName)"
+                                HelperText="A friendly name to identify this key"
+                                Class="mb-4" />
 
-                        <div class="mb-3">
-                            <label for="allowedModels" class="form-label">
-                                Allowed Models (Optional): 
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Select specific models this key can access. Leave empty to allow all models. More restrictive keys are more secure.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                                @if (availableModels != null && availableModels.Count > 0)
+                    <div class="mb-4">
+                        <div class="d-flex align-center mb-2">
+                            <MudText Class="mr-2">Allowed Models (Optional):</MudText>
+                            <MudTooltip Text="Select specific models this key can access. Leave empty to allow all models. More restrictive keys are more secure.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                            </MudTooltip>
+                            @if (availableModels != null && availableModels.Count > 0)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">@selectedModels.Count selected</MudChip>
+                            }
+                        </div>
+                        
+                        <div class="d-flex mb-2">
+                            <MudTextField @bind-Value="modelSearchText" 
+                                        Placeholder="Search models..." 
+                                        Immediate="true"
+                                        Adornment="Adornment.Start"
+                                        AdornmentIcon="@Icons.Material.Filled.Search"
+                                        Class="flex-grow-1 mr-2" />
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="SelectAllModels">
+                                <MudIcon Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" Class="mr-1" />
+                                Select All
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Class="ml-2" OnClick="ClearModelSelection">
+                                <MudIcon Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="mr-1" />
+                                Clear All
+                            </MudButton>
+                        </div>
+                        
+                        <MudPaper Elevation="0" Class="border pa-0" Style="height: 250px; overflow-y: auto;">
+                            @if (availableModels == null || availableModels.Count == 0)
+                            {
+                                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="ma-3" />
+                            }
+                            else
+                            {
+                                var filteredModels = FilterModels();
+                                var groupedModels = filteredModels
+                                    .GroupBy(m => m.ProviderName)
+                                    .OrderBy(g => g.Key)
+                                    .ToList();
+                                
+                                if (groupedModels.Count == 0)
                                 {
-                                    <span class="badge bg-primary rounded-pill ms-2">
-                                        @selectedModels.Count selected
-                                    </span>
-                                }
-                            </label>
-                            
-                            <!-- Search and action buttons -->
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control" placeholder="Search models..." 
-                                       @bind="modelSearchText" @bind:event="oninput" />
-                                <button class="btn btn-outline-secondary" type="button" @onclick="() => SelectAllModels()">
-                                    <i class="bi bi-check-all"></i> Select All
-                                </button>
-                                <button class="btn btn-outline-secondary" type="button" @onclick="() => ClearModelSelection()">
-                                    <i class="bi bi-x-lg"></i> Clear All
-                                </button>
-                            </div>
-                            
-                            <div class="form-control" style="height: auto; max-height: 250px; overflow-y: auto; padding: 0;">
-                                @if (availableModels == null || availableModels.Count == 0)
-                                {
-                                    <div class="p-3 text-muted">Loading models...</div>
+                                    <MudText Typo="Typo.body2" Class="pa-3 mud-text-secondary">No models match your search.</MudText>
                                 }
                                 else
                                 {
-                                    var filteredModels = FilterModels();
-                                    var groupedModels = filteredModels
-                                        .GroupBy(m => m.ProviderName)
-                                        .OrderBy(g => g.Key)
-                                        .ToList();
-                                    
-                                    if (groupedModels.Count == 0)
+                                    @foreach (var group in groupedModels)
                                     {
-                                        <div class="p-3 text-muted">No models match your search.</div>
-                                    }
-                                    else
-                                    {
-                                        @foreach (var group in groupedModels)
-                                        {
-                                            <div class="provider-group">
-                                                <div class="provider-header p-2 bg-light border-bottom">
-                                                    <strong>@group.Key</strong>
-                                                    <span class="badge bg-secondary rounded-pill float-end">
-                                                        @group.Count() model@(group.Count() != 1 ? "s" : "")
-                                                    </span>
-                                                </div>
-                                                <div class="px-2 py-1">
-                                                    @foreach (var model in group.OrderBy(m => m.ModelAlias))
-                                                    {
-                                                        <div class="form-check py-1">
-                                                            <input class="form-check-input" type="checkbox" 
-                                                                   id="model_@(model.ProviderModelId)" 
-                                                                   checked="@selectedModels.Contains(model.ModelAlias)"
-                                                                   @onchange="e => ToggleModelSelection(model.ModelAlias, (bool)e.Value!)" />
-                                                            <label class="form-check-label d-block text-truncate" for="model_@(model.ProviderModelId)" 
-                                                                  title="@model.ModelAlias">
-                                                                @model.ModelAlias
-                                                            </label>
-                                                        </div>
-                                                    }
-                                                </div>
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Class="pa-2 d-flex justify-space-between mud-background-gray">
+                                                <span>@group.Key</span>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                                    @group.Count() model@(group.Count() != 1 ? "s" : "")
+                                                </MudChip>
+                                            </MudText>
+                                            <div class="pa-2">
+                                                @foreach (var model in group.OrderBy(m => m.ModelAlias))
+                                                {
+                                                    <MudCheckBox T="bool" Checked="@(selectedModels.Contains(model.ModelAlias))"
+                                                                 CheckedChanged="@((bool b) => ToggleModelSelection(model.ModelAlias, b))"
+                                                                 Label="@model.ModelAlias"
+                                                                 Color="Color.Primary"
+                                                                 Size="Size.Small"
+                                                                 Class="py-1" />
+                                                }
                                             </div>
-                                        }
+                                        </div>
                                     }
                                 }
-                            </div>
-                            <div class="form-text mt-1">
-                                Specify which models this key can access, or leave empty to allow all models.
-                            </div>
-                        </div>
+                            }
+                        </MudPaper>
+                        <MudText Typo="Typo.caption" Class="mt-1">
+                            Specify which models this key can access, or leave empty to allow all models.
+                        </MudText>
                     </div>
-                </div>
+                </MudPaper>
                 
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Rate Limits</h5>
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Rate Limits</MudText>
+                    
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        Rate limits help prevent abuse and manage API load. Set to 0 for no limit.
+                    </MudAlert>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex align-center mb-2">
+                            <MudText>Requests Per Minute (RPM):</MudText>
+                            <MudTooltip Text="Maximum number of requests allowed per minute for this key. Set to 0 for no limit.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
+                            </MudTooltip>
+                        </div>
+                        <MudNumericField @bind-Value="request!.RateLimitRpm"
+                                         For="@(() => request!.RateLimitRpm)"
+                                         Min="0"
+                                         Variant="Variant.Outlined" />
                     </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-3" role="alert">
-                            <i class="bi bi-info-circle-fill me-2"></i> 
-                            Rate limits help prevent abuse and manage API load. Set to 0 for no limit.
+                    
+                    <div class="mb-3">
+                        <div class="d-flex align-center mb-2">
+                            <MudText>Requests Per Day (RPD):</MudText>
+                            <MudTooltip Text="Maximum number of requests allowed per day for this key. Set to 0 for no limit.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
+                            </MudTooltip>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="rateLimitRpm" class="form-label">
-                                Requests Per Minute (RPM):
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum number of requests allowed per minute for this key. Set to 0 for no limit.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </label>
-                            <InputNumber id="rateLimitRpm" @bind-Value="request!.RateLimitRpm" class="form-control" />
-                            <ValidationMessage For="@(() => request!.RateLimitRpm)" />
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="rateLimitRpd" class="form-label">
-                                Requests Per Day (RPD):
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum number of requests allowed per day for this key. Set to 0 for no limit.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </label>
-                            <InputNumber id="rateLimitRpd" @bind-Value="request!.RateLimitRpd" class="form-control" />
-                            <ValidationMessage For="@(() => request!.RateLimitRpd)" />
-                        </div>
+                        <MudNumericField @bind-Value="request!.RateLimitRpd" 
+                                         For="@(() => request!.RateLimitRpd)"
+                                         Min="0"
+                                         Variant="Variant.Outlined" />
                     </div>
-                </div>
-            </div>
+                </MudPaper>
+            </MudItem>
             
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Budget Settings</h5>
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Budget Settings</MudText>
+                    
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        Set a budget limit for this key to control costs. The budget can reset on a schedule you define.
+                    </MudAlert>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex align-center mb-2">
+                            <MudText>Max Budget ($):</MudText>
+                            <MudTooltip Text="Maximum amount in USD this key can spend. Set to 0 for no budget limit.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
+                            </MudTooltip>
+                        </div>
+                        <MudNumericField @bind-Value="request!.MaxBudget"
+                                         For="@(() => request!.MaxBudget)"
+                                         Min="0"
+                                         Format="N2"
+                                         AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                         Adornment="Adornment.Start"
+                                         Variant="Variant.Outlined"
+                                         HelperText="Set to 0 for no budget limit" />
                     </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-3" role="alert">
-                            <i class="bi bi-info-circle-fill me-2"></i> 
-                            Set a budget limit for this key to control costs. The budget can reset on a schedule you define.
+                    
+                    <div class="mb-4">
+                        <div class="d-flex align-center mb-2">
+                            <MudText>Budget Reset Schedule:</MudText>
+                            <MudTooltip Text="How often the budget should reset. Select 'Never' if you want a fixed budget without reset.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
+                            </MudTooltip>
                         </div>
-                        
+                        <MudSelect T="string" @bind-Value="request!.BudgetDuration" 
+                                  HelperText="How often the budget resets"
+                                  Variant="Variant.Outlined">
+                            <MudSelectItem Value="@string.Empty">Never (Fixed Budget)</MudSelectItem>
+                            <MudSelectItem Value="@("Daily")">Daily</MudSelectItem>
+                            <MudSelectItem Value="@("Weekly")">Weekly</MudSelectItem>
+                            <MudSelectItem Value="@("Monthly")">Monthly</MudSelectItem>
+                            <MudSelectItem Value="@("Quarterly")">Quarterly</MudSelectItem>
+                            <MudSelectItem Value="@("Yearly")">Yearly</MudSelectItem>
+                        </MudSelect>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(request!.BudgetDuration))
+                    {
+                        <div class="mb-4">
+                            <MudDatePicker Label="Budget Start Date" 
+                                          @bind-Date="budgetStartDate" 
+                                          HelperText="The date from which budget cycles are calculated"
+                                          Variant="Variant.Outlined" />
+                        </div>
+                    }
+                    
+                    @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
+                    {
                         <div class="mb-3">
-                            <label for="maxBudget" class="form-label">
-                                Max Budget ($):
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Maximum amount in USD this key can spend. Set to 0 for no budget limit.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </label>
-                            <InputNumber id="maxBudget" @bind-Value="request!.MaxBudget" class="form-control" />
-                            <ValidationMessage For="@(() => request!.MaxBudget)" />
-                            <div class="form-text">Set to 0 for no budget limit</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="budgetDuration" class="form-label">
-                                Budget Reset Schedule:
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="How often the budget should reset. Select 'Never' if you want a fixed budget without reset.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </label>
-                            <InputSelect id="budgetDuration" @bind-Value="request!.BudgetDuration" class="form-control">
-                                <option value="">Never (Fixed Budget)</option>
-                                <option value="Daily">Daily</option>
-                                <option value="Weekly">Weekly</option>
-                                <option value="Monthly">Monthly</option>
-                                <option value="Quarterly">Quarterly</option>
-                                <option value="Yearly">Yearly</option>
-                            </InputSelect>
-                            <div class="form-text">How often the budget resets</div>
-                        </div>
-                        
-                        @if (!string.IsNullOrEmpty(request!.BudgetDuration))
-                        {
-                            <div class="mb-3">
-                                <label for="budgetStartDate" class="form-label">Budget Start Date:</label>
-                                <InputDate id="budgetStartDate" @bind-Value="budgetStartDate" class="form-control" />
-                                <div class="form-text">The date from which budget cycles are calculated</div>
-                            </div>
-                        }
-                        
-                        @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
-                        {
-                            <div class="mb-3">
-                                <label class="form-label">Current Budget Usage:</label>
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="progress flex-grow-1" style="height: 20px;">
-                                        @{
-                                            var percentage = (int)(request.MaxBudget > 0 
-                                                ? Math.Min(100, (currentSpend / request.MaxBudget.Value) * 100) 
-                                                : 0);
-                                            var progressClass = percentage < 60 
-                                                ? "bg-success" 
-                                                : (percentage < 85 ? "bg-warning" : "bg-danger");
-                                        }
-                                        <div class="progress-bar @progressClass" role="progressbar" 
-                                             style="width: @(percentage)%;" 
-                                             aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
-                                            @percentage%
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="ResetCurrentSpend">
-                                        <i class="bi bi-arrow-counterclockwise"></i>
-                                        Reset
-                                    </button>
-                                </div>
-                                <div class="d-flex justify-content-between text-muted">
-                                    <span>$@(currentSpend.ToString("0.000000"))</span>
-                                    <span>of $@(request.MaxBudget?.ToString("0.000000"))</span>
-                                </div>
-                                @if (!string.IsNullOrEmpty(request!.BudgetDuration) && budgetStartDate.HasValue)
-                                {
-                                    <div class="mt-2 text-muted">
-                                        <i class="bi bi-calendar-event me-1"></i>
-                                        Next reset: @(GetNextBudgetResetDate(request.BudgetDuration, budgetStartDate))
-                                    </div>
+                            <MudText Class="mb-2">Current Budget Usage:</MudText>
+                            <div class="d-flex align-items-center mb-2">
+                                @{
+                                    var percentage = (int)(request.MaxBudget > 0 
+                                        ? Math.Min(100, (currentSpend / request.MaxBudget.Value) * 100) 
+                                        : 0);
+                                    var progressColor = percentage < 60 
+                                        ? Color.Success 
+                                        : (percentage < 85 ? Color.Warning : Color.Error);
                                 }
+                                <MudProgressLinear Color="@progressColor" Value="@percentage" Class="flex-grow-1 mr-2" Style="height: 10px;">
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@percentage%</MudText>
+                                </MudProgressLinear>
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                             Size="Size.Small" 
+                                             OnClick="ResetCurrentSpend" 
+                                             Variant="Variant.Outlined"
+                                             Class="ml-2" />
                             </div>
-                        }
-                    </div>
-                </div>
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">$@(currentSpend.ToString("0.000000"))</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">of $@(request.MaxBudget?.ToString("0.000000"))</MudText>
+                            </div>
+                            @if (!string.IsNullOrEmpty(request!.BudgetDuration) && budgetStartDate.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-2 d-flex align-center mud-text-secondary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-1" />
+                                    Next reset: @(GetNextBudgetResetDate(request.BudgetDuration, budgetStartDate))
+                                </MudText>
+                            }
+                        </div>
+                    }
+                </MudPaper>
                 
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0">Key Details</h5>
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Limits</MudText>
+                    
+                    <div class="mb-4">
+                        <MudCheckBox T="bool" @bind-Checked="_setMaxSpend"
+                                     Label="Set Max Spend"
+                                     Color="Color.Primary" />
+                        <MudCollapse Expanded="@_setMaxSpend">
+                            <MudNumericField @bind-Value="request!.MaxBudget"
+                                             For="@(() => request!.MaxBudget)"
+                                             Min="0"
+                                             Format="N2"
+                                             AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                             Adornment="Adornment.Start"
+                                             Variant="Variant.Outlined"
+                                             HelperText="Set to 0 for no budget limit" />
+                        </MudCollapse>
                     </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description (Optional):</label>
-                            <InputTextArea id="description" @bind-Value="description" class="form-control" rows="3" />
-                            <div class="form-text">A description of what this key is used for</div>
+                </MudPaper>
+                
+                <MudPaper Elevation="2" Class="pa-4 mb-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Key Details</MudText>
+                    
+                    <MudTextField Label="Description (Optional)" 
+                                @bind-Value="description" 
+                                Lines="3"
+                                Variant="Variant.Outlined"
+                                HelperText="A description of what this key is used for"
+                                Class="mb-4" />
+                    
+                    <div class="mb-3">
+                        <div class="d-flex align-center mb-2">
+                            <MudText>Expiration Date (Optional):</MudText>
+                            <MudTooltip Text="Date when this key will expire. Leave empty for a non-expiring key.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
+                            </MudTooltip>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="expirationDate" class="form-label">
-                                Expiration Date (Optional):
-                                <span class="ms-1 text-muted" style="cursor: pointer;" data-bs-toggle="tooltip" title="Date when this key will expire. Leave empty for a non-expiring key.">
-                                    <i class="bi bi-info-circle-fill"></i>
-                                </span>
-                            </label>
-                            <InputDate id="expirationDate" @bind-Value="request!.ExpiresAt" class="form-control" />
-                            <div class="form-text">Leave empty for a key that never expires</div>
-                        </div>
+                        <MudDatePicker @bind-Date="request!.ExpiresAt"
+                                      HelperText="Leave empty for a key that never expires"
+                                      Variant="Variant.Outlined" />
                     </div>
-                </div>
-            </div>
-        </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
         
-        <div class="row mt-3">
-            <div class="col-12">
-                <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                    @if (isSaving)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span class="ms-1">Saving...</span>
-                    }
-                    else
-                    {
-                        <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
-                    }
-                </button>
-                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="Cancel">Cancel</button>
-            </div>
-        </div>
+        <MudPaper Elevation="0" Class="d-flex gap-2 mt-4">
+            <MudButton ButtonType="ButtonType.Submit" 
+                      Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      Disabled="@isSaving"
+                      StartIcon="@(Id.HasValue ? Icons.Material.Filled.Save : Icons.Material.Filled.Add)">
+                @if (isSaving)
+                {
+                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" 
+                      Color="Color.Secondary" 
+                      OnClick="Cancel">
+                Cancel
+            </MudButton>
+        </MudPaper>
     </EditForm>
 }
 
@@ -340,6 +361,7 @@ else
     private string createdKey = "";
     private string? description; // Field to hold description since UpdateVirtualKeyRequestDto doesn't have it
     private DateTime? budgetStartDate; // Field to hold budget start date
+    private bool _setMaxSpend = false;
 
     protected override async Task OnInitializedAsync()
     {

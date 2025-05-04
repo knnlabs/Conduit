@@ -1,5 +1,5 @@
 using ConduitLLM.Configuration.Entities;
-using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Configuration.Repositories;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
@@ -15,21 +15,27 @@ namespace ConduitLLM.Configuration.Services;
 /// </summary>
 public class ModelCostService : IModelCostService
 {
-    private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
+    private readonly IModelCostRepository _modelCostRepository;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ModelCostService> _logger;
     private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(1);
     private const string CacheKeyPrefix = "ModelCost_";
     private const string AllModelsCacheKey = CacheKeyPrefix + "All";
 
+    /// <summary>
+    /// Creates a new instance of the ModelCostService
+    /// </summary>
+    /// <param name="modelCostRepository">The model cost repository</param>
+    /// <param name="cache">The memory cache</param>
+    /// <param name="logger">The logger</param>
     public ModelCostService(
-        IDbContextFactory<ConfigurationDbContext> dbContextFactory,
+        IModelCostRepository modelCostRepository,
         IMemoryCache cache,
         ILogger<ModelCostService> logger)
     {
-        _dbContextFactory = dbContextFactory;
-        _cache = cache;
-        _logger = logger;
+        _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
@@ -40,74 +46,87 @@ public class ModelCostService : IModelCostService
             throw new ArgumentException("Model ID cannot be empty", nameof(modelId));
         }
 
-        string cacheKey = $"{CacheKeyPrefix}{modelId}";
-
-        // Try to get from cache first
-        if (_cache.TryGetValue(cacheKey, out ModelCost? cachedCost))
+        try
         {
-            _logger.LogDebug("Cache hit for model cost: {ModelId}", modelId);
-            return cachedCost;
-        }
+            string cacheKey = $"{CacheKeyPrefix}{modelId}";
 
-        _logger.LogDebug("Cache miss for model cost: {ModelId}, querying database", modelId);
-
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        
-        // First, try to find an exact match
-        var exactMatch = await dbContext.ModelCosts
-            .FirstOrDefaultAsync(c => c.ModelIdPattern == modelId, cancellationToken);
-
-        if (exactMatch != null)
-        {
-            _cache.Set(cacheKey, exactMatch, _cacheDuration);
-            return exactMatch;
-        }
-
-        // If no exact match, look for wildcard patterns
-        var wildcardPatterns = await dbContext.ModelCosts
-            .Where(c => c.ModelIdPattern.EndsWith("*"))
-            .ToListAsync(cancellationToken);
-
-        if (!wildcardPatterns.Any())
-        {
-            _cache.Set<ModelCost?>(cacheKey, null, _cacheDuration);
-            return null;
-        }
-
-        // Find the best matching pattern (longest prefix match)
-        ModelCost? bestMatch = null;
-        int longestMatchLength = 0;
-
-        foreach (var pattern in wildcardPatterns)
-        {
-            // Remove the trailing asterisk for comparison
-            string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
-            
-            if (modelId.StartsWith(patternPrefix) && patternPrefix.Length > longestMatchLength)
+            // Try to get from cache first
+            if (_cache.TryGetValue(cacheKey, out ModelCost? cachedCost))
             {
-                bestMatch = pattern;
-                longestMatchLength = patternPrefix.Length;
+                _logger.LogDebug("Cache hit for model cost: {ModelId}", modelId);
+                return cachedCost;
             }
-        }
 
-        _cache.Set<ModelCost?>(cacheKey, bestMatch, _cacheDuration);
-        return bestMatch;
+            _logger.LogDebug("Cache miss for model cost: {ModelId}, querying database", modelId);
+
+            // First, try to find an exact match
+            var exactMatch = await _modelCostRepository.GetByModelIdPatternAsync(modelId, cancellationToken);
+
+            if (exactMatch != null)
+            {
+                _cache.Set(cacheKey, exactMatch, _cacheDuration);
+                return exactMatch;
+            }
+
+            // If no exact match, look for wildcard patterns
+            var allCosts = await _modelCostRepository.GetAllAsync(cancellationToken);
+            var wildcardPatterns = allCosts
+                .Where(c => c.ModelIdPattern.EndsWith("*"))
+                .ToList();
+
+            if (!wildcardPatterns.Any())
+            {
+                _cache.Set<ModelCost?>(cacheKey, null, _cacheDuration);
+                return null;
+            }
+
+            // Find the best matching pattern (longest prefix match)
+            ModelCost? bestMatch = null;
+            int longestMatchLength = 0;
+
+            foreach (var pattern in wildcardPatterns)
+            {
+                // Remove the trailing asterisk for comparison
+                string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
+                
+                if (modelId.StartsWith(patternPrefix) && patternPrefix.Length > longestMatchLength)
+                {
+                    bestMatch = pattern;
+                    longestMatchLength = patternPrefix.Length;
+                }
+            }
+
+            _cache.Set<ModelCost?>(cacheKey, bestMatch, _cacheDuration);
+            return bestMatch;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cost for model {ModelId}", modelId);
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public async Task<List<ModelCost>> ListModelCostsAsync(CancellationToken cancellationToken = default)
     {
-        // Try to get from cache first
-        if (_cache.TryGetValue(AllModelsCacheKey, out List<ModelCost>? cachedCosts) && cachedCosts != null)
+        try
         {
-            return cachedCosts;
-        }
+            // Try to get from cache first
+            if (_cache.TryGetValue(AllModelsCacheKey, out List<ModelCost>? cachedCosts) && cachedCosts != null)
+            {
+                return cachedCosts;
+            }
 
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var costs = await dbContext.ModelCosts.ToListAsync(cancellationToken);
-        
-        _cache.Set(AllModelsCacheKey, costs, _cacheDuration);
-        return costs;
+            var costs = await _modelCostRepository.GetAllAsync(cancellationToken);
+            
+            _cache.Set(AllModelsCacheKey, costs, _cacheDuration);
+            return costs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing model costs");
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -118,15 +137,21 @@ public class ModelCostService : IModelCostService
             throw new ArgumentNullException(nameof(modelCost));
         }
 
-        modelCost.CreatedAt = DateTime.UtcNow;
-        modelCost.UpdatedAt = DateTime.UtcNow;
+        try
+        {
+            modelCost.CreatedAt = DateTime.UtcNow;
+            modelCost.UpdatedAt = DateTime.UtcNow;
 
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await dbContext.ModelCosts.AddAsync(modelCost, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+            await _modelCostRepository.CreateAsync(modelCost, cancellationToken);
 
-        // Clear cache
-        ClearCache();
+            // Clear cache
+            ClearCache();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding model cost for pattern {ModelIdPattern}", modelCost.ModelIdPattern);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -137,46 +162,56 @@ public class ModelCostService : IModelCostService
             throw new ArgumentNullException(nameof(modelCost));
         }
 
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var existingCost = await dbContext.ModelCosts.FindAsync(new object[] { modelCost.Id }, cancellationToken);
-
-        if (existingCost == null)
+        try
         {
-            return false;
+            var existingCost = await _modelCostRepository.GetByIdAsync(modelCost.Id, cancellationToken);
+
+            if (existingCost == null)
+            {
+                return false;
+            }
+
+            // Update properties
+            existingCost.ModelIdPattern = modelCost.ModelIdPattern;
+            existingCost.InputTokenCost = modelCost.InputTokenCost;
+            existingCost.OutputTokenCost = modelCost.OutputTokenCost;
+            existingCost.EmbeddingTokenCost = modelCost.EmbeddingTokenCost;
+            existingCost.ImageCostPerImage = modelCost.ImageCostPerImage;
+            existingCost.UpdatedAt = DateTime.UtcNow;
+
+            bool result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
+
+            // Clear cache
+            ClearCache();
+            return result;
         }
-
-        // Update properties
-        existingCost.ModelIdPattern = modelCost.ModelIdPattern;
-        existingCost.InputTokenCost = modelCost.InputTokenCost;
-        existingCost.OutputTokenCost = modelCost.OutputTokenCost;
-        existingCost.EmbeddingTokenCost = modelCost.EmbeddingTokenCost;
-        existingCost.ImageCostPerImage = modelCost.ImageCostPerImage;
-        existingCost.UpdatedAt = DateTime.UtcNow;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // Clear cache
-        ClearCache();
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating model cost with ID {ModelCostId}", modelCost.Id);
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public async Task<bool> DeleteModelCostAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var modelCost = await dbContext.ModelCosts.FindAsync(new object[] { id }, cancellationToken);
-
-        if (modelCost == null)
+        try
         {
-            return false;
+            bool result = await _modelCostRepository.DeleteAsync(id, cancellationToken);
+
+            if (result)
+            {
+                // Clear cache
+                ClearCache();
+            }
+            
+            return result;
         }
-
-        dbContext.ModelCosts.Remove(modelCost);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // Clear cache
-        ClearCache();
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting model cost with ID {ModelCostId}", id);
+            throw;
+        }
     }
 
     /// <inheritdoc />

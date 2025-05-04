@@ -4,8 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
 
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -14,15 +15,24 @@ namespace ConduitLLM.Configuration.Services
     /// </summary>
     public class VirtualKeyMaintenanceService
     {
-        private readonly ConfigurationDbContext _context;
+        private readonly IVirtualKeyRepository _virtualKeyRepository;
+        private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
+        private readonly ILogger<VirtualKeyMaintenanceService> _logger;
         
         /// <summary>
         /// Initializes a new instance of the VirtualKeyMaintenanceService
         /// </summary>
-        /// <param name="context">Database context</param>
-        public VirtualKeyMaintenanceService(ConfigurationDbContext context)
+        /// <param name="virtualKeyRepository">The virtual key repository</param>
+        /// <param name="spendHistoryRepository">The virtual key spend history repository</param>
+        /// <param name="logger">The logger</param>
+        public VirtualKeyMaintenanceService(
+            IVirtualKeyRepository virtualKeyRepository,
+            IVirtualKeySpendHistoryRepository spendHistoryRepository,
+            ILogger<VirtualKeyMaintenanceService> logger)
         {
-            _context = context;
+            _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
+            _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         /// <summary>
@@ -30,130 +40,90 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         public async Task ProcessBudgetResetsAsync()
         {
-            var now = DateTime.UtcNow;
-            
-            // Use projection to retrieve only necessary fields for active keys needing potential resets
-            var keysToCheck = await _context.VirtualKeys
-                .AsNoTracking()
-                .Where(k => k.IsEnabled)
-                .Where(k => k.BudgetDuration != null)
-                .Select(k => new
-                {
-                    k.Id,
-                    k.BudgetDuration,
-                    k.BudgetStartDate,
-                    k.CurrentSpend
-                })
-                .ToListAsync();
-                
-            if (!keysToCheck.Any())
-            {
-                return;
-            }
-            
-            var keysToReset = new List<int>();
-            var spendHistory = new List<VirtualKeySpendHistory>();
-            
-            // Determine which keys need resetting
-            foreach (var key in keysToCheck)
-            {
-                bool shouldReset = false;
-                
-                switch (key.BudgetDuration?.ToLower())
-                {
-                    case "daily":
-                        // Reset if the day has changed
-                        shouldReset = key.BudgetStartDate?.Date < now.Date;
-                        break;
-                        
-                    case "monthly":
-                        // Reset if the month or year has changed
-                        shouldReset = key.BudgetStartDate?.Month != now.Month || 
-                                     key.BudgetStartDate?.Year != now.Year;
-                        break;
-                    
-                    // Add more budget periods as needed
-                }
-                
-                if (shouldReset)
-                {
-                    keysToReset.Add(key.Id);
-                    
-                    // Create history record
-                    spendHistory.Add(new VirtualKeySpendHistory
-                    {
-                        VirtualKeyId = key.Id,
-                        Amount = key.CurrentSpend,
-                        Date = key.BudgetStartDate ?? now
-                    });
-                }
-            }
-            
-            if (!keysToReset.Any())
-            {
-                return;
-            }
-            
-            // Check if the database provider supports transactions
-            bool supportsTransactions = !(_context.Database.ProviderName?.Contains("InMemory") ?? false);
-            
-            // Create the transaction only if supported
-            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-            if (supportsTransactions)
-            {
-                transaction = await _context.Database.BeginTransactionAsync();
-            }
-            
             try
             {
-                // Add spend history records in batch
-                await _context.VirtualKeySpendHistory.AddRangeAsync(spendHistory);
+                var now = DateTime.UtcNow;
                 
-                // Update keys in batches to reset spending
-                // This is more efficient than updating one by one
-                if (supportsTransactions)
+                // Get all active keys with budget durations
+                var allKeys = await _virtualKeyRepository.GetAllAsync();
+                var keysToCheck = allKeys
+                    .Where(k => k.IsEnabled)
+                    .Where(k => !string.IsNullOrEmpty(k.BudgetDuration))
+                    .ToList();
+                    
+                if (!keysToCheck.Any())
                 {
-                    // Use SQL for relational databases
-                    await _context.Database.ExecuteSqlRawAsync(
-                        $"UPDATE VirtualKeys SET CurrentSpend = 0, BudgetStartDate = '{now:yyyy-MM-dd HH:mm:ss}', UpdatedAt = '{now:yyyy-MM-dd HH:mm:ss}' " + 
-                        $"WHERE Id IN ({string.Join(",", keysToReset)})");
+                    return;
                 }
-                else
+                
+                var keysToReset = new List<VirtualKey>();
+                var spendHistory = new List<VirtualKeySpendHistory>();
+                
+                // Determine which keys need resetting
+                foreach (var key in keysToCheck)
                 {
-                    // For in-memory database, update each entity directly
-                    var keysToUpdate = await _context.VirtualKeys
-                        .Where(k => keysToReset.Contains(k.Id))
-                        .ToListAsync();
-                        
-                    foreach (var key in keysToUpdate)
+                    bool shouldReset = false;
+                    
+                    switch (key.BudgetDuration?.ToLower())
                     {
-                        key.CurrentSpend = 0;
-                        key.BudgetStartDate = now;
-                        key.UpdatedAt = now;
+                        case "daily":
+                            // Reset if the day has changed
+                            shouldReset = key.BudgetStartDate?.Date < now.Date;
+                            break;
+                            
+                        case "monthly":
+                            // Reset if the month or year has changed
+                            shouldReset = key.BudgetStartDate?.Month != now.Month || 
+                                        key.BudgetStartDate?.Year != now.Year;
+                            break;
+                        
+                        // Add more budget periods as needed
+                    }
+                    
+                    if (shouldReset)
+                    {
+                        keysToReset.Add(key);
+                        
+                        // Create history record
+                        spendHistory.Add(new VirtualKeySpendHistory
+                        {
+                            VirtualKeyId = key.Id,
+                            Amount = key.CurrentSpend,
+                            Timestamp = key.BudgetStartDate ?? now
+                        });
                     }
                 }
                 
-                await _context.SaveChangesAsync();
+                if (!keysToReset.Any())
+                {
+                    return;
+                }
                 
-                if (transaction != null)
+                _logger.LogInformation("Processing budget resets for {Count} virtual keys", keysToReset.Count);
+                
+                // Add spend history records
+                foreach (var history in spendHistory)
                 {
-                    await transaction.CommitAsync();
+                    await _spendHistoryRepository.CreateAsync(history);
                 }
+                
+                // Update keys to reset spending
+                foreach (var key in keysToReset)
+                {
+                    // Reset the spending
+                    key.CurrentSpend = 0;
+                    key.BudgetStartDate = now;
+                    key.UpdatedAt = now;
+                    
+                    await _virtualKeyRepository.UpdateAsync(key);
+                }
+                
+                _logger.LogInformation("Successfully processed budget resets for {Count} virtual keys", keysToReset.Count);
             }
-            catch
+            catch (Exception ex)
             {
-                if (transaction != null)
-                {
-                    await transaction.RollbackAsync();
-                }
+                _logger.LogError(ex, "Error processing budget resets for virtual keys");
                 throw;
-            }
-            finally
-            {
-                if (transaction != null)
-                {
-                    await transaction.DisposeAsync();
-                }
             }
         }
         
@@ -162,75 +132,39 @@ namespace ConduitLLM.Configuration.Services
         /// </summary>
         public async Task DisableExpiredKeysAsync()
         {
-            var now = DateTime.UtcNow;
-            
-            // Get only the IDs of expired keys that are currently active
-            var expiredKeyIds = await _context.VirtualKeys
-                .AsNoTracking()
-                .Where(k => k.IsEnabled)
-                .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)
-                .Select(k => k.Id)
-                .ToListAsync();
-                
-            if (!expiredKeyIds.Any())
-            {
-                return;
-            }
-            
-            // Check if the database provider supports transactions
-            bool supportsTransactions = !(_context.Database.ProviderName?.Contains("InMemory") ?? false);
-            
-            // Create the transaction only if supported
-            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-            if (supportsTransactions)
-            {
-                transaction = await _context.Database.BeginTransactionAsync();
-            }
-            
             try
             {
-                if (supportsTransactions)
+                var now = DateTime.UtcNow;
+                
+                // Get all active keys with expiration dates that have passed
+                var allKeys = await _virtualKeyRepository.GetAllAsync();
+                var expiredKeys = allKeys
+                    .Where(k => k.IsEnabled)
+                    .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)
+                    .ToList();
+                    
+                if (!expiredKeys.Any())
                 {
-                    // Use SQL for relational databases
-                    await _context.Database.ExecuteSqlRawAsync(
-                        $"UPDATE VirtualKeys SET IsEnabled = 0, UpdatedAt = '{now:yyyy-MM-dd HH:mm:ss}' " + 
-                        $"WHERE Id IN ({string.Join(",", expiredKeyIds)})");
-                }
-                else
-                {
-                    // For in-memory database, update each entity directly
-                    var keysToUpdate = await _context.VirtualKeys
-                        .Where(k => expiredKeyIds.Contains(k.Id))
-                        .ToListAsync();
-                        
-                    foreach (var key in keysToUpdate)
-                    {
-                        key.IsEnabled = false;
-                        key.UpdatedAt = now;
-                    }
+                    return;
                 }
                 
-                await _context.SaveChangesAsync();
+                _logger.LogInformation("Disabling {Count} expired virtual keys", expiredKeys.Count);
                 
-                if (transaction != null)
+                // Update keys to disable them
+                foreach (var key in expiredKeys)
                 {
-                    await transaction.CommitAsync();
+                    key.IsEnabled = false;
+                    key.UpdatedAt = now;
+                    
+                    await _virtualKeyRepository.UpdateAsync(key);
                 }
+                
+                _logger.LogInformation("Successfully disabled {Count} expired virtual keys", expiredKeys.Count);
             }
-            catch
+            catch (Exception ex)
             {
-                if (transaction != null)
-                {
-                    await transaction.RollbackAsync();
-                }
+                _logger.LogError(ex, "Error disabling expired virtual keys");
                 throw;
-            }
-            finally
-            {
-                if (transaction != null)
-                {
-                    await transaction.DisposeAsync();
-                }
             }
         }
         
@@ -241,13 +175,25 @@ namespace ConduitLLM.Configuration.Services
         /// <returns>List of key IDs approaching budget limits</returns>
         public async Task<List<int>> GetKeysApproachingBudgetLimitAsync(int thresholdPercentage = 90)
         {
-            return await _context.VirtualKeys
-                .AsNoTracking()
-                .Where(k => k.IsEnabled)
-                .Where(k => k.MaxBudget.HasValue && k.MaxBudget.Value > 0)
-                .Where(k => k.MaxBudget.HasValue && (k.CurrentSpend / k.MaxBudget.Value) * 100 >= thresholdPercentage)
-                .Select(k => k.Id)
-                .ToListAsync();
+            try
+            {
+                // Convert percentage to decimal (e.g., 90% -> 0.9)
+                decimal thresholdDecimal = thresholdPercentage / 100m;
+                
+                // Get all active keys with budget limits
+                var allKeys = await _virtualKeyRepository.GetAllAsync();
+                return allKeys
+                    .Where(k => k.IsEnabled)
+                    .Where(k => k.MaxBudget.HasValue && k.MaxBudget.Value > 0)
+                    .Where(k => (k.CurrentSpend / k.MaxBudget!.Value) >= thresholdDecimal)
+                    .Select(k => k.Id)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking keys approaching budget limit of {ThresholdPercentage}%", thresholdPercentage);
+                throw;
+            }
         }
     }
 }

@@ -87,5 +87,66 @@ public class ChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ToolChoice? ToolChoice { get; set; }
 
-    // Add other common parameters as needed (e.g., presence_penalty, frequency_penalty, logit_bias)
+    /// <summary>
+    /// Specifies the format that the model must output.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This property allows you to control the format of the model's response. For example,
+    /// you can request the model to respond with valid JSON by setting ResponseFormat.Type to "json_object".
+    /// </para>
+    /// <para>
+    /// See <see cref="ResponseFormat"/> for details on available format options.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Request JSON response
+    /// var request = new ChatCompletionRequest 
+    /// {
+    ///     // ... other properties
+    ///     ResponseFormat = ResponseFormat.Json()
+    /// };
+    /// </code>
+    /// </example>
+    [JsonPropertyName("response_format")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ResponseFormat? ResponseFormat { get; set; }
+    
+    /// <summary>
+    /// A random number seed for deterministic outputs.
+    /// </summary>
+    [JsonPropertyName("seed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Seed { get; set; }
+    
+    /// <summary>
+    /// Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear 
+    /// in the text so far, increasing the model's likelihood to talk about new topics.
+    /// </summary>
+    [JsonPropertyName("presence_penalty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? PresencePenalty { get; set; }
+    
+    /// <summary>
+    /// Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing 
+    /// frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+    /// </summary>
+    [JsonPropertyName("frequency_penalty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? FrequencyPenalty { get; set; }
+    
+    /// <summary>
+    /// Modify the likelihood of specified tokens appearing in the completion.
+    /// </summary>
+    [JsonPropertyName("logit_bias")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, int>? LogitBias { get; set; }
+    
+    /// <summary>
+    /// The system fingerprint, a unique identifier for the configuration used by OpenAI systems for this request.
+    /// </summary>
+    [JsonPropertyName("system_fingerprint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SystemFingerprint { get; set; }
 }

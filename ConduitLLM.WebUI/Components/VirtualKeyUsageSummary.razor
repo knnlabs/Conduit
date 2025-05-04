@@ -5,150 +5,122 @@
 @inject IVirtualKeyService VirtualKeyService
 @inject ILogger<VirtualKeyUsageSummary> Logger
 
-<div class="card shadow-sm mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Virtual Key Usage</h5>
-        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
+<MudPaper Elevation="2" Class="mb-4">
+    <div class="d-flex justify-space-between align-center pa-4">
+        <MudText Typo="Typo.h6">Virtual Key Usage</MudText>
+        <MudButton 
+            Variant="Variant.Outlined" 
+            Size="Size.Small" 
+            Color="Color.Secondary" 
+            StartIcon="@Icons.Material.Filled.Refresh" 
+            OnClick="RefreshData">
+            Refresh
+        </MudButton>
     </div>
-    <div class="card-body">
+    
+    <MudDivider />
+    
+    <div class="pa-4">
         @if (isLoading)
         {
-            <div class="text-center p-3">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Loading key usage data...</p>
+            <div class="d-flex flex-column align-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Medium" />
+                <MudText Class="mt-3">Loading key usage data...</MudText>
             </div>
         }
         else if (errorMessage != null)
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
         }
         else if (keyStats == null || keyStats.TotalKeys == 0)
         {
-            <div class="text-center p-3">
-                <i class="bi bi-key text-muted" style="font-size: 2rem;"></i>
-                <p class="mt-2">No virtual keys created yet.</p>
-                <a href="/virtualkeys" class="btn btn-primary">Manage Virtual Keys</a>
+            <div class="d-flex flex-column align-center pa-4">
+                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Color="Color.Default" Size="Size.Large" />
+                <MudText Class="mt-3 mb-3">No virtual keys created yet.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/virtualkeys">Manage Virtual Keys</MudButton>
             </div>
         }
         else
         {
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <div class="card border-0 bg-light h-100">
-                        <div class="card-body text-center">
-                            <h3 class="mb-0">@keyStats.TotalKeys</h3>
-                            <p class="text-muted">Total Keys</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-0 bg-light h-100">
-                        <div class="card-body text-center">
-                            <h3 class="mb-0">@keyStats.ActiveKeys</h3>
-                            <p class="text-muted">Active Keys</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-0 bg-light h-100">
-                        <div class="card-body text-center">
-                            <h3 class="mb-0">@FormatCurrency(keyStats.TotalSpending)</h3>
-                            <p class="text-muted">Total Spend</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
+                        <MudText Typo="Typo.h4">@keyStats.TotalKeys</MudText>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Keys</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
+                        <MudText Typo="Typo.h4">@keyStats.ActiveKeys</MudText>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Active Keys</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
+                        <MudText Typo="Typo.h4">@FormatCurrency(keyStats.TotalSpending)</MudText>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Spend</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
 
             @if (keyStats.HighUsageKeys.Any())
             {
-                <div class="mt-4">
-                    <h6>High-Usage Keys</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Key Name</th>
-                                    <th>Usage</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var key in keyStats.HighUsageKeys)
-                                {
-                                    var budgetPercentage = key.MaxBudget.HasValue ? (key.CurrentSpend / key.MaxBudget.Value) * 100 : 0;
-                                    var statusClass = budgetPercentage switch {
-                                        >= 90 => "text-danger",
-                                        >= 75 => "text-warning",
-                                        _ => "text-success"
-                                    };
-
-                                    <tr>
-                                        <td><a href="/virtualkeys/edit/@key.Id">@key.KeyName</a></td>
-                                        <td>
-                                            @if (key.MaxBudget.HasValue)
-                                            {
-                                                <div>
-                                                    @FormatCurrency(key.CurrentSpend) / @FormatCurrency(key.MaxBudget.Value)
-                                                    <div class="progress mt-1" style="height: 4px;">
-                                                        <div class="progress-bar @GetProgressBarColorClass(budgetPercentage)" 
-                                                             role="progressbar" 
-                                                             style="width: @Math.Min(budgetPercentage, 100)%;" 
-                                                             aria-valuenow="@budgetPercentage" 
-                                                             aria-valuemin="0" 
-                                                             aria-valuemax="100">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <span>@FormatCurrency(key.CurrentSpend) (No limit)</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (!key.IsEnabled)
-                                            {
-                                                <span class="badge bg-danger">Disabled</span>
-                                            }
-                                            else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTime.UtcNow)
-                                            {
-                                                <span class="badge bg-secondary">Expired</span>
-                                            }
-                                            else if (key.MaxBudget.HasValue && key.CurrentSpend >= key.MaxBudget.Value)
-                                            {
-                                                <span class="badge bg-danger">Budget Depleted</span>
-                                            }
-                                            else if (budgetPercentage >= 90)
-                                            {
-                                                <span class="badge bg-danger">@Math.Round(budgetPercentage)% Used</span>
-                                            }
-                                            else if (budgetPercentage >= 75)
-                                            {
-                                                <span class="badge bg-warning">@Math.Round(budgetPercentage)% Used</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-success">Active</span>
-                                            }
-                                        </td>
-                                    </tr>
+                <div class="mt-6">
+                    <MudText Typo="Typo.h6" Class="mb-3">High-Usage Keys</MudText>
+                    <MudTable Items="@keyStats.HighUsageKeys" Hover="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Key Name</MudTh>
+                            <MudTh>Usage</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Key Name">
+                                <MudLink Href="@($"/virtualkeys/edit/{context.Id}")">@context.KeyName</MudLink>
+                            </MudTd>
+                            <MudTd DataLabel="Usage">
+                                @{
+                                    var budgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
+                                    var statusColor = GetBudgetStatusColor(budgetPercentage);
                                 }
-                            </tbody>
-                        </table>
-                    </div>
+                                
+                                @if (context.MaxBudget.HasValue)
+                                {
+                                    <div>
+                                        <div class="d-flex justify-space-between">
+                                            <MudText Typo="Typo.caption">@FormatCurrency(context.CurrentSpend)</MudText>
+                                            <MudText Typo="Typo.caption">@FormatCurrency(context.MaxBudget.Value)</MudText>
+                                        </div>
+                                        <MudProgressLinear 
+                                            Color="@statusColor" 
+                                            Value="@(Convert.ToDouble(Math.Min(budgetPercentage, 100m)))" 
+                                            Class="my-1" 
+                                            Style="height: 4px;" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudText>@FormatCurrency(context.CurrentSpend) (No limit)</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @{
+                                    var budgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
+                                    var statusColor = GetBudgetStatusColor(budgetPercentage);
+                                    var statusText = GetStatusText(context, budgetPercentage);
+                                }
+                                <MudChip T="string" Size="Size.Small" Color="@statusColor" Label="true">@statusText</MudChip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </div>
             }
 
-            <div class="d-flex justify-content-end mt-3">
-                <a href="/virtualkeys" class="btn btn-outline-primary">View All Keys</a>
+            <div class="d-flex justify-end mt-6">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/virtualkeys">View All Keys</MudButton>
             </div>
         }
     </div>
-</div>
+</MudPaper>
 
 @code {
     private bool isLoading = true;
@@ -211,6 +183,32 @@
             >= 75 => "bg-warning",
             _ => "bg-success"
         };
+    }
+    
+    private Color GetBudgetStatusColor(decimal percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => Color.Error,
+            >= 75 => Color.Warning,
+            _ => Color.Success
+        };
+    }
+    
+    private string GetStatusText(VirtualKeyDto key, decimal budgetPercentage)
+    {
+        if (!key.IsEnabled)
+            return "Disabled";
+        else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTime.UtcNow)
+            return "Expired";
+        else if (key.MaxBudget.HasValue && key.CurrentSpend >= key.MaxBudget.Value)
+            return "Budget Depleted";
+        else if (budgetPercentage >= 90)
+            return $"{Math.Round(budgetPercentage)}% Used";
+        else if (budgetPercentage >= 75)
+            return $"{Math.Round(budgetPercentage)}% Used";
+        else
+            return "Active";
     }
 
     private class VirtualKeyStats

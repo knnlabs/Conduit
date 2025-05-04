@@ -4,29 +4,90 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ConduitLLM.Configuration.Entities;
 
+/// <summary>
+/// Represents cost configuration for a specific model or model pattern in the system.
+/// This entity stores pricing information for different operations (input/output tokens, embeddings, images).
+/// </summary>
+/// <remarks>
+/// ModelCost entities are used for cost calculation and budget tracking, with support for wildcard patterns
+/// to match model names. The pricing information is used to calculate costs for each request processed
+/// through the system, enabling detailed cost reporting and budget management.
+/// </remarks>
 public class ModelCost
 {
+    /// <summary>
+    /// Gets or sets the unique identifier for the model cost entry.
+    /// </summary>
     [Key]
     public int Id { get; set; }
 
+    /// <summary>
+    /// Gets or sets the model identification pattern, which can include wildcards.
+    /// </summary>
+    /// <remarks>
+    /// Examples: "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+    /// The pattern is used to match against model names for cost calculation,
+    /// with support for * wildcard to match multiple models with similar names.
+    /// </remarks>
     [Required]
-    [MaxLength(255)] // Adjust length as needed
-    public string ModelIdPattern { get; set; } = string.Empty; // e.g., "openai/gpt-4o", "anthropic.claude-3*", "*-embedding-*"
+    [MaxLength(255)]
+    public string ModelIdPattern { get; set; } = string.Empty;
 
-    [Column(TypeName = "decimal(18, 10)")] // High precision for costs
-    public decimal InputTokenCost { get; set; } = 0; // Cost per input token (chat/completion)
-
+    /// <summary>
+    /// Gets or sets the cost per input token for chat/completion requests.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing each input token.
+    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal OutputTokenCost { get; set; } = 0; // Cost per output token (chat/completion)
+    public decimal InputTokenCost { get; set; } = 0;
 
+    /// <summary>
+    /// Gets or sets the cost per output token for chat/completion requests.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for generating each output token.
+    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// </remarks>
     [Column(TypeName = "decimal(18, 10)")]
-    public decimal? EmbeddingTokenCost { get; set; } // Cost per token (embeddings) - nullable if not applicable
+    public decimal OutputTokenCost { get; set; } = 0;
 
-    [Column(TypeName = "decimal(18, 4)")] // Cost per image
-    public decimal? ImageCostPerImage { get; set; } // Cost per generated image - nullable if not applicable
+    /// <summary>
+    /// Gets or sets the cost per token for embedding requests, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing each token in embedding requests.
+    /// Nullable because not all models support embedding operations.
+    /// Stored with high precision (decimal 18,10) to accommodate very small per-token costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 10)")]
+    public decimal? EmbeddingTokenCost { get; set; }
 
+    /// <summary>
+    /// Gets or sets the cost per image for image generation requests, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for generating each image.
+    /// Nullable because not all models support image generation.
+    /// Stored with moderate precision (decimal 18,4) as image costs are typically higher than token costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? ImageCostPerImage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the creation timestamp of this cost record.
+    /// </summary>
+    /// <remarks>
+    /// Automatically set to UTC time when a new record is created.
+    /// </remarks>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Consider adding an index on ModelIdPattern in the DbContext configuration for faster lookups
+    /// <summary>
+    /// Gets or sets the last update timestamp of this cost record.
+    /// </summary>
+    /// <remarks>
+    /// Should be updated whenever the cost record is modified.
+    /// </remarks>
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

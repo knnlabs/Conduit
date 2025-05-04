@@ -20,15 +20,15 @@
 @inject VirtualKeyService VirtualKeyService
 @rendermode InteractiveServer
 
-<h1>@(Id.HasValue ? "Edit Mapping" : "Add Mapping")</h1>
+<MudText Typo="Typo.h3" Class="mb-4">@(Id.HasValue ? "Edit Mapping" : "Add Mapping")</MudText>
 
 @if (isLoadingPage)
 {
-    <p><em>Loading...</em></p>
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
 }
 else if (Id.HasValue && dtoMapping == null)
 {
-     <p class="text-danger">Mapping not found or error loading.</p>
+    <MudAlert Severity="Severity.Error">Mapping not found or error loading.</MudAlert>
 }
 else
 {
@@ -40,90 +40,126 @@ else
         @* Display general errors above the form *@
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
         }
 
-         <div class="mb-3">
-            <label for="modelAlias" class="form-label">Model Alias:</label>
-            <InputText id="modelAlias" @bind-Value="dtoMapping.ModelAlias" class="form-control" />
-            <ValidationMessage For="@(() => dtoMapping.ModelAlias)" />
-        </div>
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudTextField 
+                T="string" 
+                Label="Model Alias" 
+                @bind-Value="dtoMapping.ModelAlias" 
+                For="@(() => dtoMapping.ModelAlias)"
+                Variant="Variant.Outlined"
+                Class="mb-4" />
 
-        <div class="mb-3">
-            <label for="providerName" class="form-label">Provider Name:</label>
             @if (availableProviders == null)
             {
-                 <p><em>Loading providers...</em></p>
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ml-2">Loading providers...</MudText>
             }
             else
             {
-                <InputSelect id="providerName" @bind-Value="dtoMapping.ProviderName" class="form-select" @oninput="ProviderSelected"> @* Added oninput handler *@
-                    <option value="">-- Select Provider --</option>
+                <MudSelect 
+                    T="string" 
+                    Label="Provider Name" 
+                    Value="dtoMapping.ProviderName"
+                    For="@(() => dtoMapping.ProviderName)"
+                    Variant="Variant.Outlined"
+                    Class="mb-4" 
+                    ValueChanged="@(async (string val) => await ProviderSelectedAsync(val))">
+                    <MudSelectItem Value="@("")">-- Select Provider --</MudSelectItem>
                     @foreach (var provider in availableProviders)
                     {
-                        <option value="@provider.ProviderName">@provider.ProviderName</option> @* Display only ProviderName *@
+                        <MudSelectItem Value="@provider.ProviderName">@provider.ProviderName</MudSelectItem>
                     }
-                </InputSelect>
-                <ValidationMessage For="@(() => dtoMapping.ProviderName)" />
+                </MudSelect>
             }
-        </div>
 
-        <div class="mb-3">
-            <label for="providerModelId" class="form-label">Provider Model ID:</label>
-            <div class="input-group">
-                <InputSelect id="providerModelId" @bind-Value="dtoMapping.ProviderModelId" class="form-select" 
-                             disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
-                             @oninput="ProviderModelSelected">
-                    @if (isLoadingModels)
-                    {
-                        <option value="">Loading models...</option>
-                    }
-                    else if (providerModels == null || !providerModels.Any())
-                    {
-                         <option value="">@(string.IsNullOrEmpty(dtoMapping.ProviderName) ? "Select provider first" : "No models found or error")</option>
-                    }
-                    else
-                    {
-                        <option value="">-- Select Model --</option>
-                        @foreach (var modelId in providerModels.OrderBy(m => m))
+            <div class="d-flex align-center gap-2 mb-4">
+                <div class="flex-grow-1">
+                    <MudSelect T="string" 
+                              Label="Provider Model ID" 
+                              Value="dtoMapping.ProviderModelId"
+                              For="@(() => dtoMapping.ProviderModelId)"
+                              Variant="Variant.Outlined"
+                              Disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
+                              ValueChanged="@((string val) => ProviderModelSelected(val))">
+                        @if (isLoadingModels)
                         {
-                            <option value="@modelId">@modelId</option>
+                            <MudSelectItem Disabled="true" Value="@string.Empty">
+                                <div class="d-flex align-center">
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    Loading models...
+                                </div>
+                            </MudSelectItem>
                         }
+                        else if (providerModels == null || !providerModels.Any())
+                        {
+                            <MudSelectItem Disabled="true" Value="@string.Empty">
+                                @(string.IsNullOrEmpty(dtoMapping.ProviderName) ? "Select provider first" : "No models found or error")
+                            </MudSelectItem>
+                        }
+                        else
+                        {
+                            <MudSelectItem Value="@string.Empty">-- Select Model --</MudSelectItem>
+                            @foreach (var modelId in providerModels.OrderBy(m => m))
+                            {
+                                <MudSelectItem Value="@modelId">@modelId</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                    @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">@modelLoadErrorMessage</MudText>
                     }
-                </InputSelect>
-                <button class="btn btn-primary refresh-button" type="button" @onclick="() => RefreshModels(true)" disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))" title="Refresh Model List">
+                </div>
+                <MudButton 
+                    Variant="Variant.Filled" 
+                    Color="Color.Primary"
+                    OnClick="@(() => RefreshModels(true))"
+                    Disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
+                    StartIcon="@Icons.Material.Filled.Refresh"
+                    Style="margin-top: 6px;">
                     @if (isLoadingModels)
                     {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span class="visually-hidden">Loading...</span>
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span class="d-none d-sm-inline">Loading...</span>
                     }
                     else
                     {
-                        <span class="oi oi-reload" aria-hidden="true"></span>
-                        <span class="ms-1 d-none d-sm-inline">Refresh Models</span>
+                        <span class="d-none d-sm-inline">Refresh Models</span>
                     }
-                </button>
+                </MudButton>
             </div>
-             @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
-            {
-                <div class="text-danger small mt-1">@modelLoadErrorMessage</div>
-            }
-            <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
+
+        </MudPaper>
+            
+        <div class="d-flex gap-2 mt-4">
+            <MudButton 
+                ButtonType="ButtonType.Submit" 
+                Variant="Variant.Filled" 
+                Color="Color.Primary" 
+                Disabled="@isSaving"
+                StartIcon="@Icons.Material.Filled.Save">
+                @if (isSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>Save Mapping</span>
+                }
+            </MudButton>
+            
+            <MudButton 
+                Variant="Variant.Outlined" 
+                Color="Color.Secondary" 
+                OnClick="Cancel" 
+                Disabled="@isSaving">
+                Cancel
+            </MudButton>
         </div>
-
-
-        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-             @if (isSaving)
-            {
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                <span class="visually-hidden">Saving...</span>
-            }
-            else
-            {
-                <span>Save Mapping</span>
-            }
-        </button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@isSaving">Cancel</button>
 
         @* General error message moved above the form *@
     </EditForm>
@@ -300,10 +336,8 @@ else
         }
     }
 
-    private async Task ProviderSelected(ChangeEventArgs e)
+    private async Task ProviderSelectedAsync(string selectedProvider)
     {
-        string? selectedProvider = e.Value?.ToString();
-        
         if (string.IsNullOrEmpty(selectedProvider))
         {
             // Clear provider models if no provider selected
@@ -322,9 +356,8 @@ else
         }
     }
 
-    private void ProviderModelSelected(ChangeEventArgs e)
+    private void ProviderModelSelected(string selectedModel)
     {
-        string? selectedModel = e.Value?.ToString();
         dtoMapping.ProviderModelId = selectedModel ?? "";
     }
 
@@ -477,8 +510,3 @@ else
     }
 }
 
-<style>
-    .refresh-button .oi-reload {
-        color: var(--bs-primary);
-    }
-</style>

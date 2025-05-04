@@ -39,6 +39,11 @@ namespace ConduitLLM.Configuration
         /// Database set for virtual key spend history
         /// </summary>
         public DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for virtual key spend history (alias for backward compatibility)
+        /// </summary>
+        public DbSet<VirtualKeySpendHistory> VirtualKeySpendHistories => VirtualKeySpendHistory;
 
         /// <summary>
         /// Database set for notifications
@@ -69,6 +74,11 @@ namespace ConduitLLM.Configuration
         /// Database set for router configurations
         /// </summary>
         public DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
+        
+        /// <summary>
+        /// Database set for router configurations (alias for backward compatibility)
+        /// </summary>
+        public DbSet<RouterConfigEntity> RouterConfigs => RouterConfigurations;
 
         /// <summary>
         /// Database set for model deployments

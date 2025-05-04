@@ -12,25 +12,95 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Service to manage context window sizes in LLM requests by trimming messages to fit within token limits.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The ContextManager provides intelligent message trimming to ensure that LLM requests stay 
+    /// within the maximum context window size of the model being used. This prevents token limit
+    /// errors that would otherwise cause requests to fail.
+    /// </para>
+    /// <para>
+    /// Key features:
+    /// - Preserves system messages for maintaining crucial instructions
+    /// - Removes oldest non-system messages first to preserve recent conversation context
+    /// - Ensures enough tokens are reserved for completion generation
+    /// - Handles multimodal content appropriately
+    /// </para>
+    /// <para>
+    /// The service integrates with the token counting system to accurately estimate token usage
+    /// for different model types.
+    /// </para>
+    /// </remarks>
     public class ContextManager : IContextManager
     {
         private readonly ITokenCounter _tokenCounter;
         private readonly ILogger<ContextManager> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ContextManager"/> class.
+        /// </summary>
+        /// <param name="tokenCounter">The token counter service used for estimating token usage.</param>
+        /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <exception cref="ArgumentNullException">Thrown when tokenCounter or logger is null.</exception>
         public ContextManager(ITokenCounter tokenCounter, ILogger<ContextManager> logger)
         {
-            _tokenCounter = tokenCounter;
-            _logger = logger;
+            _tokenCounter = tokenCounter ?? throw new ArgumentNullException(nameof(tokenCounter));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Manages the context window size by trimming messages if needed to fit within the token limit.
+        /// </summary>
+        /// <param name="request">The original chat completion request.</param>
+        /// <param name="maxContextTokens">The maximum context window size in tokens.</param>
+        /// <returns>
+        /// A potentially new request object with trimmed messages that fit within the token limit.
+        /// If no trimming is needed, the original request is returned.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method follows these steps to manage the context window:
+        /// </para>
+        /// <list type="number">
+        /// <item>
+        ///   <description>Calculates the current token count for all messages</description>
+        /// </item>
+        /// <item>
+        ///   <description>Reserves tokens for the completion based on MaxTokens in the request</description>
+        /// </item>
+        /// <item>
+        ///   <description>If the current token count exceeds the available context tokens, begins trimming</description>
+        /// </item>
+        /// <item>
+        ///   <description>Removes the oldest non-system messages first</description>
+        /// </item>
+        /// <item>
+        ///   <description>Re-calculates token count after each removal</description>
+        /// </item>
+        /// <item>
+        ///   <description>Creates a new request with the trimmed message list if any messages were removed</description>
+        /// </item>
+        /// </list>
+        /// <para>
+        /// System messages are preserved to maintain crucial instructions, and the method ensures
+        /// a minimum context size (100 tokens) is always available regardless of the completion token
+        /// reservation.
+        /// </para>
+        /// </remarks>
         public async Task<ChatCompletionRequest> ManageContextAsync(ChatCompletionRequest request, int? maxContextTokens)
         {
+            // Validate inputs
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+            
+            // Early exit conditions
             if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || !request.Messages.Any())
             {
                 return request; // Nothing to do if no limit or no messages
             }
 
+            // Get the current token count using the token counter
             int currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages);
 
             // Account for completion tokens if MaxTokens is specified in the request
@@ -47,6 +117,7 @@ namespace ConduitLLM.Core.Services
                 availableContextTokens = 100; // Minimum reasonable context window
             }
 
+            // Check if we need to trim messages
             if (currentTokens <= availableContextTokens)
             {
                 return request; // Already within limits
@@ -79,6 +150,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
+                // Check if we have non-system messages to remove
                 if (indexToRemove == -1)
                 {
                     // Only system messages left, but still over limit
@@ -126,7 +198,11 @@ namespace ConduitLLM.Core.Services
                     N = request.N,
                     Stream = request.Stream,
                     Stop = request.Stop,
-                    User = request.User
+                    User = request.User,
+                    Tools = request.Tools,
+                    ToolChoice = request.ToolChoice,
+                    ResponseFormat = request.ResponseFormat,
+                    Seed = request.Seed
                 };
                 
                 return newRequest;
@@ -139,6 +215,24 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets a preview of message content, handling both string and multimodal content.
         /// </summary>
+        /// <param name="content">The message content object, which can be a string, JSON, or other content type.</param>
+        /// <param name="maxLength">The maximum length of the preview text.</param>
+        /// <returns>A string representation of the content, truncated if necessary.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method handles various content types that can appear in messages:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description>Simple string content</description></item>
+        /// <item><description>JsonElement objects (common when deserialized from JSON)</description></item>
+        /// <item><description>Multimodal content (arrays of content blocks)</description></item>
+        /// <item><description>Other object types that can be serialized to JSON</description></item>
+        /// </list>
+        /// <para>
+        /// The preview is truncated to the specified maxLength and ellipsis ("...") is added
+        /// to indicate truncation.
+        /// </para>
+        /// </remarks>
         private string GetContentPreview(object? content, int maxLength)
         {
             if (content == null)

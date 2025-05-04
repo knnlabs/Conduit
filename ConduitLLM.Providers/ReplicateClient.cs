@@ -5,165 +5,781 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
-using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels; // Assuming ReplicateModels.cs will be populated here
+using ConduitLLM.Providers.InternalModels;
 
-using Microsoft.Extensions.Logging;
-
-namespace ConduitLLM.Providers;
-
-/// <summary>
-/// Client for interacting with Replicate APIs.
-/// Handles the asynchronous prediction workflow (start, poll, get result).
-/// </summary>
-public class ReplicateClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ProviderCredentials _credentials;
-    private readonly string _providerModelId; // Replicate model version ID
-    private readonly ILogger<ReplicateClient> _logger;
-    private readonly string _providerName = "replicate";
-
-    // Default base URL for Replicate API
-    private const string DefaultReplicateApiBase = "https://api.replicate.com/v1/";
-    private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2); // How often to check prediction status
-
-    public ReplicateClient(
-        ProviderCredentials credentials,
-        string providerModelId,
-        ILogger<ReplicateClient> logger,
-        IHttpClientFactory httpClientFactory)
+    /// <summary>
+    /// Revised client for interacting with Replicate APIs using the new client hierarchy.
+    /// Handles the asynchronous prediction workflow (start, poll, get result) for various model providers.
+    /// </summary>
+    public class ReplicateClient : CustomProviderClient
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId)); // Should be version ID
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-        {
-            throw new ConfigurationException($"API key is missing for provider '{_providerName}'.");
-        }
-        // ApiBase can be overridden if needed (e.g., for testing or future changes)
-        if (string.IsNullOrWhiteSpace(_credentials.ApiBase))
-        {
-             _logger.LogInformation("Replicate ApiBase not provided, defaulting to {DefaultBase}", DefaultReplicateApiBase);
-        }
-         else
-        {
-              _logger.LogInformation("Using provided Replicate ApiBase: {ApiBase}", _credentials.ApiBase);
-        }
-    }
-
-    private string GetEffectiveApiBase() => string.IsNullOrWhiteSpace(_credentials.ApiBase) ? DefaultReplicateApiBase : _credentials.ApiBase.TrimEnd('/');
-
-    private HttpClient CreateHttpClient(string? apiKeyOverride = null)
-    {
-        var client = _httpClientFactory.CreateClient(_providerName);
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKeyOverride) ? apiKeyOverride : _credentials.ApiKey!;
+        // Default base URL for Replicate API
+        private const string DefaultReplicateApiBase = "https://api.replicate.com/v1/";
         
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", effectiveApiKey);
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-        return client;
-    }
-
-    /// <inheritdoc />
-    public Task<ChatCompletionResponse> CreateChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // TODO: Implement Replicate chat completion logic (using prediction workflow)
-        // 1. Map Core request to ReplicatePredictionRequest.Input (needs definition in ReplicateModels.cs)
-        // 2. Create HttpClient
-        // 3. POST to /predictions with { version: _providerModelId, input: mappedInput }
-        // 4. Handle initial response, get prediction ID and status URL (e.g., response.Urls["get"])
-        // 5. Start polling loop: GET status URL
-        // 6. Check prediction status ("starting", "processing", "succeeded", "failed", "canceled")
-        // 7. If succeeded, map ReplicatePredictionResponse.Output back to Core ChatCompletionResponse
-        // 8. If failed/canceled, throw appropriate exception with error details
-        // 9. Implement delays between polls (e.g., DefaultPollingInterval) respecting cancellationToken
-        _logger.LogWarning("Replicate CreateChatCompletionAsync not implemented.");
-        throw new NotImplementedException("Replicate CreateChatCompletionAsync is not yet implemented.");
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        // TODO: Implement Replicate streaming logic (if supported by the specific model)
-        // 1. Check if the model version supports streaming (Replicate API might indicate this).
-        // 2. If yes: POST to /predictions, potentially with a 'stream: true' parameter in the input.
-        // 3. Get the stream URL from the initial response (e.g., response.Urls["stream"]).
-        // 4. Connect to the stream URL (likely Server-Sent Events).
-        // 5. Process SSE events, map data to Core ChatCompletionChunk.
-        // 6. If streaming not supported or URL not provided, maybe fall back to polling or throw exception.
-        _logger.LogWarning("Replicate StreamChatCompletionAsync not implemented.");
+        // Default polling configuration
+        private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2); 
+        private static readonly TimeSpan MaxPollingDuration = TimeSpan.FromMinutes(10);
         
-        // Add an await operation to make this method truly async
-        await Task.Yield();
-        
-        // No items to yield in this implementation
-        yield break;
-    }
-
-    /// <inheritdoc />
-    public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // Defensive: Check for nulls and unreachable code
-        string _apiBase = GetEffectiveApiBase();
-        // string _apiKey = GetEffectiveApiKey(apiKey);
-
-        if (string.IsNullOrWhiteSpace(_apiBase))
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ReplicateClientRevised"/> class.
+        /// </summary>
+        /// <param name="credentials">The credentials for accessing the Replicate API.</param>
+        /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>
+        /// <param name="logger">The logger to use.</param>
+        /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
+        public ReplicateClient(
+            ProviderCredentials credentials,
+            string providerModelId,
+            ILogger logger,
+            IHttpClientFactory? httpClientFactory = null)
+            : base(
+                credentials,
+                providerModelId,
+                logger,
+                httpClientFactory,
+                "Replicate",
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase)
         {
-            _logger.LogWarning("Replicate API base URL is not configured.");
-            return Task.FromResult(new List<string>()); // Return List<string>
         }
-        // Replicate doesn't offer a simple API endpoint to list all model *versions* accessible via API key.
-        // Model discovery is typically done via the website or specific collection APIs.
-        _logger.LogInformation("Replicate ListModelsAsync is not implemented via API. Returning empty list.");
-        // Returning an empty list as a convention.
-        return Task.FromResult(new List<string>()); // Return List<string>
-        // Alternatively: throw new UnsupportedProviderException("Replicate does not support listing model versions via this API method.");
-    }
+        
+        /// <inheritdoc/>
+        protected override void ValidateCredentials()
+        {
+            base.ValidateCredentials();
+            
+            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
+            {
+                throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
+            }
+        }
+        
+        /// <inheritdoc/>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            // Customize configuration for Replicate - use Token auth
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
+            
+            // Set the base address if not already set
+            if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
+            {
+                client.BaseAddress = new Uri(BaseUrl.TrimEnd('/'));
+            }
+        }
 
-    /// <inheritdoc />
-    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // TODO: Implement Replicate embedding creation (if supported by a model)
-        // This would likely follow the same prediction workflow as chat completion.
-        // 1. Find a Replicate embedding model version ID.
-        // 2. Map Core request to ReplicatePredictionRequest.Input.
-        // 3. POST to /predictions.
-        // 4. Poll status URL.
-        // 5. Map successful ReplicatePredictionResponse.Output to Core EmbeddingResponse.
-        _logger.LogWarning("Replicate CreateEmbeddingAsync not implemented.");
-        throw new NotImplementedException("Replicate CreateEmbeddingAsync is not yet implemented.");
-    }
+        /// <inheritdoc/>
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateChatCompletionAsync");
+            
+            Logger.LogInformation("Creating chat completion with Replicate for model '{ModelId}'", ProviderModelId);
+            
+            try
+            {
+                // Map the request to Replicate format and start prediction
+                var predictionRequest = MapToPredictionRequest(request);
+                var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+                
+                // Poll until prediction completes or fails
+                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                
+                // Process the final result
+                return MapToChatCompletionResponse(finalPrediction, request.Model);
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while processing Replicate chat completion");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+        }
 
-    /// <inheritdoc />
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // TODO: Implement Replicate image generation (using prediction workflow)
-        // 1. Map Core request to ReplicatePredictionRequest.Input (specific to the image model).
-        // 2. Create HttpClient
-        // 3. POST to /predictions with { version: _providerModelId, input: mappedInput }
-        // 4. Handle initial response, get prediction ID and status URL.
-        // 5. Start polling loop: GET status URL.
-        // 6. Check prediction status.
-        // 7. If succeeded, map ReplicatePredictionResponse.Output (likely image URLs) back to Core ImageGenerationResponse.
-        // 8. Handle errors/cancellation.
-        _logger.LogWarning("Replicate CreateImageAsync not implemented.");
-        throw new NotImplementedException("Replicate CreateImageAsync is not yet implemented.");
-    }
+        /// <inheritdoc/>
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "StreamChatCompletionAsync");
+            
+            Logger.LogInformation("Creating streaming chat completion with Replicate for model '{ModelId}'", ProviderModelId);
+            
+            // Variables to hold data outside the try block
+            ReplicatePredictionRequest? predictionRequest = null;
+            ReplicatePredictionResponse? predictionResponse = null;
+            ReplicatePredictionResponse? finalPrediction = null;
+            
+            try
+            {
+                // Replicate doesn't natively support streaming in the common SSE format
+                // Instead, we'll simulate streaming by getting the full response and breaking it into chunks
+                
+                // Start the prediction
+                predictionRequest = MapToPredictionRequest(request);
+                predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred starting Replicate prediction");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+            
+            // First chunk with role "assistant" - outside try block so we can yield
+            yield return CreateChatCompletionChunk(
+                string.Empty, 
+                request.Model, 
+                true, 
+                null, 
+                request.Model);
+            
+            try
+            {
+                // Poll until prediction completes or fails
+                if (predictionResponse != null)
+                {
+                    finalPrediction = await PollPredictionUntilCompletedAsync(
+                        predictionResponse.Id, 
+                        apiKey, 
+                        cancellationToken, 
+                        true); // Set yield progress to true
+                }
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred polling Replicate prediction");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+            
+            // Extract content and yield the result - outside try block
+            if (finalPrediction != null)
+            {
+                var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
+                if (!string.IsNullOrEmpty(content))
+                {
+                    // Yield the content as a chunk
+                    yield return CreateChatCompletionChunk(
+                        content, 
+                        request.Model, 
+                        false, 
+                        "stop", 
+                        request.Model);
+                }
+            }
+        }
 
-     // TODO: Add mapping functions (Core -> Replicate Input, Replicate Output -> Core)
-     // TODO: Add polling logic helper function
-     // TODO: Add error handling specific to Replicate prediction lifecycle
+        /// <inheritdoc/>
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Get a list of selected popular LLM models from Replicate
+                // In a real implementation, this would query the Replicate API for models
+                // However, Replicate doesn't have a simple endpoint for listing all available LLMs
+                // So we return a curated list of known models
+                
+                // This is a simplified implementation - in production, you might want to:
+                // 1. Cache this list and refresh periodically
+                // 2. Query the collections endpoint for more models
+                // 3. Allow administrators to configure which models to include
+                
+                await Task.Delay(1, cancellationToken); // Making this truly async
+                
+                var models = new List<InternalModels.ExtendedModelInfo>
+                {
+                    InternalModels.ExtendedModelInfo.Create(
+                        "meta/llama-3-70b-instruct:a532122398cff93aa48f32d63902fa4545c4fb642f91e3e51bcf5d2f8da23eff",
+                        ProviderName,
+                        "meta/llama-3-70b-instruct:a532122398cff93aa48f32d63902fa4545c4fb642f91e3e51bcf5d2f8da23eff")
+                        .WithName("Llama-3 70B Instruct")
+                        .WithCapabilities(new ModelCapabilities
+                        {
+                            Chat = true,
+                            TextGeneration = true,
+                            Embeddings = false,
+                            ImageGeneration = false
+                        })
+                        .WithTokenLimits(new ModelTokenLimits
+                        {
+                            MaxInputTokens = 32000,
+                            MaxOutputTokens = 4096
+                        }),
+                    
+                    InternalModels.ExtendedModelInfo.Create(
+                        "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590",
+                        ProviderName,
+                        "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590")
+                        .WithName("Llama-3 8B Instruct")
+                        .WithCapabilities(new ModelCapabilities
+                        {
+                            Chat = true,
+                            TextGeneration = true,
+                            Embeddings = false,
+                            ImageGeneration = false
+                        })
+                        .WithTokenLimits(new ModelTokenLimits
+                        {
+                            MaxInputTokens = 16000,
+                            MaxOutputTokens = 4096
+                        }),
+                    
+                    InternalModels.ExtendedModelInfo.Create(
+                        "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82",
+                        ProviderName,
+                        "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82")
+                        .WithName("SDXL 1.0")
+                        .WithCapabilities(new ModelCapabilities
+                        {
+                            Chat = false,
+                            TextGeneration = false,
+                            Embeddings = false,
+                            ImageGeneration = true
+                        })
+                };
+                
+                return models;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while listing Replicate models");
+                throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateEmbeddingAsync");
+            
+            // While Replicate does have embedding models, the implementation would be similar to chat completion
+            // For now, we'll throw NotSupportedException, but this could be implemented in the future
+            Logger.LogWarning("Embeddings are not currently supported by ReplicateClientRevised.");
+            return await Task.FromException<EmbeddingResponse>(
+                new NotSupportedException("Embeddings are not currently supported by ReplicateClientRevised."));
+        }
+
+        /// <inheritdoc/>
+        public override async Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateImageAsync");
+            
+            Logger.LogInformation("Creating image with Replicate for model '{ModelId}'", ProviderModelId);
+            
+            try
+            {
+                // Map the request to Replicate format and start prediction
+                var predictionRequest = MapToImageGenerationRequest(request);
+                var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
+                
+                // Poll until prediction completes or fails
+                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                
+                // Process the final result
+                return MapToImageGenerationResponse(finalPrediction, request.Model);
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while processing Replicate image generation");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+        }
+        
+        #region Helper Methods
+        
+        private ReplicatePredictionRequest MapToPredictionRequest(ChatCompletionRequest request)
+        {
+            // Prepare the input based on the model
+            var input = new Dictionary<string, object>();
+            
+            // For Llama models, handle with the system message format
+            if (ProviderModelId.Contains("llama", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract system message if present
+                var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+                var systemPrompt = systemMessage != null ? systemMessage.Content?.ToString() : null;
+                
+                // Create a list of chat messages for the 'messages' parameter (excluding system)
+                var chatMessages = request.Messages
+                    .Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                    .Select(m => new ReplicateLlamaChatMessage
+                    {
+                        Role = m.Role,
+                        Content = m.Content?.ToString() ?? string.Empty
+                    })
+                    .ToList();
+                
+                // Add the messages to the input
+                input["messages"] = chatMessages;
+                
+                // Add system prompt if present
+                if (!string.IsNullOrEmpty(systemPrompt))
+                {
+                    input["system_prompt"] = systemPrompt;
+                }
+            }
+            else
+            {
+                // For models that expect a simple text prompt, concatenate messages
+                var promptBuilder = new System.Text.StringBuilder();
+                
+                foreach (var message in request.Messages)
+                {
+                    if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                    {
+                        promptBuilder.AppendLine($"System: {message.Content}");
+                        promptBuilder.AppendLine();
+                    }
+                    else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+                    {
+                        promptBuilder.AppendLine($"User: {message.Content}");
+                    }
+                    else if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+                    {
+                        promptBuilder.AppendLine($"Assistant: {message.Content}");
+                    }
+                }
+                
+                // Add a final prompt marker
+                promptBuilder.Append("Assistant: ");
+                
+                // Add the prompt to the input
+                input["prompt"] = promptBuilder.ToString();
+            }
+            
+            // Add optional parameters if provided
+            if (request.Temperature.HasValue)
+            {
+                input["temperature"] = request.Temperature.Value;
+            }
+            
+            if (request.MaxTokens.HasValue)
+            {
+                input["max_length"] = request.MaxTokens.Value;
+            }
+            
+            if (request.TopP.HasValue)
+            {
+                input["top_p"] = request.TopP.Value;
+            }
+            
+            if (request.Stop != null && request.Stop.Any())
+            {
+                input["stop_sequences"] = request.Stop;
+            }
+            
+            return new ReplicatePredictionRequest
+            {
+                Version = ProviderModelId,
+                Input = input
+            };
+        }
+        
+        private ReplicatePredictionRequest MapToImageGenerationRequest(ImageGenerationRequest request)
+        {
+            // Prepare the input based on the model
+            var input = new Dictionary<string, object>
+            {
+                ["prompt"] = request.Prompt
+            };
+            
+            // Add optional parameters if provided
+            if (request.Size != null)
+            {
+                var dimensions = request.Size.Split('x');
+                if (dimensions.Length == 2 && int.TryParse(dimensions[0], out int width) && int.TryParse(dimensions[1], out int height))
+                {
+                    input["width"] = width;
+                    input["height"] = height;
+                }
+            }
+            
+            if (request.Quality != null)
+            {
+                input["quality"] = request.Quality;
+            }
+            
+            if (request.Style != null)
+            {
+                input["style"] = request.Style;
+            }
+            
+            if (request.N > 1)
+            {
+                input["num_outputs"] = request.N;
+            }
+            
+            return new ReplicatePredictionRequest
+            {
+                Version = ProviderModelId,
+                Input = input
+            };
+        }
+        
+        private async Task<ReplicatePredictionResponse> StartPredictionAsync(
+            ReplicatePredictionRequest request,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                using var client = CreateHttpClient(apiKey);
+                var response = await client.PostAsJsonAsync("predictions", request, cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                    Logger.LogError("Replicate API prediction creation failed with status code {StatusCode}. Response: {ErrorContent}", 
+                        response.StatusCode, errorContent);
+                    throw new LLMCommunicationException(
+                        $"Replicate API prediction creation failed with status code {response.StatusCode}. Response: {errorContent}");
+                }
+                
+                var predictionResponse = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
+                    cancellationToken: cancellationToken);
+                
+                if (predictionResponse == null)
+                {
+                    throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
+                }
+                
+                return predictionResponse;
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "HTTP request error communicating with Replicate API");
+                throw new LLMCommunicationException($"HTTP request error communicating with Replicate API: {ex.Message}", ex);
+            }
+            catch (JsonException ex)
+            {
+                Logger.LogError(ex, "JSON error processing Replicate response");
+                throw new LLMCommunicationException("Error deserializing Replicate response", ex);
+            }
+            catch (LLMCommunicationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while starting Replicate prediction");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+        }
+        
+        private async Task<ReplicatePredictionResponse> PollPredictionUntilCompletedAsync(
+            string predictionId, 
+            string? apiKey,
+            CancellationToken cancellationToken,
+            bool yieldProgress = false)
+        {
+            var startTime = DateTime.UtcNow;
+            var attemptCount = 0;
+            ReplicatePredictionResponse? prediction = null;
+            
+            while (true)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Logger.LogInformation("Prediction polling was canceled");
+                    throw new OperationCanceledException("Prediction polling was canceled", cancellationToken);
+                }
+                
+                // Check if we've exceeded the maximum polling duration
+                if (DateTime.UtcNow - startTime > MaxPollingDuration)
+                {
+                    Logger.LogError("Exceeded maximum polling duration for prediction {PredictionId}", predictionId);
+                    throw new LLMCommunicationException($"Exceeded maximum polling duration for prediction {predictionId}");
+                }
+                
+                attemptCount++;
+                Logger.LogDebug("Polling prediction {PredictionId}, attempt {AttemptCount}", predictionId, attemptCount);
+                
+                try
+                {
+                    using var client = CreateHttpClient(apiKey);
+                    var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        string errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                        Logger.LogError("Replicate API prediction polling failed with status code {StatusCode}. Response: {ErrorContent}", 
+                            response.StatusCode, errorContent);
+                        throw new LLMCommunicationException(
+                            $"Replicate API prediction polling failed with status code {response.StatusCode}. Response: {errorContent}");
+                    }
+                    
+                    prediction = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
+                        cancellationToken: cancellationToken);
+                    
+                    if (prediction == null)
+                    {
+                        throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
+                    }
+                    
+                    // Check prediction status
+                    switch (prediction.Status.ToLowerInvariant())
+                    {
+                        case "succeeded":
+                            Logger.LogInformation("Prediction {PredictionId} completed successfully", predictionId);
+                            return prediction;
+                            
+                        case "failed":
+                            Logger.LogError("Prediction {PredictionId} failed: {Error}", predictionId, prediction.Error);
+                            throw new LLMCommunicationException($"Replicate prediction failed: {prediction.Error}");
+                            
+                        case "canceled":
+                            Logger.LogWarning("Prediction {PredictionId} was canceled", predictionId);
+                            throw new LLMCommunicationException("Replicate prediction was canceled");
+                            
+                        case "starting":
+                        case "processing":
+                            // Still in progress, continue polling
+                            Logger.LogDebug("Prediction {PredictionId} is {Status}", predictionId, prediction.Status);
+                            break;
+                            
+                        default:
+                            Logger.LogWarning("Prediction {PredictionId} has unknown status: {Status}", predictionId, prediction.Status);
+                            break;
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    Logger.LogError(ex, "HTTP request error during prediction polling");
+                    throw new LLMCommunicationException($"HTTP request error during prediction polling: {ex.Message}", ex);
+                }
+                catch (JsonException ex)
+                {
+                    Logger.LogError(ex, "JSON error processing prediction polling response");
+                    throw new LLMCommunicationException("Error deserializing prediction polling response", ex);
+                }
+                catch (LLMCommunicationException)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "An unexpected error occurred during prediction polling");
+                    throw new LLMCommunicationException($"An unexpected error occurred during prediction polling: {ex.Message}", ex);
+                }
+                
+                // Add a delay before the next poll
+                await Task.Delay(DefaultPollingInterval, cancellationToken);
+            }
+        }
+        
+        private ChatCompletionResponse MapToChatCompletionResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
+        {
+            // Extract content from the prediction output - format depends on the model
+            var content = ExtractTextFromPredictionOutput(prediction.Output);
+            
+            // Estimate token usage (not precise, just a rough estimate)
+            var inputStr = prediction.Input != null ? JsonSerializer.Serialize(prediction.Input) : string.Empty;
+            var promptTokens = EstimateTokenCount(inputStr);
+            var completionTokens = EstimateTokenCount(content);
+            
+            return new ChatCompletionResponse
+            {
+                Id = prediction.Id,
+                Object = "chat.completion",
+                Created = ((DateTimeOffset)prediction.CreatedAt).ToUnixTimeSeconds(),
+                Model = originalModelAlias,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new Message
+                        {
+                            Role = "assistant",
+                            Content = content
+                        },
+                        FinishReason = "stop"
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = promptTokens,
+                    CompletionTokens = completionTokens,
+                    TotalTokens = promptTokens + completionTokens
+                },
+                OriginalModelAlias = originalModelAlias
+            };
+        }
+        
+        private ImageGenerationResponse MapToImageGenerationResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
+        {
+            // Extract image URLs from the prediction output
+            var imageUrls = ExtractImageUrlsFromPredictionOutput(prediction.Output);
+            
+            return new ImageGenerationResponse
+            {
+                Created = ((DateTimeOffset)prediction.CreatedAt).ToUnixTimeSeconds(),
+                Data = imageUrls.Select(url => new Core.Models.ImageData
+                {
+                    Url = url
+                }).ToList()
+            };
+        }
+        
+        private string ExtractTextFromPredictionOutput(object? output)
+        {
+            // Handle different output formats from different models
+            if (output == null)
+            {
+                return string.Empty;
+            }
+            
+            try
+            {
+                // String output (common for text generation models)
+                if (output is string str)
+                {
+                    return str;
+                }
+                
+                // List of strings (some models return this)
+                if (output is JsonElement element)
+                {
+                    if (element.ValueKind == JsonValueKind.String)
+                    {
+                        return element.GetString() ?? string.Empty;
+                    }
+                    else if (element.ValueKind == JsonValueKind.Array)
+                    {
+                        // Try to read as array of strings
+                        var result = new System.Text.StringBuilder();
+                        foreach (var item in element.EnumerateArray())
+                        {
+                            if (item.ValueKind == JsonValueKind.String)
+                            {
+                                result.Append(item.GetString());
+                            }
+                        }
+                        return result.ToString();
+                    }
+                }
+                
+                // Last resort: serialize to JSON and try to extract
+                return JsonSerializer.Serialize(output);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error extracting text from prediction output");
+                return string.Empty;
+            }
+        }
+        
+        private List<string> ExtractImageUrlsFromPredictionOutput(object? output)
+        {
+            var urls = new List<string>();
+            
+            // Handle different output formats from different models
+            if (output == null)
+            {
+                return urls;
+            }
+            
+            try
+            {
+                // String output (single image URL)
+                if (output is string str)
+                {
+                    urls.Add(str);
+                    return urls;
+                }
+                
+                // Array of strings (multiple image URLs)
+                if (output is JsonElement element)
+                {
+                    if (element.ValueKind == JsonValueKind.String)
+                    {
+                        urls.Add(element.GetString() ?? string.Empty);
+                        return urls;
+                    }
+                    else if (element.ValueKind == JsonValueKind.Array)
+                    {
+                        // Try to read as array of strings
+                        foreach (var item in element.EnumerateArray())
+                        {
+                            if (item.ValueKind == JsonValueKind.String)
+                            {
+                                string? url = item.GetString();
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    urls.Add(url);
+                                }
+                            }
+                        }
+                        return urls;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error extracting image URLs from prediction output");
+            }
+            
+            return urls;
+        }
+        
+        private int EstimateTokenCount(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return 0;
+            }
+            
+            // Very rough estimate: 4 characters per token (English text)
+            return text.Length / 4;
+        }
+        
+        #endregion
+    }
 }

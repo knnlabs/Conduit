@@ -39,6 +39,9 @@ public class OpenAIChatCompletionChunk
 
     [System.Text.Json.Serialization.JsonPropertyName("choices")]
     public List<OpenAIChunkChoice> Choices { get; set; } = new();
+    
+    [System.Text.Json.Serialization.JsonPropertyName("system_fingerprint")]
+    public string? SystemFingerprint { get; set; }
 
     public static List<OpenAIChatCompletionChunk> GenerateChunks(int count)
     {
@@ -54,10 +57,11 @@ public class OpenAIChatCompletionChunk
                     {
                         Index = 0,
                         Delta = new OpenAIDelta { Role = "assistant", Content = $"content-{i}" },
-                        FinishReason = null
+                        FinishReason = i == count - 1 ? "stop" : null
                     }
                 },
-                Model = "gpt-4"
+                Model = "gpt-4",
+                SystemFingerprint = "fp_44455566" // Include a system fingerprint for testing
             });
         }
         return chunks;
@@ -105,6 +109,18 @@ public class GeminiErrorDetail
 public class CohereResponseMetadata
 {
     public CohereTokenUsage? TokenUsage { get; set; }
+    
+    /// <summary>
+    /// Token information
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("tokens")]
+    public CohereApiMetaTokens? Tokens { get; set; }
+    
+    /// <summary>
+    /// Billed units information
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("billed_units")]
+    public CohereApiMetaBilledUnits? BilledUnits { get; set; }
 }
 
 /// <summary>
@@ -115,6 +131,30 @@ public class CohereTokenUsage
     public int InputTokens { get; set; }
     public int OutputTokens { get; set; }
     public int TotalTokens => InputTokens + OutputTokens;
+}
+
+/// <summary>
+/// Mock implementation of CohereApiMetaTokens for testing
+/// </summary>
+public class CohereApiMetaTokens
+{
+    [System.Text.Json.Serialization.JsonPropertyName("input_tokens")]
+    public int? InputTokens { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("output_tokens")]
+    public int? OutputTokens { get; set; }
+}
+
+/// <summary>
+/// Mock implementation of CohereApiMetaBilledUnits for testing
+/// </summary>
+public class CohereApiMetaBilledUnits
+{
+    [System.Text.Json.Serialization.JsonPropertyName("input_tokens")]
+    public int? InputTokens { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("output_tokens")]
+    public int? OutputTokens { get; set; }
 }
 
 /// <summary>
@@ -135,6 +175,8 @@ public class GeminiModelInfo
     public string Description { get; set; } = string.Empty;
     public long CreateTime { get; set; }
     public long UpdateTime { get; set; }
+    public int InputTokenLimit { get; set; }
+    public int OutputTokenLimit { get; set; }
     public List<string> SupportedGenerationMethods { get; set; } = new();
 }
 
@@ -198,6 +240,7 @@ public class GeminiCandidate
     public GeminiContent Content { get; set; } = new();
     public string FinishReason { get; set; } = "STOP";
     public int Index { get; set; }
+    public List<GeminiSafetyRating> SafetyRatings { get; set; } = new();
 }
 
 /// <summary>
@@ -249,6 +292,15 @@ public class CohereChatResponse
 
     [System.Text.Json.Serialization.JsonPropertyName("meta")]
     public CohereResponseMetadata? Meta { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("generation_id")]
+    public string? GenerationId { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("finish_reason")]
+    public string? FinishReason { get; set; }
+    
+    [System.Text.Json.Serialization.JsonPropertyName("chat_history")]
+    public List<CohereMessage>? ChatHistory { get; set; }
 }
 
 /// <summary>
@@ -447,6 +499,16 @@ public class GeminiPromptFeedback
 }
 
 /// <summary>
+/// Mock implementation of GeminiSafetyRating for testing
+/// </summary>
+public class GeminiSafetyRating
+{
+    public string Category { get; set; } = string.Empty;
+    public string Probability { get; set; } = string.Empty;
+    public bool Blocked { get; set; }
+}
+
+/// <summary>
 /// Mock implementation of GeminiListModelsResponse for testing
 /// </summary>
 public class GeminiListModelsResponse
@@ -499,6 +561,9 @@ public class GeminiModelData
     public string Name { get; set; } = string.Empty;
     public string? Version { get; set; }
     public string? DisplayName { get; set; }
+    public string? Description { get; set; }
+    public int InputTokenLimit { get; set; }
+    public int OutputTokenLimit { get; set; }
     public List<string>? SupportedGenerationMethods { get; set; }
 }
 
@@ -531,6 +596,7 @@ public class OpenAIChatCompletionResponse
     public string Model { get; set; } = string.Empty;
     public List<OpenAIChoice> Choices { get; set; } = new();
     public OpenAIUsage Usage { get; set; } = new();
+    public string? SystemFingerprint { get; set; }
 }
 
 /// <summary>
@@ -560,6 +626,27 @@ public class OpenAIUsage
     public int PromptTokens { get; set; }
     public int CompletionTokens { get; set; }
     public int TotalTokens { get; set; }
+}
+
+/// <summary>
+/// Mock implementation of OpenAIEmbeddingResponse for testing
+/// </summary>
+public class OpenAIEmbeddingResponse
+{
+    public string Object { get; set; } = "list";
+    public List<OpenAIEmbedding> Data { get; set; } = new();
+    public string Model { get; set; } = string.Empty;
+    public OpenAIUsage Usage { get; set; } = new();
+}
+
+/// <summary>
+/// Mock implementation of OpenAIEmbedding for testing
+/// </summary>
+public class OpenAIEmbedding
+{
+    public string Object { get; set; } = "embedding";
+    public int Index { get; set; }
+    public List<float> Embedding { get; set; } = new();
 }
 
 /// <summary>

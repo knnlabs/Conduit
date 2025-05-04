@@ -25,8 +25,8 @@
                 <MudText Typo="Typo.h6">Cache Configuration</MudText>
             </MudCardHeader>
             <MudCardContent>
-                <MudSwitch T="bool" @bind-checked="_isEnabled" Color="Color.Primary" Label="Enable Cache" 
-                          Class="mb-4" onClick="ToggleCacheEnabled" />
+                <MudSwitch T="bool" @bind-Checked="_isEnabled" Color="Color.Primary" Label="Enable Cache" 
+                          Class="mb-4" />
 
                 <MudGrid>
                     <MudItem xs="12" md="6">
@@ -68,34 +68,34 @@
                     </MudCard>
                 }
 
-                <MudExpansionPanels disableGutters="True" Elevation="0" Class="mb-4">
-                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="False">
+                <MudExpansionPanels disableGutters="true" Elevation="0" Class="mb-4">
+                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="false">
                         <TitleContent>
                             <MudText Typo="Typo.body1">Cache Key Settings</MudText>
                         </TitleContent>
                         <ChildContent>
                             <MudGrid>
                                 <MudItem xs="12" md="6">
-                                    <MudCheckBox T="bool" @bind-checked="_includeModelInKey" Label="Include Model" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeModelInKey" Label="Include Model" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-checked="_includeProviderInKey" Label="Include Provider" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeProviderInKey" Label="Include Provider" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-checked="_includeApiKeyInKey" Label="Include API Key" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeApiKeyInKey" Label="Include API Key" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
                                 </MudItem>
                                 <MudItem xs="12" md="6">
-                                    <MudCheckBox T="bool" @bind-checked="_includeTemperatureInKey" Label="Include Temperature" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeTemperatureInKey" Label="Include Temperature" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-checked="_includeMaxTokensInKey" Label="Include Max Tokens" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeMaxTokensInKey" Label="Include Max Tokens" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-checked="_includeTopPInKey" Label="Include Top P" 
+                                    <MudCheckBox T="bool" @bind-Checked="_includeTopPInKey" Label="Include Top P" 
                                                 Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
                                 </MudItem>
                             </MudGrid>
                         </ChildContent>
                     </MudExpansionPanel>
                     
-                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="False">
+                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="false">
                         <TitleContent>
                             <MudText Typo="Typo.body1">Model-Specific Rules</MudText>
                         </TitleContent>
@@ -425,10 +425,6 @@
         }
     }
     
-    private void ToggleCacheEnabled()
-    {
-        _isEnabled = !_isEnabled;
-    }
     
     private void AddModelRule()
     {

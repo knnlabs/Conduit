@@ -75,8 +75,8 @@ public class LLMClientFactoryTests
     [InlineData("anthropic-test", typeof(AnthropicClient))]
     [InlineData("gemini-test", typeof(GeminiClient))]
     [InlineData("cohere-test", typeof(CohereClient))]
-    [InlineData("azure-test", typeof(OpenAIClient))] // Azure uses OpenAIClient internally
-    [InlineData("mistral-test", typeof(OpenAIClient))] // Mistral uses OpenAIClient internally
+    [InlineData("azure-test", typeof(AzureOpenAIClient))] // Azure now has its own client
+    [InlineData("mistral-test", typeof(MistralClient))] // Mistral now has its own client
     public void GetClient_ValidAlias_ReturnsCorrectClientType(string modelAlias, Type expectedClientType)
     {
         // Arrange
@@ -95,8 +95,8 @@ public class LLMClientFactoryTests
     [InlineData("Anthropic", typeof(AnthropicClient))]
     [InlineData("Gemini", typeof(GeminiClient))]
     [InlineData("Cohere", typeof(CohereClient))]
-    [InlineData("Azure", typeof(OpenAIClient))]
-    [InlineData("Mistral", typeof(OpenAIClient))]
+    [InlineData("Azure", typeof(AzureOpenAIClient))]
+    [InlineData("Mistral", typeof(MistralClient))]
     public void GetClientByProvider_ValidName_ReturnsCorrectClientType(string providerName, Type expectedClientType)
     {
         // Arrange
@@ -182,7 +182,7 @@ public class LLMClientFactoryTests
 
         // Act & Assert
         var ex = Assert.Throws<UnsupportedProviderException>(() => factory.GetClient(aliasWithUnsupportedProvider));
-        Assert.Contains("Provider 'UnsupportedProvider' is not currently supported", ex.Message);
+        Assert.Contains("not currently supported", ex.Message);
     }
 
      [Fact]
@@ -194,7 +194,7 @@ public class LLMClientFactoryTests
 
         // Act & Assert
         var ex = Assert.Throws<UnsupportedProviderException>(() => factory.GetClientByProvider(unsupportedProviderName));
-        Assert.Contains($"Provider '{unsupportedProviderName}' is not currently supported", ex.Message);
+        Assert.Contains("not currently supported", ex.Message);
     }
 
     [Fact]

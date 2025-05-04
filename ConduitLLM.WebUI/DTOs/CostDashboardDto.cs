@@ -39,104 +39,18 @@ namespace ConduitLLM.WebUI.DTOs
         public int TotalOutputTokens { get; set; }
         
         /// <summary>
-        /// Cost by day for the period
+        /// Cost trend data for daily costs
         /// </summary>
-        public Dictionary<DateTime, decimal> CostByDay { get; set; } = new Dictionary<DateTime, decimal>();
+        public List<CostTrendDataDto> CostTrends { get; set; } = new List<CostTrendDataDto>();
         
         /// <summary>
-        /// Cost by model for the period
+        /// Cost data by model
         /// </summary>
-        public Dictionary<string, decimal> CostByModel { get; set; } = new Dictionary<string, decimal>();
+        public List<ModelCostDataDto> CostByModel { get; set; } = new List<ModelCostDataDto>();
         
         /// <summary>
-        /// Cost by virtual key for the period
+        /// Cost data by virtual key
         /// </summary>
-        public Dictionary<int, KeyCostData> CostByKey { get; set; } = new Dictionary<int, KeyCostData>();
-        
-        /// <summary>
-        /// Requests by day for the period
-        /// </summary>
-        public Dictionary<DateTime, int> RequestsByDay { get; set; } = new Dictionary<DateTime, int>();
-        
-        /// <summary>
-        /// Tokens by day for the period
-        /// </summary>
-        public Dictionary<DateTime, TokenData> TokensByDay { get; set; } = new Dictionary<DateTime, TokenData>();
-        
-        /// <summary>
-        /// Average cost per request
-        /// </summary>
-        public decimal AverageCostPerRequest => TotalRequests > 0 ? TotalCost / TotalRequests : 0;
-        
-        /// <summary>
-        /// Average cost per 1000 tokens
-        /// </summary>
-        public decimal AverageCostPer1000Tokens => (TotalInputTokens + TotalOutputTokens) > 0 
-            ? TotalCost / ((TotalInputTokens + TotalOutputTokens) / 1000.0m) 
-            : 0;
-    }
-    
-    /// <summary>
-    /// Data about token counts
-    /// </summary>
-    public class TokenData
-    {
-        /// <summary>
-        /// Input tokens
-        /// </summary>
-        public int InputTokens { get; set; }
-        
-        /// <summary>
-        /// Output tokens
-        /// </summary>
-        public int OutputTokens { get; set; }
-        
-        /// <summary>
-        /// Total tokens (input + output)
-        /// </summary>
-        public int TotalTokens => InputTokens + OutputTokens;
-    }
-    
-    /// <summary>
-    /// Data about a virtual key's cost
-    /// </summary>
-    public class KeyCostData
-    {
-        /// <summary>
-        /// Name of the virtual key
-        /// </summary>
-        public string KeyName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Total cost for this key
-        /// </summary>
-        public decimal TotalCost { get; set; }
-        
-        /// <summary>
-        /// Request count for this key
-        /// </summary>
-        public int RequestCount { get; set; }
-        
-        /// <summary>
-        /// Input tokens for this key
-        /// </summary>
-        public int InputTokens { get; set; }
-        
-        /// <summary>
-        /// Output tokens for this key
-        /// </summary>
-        public int OutputTokens { get; set; }
-        
-        /// <summary>
-        /// Maximum budget for this key, if any
-        /// </summary>
-        public decimal? MaxBudget { get; set; }
-        
-        /// <summary>
-        /// Percentage of budget used
-        /// </summary>
-        public decimal BudgetUsedPercentage => MaxBudget.HasValue && MaxBudget > 0 
-            ? Math.Min(100, (TotalCost / MaxBudget.Value) * 100) 
-            : 0;
+        public List<VirtualKeyCostDataDto> CostByVirtualKey { get; set; } = new List<VirtualKeyCostDataDto>();
     }
 }

@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <NoWarn>$(NoWarn);MUD0002</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <WebUIHttpPort Condition="'$(WebUIHttpPort)' == ''">5001</WebUIHttpPort>
     <WebUIHttpsPort Condition="'$(WebUIHttpsPort)' == ''">5002</WebUIHttpsPort>
     <AspNetCoreUrls Condition="'$(ASPNETCORE_URLS)' == ''">http://127.0.0.1:$(WebUIHttpPort);https://127.0.0.1:$(WebUIHttpsPort)</AspNetCoreUrls>

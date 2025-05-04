@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +15,6 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.InternalModels.OpenAIModels;
 
@@ -21,43 +23,32 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Providers
 {
     /// <summary>
-    /// Client for interacting with the OpenRouter API, which provides a unified interface to multiple LLM providers.
+    /// Client for interacting with the OpenRouter API.
     /// </summary>
-    /// <remarks>
-    /// OpenRouter provides access to models from various providers through a unified API that's compatible with OpenAI's.
-    /// </remarks>
     public class OpenRouterClient : OpenAICompatibleClient
     {
-        private const string DefaultOpenRouterApiBase = "https://openrouter.ai/api/v1";
-        private readonly string _appName;
-        private readonly string _appUrl;
+        private const string DefaultApiBase = "https://openrouter.ai/api/v1/";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OpenRouterClient"/> class.
+        /// Initializes a new instance of the <see cref="OpenRouterClientRevised"/> class.
         /// </summary>
         /// <param name="credentials">The provider credentials.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
-        /// <param name="appName">The name of the application making the request. Used for OpenRouter analytics.</param>
-        /// <param name="appUrl">The URL of the application making the request. Used for OpenRouter analytics.</param>
         public OpenRouterClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<OpenRouterClient> logger,
-            IHttpClientFactory? httpClientFactory = null,
-            string appName = "ConduitLLM",
-            string appUrl = "https://conduit-llm.com")
+            IHttpClientFactory? httpClientFactory = null)
             : base(
-                  EnsureOpenRouterCredentials(credentials),
-                  providerModelId,
-                  logger,
-                  httpClientFactory,
-                  "openrouter",
-                  DetermineBaseUrl(credentials))
+                EnsureOpenRouterCredentials(credentials),
+                providerModelId,
+                logger,
+                httpClientFactory,
+                "openrouter",
+                DetermineBaseUrl(credentials))
         {
-            _appName = appName;
-            _appUrl = appUrl;
         }
 
         private static ProviderCredentials EnsureOpenRouterCredentials(ProviderCredentials credentials)
@@ -69,7 +60,7 @@ namespace ConduitLLM.Providers
 
             if (string.IsNullOrWhiteSpace(credentials.ApiKey))
             {
-                throw new ConfigurationException("API key is missing for OpenRouter provider.");
+                throw new ConfigurationException("API key is required for OpenRouter API");
             }
 
             return credentials;
@@ -78,8 +69,8 @@ namespace ConduitLLM.Providers
         private static string DetermineBaseUrl(ProviderCredentials credentials)
         {
             return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? DefaultOpenRouterApiBase
-                : credentials.ApiBase.TrimEnd('/');
+                ? DefaultApiBase
+                : credentials.ApiBase.TrimEnd('/') + "/";
         }
 
         /// <inheritdoc />
@@ -88,97 +79,67 @@ namespace ConduitLLM.Providers
             base.ConfigureHttpClient(client, apiKey);
             
             // Add OpenRouter-specific headers
-            client.DefaultRequestHeaders.Add("HTTP-Referer", _appUrl);
-            client.DefaultRequestHeaders.Add("X-Title", _appName);
+            client.DefaultRequestHeaders.Add("HTTP-Referer", "https://conduit-llm.com");
+            client.DefaultRequestHeaders.Add("X-Title", "ConduitLLM");
         }
 
         /// <inheritdoc />
         public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
-            string? apiKey = null,
+            string? apiKey = null, 
             CancellationToken cancellationToken = default)
         {
             try
             {
-                return await ExecuteApiRequestAsync(async () =>
+                Logger.LogInformation("Listing OpenRouter models");
+                
+                using var client = CreateHttpClient(apiKey);
+                string endpoint = "models";
+                
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                using var response = await client.SendAsync(requestMessage, cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
                 {
-                    using var client = CreateHttpClient(apiKey);
-                    
-                    var endpoint = GetModelsEndpoint();
-                    
-                    Logger.LogDebug("Getting available models from OpenRouter at {Endpoint}", endpoint);
-                    
-                    var response = await HttpClientHelper.SendJsonRequestAsync<object, OpenRouterModelsResponse>(
-                        client,
-                        HttpMethod.Get,
-                        endpoint,
-                        null,
-                        CreateStandardHeaders(apiKey),
-                        DefaultJsonOptions,
-                        Logger,
-                        cancellationToken);
-                    
-                    if (response.Data == null || !response.Data.Any())
-                    {
-                        Logger.LogWarning("OpenRouter API returned null/empty data for models.");
-                        return new List<ExtendedModelInfo>();
-                    }
-                    
-                    return response.Data
-                        .Where(m => !string.IsNullOrEmpty(m.Id))
-                        .Select(m => ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
-                        .ToList();
-                }, "GetModels", cancellationToken);
+                    string errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                    Logger.LogError("OpenRouter API list models failed: {StatusCode}. Response: {Response}", 
+                        response.StatusCode, errorContent);
+                    throw new LLMCommunicationException($"OpenRouter list models failed: {response.ReasonPhrase} ({response.StatusCode})");
+                }
+                
+                // Custom DTO for OpenRouter /models response
+                var openRouterModelsResponse = await response.Content.ReadFromJsonAsync<OpenRouterModelsResponse>(
+                    options: DefaultJsonOptions,
+                    cancellationToken: cancellationToken);
+                
+                if (openRouterModelsResponse?.Data == null)
+                {
+                    Logger.LogWarning("OpenRouter API returned null/empty data for models.");
+                    return new List<ExtendedModelInfo>();
+                }
+                
+                return openRouterModelsResponse.Data
+                    .Where(m => !string.IsNullOrEmpty(m.Id))
+                    .Select(m => ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
+                    .ToList();
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to retrieve models from OpenRouter API. Returning known models.");
-                return GetFallbackModels();
+                Logger.LogError(ex, "Error listing OpenRouter models");
+                return new List<ExtendedModelInfo>(); // Return empty list on error
             }
         }
-
-        /// <summary>
-        /// Gets a fallback list of models for OpenRouter.
-        /// </summary>
-        /// <returns>A list of known models for OpenRouter.</returns>
-        protected override List<ExtendedModelInfo> GetFallbackModels()
+        
+        // DTOs for OpenRouter /models response - nested private classes
+        private class OpenRouterModel
         {
-            return new List<ExtendedModelInfo>
-            {
-                ExtendedModelInfo.Create("anthropic/claude-3-opus-20240229", ProviderName, "anthropic/claude-3-opus-20240229"),
-                ExtendedModelInfo.Create("anthropic/claude-3-sonnet-20240229", ProviderName, "anthropic/claude-3-sonnet-20240229"),
-                ExtendedModelInfo.Create("anthropic/claude-3-haiku-20240307", ProviderName, "anthropic/claude-3-haiku-20240307"),
-                ExtendedModelInfo.Create("openai/gpt-4o", ProviderName, "openai/gpt-4o"),
-                ExtendedModelInfo.Create("openai/gpt-4-turbo", ProviderName, "openai/gpt-4-turbo"),
-                ExtendedModelInfo.Create("openai/gpt-3.5-turbo", ProviderName, "openai/gpt-3.5-turbo"),
-                ExtendedModelInfo.Create("meta-llama/llama-3-70b-instruct", ProviderName, "meta-llama/llama-3-70b-instruct"),
-                ExtendedModelInfo.Create("meta-llama/llama-3-8b-instruct", ProviderName, "meta-llama/llama-3-8b-instruct"),
-                ExtendedModelInfo.Create("google/gemini-pro", ProviderName, "google/gemini-pro"),
-                ExtendedModelInfo.Create("mistral/mistral-large", ProviderName, "mistral/mistral-large"),
-                ExtendedModelInfo.Create("mistral/mistral-medium", ProviderName, "mistral/mistral-medium"),
-                ExtendedModelInfo.Create("mistral/mistral-small", ProviderName, "mistral/mistral-small")
-            };
+            [System.Text.Json.Serialization.JsonPropertyName("id")]
+            public string Id { get; set; } = string.Empty;
         }
-    }
 
-    /// <summary>
-    /// Response DTO for OpenRouter models endpoint.
-    /// </summary>
-    internal class OpenRouterModelsResponse
-    {
-        /// <summary>
-        /// List of available models.
-        /// </summary>
-        public List<OpenRouterModel> Data { get; set; } = new List<OpenRouterModel>();
-    }
-
-    /// <summary>
-    /// DTO for OpenRouter model information.
-    /// </summary>
-    internal class OpenRouterModel
-    {
-        /// <summary>
-        /// The model ID.
-        /// </summary>
-        public string Id { get; set; } = string.Empty;
+        private class OpenRouterModelsResponse
+        {
+            [System.Text.Json.Serialization.JsonPropertyName("data")]
+            public List<OpenRouterModel> Data { get; set; } = new List<OpenRouterModel>();
+        }
     }
 }

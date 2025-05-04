@@ -3,30 +3,26 @@
 
 <PageTitle>Access Denied - ConduitLLM</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h3 class="mb-0">Access Denied</h3>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-shield-lock-fill text-danger" style="font-size: 4rem;"></i>
-                    </div>
-                    <h4 class="text-center mb-4">You do not have permission to view this resource</h4>
-                    <p class="text-center">
-                        You need to be authenticated with the appropriate credentials to access this page.
-                    </p>
-                    <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
-                        <button class="btn btn-primary" @onclick="NavigateToLogin">Go to Login</button>
-                        <button class="btn btn-outline-secondary" @onclick="NavigateToHome">Return to Home</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
+    <MudCard Elevation="3" Class="rounded-lg">
+        <MudCardHeader Class="mud-error">
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Color="Color.Surface">Access Denied</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent Class="d-flex flex-column align-center pa-6">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Error" Size="Size.Large" Class="mb-4" Style="font-size: 4rem;" />
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">You do not have permission to view this resource</MudText>
+            <MudText Align="Align.Center" Class="mb-6">
+                You need to be authenticated with the appropriate credentials to access this page.
+            </MudText>
+            <MudStack Row="false" Spacing="2" AlignItems="AlignItems.Center" Style="max-width: 300px; width: 100%;">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="NavigateToLogin">Go to Login</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" OnClick="NavigateToHome">Return to Home</MudButton>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
 
 @code {
     private void NavigateToLogin()

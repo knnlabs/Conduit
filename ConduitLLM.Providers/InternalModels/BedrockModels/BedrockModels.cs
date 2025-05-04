@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ConduitLLM.Providers.InternalModels;
+namespace ConduitLLM.Providers.InternalModels.BedrockModels;
 
 // AWS Bedrock Models
 // Reference: https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html
@@ -74,6 +74,9 @@ public class BedrockClaudeChatRequest
     
     [JsonPropertyName("stop_sequences")]
     public List<string>? StopSequences { get; set; }
+    
+    [JsonPropertyName("stream")]
+    public bool? Stream { get; set; }
 }
 
 /// <summary>

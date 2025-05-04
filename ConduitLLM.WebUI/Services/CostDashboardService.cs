@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,93 +27,42 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <inheritdoc/>
-        public async Task<CostDashboardDto> GetCostDashboardDataAsync(
-            DateTime startDate,
-            DateTime endDate,
+        public async Task<CostDashboardDto> GetDashboardDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
             int? virtualKeyId = null,
             string? modelName = null)
         {
             try
             {
+                // Set default dates if not specified
+                var normalizedDates = NormalizeDateRange(startDate, endDate);
+                startDate = normalizedDates.startDate;
+                endDate = normalizedDates.endDate;
+                
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 
-                // Build the query with filters
-                var query = dbContext.RequestLogs
-                    .AsNoTracking()
-                    .Include(r => r.VirtualKey)
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
-                
-                if (virtualKeyId.HasValue)
-                {
-                    query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
-                }
-                
-                if (!string.IsNullOrWhiteSpace(modelName))
-                {
-                    query = query.Where(r => r.ModelName == modelName);
-                }
-                
-                // Execute the query
-                var logs = await query.ToListAsync();
+                // Get filtered logs
+                var logs = await GetFilteredLogsAsync(dbContext, startDate.Value, endDate.Value, virtualKeyId, modelName);
                 
                 // Create the dashboard data
                 var dashboardData = new CostDashboardDto
                 {
-                    StartDate = startDate,
-                    EndDate = endDate,
-                    TotalCost = logs.Sum(r => r.Cost),
-                    TotalRequests = (int)logs.LongCount(),
-                    TotalInputTokens = logs.Sum(r => r.InputTokens),
-                    TotalOutputTokens = logs.Sum(r => r.OutputTokens)
+                    StartDate = startDate.Value,
+                    EndDate = endDate.Value
                 };
                 
-                // Group by day
-                var dayGroups = logs
-                    .GroupBy(r => r.Timestamp.Date)
-                    .OrderBy(g => g.Key)
-                    .ToList();
+                // Calculate summary metrics
+                CalculateSummaryMetrics(logs, dashboardData);
                 
-                foreach (var group in dayGroups)
-                {
-                    dashboardData.CostByDay[group.Key] = group.Sum(r => r.Cost);
-                    dashboardData.RequestsByDay[group.Key] = (int)group.LongCount();
-                    dashboardData.TokensByDay[group.Key] = new TokenData
-                    {
-                        InputTokens = group.Sum(r => r.InputTokens),
-                        OutputTokens = group.Sum(r => r.OutputTokens)
-                    };
-                }
+                // Generate daily cost trends with date filling
+                dashboardData.CostTrends = GenerateDailyCostTrends(logs, startDate.Value, endDate.Value);
                 
                 // Group by model
-                var modelGroups = logs
-                    .GroupBy(r => r.ModelName)
-                    .OrderByDescending(g => g.Sum(r => r.Cost))
-                    .ToList();
+                dashboardData.CostByModel = CalculateCostBreakdownByModel(logs);
                 
-                foreach (var group in modelGroups)
-                {
-                    dashboardData.CostByModel[group.Key] = group.Sum(r => r.Cost);
-                }
-                
-                // Group by key
-                var keyGroups = logs
-                    .GroupBy(r => r.VirtualKeyId)
-                    .OrderByDescending(g => g.Sum(r => r.Cost))
-                    .ToList();
-                
-                foreach (var group in keyGroups)
-                {
-                    var key = group.FirstOrDefault()?.VirtualKey;
-                    dashboardData.CostByKey[group.Key] = new KeyCostData
-                    {
-                        KeyName = key?.KeyName ?? $"Key ID {group.Key}",
-                        TotalCost = group.Sum(r => r.Cost),
-                        RequestCount = (int)group.LongCount(),
-                        InputTokens = group.Sum(r => r.InputTokens),
-                        OutputTokens = group.Sum(r => r.OutputTokens),
-                        MaxBudget = key?.MaxBudget
-                    };
-                }
+                // Group by virtual key
+                dashboardData.CostByVirtualKey = CalculateCostBreakdownByVirtualKey(logs);
                 
                 return dashboardData;
             }
@@ -125,167 +73,261 @@ namespace ConduitLLM.WebUI.Services
             }
         }
         
+        /// <summary>
+        /// Ensures start and end dates are properly set with defaults if not specified.
+        /// </summary>
+        /// <param name="startDate">The start date or null.</param>
+        /// <param name="endDate">The end date or null.</param>
+        /// <returns>A tuple with normalized start and end dates.</returns>
+        private (DateTime startDate, DateTime endDate) NormalizeDateRange(DateTime? startDate, DateTime? endDate)
+        {
+            // Default to last 30 days if not specified
+            startDate ??= DateTime.UtcNow.AddDays(-30).Date;
+            
+            // Default to end of current day if not specified
+            endDate ??= DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
+            
+            return (startDate.Value, endDate.Value);
+        }
+        
+        /// <summary>
+        /// Gets request logs filtered by the specified criteria.
+        /// </summary>
+        /// <param name="dbContext">The database context.</param>
+        /// <param name="startDate">The start date.</param>
+        /// <param name="endDate">The end date.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID to filter by.</param>
+        /// <param name="modelName">Optional model name to filter by.</param>
+        /// <returns>Filtered request logs.</returns>
+        private async Task<List<RequestLog>> GetFilteredLogsAsync(
+            ConfigurationDbContext dbContext, 
+            DateTime startDate, 
+            DateTime endDate, 
+            int? virtualKeyId = null,
+            string? modelName = null)
+        {
+            // Build the query with filters
+            var query = dbContext.RequestLogs
+                .AsNoTracking()
+                .Include(r => r.VirtualKey)
+                .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+            
+            // Apply optional filters
+            if (virtualKeyId.HasValue)
+            {
+                query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
+            }
+            
+            if (!string.IsNullOrWhiteSpace(modelName))
+            {
+                query = query.Where(r => r.ModelName == modelName);
+            }
+            
+            // Execute the query
+            return await query.ToListAsync();
+        }
+        
+        /// <summary>
+        /// Calculates summary metrics based on the filtered logs.
+        /// </summary>
+        /// <param name="logs">The filtered request logs.</param>
+        /// <param name="dashboardData">The dashboard data to populate.</param>
+        private void CalculateSummaryMetrics(List<RequestLog> logs, CostDashboardDto dashboardData)
+        {
+            dashboardData.TotalCost = logs.Sum(r => r.Cost);
+            dashboardData.TotalRequests = logs.Count;
+            dashboardData.TotalInputTokens = logs.Sum(r => r.InputTokens);
+            dashboardData.TotalOutputTokens = logs.Sum(r => r.OutputTokens);
+        }
+        
+        /// <summary>
+        /// Generates daily cost trends with zero values for missing days.
+        /// </summary>
+        /// <param name="logs">The filtered request logs.</param>
+        /// <param name="startDate">The start date of the period.</param>
+        /// <param name="endDate">The end date of the period.</param>
+        /// <returns>List of daily cost trends.</returns>
+        private List<CostTrendDataDto> GenerateDailyCostTrends(
+            List<RequestLog> logs, 
+            DateTime startDate, 
+            DateTime endDate)
+        {
+            // Group logs by date and calculate daily metrics
+            var dailyCosts = logs
+                .GroupBy(r => r.Timestamp.Date)
+                .Select(g => new CostTrendDataDto
+                {
+                    Date = g.Key,
+                    Cost = g.Sum(r => r.Cost),
+                    Requests = g.Count()
+                })
+                .ToDictionary(d => d.Date.Date);
+            
+            // Create a continuous series with all dates in the range
+            var result = new List<CostTrendDataDto>();
+            var currentDate = startDate.Date;
+            
+            while (currentDate <= endDate.Date)
+            {
+                // Use the existing data point or create a zero value one
+                if (dailyCosts.TryGetValue(currentDate, out var costData))
+                {
+                    result.Add(costData);
+                }
+                else
+                {
+                    result.Add(new CostTrendDataDto
+                    {
+                        Date = currentDate,
+                        Cost = 0,
+                        Requests = 0
+                    });
+                }
+                
+                currentDate = currentDate.AddDays(1);
+            }
+            
+            // Ensure all days are in chronological order
+            return result.OrderBy(d => d.Date).ToList();
+        }
+        
+        /// <summary>
+        /// Calculates cost breakdown by model.
+        /// </summary>
+        /// <param name="logs">The filtered request logs.</param>
+        /// <returns>List of model cost data.</returns>
+        private List<ModelCostDataDto> CalculateCostBreakdownByModel(List<RequestLog> logs)
+        {
+            return logs
+                .GroupBy(r => r.ModelName)
+                .OrderByDescending(g => g.Sum(r => r.Cost))
+                .Select(g => new ModelCostDataDto
+                {
+                    Model = g.Key,
+                    Requests = g.Count(),
+                    Cost = g.Sum(r => r.Cost)
+                })
+                .ToList();
+        }
+        
+        /// <summary>
+        /// Calculates cost breakdown by virtual key.
+        /// </summary>
+        /// <param name="logs">The filtered request logs.</param>
+        /// <returns>List of virtual key cost data.</returns>
+        private List<VirtualKeyCostDataDto> CalculateCostBreakdownByVirtualKey(List<RequestLog> logs)
+        {
+            return logs
+                .GroupBy(r => new { r.VirtualKeyId, KeyName = r.VirtualKey?.KeyName ?? $"Key ID {r.VirtualKeyId}" })
+                .OrderByDescending(g => g.Sum(r => r.Cost))
+                .Select(g => new VirtualKeyCostDataDto
+                {
+                    KeyId = g.Key.VirtualKeyId,
+                    KeyName = g.Key.KeyName,
+                    Requests = g.Count(),
+                    Cost = g.Sum(r => r.Cost)
+                })
+                .ToList();
+        }
+        
         /// <inheritdoc/>
-        public async Task<CostTrendDto> GetCostTrendAsync(
-            string period,
-            int count,
+        public async Task<List<VirtualKey>> GetVirtualKeysAsync()
+        {
+            try
+            {
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                
+                return await dbContext.VirtualKeys
+                    .AsNoTracking()
+                    .OrderBy(k => k.KeyName)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting virtual keys");
+                throw;
+            }
+        }
+        
+        /// <inheritdoc/>
+        public async Task<List<string>> GetAvailableModelsAsync()
+        {
+            try
+            {
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                
+                return await dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Select(r => r.ModelName)
+                    .Distinct()
+                    .OrderBy(m => m)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available models");
+                throw;
+            }
+        }
+        
+        /// <inheritdoc/>
+        public async Task<List<DetailedCostDataDto>> GetDetailedCostDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
             int? virtualKeyId = null,
             string? modelName = null)
         {
             try
             {
-                DateTime endDate = DateTime.UtcNow;
-                DateTime startDate;
-                
-                // Calculate start date based on period and count
-                switch (period.ToLowerInvariant())
-                {
-                    case "day":
-                        startDate = endDate.AddDays(-count + 1).Date;
-                        break;
-                    case "week":
-                        // Start from the beginning of the week count weeks ago
-                        startDate = endDate.AddDays(-(int)endDate.DayOfWeek).Date.AddDays(-7 * (count - 1));
-                        break;
-                    case "month":
-                        // Start from the beginning of the month count months ago
-                        startDate = new DateTime(endDate.Year, endDate.Month, 1).AddMonths(-count + 1);
-                        break;
-                    default:
-                        throw new ArgumentException($"Invalid period type: {period}");
-                }
+                // Normalize date range
+                var normalizedDates = NormalizeDateRange(startDate, endDate);
+                startDate = normalizedDates.startDate;
+                endDate = normalizedDates.endDate;
                 
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 
-                // Build the query with filters
-                var query = dbContext.RequestLogs
-                    .AsNoTracking()
-                    .Include(r => r.VirtualKey)
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+                // Get filtered logs
+                var logs = await GetFilteredLogsAsync(dbContext, startDate.Value, endDate.Value, virtualKeyId, modelName);
                 
-                if (virtualKeyId.HasValue)
-                {
-                    query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
-                }
-                
-                if (!string.IsNullOrWhiteSpace(modelName))
-                {
-                    query = query.Where(r => r.ModelName == modelName);
-                }
-                
-                // Execute the query
-                var logs = await query.ToListAsync();
-                
-                // Create the trend data
-                var trendData = new CostTrendDto
-                {
-                    PeriodType = period,
-                    PeriodCount = count,
-                    StartDate = startDate,
-                    EndDate = endDate,
-                    TotalCost = logs.Sum(r => r.Cost),
-                    TotalRequests = (int)logs.LongCount(),
-                    VirtualKeyId = virtualKeyId,
-                    ModelName = modelName
-                };
-                
-                // Generate periods
-                var periods = new List<(DateTime Start, DateTime End, string Label)>();
-                
-                switch (period.ToLowerInvariant())
-                {
-                    case "day":
-                        for (int i = 0; i < count; i++)
-                        {
-                            var day = startDate.AddDays(i);
-                            periods.Add((
-                                day,
-                                day.AddDays(1).AddSeconds(-1),
-                                day.ToString("MMM dd")
-                            ));
-                        }
-                        break;
-                    case "week":
-                        for (int i = 0; i < count; i++)
-                        {
-                            var weekStart = startDate.AddDays(i * 7);
-                            var weekEnd = weekStart.AddDays(6);
-                            periods.Add((
-                                weekStart,
-                                weekEnd.AddDays(1).AddSeconds(-1),
-                                $"{weekStart:MMM dd} - {weekEnd:MMM dd}"
-                            ));
-                        }
-                        break;
-                    case "month":
-                        for (int i = 0; i < count; i++)
-                        {
-                            var monthStart = startDate.AddMonths(i);
-                            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-                            periods.Add((
-                                monthStart,
-                                monthEnd.AddDays(1).AddSeconds(-1),
-                                monthStart.ToString("MMM yyyy")
-                            ));
-                        }
-                        break;
-                }
-                
-                // Group logs by period
-                foreach (var (periodStart, periodEnd, label) in periods)
-                {
-                    var periodLogs = logs
-                        .Where(r => r.Timestamp >= periodStart && r.Timestamp <= periodEnd)
-                        .ToList();
-                    
-                    var periodData = new PeriodCostData
-                    {
-                        Label = label,
-                        StartDate = periodStart,
-                        EndDate = periodEnd,
-                        Cost = periodLogs.Sum(r => r.Cost),
-                        RequestCount = (int)periodLogs.LongCount(),
-                        InputTokens = periodLogs.Sum(r => r.InputTokens),
-                        OutputTokens = periodLogs.Sum(r => r.OutputTokens)
-                    };
-                    
-                    // Group by model for this period
-                    var modelGroups = periodLogs
-                        .GroupBy(r => r.ModelName)
-                        .OrderByDescending(g => g.Sum(r => r.Cost))
-                        .ToList();
-                    
-                    foreach (var group in modelGroups)
-                    {
-                        periodData.CostByModel[group.Key] = group.Sum(r => r.Cost);
-                    }
-                    
-                    // Group by key for this period
-                    var keyGroups = periodLogs
-                        .GroupBy(r => r.VirtualKeyId)
-                        .OrderByDescending(g => g.Sum(r => r.Cost))
-                        .ToList();
-                    
-                    foreach (var group in keyGroups)
-                    {
-                        var key = group.FirstOrDefault()?.VirtualKey;
-                        periodData.CostByKey[group.Key] = new KeyPeriodData
-                        {
-                            KeyName = key?.KeyName ?? $"Key ID {group.Key}",
-                            Cost = group.Sum(r => r.Cost)
-                        };
-                    }
-                    
-                    trendData.Periods.Add(periodData);
-                }
-                
-                return trendData;
+                // Group by date, model, and virtual key
+                return CalculateDetailedCostBreakdown(logs);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting cost trend data");
+                _logger.LogError(ex, "Error getting detailed cost data");
                 throw;
             }
+        }
+        
+        /// <summary>
+        /// Calculates detailed cost breakdown grouped by date, model, and virtual key.
+        /// </summary>
+        /// <param name="logs">The filtered request logs.</param>
+        /// <returns>List of detailed cost data.</returns>
+        private List<DetailedCostDataDto> CalculateDetailedCostBreakdown(List<RequestLog> logs)
+        {
+            return logs
+                .GroupBy(r => new 
+                { 
+                    Date = r.Timestamp.Date, 
+                    r.ModelName, 
+                    r.VirtualKeyId, 
+                    KeyName = r.VirtualKey != null ? r.VirtualKey.KeyName : $"Key ID {r.VirtualKeyId}" 
+                })
+                .OrderBy(g => g.Key.Date)
+                .ThenBy(g => g.Key.ModelName)
+                .ThenBy(g => g.Key.KeyName)
+                .Select(g => new DetailedCostDataDto
+                {
+                    Date = g.Key.Date,
+                    Model = g.Key.ModelName,
+                    KeyName = g.Key.KeyName,
+                    Requests = g.Count(),
+                    InputTokens = g.Sum(r => r.InputTokens),
+                    OutputTokens = g.Sum(r => r.OutputTokens),
+                    Cost = g.Sum(r => r.Cost)
+                })
+                .ToList();
         }
     }
 }

@@ -19,7 +19,7 @@
     {
         <div style="position: absolute; top: 100%; right: 0; z-index: 1000;">
             <MudPaper Elevation="4" Class="notification-panel d-flex flex-column">
-                <MudToolBar Dense="true" disableGutters="true" Class="px-3 py-2 gap-2">
+                <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-2 gap-2">
                     <MudText Typo="Typo.h6" Class="flex-grow-1">Notifications</MudText>
                     <MudTooltip Text="Mark All Read">
                         <MudIconButton 
@@ -51,7 +51,7 @@
                     }
                     else
                     {
-                        <MudList T="Notification" clickable="false" disablePadding="true">
+                        <MudList T="Notification" Clickable="true" DisablePadding="true" Dense="true">
                             @foreach (var notification in Notifications)
                             {
                                 <MudListItem T="Notification" Class="@($"notification-item {GetNotificationClass(notification)}")">

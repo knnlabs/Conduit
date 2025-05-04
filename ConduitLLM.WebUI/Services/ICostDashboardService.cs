@@ -1,5 +1,7 @@
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.DTOs;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ConduitLLM.WebUI.Services
@@ -10,30 +12,42 @@ namespace ConduitLLM.WebUI.Services
     public interface ICostDashboardService
     {
         /// <summary>
-        /// Gets cost dashboard data for a specified time period
+        /// Gets dashboard data for the specified period
         /// </summary>
         /// <param name="startDate">Start date of the period</param>
         /// <param name="endDate">End date of the period</param>
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
         /// <returns>Cost dashboard data</returns>
-        Task<CostDashboardDto> GetCostDashboardDataAsync(
-            DateTime startDate,
-            DateTime endDate,
+        Task<CostDashboardDto> GetDashboardDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
             int? virtualKeyId = null,
             string? modelName = null);
             
         /// <summary>
-        /// Gets cost trend data for charting
+        /// Gets a list of available virtual keys
         /// </summary>
-        /// <param name="period">Period type (day, week, month)</param>
-        /// <param name="count">Number of periods to include</param>
+        /// <returns>List of virtual keys</returns>
+        Task<List<VirtualKey>> GetVirtualKeysAsync();
+        
+        /// <summary>
+        /// Gets a list of available models
+        /// </summary>
+        /// <returns>List of model names</returns>
+        Task<List<string>> GetAvailableModelsAsync();
+        
+        /// <summary>
+        /// Gets detailed cost data for export
+        /// </summary>
+        /// <param name="startDate">Start date of the period</param>
+        /// <param name="endDate">End date of the period</param>
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
-        /// <returns>Cost trend data</returns>
-        Task<CostTrendDto> GetCostTrendAsync(
-            string period,
-            int count,
+        /// <returns>Detailed cost data</returns>
+        Task<List<DetailedCostDataDto>> GetDetailedCostDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
             int? virtualKeyId = null,
             string? modelName = null);
     }

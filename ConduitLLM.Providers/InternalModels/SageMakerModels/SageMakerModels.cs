@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ConduitLLM.Providers.InternalModels;
+namespace ConduitLLM.Providers.InternalModels.SageMakerModels;
 
 /// <summary>
 /// SageMaker base request class for text generation

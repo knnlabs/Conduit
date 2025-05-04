@@ -21,7 +21,7 @@
 <MudCard Elevation="2" Class="mb-6">
     <MudCardHeader>
         <MudText Typo="Typo.h6">Model Costs</MudText>
-        <MudToolBar disableGutters="true">
+        <MudToolBar DisableGutters="true">
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" 
                      OnClick="RefreshModelCosts" StartIcon="@Icons.Material.Filled.Refresh" Class="mr-2">
                 Refresh
@@ -86,7 +86,7 @@
     </MudCardContent>
 </MudCard>
 
-<MudDialog @bind-isVisible="showAddEditModal" Options="dialogOptions">
+<MudDialog @bind-Visible="showAddEditModal" Options="dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
             @(editingModelCost.Id == 0 ? "Add New Model Cost" : "Edit Model Cost")
@@ -140,7 +140,7 @@
     </DialogActions>
 </MudDialog>
 
-<MudDialog @bind-isVisible="showDeleteConfirmation" Options="dialogOptions">
+<MudDialog @bind-Visible="showDeleteConfirmation" Options="dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">Confirm Delete</MudText>
     </TitleContent>
@@ -169,8 +169,6 @@
     private List<ModelCost>? modelCosts;
     private bool isLoading = true;
     private bool isSaving = false;
-    private string? errorMessage;
-    private string? successMessage;
     
     // Add/Edit modal variables
     private bool showAddEditModal = false;
@@ -202,7 +200,6 @@
     private async Task LoadModelCostsAsync()
     {
         isLoading = true;
-        errorMessage = null;
 
         try
         {

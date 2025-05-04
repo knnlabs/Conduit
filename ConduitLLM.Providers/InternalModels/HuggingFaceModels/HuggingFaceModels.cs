@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ConduitLLM.Providers.InternalModels;
+namespace ConduitLLM.Providers.InternalModels.HuggingFaceModels;
 
 /// <summary>
 /// HuggingFace Inference API text generation request
@@ -129,7 +129,10 @@ public class HuggingFaceConversation
 public class HuggingFaceEmbeddingRequest
 {
     [JsonPropertyName("inputs")]
-    public List<string> Inputs { get; set; } = new();
+    public string[] Inputs { get; set; } = null!;
+    
+    [JsonPropertyName("options")]
+    public HuggingFaceOptions? Options { get; set; }
 }
 
 /// <summary>
@@ -140,6 +143,18 @@ public class HuggingFaceEmbeddingResponse
     // Can be either List<List<float>> for batched requests or List<float> for single requests
     [JsonPropertyName("features")]
     public List<List<float>>? Features { get; set; }
+}
+
+/// <summary>
+/// HuggingFace image generation request
+/// </summary>
+public class HuggingFaceImageGenerationRequest
+{
+    [JsonPropertyName("inputs")]
+    public string Inputs { get; set; } = null!;
+    
+    [JsonPropertyName("options")]
+    public HuggingFaceOptions? Options { get; set; }
 }
 
 /// <summary>

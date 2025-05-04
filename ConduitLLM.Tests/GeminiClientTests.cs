@@ -12,9 +12,11 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
+using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks; // For Gemini DTOs
 
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 using Moq;
 using Moq.Contrib.HttpClient;
@@ -115,7 +117,8 @@ public class GeminiClientTests
             .Verifiable();
 
         // Pass the mock HttpClient to the client constructor
-        var client = new GeminiClient(_credentials, providerModelId, _loggerMock.Object, _httpClient);
+        var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
+        var client = new GeminiClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
 
         // Act
         var response = await client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None);
@@ -316,7 +319,8 @@ public class GeminiClientTests
             .Verifiable();
 
         // Pass the mock HttpClient to the client constructor
-        var client = new GeminiClient(_credentials, providerModelId, _loggerMock.Object, _httpClient);
+        var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
+        var client = new GeminiClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
 
         // Act
         var receivedChunks = new List<ChatCompletionChunk>();

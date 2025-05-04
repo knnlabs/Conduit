@@ -7,9 +7,11 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
+
+using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
@@ -18,115 +20,351 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
-using Microsoft.Extensions.Logging;
-
-namespace ConduitLLM.Providers;
-
-/// <summary>
-/// Client for interacting with the Google Gemini API.
-/// </summary>
-public class GeminiClient : ILLMClient
+namespace ConduitLLM.Providers
 {
-    // TODO: Refactor to use IHttpClientFactory
-    private readonly HttpClient _httpClient;
-    private readonly ProviderCredentials _credentials;
-    private readonly string _providerModelId; // The actual model ID for Gemini (e.g., gemini-1.5-flash-latest)
-    private readonly ILogger<GeminiClient> _logger;
-    private readonly string _apiBaseUri;
-    private readonly string _apiVersion;
-
-    // Base URL for Gemini API
-    private const string DefaultApiBase = "https://generativelanguage.googleapis.com/";
-    private const string ApiVersion = "v1beta"; // Or specific version like v1
-
-    public GeminiClient(ProviderCredentials credentials, string providerModelId, ILogger<GeminiClient> logger, HttpClient? httpClient = null)
+    /// <summary>
+    /// Revised client for interacting with the Google Gemini API using the new client hierarchy.
+    /// Provides standardized handling of API requests and responses with enhanced error handling.
+    /// </summary>
+    public class GeminiClient : CustomProviderClient
     {
-        _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
-        _providerModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-        {
-            throw new ConfigurationException($"API key is missing for provider '{credentials.ProviderName}'.");
-        }
-
-        // Allow injection of HttpClient for testing
-        _httpClient = httpClient ?? new HttpClient();
+        // Gemini-specific constants
+        private const string DefaultApiBase = "https://generativelanguage.googleapis.com/";
+        private const string DefaultApiVersion = "v1beta";
         
-        // Use ApiBase from credentials if provided, otherwise default
-        string apiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase;
-        // Ensure ApiBase ends with a slash
-        if (!apiBase.EndsWith('/'))
+        private readonly string _apiVersion;
+        
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GeminiClientRevised"/> class.
+        /// </summary>
+        /// <param name="credentials">The credentials for accessing the Gemini API.</param>
+        /// <param name="providerModelId">The provider model ID to use (e.g., gemini-1.5-flash-latest).</param>
+        /// <param name="logger">The logger to use.</param>
+        /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
+        /// <param name="apiVersion">The API version to use. Defaults to v1beta.</param>
+        public GeminiClient(
+            ProviderCredentials credentials,
+            string providerModelId,
+            ILogger<GeminiClient> logger,
+            IHttpClientFactory? httpClientFactory = null,
+            string? apiVersion = null) 
+            : base(
+                credentials,
+                providerModelId,
+                logger,
+                httpClientFactory,
+                "Gemini",
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase)
         {
-            apiBase += "/";
+            _apiVersion = apiVersion ?? DefaultApiVersion;
         }
-        _apiBaseUri = apiBase;
-        _apiVersion = ApiVersion;
-        _httpClient.BaseAddress = new Uri(apiBase);
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        // Google Gemini use API key in query parameter, not in headers
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-    }
-
-    /// <inheritdoc />
-    public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        // Determine the API key to use: override if provided, otherwise use configured key
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
+        
+        /// <inheritdoc/>
+        protected override void ValidateCredentials()
         {
-             // This should ideally not happen if constructor validation is correct, but double-check
-             throw new ConfigurationException($"API key is missing for provider '{_credentials.ProviderName}' and no override was provided.");
-        }
-
-        _logger.LogInformation("Mapping Core request to Gemini request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
-        var geminiRequest = MapToGeminiRequest(request);
-
-        HttpResponseMessage? response = null;
-        try
-        {
-            var requestUri = $"{_apiBaseUri}{_apiVersion}/models/{_providerModelId}:generateContent?key={effectiveApiKey}";
-            _logger.LogDebug("Sending request to Gemini API: {Endpoint}", requestUri);
-
-            response = await _httpClient.PostAsJsonAsync(requestUri, geminiRequest, cancellationToken).ConfigureAwait(false);
-
-            if (response.IsSuccessStatusCode)
+            base.ValidateCredentials();
+            
+            if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
-                var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiGenerateContentResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-                
-                if (geminiResponse == null)
-                {
-                    _logger.LogError("Failed to deserialize Gemini response despite 200 OK status");
-                    throw new LLMCommunicationException("Failed to deserialize the successful response from Gemini API.");
-                }
-
-                // Check for safety filtering response
-                if (geminiResponse.Candidates != null && 
-                    geminiResponse.Candidates.Count > 0 && 
-                    geminiResponse.Candidates[0].FinishReason == "SAFETY" &&
-                    geminiResponse.Candidates[0].SafetyRatings != null)
-                {
-                    string safetyDetails = string.Join(", ", geminiResponse.Candidates[0].SafetyRatings?
-                        .Where(r => r != null && r.Probability != "NEGLIGIBLE")
-                        .Select(r => $"{r.Category}: {r.Probability}") ?? Array.Empty<string>());
-                    
-                    _logger.LogWarning("Gemini response blocked due to safety settings: {Details}", safetyDetails);
-                    throw new LLMCommunicationException($"Gemini response blocked due to safety settings: {safetyDetails}");
-                }
-
-                var coreResponse = MapToCoreResponse(geminiResponse, request.Model);
-                _logger.LogInformation("Successfully received and mapped Gemini response.");
-                return coreResponse;
+                throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
-            else
+        }
+        
+        /// <inheritdoc/>
+        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
+        {
+            // Don't call base to avoid setting Bearer authorization as Gemini uses query param authentication
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            
+            // For Gemini, the API key is added to the query string in each request, not in the headers
+            
+            // Set the base URL with no trailing slash
+            if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
+            {
+                client.BaseAddress = new Uri(BaseUrl.TrimEnd('/'));
+            }
+        }
+        
+        /// <inheritdoc/>
+        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "CreateChatCompletionAsync");
+            
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            Logger.LogInformation("Mapping Core request to Gemini request for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", 
+                request.Model, ProviderModelId);
+            
+            var geminiRequest = MapToGeminiRequest(request);
+            
+            try
+            {
+                return await ExecuteApiRequestAsync(
+                    async () =>
+                    {
+                        using var client = CreateHttpClient(effectiveApiKey);
+                        var requestUri = $"{_apiVersion}/models/{ProviderModelId}:generateContent?key={effectiveApiKey}";
+                        Logger.LogDebug("Sending request to Gemini API: {Endpoint}", requestUri);
+                        
+                        var response = await client.PostAsJsonAsync(requestUri, geminiRequest, cancellationToken)
+                            .ConfigureAwait(false);
+                        
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiGenerateContentResponse>(
+                                cancellationToken: cancellationToken).ConfigureAwait(false);
+                            
+                            if (geminiResponse == null)
+                            {
+                                Logger.LogError("Failed to deserialize Gemini response despite 200 OK status");
+                                throw new LLMCommunicationException("Failed to deserialize the successful response from Gemini API.");
+                            }
+                            
+                            // Check for safety filtering response
+                            CheckForSafetyBlocking(geminiResponse);
+                            
+                            var coreResponse = MapToCoreResponse(geminiResponse, request.Model);
+                            Logger.LogInformation("Successfully received and mapped Gemini response");
+                            return coreResponse;
+                        }
+                        else
+                        {
+                            string errorContent = await ReadErrorContentAsync(response, cancellationToken)
+                                .ConfigureAwait(false);
+                            
+                            Logger.LogError("Gemini API request failed with status code {StatusCode}. Response: {ErrorContent}", 
+                                response.StatusCode, errorContent);
+                            
+                            try
+                            {
+                                // Try to parse as Gemini error JSON
+                                var errorDto = JsonSerializer.Deserialize<GeminiErrorResponse>(errorContent);
+                                if (errorDto?.Error != null)
+                                {
+                                    string errorMessage = $"Gemini API Error {errorDto.Error.Code} ({errorDto.Error.Status}): {errorDto.Error.Message}";
+                                    Logger.LogError(errorMessage);
+                                    throw new LLMCommunicationException(errorMessage);
+                                }
+                            }
+                            catch (JsonException)
+                            {
+                                // If it's not a parsable JSON or doesn't follow the expected format, use a generic message
+                                Logger.LogWarning("Could not parse Gemini error response as JSON. Treating as plain text.");
+                            }
+                            
+                            throw new LLMCommunicationException(
+                                $"Gemini API request failed with status code {response.StatusCode}. Response: {errorContent}");
+                        }
+                    },
+                    "CreateChatCompletionAsync",
+                    cancellationToken);
+            }
+            catch (LLMCommunicationException)
+            {
+                // Re-throw LLMCommunicationException directly
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred during Gemini API request");
+                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+            ChatCompletionRequest request,
+            string? apiKey = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request, "StreamChatCompletionAsync");
+            
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            
+            Logger.LogInformation("Preparing streaming request to Gemini for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", 
+                request.Model, ProviderModelId);
+            
+            // Create Gemini request
+            var geminiRequest = MapToGeminiRequest(request);
+            
+            // Store original model alias for response mapping
+            string originalModelAlias = request.Model;
+            
+            // Setup and send initial request
+            HttpResponseMessage? response = null;
+            
+            try
+            {
+                response = await SetupAndSendStreamingRequestAsync(geminiRequest, effectiveApiKey, cancellationToken).ConfigureAwait(false);
+            }
+            catch (LLMCommunicationException)
+            {
+                // If it's already a properly formatted LLMCommunicationException, just re-throw it
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to initiate Gemini streaming request");
+                throw new LLMCommunicationException($"Failed to initiate Gemini stream: {ex.Message}", ex);
+            }
+            
+            // Process the stream
+            try
+            {
+                await foreach (var chunk in ProcessGeminiStreamAsync(response, originalModelAlias, cancellationToken).ConfigureAwait(false))
+                {
+                    yield return chunk;
+                }
+            }
+            finally
+            {
+                response?.Dispose();
+            }
+        }
+        
+        /// <inheritdoc/>
+        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            
+            try
+            {
+                return await ExecuteApiRequestAsync(
+                    async () =>
+                    {
+                        using var client = CreateHttpClient(effectiveApiKey);
+                        
+                        // Construct endpoint URL with the effective API key
+                        string endpoint = $"{_apiVersion}/models?key={effectiveApiKey}";
+                        Logger.LogDebug("Sending request to list Gemini models from: {Endpoint}", endpoint);
+                        
+                        var response = await client.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                        
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+                            string errorMessage = $"Gemini API list models request failed with status code {response.StatusCode}.";
+                            
+                            try
+                            {
+                                var errorResponse = JsonSerializer.Deserialize<GeminiErrorResponse>(errorContent);
+                                if (errorResponse?.Error != null)
+                                {
+                                    errorMessage = $"Gemini API Error {errorResponse.Error.Code} ({errorResponse.Error.Status}): {errorResponse.Error.Message}";
+                                    Logger.LogError("Gemini API list models request failed. Status: {StatusCode}, Error Status: {ErrorStatus}, Message: {ErrorMessage}", 
+                                        response.StatusCode, errorResponse.Error.Status, errorResponse.Error.Message);
+                                }
+                                else 
+                                { 
+                                    throw new JsonException("Failed to parse Gemini error response."); 
+                                }
+                            }
+                            catch (JsonException jsonEx)
+                            {
+                                Logger.LogError(jsonEx, "Gemini API list models request failed with status code {StatusCode}. Failed to parse error response body. Response: {ErrorContent}", 
+                                    response.StatusCode, errorContent);
+                                errorMessage += $" Failed to parse error response: {errorContent}";
+                            }
+                            
+                            throw new LLMCommunicationException(errorMessage);
+                        }
+                        
+                        var modelListResponse = await response.Content.ReadFromJsonAsync<GeminiModelListResponse>(cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+                        
+                        if (modelListResponse == null || modelListResponse.Models == null)
+                        {
+                            Logger.LogError("Failed to deserialize the successful model list response from Gemini API.");
+                            throw new LLMCommunicationException("Failed to deserialize the model list response from Gemini API.");
+                        }
+                        
+                        // Filter for models that support 'generateContent' as we are focused on chat
+                        var chatModels = modelListResponse.Models
+                            .Where(m => m.SupportedGenerationMethods?.Contains("generateContent") ?? false)
+                            .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id)
+                                .WithName(m.DisplayName ?? m.Id)
+                                .WithCapabilities(new ModelCapabilities
+                                {
+                                    Chat = true,
+                                    TextGeneration = true,
+                                    Embeddings = false,
+                                    ImageGeneration = false
+                                })
+                                .WithTokenLimits(new ModelTokenLimits
+                                {
+                                    MaxInputTokens = m.InputTokenLimit,
+                                    MaxOutputTokens = m.OutputTokenLimit
+                                })
+                            )
+                            .ToList();
+                        
+                        Logger.LogInformation($"Successfully retrieved {chatModels.Count} chat-compatible models from Gemini.");
+                        return chatModels;
+                    },
+                    "GetModelsAsync",
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred while listing Gemini models");
+                throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
+            EmbeddingRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromException<EmbeddingResponse>(
+                new NotSupportedException("Embeddings are not supported by GeminiClient."));
+        }
+
+        /// <inheritdoc/>
+        public override Task<ImageGenerationResponse> CreateImageAsync(
+            ImageGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromException<ImageGenerationResponse>(
+                new NotSupportedException("Image generation is not supported by GeminiClient."));
+        }
+        
+        #region Helper Methods
+        
+        private async Task<HttpResponseMessage> SetupAndSendStreamingRequestAsync(
+            GeminiGenerateContentRequest geminiRequest,
+            string effectiveApiKey,
+            CancellationToken cancellationToken)
+        {
+            // Add streaming parameter to the URL
+            var endpoint = $"{_apiVersion}/models/{ProviderModelId}:streamGenerateContent?key={effectiveApiKey}&alt=sse";
+            Logger.LogDebug("Sending streaming request to Gemini API: {Endpoint}", endpoint);
+            
+            using var client = CreateHttpClient(effectiveApiKey);
+            
+            // Create request message
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = JsonContent.Create(geminiRequest)
+            };
+            
+            // Send request with ResponseHeadersRead to get streaming
+            var response = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .ConfigureAwait(false);
+            
+            if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                _logger.LogError("Gemini API request failed with status code {StatusCode}. Response: {ErrorContent}", response.StatusCode, errorContent);
+                Logger.LogError("Gemini streaming request failed with status {Status}. Response: {ErrorContent}", 
+                    response.StatusCode, errorContent);
                 
                 try
                 {
@@ -134,502 +372,306 @@ public class GeminiClient : ILLMClient
                     var errorDto = JsonSerializer.Deserialize<GeminiErrorResponse>(errorContent);
                     if (errorDto?.Error != null)
                     {
-                        string errorMessage = $"Gemini API Error {errorDto.Error.Code} ({errorDto.Error.Status}): {errorDto.Error.Message}";
-                        _logger.LogError(errorMessage);
-                        throw new LLMCommunicationException(errorMessage);
+                        // Direct error format used by the test
+                        throw new LLMCommunicationException($"Gemini API Error {errorDto.Error.Code} ({errorDto.Error.Status}): {errorDto.Error.Message}");
                     }
                 }
                 catch (JsonException)
                 {
-                    // If it's not a parsable JSON or doesn't follow the expected format, use a generic message
-                    _logger.LogWarning("Could not parse Gemini error response as JSON. Treating as plain text.");
+                    // Not JSON, fall through to default message
                 }
                 
-                // Default error if JSON parsing failed or unexpected format
                 throw new LLMCommunicationException($"Gemini API request failed with status code {response.StatusCode}. Response: {errorContent}");
             }
+            
+            return response;
         }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON error processing Gemini response.");
-            throw new LLMCommunicationException("Error deserializing Gemini response.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP request error communicating with Gemini API.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Gemini API: {ex.Message}", ex);
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            _logger.LogWarning(ex, "Gemini API request timed out.");
-            throw new LLMCommunicationException("Gemini API request timed out.", ex);
-        }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogInformation(ex, "Gemini API request was cancelled by the caller.");
-            throw; // Re-throw cancellation
-        }
-        catch (LLMCommunicationException)
-        {
-            // Re-throw LLMCommunicationException directly, already logged
-            throw;
-        }
-        catch (Exception ex) // Catch-all for unexpected errors
-        {
-            _logger.LogError(ex, "An unexpected error occurred during Gemini API request.");
-            throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-        }
-        finally
-        {
-            response?.Dispose();
-        }
-    }
-
-    /// <inheritdoc />
-    public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-        ChatCompletionRequest request,
-        string? apiKey = null, // Added optional API key
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        // Determine the API key to use
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            throw new ConfigurationException($"API key is missing for provider '{_credentials.ProviderName}' and no override was provided.");
-        }
-
-        _logger.LogInformation("Preparing streaming request to Gemini for model alias '{ModelAlias}', provider model ID '{ProviderModelId}'", request.Model, _providerModelId);
-
-        // Create Gemini request
-        var geminiRequest = MapToGeminiRequest(request);
         
-        // Store original model alias for response mapping
-        string originalModelAlias = request.Model;
-
-        // Setup and send initial request
-        HttpResponseMessage? response = null;
-        try
+        private async IAsyncEnumerable<ChatCompletionChunk> ProcessGeminiStreamAsync(
+            HttpResponseMessage response, 
+            string originalModelAlias, 
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            response = await SetupAndSendStreamingRequestAsync(geminiRequest, effectiveApiKey, cancellationToken).ConfigureAwait(false);
-        }
-        catch (LLMCommunicationException)
-        {
-            // If it's already a properly formatted LLMCommunicationException, just re-throw it
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initiate Gemini streaming request");
-            throw new LLMCommunicationException($"Failed to initiate Gemini stream: {ex.Message}", ex);
-        }
-
-        // Process the stream
-        try
-        {
-            await foreach (var chunk in ProcessGeminiStreamAsync(response, originalModelAlias, cancellationToken).ConfigureAwait(false))
-            {
-                yield return chunk;
-            }
-        }
-        finally
-        {
-            response?.Dispose();
-        }
-    }
-
-    // Helper to setup and send the initial streaming request
-    private async Task<HttpResponseMessage> SetupAndSendStreamingRequestAsync(
-        GeminiGenerateContentRequest geminiRequest,
-        string effectiveApiKey,
-        CancellationToken cancellationToken)
-    {
-        // Add streaming parameter to the URL
-        var endpoint = $"{_apiBaseUri}{_apiVersion}/models/{_providerModelId}:streamGenerateContent?key={effectiveApiKey}&alt=sse";
-        _logger.LogDebug("Sending streaming request to Gemini API: {Endpoint}", endpoint);
-
-        // Create request message
-        var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
-        {
-            Content = JsonContent.Create(geminiRequest)
-        };
-
-        // Send request with ResponseHeadersRead to get streaming
-        var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-            _logger.LogError("Gemini streaming request failed with status {Status}. Response: {ErrorContent}", response.StatusCode, errorContent);
+            Stream? responseStream = null;
+            StreamReader? reader = null;
             
             try
             {
-                // Try to parse as Gemini error JSON
-                var errorDto = JsonSerializer.Deserialize<GeminiErrorResponse>(errorContent);
-                if (errorDto?.Error != null)
+                responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                reader = new StreamReader(responseStream, Encoding.UTF8);
+                
+                // Process the stream line by line (expecting SSE format due to alt=sse)
+                while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
                 {
-                    // Direct error format used by the test
-                    throw new LLMCommunicationException($"Gemini API Error {errorDto.Error.Code} ({errorDto.Error.Status}): {errorDto.Error.Message}");
-                }
-            }
-            catch (JsonException)
-            {
-                // Not JSON, fall through to default message
-            }
-            
-            throw new LLMCommunicationException($"Gemini API request failed with status code {response.StatusCode}. Response: {errorContent}");
-        }
-
-        return response;
-    }
-
-    // Helper to process the actual stream content
-    private async IAsyncEnumerable<ChatCompletionChunk> ProcessGeminiStreamAsync(HttpResponseMessage response, string originalModelAlias, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        Stream? responseStream = null;
-        StreamReader? reader = null;
-
-        try
-        {
-            responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            reader = new StreamReader(responseStream, Encoding.UTF8);
-
-            // Process the stream line by line (expecting SSE format due to alt=sse)
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
-            {
-                string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false); // Use ReadLineAsync with CancellationToken
-
-                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data:"))
-                {
-                    // Skip empty lines or non-data lines if using SSE format
-                    continue;
-                }
-
-                string jsonData = line.Substring("data:".Length).Trim();
-
-                if (string.IsNullOrWhiteSpace(jsonData))
-                {
-                    continue; // Skip if data part is empty
-                }
-
-                ChatCompletionChunk? chunk = null;
-                try
-                {
-                    var geminiResponse = JsonSerializer.Deserialize<GeminiGenerateContentResponse>(jsonData);
-                    if (geminiResponse != null)
+                    string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    
+                    if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data:"))
                     {
-                        // Map the Gemini response (which contains the delta) to our core chunk
-                        // Pass originalModelAlias for mapping
-                        chunk = MapToCoreChunk(geminiResponse, originalModelAlias);
+                        // Skip empty lines or non-data lines if using SSE format
+                        continue;
                     }
-                    else
+                    
+                    string jsonData = line.Substring("data:".Length).Trim();
+                    
+                    if (string.IsNullOrWhiteSpace(jsonData))
                     {
-                        _logger.LogWarning("Deserialized Gemini stream chunk was null. JSON: {JsonData}", jsonData);
+                        continue; // Skip if data part is empty
+                    }
+                    
+                    ChatCompletionChunk? chunk = null;
+                    try
+                    {
+                        var geminiResponse = JsonSerializer.Deserialize<GeminiGenerateContentResponse>(jsonData);
+                        if (geminiResponse != null)
+                        {
+                            // Check for safety blocking in streaming context
+                            CheckForSafetyBlocking(geminiResponse);
+                            
+                            // Map the Gemini response (which contains the delta) to our core chunk
+                            chunk = MapToCoreChunk(geminiResponse, originalModelAlias);
+                        }
+                        else
+                        {
+                            Logger.LogWarning("Deserialized Gemini stream chunk was null. JSON: {JsonData}", jsonData);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        Logger.LogError(ex, "JSON deserialization error processing Gemini stream chunk. JSON: {JsonData}", jsonData);
+                        // Throw to indicate stream corruption
+                        throw new LLMCommunicationException($"Error deserializing Gemini stream chunk: {ex.Message}. Data: {jsonData}", ex);
+                    }
+                    catch (LLMCommunicationException llmEx) // Catch mapping/validation errors
+                    {
+                         Logger.LogError(llmEx, "Error processing Gemini stream chunk content. JSON: {JsonData}", jsonData);
+                         throw; // Re-throw specific communication errors
+                    }
+                    catch (Exception ex) // Catch unexpected mapping errors
+                    {
+                         Logger.LogError(ex, "Unexpected error mapping Gemini stream chunk. JSON: {JsonData}", jsonData);
+                         throw new LLMCommunicationException($"Unexpected error mapping Gemini stream chunk: {ex.Message}. Data: {jsonData}", ex);
+                    }
+                    
+                    if (chunk != null) // MapToCoreChunk might return null if there's no usable delta
+                    {
+                        yield return chunk;
                     }
                 }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "JSON deserialization error processing Gemini stream chunk. JSON: {JsonData}", jsonData);
-                    // Throw to indicate stream corruption
-                    throw new LLMCommunicationException($"Error deserializing Gemini stream chunk: {ex.Message}. Data: {jsonData}", ex);
-                }
-                catch (LLMCommunicationException llmEx) // Catch mapping/validation errors from MapToCoreChunk
-                {
-                     _logger.LogError(llmEx, "Error processing Gemini stream chunk content. JSON: {JsonData}", jsonData);
-                     throw; // Re-throw specific communication errors
-                }
-                catch (Exception ex) // Catch unexpected mapping errors
-                {
-                     _logger.LogError(ex, "Unexpected error mapping Gemini stream chunk. JSON: {JsonData}", jsonData);
-                     throw new LLMCommunicationException($"Unexpected error mapping Gemini stream chunk: {ex.Message}. Data: {jsonData}", ex);
-                }
-
-                if (chunk != null) // MapToCoreChunk might return null if there's no usable delta
-                {
-                    yield return chunk;
-                }
+                 
+                Logger.LogInformation("Finished processing Gemini stream.");
             }
-             _logger.LogInformation("Finished processing Gemini stream.");
-        }
-        // Exceptions during stream reading/processing will propagate out
-        finally
-        {
-            // Ensure resources are disposed even if exceptions occur during processing
-            reader?.Dispose();
-            responseStream?.Dispose();
-            response.Dispose(); // Dispose the response object itself
-            _logger.LogDebug("Disposed Gemini stream resources.");
-        }
-    }
-
-    // --- Mapping Logic ---
-
-    private GeminiGenerateContentRequest MapToGeminiRequest(ChatCompletionRequest coreRequest)
-    {
-        var contents = new List<GeminiContent>();
-        
-        // Extract system message if present
-        var systemMessage = coreRequest.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
-        if (systemMessage != null)
-        {
-            // Create a special system message
-            contents.Add(new GeminiContent
+            finally
             {
-                Role = "user", // Gemini doesn't have a system role, use user
-                Parts = new List<GeminiPart>
-                {
-                    new GeminiPart { Text = ContentHelper.GetContentAsString(systemMessage.Content) }
-                }
-            });
+                // Ensure resources are disposed even if exceptions occur during processing
+                reader?.Dispose();
+                responseStream?.Dispose();
+                Logger.LogDebug("Disposed Gemini stream resources.");
+            }
         }
         
-        // Process user/assistant messages
-        foreach (var message in coreRequest.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
+        private void CheckForSafetyBlocking(GeminiGenerateContentResponse geminiResponse)
         {
-            string role = message.Role.ToLowerInvariant() switch
-            {
-                "user" => "user",
-                "assistant" => "model",
-                _ => string.Empty
-            };
-            
-            if (string.IsNullOrEmpty(role))
-            {
-                _logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", message.Role);
-                continue;
-            }
-            
-            contents.Add(new GeminiContent
-            {
-                Role = role,
-                Parts = new List<GeminiPart>
-                {
-                    new GeminiPart { Text = ContentHelper.GetContentAsString(message.Content) }
-                }
-            });
-        }
-        
-        return new GeminiGenerateContentRequest
-        {
-            Contents = contents,
-            GenerationConfig = new GeminiGenerationConfig
-            {
-                Temperature = (float?)coreRequest.Temperature,
-                TopP = (float?)coreRequest.TopP,
-                // TopK = coreRequest.TopK, // Map if added to Core model
-                CandidateCount = coreRequest.N, // Map N to candidateCount
-                MaxOutputTokens = coreRequest.MaxTokens,
-                StopSequences = coreRequest.Stop
-            }
-        };
-    }
-
-    private ChatCompletionResponse MapToCoreResponse(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)
-    {
-        // Validated in caller: geminiResponse, Candidates, Candidates[0], Content, Parts, Text, UsageMetadata are not null.
-        var firstCandidate = geminiResponse.Candidates![0];
-        var firstPart = firstCandidate.Content!.Parts!.First();
-        var usageMetadata = geminiResponse.UsageMetadata!;
-
-        var choice = new Choice
-        {
-            Index = firstCandidate.Index,
-            Message = new Message
-            {
-                // Gemini uses "model" for assistant role
-                Role = firstCandidate.Content.Role == "model" ? MessageRole.Assistant : firstCandidate.Content.Role,
-                Content = firstPart.Text ?? string.Empty // Add null check with empty string default
-            },
-            FinishReason = MapFinishReason(firstCandidate.FinishReason) ?? string.Empty // Add null check with empty string default
-        };
-
-        return new ChatCompletionResponse
-        {
-            Id = Guid.NewGuid().ToString(), // Gemini doesn't provide an ID
-            Object = "chat.completion", // Mimic OpenAI structure
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time as Gemini doesn't provide it
-            Model = originalModelAlias, // Return the alias the user requested
-            Choices = new List<Choice> { choice },
-            Usage = new Usage
-            {
-                PromptTokens = usageMetadata.PromptTokenCount,
-                CompletionTokens = usageMetadata.CandidatesTokenCount, // Sum across candidates (usually 1)
-                TotalTokens = usageMetadata.TotalTokenCount
-            }
-            // SystemFingerprint = null // Gemini doesn't provide this
-        };
-    }
-
-     // New mapping function for streaming chunks (maps from GeminiGenerateContentResponse)
-    private ChatCompletionChunk? MapToCoreChunk(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)
-    {
-        // Extract the relevant delta information from the Gemini response structure
-        var firstCandidate = geminiResponse.Candidates?.FirstOrDefault();
-        var firstPart = firstCandidate?.Content?.Parts?.FirstOrDefault();
-        string? deltaText = firstPart?.Text;
-        string? finishReason = MapFinishReason(firstCandidate?.FinishReason) ?? string.Empty; // Add null check with empty string default
-
-        // Only yield a chunk if there's actual text content or a finish reason
-        if (string.IsNullOrEmpty(deltaText) && finishReason == null)
-        {
-            // This might happen for intermediate responses without text, or prompt feedback responses.
-            // Check for prompt feedback block reason
+            // Check for prompt feedback block
             if (geminiResponse.PromptFeedback?.BlockReason != null)
             {
-                 _logger.LogWarning("Gemini stream blocked due to prompt feedback. Reason: {BlockReason}", geminiResponse.PromptFeedback.BlockReason);
-                 // Throw an exception to stop the stream processing?
-                 throw new LLMCommunicationException($"Gemini stream blocked due to prompt feedback. Reason: {geminiResponse.PromptFeedback.BlockReason}");
+                string blockDetails = string.Join(", ", geminiResponse.PromptFeedback.SafetyRatings?
+                    .Where(r => r != null && r.Probability != "NEGLIGIBLE")
+                    .Select(r => $"{r.Category}: {r.Probability}") ?? Array.Empty<string>());
+                    
+                string blockReason = geminiResponse.PromptFeedback.BlockReason;
+                
+                Logger.LogWarning("Gemini response blocked due to prompt feedback. Reason: {BlockReason}, Details: {Details}",
+                    blockReason, string.IsNullOrEmpty(blockDetails) ? "No details provided" : blockDetails);
+                throw new LLMCommunicationException($"Gemini response blocked due to safety settings: {blockReason}. {blockDetails}");
             }
-             // Check for safety block in candidate
-            if (firstCandidate?.FinishReason == "SAFETY")
+            
+            // Check for safety filtering in candidates
+            if (geminiResponse.Candidates != null && 
+                geminiResponse.Candidates.Count > 0 && 
+                geminiResponse.Candidates[0].FinishReason == "SAFETY" &&
+                geminiResponse.Candidates[0].SafetyRatings != null)
             {
-                 _logger.LogWarning("Gemini stream blocked due to safety settings (finishReason: SAFETY).");
-                 throw new LLMCommunicationException("Gemini stream blocked due to safety settings.");
+                string safetyDetails = string.Join(", ", geminiResponse.Candidates[0].SafetyRatings?
+                    .Where(r => r != null && r.Probability != "NEGLIGIBLE")
+                    .Select(r => $"{r.Category}: {r.Probability}") ?? Array.Empty<string>());
+                
+                Logger.LogWarning("Gemini response blocked due to safety settings: {Details}", safetyDetails);
+                throw new LLMCommunicationException($"Gemini response blocked due to safety settings: {safetyDetails}");
             }
-
-            _logger.LogTrace("Skipping Gemini stream chunk mapping as no delta text or finish reason found.");
-            return null;
         }
-
-
-        var choice = new StreamingChoice
+        
+        #endregion
+        
+        #region Mapping Methods
+        
+        private GeminiGenerateContentRequest MapToGeminiRequest(ChatCompletionRequest coreRequest)
         {
-            Index = firstCandidate?.Index ?? 0,
-            Delta = new DeltaContent
+            var contents = new List<GeminiContent>();
+            
+            // Extract system message if present
+            var systemMessage = coreRequest.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
+            if (systemMessage != null)
             {
-                // Gemini doesn't explicitly provide role in delta chunks, assume assistant?
-                // Role = firstCandidate?.Content?.Role == "model" ? MessageRole.Assistant : null, // Role might only be in first chunk?
-                Content = deltaText // Can be null if only finish reason is present
-            },
-            FinishReason = finishReason // Can be null
-        };
-
-        return new ChatCompletionChunk
-        {
-            Id = Guid.NewGuid().ToString(), // Gemini doesn't provide chunk IDs
-            Object = "chat.completion.chunk",
-            Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time
-            Model = originalModelAlias,
-            Choices = new List<StreamingChoice> { choice }
-            // Usage data is typically aggregated at the end for Gemini, not per chunk
-        };
-    }
-
-    private static string? MapFinishReason(string? geminiFinishReason)
-    {
-        return geminiFinishReason switch
-        {
-            "STOP" => "stop", // Normal completion
-            "MAX_TOKENS" => "length",
-            "SAFETY" => "content_filter", // Map safety stop to content_filter
-            "RECITATION" => "content_filter", // Map recitation stop to content_filter
-            "OTHER" => null, // Unknown reason
-            _ => geminiFinishReason // Pass through null or unknown values
-        };
-    }
-
-    // Helper to read error content safely
-    private static async Task<string> ReadErrorContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            return $"Failed to read error content: {ex.Message}";
-        }
-    }
-
-     /// <inheritdoc />
-    public async Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
-    {
-        // Determine the API key to use
-        string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _credentials.ApiKey!;
-        if (string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            throw new ConfigurationException($"API key is missing for provider '{_credentials.ProviderName}' and no override was provided.");
-        }
-
-        // Construct endpoint URL with the effective API key
-        string endpoint = $"{_apiBaseUri}{_apiVersion}/models?key={effectiveApiKey}";
-        _logger.LogDebug("Sending request to list Gemini models from: {Endpoint}", endpoint);
-
-        try
-        {
-            // Gemini uses GET for listing models
-            var response = await _httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                string errorContent = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
-                string errorMessage = $"Gemini API list models request failed with status code {response.StatusCode}.";
-                 try
+                // Create a special system message
+                contents.Add(new GeminiContent
                 {
-                    var errorResponse = JsonSerializer.Deserialize<GeminiErrorResponse>(errorContent);
-                    if (errorResponse?.Error != null)
+                    Role = "user", // Gemini doesn't have a system role, use user
+                    Parts = new List<GeminiPart>
                     {
-                        errorMessage = $"Gemini API Error {errorResponse.Error.Code} ({errorResponse.Error.Status}): {errorResponse.Error.Message}";
-                        _logger.LogError("Gemini API list models request failed. Status: {StatusCode}, Error Status: {ErrorStatus}, Message: {ErrorMessage}", response.StatusCode, errorResponse.Error.Status, errorResponse.Error.Message);
-                    } else { throw new JsonException("Failed to parse Gemini error response."); }
-                }
-                catch (JsonException jsonEx)
-                {
-                    _logger.LogError(jsonEx, "Gemini API list models request failed with status code {StatusCode}. Failed to parse error response body. Response: {ErrorContent}", response.StatusCode, errorContent);
-                    errorMessage += $" Failed to parse error response: {errorContent}";
-                }
-                throw new LLMCommunicationException(errorMessage);
+                        new GeminiPart { Text = ContentHelper.GetContentAsString(systemMessage.Content) }
+                    }
+                });
             }
-
-            var modelListResponse = await response.Content.ReadFromJsonAsync<GeminiModelListResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (modelListResponse == null || modelListResponse.Models == null)
+            
+            // Process user/assistant messages
+            foreach (var message in coreRequest.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
             {
-                 _logger.LogError("Failed to deserialize the successful model list response from Gemini API.");
-                 throw new LLMCommunicationException("Failed to deserialize the model list response from Gemini API.");
+                string role = message.Role.ToLowerInvariant() switch
+                {
+                    "user" => "user",
+                    "assistant" => "model",
+                    _ => string.Empty
+                };
+                
+                if (string.IsNullOrEmpty(role))
+                {
+                    Logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", message.Role);
+                    continue;
+                }
+                
+                contents.Add(new GeminiContent
+                {
+                    Role = role,
+                    Parts = new List<GeminiPart>
+                    {
+                        new GeminiPart { Text = ContentHelper.GetContentAsString(message.Content) }
+                    }
+                });
             }
-
-            // Extract just the model IDs (using the Id property which parses "models/...")
-            // Also filter for models that support 'generateContent' as we are focused on chat
-            var modelIds = modelListResponse.Models
-                                            .Where(m => m.SupportedGenerationMethods?.Contains("generateContent") ?? false)
-                                            .Select(m => m.Id)
-                                            .ToList();
-
-            _logger.LogInformation("Successfully retrieved {ModelCount} chat-compatible models from Gemini.", modelIds.Count);
-            return modelIds;
+            
+            return new GeminiGenerateContentRequest
+            {
+                Contents = contents,
+                GenerationConfig = new GeminiGenerationConfig
+                {
+                    Temperature = (float?)coreRequest.Temperature,
+                    TopP = (float?)coreRequest.TopP,
+                    // TopK = coreRequest.TopK, // Map if added to Core model
+                    CandidateCount = coreRequest.N, // Map N to candidateCount
+                    MaxOutputTokens = coreRequest.MaxTokens,
+                    StopSequences = coreRequest.Stop
+                }
+            };
         }
-        catch (JsonException ex)
+        
+        private ChatCompletionResponse MapToCoreResponse(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)
         {
-             _logger.LogError(ex, "JSON deserialization error processing Gemini model list response.");
-             throw new LLMCommunicationException("Error deserializing Gemini model list response.", ex);
+            if (geminiResponse.Candidates == null || geminiResponse.Candidates.Count == 0)
+            {
+                throw new LLMCommunicationException("Gemini response contains no candidates");
+            }
+            
+            var firstCandidate = geminiResponse.Candidates[0];
+            
+            if (firstCandidate.Content == null || firstCandidate.Content.Parts == null || !firstCandidate.Content.Parts.Any())
+            {
+                throw new LLMCommunicationException("Gemini response contains a candidate with no content or parts");
+            }
+            
+            var firstPart = firstCandidate.Content.Parts.First();
+            
+            if (geminiResponse.UsageMetadata == null)
+            {
+                Logger.LogWarning("Gemini response missing usage metadata. Using default values.");
+            }
+            
+            var usageMetadata = geminiResponse.UsageMetadata ?? new GeminiUsageMetadata 
+            { 
+                PromptTokenCount = 0, 
+                CandidatesTokenCount = 0, 
+                TotalTokenCount = 0 
+            };
+            
+            var choice = new Choice
+            {
+                Index = firstCandidate.Index,
+                Message = new Message
+                {
+                    // Gemini uses "model" for assistant role
+                    Role = firstCandidate.Content.Role == "model" ? "assistant" : firstCandidate.Content.Role,
+                    Content = firstPart.Text ?? string.Empty // Add null check with empty string default
+                },
+                FinishReason = MapFinishReason(firstCandidate.FinishReason) ?? "stop" // Default to "stop" if null
+            };
+            
+            return new ChatCompletionResponse
+            {
+                Id = Guid.NewGuid().ToString(), // Gemini doesn't provide an ID
+                Object = "chat.completion", // Mimic OpenAI structure
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time as Gemini doesn't provide it
+                Model = originalModelAlias, // Return the alias the user requested
+                Choices = new List<Choice> { choice },
+                Usage = new Usage
+                {
+                    PromptTokens = usageMetadata.PromptTokenCount,
+                    CompletionTokens = usageMetadata.CandidatesTokenCount, // Sum across candidates (usually 1)
+                    TotalTokens = usageMetadata.TotalTokenCount
+                },
+                OriginalModelAlias = originalModelAlias
+            };
         }
-        catch (HttpRequestException ex)
+        
+        private ChatCompletionChunk? MapToCoreChunk(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)
         {
-            _logger.LogError(ex, "HTTP request error communicating with Gemini API for model list.");
-            throw new LLMCommunicationException($"HTTP request error communicating with Gemini API for model list: {ex.Message}", ex);
+            // Extract the relevant delta information from the Gemini response structure
+            var firstCandidate = geminiResponse.Candidates?.FirstOrDefault();
+            var firstPart = firstCandidate?.Content?.Parts?.FirstOrDefault();
+            string? deltaText = firstPart?.Text;
+            string? finishReason = MapFinishReason(firstCandidate?.FinishReason);
+            
+            // Only yield a chunk if there's actual text content or a finish reason
+            if (string.IsNullOrEmpty(deltaText) && string.IsNullOrEmpty(finishReason))
+            {
+                Logger.LogTrace("Skipping Gemini stream chunk mapping as no delta text or finish reason found.");
+                return null;
+            }
+            
+            var choice = new StreamingChoice
+            {
+                Index = firstCandidate?.Index ?? 0,
+                Delta = new DeltaContent
+                {
+                    // Gemini doesn't explicitly provide role in delta chunks, assume assistant?
+                    Content = deltaText // Can be null if only finish reason is present
+                },
+                FinishReason = finishReason // Can be null
+            };
+            
+            return new ChatCompletionChunk
+            {
+                Id = Guid.NewGuid().ToString(), // Gemini doesn't provide chunk IDs
+                Object = "chat.completion.chunk",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time
+                Model = originalModelAlias,
+                Choices = new List<StreamingChoice> { choice },
+                OriginalModelAlias = originalModelAlias
+                // Usage data is typically aggregated at the end for Gemini, not per chunk
+            };
         }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        
+        private static string? MapFinishReason(string? geminiFinishReason)
         {
-            _logger.LogWarning(ex, "Gemini API list models request timed out.");
-            throw new LLMCommunicationException("Gemini API list models request timed out.", ex);
+            return geminiFinishReason switch
+            {
+                "STOP" => "stop", // Normal completion
+                "MAX_TOKENS" => "length",
+                "SAFETY" => "content_filter", // Map safety stop to content_filter
+                "RECITATION" => "content_filter", // Map recitation stop to content_filter
+                "OTHER" => null, // Unknown reason
+                _ => geminiFinishReason // Pass through null or unknown values
+            };
         }
-        catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
-        {
-             _logger.LogInformation(ex, "Gemini API list models request was canceled.");
-             throw; // Re-throw cancellation
-        }
-        catch (Exception ex) // Catch-all
-        {
-            _logger.LogError(ex, "An unexpected error occurred while listing Gemini models.");
-            throw new LLMCommunicationException($"An unexpected error occurred while listing models: {ex.Message}", ex);
-        }
+        
+        #endregion
     }
-
-    public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<EmbeddingResponse>(new NotSupportedException("Embeddings are not supported by GeminiClient."));
-
-    public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
-        => Task.FromException<ImageGenerationResponse>(new NotSupportedException("Image generation is not supported by GeminiClient."));
 }

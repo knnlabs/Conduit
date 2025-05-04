@@ -36,5 +36,10 @@ namespace ConduitLLM.Configuration.Entities
         /// The date this record is associated with
         /// </summary>
         public DateTime Date { get; set; }
+        
+        /// <summary>
+        /// Timestamp for when this record was created (alias for backward compatibility)
+        /// </summary>
+        public DateTime Timestamp { get; set; }
     }
 }

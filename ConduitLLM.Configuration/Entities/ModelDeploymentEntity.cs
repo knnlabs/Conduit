@@ -90,5 +90,20 @@ namespace ConduitLLM.Configuration.Entities
         /// When the deployment was last updated
         /// </summary>
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// When the deployment was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// When the deployment was last updated (alias for LastUpdated)
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Deployment name for displaying in UI
+        /// </summary>
+        public string DeploymentName { get; set; } = string.Empty;
     }
 }

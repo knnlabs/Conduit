@@ -18,18 +18,41 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Core.Routing
 {
     /// <summary>
-    /// Default implementation of ILLMClientFactory that creates and caches LLM clients
+    /// Default implementation of ILLMClientFactory that creates, manages, and caches LLM clients.
     /// </summary>
+    /// <remarks>
+    /// The DefaultLLMClientFactory handles the creation and caching of LLM client instances:
+    /// 
+    /// - Creates clients based on model aliases from mapping configuration
+    /// - Caches clients to avoid unnecessary recreation
+    /// - Handles provider-specific client creation through factory functions
+    /// - Provides access to credentials and provider-specific configuration
+    /// - Manages the lifecycle of LLM client instances
+    /// 
+    /// This factory enables the system to dynamically instantiate the appropriate client
+    /// implementation for each LLM provider while abstracting the details of client
+    /// construction from the rest of the application.
+    /// </remarks>
     public class DefaultLLMClientFactory : ILLMClientFactory
     {
         private readonly ConduitRegistry _registry;
         private readonly IProviderCredentialService _credentialService;
         private readonly IModelProviderMappingService _mappingService;
         private readonly ILogger<DefaultLLMClientFactory> _logger;
+        
+        /// <summary>
+        /// Cache of LLM clients indexed by model alias
+        /// </summary>
         private readonly ConcurrentDictionary<string, ILLMClient> _clientCache = new(StringComparer.OrdinalIgnoreCase);
+        
+        /// <summary>
+        /// Cache of LLM clients indexed by provider name
+        /// </summary>
         private readonly ConcurrentDictionary<string, ILLMClient> _providerClientCache = new(StringComparer.OrdinalIgnoreCase);
 
-        // Provider factory mapping for supported providers
+        /// <summary>
+        /// Maps provider names to factory functions that create client instances
+        /// </summary>
         private readonly Dictionary<string, Func<string, ILLMClient>> _providerFactories = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
@@ -96,8 +119,26 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <summary>
-        /// Creates a new LLM client for the specified model alias
+        /// Creates a new LLM client for the specified model alias.
         /// </summary>
+        /// <param name="modelAlias">The model alias to create a client for (e.g., "gpt-4", "claude-3").</param>
+        /// <returns>An ILLMClient instance configured for the specified model.</returns>
+        /// <exception cref="ConfigurationException">
+        /// Thrown when no mapping is found for the model alias, when the provider is not supported,
+        /// or when there's an error retrieving credentials or creating the client.
+        /// </exception>
+        /// <remarks>
+        /// This method performs the following steps:
+        /// 
+        /// 1. Retrieves the model mapping for the given alias from the mapping service
+        /// 2. Determines the appropriate provider name and model ID from the mapping
+        /// 3. Looks up the factory function for the specified provider
+        /// 4. Creates the client using the factory function with the provider-specific model ID
+        /// 5. Returns a placeholder client if no factory exists for the provider
+        /// 
+        /// The created client is cached for future use, so subsequent requests for the
+        /// same model alias will return the same client instance.
+        /// </remarks>
         private ILLMClient CreateClient(string modelAlias)
         {
             try
@@ -180,8 +221,20 @@ namespace ConduitLLM.Core.Routing
     }
 
     /// <summary>
-    /// A placeholder LLM client implementation for testing purposes
+    /// A placeholder LLM client implementation for testing, development, and fallback purposes.
     /// </summary>
+    /// <remarks>
+    /// The PlaceholderLLMClient provides a non-functional but structurally complete implementation 
+    /// of the ILLMClient interface. It's used in the following scenarios:
+    /// 
+    /// - During development before real provider implementations are available
+    /// - For testing the routing and factory infrastructure without real API calls
+    /// - As a fallback when a requested provider doesn't have a registered factory
+    /// - To provide meaningful error messages and logging in misconfiguration scenarios
+    /// 
+    /// The client returns predefined responses for chat completions and streaming,
+    /// and throws NotSupportedException for embeddings and image generation.
+    /// </remarks>
     internal class PlaceholderLLMClient : ILLMClient
     {
         private readonly string? _modelId;
@@ -311,13 +364,25 @@ namespace ConduitLLM.Core.Routing
     }
 
     /// <summary>
-    /// Adapter class to handle different ModelProviderMapping implementations
+    /// Adapter class to handle different ModelProviderMapping implementations and property access patterns.
     /// </summary>
+    /// <remarks>
+    /// This adapter provides a uniform interface for accessing properties from the ModelProviderMapping
+    /// objects, abstracting away potential differences in implementation details or property names.
+    /// It helps maintain compatibility between different versions of the mapping objects and
+    /// shields the factory code from changes in the underlying data model.
+    /// </remarks>
     internal static class ModelProviderMappingAdapter
     {
         /// <summary>
-        /// Get the provider name from a mapping
+        /// Gets the provider name from a model mapping.
         /// </summary>
+        /// <param name="mapping">The model provider mapping object.</param>
+        /// <returns>The name of the provider (e.g., "openai", "anthropic").</returns>
+        /// <remarks>
+        /// The provider name identifies which LLM service implementation should be used.
+        /// This is used to look up the appropriate factory function and credentials.
+        /// </remarks>
         public static string GetProviderName(ConduitLLM.Configuration.ModelProviderMapping mapping)
         {
             // Get the provider name from the mapping
@@ -325,8 +390,16 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <summary>
-        /// Get the provider model name from a mapping
+        /// Gets the provider-specific model identifier from a mapping.
         /// </summary>
+        /// <param name="mapping">The model provider mapping object.</param>
+        /// <returns>The provider-specific model ID (e.g., "gpt-4-turbo-preview" for OpenAI).</returns>
+        /// <remarks>
+        /// The provider model ID is the actual identifier that the provider's API expects,
+        /// which may be different from the model alias used within the application.
+        /// This method ensures we get the correct property even if the naming convention
+        /// changes in the mapping object.
+        /// </remarks>
         public static string GetProviderModelName(ConduitLLM.Configuration.ModelProviderMapping mapping)
         {
             // Use the ProviderModelId property (not ProviderModelName)

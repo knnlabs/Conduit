@@ -48,6 +48,26 @@ namespace ConduitLLM.Configuration.Entities
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
         
         /// <summary>
+        /// Whether this configuration is active
+        /// </summary>
+        public bool IsActive { get; set; } = false;
+        
+        /// <summary>
+        /// Name of the configuration (for display purposes)
+        /// </summary>
+        public string Name { get; set; } = "Default Configuration";
+        
+        /// <summary>
+        /// When this configuration was last updated (alias for LastUpdated)
+        /// </summary>
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// When this configuration was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
         /// Model deployments associated with this configuration
         /// </summary>
         public virtual ICollection<ModelDeploymentEntity> ModelDeployments { get; set; } = new List<ModelDeploymentEntity>();

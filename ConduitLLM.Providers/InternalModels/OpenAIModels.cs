@@ -4,8 +4,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ConduitLLM.Core.Models;
 
-namespace ConduitLLM.Providers.InternalModels;
-
+namespace ConduitLLM.Providers.InternalModels.OpenAIModels
+{
 // Internal models mirroring OpenAI's /v1/chat/completions structure
 // See: https://platform.openai.com/docs/api-reference/chat/create
 
@@ -39,7 +39,15 @@ internal record OpenAIChatCompletionRequest
     [JsonPropertyName("tool_choice")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public object? ToolChoice { get; init; }
-
+    
+    [JsonPropertyName("response_format")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ResponseFormat? ResponseFormat { get; init; }
+    
+    [JsonPropertyName("seed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Seed { get; init; }
+    
     // TODO: Add other optional parameters like top_p, n, stop, presence_penalty, frequency_penalty, logit_bias, user
 }
 
@@ -85,7 +93,11 @@ internal record OpenAIChatCompletionResponse
     [JsonPropertyName("usage")]
     public OpenAIUsage? Usage { get; init; }
 
-    // Optional fields like system_fingerprint
+    [JsonPropertyName("system_fingerprint")]
+    public string? SystemFingerprint { get; init; }
+    
+    [JsonPropertyName("seed")]
+    public int? Seed { get; init; }
 }
 
 internal record OpenAIChoice
@@ -133,6 +145,9 @@ internal record OpenAIChatCompletionChunk
 
     [JsonPropertyName("choices")]
     public required List<OpenAIStreamingChoice> Choices { get; init; }
+
+    [JsonPropertyName("system_fingerprint")]
+    public string? SystemFingerprint { get; init; }
 
     // Usage is typically not included in chunks
 }
@@ -230,6 +245,15 @@ internal record ToolAvailability
 // --- Internal Models for Model Listing ---
 // See: https://platform.openai.com/docs/api-reference/models/list
 
+internal record ListModelsResponse
+{
+    [JsonPropertyName("object")]
+    public string Object { get; init; } = "list"; // Expected value
+
+    [JsonPropertyName("data")]
+    public required List<OpenAIModelData> Data { get; init; }
+}
+
 internal record OpenAIModelListResponse
 {
     [JsonPropertyName("object")]
@@ -252,4 +276,122 @@ internal record OpenAIModelData
 
     [JsonPropertyName("owned_by")]
     public required string OwnedBy { get; init; } // e.g., "openai", "system", "user"
+}
+
+// --- Internal Models for Embeddings ---
+// See: https://platform.openai.com/docs/api-reference/embeddings/create
+
+internal record EmbeddingRequest
+{
+    [JsonPropertyName("model")]
+    public required string Model { get; init; }
+
+    [JsonPropertyName("input")]
+    public required object Input { get; init; } // Can be string or array of strings
+
+    [JsonPropertyName("encoding_format")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EncodingFormat { get; init; } // Default is "float"
+
+    [JsonPropertyName("dimensions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Dimensions { get; init; }
+
+    [JsonPropertyName("user")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? User { get; init; }
+}
+
+internal record EmbeddingResponse
+{
+    [JsonPropertyName("object")]
+    public string Object { get; init; } = "list";
+
+    [JsonPropertyName("data")]
+    public required List<EmbeddingDataItem> Data { get; init; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    [JsonPropertyName("usage")]
+    public required OpenAIUsage Usage { get; init; }
+}
+
+internal record EmbeddingDataItem
+{
+    [JsonPropertyName("object")]
+    public string Object { get; init; } = "embedding";
+
+    [JsonPropertyName("embedding")]
+    public required IReadOnlyList<float> Embedding { get; init; }
+
+    [JsonPropertyName("index")]
+    public int Index { get; init; }
+}
+
+// --- Internal Models for Image Generation ---
+// See: https://platform.openai.com/docs/api-reference/images/create
+
+internal record ImageGenerationRequest
+{
+    [JsonPropertyName("model")]
+    public string? Model { get; init; }
+
+    [JsonPropertyName("prompt")]
+    public required string Prompt { get; init; }
+
+    [JsonPropertyName("n")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? N { get; init; }
+
+    [JsonPropertyName("size")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Size { get; init; }
+
+    [JsonPropertyName("quality")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Quality { get; init; }
+
+    [JsonPropertyName("style")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Style { get; init; }
+
+    [JsonPropertyName("response_format")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ResponseFormat { get; init; }
+
+    [JsonPropertyName("user")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? User { get; init; }
+}
+
+internal record ImageGenerationResponse
+{
+    [JsonPropertyName("created")]
+    public long Created { get; init; }
+
+    [JsonPropertyName("data")]
+    public required List<ImageData> Data { get; init; }
+}
+
+internal record ImageData
+{
+    [JsonPropertyName("url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("b64_json")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? B64Json { get; init; }
+
+    [JsonPropertyName("revised_prompt")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RevisedPrompt { get; init; }
+}
+
+internal record ResponseFormat
+{
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "text"; // Either "text" or "json_object"
+}
 }
