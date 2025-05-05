@@ -123,8 +123,8 @@ namespace ConduitLLM.Tests
                     Assert.True(req.Headers.Contains("api-key"));
                     Assert.Equal(_azureCredentials.ApiKey, req.Headers.GetValues("api-key").First());
                     // Verify it contains our expected deployment name
-                    Assert.Contains(_deploymentName, req.RequestUri.ToString());
-                    Assert.Contains("chat/completions", req.RequestUri.ToString());
+                    Assert.Contains(_deploymentName, req.RequestUri?.ToString() ?? string.Empty);
+                    Assert.Contains("chat/completions", req.RequestUri?.ToString() ?? string.Empty);
                 });
                 
             var tempFactoryMock = new Mock<IHttpClientFactory>();
@@ -178,6 +178,7 @@ namespace ConduitLLM.Tests
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && 
+                                                               req.RequestUri != null && 
                                                                req.RequestUri.ToString().Contains(_deploymentName) &&
                                                                req.RequestUri.ToString().Contains("chat/completions")),
                     Moq.Protected.ItExpr.IsAny<CancellationToken>()
@@ -259,6 +260,7 @@ namespace ConduitLLM.Tests
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
                     Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && 
+                                                               req.RequestUri != null && 
                                                                req.RequestUri.ToString().Contains("deployments")),
                     Moq.Protected.ItExpr.IsAny<CancellationToken>()
                 )
@@ -336,8 +338,8 @@ namespace ConduitLLM.Tests
                     Assert.True(req.Headers.Contains("api-key"));
                     Assert.Equal(_azureCredentials.ApiKey, req.Headers.GetValues("api-key").First());
                     // Verify it contains our expected deployment name and endpoint
-                    Assert.Contains(_deploymentName, req.RequestUri.ToString());
-                    Assert.Contains("embeddings", req.RequestUri.ToString());
+                    Assert.Contains(_deploymentName, req.RequestUri?.ToString() ?? string.Empty);
+                    Assert.Contains("embeddings", req.RequestUri?.ToString() ?? string.Empty);
                 });
                 
             var tempFactoryMock = new Mock<IHttpClientFactory>();
@@ -410,8 +412,8 @@ namespace ConduitLLM.Tests
                     Assert.Equal(_azureCredentials.ApiKey, req.Headers.GetValues("api-key").First());
                     
                     // Verify it contains our expected deployment name and endpoint
-                    Assert.Contains(_deploymentName, req.RequestUri.ToString());
-                    Assert.Contains("chat/completions", req.RequestUri.ToString());
+                    Assert.Contains(_deploymentName, req.RequestUri?.ToString() ?? string.Empty);
+                    Assert.Contains("chat/completions", req.RequestUri?.ToString() ?? string.Empty);
                 });
                 
             var tempFactoryMock = new Mock<IHttpClientFactory>();

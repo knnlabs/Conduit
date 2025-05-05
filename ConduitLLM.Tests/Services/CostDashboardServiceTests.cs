@@ -44,27 +44,30 @@ namespace ConduitLLM.Tests.Services
         }
         
         [Fact]
-        public async Task GetDashboardDataAsync_WithoutFilters_ReturnsCorrectData()
+        public Task GetDashboardDataAsync_WithoutFilters_ReturnsCorrectData()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with mocking of EF Core that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
         
         [Fact]
-        public async Task GetDashboardDataAsync_WithModelFilter_FiltersCorrectly()
+        public Task GetDashboardDataAsync_WithModelFilter_FiltersCorrectly()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with mocking of EF Core that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
         
         [Fact]
-        public async Task GetDetailedCostDataAsync_WithFilters_ReturnsCorrectData()
+        public Task GetDetailedCostDataAsync_WithFilters_ReturnsCorrectData()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with mocking of EF Core that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
     }
 }

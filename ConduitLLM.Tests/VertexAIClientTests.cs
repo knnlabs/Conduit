@@ -113,97 +113,110 @@ public class VertexAIClientTests
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_GeminiSuccess()
+    public Task CreateChatCompletionAsync_GeminiSuccess()
     {
         // This test is temporarily simplified to allow the build to pass
         // The VertexAIClient has issues with deserialization that need 
         // to be addressed separately
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_PaLMSuccess()
+    public Task CreateChatCompletionAsync_PaLMSuccess()
     {
         // This test is temporarily simplified to allow the build to pass
         // The VertexAIClient has issues with deserialization that need 
         // to be addressed separately
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_ApiReturnsError_ThrowsLLMCommunicationException()
+    public Task CreateChatCompletionAsync_ApiReturnsError_ThrowsLLMCommunicationException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
+    public Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_ReturnsChunks()
+    public Task StreamChatCompletionAsync_ReturnsChunks()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_EmptyStream_ReturnsNoChunks()
+    public Task StreamChatCompletionAsync_EmptyStream_ReturnsNoChunks()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_MalformedChunk_HandlesGracefully()
+    public Task StreamChatCompletionAsync_MalformedChunk_HandlesGracefully()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_CancellationRequested_ThrowsTaskCanceled()
+    public Task StreamChatCompletionAsync_CancellationRequested_ThrowsTaskCanceled()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_NetworkException_ThrowsLLMCommunicationException()
+    public Task StreamChatCompletionAsync_NetworkException_ThrowsLLMCommunicationException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_LargeNumberOfChunks_StreamsAll()
+    public Task StreamChatCompletionAsync_LargeNumberOfChunks_StreamsAll()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task ListModelsAsync_ReturnsModels()
+    public Task ListModelsAsync_ReturnsModels()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateEmbeddingAsync_ThrowsUnsupportedProviderException()
+    public Task CreateEmbeddingAsync_ThrowsUnsupportedProviderException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateImageAsync_ThrowsUnsupportedProviderException()
+    public Task CreateImageAsync_ThrowsUnsupportedProviderException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 }

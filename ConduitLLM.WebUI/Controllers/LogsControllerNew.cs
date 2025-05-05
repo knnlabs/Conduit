@@ -29,8 +29,8 @@ namespace ConduitLLM.WebUI.Controllers
     [Authorize]
     public class LogsControllerNew : ControllerBase
     {
-        private readonly RequestLogServiceNew _requestLogService;
-        private readonly VirtualKeyServiceNew _virtualKeyService;
+        private readonly IRequestLogServiceNew _requestLogService;
+        private readonly IVirtualKeyServiceNew _virtualKeyService;
         private readonly ILogger<LogsControllerNew> _logger;
 
         /// <summary>
@@ -40,8 +40,8 @@ namespace ConduitLLM.WebUI.Controllers
         /// <param name="virtualKeyService">The service for accessing virtual keys.</param>
         /// <param name="logger">The logger instance.</param>
         public LogsControllerNew(
-            RequestLogServiceNew requestLogService,
-            VirtualKeyServiceNew virtualKeyService,
+            IRequestLogServiceNew requestLogService,
+            IVirtualKeyServiceNew virtualKeyService,
             ILogger<LogsControllerNew> logger)
         {
             _requestLogService = requestLogService ?? throw new ArgumentNullException(nameof(requestLogService));

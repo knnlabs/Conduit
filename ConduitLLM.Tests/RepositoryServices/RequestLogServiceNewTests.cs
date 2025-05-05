@@ -36,7 +36,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             // Set up memory cache mock to simulate cache behavior
             _mockMemoryCache
-                .Setup(m => m.TryGetValue(It.IsAny<object>(), out It.Ref<object>.IsAny))
+                .Setup(m => m.TryGetValue(It.IsAny<object>(), out It.Ref<object?>.IsAny))
                 .Returns(false);
             
             _mockMemoryCache
@@ -185,8 +185,8 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(2000, summary.AverageResponseTime);
             Assert.Equal(600, summary.TotalInputTokens);
             Assert.Equal(300, summary.TotalOutputTokens);
-            Assert.Equal(now.AddDays(-10).Date, summary.FirstRequestTime.Date);
-            Assert.Equal(now.Date, summary.LastRequestTime.Date);
+            Assert.Equal(now.AddDays(-10).Date, summary.FirstRequestTime?.Date);
+            Assert.Equal(now.Date, summary.LastRequestTime?.Date);
             Assert.Equal(2, summary.RequestsLast24Hours);
             Assert.Equal(2, summary.RequestsLast7Days);
             Assert.Equal(3, summary.RequestsLast30Days);

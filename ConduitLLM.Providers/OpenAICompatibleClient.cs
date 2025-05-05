@@ -447,13 +447,13 @@ namespace ConduitLLM.Providers
                         Object = d.Object,
                         Embedding = d.Embedding.ToList()
                     }).ToList(),
-                    Model = response.Model,
-                    Object = response.Object,
+                    Model = response.Model ?? ProviderModelId,
+                    Object = response.Object ?? "embedding",
                     Usage = new CoreModels.Usage
                     {
-                        PromptTokens = response.Usage.PromptTokens,
+                        PromptTokens = response.Usage?.PromptTokens ?? 0,
                         CompletionTokens = 0, // Embeddings don't have completion tokens
-                        TotalTokens = response.Usage.TotalTokens
+                        TotalTokens = response.Usage?.TotalTokens ?? 0
                     }
                 };
             }, "CreateEmbedding", cancellationToken);

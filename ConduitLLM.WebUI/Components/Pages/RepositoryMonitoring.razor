@@ -1,0 +1,266 @@
+@page "/repository-monitoring"
+@using ConduitLLM.WebUI.Services
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<RepositoryMonitoring> Logger
+
+<PageTitle>Repository Pattern Monitoring</PageTitle>
+
+<h3>Repository Pattern Monitoring</h3>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    <p>Loading...</p>
+}
+else if (_error)
+{
+    <MudAlert Severity="Severity.Error" Class="my-2">
+        Error loading data: @_errorMessage
+    </MudAlert>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Repository Pattern Status</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1">
+                        <MudChip T="string" Color="@(_config.IsEnabled ? Color.Success : Color.Error)" Size="Size.Medium">
+                            @(_config.IsEnabled ? "Enabled" : "Disabled")
+                        </MudChip>
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Detailed Logging</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1">
+                        <MudChip T="string" Color="@(_config.DetailedLoggingEnabled ? Color.Success : Color.Default)" Size="Size.Medium">
+                            @(_config.DetailedLoggingEnabled ? "Enabled" : "Disabled")
+                        </MudChip>
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Performance Tracking</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1">
+                        <MudChip T="string" Color="@(_config.TrackPerformanceMetrics ? Color.Success : Color.Default)" Size="Size.Medium">
+                            @(_config.TrackPerformanceMetrics ? "Enabled" : "Disabled")
+                        </MudChip>
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Parallel Verification</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1">
+                        <MudChip T="string" Color="@(_config.ParallelVerificationEnabled ? Color.Success : Color.Default)" Size="Size.Medium">
+                            @(_config.ParallelVerificationEnabled ? "Enabled" : "Disabled")
+                        </MudChip>
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-6" />
+    
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h5">Repository Operation Metrics</MudText>
+            <MudButton Class="ml-4" 
+                      Color="Color.Primary" 
+                      Variant="Variant.Outlined" 
+                      OnClick="ReloadMetrics" 
+                      StartIcon="@Icons.Material.Filled.Refresh">
+                Refresh
+            </MudButton>
+            <MudButton Class="ml-2" 
+                      Color="Color.Warning" 
+                      Variant="Variant.Outlined" 
+                      OnClick="ClearMetrics" 
+                      StartIcon="@Icons.Material.Filled.Clear"
+                      Disabled="@(!_config.TrackPerformanceMetrics)">
+                Clear Metrics
+            </MudButton>
+        </MudItem>
+        
+        @if (!_config.TrackPerformanceMetrics)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Warning" Class="my-2">
+                    Performance metrics tracking is disabled. Enable it in the configuration to see metrics.
+                </MudAlert>
+            </MudItem>
+        }
+        else if (_metrics.Count == 0)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Info" Class="my-2">
+                    No metrics available yet. Use the application to generate some repository operations.
+                </MudAlert>
+            </MudItem>
+        }
+        else
+        {
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <MudTable Items="@_metrics.Values" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Operation</MudTh>
+                            <MudTh>Count</MudTh>
+                            <MudTh>Average (ms)</MudTh>
+                            <MudTh>Min (ms)</MudTh>
+                            <MudTh>Max (ms)</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Operation">@context.OperationName</MudTd>
+                            <MudTd DataLabel="Count">@context.Count</MudTd>
+                            <MudTd DataLabel="Average (ms)">@Math.Round(context.AverageMs, 2)</MudTd>
+                            <MudTd DataLabel="Min (ms)">@Math.Round(context.MinMs, 2)</MudTd>
+                            <MudTd DataLabel="Max (ms)">@Math.Round(context.MaxMs, 2)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _error = false;
+    private string _errorMessage = string.Empty;
+    private ConfigInfo _config = new();
+    private Dictionary<string, MetricsInfo> _metrics = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _loading = true;
+            _error = false;
+            
+            var client = HttpClientFactory.CreateClient("ApiClient");
+            
+            // Load configuration
+            var configResponse = await client.GetFromJsonAsync<ConfigInfo>("api/repository-monitoring/config");
+            if (configResponse != null)
+            {
+                _config = configResponse;
+            }
+            
+            // Load metrics if enabled
+            if (_config.TrackPerformanceMetrics)
+            {
+                try
+                {
+                    var metricsResponse = await client.GetFromJsonAsync<Dictionary<string, MetricsInfo>>("api/repository-monitoring/metrics");
+                    if (metricsResponse != null)
+                    {
+                        _metrics = metricsResponse;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error loading metrics");
+                    // Don't set error state, just show empty metrics
+                    _metrics = new Dictionary<string, MetricsInfo>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = true;
+            _errorMessage = ex.Message;
+            Logger.LogError(ex, "Error loading repository monitoring data");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ReloadMetrics()
+    {
+        if (!_config.TrackPerformanceMetrics)
+        {
+            return;
+        }
+        
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ApiClient");
+            var metricsResponse = await client.GetFromJsonAsync<Dictionary<string, MetricsInfo>>("api/repository-monitoring/metrics");
+            if (metricsResponse != null)
+            {
+                _metrics = metricsResponse;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error reloading metrics");
+        }
+    }
+
+    private async Task ClearMetrics()
+    {
+        if (!_config.TrackPerformanceMetrics)
+        {
+            return;
+        }
+        
+        try
+        {
+            var client = HttpClientFactory.CreateClient("ApiClient");
+            await client.PostAsync("api/repository-monitoring/metrics/clear", null);
+            _metrics = new Dictionary<string, MetricsInfo>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing metrics");
+        }
+    }
+
+    private class ConfigInfo
+    {
+        public bool IsEnabled { get; set; }
+        public bool DetailedLoggingEnabled { get; set; }
+        public bool TrackPerformanceMetrics { get; set; }
+        public bool ParallelVerificationEnabled { get; set; }
+    }
+
+    private class MetricsInfo
+    {
+        public string OperationName { get; set; } = string.Empty;
+        public double AverageMs { get; set; }
+        public double MinMs { get; set; }
+        public double MaxMs { get; set; }
+        public int Count { get; set; }
+    }
+}

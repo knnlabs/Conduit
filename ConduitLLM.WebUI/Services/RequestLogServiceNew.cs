@@ -10,7 +10,7 @@ namespace ConduitLLM.WebUI.Services;
 /// <summary>
 /// Service for logging API requests made with virtual keys using the repository pattern
 /// </summary>
-public class RequestLogServiceNew
+public class RequestLogServiceNew : IRequestLogServiceNew
 {
     private readonly IRequestLogRepository _requestLogRepository;
     private readonly IVirtualKeyRepository _virtualKeyRepository;

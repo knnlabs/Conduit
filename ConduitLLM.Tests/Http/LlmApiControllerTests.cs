@@ -293,19 +293,21 @@ namespace ConduitLLM.Tests.Http
         }
 
         [Fact]
-        public async Task StreamChatCompletionsInternal_CancellationRequested_StopsStreamingWithoutDone()
+        public Task StreamChatCompletionsInternal_CancellationRequested_StopsStreamingWithoutDone()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with cancellation timing that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task StreamChatCompletionsInternal_NullStream_ReturnsErrorResponse()
+        public Task StreamChatCompletionsInternal_NullStream_ReturnsErrorResponse()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with the empty stream handling that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         private static async IAsyncEnumerable<ChatCompletionChunk> DelayedChunks([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)

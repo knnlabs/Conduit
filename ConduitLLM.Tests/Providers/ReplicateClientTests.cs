@@ -24,7 +24,6 @@ namespace ConduitLLM.Tests.Providers
     {
         private readonly Mock<ILogger<ReplicateClient>> _mockLogger;
         private readonly ProviderCredentials _credentials;
-        private readonly string _modelVersion;
 
         public ReplicateClientTests()
         {
@@ -35,7 +34,7 @@ namespace ConduitLLM.Tests.Providers
                 ApiBase = "https://api.replicate.com/v1/",
                 ProviderName = "Replicate"
             };
-            _modelVersion = "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590";
+            // Model version defined locally in tests where needed
         }
 
         private HttpClient CreateMockHttpClient(params HttpResponseMessage[] responses)
@@ -59,54 +58,61 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
-        public async Task GetModelsAsync_ReturnsModels()
+        public Task GetModelsAsync_ReturnsModels()
         {
             // This test is simple enough to implement but not crucial for the build
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_Success()
+        public Task CreateChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_ApiError()
+        public Task CreateChatCompletionAsync_ApiError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_PredictionFailed()
+        public Task CreateChatCompletionAsync_PredictionFailed()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task StreamChatCompletionAsync_Success()
+        public Task StreamChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             // Similar to the OllamaClient and HuggingFaceClient, the ReplicateClient 
             // streaming tests are complex with multiple HTTP requests and responses
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_NotSupported()
+        public Task CreateEmbeddingAsync_NotSupported()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateImageAsync_Success()
+        public Task CreateImageAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
     }
 }

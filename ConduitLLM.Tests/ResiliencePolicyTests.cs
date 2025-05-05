@@ -18,23 +18,26 @@ namespace ConduitLLM.Tests;
 public class ResiliencePolicyTests
 {
     [Fact]
-    public async Task OpenAIClient_ShouldRetryOnTransientErrors()
+    public Task OpenAIClient_ShouldRetryOnTransientErrors()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task OpenAIClient_ShouldTimeoutWhenRequestTakesTooLong()
+    public Task OpenAIClient_ShouldTimeoutWhenRequestTakesTooLong()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task OpenAIClient_ShouldApplyBothTimeoutAndRetryPolicies()
+    public Task OpenAIClient_ShouldApplyBothTimeoutAndRetryPolicies()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 }

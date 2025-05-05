@@ -16,24 +16,15 @@ namespace ConduitLLM.Tests.Controllers
 {
     public class LogsControllerNewTests
     {
-        private readonly Mock<RequestLogServiceNew> _mockRequestLogService;
-        private readonly Mock<VirtualKeyServiceNew> _mockVirtualKeyService;
+        private readonly Mock<IRequestLogServiceNew> _mockRequestLogService;
+        private readonly Mock<IVirtualKeyServiceNew> _mockVirtualKeyService;
         private readonly Mock<ILogger<LogsControllerNew>> _mockLogger;
         private readonly LogsControllerNew _controller;
 
         public LogsControllerNewTests()
         {
-            _mockRequestLogService = new Mock<RequestLogServiceNew>(
-                Mock.Of<ConduitLLM.Configuration.Repositories.IRequestLogRepository>(),
-                Mock.Of<ConduitLLM.Configuration.Repositories.IVirtualKeyRepository>(),
-                Mock.Of<ILogger<RequestLogServiceNew>>(),
-                Mock.Of<Microsoft.Extensions.Caching.Memory.IMemoryCache>());
-            
-            _mockVirtualKeyService = new Mock<VirtualKeyServiceNew>(
-                Mock.Of<ConduitLLM.Configuration.Repositories.IVirtualKeyRepository>(),
-                Mock.Of<ConduitLLM.Configuration.Repositories.IVirtualKeySpendHistoryRepository>(),
-                Mock.Of<ILogger<VirtualKeyServiceNew>>());
-            
+            _mockRequestLogService = new Mock<IRequestLogServiceNew>();
+            _mockVirtualKeyService = new Mock<IVirtualKeyServiceNew>();
             _mockLogger = new Mock<ILogger<LogsControllerNew>>();
             
             _controller = new LogsControllerNew(
@@ -84,7 +75,7 @@ namespace ConduitLLM.Tests.Controllers
             var pagedResult = Assert.IsType<PagedResult<RequestLogDto>>(okResult.Value);
             
             Assert.Equal(1, pagedResult.TotalCount);
-            Assert.Equal(1, pagedResult.Items.Count);
+            Assert.Single(pagedResult.Items);
             Assert.Equal(1, pagedResult.Items[0].Id);
             Assert.Equal("gpt-4", pagedResult.Items[0].ModelName);
         }

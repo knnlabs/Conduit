@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
@@ -171,12 +172,55 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 
+// Configure repository pattern options from environment variables
+var repositoryPatternOptions = new ConduitLLM.Configuration.Options.RepositoryPatternOptions
+{
+    Enabled = Environment.GetEnvironmentVariable("CONDUIT_USE_REPOSITORY_PATTERN")?.ToLowerInvariant() == "true",
+    EnabledEnvironments = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_ENVIRONMENTS"),
+    EnableDetailedLogging = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_DETAILED_LOGGING")?.ToLowerInvariant() == "true",
+    TrackPerformanceMetrics = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_TRACK_METRICS")?.ToLowerInvariant() != "false",
+    EnableParallelVerification = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_PARALLEL_VERIFICATION")?.ToLowerInvariant() == "true"
+};
+
+// Override from configuration section if it exists  
+builder.Configuration.GetSection(ConduitLLM.Configuration.Options.RepositoryPatternOptions.SectionName).Bind(repositoryPatternOptions);
+
+// Register the options
+builder.Services.Configure<ConduitLLM.Configuration.Options.RepositoryPatternOptions>(options => {
+    // Copy values from our already configured options
+    options.Enabled = repositoryPatternOptions.Enabled;
+    options.EnabledEnvironments = repositoryPatternOptions.EnabledEnvironments;
+    options.EnableDetailedLogging = repositoryPatternOptions.EnableDetailedLogging;
+    options.TrackPerformanceMetrics = repositoryPatternOptions.TrackPerformanceMetrics;
+    options.EnableParallelVerification = repositoryPatternOptions.EnableParallelVerification;
+});
+
+// Register the repository pattern configuration service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService>(sp => {
+    var options = sp.GetRequiredService<IOptions<ConduitLLM.Configuration.Options.RepositoryPatternOptions>>();
+    var logger = sp.GetRequiredService<ILogger<ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService>>();
+    var environment = builder.Environment.EnvironmentName;
+    return new ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService(options, logger, environment);
+});
+
+// Register the repository pattern logging service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RepositoryPatternLoggingService>();
+
 // Register repositories and repository-based services
 builder.Services.AddRepositoryServices();
 
-// Determine if we should use repository-based controllers
-bool useRepositoryPattern = Environment.GetEnvironmentVariable("CONDUIT_USE_REPOSITORY_PATTERN")?.ToLowerInvariant() == "true";
-Console.WriteLine($"[Conduit WebUI] Using repository pattern: {useRepositoryPattern}");
+// Determine if repository pattern should be enabled based on environment and settings
+bool useRepositoryPattern = repositoryPatternOptions.Enabled;
+if (!string.IsNullOrEmpty(repositoryPatternOptions.EnabledEnvironments))
+{
+    var enabledEnvironments = repositoryPatternOptions.EnabledEnvironments.Split(',', StringSplitOptions.TrimEntries);
+    useRepositoryPattern = useRepositoryPattern || enabledEnvironments.Contains(builder.Environment.EnvironmentName, StringComparer.OrdinalIgnoreCase);
+}
+
+// Log repository pattern configuration
+Console.WriteLine($"[Conduit WebUI] Using repository pattern: {useRepositoryPattern} for environment: {builder.Environment.EnvironmentName}");
+Console.WriteLine($"[Conduit WebUI] Repository pattern detailed logging: {repositoryPatternOptions.EnableDetailedLogging}");
+Console.WriteLine($"[Conduit WebUI] Repository pattern performance tracking: {repositoryPatternOptions.TrackPerformanceMetrics}");
 
 if (useRepositoryPattern)
 {
@@ -189,11 +233,11 @@ if (useRepositoryPattern)
     builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRouterService, ConduitLLM.WebUI.Services.RouterServiceNew>();
     
     // Register VirtualKeyServiceNew and the adapter that implements IVirtualKeyService
-    builder.Services.AddScoped<ConduitLLM.WebUI.Services.VirtualKeyServiceNew>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.IVirtualKeyServiceNew, ConduitLLM.WebUI.Services.VirtualKeyServiceNew>();
     builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
     
     // Use RequestLogServiceNew instead of the original singleton implementation
-    builder.Services.AddScoped<ConduitLLM.WebUI.Services.RequestLogServiceNew>();
+    builder.Services.AddScoped<ConduitLLM.WebUI.Services.IRequestLogServiceNew, ConduitLLM.WebUI.Services.RequestLogServiceNew>();
     
     // Register controllers explicitly to ensure repository-pattern controllers are used
     builder.Services.AddControllers().ConfigureApplicationPartManager(manager => {
@@ -204,6 +248,7 @@ if (useRepositoryPattern)
         builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.CostDashboardControllerNew>();
         builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.RouterControllerNew>();
         builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.AuthControllerNew>();
+        builder.Services.AddTransient<ConduitLLM.WebUI.Controllers.ModelProviderMappingController>();
         
         // Map routes to use the "New" controllers
         builder.Services.AddRouting(options => {

@@ -230,7 +230,7 @@ namespace ConduitLLM.Providers
                             Role = "assistant",
                             Content = content
                         },
-                        FinishReason = finishReason
+                        FinishReason = finishReason ?? "stop"
                     }
                 },
                 Usage = new Usage

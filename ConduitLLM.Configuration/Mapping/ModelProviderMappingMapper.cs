@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Mapping
@@ -12,14 +15,14 @@ namespace ConduitLLM.Configuration.Mapping
         /// </summary>
         /// <param name="entity">The entity to convert</param>
         /// <returns>The converted DTO</returns>
-        public static ModelProviderMapping? ToDto(Entities.ModelProviderMapping? entity)
+        public static ConduitLLM.Configuration.ModelProviderMapping? ToDto(Entities.ModelProviderMapping? entity)
         {
             if (entity == null)
             {
                 return null;
             }
 
-            return new ModelProviderMapping
+            return new ConduitLLM.Configuration.ModelProviderMapping
             {
                 ModelAlias = entity.ModelAlias,
                 ProviderName = entity.ProviderCredential?.ProviderName ?? string.Empty,
@@ -33,7 +36,9 @@ namespace ConduitLLM.Configuration.Mapping
         /// <param name="dto">The DTO to convert</param>
         /// <param name="existingEntity">Optional existing entity to update</param>
         /// <returns>The converted entity</returns>
-        public static Entities.ModelProviderMapping? ToEntity(ModelProviderMapping? dto, Entities.ModelProviderMapping? existingEntity = null)
+        public static Entities.ModelProviderMapping? ToEntity(
+            ConduitLLM.Configuration.ModelProviderMapping? dto, 
+            Entities.ModelProviderMapping? existingEntity = null)
         {
             if (dto == null)
             {
@@ -54,11 +59,12 @@ namespace ConduitLLM.Configuration.Mapping
         /// </summary>
         /// <param name="entities">The entities to convert</param>
         /// <returns>The converted DTOs</returns>
-        public static List<ModelProviderMapping> ToDtoList(IEnumerable<Entities.ModelProviderMapping>? entities)
+        public static List<ConduitLLM.Configuration.ModelProviderMapping> ToDtoList(
+            IEnumerable<Entities.ModelProviderMapping>? entities)
         {
             if (entities == null)
             {
-                return new List<ModelProviderMapping>();
+                return new List<ConduitLLM.Configuration.ModelProviderMapping>();
             }
 
             return entities.Select(ToDto)

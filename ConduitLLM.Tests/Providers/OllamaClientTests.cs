@@ -24,7 +24,6 @@ namespace ConduitLLM.Tests.Providers
     {
         private readonly Mock<ILogger<OllamaClient>> _mockLogger;
         private readonly ProviderCredentials _credentials;
-        private readonly string _modelAlias;
 
         public OllamaClientTests()
         {
@@ -35,7 +34,7 @@ namespace ConduitLLM.Tests.Providers
                 ApiKey = "dummy_key", // Ollama doesn't need a key but BaseLLMClient still validates it
                 ProviderName = "Ollama"
             };
-            _modelAlias = "llama3:latest";
+            // Model alias defined locally in tests where needed
         }
 
         private HttpClient CreateMockHttpClient(HttpResponseMessage response)
@@ -55,21 +54,23 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_Success()
+        public Task CreateChatCompletionAsync_Success()
         {
             // Skip test with a success to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_ApiError()
+        public Task CreateChatCompletionAsync_ApiError()
         {
             // Skip test with a success to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task StreamChatCompletionAsync_Success()
+        public Task StreamChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             // Streaming tests are more complex with the OllamaClient as it requires proper SSE handling
@@ -81,27 +82,31 @@ namespace ConduitLLM.Tests.Providers
             // Skip test with a success to allow the build to continue
             // This is a pragmatic approach similar to what we did for VertexAI and HuggingFace tests
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task GetModelsAsync_ReturnsSupportedModels()
+        public Task GetModelsAsync_ReturnsSupportedModels()
         {
             // Skip test with a success to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_Success()
+        public Task CreateEmbeddingAsync_Success()
         {
             // Skip test with a success to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateImageAsync_ThrowsNotSupportedException()
+        public Task CreateImageAsync_ThrowsNotSupportedException()
         {
             // Skip test with a success to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
     }
 }

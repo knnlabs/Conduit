@@ -20,7 +20,7 @@ namespace ConduitLLM.WebUI.Services
     /// <summary>
     /// Service for managing virtual keys using the repository pattern
     /// </summary>
-    public class VirtualKeyServiceNew : IVirtualKeyService
+    public class VirtualKeyServiceNew : IVirtualKeyServiceNew
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;

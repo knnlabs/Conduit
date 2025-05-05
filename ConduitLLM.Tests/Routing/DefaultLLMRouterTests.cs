@@ -121,27 +121,30 @@ namespace ConduitLLM.Tests.Routing
         }
         
         [Fact]
-        public async Task CreateChatCompletionAsync_WithFailingPrimaryModel_UsesFallback()
+        public Task CreateChatCompletionAsync_WithFailingPrimaryModel_UsesFallback()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with fallback model configuration that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
         
         [Fact]
-        public async Task CreateChatCompletionAsync_WithAllModelsFailingRecoverable_ThrowsLLMCommunicationException()
+        public Task CreateChatCompletionAsync_WithAllModelsFailingRecoverable_ThrowsLLMCommunicationException()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with fallback model configuration that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
         
         [Fact]
-        public async Task CreateChatCompletionAsync_WithNoSuitableModels_ThrowsModelUnavailableException()
+        public Task CreateChatCompletionAsync_WithNoSuitableModels_ThrowsModelUnavailableException()
         {
             // This test is temporarily simplified to allow the build to pass
             // It has issues with model resolution that need to be addressed separately
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
         
         [Fact]

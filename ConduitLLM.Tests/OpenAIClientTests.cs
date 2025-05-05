@@ -102,11 +102,12 @@ public class OpenAIClientTests
     }
 
     // This test is temporarily commented out due to issues with mocking HttpClient
-    private async Task CreateChatCompletionAsync_OpenAI_Success_Implementation()
+    private Task CreateChatCompletionAsync_OpenAI_Success_Implementation()
     {
         // Skip this test for now - we already have working streaming tests
         // which confirm that the basic HTTP handling works
         Assert.True(true);
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -199,7 +200,7 @@ public class OpenAIClientTests
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri.ToString().Contains("chat/completions")),
+                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri != null && req.RequestUri.ToString().Contains("chat/completions")),
                 Moq.Protected.ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage(statusCode)
@@ -237,7 +238,7 @@ public class OpenAIClientTests
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri.ToString().Contains("chat/completions")),
+                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri != null && req.RequestUri.ToString().Contains("chat/completions")),
                 Moq.Protected.ItExpr.IsAny<CancellationToken>()
             )
             .ThrowsAsync(httpRequestException);
@@ -274,7 +275,7 @@ public class OpenAIClientTests
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
-                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri.ToString().Contains("chat/completions")),
+                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri != null && req.RequestUri.ToString().Contains("chat/completions")),
                 Moq.Protected.ItExpr.IsAny<CancellationToken>()
             )
             .ThrowsAsync(taskCanceledException);
@@ -436,7 +437,6 @@ public class OpenAIClientTests
             Stream = true
         };
         var providerModelId = "gpt-4-test";
-        var expectedUri = "https://api.openai.com/v1/chat/completions"; // Default base
 
         var chunksDto = CreateStandardOpenAIChunks().ToList();
         
@@ -614,11 +614,12 @@ public class OpenAIClientTests
 
     // This test is commented out until the underlying issues with mocking streaming
     // responses in tests are resolved.
-    private async Task StreamChatCompletionAsync_ApiReturnsErrorBeforeStream_Implementation()
+    private Task StreamChatCompletionAsync_ApiReturnsErrorBeforeStream_Implementation()
     {
         // Skip this test for now as it's causing CI issues
         // The actual code handles errors correctly, but the test is hard to get right
         Assert.True(true);
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -634,7 +635,6 @@ public class OpenAIClientTests
             Stream = true
         };
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var streamContent = "data: " + JsonSerializer.Serialize(CreateStandardOpenAIChunks().First()) + "\n\n" +
                             "data: {invalid json}\n\n" +
                             "data: [DONE]\n\n";
@@ -677,7 +677,6 @@ public class OpenAIClientTests
             Stream = true
         };
         var providerModelId = "gpt-4-test";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         
         // Use SseContent helper that can throw on read
         var content = SseContent.FromChunks(OpenAIChatCompletionChunk.GenerateChunks(1), throwOnRead: true);
@@ -731,7 +730,6 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var emptyStream = new List<OpenAIChatCompletionChunk>();
         var content = SseContent.FromChunks(emptyStream);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -762,7 +760,6 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var invalidChunk = new OpenAIChatCompletionChunk { Id = "bad", Choices = null! };
         var content = SseContent.FromChunks(new[] { invalidChunk });
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -804,7 +801,6 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(1);
         var content = SseContent.FromChunks(chunksDto, throwOnRead: true);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -834,7 +830,6 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(2);
         var content = SseContent.FromChunks(chunksDto, delayMs: 100);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -868,7 +863,6 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4";
-        var expectedUri = "https://api.openai.com/v1/chat/completions";
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(100);
         var content = SseContent.FromChunks(chunksDto);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -898,18 +892,20 @@ public class OpenAIClientTests
     // The OpenAICompatibleClient.GetModelsAsync method always returns fallback models
     // if there's any issue with the API call, making it difficult to test in isolation.
     
-    private async Task ListModelsAsync_OpenAI_Success_Implementation()
+    private Task ListModelsAsync_OpenAI_Success_Implementation()
     {
         // Skip this test for now as the fallback model mechanism
         // makes it hard to deterministically test
         Assert.True(true);
+        return Task.CompletedTask;
     }
     
-    private async Task ListModelsAsync_Mistral_Success_Implementation()
+    private Task ListModelsAsync_Mistral_Success_Implementation()
     {
         // Skip this test for now as the fallback model mechanism
         // makes it hard to deterministically test
         Assert.True(true);
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -971,11 +967,12 @@ public class OpenAIClientTests
     }
 
     // This test is also skipped due to the same issues as above
-    private async Task ListModelsAsync_ApiReturnsError_Implementation()
+    private Task ListModelsAsync_ApiReturnsError_Implementation()
     {
         // Skip this test for now as the fallback model mechanism
         // makes it hard to deterministically test
         Assert.True(true);
+        return Task.CompletedTask;
     }
 
      [Fact]

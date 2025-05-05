@@ -19,8 +19,7 @@ public class LLMClientFactory : ILLMClientFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
     
-    // Flag kept for compatibility during transition
-    private readonly bool _useRevisedClients = true; // Always use new clients
+    // Removed compatibility flag as migration is now complete
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LLMClientFactory"/> class.
@@ -36,9 +35,6 @@ public class LLMClientFactory : ILLMClientFactory
         _settings = settingsOptions.Value ?? throw new ArgumentNullException(nameof(settingsOptions), "Conduit settings cannot be null.");
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
-        
-        // Legacy code for compatibility - we now always use the new clients
-        // _useRevisedClients is always true
     }
 
     /// <inheritdoc />

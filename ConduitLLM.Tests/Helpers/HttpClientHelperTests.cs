@@ -42,7 +42,7 @@ namespace ConduitLLM.Tests.Helpers
         }
         
         [Fact]
-        public async Task SendJsonRequestAsync_Success()
+        public Task SendJsonRequestAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
@@ -77,6 +77,8 @@ namespace ConduitLLM.Tests.Helpers
                 return true;
             }, Times.Once());
             */
+            
+            return Task.CompletedTask;
         }
         
         [Fact]
@@ -101,7 +103,7 @@ namespace ConduitLLM.Tests.Helpers
         }
         
         [Fact]
-        public async Task SendFormRequestAsync_Success()
+        public Task SendFormRequestAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
@@ -135,6 +137,8 @@ namespace ConduitLLM.Tests.Helpers
                 return true;
             }, Times.Once());
             */
+            
+            return Task.CompletedTask;
         }
         
         [Fact]

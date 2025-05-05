@@ -221,7 +221,7 @@ namespace ConduitLLM.Tests.RepositoryServices
         {
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => _service.SetMasterKeyAsync(""));
-            await Assert.ThrowsAsync<ArgumentException>(() => _service.SetMasterKeyAsync(null));
+            await Assert.ThrowsAsync<ArgumentException>(() => _service.SetMasterKeyAsync(null!));
             
             // Verify repository was never called
             _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
@@ -248,7 +248,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             }
             
             // Setup repository capture
-            string capturedHash = null;
+            string? capturedHash = null;
             _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
                     "MasterKeyHash",
                     It.IsAny<string>(),

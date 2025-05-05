@@ -82,7 +82,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.NotNull(result);
             Assert.NotNull(result.VirtualKey);
             Assert.NotNull(result.KeyInfo);
-            Assert.True(result.VirtualKey.StartsWith(VirtualKeyConstants.KeyPrefix));
+            Assert.StartsWith(VirtualKeyConstants.KeyPrefix, result.VirtualKey);
             Assert.Equal(createdEntityId, result.KeyInfo.Id);
             Assert.Equal(request.KeyName, result.KeyInfo.KeyName);
             Assert.Equal(request.AllowedModels, result.KeyInfo.AllowedModels);
@@ -152,7 +152,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             _mockVirtualKeyRepository.Setup(repo => repo.GetByIdAsync(
                 keyId, 
                 It.IsAny<CancellationToken>()))
-                .ReturnsAsync((VirtualKey)null);
+                .ReturnsAsync((VirtualKey?)null);
 
             // Act
             var result = await _service.GetVirtualKeyInfoAsync(keyId);
@@ -198,10 +198,10 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(2, results.Count);
             Assert.Equal(1, results[0].Id);
             Assert.Equal("Key 1", results[0].KeyName);
-            Assert.Equal(true, results[0].IsEnabled);
+            Assert.True(results[0].IsEnabled);
             Assert.Equal(2, results[1].Id);
             Assert.Equal("Key 2", results[1].KeyName);
-            Assert.Equal(false, results[1].IsEnabled);
+            Assert.False(results[1].IsEnabled);
             
             _mockVirtualKeyRepository.Verify(repo => repo.GetAllAsync(
                 It.IsAny<CancellationToken>()), 

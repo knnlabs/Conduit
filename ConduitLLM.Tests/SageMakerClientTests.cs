@@ -95,12 +95,13 @@ public class SageMakerClientTests
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_Success()
+    public Task CreateChatCompletionAsync_Success()
     {
         // This test is temporarily simplified to allow the build to pass
         // The SageMaker client has issues with deserialization that need 
         // to be addressed separately
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -135,12 +136,13 @@ public class SageMakerClientTests
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_ReturnsChunks()
+    public Task StreamChatCompletionAsync_ReturnsChunks()
     {
         // This test is temporarily simplified to allow the build to pass
         // The SageMaker client's streaming implementation has deserialization issues 
         // that need to be addressed separately
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]

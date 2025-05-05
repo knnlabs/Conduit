@@ -15,7 +15,7 @@ namespace ConduitLLM.Configuration
     /// <summary>
     /// Database context for ConduitLLM configuration
     /// </summary>
-    public class ConfigurationDbContext : DbContext
+    public class ConfigurationDbContext : DbContext, IConfigurationDbContext
     {
         /// <summary>
         /// Initializes a new instance of the ConfigurationDbContext
@@ -28,72 +28,72 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Database set for virtual keys
         /// </summary>
-        public DbSet<VirtualKey> VirtualKeys { get; set; } = null!;
+        public virtual DbSet<VirtualKey> VirtualKeys { get; set; } = null!;
 
         /// <summary>
         /// Database set for request logs
         /// </summary>
-        public DbSet<RequestLog> RequestLogs { get; set; } = null!;
+        public virtual DbSet<RequestLog> RequestLogs { get; set; } = null!;
 
         /// <summary>
         /// Database set for virtual key spend history
         /// </summary>
-        public DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; set; } = null!;
+        public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; set; } = null!;
         
         /// <summary>
         /// Database set for virtual key spend history (alias for backward compatibility)
         /// </summary>
-        public DbSet<VirtualKeySpendHistory> VirtualKeySpendHistories => VirtualKeySpendHistory;
+        public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistories => VirtualKeySpendHistory;
 
         /// <summary>
         /// Database set for notifications
         /// </summary>
-        public DbSet<Notification> Notifications { get; set; } = null!;
+        public virtual DbSet<Notification> Notifications { get; set; } = null!;
 
         /// <summary>
         /// Database set for global settings
         /// </summary>
-        public DbSet<GlobalSetting> GlobalSettings { get; set; } = null!;
+        public virtual DbSet<GlobalSetting> GlobalSettings { get; set; } = null!;
 
         /// <summary>
         /// Database set for model costs
         /// </summary>
-        public DbSet<ModelCost> ModelCosts { get; set; } = null!;
+        public virtual DbSet<ModelCost> ModelCosts { get; set; } = null!;
 
         /// <summary>
         /// Database set for model provider mappings
         /// </summary>
-        public DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
+        public virtual DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
 
         /// <summary>
         /// Database set for provider credentials
         /// </summary>
-        public DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
+        public virtual DbSet<ConduitLLM.Configuration.Entities.ProviderCredential> ProviderCredentials { get; set; } = null!;
 
         /// <summary>
         /// Database set for router configurations
         /// </summary>
-        public DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
+        public virtual DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
         
         /// <summary>
         /// Database set for router configurations (alias for backward compatibility)
         /// </summary>
-        public DbSet<RouterConfigEntity> RouterConfigs => RouterConfigurations;
+        public virtual DbSet<RouterConfigEntity> RouterConfigs => RouterConfigurations;
 
         /// <summary>
         /// Database set for model deployments
         /// </summary>
-        public DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
+        public virtual DbSet<ModelDeploymentEntity> ModelDeployments { get; set; } = null!;
 
         /// <summary>
         /// Database set for fallback configurations
         /// </summary>
-        public DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
+        public virtual DbSet<FallbackConfigurationEntity> FallbackConfigurations { get; set; } = null!;
 
         /// <summary>
         /// Database set for fallback model mappings
         /// </summary>
-        public DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
+        public virtual DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
 
         public bool IsTestEnvironment { get; set; } = false;
 

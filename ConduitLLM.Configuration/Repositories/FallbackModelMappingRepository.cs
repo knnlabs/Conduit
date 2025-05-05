@@ -109,7 +109,7 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.FallbackModelMappings
                     .AsNoTracking()
                     .Include(m => m.FallbackConfiguration)
-                    .OrderBy(m => m.FallbackConfiguration.Name)
+                    .OrderBy(m => m.FallbackConfiguration != null ? m.FallbackConfiguration.Name : string.Empty)
                     .ThenBy(m => m.SourceModelName)
                     .ToListAsync(cancellationToken);
             }

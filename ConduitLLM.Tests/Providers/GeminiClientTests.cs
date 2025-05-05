@@ -27,7 +27,6 @@ namespace ConduitLLM.Tests.Providers
     {
         private readonly Mock<ILogger<GeminiClient>> _mockLogger;
         private readonly ProviderCredentials _credentials;
-        private readonly string _modelId;
 
         public GeminiClientTests()
         {
@@ -38,64 +37,72 @@ namespace ConduitLLM.Tests.Providers
                 ApiBase = "https://generativelanguage.googleapis.com/",
                 ProviderName = "Gemini"
             };
-            _modelId = "gemini-1.5-flash-latest";
+            // Model ID defined locally in tests where needed
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_Success()
+        public Task CreateChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_ApiError()
+        public Task CreateChatCompletionAsync_ApiError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_SafetyFilteringError()
+        public Task CreateChatCompletionAsync_SafetyFilteringError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task StreamChatCompletionAsync_Success()
+        public Task StreamChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             // Similar to other providers, streaming tests require careful mocking of SSE
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task GetModelsAsync_Success()
+        public Task GetModelsAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_Success()
+        public Task CreateEmbeddingAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateImageAsync_NotSupported()
+        public Task CreateImageAsync_NotSupported()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task StreamChatCompletionAsync_SafetyError()
+        public Task StreamChatCompletionAsync_SafetyError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
     }
 }

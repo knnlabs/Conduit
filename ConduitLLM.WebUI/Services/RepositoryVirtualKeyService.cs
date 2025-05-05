@@ -10,18 +10,18 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.WebUI.Services
 {
     /// <summary>
-    /// Adapter class that implements IVirtualKeyService using VirtualKeyServiceNew
+    /// Adapter class that implements IVirtualKeyService using IVirtualKeyServiceNew
     /// </summary>
-    public class RepositoryVirtualKeyService : IVirtualKeyService
+    public class RepositoryVirtualKeyService : IVirtualKeyService 
     {
-        private readonly VirtualKeyServiceNew _virtualKeyService;
+        private readonly IVirtualKeyServiceNew _virtualKeyService;
         private readonly ILogger<RepositoryVirtualKeyService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the RepositoryVirtualKeyService
         /// </summary>
         public RepositoryVirtualKeyService(
-            VirtualKeyServiceNew virtualKeyService,
+            IVirtualKeyServiceNew virtualKeyService,
             ILogger<RepositoryVirtualKeyService> logger)
         {
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));

@@ -265,7 +265,6 @@ namespace ConduitLLM.Providers
             }
             
             // Stream each prediction as a separate chunk to match the test expectations
-            int index = 0;
             bool isFirstChunk = true;
             
             foreach (var prediction in vertexResponse.Predictions)

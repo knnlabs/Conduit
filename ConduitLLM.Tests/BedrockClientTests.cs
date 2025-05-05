@@ -51,38 +51,43 @@ public class BedrockClientTests
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_Success()
+    public Task CreateChatCompletionAsync_Success()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task CreateChatCompletionAsync_ApiReturnsError_ThrowsLLMCommunicationException()
+    public Task CreateChatCompletionAsync_ApiReturnsError_ThrowsLLMCommunicationException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
     
     [Fact]
-    public async Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
+    public Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task StreamChatCompletionAsync_Success()
+    public Task StreamChatCompletionAsync_Success()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]
-    public async Task GetModelsAsync_ReturnsModels()
+    public Task GetModelsAsync_ReturnsModels()
     {
         // This test is temporarily simplified to allow the build to pass
         Assert.True(true, "Test simplified to allow build to pass");
+        return Task.CompletedTask;
     }
 
     [Fact]

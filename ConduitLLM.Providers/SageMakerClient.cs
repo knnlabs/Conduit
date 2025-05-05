@@ -295,7 +295,7 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
@@ -304,7 +304,7 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override async Task<ImageGenerationResponse> CreateImageAsync(
+        public override Task<ImageGenerationResponse> CreateImageAsync(
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)

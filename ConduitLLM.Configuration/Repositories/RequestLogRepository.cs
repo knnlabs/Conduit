@@ -215,9 +215,39 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                // Ensure the entity is tracked
                 dbContext.RequestLogs.Update(requestLog);
+                
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogError(ex, "Concurrency error updating request log with ID {LogId}", requestLog.Id);
+                
+                // Handle concurrency issues by reloading and reapplying changes if needed
+                try
+                {
+                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                    var existingEntity = await dbContext.RequestLogs.FindAsync(new object[] { requestLog.Id }, cancellationToken);
+                    
+                    if (existingEntity == null)
+                    {
+                        return false;
+                    }
+                    
+                    // Update properties
+                    dbContext.Entry(existingEntity).CurrentValues.SetValues(requestLog);
+                    
+                    int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+                    return rowsAffected > 0;
+                }
+                catch (Exception retryEx)
+                {
+                    _logger.LogError(retryEx, "Error during retry of request log update with ID {LogId}", requestLog.Id);
+                    throw;
+                }
             }
             catch (Exception ex)
             {

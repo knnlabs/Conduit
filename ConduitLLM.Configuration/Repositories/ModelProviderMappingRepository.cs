@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Data;
-using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -13,28 +12,6 @@ namespace ConduitLLM.Configuration.Repositories
     /// <summary>
     /// Repository implementation for model provider mappings using Entity Framework Core.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This repository provides data access operations for model provider mapping entities using Entity Framework Core.
-    /// It implements the <see cref="IModelProviderMappingRepository"/> interface and enables the management of
-    /// mappings between user-friendly model aliases and specific provider model implementations.
-    /// </para>
-    /// <para>
-    /// The implementation follows these principles:
-    /// </para>
-    /// <list type="bullet">
-    ///   <item><description>Using short-lived DbContext instances for better performance and reliability</description></item>
-    ///   <item><description>Comprehensive error handling with detailed logging</description></item>
-    ///   <item><description>Non-tracking queries for read operations to improve performance</description></item>
-    ///   <item><description>Automatic timestamp management for auditing purposes</description></item>
-    ///   <item><description>Proper ordering of query results for consistent UI experience</description></item>
-    /// </list>
-    /// <para>
-    /// Model provider mappings are a central component of the Conduit routing system,
-    /// allowing users to reference models by friendly aliases while the system handles
-    /// the mapping to specific provider implementations.
-    /// </para>
-    /// </remarks>
     public class ModelProviderMappingRepository : IModelProviderMappingRepository
     {
         private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
@@ -54,7 +31,9 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<Entities.ModelProviderMapping?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        public async Task<ConduitLLM.Configuration.Entities.ModelProviderMapping?> GetByIdAsync(
+            int id, 
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -71,7 +50,9 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<Entities.ModelProviderMapping?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default)
+        public async Task<ConduitLLM.Configuration.Entities.ModelProviderMapping?> GetByModelNameAsync(
+            string modelName, 
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(modelName))
             {
@@ -93,7 +74,8 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<Entities.ModelProviderMapping>> GetAllAsync(CancellationToken cancellationToken = default)
+        public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetAllAsync(
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -111,7 +93,9 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<List<Entities.ModelProviderMapping>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default)
+        public async Task<List<ConduitLLM.Configuration.Entities.ModelProviderMapping>> GetByProviderAsync(
+            string providerName, 
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(providerName))
             {
@@ -121,11 +105,21 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                // First find the provider credential
+                var credential = await dbContext.ProviderCredentials
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
+                    
+                if (credential == null)
+                {
+                    return new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
+                }
+                
+                // Then find mappings with this credential ID
                 return await dbContext.ModelProviderMappings
                     .AsNoTracking()
-                    // ProviderCredential relationship would need to be included and used here
-                    // For now, just return all mappings
-                    //.Where(m => m.ProviderCredential.ProviderName == providerName)
+                    .Where(m => m.ProviderCredentialId == credential.Id)
                     .OrderBy(m => m.ModelAlias)
                     .ToListAsync(cancellationToken);
             }
@@ -137,7 +131,9 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<int> CreateAsync(Entities.ModelProviderMapping modelProviderMapping, CancellationToken cancellationToken = default)
+        public async Task<int> CreateAsync(
+            ConduitLLM.Configuration.Entities.ModelProviderMapping modelProviderMapping, 
+            CancellationToken cancellationToken = default)
         {
             if (modelProviderMapping == null)
             {
@@ -154,24 +150,20 @@ namespace ConduitLLM.Configuration.Repositories
                 
                 dbContext.ModelProviderMappings.Add(modelProviderMapping);
                 await dbContext.SaveChangesAsync(cancellationToken);
+                
                 return modelProviderMapping.Id;
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogError(ex, "Database error creating model provider mapping for model '{ModelAlias}'", 
-                    modelProviderMapping.ModelAlias);
-                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model provider mapping for model '{ModelAlias}'", 
-                    modelProviderMapping.ModelAlias);
+                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", modelProviderMapping.ModelAlias);
                 throw;
             }
         }
 
         /// <inheritdoc/>
-        public async Task<bool> UpdateAsync(Entities.ModelProviderMapping modelProviderMapping, CancellationToken cancellationToken = default)
+        public async Task<bool> UpdateAsync(
+            ConduitLLM.Configuration.Entities.ModelProviderMapping modelProviderMapping, 
+            CancellationToken cancellationToken = default)
         {
             if (modelProviderMapping == null)
             {
@@ -182,17 +174,30 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 
-                // Set updated timestamp
-                modelProviderMapping.UpdatedAt = DateTime.UtcNow;
+                // Get existing entity to ensure it exists
+                var existingEntity = await dbContext.ModelProviderMappings
+                    .FirstOrDefaultAsync(m => m.Id == modelProviderMapping.Id, cancellationToken);
                 
-                dbContext.ModelProviderMappings.Update(modelProviderMapping);
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
+                if (existingEntity == null)
+                {
+                    _logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
+                    return false;
+                }
+                
+                // Update fields
+                existingEntity.ModelAlias = modelProviderMapping.ModelAlias;
+                existingEntity.ProviderModelName = modelProviderMapping.ProviderModelName;
+                existingEntity.ProviderCredentialId = modelProviderMapping.ProviderCredentialId;
+                existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
+                existingEntity.MaxContextTokens = modelProviderMapping.MaxContextTokens;
+                existingEntity.UpdatedAt = DateTime.UtcNow;
+                
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", 
-                    modelProviderMapping.Id);
+                _logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", modelProviderMapping.Id);
                 throw;
             }
         }
@@ -203,16 +208,20 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                var mapping = await dbContext.ModelProviderMappings.FindAsync(new object[] { id }, cancellationToken);
                 
-                if (mapping == null)
+                var entity = await dbContext.ModelProviderMappings
+                    .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+                
+                if (entity == null)
                 {
+                    _logger.LogWarning("Cannot delete non-existent model provider mapping with ID {MappingId}", id);
                     return false;
                 }
                 
-                dbContext.ModelProviderMappings.Remove(mapping);
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
+                dbContext.ModelProviderMappings.Remove(entity);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                
+                return true;
             }
             catch (Exception ex)
             {

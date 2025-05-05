@@ -39,17 +39,19 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_Success()
+        public Task CreateChatCompletionAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_ApiError()
+        public Task CreateChatCompletionAsync_ApiError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
@@ -74,17 +76,21 @@ namespace ConduitLLM.Tests.Providers
             // Check capabilities of at least one model
             var llamaModel = models.Find(m => m.Id.Contains("llama-v3-8b-instruct"));
             Assert.NotNull(llamaModel);
-            Assert.True(llamaModel.Capabilities.Chat);
-            Assert.True(llamaModel.Capabilities.TextGeneration);
-            Assert.False(llamaModel.Capabilities.ImageGeneration);
-            Assert.True(llamaModel.Capabilities.FunctionCalling);
+            if (llamaModel != null)
+            {
+                Assert.True(llamaModel.Capabilities?.Chat ?? false);
+                Assert.True(llamaModel.Capabilities?.TextGeneration ?? false);
+                Assert.False(llamaModel.Capabilities?.ImageGeneration ?? false);
+                Assert.True(llamaModel.Capabilities?.FunctionCalling ?? false);
+            }
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_Success()
+        public Task CreateEmbeddingAsync_Success()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]

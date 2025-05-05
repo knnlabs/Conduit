@@ -13,17 +13,13 @@ namespace ConduitLLM.Tests.RepositoryServices
 {
     public class RepositoryVirtualKeyServiceTests
     {
-        private readonly Mock<VirtualKeyServiceNew> _mockVirtualKeyServiceNew;
+        private readonly Mock<IVirtualKeyServiceNew> _mockVirtualKeyServiceNew;
         private readonly Mock<ILogger<RepositoryVirtualKeyService>> _mockLogger;
         private readonly RepositoryVirtualKeyService _service;
 
         public RepositoryVirtualKeyServiceTests()
         {
-            _mockVirtualKeyServiceNew = new Mock<VirtualKeyServiceNew>(
-                Mock.Of<ConduitLLM.Configuration.Repositories.IVirtualKeyRepository>(),
-                Mock.Of<ConduitLLM.Configuration.Repositories.IVirtualKeySpendHistoryRepository>(),
-                Mock.Of<ILogger<VirtualKeyServiceNew>>());
-            
+            _mockVirtualKeyServiceNew = new Mock<IVirtualKeyServiceNew>();
             _mockLogger = new Mock<ILogger<RepositoryVirtualKeyService>>();
             _service = new RepositoryVirtualKeyService(_mockVirtualKeyServiceNew.Object, _mockLogger.Object);
         }

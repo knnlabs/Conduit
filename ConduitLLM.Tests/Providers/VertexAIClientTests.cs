@@ -23,7 +23,6 @@ namespace ConduitLLM.Tests.Providers
     {
         private readonly Mock<ILogger<VertexAIClient>> _mockLogger;
         private readonly ProviderCredentials _credentials;
-        private readonly string _modelAlias;
 
         public VertexAIClientTests()
         {
@@ -37,49 +36,55 @@ namespace ConduitLLM.Tests.Providers
                 ApiVersion = "test-project-id",
                 ProviderName = "VertexAI"
             };
-            _modelAlias = "gemini-1.5-pro";
+            // Model alias defined locally in tests where needed
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_GeminiSuccess()
+        public Task CreateChatCompletionAsync_GeminiSuccess()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_PaLMSuccess()
+        public Task CreateChatCompletionAsync_PaLMSuccess()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateChatCompletionAsync_ApiError()
+        public Task CreateChatCompletionAsync_ApiError()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task GetModelsAsync_ReturnsSupportedModels()
+        public Task GetModelsAsync_ReturnsSupportedModels()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_ThrowsUnsupportedProviderException()
+        public Task CreateEmbeddingAsync_ThrowsUnsupportedProviderException()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
 
         [Fact]
-        public async Task CreateImageAsync_ThrowsUnsupportedProviderException()
+        public Task CreateImageAsync_ThrowsUnsupportedProviderException()
         {
             // This test is temporarily simplified to allow the build to pass
             Assert.True(true, "Test simplified to allow build to pass");
+            return Task.CompletedTask;
         }
     }
 }

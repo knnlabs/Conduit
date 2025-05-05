@@ -719,10 +719,10 @@ namespace ConduitLLM.Providers
             // Create the standardized response
             var result = new CoreModels.ChatCompletionResponse
             {
-                Id = response.Id,
+                Id = response.Id ?? Guid.NewGuid().ToString(),
                 Object = "chat.completion", // Standardize as OpenAI-like type
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                Model = response.Model,
+                Model = response.Model ?? "unknown-model",
                 Choices = new List<CoreModels.Choice>
                 {
                     new CoreModels.Choice
@@ -731,10 +731,10 @@ namespace ConduitLLM.Providers
                         Message = new CoreModels.Message
                         {
                             Role = "assistant",
-                            Content = responseContent,
+                            Content = responseContent ?? string.Empty,
                             ToolCalls = toolCalls
                         },
-                        FinishReason = response.StopReason
+                        FinishReason = response.StopReason ?? "unknown"
                     }
                 },
                 Usage = new CoreModels.Usage
