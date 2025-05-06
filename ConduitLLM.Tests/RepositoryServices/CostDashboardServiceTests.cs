@@ -1,42 +1,31 @@
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
+using ConduitLLM.Tests.TestHelpers;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.EntityFrameworkCore;
+
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Microsoft.EntityFrameworkCore;
-using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
     public class CostDashboardServiceTests
     {
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockDbContextFactory;
         private readonly ILogger<CostDashboardService> _logger;
-        private readonly CostDashboardService _service;
-        
-        // Legacy mocks kept for test compatibility
-        private readonly Mock<IRequestLogRepository> _mockRequestLogRepository;
-        private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
 
         public CostDashboardServiceTests()
         {
-            _mockDbContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
             _logger = NullLogger<CostDashboardService>.Instance;
-            _mockRequestLogRepository = new Mock<IRequestLogRepository>();
-            _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
-            
-            _service = new CostDashboardService(
-                _mockDbContextFactory.Object,
-                _logger);
         }
 
         [Fact]
@@ -46,6 +35,13 @@ namespace ConduitLLM.Tests.RepositoryServices
             var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
 
+            // Create test data with virtual keys first, then reference them in logs
+            var virtualKeys = new List<VirtualKey>
+            {
+                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
+                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
+            };
+            
             var logs = new List<RequestLog>
             {
                 new RequestLog
@@ -80,32 +76,22 @@ namespace ConduitLLM.Tests.RepositoryServices
                 }
             };
 
-            var virtualKeys = new List<VirtualKey>
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
             {
-                new VirtualKey
-                {
-                    Id = 101,
-                    KeyName = "Test Key 1"
-                },
-                new VirtualKey
-                {
-                    Id = 102,
-                    KeyName = "Test Key 2"
-                }
-            };
-
-            _mockRequestLogRepository.Setup(repo => repo.GetByDateRangeAsync(
-                startDate,
-                endDate,
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(logs);
-
-            _mockVirtualKeyRepository.Setup(repo => repo.GetAllAsync(
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    virtualKeys: virtualKeys,
+                    requestLogs: logs);
+            }
+            
+            // Create service with real factory
+            var service = new CostDashboardService(factory, _logger);
 
             // Act
-            var result = await _service.GetDashboardDataAsync(startDate, endDate);
+            var result = await service.GetDashboardDataAsync(startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
@@ -120,18 +106,18 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(31, result.CostTrends.Count); // 31 days in January
             
             // Verify days with data
-            var jan5Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 5));
+            var jan5Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc).Date);
             Assert.NotNull(jan5Data);
             Assert.Equal(0.01m, jan5Data.Cost);
             Assert.Equal(1, jan5Data.Requests);
 
-            var jan10Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 10));
+            var jan10Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc).Date);
             Assert.NotNull(jan10Data);
             Assert.Equal(0.02m, jan10Data.Cost);
             Assert.Equal(1, jan10Data.Requests);
 
             // Verify days with zero data have been filled in
-            var jan2Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 2));
+            var jan2Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 2, 0, 0, 0, DateTimeKind.Utc).Date);
             Assert.NotNull(jan2Data);
             Assert.Equal(0m, jan2Data.Cost);
             Assert.Equal(0, jan2Data.Requests);
@@ -156,10 +142,17 @@ namespace ConduitLLM.Tests.RepositoryServices
         public async Task GetDashboardDataAsync_ShouldFilterByVirtualKeyId()
         {
             // Arrange
-            var startDate = new DateTime(2025, 1, 1);
-            var endDate = new DateTime(2025, 1, 31);
+            var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             int virtualKeyId = 101;
 
+            // Create test data with virtual keys first
+            var virtualKeys = new List<VirtualKey>
+            {
+                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
+                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
+            };
+            
             var logs = new List<RequestLog>
             {
                 new RequestLog
@@ -170,7 +163,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 100,
                     OutputTokens = 50,
                     Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5)
+                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -180,7 +173,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 200,
                     OutputTokens = 100,
                     Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 10)
+                    Timestamp = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -190,36 +183,26 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 150,
                     OutputTokens = 75,
                     Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 15)
+                    Timestamp = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc)
                 }
             };
 
-            var virtualKeys = new List<VirtualKey>
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
             {
-                new VirtualKey
-                {
-                    Id = 101,
-                    KeyName = "Test Key 1"
-                },
-                new VirtualKey
-                {
-                    Id = 102,
-                    KeyName = "Test Key 2"
-                }
-            };
-
-            _mockRequestLogRepository.Setup(repo => repo.GetByDateRangeAsync(
-                It.IsAny<DateTime>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(logs);
-
-            _mockVirtualKeyRepository.Setup(repo => repo.GetAllAsync(
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    virtualKeys: virtualKeys,
+                    requestLogs: logs);
+            }
+            
+            // Create service with real factory
+            var service = new CostDashboardService(factory, _logger);
 
             // Act
-            var result = await _service.GetDashboardDataAsync(startDate, endDate, virtualKeyId);
+            var result = await service.GetDashboardDataAsync(startDate, endDate, virtualKeyId);
 
             // Assert
             Assert.NotNull(result);
@@ -243,10 +226,17 @@ namespace ConduitLLM.Tests.RepositoryServices
         public async Task GetDashboardDataAsync_ShouldFilterByModelName()
         {
             // Arrange
-            var startDate = new DateTime(2025, 1, 1);
-            var endDate = new DateTime(2025, 1, 31);
+            var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             string modelName = "gpt-4";
 
+            // Create test data with virtual keys first
+            var virtualKeys = new List<VirtualKey>
+            {
+                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
+                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
+            };
+            
             var logs = new List<RequestLog>
             {
                 new RequestLog
@@ -257,7 +247,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 100,
                     OutputTokens = 50,
                     Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5)
+                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -267,7 +257,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 200,
                     OutputTokens = 100,
                     Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 10)
+                    Timestamp = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -277,36 +267,26 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 150,
                     OutputTokens = 75,
                     Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 15)
+                    Timestamp = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc)
                 }
             };
 
-            var virtualKeys = new List<VirtualKey>
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
             {
-                new VirtualKey
-                {
-                    Id = 101,
-                    KeyName = "Test Key 1"
-                },
-                new VirtualKey
-                {
-                    Id = 102,
-                    KeyName = "Test Key 2"
-                }
-            };
-
-            _mockRequestLogRepository.Setup(repo => repo.GetByDateRangeAsync(
-                It.IsAny<DateTime>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(logs);
-
-            _mockVirtualKeyRepository.Setup(repo => repo.GetAllAsync(
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    virtualKeys: virtualKeys,
+                    requestLogs: logs);
+            }
+            
+            // Create service with real factory
+            var service = new CostDashboardService(factory, _logger);
 
             // Act
-            var result = await _service.GetDashboardDataAsync(startDate, endDate, null, modelName);
+            var result = await service.GetDashboardDataAsync(startDate, endDate, null, modelName);
 
             // Assert
             Assert.NotNull(result);
@@ -338,12 +318,20 @@ namespace ConduitLLM.Tests.RepositoryServices
                 new RequestLog { ModelName = "gemini-pro" }
             };
 
-            _mockRequestLogRepository.Setup(repo => repo.GetAllAsync(
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(logs);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, requestLogs: logs);
+            }
+            
+            // Create service with real factory
+            var service = new CostDashboardService(factory, _logger);
 
             // Act
-            var result = await _service.GetAvailableModelsAsync();
+            var result = await service.GetAvailableModelsAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -357,9 +345,16 @@ namespace ConduitLLM.Tests.RepositoryServices
         public async Task GetDetailedCostDataAsync_ShouldReturnGroupedDetailedData()
         {
             // Arrange
-            var startDate = new DateTime(2025, 1, 1);
-            var endDate = new DateTime(2025, 1, 31);
+            var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
 
+            // Create test data with virtual keys first
+            var virtualKeys = new List<VirtualKey>
+            {
+                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
+                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
+            };
+            
             var logs = new List<RequestLog>
             {
                 new RequestLog
@@ -370,7 +365,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 100,
                     OutputTokens = 50,
                     Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5)
+                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -380,7 +375,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 200,
                     OutputTokens = 100,
                     Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 5)
+                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
                 },
                 new RequestLog
                 {
@@ -390,36 +385,26 @@ namespace ConduitLLM.Tests.RepositoryServices
                     InputTokens = 150,
                     OutputTokens = 75,
                     Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 5)
+                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
                 }
             };
 
-            var virtualKeys = new List<VirtualKey>
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
             {
-                new VirtualKey
-                {
-                    Id = 101,
-                    KeyName = "Test Key 1"
-                },
-                new VirtualKey
-                {
-                    Id = 102,
-                    KeyName = "Test Key 2"
-                }
-            };
-
-            _mockRequestLogRepository.Setup(repo => repo.GetByDateRangeAsync(
-                It.IsAny<DateTime>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(logs);
-
-            _mockVirtualKeyRepository.Setup(repo => repo.GetAllAsync(
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    virtualKeys: virtualKeys,
+                    requestLogs: logs);
+            }
+            
+            // Create service with real factory
+            var service = new CostDashboardService(factory, _logger);
 
             // Act
-            var result = await _service.GetDetailedCostDataAsync(startDate, endDate);
+            var result = await service.GetDetailedCostDataAsync(startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
@@ -428,7 +413,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Check gpt-4 group
             var gpt4Group = result.FirstOrDefault(d => d.Model == "gpt-4" && d.KeyName == "Test Key 1");
             Assert.NotNull(gpt4Group);
-            Assert.Equal(new DateTime(2025, 1, 5), gpt4Group.Date);
+            Assert.Equal(new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc), gpt4Group.Date);
             Assert.Equal(2, gpt4Group.Requests);
             Assert.Equal(250, gpt4Group.InputTokens);
             Assert.Equal(125, gpt4Group.OutputTokens);
@@ -437,7 +422,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Check claude-v1 group
             var claudeGroup = result.FirstOrDefault(d => d.Model == "claude-v1" && d.KeyName == "Test Key 2");
             Assert.NotNull(claudeGroup);
-            Assert.Equal(new DateTime(2025, 1, 5), claudeGroup.Date);
+            Assert.Equal(new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc), claudeGroup.Date);
             Assert.Equal(1, claudeGroup.Requests);
             Assert.Equal(200, claudeGroup.InputTokens);
             Assert.Equal(100, claudeGroup.OutputTokens);

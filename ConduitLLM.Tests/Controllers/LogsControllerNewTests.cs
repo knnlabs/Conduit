@@ -90,8 +90,8 @@ namespace ConduitLLM.Tests.Controllers
             DateTime startDate = DateTime.UtcNow.AddDays(-7);
             DateTime endDate = DateTime.UtcNow;
 
-            // Create a mock with object for the summary to handle type differences
-            object summaryObj = new
+            // Create a properly typed LogsSummaryDto object
+            var summaryDto = new ConduitLLM.Configuration.Services.Dtos.LogsSummaryDto
             {
                 TotalRequests = 100,
                 TotalInputTokens = 10000,
@@ -99,31 +99,50 @@ namespace ConduitLLM.Tests.Controllers
                 TotalCost = 1.25m,
                 AverageResponseTimeMs = 1200,
                 StartDate = startDate,
-                EndDate = endDate
+                EndDate = endDate,
+                RequestsByModel = new Dictionary<string, int>
+                {
+                    { "gpt-4", 50 },
+                    { "claude-v1", 50 }
+                },
+                CostByModel = new Dictionary<string, decimal>
+                {
+                    { "gpt-4", 0.75m },
+                    { "claude-v1", 0.50m }
+                },
+                SuccessRate = 98.5,
+                RequestsByStatus = new Dictionary<int, int>
+                {
+                    { 200, 98 },
+                    { 500, 2 }
+                }
             };
 
-            // Use mock.Setup with a more generic approach
+            // Setup the mock with the correct return type
             _mockRequestLogService.Setup(s => s.GetLogsSummaryAsync(
                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult((dynamic)summaryObj));
+                .ReturnsAsync(summaryDto);
 
             // Act
             var result = await _controller.GetLogsSummary(startDate, endDate);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            
-            // Make sure the return value is not null
             Assert.NotNull(okResult.Value);
             
-            // Use dynamic to avoid type issues, but check for null first
-            var returnedSummary = okResult.Value;
+            // Cast to the correct type for assertions
+            var returnedSummary = Assert.IsType<ConduitLLM.Configuration.Services.Dtos.LogsSummaryDto>(okResult.Value);
             
-            // Perform assertions with null checks
-            Assert.Equal(100, ((dynamic)returnedSummary).TotalRequests);
-            Assert.Equal(10000, ((dynamic)returnedSummary).TotalInputTokens);
-            Assert.Equal(5000, ((dynamic)returnedSummary).TotalOutputTokens);
-            Assert.Equal(1.25m, ((dynamic)returnedSummary).TotalCost);
+            // Verify key properties
+            Assert.Equal(100, returnedSummary.TotalRequests);
+            Assert.Equal(10000, returnedSummary.TotalInputTokens);
+            Assert.Equal(5000, returnedSummary.TotalOutputTokens);
+            Assert.Equal(1.25m, returnedSummary.TotalCost);
+            Assert.Equal(1200, returnedSummary.AverageResponseTimeMs);
+            Assert.Equal(startDate, returnedSummary.StartDate);
+            Assert.Equal(endDate, returnedSummary.EndDate);
+            Assert.Equal(98.5, returnedSummary.SuccessRate);
+            Assert.Equal(2, returnedSummary.RequestsByModel.Count);
         }
 
         [Fact]

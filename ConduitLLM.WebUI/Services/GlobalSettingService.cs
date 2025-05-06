@@ -165,9 +165,13 @@ public class GlobalSettingService : IGlobalSettingService
         _logger.LogDebug("Retrieving master key hash algorithm");
         var algorithm = await GetSettingAsync(MasterKeyHashAlgorithmSettingKey);
         
-        // If no algorithm is stored, we could return the default
-        // but for now, let's just return what's in the database
-        // to avoid confusion about what algorithm was actually used
+        // If no algorithm is stored, return the default algorithm
+        if (string.IsNullOrEmpty(algorithm))
+        {
+            _logger.LogDebug("No hash algorithm found in settings, returning default: {DefaultAlgorithm}", DefaultHashAlgorithm);
+            return DefaultHashAlgorithm;
+        }
+        
         return algorithm;
     }
 

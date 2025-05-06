@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Configuration.Repositories;
-using IRouterConfigCoreRepository = ConduitLLM.Core.Interfaces.IRouterConfigRepository;
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Routing;
-using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
-using ConduitLLM.Configuration;
+using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,35 +24,21 @@ namespace ConduitLLM.Tests.RepositoryServices
 {
     public class RouterServiceTests
     {
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockConfigContextFactory;
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
         private readonly Mock<IOptionsMonitor<RouterOptions>> _mockRouterOptions;
         private readonly ILogger<RouterService> _logger;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly RouterService _service;
-        
-        // Legacy mocks kept for test compatibility
-        private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
-        private readonly Mock<IModelDeploymentRepository> _mockModelDeploymentRepository;
-        private readonly Mock<ConduitLLM.Configuration.Repositories.IRouterConfigRepository> _mockRouterConfigRepository;
-        private readonly Mock<IFallbackConfigurationRepository> _mockFallbackConfigRepository;
+        private readonly RouterOptions _routerOptions;
 
         public RouterServiceTests()
         {
-            _mockConfigContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
             _mockClientFactory = new Mock<ILLMClientFactory>();
             _mockRouterOptions = new Mock<IOptionsMonitor<RouterOptions>>();
             _logger = NullLogger<RouterService>.Instance;
             _mockServiceProvider = new Mock<IServiceProvider>();
             
-            // Initialize legacy mocks
-            _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
-            _mockModelDeploymentRepository = new Mock<IModelDeploymentRepository>();
-            _mockRouterConfigRepository = new Mock<ConduitLLM.Configuration.Repositories.IRouterConfigRepository>();
-            _mockFallbackConfigRepository = new Mock<IFallbackConfigurationRepository>();
-            
             // Setup router options
-            var routerOptions = new RouterOptions
+            _routerOptions = new RouterOptions
             {
                 Enabled = true,
                 DefaultRoutingStrategy = "ordered",
@@ -77,11 +61,13 @@ namespace ConduitLLM.Tests.RepositoryServices
                 }
             };
             
-            _mockRouterOptions.Setup(m => m.CurrentValue).Returns(routerOptions);
-            
-            // Create the service
-            _service = new RouterService(
-                _mockConfigContextFactory.Object,
+            _mockRouterOptions.Setup(m => m.CurrentValue).Returns(_routerOptions);
+        }
+
+        private RouterService CreateRouterService(IDbContextFactory<ConfigurationDbContext> dbContextFactory)
+        {
+            return new RouterService(
+                dbContextFactory,
                 _mockClientFactory.Object,
                 _logger,
                 _mockRouterOptions.Object,
@@ -109,17 +95,24 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(routerConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
 
             // Act
-            var result = await _service.GetRouterConfigAsync();
+            var result = await service.GetRouterConfigAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -127,24 +120,20 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(3, result.MaxRetries);
             Assert.Single(result.ModelDeployments);
             Assert.Equal("gpt-4", result.ModelDeployments[0].DeploymentName);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()), 
-                Times.AtLeastOnce);
         }
 
         [Fact]
         public async Task GetRouterConfigAsync_ShouldCreateFromOptions_WhenNoConfigExists()
         {
             // Arrange
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync((GlobalSetting?)null);
+            // Create in-memory database context factory with no initial data
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
 
             // Act
-            var result = await _service.GetRouterConfigAsync();
+            var result = await service.GetRouterConfigAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -152,12 +141,6 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(3, result.MaxRetries);
             Assert.Single(result.ModelDeployments);
             Assert.Equal("gpt-4", result.ModelDeployments[0].DeploymentName);
-            
-            // Verify we tried to get the config
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()), 
-                Times.AtLeastOnce);
         }
 
         [Fact]
@@ -178,22 +161,22 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(existingConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
-                
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
+            
             var newDeployment = new ModelDeployment
             {
                 DeploymentName = "new-model",
@@ -202,20 +185,24 @@ namespace ConduitLLM.Tests.RepositoryServices
             };
 
             // Act
-            var result = await _service.SaveModelDeploymentAsync(newDeployment);
+            var result = await service.SaveModelDeploymentAsync(newDeployment);
 
             // Assert
             Assert.True(result);
             
-            // Verify updated config is saved
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.Is<string>(s => 
-                    s.Contains("existing-model") && 
-                    s.Contains("new-model")),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Verify that the deployment was actually added by retrieving the updated config
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var savedSetting = await context.GlobalSettings
+                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
+                
+                Assert.NotNull(savedSetting);
+                
+                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
+                Assert.NotNull(updatedConfig);
+                Assert.Equal(2, updatedConfig.ModelDeployments.Count);
+                Assert.Contains(updatedConfig.ModelDeployments, d => d.DeploymentName == "new-model");
+            }
         }
 
         [Fact]
@@ -245,38 +232,45 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(existingConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
-                
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
+
             // Act
-            var result = await _service.DeleteModelDeploymentAsync("model-to-delete");
+            var result = await service.DeleteModelDeploymentAsync("model-to-delete");
 
             // Assert
             Assert.True(result);
             
-            // Verify the updated config is saved without the deleted model
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.Is<string>(s => 
-                    !s.Contains("model-to-delete") && 
-                    s.Contains("other-model") &&
-                    s.Contains("fallback-model")),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Verify that the deployment was actually removed by retrieving the updated config
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var savedSetting = await context.GlobalSettings
+                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
+                
+                Assert.NotNull(savedSetting);
+                
+                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
+                Assert.NotNull(updatedConfig);
+                Assert.Single(updatedConfig.ModelDeployments);
+                Assert.DoesNotContain(updatedConfig.ModelDeployments, d => d.DeploymentName == "model-to-delete");
+                
+                // Verify fallbacks were also updated
+                Assert.True(updatedConfig.Fallbacks.ContainsKey("primary-model"));
+                Assert.DoesNotContain("model-to-delete", updatedConfig.Fallbacks["primary-model"]);
+            }
         }
 
         [Fact]
@@ -293,43 +287,45 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(existingConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
-                
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
+            
             var primaryModel = "new-primary";
             var fallbackModels = new List<string> { "fallback1", "fallback2" };
 
             // Act
-            var result = await _service.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
+            var result = await service.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
 
             // Assert
             Assert.True(result);
             
-            // Verify updated config is saved with new fallbacks
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.Is<string>(s => 
-                    s.Contains("existing-model") && 
-                    s.Contains("existing-fallback") &&
-                    s.Contains("new-primary") &&
-                    s.Contains("fallback1") &&
-                    s.Contains("fallback2")),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Verify that the fallback config was actually updated by retrieving the updated config
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var savedSetting = await context.GlobalSettings
+                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
+                
+                Assert.NotNull(savedSetting);
+                
+                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
+                Assert.NotNull(updatedConfig);
+                Assert.True(updatedConfig.Fallbacks.ContainsKey(primaryModel));
+                Assert.Equal(fallbackModels, updatedConfig.Fallbacks[primaryModel]);
+                Assert.True(updatedConfig.Fallbacks.ContainsKey("existing-model")); // Original entry should still exist
+            }
         }
 
         [Fact]
@@ -347,40 +343,41 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(existingConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
-                
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
 
             // Act
-            var result = await _service.RemoveFallbackConfigurationAsync("model-to-remove");
+            var result = await service.RemoveFallbackConfigurationAsync("model-to-remove");
 
             // Assert
             Assert.True(result);
             
-            // Verify updated config is saved without the removed fallbacks
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.Is<string>(s => 
-                    !s.Contains("model-to-remove") && 
-                    !s.Contains("fallback1") &&
-                    !s.Contains("fallback2") &&
-                    s.Contains("other-model") &&
-                    s.Contains("other-fallback")),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Verify that the fallback config was actually removed by retrieving the updated config
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var savedSetting = await context.GlobalSettings
+                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
+                
+                Assert.NotNull(savedSetting);
+                
+                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
+                Assert.NotNull(updatedConfig);
+                Assert.False(updatedConfig.Fallbacks.ContainsKey("model-to-remove"));
+                Assert.True(updatedConfig.Fallbacks.ContainsKey("other-model")); // Original entry should still exist
+            }
         }
 
         [Fact]
@@ -395,27 +392,30 @@ namespace ConduitLLM.Tests.RepositoryServices
             
             var serializedConfig = JsonSerializer.Serialize(routerConfig);
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "RouterConfig", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting
-                {
-                    Key = "RouterConfig",
-                    Value = serializedConfig
-                });
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
 
             // Act
-            var result = await _service.GetRouterStatusAsync();
+            var result = await service.GetRouterStatusAsync();
 
             // Assert
             Assert.NotNull(result);
             Assert.NotNull(result.Config);
             Assert.Equal("ordered", result.Config.DefaultRoutingStrategy);
             Assert.Equal(3, result.Config.MaxRetries);
-            // Router would be initialized and enabled in a real scenario
-            // For testing, we expect it to be false since we mocked dependencies
-            // IsEnabled could be true or false depending on test execution order
-            // so we don't test this value
         }
 
         [Fact]
@@ -436,28 +436,33 @@ namespace ConduitLLM.Tests.RepositoryServices
                 }
             };
             
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = CreateRouterService(factory);
 
             // Act
-            var result = await _service.UpdateRouterConfigAsync(newConfig);
+            var result = await service.UpdateRouterConfigAsync(newConfig);
 
             // Assert
             Assert.True(result);
             
-            // Verify config is saved
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "RouterConfig",
-                It.Is<string>(s => 
-                    s.Contains("fallback") && 
-                    s.Contains("updated-model")),
-                It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Verify that the config was actually saved by retrieving it
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var savedSetting = await context.GlobalSettings
+                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
+                
+                Assert.NotNull(savedSetting);
+                
+                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
+                Assert.NotNull(updatedConfig);
+                Assert.Equal("fallback", updatedConfig.DefaultRoutingStrategy);
+                Assert.Equal(5, updatedConfig.MaxRetries);
+                Assert.Single(updatedConfig.ModelDeployments);
+                Assert.Equal("updated-model", updatedConfig.ModelDeployments[0].DeploymentName);
+            }
         }
     }
 }

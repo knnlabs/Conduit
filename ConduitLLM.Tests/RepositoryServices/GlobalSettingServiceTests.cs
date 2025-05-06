@@ -1,14 +1,15 @@
 using ConduitLLM.WebUI.Interfaces;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.WebUI.Services;
-using ConduitLLM.Configuration;
+using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,22 +22,11 @@ namespace ConduitLLM.Tests.RepositoryServices
 {
     public class GlobalSettingServiceTests
     {
-        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockConfigContextFactory;
         private readonly ILogger<GlobalSettingService> _logger;
-        private readonly GlobalSettingService _service;
-        
-        // Legacy mocks kept for test compatibility
-        private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
 
         public GlobalSettingServiceTests()
         {
-            _mockConfigContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
             _logger = NullLogger<GlobalSettingService>.Instance;
-            _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
-            
-            _service = new GlobalSettingService(
-                _mockConfigContextFactory.Object,
-                _logger);
         }
 
         [Fact]
@@ -46,24 +36,24 @@ namespace ConduitLLM.Tests.RepositoryServices
             string key = "TestKey";
             string expectedValue = "TestValue";
             
-            var mockContext = new Mock<ConfigurationDbContext>();
-            var mockDbSet = new Mock<DbSet<GlobalSetting>>();
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            var setting = new GlobalSetting { Key = key, Value = expectedValue };
-            var settings = new List<GlobalSetting> { setting }.AsQueryable();
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = key, Value = expectedValue } 
+                    });
+            }
             
-            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.Provider).Returns(settings.Provider);
-            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.Expression).Returns(settings.Expression);
-            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.ElementType).Returns(settings.ElementType);
-            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.GetEnumerator()).Returns(settings.GetEnumerator());
-            
-            mockContext.Setup(c => c.GlobalSettings).Returns(mockDbSet.Object);
-            
-            _mockConfigContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(mockContext.Object);
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            var result = await _service.GetSettingAsync(key);
+            var result = await service.GetSettingAsync(key);
 
             // Assert
             Assert.Equal(expectedValue, result);
@@ -75,47 +65,80 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             string key = "NonExistentKey";
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                key, 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync((GlobalSetting?)null);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // No need to seed the database as we're testing for non-existent setting
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            var result = await _service.GetSettingAsync(key);
+            var result = await service.GetSettingAsync(key);
 
             // Assert
             Assert.Null(result);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                key, 
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
         }
 
         [Fact]
-        public async Task SetSettingAsync_ShouldCallRepositoryUpsert()
+        public async Task SetSettingAsync_ShouldCreateNewSetting_WhenKeyDoesNotExist()
         {
             // Arrange
-            string key = "TestKey";
-            string value = "TestValue";
+            string key = "NewKey";
+            string value = "NewValue";
             
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                key, 
-                value,
-                null,
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            await _service.SetSettingAsync(key, value);
+            await service.SetSettingAsync(key, value);
+            
+            // Verify setting was created
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+                Assert.NotNull(setting);
+                Assert.Equal(value, setting.Value);
+            }
+        }
+        
+        [Fact]
+        public async Task SetSettingAsync_ShouldUpdateExistingSetting_WhenKeyExists()
+        {
+            // Arrange
+            string key = "ExistingKey";
+            string originalValue = "OriginalValue";
+            string newValue = "UpdatedValue";
+            
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = key, Value = originalValue } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
-            // Assert
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                key, 
-                value,
-                null,
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Act
+            await service.SetSettingAsync(key, newValue);
+            
+            // Verify setting was updated
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+                Assert.NotNull(setting);
+                Assert.Equal(newValue, setting.Value);
+            }
         }
 
         [Fact]
@@ -124,25 +147,27 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             string expectedHash = "abc123hash";
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "MasterKeyHash", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting 
-                { 
-                    Key = "MasterKeyHash", 
-                    Value = expectedHash 
-                });
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "MasterKeyHash", Value = expectedHash } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            var result = await _service.GetMasterKeyHashAsync();
+            var result = await service.GetMasterKeyHashAsync();
 
             // Assert
             Assert.Equal(expectedHash, result);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                "MasterKeyHash", 
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
         }
 
         [Fact]
@@ -151,46 +176,44 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             string expectedAlgorithm = "SHA512";
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "MasterKeyHashAlgorithm", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting 
-                { 
-                    Key = "MasterKeyHashAlgorithm", 
-                    Value = expectedAlgorithm 
-                });
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Seed the database with test data
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                await DbContextTestHelper.SeedDatabaseAsync(context, 
+                    globalSettings: new List<GlobalSetting> 
+                    { 
+                        new GlobalSetting { Key = "MasterKeyHashAlgorithm", Value = expectedAlgorithm } 
+                    });
+            }
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            var result = await _service.GetMasterKeyHashAlgorithmAsync();
+            var result = await service.GetMasterKeyHashAlgorithmAsync();
 
             // Assert
             Assert.Equal(expectedAlgorithm, result);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                "MasterKeyHashAlgorithm", 
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
         }
 
         [Fact]
         public async Task GetMasterKeyHashAlgorithmAsync_ShouldReturnDefaultSHA256_WhenNotSet()
         {
             // Arrange
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                "MasterKeyHashAlgorithm", 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync((GlobalSetting?)null);
+            // Create in-memory database context factory (no need to seed data)
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            var result = await _service.GetMasterKeyHashAlgorithmAsync();
+            var result = await service.GetMasterKeyHashAlgorithmAsync();
 
             // Assert
             Assert.Equal("SHA256", result);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                "MasterKeyHashAlgorithm", 
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
         }
 
         [Fact]
@@ -199,47 +222,41 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             string masterKey = "SecureMasterKey123";
             
-            // Simulate successful repository operations
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                It.IsAny<string>(), 
-                It.IsAny<string>(),
-                null,
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            await _service.SetMasterKeyAsync(masterKey);
+            await service.SetMasterKeyAsync(masterKey);
 
-            // Assert - verify both the hash and algorithm are saved
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "MasterKeyHash",
-                It.IsAny<string>(), // We can't predict the exact hash value, so we accept any string
-                null,
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                "MasterKeyHashAlgorithm",
-                "SHA256",
-                null,
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            // Assert - verify that both settings were saved
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var hashSetting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "MasterKeyHash");
+                Assert.NotNull(hashSetting);
+                Assert.NotEmpty(hashSetting.Value);
+                
+                var algoSetting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "MasterKeyHashAlgorithm");
+                Assert.NotNull(algoSetting);
+                Assert.Equal("SHA256", algoSetting.Value);
+            }
         }
 
         [Fact]
         public async Task SetMasterKeyAsync_ShouldThrowException_WhenKeyIsEmpty()
         {
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _service.SetMasterKeyAsync(""));
-            await Assert.ThrowsAsync<ArgumentException>(() => _service.SetMasterKeyAsync(null!));
+            // Arrange
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            // Verify repository was never called
-            _mockGlobalSettingRepository.Verify(repo => repo.UpsertAsync(
-                It.IsAny<string>(), 
-                It.IsAny<string>(),
-                null,
-                It.IsAny<CancellationToken>()), 
-                Times.Never);
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => service.SetMasterKeyAsync(""));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.SetMasterKeyAsync(null!));
         }
         
         [Fact]
@@ -257,32 +274,22 @@ namespace ConduitLLM.Tests.RepositoryServices
                 expectedHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
             }
             
-            // Setup repository capture
-            string? capturedHash = null;
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                    "MasterKeyHash",
-                    It.IsAny<string>(),
-                    null,
-                    It.IsAny<CancellationToken>()))
-                .Callback<string, string, string?, CancellationToken>((key, value, desc, token) => 
-                {
-                    capturedHash = value;
-                })
-                .ReturnsAsync(true);
-                
-            _mockGlobalSettingRepository.Setup(repo => repo.UpsertAsync(
-                    "MasterKeyHashAlgorithm",
-                    It.IsAny<string>(),
-                    null,
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            // Create in-memory database context factory
+            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            
+            // Create service with real factory
+            var service = new GlobalSettingService(factory, _logger);
 
             // Act
-            await _service.SetMasterKeyAsync(masterKey);
+            await service.SetMasterKeyAsync(masterKey);
 
-            // Assert
-            Assert.NotNull(capturedHash);
-            Assert.Equal(expectedHash, capturedHash);
+            // Assert - Verify the hash matches what we expect
+            using (var context = await factory.CreateDbContextAsync())
+            {
+                var hashSetting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "MasterKeyHash");
+                Assert.NotNull(hashSetting);
+                Assert.Equal(expectedHash, hashSetting.Value);
+            }
         }
     }
 }
