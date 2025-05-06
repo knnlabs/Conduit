@@ -14,6 +14,31 @@
 @inject ILogger<RoutingSettings> Logger
 @inject IJSRuntime JSRuntime
 
+<style>
+    /* Modal backdrop styles */
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+    }
+    
+    /* Additional modal styles for proper positioning */
+    .modal.show {
+        background-color: transparent;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* When modal is open, prevent scrolling of the main content */
+    body.modal-open {
+        overflow: hidden;
+    }
+</style>
+
 <PageTitle>Routing Settings</PageTitle>
 
 <h2 class="mb-4">
@@ -263,7 +288,11 @@ else
         </div>
     </div>
     
-    <div class="modal @(_showDeploymentModal ? "show" : "")" style="display: @(_showDeploymentModal ? "block" : "none")">
+    @if (_showDeploymentModal)
+    {
+        <div class="modal-backdrop fade show"></div>
+    }
+    <div class="modal @(_showDeploymentModal ? "show" : "")" style="display: @(_showDeploymentModal ? "block" : "none"); z-index: 1050;">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -318,7 +347,11 @@ else
         </div>
     </div>
     
-    <div class="modal @(_showFallbackModal ? "show" : "")" style="display: @(_showFallbackModal ? "block" : "none")">
+    @if (_showFallbackModal)
+    {
+        <div class="modal-backdrop fade show"></div>
+    }
+    <div class="modal @(_showFallbackModal ? "show" : "")" style="display: @(_showFallbackModal ? "block" : "none"); z-index: 1050;">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -577,32 +610,60 @@ else
     // Model Deployment methods
     private async Task AddNewDeploymentAsync()
     {
-        _editingDeployment = new ModelDeployment
+        try
         {
-            Id = Guid.NewGuid(),
-            IsEnabled = true,
-            HealthCheckEnabled = true,
-            Weight = 1
-        };
-        _showDeploymentModal = true;
-        StateHasChanged();
-        await Task.CompletedTask;
+            _editingDeployment = new ModelDeployment
+            {
+                Id = Guid.NewGuid(),
+                IsEnabled = true,
+                HealthCheckEnabled = true,
+                Weight = 1
+            };
+            
+            // Make sure the dialog content is prepared before showing
+            await InvokeAsync(() => {
+                _showDeploymentModal = true;
+                StateHasChanged();
+            });
+            
+            // Log for debugging
+            Logger.LogDebug("Deployment modal opened for new deployment");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening deployment modal");
+            await ShowMessage("Error opening modal: " + ex.Message, true);
+        }
     }
     
     private async Task EditDeploymentAsync(ModelDeployment deployment)
     {
-        _editingDeployment = new ModelDeployment
+        try
         {
-            Id = deployment.Id,
-            ModelName = deployment.ModelName,
-            ProviderName = deployment.ProviderName,
-            Weight = deployment.Weight,
-            HealthCheckEnabled = deployment.HealthCheckEnabled,
-            IsEnabled = deployment.IsEnabled
-        };
-        _showDeploymentModal = true;
-        StateHasChanged();
-        await Task.CompletedTask;
+            _editingDeployment = new ModelDeployment
+            {
+                Id = deployment.Id,
+                ModelName = deployment.ModelName,
+                ProviderName = deployment.ProviderName,
+                Weight = deployment.Weight,
+                HealthCheckEnabled = deployment.HealthCheckEnabled,
+                IsEnabled = deployment.IsEnabled
+            };
+            
+            // Make sure the dialog content is prepared before showing
+            await InvokeAsync(() => {
+                _showDeploymentModal = true;
+                StateHasChanged();
+            });
+            
+            // Log for debugging
+            Logger.LogDebug("Deployment modal opened for editing deployment {DeploymentId}", deployment.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening deployment modal for editing");
+            await ShowMessage("Error opening modal: " + ex.Message, true);
+        }
     }
     
     private async Task SaveDeploymentAsync()
@@ -715,29 +776,57 @@ else
     // Fallback Configuration methods
     private async Task AddFallbackConfigAsync()
     {
-        _editingFallback = new FallbackConfiguration
+        try
         {
-            Id = Guid.NewGuid(),
-            FallbackModelDeploymentIds = new List<string>()
-        };
-        _selectedFallbackModelId = string.Empty;
-        _showFallbackModal = true;
-        StateHasChanged();
-        await Task.CompletedTask;
+            _editingFallback = new FallbackConfiguration
+            {
+                Id = Guid.NewGuid(),
+                FallbackModelDeploymentIds = new List<string>()
+            };
+            _selectedFallbackModelId = string.Empty;
+            
+            // Make sure the dialog content is prepared before showing
+            await InvokeAsync(() => {
+                _showFallbackModal = true;
+                StateHasChanged();
+            });
+            
+            // Log for debugging
+            Logger.LogDebug("Fallback modal opened for new fallback configuration");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening fallback modal");
+            await ShowMessage("Error opening modal: " + ex.Message, true);
+        }
     }
     
     private async Task EditFallbackAsync(FallbackConfiguration fallback)
     {
-        _editingFallback = new FallbackConfiguration
+        try
         {
-            Id = fallback.Id,
-            PrimaryModelDeploymentId = fallback.PrimaryModelDeploymentId,
-            FallbackModelDeploymentIds = new List<string>(fallback.FallbackModelDeploymentIds)
-        };
-        _selectedFallbackModelId = string.Empty;
-        _showFallbackModal = true;
-        StateHasChanged();
-        await Task.CompletedTask;
+            _editingFallback = new FallbackConfiguration
+            {
+                Id = fallback.Id,
+                PrimaryModelDeploymentId = fallback.PrimaryModelDeploymentId,
+                FallbackModelDeploymentIds = new List<string>(fallback.FallbackModelDeploymentIds)
+            };
+            _selectedFallbackModelId = string.Empty;
+            
+            // Make sure the dialog content is prepared before showing
+            await InvokeAsync(() => {
+                _showFallbackModal = true;
+                StateHasChanged();
+            });
+            
+            // Log for debugging
+            Logger.LogDebug("Fallback modal opened for editing fallback {FallbackId}", fallback.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening fallback modal for editing");
+            await ShowMessage("Error opening modal: " + ex.Message, true);
+        }
     }
     
     private async Task SaveFallbackAsync()
@@ -838,15 +927,15 @@ else
     private async Task CloseDeploymentModal()
     {
         _showDeploymentModal = false;
+        await Task.Delay(50); // Small delay to let the UI update
         StateHasChanged();
-        await Task.CompletedTask;
     }
     
     private async Task CloseFallbackModal()
     {
         _showFallbackModal = false;
+        await Task.Delay(50); // Small delay to let the UI update
         StateHasChanged();
-        await Task.CompletedTask;
     }
     
     private string GetModelDisplayName(string modelId)

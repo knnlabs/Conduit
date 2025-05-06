@@ -495,6 +495,13 @@
             await LoadProxyUrlAsync();
             await LoadHttpRetryOptionsAsync();
             await LoadHttpTimeoutOptionsAsync();
+            
+            // Ensure guidedSetupWizardInstance is properly initialized
+            await Task.Delay(100); // Brief delay to ensure component rendering completes
+            if (guidedSetupWizardInstance == null)
+            {
+                Logger.LogWarning("GuidedSetupWizard component reference was null during initialization. UI interactions may not work as expected.");
+            }
         }
         catch (Exception ex)
         {
@@ -651,16 +658,35 @@
 
     private async Task LaunchGuidedSetup(string providerName) 
     {
-        if (guidedSetupWizardInstance != null)
+        try
         {
-             await guidedSetupWizardInstance.OpenForProvider(providerName); 
+            Logger.LogDebug("LaunchGuidedSetup called for provider: {ProviderName}", providerName);
+            
+            if (guidedSetupWizardInstance != null)
+            {
+                // Set the flag before calling the component method
+                isGuidedSetupOpen = true;
+                StateHasChanged();
+                
+                await guidedSetupWizardInstance.OpenForProvider(providerName);
+                Logger.LogDebug("GuidedSetupWizard.OpenForProvider completed successfully");
+            }
+            else
+            {
+                Logger.LogError("GuidedSetupWizard instance reference is null when trying to launch setup.");
+                deleteErrorMessage = "Error launching guided setup. Please try refreshing the page.";
+                StateHasChanged();
+                
+                // Force re-render to try to resolve the reference
+                await InvokeAsync(StateHasChanged);
+            }
         }
-        else
+        catch (Exception ex)
         {
-             Logger.LogError("GuidedSetupWizard instance reference is null when trying to launch setup.");
-             deleteErrorMessage = "Error launching guided setup";
-             StateHasChanged();
-         }
+            Logger.LogError(ex, "Error launching guided setup for {ProviderName}", providerName);
+            deleteErrorMessage = $"Error launching setup: {ex.Message}";
+            StateHasChanged();
+        }
     }
 
     private async Task HandleSetupComplete(ConduitLLM.Configuration.Entities.ProviderCredential newProvider) 
