@@ -13,6 +13,7 @@
 @inject RouterOptionsService RouterOptionsService
 @inject ILogger<RoutingSettings> Logger
 @inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
 <style>
     /* Modal backdrop styles */
@@ -521,12 +522,11 @@ else
         try
         {
             _isSaving = true;
-            await ShowMessage("Saving router configuration...", false);
             
             // Validate configuration before saving
             if (_config == null)
             {
-                await ShowMessage("Error: Router configuration is null", true);
+                Logger.LogError("Router configuration is null");
                 return false;
             }
             
@@ -539,7 +539,7 @@ else
                 
             if (duplicateNames.Any())
             {
-                await ShowMessage($"Error: Duplicate deployment names found: {string.Join(", ", duplicateNames)}", true);
+                Logger.LogError("Duplicate deployment names found: {DuplicateNames}", string.Join(", ", duplicateNames));
                 return false;
             }
 
@@ -548,18 +548,16 @@ else
             
             if (success)
             {
-                await ShowMessage("Router configuration saved successfully", false);
                 await ReloadConfiguration(); // Refresh data
             }
             else
             {
-                await ShowMessage("Failed to save router configuration", true);
+                Logger.LogWarning("Failed to save router configuration");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving router configuration");
-            await ShowMessage($"Error saving configuration: {ex.Message}", true);
             success = false;
         }
         finally
@@ -576,7 +574,6 @@ else
         {
             // Toggle the router enabled state
             bool newState = !_isEnabled;
-            await ShowMessage($"Updating router state to {(newState ? "enabled" : "disabled")}...", false);
             StateHasChanged();
             
             // Update the router state
@@ -585,7 +582,6 @@ else
             if (success)
             {
                 _isEnabled = newState;
-                await ShowMessage($"Router {(_isEnabled ? "enabled" : "disabled")} successfully", false);
                 
                 // If enabling, initialize the router to ensure it's properly set up
                 if (_isEnabled)
@@ -595,15 +591,17 @@ else
             }
             else
             {
-                await ShowMessage("Failed to save router state", true);
                 Logger.LogError("Failed to save router state");
             }
+            
+            // Update UI to reflect the current state
+            StateHasChanged();
         }
         catch (Exception ex)
         {
-            // Revert the UI state on error
-            await ShowMessage("Error toggling router state: " + ex.Message, true);
+            // Log error but don't show popup
             Logger.LogError(ex, "Failed to toggle router state");
+            StateHasChanged();
         }
     }
     
@@ -632,7 +630,6 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening deployment modal");
-            await ShowMessage("Error opening modal: " + ex.Message, true);
         }
     }
     
@@ -662,7 +659,6 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening deployment modal for editing");
-            await ShowMessage("Error opening modal: " + ex.Message, true);
         }
     }
     
@@ -673,19 +669,19 @@ else
             // Validate the deployment
             if (string.IsNullOrWhiteSpace(_editingDeployment.DeploymentName))
             {
-                await ShowMessage("Deployment name cannot be empty", true);
+                Logger.LogWarning("Deployment name cannot be empty");
                 return;
             }
             
             if (string.IsNullOrWhiteSpace(_editingDeployment.ModelName))
             {
-                await ShowMessage("Model name cannot be empty", true);
+                Logger.LogWarning("Model name cannot be empty");
                 return;
             }
             
             if (string.IsNullOrWhiteSpace(_editingDeployment.ProviderName))
             {
-                await ShowMessage("Provider name cannot be empty", true);
+                Logger.LogWarning("Provider name cannot be empty");
                 return;
             }
             
@@ -716,13 +712,12 @@ else
             }
             else
             {
-                // Rely on the status message set by SaveConfigurationAsync
-                StateHasChanged(); // Ensure UI reflects status message change
+                // Update UI to reflect current state
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
-            await ShowMessage($"Error saving deployment: {ex.Message}", true);
             Logger.LogError(ex, "Error saving model deployment");
             StateHasChanged();
         }
@@ -753,7 +748,7 @@ else
             
             if (usedInFallbacks)
             {
-                await ShowMessage($"Cannot delete '{deploymentName}' because it's used in fallback configurations", true);
+                Logger.LogWarning("Cannot delete '{DeploymentName}' because it's used in fallback configurations", deploymentName);
                 return;
             }
             
@@ -761,14 +756,12 @@ else
             _config.ModelDeployments.RemoveAll(d => d.Id == deploymentId);
             
             // Save the updated configuration to the database and check result
-            bool success = await SaveConfigurationAsync();
-
-            // StateHasChanged is called within SaveConfigurationAsync on success/failure
+            await SaveConfigurationAsync();
+            // StateHasChanged is called within SaveConfigurationAsync
         }
         catch (Exception ex)
         {
-            await ShowMessage($"Error deleting deployment: {ex.Message}", true);
-            Logger.LogError(ex, "Error deleting model deployment");
+            Logger.LogError(ex, "Error deleting model deployment '{DeploymentName}'", deployment.DeploymentName);
             StateHasChanged();
         }
     }
@@ -836,14 +829,14 @@ else
             // Validate the fallback configuration
             if (string.IsNullOrEmpty(_editingFallback.PrimaryModelDeploymentId))
             {
-                await ShowMessage("Primary model must be selected", true);
+                Logger.LogWarning("Primary model must be selected");
                 return;
             }
             
             if (_editingFallback.FallbackModelDeploymentIds == null || 
                 !_editingFallback.FallbackModelDeploymentIds.Any())
             {
-                await ShowMessage("At least one fallback model must be selected", true);
+                Logger.LogWarning("At least one fallback model must be selected");
                 return;
             }
             
@@ -873,13 +866,12 @@ else
             }
             else
             {
-                // Rely on the status message set by SaveConfigurationAsync
-                StateHasChanged(); // Ensure UI reflects status message change
+                // Update UI to reflect current state
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
-            await ShowMessage($"Error saving fallback configuration: {ex.Message}", true);
             Logger.LogError(ex, "Error saving fallback configuration");
             StateHasChanged();
         }
@@ -893,13 +885,11 @@ else
             _config.FallbackConfigurations?.RemoveAll(f => f.Id == fallbackId);
             
             // Save the updated configuration to the database and check result
-            bool success = await SaveConfigurationAsync();
-
-            // StateHasChanged is called within SaveConfigurationAsync on success/failure
+            await SaveConfigurationAsync();
+            // StateHasChanged is called within SaveConfigurationAsync
         }
         catch (Exception ex)
         {
-            await ShowMessage($"Error deleting fallback configuration: {ex.Message}", true);
             Logger.LogError(ex, "Error deleting fallback configuration");
             StateHasChanged();
         }

@@ -170,49 +170,19 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 
-// Configure repository pattern options - repository pattern is now always enabled
-var repositoryPatternOptions = new ConduitLLM.Configuration.Options.RepositoryPatternOptions
-{
-    // Force repository pattern to always be enabled
-    Enabled = true,
-    EnabledEnvironments = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_ENVIRONMENTS"),
-    EnableDetailedLogging = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_DETAILED_LOGGING")?.ToLowerInvariant() == "true",
-    TrackPerformanceMetrics = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_TRACK_METRICS")?.ToLowerInvariant() != "false",
-    EnableParallelVerification = Environment.GetEnvironmentVariable("CONDUIT_REPOSITORY_PATTERN_PARALLEL_VERIFICATION")?.ToLowerInvariant() == "true"
-};
+// Repository pattern is now fully integrated and always enabled
+// No need for separate configuration options
 
-// Override from configuration section if it exists  
-builder.Configuration.GetSection(ConduitLLM.Configuration.Options.RepositoryPatternOptions.SectionName).Bind(repositoryPatternOptions);
+// Repository pattern configuration is now integrated directly in the repositories themselves
+// No need for separate monitoring service
 
-// Register the options
-builder.Services.Configure<ConduitLLM.Configuration.Options.RepositoryPatternOptions>(options => {
-    // Copy values from our already configured options
-    options.Enabled = repositoryPatternOptions.Enabled;
-    options.EnabledEnvironments = repositoryPatternOptions.EnabledEnvironments;
-    options.EnableDetailedLogging = repositoryPatternOptions.EnableDetailedLogging;
-    options.TrackPerformanceMetrics = repositoryPatternOptions.TrackPerformanceMetrics;
-    options.EnableParallelVerification = repositoryPatternOptions.EnableParallelVerification;
-});
-
-// Register the repository pattern configuration service
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService>(sp => {
-    var options = sp.GetRequiredService<IOptions<ConduitLLM.Configuration.Options.RepositoryPatternOptions>>();
-    var logger = sp.GetRequiredService<ILogger<ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService>>();
-    var environment = builder.Environment.EnvironmentName;
-    return new ConduitLLM.WebUI.Services.RepositoryPatternConfigurationService(options, logger, environment);
-});
-
-// Register the repository pattern logging service
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.RepositoryPatternLoggingService>();
+// Repository pattern is fully integrated, no need for separate monitoring or logging services
 
 // Register repositories and repository-based services
 builder.Services.AddRepositoryServices();
 
-// Repository pattern is now always enabled regardless of environment
-// Log repository pattern configuration
+// Repository pattern is now fully integrated
 Console.WriteLine($"[Conduit WebUI] Using repository pattern for environment: {builder.Environment.EnvironmentName}");
-Console.WriteLine($"[Conduit WebUI] Repository pattern detailed logging: {repositoryPatternOptions.EnableDetailedLogging}");
-Console.WriteLine($"[Conduit WebUI] Repository pattern performance tracking: {repositoryPatternOptions.TrackPerformanceMetrics}");
 
 // Register all repository-pattern services
 var webUIInterfaces = typeof(ConduitLLM.WebUI.Interfaces.IVirtualKeyService).Namespace;

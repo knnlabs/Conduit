@@ -15,6 +15,26 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
+<style>
+    .form-section {
+        margin-bottom: 2rem;
+    }
+    .model-list {
+        max-height: 250px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .badge {
+        font-size: 0.85em;
+    }
+    .model-provider-group {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        font-weight: 500;
+    }
+</style>
+
 <h3 class="mb-4">@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")</h3>
 
 @if (isLoading)
@@ -615,11 +635,16 @@ else
         
         try
         {
-            await JSRuntime.InvokeAsync<object>("navigator.clipboard.writeText", createdKey);
+            // Use our new copyToClipboard utility function instead
+            await JSRuntime.InvokeVoidAsync("copyToClipboard", createdKey);
+            
+            // Provide user feedback
+            await JSRuntime.InvokeVoidAsync("alert", "Key copied to clipboard!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying key to clipboard");
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to copy key: " + ex.Message);
         }
     }
     
