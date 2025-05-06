@@ -17,10 +17,6 @@
         </div>
         
         <div class="nav-group-content @(coreExpanded ? "show" : "")">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <i class="fa fa-home"></i>
-                <span>Home</span>
-            </NavLink>
             <NavLink class="nav-link" href="chat" Match="NavLinkMatch.Prefix">
                 <i class="fa fa-comment"></i>
                 <span>Chat</span>
@@ -59,11 +55,11 @@
         </div>
         
         <div class="nav-group-content @(keysExpanded ? "show" : "")">
-            <NavLink class="nav-link" href="virtualkeys" Match="NavLinkMatch.Prefix">
+            <NavLink class="nav-link" href="virtualkeys" Match="NavLinkMatch.All">
                 <i class="fa fa-key"></i>
                 <span>Virtual Keys</span>
             </NavLink>
-            <NavLink class="nav-link" href="virtualkeys/dashboard" Match="NavLinkMatch.Prefix">
+            <NavLink class="nav-link" href="virtualkeys/dashboard" Match="NavLinkMatch.All">
                 <i class="fa fa-chart-line"></i>
                 <span>Keys Dashboard</span>
             </NavLink>

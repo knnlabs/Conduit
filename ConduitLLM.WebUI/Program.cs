@@ -228,9 +228,6 @@ builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanc
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Add Controllers
-builder.Services.AddControllers();
-
 // Register context management services
 builder.Services.AddConduitContextManagement(builder.Configuration);
 
