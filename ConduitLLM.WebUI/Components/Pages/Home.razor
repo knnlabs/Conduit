@@ -71,10 +71,10 @@
                                 you'll need to add at least one provider.
                             </p>
                             <div class="mt-3">
-                                <button class="btn btn-primary px-3" @onclick="NavigateToConfiguration">
+                                <a href="/configuration" class="btn btn-primary px-3">
                                     <i class="fa fa-plus me-2"></i>
                                     <span>Add Your First Provider</span>
-                                </button>
+                                </a>
                             </div>
                         </div>
                     }
@@ -138,10 +138,10 @@
                                 </tbody>
                             </table>
                             
-                            <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToConfiguration">
+                            <a href="/configuration" class="btn btn-text text-primary mt-3 px-3">
                                 <span class="me-2">Manage Providers</span>
                                 <i class="fa fa-arrow-right"></i>
-                            </button>
+                            </a>
                         }
                         else
                         {
@@ -234,10 +234,10 @@
                                     </div>
                                 </div>
 
-                                <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToRoutingSettings">
+                                <a href="/routing-settings" class="btn btn-text text-primary mt-3 px-3">
                                     <span class="me-2">Manage Routing</span>
                                     <i class="fa fa-arrow-right"></i>
-                                </button>
+                                </a>
                             }
                             else
                             {
@@ -246,10 +246,10 @@
                                         Routing is not configured yet. Set up routing to automatically direct requests to the right LLM provider.
                                     </p>
                                     <div class="mt-3">
-                                        <button class="btn btn-primary px-3" @onclick="NavigateToRoutingSettings">
+                                        <a href="/routing-settings" class="btn btn-primary px-3">
                                             <i class="fa fa-cog me-2"></i>
                                             <span>Configure Routing</span>
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
                             }
@@ -346,10 +346,10 @@
                                 </div>
                             </div>
 
-                            <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToCachingSettings">
+                            <a href="/caching-settings" class="btn btn-text text-primary mt-3 px-3">
                                 <span class="me-2">Manage Caching</span>
                                 <i class="fa fa-arrow-right"></i>
-                            </button>
+                            </a>
                         }
                         else
                         {
@@ -358,10 +358,10 @@
                                     Caching is not configured yet. Set up caching to improve response times and reduce API costs.
                                 </p>
                                 <div class="mt-3">
-                                    <button class="btn btn-primary px-3" @onclick="NavigateToCachingSettings">
+                                    <a href="/caching-settings" class="btn btn-primary px-3">
                                         <i class="fa fa-cog me-2"></i>
                                         <span>Configure Caching</span>
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         }
@@ -382,9 +382,9 @@
                     <i class="fa fa-comment text-primary fa-2x"></i>
                     <h6 class="text-h6">Try Chat</h6>
                     <p class="text-body2 text-center">Test your configuration with the built-in chat interface</p>
-                    <button class="btn btn-primary w-100 px-3" @onclick="NavigateToChat">
+                    <a href="/chat" class="btn btn-primary w-100 px-3">
                         <span>Open Chat</span>
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -395,9 +395,9 @@
                     <i class="fa fa-plus text-secondary fa-2x"></i>
                     <h6 class="text-h6">Add Provider</h6>
                     <p class="text-body2 text-center">Configure a new LLM provider to use with Conduit</p>
-                    <button class="btn btn-secondary w-100 px-3" @onclick="NavigateToConfiguration">
+                    <a href="/configuration" class="btn btn-secondary w-100 px-3">
                         <span>Configure</span>
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -408,9 +408,9 @@
                     <i class="fa fa-route text-warning fa-2x"></i>
                     <h6 class="text-h6">Setup Routing</h6>
                     <p class="text-body2 text-center">Configure rules to route requests to the right provider</p>
-                    <button class="btn btn-warning w-100 px-3" @onclick="NavigateToRoutingSettings">
+                    <a href="/routing-settings" class="btn btn-warning w-100 px-3">
                         <span>Routing</span>
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -421,9 +421,9 @@
                     <i class="fa fa-key text-info fa-2x"></i>
                     <h6 class="text-h6">Virtual Keys</h6>
                     <p class="text-body2 text-center">Manage virtual API keys for application access</p>
-                    <button class="btn btn-info w-100 px-3" @onclick="@(() => NavigationManager.NavigateTo("/virtualkeys"))">
+                    <a href="/virtualkeys" class="btn btn-info w-100 px-3">
                         <span>Keys</span>
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -452,24 +452,9 @@
     private bool isLoadingCaching = true;
     private bool isCheckingCachingStatus = false;
     
-    // This will store our event handler for unregistering it later
-    private EventHandler<LocationChangedEventArgs>? locationChangedHandler;
-    
     protected override async Task OnInitializedAsync()
     {
-        // Register the event handler
-        locationChangedHandler = async (sender, e) => await OnLocationChanged(sender, e);
-        NavigationManager.LocationChanged += locationChangedHandler;
-        
         await LoadDataAsync();
-    }
-    
-    private async Task OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        if (NavigationManager.Uri.EndsWith("/")) // Only reload on home page
-        {
-            await LoadDataAsync();
-        }
     }
     
     private async Task LoadDataAsync()
@@ -591,25 +576,7 @@
         }
     }
 
-    private void NavigateToConfiguration()
-    {
-        NavigationManager.NavigateTo("/configuration");
-    }
-
-    private void NavigateToChat()
-    {
-        NavigationManager.NavigateTo("/chat");
-    }
-    
-    private void NavigateToRoutingSettings()
-    {
-        NavigationManager.NavigateTo("/routing-settings");
-    }
-    
-    private void NavigateToCachingSettings()
-    {
-        NavigationManager.NavigateTo("/caching-settings");
-    }
+    // Navigation methods removed in favor of simple anchor tags
     
     private string GetStrategyDisplayName(string strategy)
     {
@@ -646,10 +613,6 @@
     
     public void Dispose()
     {
-        // Unregister the event handler when component is disposed
-        if (locationChangedHandler != null)
-        {
-            NavigationManager.LocationChanged -= locationChangedHandler;
-        }
+        // No event handlers to dispose
     }
 }
