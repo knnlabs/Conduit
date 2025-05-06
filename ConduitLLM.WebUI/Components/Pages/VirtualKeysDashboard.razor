@@ -1,239 +1,251 @@
 @page "/virtualkeys/dashboard"
 @using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
-@using ConduitLLM.Configuration.DTOs.VirtualKey
+// Fully qualify VirtualKeyDto to avoid ambiguity
+@using VirtualKeyDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto
 @using ConduitLLM.Configuration.Constants
 @using ConduitLLM.Core.Interfaces
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.DTOs
 @using Microsoft.EntityFrameworkCore
 @using System.Globalization
-@inject IVirtualKeyService VirtualKeyService
+@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject RequestLogService RequestLogService
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeysDashboard> Logger
 @rendermode InteractiveServer
 
-<MudText Typo="Typo.h3" Class="mb-4">Virtual Keys Dashboard</MudText>
+<h3 class="mb-4">Virtual Keys Dashboard</h3>
 
-<MudText Typo="Typo.body1" Class="mb-4">
+<p class="mb-4">
     Monitor your virtual key usage, spending patterns, and budget allocation across all your keys.
-</MudText>
+</p>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
-    <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+    <div class="alert alert-danger mb-4" role="alert">@errorMessage</div>
 }
 
 @if (isLoading)
 {
-    <div class="d-flex flex-column align-center pa-4">
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-        <MudText Class="mt-4">Loading dashboard data...</MudText>
+    <div class="d-flex flex-column align-items-center p-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-4">Loading dashboard data...</p>
     </div>
 }
 else
 {
-    <MudGrid>
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Elevation="2" Class="pa-4 mud-height-full">
-                <div class="d-flex flex-column align-center">
-                    <MudText Typo="Typo.h3">@totalKeys</MudText>
-                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Keys</MudText>
+    <div class="row">
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column align-items-center">
+                    <h3>@totalKeys</h3>
+                    <p class="text-secondary">Total Keys</p>
                 </div>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Elevation="2" Class="pa-4 mud-height-full">
-                <div class="d-flex flex-column align-center">
-                    <MudText Typo="Typo.h3">@activeKeys</MudText>
-                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Active Keys</MudText>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column align-items-center">
+                    <h3>@activeKeys</h3>
+                    <p class="text-secondary">Active Keys</p>
                 </div>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Elevation="2" Class="pa-4 mud-height-full">
-                <div class="d-flex flex-column align-center">
-                    <MudText Typo="Typo.h3">$@totalSpend.ToString("N2")</MudText>
-                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Spend</MudText>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column align-items-center">
+                    <h3>$@totalSpend.ToString("N2")</h3>
+                    <p class="text-secondary">Total Spend</p>
                 </div>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Elevation="2" Class="pa-4 mud-height-full">
-                <div class="d-flex flex-column align-center">
-                    <MudText Typo="Typo.h3">@totalRequests</MudText>
-                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Requests</MudText>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4 d-flex flex-column align-items-center">
+                    <h3>@totalRequests</h3>
+                    <p class="text-secondary">Total Requests</p>
                 </div>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+            </div>
+        </div>
+    </div>
 
-    <MudGrid Class="mt-4">
-        <MudItem xs="12" lg="8">
-            <MudPaper Elevation="2" Class="mb-4">
-                <div class="d-flex justify-space-between align-center pa-4">
-                    <MudText Typo="Typo.h6">Spending by Key</MudText>
-                    <MudSelect T="int" 
-                               @bind-Value="timeRange"
-                               Label="Time Range"
-                               Variant="Variant.Outlined"
-                               Dense="true"
-                               Style="min-width: 150px;">
-                        <MudSelectItem Value="7">Last 7 Days</MudSelectItem>
-                        <MudSelectItem Value="30">Last 30 Days</MudSelectItem>
-                        <MudSelectItem Value="90">Last 90 Days</MudSelectItem>
-                        <MudSelectItem Value="365">Last Year</MudSelectItem>
-                    </MudSelect>
+    <div class="row mt-4">
+        <div class="col-12 col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center p-3">
+                    <h6 class="mb-0">Spending by Key</h6>
+                    <div>
+                        <label for="timeRange" class="form-label visually-hidden">Time Range</label>
+                        <select id="timeRange" class="form-select form-select-sm" style="min-width: 150px;" @bind="timeRange">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="pa-4">
+                <div class="card-body p-4">
                     <div style="position: relative; height:300px; width:100%">
                         <!-- This div will be used for the chart -->
                         <canvas id="spendingChart"></canvas>
                     </div>
                 </div>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" lg="4">
-            <MudPaper Elevation="2" Class="mb-4">
-                <div class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-4">Keys Approaching Budget Limits</MudText>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h6 class="mb-4">Keys Approaching Budget Limits</h6>
                     
                     @if (highUsageKeys.Count == 0)
                     {
-                        <div class="d-flex flex-column align-center pa-4">
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
-                            <MudText Class="mt-2">No keys approaching budget limits</MudText>
+                        <div class="d-flex flex-column align-items-center p-4">
+                            <i class="fa fa-check-circle text-success fa-2x"></i>
+                            <p class="mt-2">No keys approaching budget limits</p>
                         </div>
                     }
                     else
                     {
-                        <MudList T="VirtualKeyDto" Clickable="true" Dense="true">
+                        <ul class="list-group list-group-flush">
                             @foreach (var key in highUsageKeys)
                             {
-                                <MudListItem T="string" Href="@($"/virtualkeys/edit/{key.Id}")">
-                                    <div style="width: 100%;">
-                                        <div class="d-flex justify-space-between align-center">
-                                            <MudText Typo="Typo.subtitle2">@key.KeyName</MudText>
-                                            <MudText Typo="Typo.caption">@GetBudgetUsagePercentage(key)%</MudText>
+                                <li class="list-group-item p-2">
+                                    <a href="@($"/virtualkeys/edit/{key.Id}")" class="text-decoration-none">
+                                        <div style="width: 100%;">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-medium">@key.KeyName</span>
+                                                <small>@GetBudgetUsagePercentage(key)%</small>
+                                            </div>
+                                            <div class="progress my-1" style="height: 4px;">
+                                                <div class="progress-bar @GetBudgetProgressColorClass(key)" 
+                                                     role="progressbar" 
+                                                     style="width: @GetBudgetUsagePercentage(key)%" 
+                                                     aria-valuenow="@GetBudgetUsagePercentage(key)" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100"></div>
+                                            </div>
+                                            <small class="text-secondary">
+                                                $@key.CurrentSpend.ToString("N2") of $@key.MaxBudget?.ToString("N2")
+                                            </small>
                                         </div>
-                                        <MudProgressLinear Color="@GetBudgetProgressColor(key)" 
-                                                          Value="@GetBudgetUsagePercentage(key)" 
-                                                          Style="height: 4px;" 
-                                                          Class="my-1" />
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            $@key.CurrentSpend.ToString("N2") of $@key.MaxBudget?.ToString("N2")
-                                        </MudText>
-                                    </div>
-                                </MudListItem>
+                                    </a>
+                                </li>
                             }
-                        </MudList>
+                        </ul>
                     }
                 </div>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+            </div>
+        </div>
+    </div>
 
-    <MudPaper Elevation="2" Class="mt-4">
-        <div class="d-flex justify-space-between align-center pa-4">
-            <MudText Typo="Typo.h6">Key Usage Overview</MudText>
-            <MudButton 
-                Variant="Variant.Outlined" 
-                Size="Size.Small" 
-                Color="Color.Secondary" 
-                StartIcon="@Icons.Material.Filled.Refresh" 
-                OnClick="RefreshData">
+    <div class="card shadow-sm mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center p-3">
+            <h6 class="mb-0">Key Usage Overview</h6>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
+                <i class="fa fa-refresh me-1"></i>
                 Refresh
-            </MudButton>
+            </button>
         </div>
         
-        <MudTable T="VirtualKeyDto" Items="@virtualKeys.OrderByDescending(k => k.CurrentSpend)" 
-                  Hover="true" 
-                  Breakpoint="Breakpoint.Sm" 
-                  RowClassFunc="@((VirtualKeyDto item, int index) => "cursor-pointer")"
-                  OnRowClick="@((TableRowClickEventArgs<VirtualKeyDto> e) => SelectKey(e.Item?.Id ?? 0))">
-            <HeaderContent>
-                <MudTh>Key Name</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Budget</MudTh>
-                <MudTh>Requests</MudTh>
-                <MudTh>Avg Response</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Key Name">@context.KeyName</MudTd>
-                <MudTd DataLabel="Status">
-                    @if (context.IsEnabled)
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Key Name</th>
+                        <th>Status</th>
+                        <th>Budget</th>
+                        <th>Requests</th>
+                        <th>Avg Response</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in virtualKeys.OrderByDescending(k => k.CurrentSpend))
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Label="true">Active</MudChip>
+                        <tr style="cursor: pointer" @onclick="() => SelectKey(item.Id)">
+                            <td data-label="Key Name">@item.KeyName</td>
+                            <td data-label="Status">
+                                @if (item.IsEnabled)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Disabled</span>
+                                }
+                                @if (item.ExpiresAt.HasValue && item.ExpiresAt.Value < DateTime.UtcNow)
+                                {
+                                    <span class="badge bg-secondary ms-1">Expired</span>
+                                }
+                            </td>
+                            <td data-label="Budget">
+                                @if (item.MaxBudget.HasValue)
+                                {
+                                    <div>
+                                        <div class="d-flex justify-content-between">
+                                            <small>$@item.CurrentSpend.ToString("N2")</small>
+                                            <small>$@item.MaxBudget.Value.ToString("N2")</small>
+                                        </div>
+                                        <div class="progress my-1" style="height: 4px;">
+                                            <div class="progress-bar @GetBudgetProgressColorClass(item)" 
+                                                role="progressbar" 
+                                                style="width: @GetBudgetUsagePercentage(item)%" 
+                                                aria-valuenow="@GetBudgetUsagePercentage(item)" 
+                                                aria-valuemin="0" 
+                                                aria-valuemax="100"></div>
+                                        </div>
+                                        <small class="text-secondary">@(item.BudgetDuration ?? "Total")</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>No limit</span>
+                                }
+                            </td>
+                            <td data-label="Requests">
+                                @{
+                                    var keySummary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
+                                }
+                                @if (keySummary != null)
+                                {
+                                    <div>
+                                        <div>@(keySummary.TotalRequests)</div>
+                                        <small class="text-secondary">@(keySummary.RecentRequests) in last 24h</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>No data</span>
+                                }
+                            </td>
+                            <td data-label="Avg Response">
+                                @{
+                                    var summary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
+                                }
+                                @if (summary != null && summary.TotalRequests > 0)
+                                {
+                                    <span>@summary.AverageResponseTime.ToString("N0")ms</span>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td data-label="Actions">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="@((MouseEventArgs e) => { NavigateToEdit(item.Id); return Task.CompletedTask; })">Edit</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info" @onclick="@((MouseEventArgs e) => { ViewDetails(item.Id); return Task.CompletedTask; })">Details</button>
+                                </div>
+                            </td>
+                        </tr>
                     }
-                    else
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Label="true">Disabled</MudChip>
-                    }
-                    @if (context.ExpiresAt.HasValue && context.ExpiresAt.Value < DateTime.UtcNow)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Label="true" Class="ml-1">Expired</MudChip>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Budget">
-                    @{
-                        var keySummary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == context.Id);
-                    }
-                    @if (context.MaxBudget.HasValue)
-                    {
-                        <div>
-                            <div class="d-flex justify-space-between">
-                                <MudText Typo="Typo.caption">$@context.CurrentSpend.ToString("N2")</MudText>
-                                <MudText Typo="Typo.caption">$@context.MaxBudget.Value.ToString("N2")</MudText>
-                            </div>
-                            <MudProgressLinear 
-                                Color="@GetBudgetProgressColor(context)" 
-                                Value="@GetBudgetUsagePercentage(context)" 
-                                Class="my-1" 
-                                Style="height: 4px;" />
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(context.BudgetDuration ?? "Total")</MudText>
-                        </div>
-                    }
-                    else
-                    {
-                        <MudText>No limit</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Requests">
-                    @if (GetKeySummary(context.Id) != null)
-                    {
-                        var summary = GetKeySummary(context.Id);
-                        <div>
-                            <MudText>@(summary?.TotalRequests ?? 0)</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(summary?.RecentRequests ?? 0) in last 24h</MudText>
-                        </div>
-                    }
-                    else
-                    {
-                        <MudText>No data</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Avg Response">
-                    @{
-                        var summary = GetKeySummary(context.Id);
-                    }
-                    @if (summary != null && summary.TotalRequests > 0)
-                    {
-                        <MudText>@summary.AverageResponseTime.ToString("N0")ms</MudText>
-                    }
-                    else
-                    {
-                        <MudText>-</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Actions">
-                    <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                        <MudButton Color="Color.Primary" OnClick="@(_ => NavigateToEdit(context.Id))">Edit</MudButton>
-                        <MudButton Color="Color.Info" OnClick="@(_ => ViewDetails(context.Id))">Details</MudButton>
-                    </MudButtonGroup>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
-    </MudPaper>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     @if (selectedKeyId > 0)
     {
@@ -327,7 +339,7 @@ else
         selectedKeyId = keyId;
     }
 
-    private string GetBudgetProgressClass(VirtualKeyDto key)
+    private string GetBudgetProgressColorClass(VirtualKeyDto key)
     {
         if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
             return "bg-secondary";
@@ -344,28 +356,6 @@ else
         return "bg-success";
     }
     
-    private Color GetBudgetProgressColor(VirtualKeyDto key)
-    {
-        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
-            return Color.Default;
-            
-        var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;
-        
-        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.High)
-            return Color.Error;
-        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.Medium)
-            return Color.Warning;
-        if (percentage >= VirtualKeyConstants.BudgetWarningThresholds.Low)
-            return Color.Info;
-            
-        return Color.Success;
-    }
-    
-    private KeyAggregateSummary? GetKeySummary(int keyId)
-    {
-        return keySummaries.FirstOrDefault(k => k.VirtualKeyId == keyId);
-    }
-
     private int GetBudgetUsagePercentage(VirtualKeyDto key)
     {
         if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)

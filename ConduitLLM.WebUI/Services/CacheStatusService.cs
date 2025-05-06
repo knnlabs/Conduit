@@ -5,23 +5,33 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Caching;
-using ConduitLLM.WebUI.Data;
 using ConduitLLM.WebUI.Interfaces;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.WebUI.Services
 {
     /// <summary>
-    /// Service that provides status information about the LLM response cache
+    /// Service that provides status information and management functionality for the LLM response cache
     /// </summary>
+    /// <remarks>
+    /// The CacheStatusService is responsible for:
+    /// - Retrieving current cache metrics and status
+    /// - Enabling or disabling the cache
+    /// - Clearing the cache
+    /// - Persisting cache configuration and statistics to the database
+    /// - Periodically updating cache statistics
+    /// 
+    /// This service uses the repository pattern for data access and integrates with the ICacheMetricsService
+    /// for gathering cache performance metrics. It also periodically saves cache statistics to the database
+    /// for historical tracking and to persist settings between application restarts.
+    /// </remarks>
     public class CacheStatusService : ICacheStatusService, IDisposable
     {
-        // Inject the factory for the CORRECT DbContext that manages GlobalSettings
-        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
+        private readonly IGlobalSettingRepository _globalSettingRepository;
         private readonly ILogger<CacheStatusService> _logger;
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
@@ -35,15 +45,14 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Creates a new instance of the CacheStatusService
         /// </summary>
-        // Update constructor signature
         public CacheStatusService(
-            IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
+            IGlobalSettingRepository globalSettingRepository,
             Configuration.Services.ICacheService cacheService,
             ICacheMetricsService metricsService,
             IOptions<CacheOptions> cacheOptions,
             ILogger<CacheStatusService> logger)
         {
-            _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory)); // Assign the correct factory
+            _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
             _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
@@ -77,6 +86,7 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <inheritdoc/>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during status retrieval</exception>
         public Task<CacheStatus> GetCacheStatusAsync()
         {
             try
@@ -137,6 +147,7 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <inheritdoc/>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task SetCacheEnabledAsync(bool enabled)
         {
             try
@@ -156,6 +167,7 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <inheritdoc/>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task ClearCacheAsync()
         {
             try
@@ -178,8 +190,15 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Initializes the cache from configuration
+        /// Initializes the cache from configuration stored in the database
         /// </summary>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method retrieves cache configuration from the database and applies it to the current
+        /// cache options. It also initializes the metrics service with previously saved statistics if available.
+        /// If no configuration exists in the database, it creates a default configuration.
+        /// </remarks>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during initialization</exception>
         private async Task InitializeCacheAsync()
         {
             try
@@ -188,12 +207,8 @@ namespace ConduitLLM.WebUI.Services
                 
                 try
                 {
-                    // Use the correct context factory
-                    await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-                    
-                    // Get cache configuration from settings
-                    var cacheSetting = await dbContext.GlobalSettings
-                        .FirstOrDefaultAsync(s => s.Key == CACHE_CONFIG_KEY);
+                    // Get cache configuration from settings using repository
+                    var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
                     
                     if (cacheSetting != null)
                     {
@@ -304,8 +319,14 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Saves the cache configuration to the database
+        /// Saves the current cache configuration to the database
         /// </summary>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method saves the current cache configuration options along with the latest statistics
+        /// to the database for persistence. It uses a semaphore to ensure thread safety during database access.
+        /// </remarks>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during the save operation</exception>
         private async Task SaveCacheConfigAsync()
         {
             try
@@ -333,8 +354,16 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Saves the current cache statistics to the configuration
+        /// Saves the current cache statistics to the configuration in the database
         /// </summary>
+        /// <param name="includeConfig">Whether to include configuration settings in the save operation</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method persists the current cache statistics to the database, and optionally also saves
+        /// the current configuration settings. It captures both global statistics and model-specific statistics.
+        /// This is called periodically by a timer to ensure statistics are not lost on application shutdown.
+        /// </remarks>
+        /// <exception cref="Exception">Handles and logs any exceptions that occur during the save operation</exception>
         private async Task SaveStatisticsToConfigAsync(bool includeConfig = false)
         {
             try
@@ -343,12 +372,8 @@ namespace ConduitLLM.WebUI.Services
                 
                 try
                 {
-                    // Use the correct context factory
-                    await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-                    
-                    // Get existing config or create new one
-                    var cacheSetting = await dbContext.GlobalSettings
-                        .FirstOrDefaultAsync(s => s.Key == CACHE_CONFIG_KEY);
+                    // Get existing config or create new one using repository
+                    var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
                     
                     CacheConfig config;
                     if (cacheSetting != null)
@@ -360,13 +385,17 @@ namespace ConduitLLM.WebUI.Services
                     {
                         // Create new default config
                         config = new CacheConfig();
-                        // Use the correct GlobalSetting entity type
+                        
+                        // Create a new global setting using repository
                         cacheSetting = new ConduitLLM.Configuration.Entities.GlobalSetting 
                         {
                             Key = CACHE_CONFIG_KEY,
-                            Value = "{}"
+                            Value = "{}",
+                            Description = "Cache configuration and statistics"
                         };
-                        dbContext.GlobalSettings.Add(cacheSetting);
+                        
+                        // Add the new setting
+                        await _globalSettingRepository.CreateAsync(cacheSetting);
                     }
                     
                     var options = _cacheOptions.Value;
@@ -435,9 +464,9 @@ namespace ConduitLLM.WebUI.Services
                         }
                     }
                     
-                    // Save the updated config
+                    // Save the updated config using repository
                     cacheSetting.Value = JsonSerializer.Serialize(config);
-                    await dbContext.SaveChangesAsync();
+                    await _globalSettingRepository.UpdateAsync(cacheSetting);
                     
                     // Update the cached config
                     _lastLoadedConfig = config;
@@ -461,8 +490,20 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Estimates the memory usage of the cache based on configuration
+        /// Estimates the memory usage of the cache based on configuration and usage patterns
         /// </summary>
+        /// <param name="options">The cache options containing configuration settings</param>
+        /// <returns>Estimated memory usage in bytes</returns>
+        /// <remarks>
+        /// This method provides a rough estimate of cache memory usage based on:
+        /// - The cache type (Memory or Redis)
+        /// - The number of cached items
+        /// - Estimated average size of cached responses
+        /// 
+        /// For in-memory caches, it includes a baseline overhead plus per-item estimates.
+        /// For Redis caches, it provides a simpler estimate based on item count and average size.
+        /// These are rough estimates and not precise measurements of actual memory usage.
+        /// </remarks>
         private long EstimateMemoryUsage(CacheOptions options)
         {
             if (!options.IsEnabled)
@@ -488,6 +529,10 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Disposes of resources used by the service
         /// </summary>
+        /// <remarks>
+        /// This method stops and disposes of the statistics timer and the semaphore lock.
+        /// It ensures proper cleanup of resources when the service is being shut down.
+        /// </remarks>
         public void Dispose()
         {
             // Stop and dispose of the timer
@@ -496,8 +541,14 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Simple configuration class for cache settings stored in the database
+        /// Configuration class for cache settings and statistics stored in the database
         /// </summary>
+        /// <remarks>
+        /// This class encapsulates both configuration settings and runtime statistics for the cache.
+        /// It is serialized to JSON and stored in the global settings table for persistence between
+        /// application restarts. It includes general cache settings, key generation options,
+        /// model-specific rules, and both global and per-model statistics.
+        /// </remarks>
         private class CacheConfig
         {
             // Configuration Properties
@@ -533,6 +584,12 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Model cache rule configuration for database storage
         /// </summary>
+        /// <remarks>
+        /// This class represents a model-specific caching rule that determines whether a model's
+        /// responses should be cached and for how long. These rules are stored in the database
+        /// as part of the overall cache configuration and can be used to apply different caching
+        /// policies to different models.
+        /// </remarks>
         private class ModelRuleConfig
         {
             public string ModelNamePattern { get; set; } = string.Empty;
@@ -541,8 +598,14 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <summary>
-        /// Model-specific statistics for database storage
+        /// Model-specific cache statistics for database storage
         /// </summary>
+        /// <remarks>
+        /// This class tracks cache performance metrics for individual models, including hits, misses,
+        /// retrieval times, hit rates, and average retrieval times. These statistics are stored in the
+        /// database as part of the overall cache statistics and can be used to analyze cache performance
+        /// on a per-model basis.
+        /// </remarks>
         private class ModelStatsConfig
         {
             public string ModelName { get; set; } = string.Empty;

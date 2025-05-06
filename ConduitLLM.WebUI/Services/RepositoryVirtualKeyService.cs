@@ -5,23 +5,41 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services
 {
     /// <summary>
-    /// Adapter class that implements IVirtualKeyService using IVirtualKeyServiceNew
+    /// Adapter class that implements Core.Interfaces.IVirtualKeyService using the repository-based virtual key service
     /// </summary>
-    public class RepositoryVirtualKeyService : IVirtualKeyService 
+    /// <remarks>
+    /// This adapter class bridges between the core interface (Core.Interfaces.IVirtualKeyService) and
+    /// the repository pattern implementation (WebUI.Interfaces.IVirtualKeyService). It enables gradual
+    /// migration to the repository pattern while maintaining backward compatibility with components
+    /// that depend on the original interface.
+    /// 
+    /// The adapter forwards all method calls to the underlying repository-based implementation,
+    /// providing a seamless transition between the two interface designs. This design pattern allows
+    /// for incremental refactoring of the codebase without breaking existing functionality.
+    /// </remarks>
+    public class RepositoryVirtualKeyService : ConduitLLM.Core.Interfaces.IVirtualKeyService 
     {
-        private readonly IVirtualKeyServiceNew _virtualKeyService;
+        private readonly ConduitLLM.WebUI.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<RepositoryVirtualKeyService> _logger;
 
         /// <summary>
-        /// Initializes a new instance of the RepositoryVirtualKeyService
+        /// Initializes a new instance of the RepositoryVirtualKeyService adapter
         /// </summary>
+        /// <param name="virtualKeyService">The repository-based virtual key service implementation</param>
+        /// <param name="logger">The logger instance</param>
+        /// <remarks>
+        /// This constructor injects the repository-based virtual key service that will handle all
+        /// the actual operations. The adapter simply delegates method calls to this implementation.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown if virtualKeyService or logger is null</exception>
         public RepositoryVirtualKeyService(
-            IVirtualKeyServiceNew virtualKeyService,
+            ConduitLLM.WebUI.Interfaces.IVirtualKeyService virtualKeyService,
             ILogger<RepositoryVirtualKeyService> logger)
         {
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));

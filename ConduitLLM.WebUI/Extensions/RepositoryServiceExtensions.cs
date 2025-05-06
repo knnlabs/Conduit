@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.WebUI.Extensions
@@ -20,12 +21,12 @@ namespace ConduitLLM.WebUI.Extensions
             // Register repositories from ConduitLLM.Configuration
             services.AddRepositories();
             
-            // Register the new repository-based service implementations
-            services.AddScoped<VirtualKeyServiceNew>();
-            services.AddScoped<RequestLogServiceNew>();
-            services.AddScoped<CostDashboardServiceNew>();
-            services.AddScoped<RouterServiceNew>();
-            services.AddScoped<GlobalSettingServiceNew>();
+            // Register the repository-based service implementations
+            services.AddScoped<IVirtualKeyService, VirtualKeyService>();
+            services.AddScoped<IRequestLogService, RequestLogService>();
+            services.AddScoped<ICostDashboardService, CostDashboardService>();
+            services.AddScoped<IRouterService, RouterService>();
+            services.AddScoped<IGlobalSettingService, GlobalSettingService>();
             
             return services;
         }

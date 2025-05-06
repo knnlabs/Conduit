@@ -12,425 +12,423 @@
 @inject ProviderStatusService ProviderStatusService
 @inject IConfiguration Configuration
 @inject IRouterService RouterService
-@inject ICacheStatusService CacheStatusService
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory 
+@inject ConduitLLM.WebUI.Interfaces.ICacheStatusService CacheStatusService
+@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @implements IDisposable
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h3" Class="mb-2">Welcome to ConduitLLM</MudText>
-    <MudText Typo="Typo.subtitle1" Class="mb-4">The central configuration hub for your LLM integrations</MudText>
+<div class="container container-xxl mt-4">
+    <h3 class="text-h3 mb-2">Welcome to ConduitLLM</h3>
+    <p class="text-subtitle1 mb-4">The central configuration hub for your LLM integrations</p>
 
     @if (!IsMasterKeySet)
     {
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-4" Icon="@Icons.Material.Filled.Warning">
-            <MudText Typo="Typo.body1">
+        <div class="alert alert-warning my-4">
+            <p class="text-body1">
                 <strong>Master Key Not Set:</strong> For enhanced security, especially for managing virtual keys, 
                 it's highly recommended to set a Master Key using the <code>CONDUIT_MASTER_KEY</code> environment variable. 
                 This key protects sensitive operations.
-                <MudLink Href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments#set-the-environment" 
-                      Target="_blank" Underline="Underline.Always">Learn how to set environment variables</MudLink>
-            </MudText>
-        </MudAlert>
+                <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments#set-the-environment" 
+                   target="_blank" class="underline">Learn how to set environment variables</a>
+            </p>
+        </div>
     }
 
-    <MudGrid Spacing="3">
+    <div class="row">
         <!-- Provider Status Card -->
-        <MudItem xs="12" md="4">
-            <MudCard Elevation="3" Class="mb-4" Style="display: flex; flex-direction: column;">
-                <MudCardHeader Class="px-4">
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Provider Status</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" 
-                                    Size="Size.Small" OnClick="CheckAllProvidersStatus" 
-                                    Disabled="@isCheckingStatus">
-                            @if (isCheckingStatus)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                            }
-                        </MudIconButton>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
+        <div class="col-12 col-md-4">
+            <div class="card mb-4" style="display: flex; flex-direction: column;">
+                <div class="card-header px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="text-h6 m-0">Provider Status</h6>
+                    <button class="btn btn-icon" @onclick="CheckAllProvidersStatus" disabled="@isCheckingStatus">
+                        @if (isCheckingStatus)
+                        {
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="fa fa-sync-alt"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
                     @if (isLoading)
                     {
-                        <div class="d-flex justify-center">
-                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
                         </div>
                     }
                     else if (providerCount == 0)
                     {
-                        <MudAlert Severity="Severity.Warning" Class="mb-3">
-                            <MudText Typo="Typo.h6">No Providers Configured</MudText>
-                            <MudText Typo="Typo.body2">
+                        <div class="alert alert-warning mb-3">
+                            <h6 class="text-h6">No Providers Configured</h6>
+                            <p class="text-body2">
                                 You haven't configured any LLM providers yet. To get started with ConduitLLM, 
                                 you'll need to add at least one provider.
-                            </MudText>
+                            </p>
                             <div class="mt-3">
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                                         StartIcon="@Icons.Material.Filled.Add" 
-                                         IconColor="Color.Inherit"
-                                         Class="px-3"
-                                         OnClick="NavigateToConfiguration">
-                                    <span class="ms-2">Add Your First Provider</span>
-                                </MudButton>
+                                <button class="btn btn-primary px-3" @onclick="NavigateToConfiguration">
+                                    <i class="fa fa-plus me-2"></i>
+                                    <span>Add Your First Provider</span>
+                                </button>
                             </div>
-                        </MudAlert>
+                        </div>
                     }
                     else
                     {
                         @if (providerStatuses.Count > 0)
                         {
-                            <MudTable Items="@providers" Hover="true" Dense="true" Elevation="0">
-                                <HeaderContent>
-                                    <MudTh>Provider</MudTh>
-                                    <MudTh>Status</MudTh>
-                                    <MudTh>Last Checked</MudTh>
-                                </HeaderContent>
-                                <RowTemplate Context="provider">
-                                    <MudTd>
-                                        <MudText Typo="Typo.body1" Style="font-weight:500">@provider.ProviderName</MudText>
-                                    </MudTd>
-                                    <MudTd>
-                                        @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
-                                        {
-                                            @if (status.IsOnline)
-                                            {
-                                                <MudText Color="Color.Success">
-                                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
-                                                    Online
-                                                </MudText>
-                                            }
-                                            else
-                                            {
-                                                <MudText Color="Color.Error">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Class="mr-1" />
-                                                    Offline
-                                                </MudText>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <MudText Color="Color.Default">
-                                                <MudIcon Icon="@Icons.Material.Filled.QuestionMark" Size="Size.Small" Class="mr-1" />
-                                                Unknown
-                                            </MudText>
-                                        }
-                                    </MudTd>
-                                    <MudTd>
-                                        @if (providerStatuses.TryGetValue(provider.ProviderName, out var lastStatus) && lastStatus.LastCheckedUtc != default)
-                                        {
-                                            <MudText Typo="Typo.caption">@lastStatus.LastCheckedUtc.ToLocalTime().ToString("g")</MudText>
-                                        }
-                                        else
-                                        {
-                                            <MudText Typo="Typo.caption">-</MudText>
-                                        }
-                                    </MudTd>
-                                </RowTemplate>
-                            </MudTable>
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Status</th>
+                                        <th>Last Checked</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var provider in providers)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="fw-medium">@provider.ProviderName</span>
+                                            </td>
+                                            <td>
+                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
+                                                {
+                                                    @if (status.IsOnline)
+                                                    {
+                                                        <span class="text-success">
+                                                            <i class="fa fa-check-circle me-1"></i>
+                                                            Online
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-error">
+                                                            <i class="fa fa-exclamation-circle me-1"></i>
+                                                            Offline
+                                                        </span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-secondary">
+                                                        <i class="fa fa-question-circle me-1"></i>
+                                                        Unknown
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var lastStatus) && lastStatus.LastCheckedUtc != default)
+                                                {
+                                                    <small>@lastStatus.LastCheckedUtc.ToLocalTime().ToString("g")</small>
+                                                }
+                                                else
+                                                {
+                                                    <small>-</small>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                             
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" 
-                                     OnClick="NavigateToConfiguration" 
-                                     Class="mt-3 px-3" 
-                                     EndIcon="@Icons.Material.Filled.ArrowForward">
+                            <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToConfiguration">
                                 <span class="me-2">Manage Providers</span>
-                            </MudButton>
+                                <i class="fa fa-arrow-right"></i>
+                            </button>
                         }
                         else
                         {
-                            <MudText Color="Color.Secondary">Click refresh to check providers status</MudText>
+                            <p class="text-secondary">Click refresh to check providers status</p>
                         }
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                </div>
+            </div>
+        </div>
 
         <!-- Routing Rules Card -->
-        <MudItem xs="12" md="4">
-            <MudCard Elevation="3" Class="mb-4" Style="display: flex; flex-direction: column;">
-                <MudCardHeader Class="px-4">
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Routing Configuration</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" 
-                                    Size="Size.Small" OnClick="CheckRoutingStatus" 
-                                    Disabled="@isCheckingRoutingStatus">
-                            @if (isCheckingRoutingStatus)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                            }
-                        </MudIconButton>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
+        <div class="col-12 col-md-4">
+            <div class="card mb-4" style="display: flex; flex-direction: column;">
+                <div class="card-header px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="text-h6 m-0">Routing Configuration</h6>
+                    <button class="btn btn-icon" @onclick="CheckRoutingStatus" disabled="@isCheckingRoutingStatus">
+                        @if (isCheckingRoutingStatus)
+                        {
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="fa fa-sync-alt"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
                     @if (isLoadingRouting)
                     {
-                        <div class="d-flex justify-center">
-                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
                         </div>
                     }
                     else
                     {
-                        <MudStack>
-                            <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey)">
-                                <MudStack Row="true">
-                                    <MudText Typo="Typo.body1">Routing Engine:</MudText>
+                        <div class="d-flex flex-column">
+                            <div class="paper p-3 bg-light">
+                                <div class="d-flex flex-row">
+                                    <p class="text-body1 mb-0">Routing Engine:</p>
                                     @if (isRouterEnabled)
                                     {
-                                        <MudText Color="Color.Success">
-                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
+                                        <span class="text-success ms-2">
+                                            <i class="fa fa-check-circle me-1"></i>
                                             Enabled
-                                        </MudText>
+                                        </span>
                                     }
                                     else
                                     {
-                                        <MudText Color="Color.Error">
-                                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Class="mr-1" />
+                                        <span class="text-error ms-2">
+                                            <i class="fa fa-times-circle me-1"></i>
                                             Disabled
-                                        </MudText>
+                                        </span>
                                     }
-                                </MudStack>
-                            </MudPaper>
+                                </div>
+                            </div>
 
                             @if (routerConfig != null)
                             {
-                                <MudPaper Elevation="0" Class="pa-3 mt-3" Style="background-color: var(--mud-palette-background-grey)">
-                                    <MudStack>
-                                        <MudText Typo="Typo.subtitle2">Current Strategy:</MudText>
-                                        <MudText Typo="Typo.h6" Color="Color.Primary">@GetStrategyDisplayName(routerConfig.DefaultRoutingStrategy)</MudText>
+                                <div class="paper p-3 mt-3 bg-light">
+                                    <div class="d-flex flex-column">
+                                        <p class="text-subtitle2 m-0">Current Strategy:</p>
+                                        <h6 class="text-h6 text-primary">@GetStrategyDisplayName(routerConfig.DefaultRoutingStrategy)</h6>
                                         
-                                        <MudDivider />
+                                        <hr class="divider" />
                                         
-                                        <MudText Typo="Typo.subtitle2" Class="mt-2">Active Routes: @(routerConfig.ModelDeployments?.Count ?? 0)</MudText>
+                                        <p class="text-subtitle2 mt-2 mb-0">Active Routes: @(routerConfig.ModelDeployments?.Count ?? 0)</p>
                                         
                                         @if (routerConfig.ModelDeployments?.Count > 0)
                                         {
                                             <div class="mt-2">
                                                 @foreach (var route in routerConfig.ModelDeployments.Take(3))
                                                 {
-                                                    <MudText Typo="Typo.body2" Class="d-flex align-center my-1">
-                                                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="mr-2" />
+                                                    <div class="d-flex align-items-center my-1">
+                                                        <i class="fa fa-arrow-right me-2"></i>
                                                         @route.ModelName → @route.ProviderName
-                                                    </MudText>
+                                                    </div>
                                                 }
                                                 @if (routerConfig.ModelDeployments.Count > 3)
                                                 {
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                                    <small class="text-secondary mt-1">
                                                         And @(routerConfig.ModelDeployments.Count - 3) more...
-                                                    </MudText>
+                                                    </small>
                                                 }
                                             </div>
                                         }
-                                    </MudStack>
-                                </MudPaper>
+                                    </div>
+                                </div>
 
-                                <MudButton Variant="Variant.Text" Color="Color.Primary" 
-                                         OnClick="NavigateToRoutingSettings" 
-                                         Class="mt-3 px-3" 
-                                         EndIcon="@Icons.Material.Filled.ArrowForward">
+                                <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToRoutingSettings">
                                     <span class="me-2">Manage Routing</span>
-                                </MudButton>
+                                    <i class="fa fa-arrow-right"></i>
+                                </button>
                             }
                             else
                             {
-                                <MudAlert Severity="Severity.Info" Class="mt-3">
-                                    <MudText Typo="Typo.body2">
+                                <div class="alert alert-info mt-3">
+                                    <p class="text-body2">
                                         Routing is not configured yet. Set up routing to automatically direct requests to the right LLM provider.
-                                    </MudText>
+                                    </p>
                                     <div class="mt-3">
-                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                                                 StartIcon="@Icons.Material.Filled.Settings" 
-                                                 IconColor="Color.Inherit"
-                                                 Class="px-3"
-                                                 OnClick="NavigateToRoutingSettings">
-                                            <span class="ms-2">Configure Routing</span>
-                                        </MudButton>
+                                        <button class="btn btn-primary px-3" @onclick="NavigateToRoutingSettings">
+                                            <i class="fa fa-cog me-2"></i>
+                                            <span>Configure Routing</span>
+                                        </button>
                                     </div>
-                                </MudAlert>
+                                </div>
                             }
-                        </MudStack>
+                        </div>
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                </div>
+            </div>
+        </div>
 
         <!-- Caching System Card -->
-        <MudItem xs="12" md="4">
-            <MudCard Elevation="3" Class="mb-4" Style="display: flex; flex-direction: column;">
-                <MudCardHeader Class="px-4">
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Caching System</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" 
-                                    Size="Size.Small" OnClick="CheckCachingStatus" 
-                                    Disabled="@isCheckingCachingStatus">
-                            @if (isCheckingCachingStatus)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                            }
-                        </MudIconButton>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
+        <div class="col-12 col-md-4">
+            <div class="card mb-4" style="display: flex; flex-direction: column;">
+                <div class="card-header px-4 d-flex justify-content-between align-items-center">
+                    <h6 class="text-h6 m-0">Caching System</h6>
+                    <button class="btn btn-icon" @onclick="CheckCachingStatus" disabled="@isCheckingCachingStatus">
+                        @if (isCheckingCachingStatus)
+                        {
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="fa fa-sync-alt"></i>
+                        }
+                    </button>
+                </div>
+                <div class="card-body">
                     @if (isLoadingCaching)
                     {
-                        <div class="d-flex justify-center">
-                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
                         </div>
                     }
                     else
                     {
-                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey)">
-                            <MudStack Row="true">
-                                <MudText Typo="Typo.body1">Cache Status:</MudText>
+                        <div class="paper p-3 bg-light">
+                            <div class="d-flex flex-row">
+                                <p class="text-body1 mb-0">Cache Status:</p>
                                 @if (isCacheEnabled)
                                 {
-                                    <MudText Color="Color.Success">
-                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
+                                    <span class="text-success ms-2">
+                                        <i class="fa fa-check-circle me-1"></i>
                                         Enabled
-                                    </MudText>
+                                    </span>
                                 }
                                 else
                                 {
-                                    <MudText Color="Color.Error">
-                                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Class="mr-1" />
+                                    <span class="text-error ms-2">
+                                        <i class="fa fa-times-circle me-1"></i>
                                         Disabled
-                                    </MudText>
+                                    </span>
                                 }
-                            </MudStack>
-                        </MudPaper>
+                            </div>
+                        </div>
 
                         @if (cacheType != null)
                         {
-                            <MudText Typo="Typo.subtitle2" Class="mt-3">Cache Type:</MudText>
-                            <MudText Color="Color.Primary" Class="mt-1">@cacheType</MudText>
+                            <p class="text-subtitle2 mt-3 mb-0">Cache Type:</p>
+                            <p class="text-primary mt-1">@cacheType</p>
                         }
 
                         @if (cacheStats != null)
                         {
-                            <MudGrid Class="mt-4" Spacing="2">
-                                <MudItem xs="6">
-                                    <MudPaper Elevation="0" Class="pa-3 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Cached Items</MudText>
-                                        <MudText Typo="Typo.h6" Color="Color.Primary">@cacheStats.TotalItems</MudText>
-                                    </MudPaper>
-                                </MudItem>
+                            <div class="row mt-4">
+                                <div class="col-6">
+                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
+                                        <small class="text-secondary">Cached Items</small>
+                                        <h6 class="text-h6 text-primary">@cacheStats.TotalItems</h6>
+                                    </div>
+                                </div>
                                 
-                                <MudItem xs="6">
-                                    <MudPaper Elevation="0" Class="pa-3 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Hit Rate</MudText>
-                                        <MudText Typo="Typo.h6" Color="Color.Primary">@cacheStats.HitRate.ToString("P1")</MudText>
-                                    </MudPaper>
-                                </MudItem>
+                                <div class="col-6">
+                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
+                                        <small class="text-secondary">Hit Rate</small>
+                                        <h6 class="text-h6 text-primary">@cacheStats.HitRate.ToString("P1")</h6>
+                                    </div>
+                                </div>
                                 
-                                <MudItem xs="6">
-                                    <MudPaper Elevation="0" Class="pa-3 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Memory Usage</MudText>
-                                        <MudText Typo="Typo.h6" Color="Color.Primary">@FormatBytes(cacheStats.MemoryUsageBytes)</MudText>
-                                    </MudPaper>
-                                </MudItem>
+                                <div class="col-6 mt-2">
+                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
+                                        <small class="text-secondary">Memory Usage</small>
+                                        <h6 class="text-h6 text-primary">@FormatBytes(cacheStats.MemoryUsageBytes)</h6>
+                                    </div>
+                                </div>
                                 
-                                <MudItem xs="6">
-                                    <MudPaper Elevation="0" Class="pa-3 d-flex flex-column align-center" Style="background-color: var(--mud-palette-background-grey)">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Avg Response</MudText>
-                                        <MudText Typo="Typo.h6" Color="Color.Primary">@cacheStats.AvgResponseTime.ToString("0.##") ms</MudText>
-                                    </MudPaper>
-                                </MudItem>
-                            </MudGrid>
+                                <div class="col-6 mt-2">
+                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
+                                        <small class="text-secondary">Avg Response</small>
+                                        <h6 class="text-h6 text-primary">@cacheStats.AvgResponseTime.ToString("0.##") ms</h6>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" 
-                                     OnClick="NavigateToCachingSettings" 
-                                     Class="mt-3 px-3" 
-                                     EndIcon="@Icons.Material.Filled.ArrowForward">
+                            <button class="btn btn-text text-primary mt-3 px-3" @onclick="NavigateToCachingSettings">
                                 <span class="me-2">Manage Caching</span>
-                            </MudButton>
+                                <i class="fa fa-arrow-right"></i>
+                            </button>
                         }
                         else
                         {
-                            <MudAlert Severity="Severity.Info" Class="mt-3">
-                                <MudText Typo="Typo.body2">
+                            <div class="alert alert-info mt-3">
+                                <p class="text-body2">
                                     Caching is not configured yet. Set up caching to improve response times and reduce API costs.
-                                </MudText>
+                                </p>
                                 <div class="mt-3">
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                                             StartIcon="@Icons.Material.Filled.Settings" 
-                                             IconColor="Color.Inherit"
-                                             Class="px-3"
-                                             OnClick="NavigateToCachingSettings">
-                                        <span class="ms-2">Configure Caching</span>
-                                    </MudButton>
+                                    <button class="btn btn-primary px-3" @onclick="NavigateToCachingSettings">
+                                        <i class="fa fa-cog me-2"></i>
+                                        <span>Configure Caching</span>
+                                    </button>
                                 </div>
-                            </MudAlert>
+                            </div>
                         }
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <MudDivider Class="my-4" />
+    <hr class="divider my-4" />
 
     <!-- Quick Actions Section -->
-    <MudText Typo="Typo.h5" Class="mb-3">Quick Actions</MudText>
-    <MudGrid>
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.ChatBubble" Color="Color.Primary" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Try Chat</MudText>
-                    <MudText Typo="Typo.body2" Align="Align.Center">Test your configuration with the built-in chat interface</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="px-3" OnClick="NavigateToChat">
+    <h5 class="text-h5 mb-3">Quick Actions</h5>
+    <div class="row">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="paper p-4 paper-2">
+                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
+                    <i class="fa fa-comment text-primary fa-2x"></i>
+                    <h6 class="text-h6">Try Chat</h6>
+                    <p class="text-body2 text-center">Test your configuration with the built-in chat interface</p>
+                    <button class="btn btn-primary w-100 px-3" @onclick="NavigateToChat">
                         <span>Open Chat</span>
-                    </MudButton>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
+                    </button>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Secondary" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Add Provider</MudText>
-                    <MudText Typo="Typo.body2" Align="Align.Center">Configure a new LLM provider to use with Conduit</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true" Class="px-3" OnClick="NavigateToConfiguration">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="paper p-4 paper-2">
+                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
+                    <i class="fa fa-plus text-secondary fa-2x"></i>
+                    <h6 class="text-h6">Add Provider</h6>
+                    <p class="text-body2 text-center">Configure a new LLM provider to use with Conduit</p>
+                    <button class="btn btn-secondary w-100 px-3" @onclick="NavigateToConfiguration">
                         <span>Configure</span>
-                    </MudButton>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
+                    </button>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.Router" Color="Color.Tertiary" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Setup Routing</MudText>
-                    <MudText Typo="Typo.body2" Align="Align.Center">Configure rules to route requests to the right provider</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Tertiary" FullWidth="true" Class="px-3" OnClick="NavigateToRoutingSettings">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="paper p-4 paper-2">
+                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
+                    <i class="fa fa-route text-warning fa-2x"></i>
+                    <h6 class="text-h6">Setup Routing</h6>
+                    <p class="text-body2 text-center">Configure rules to route requests to the right provider</p>
+                    <button class="btn btn-warning w-100 px-3" @onclick="NavigateToRoutingSettings">
                         <span>Routing</span>
-                    </MudButton>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
+                    </button>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-4" Elevation="2">
-                <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                    <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Info" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">Virtual Keys</MudText>
-                    <MudText Typo="Typo.body2" Align="Align.Center">Manage virtual API keys for application access</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Info" FullWidth="true" Class="px-3" OnClick="@(() => NavigationManager.NavigateTo("/virtualkeys"))">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="paper p-4 paper-2">
+                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
+                    <i class="fa fa-key text-info fa-2x"></i>
+                    <h6 class="text-h6">Virtual Keys</h6>
+                    <p class="text-body2 text-center">Manage virtual API keys for application access</p>
+                    <button class="btn btn-info w-100 px-3" @onclick="@(() => NavigationManager.NavigateTo("/virtualkeys"))">
                         <span>Keys</span>
-                    </MudButton>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private bool IsMasterKeySet => !string.IsNullOrEmpty(Configuration["CONDUIT_MASTER_KEY"]);
@@ -484,9 +482,8 @@
             StateHasChanged();
             
             // Load providers
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            providers = await dbContext.ProviderCredentials.ToListAsync();
-            providerCount = providers.Count;
+            var virtualKeys = await VirtualKeyService.ListVirtualKeysAsync();
+            providerCount = virtualKeys.Count;
             
             // Initial checks
             await CheckAllProvidersStatus();
@@ -566,11 +563,10 @@
             isCheckingCachingStatus = true;
             StateHasChanged();
             
-            // In a real implementation, this would fetch from the cache service
-            // For now we simulate cache status
-            await Task.Delay(200); // Simulate network delay
-            
+            // Real implementation - fetch from the cache service
             var cacheStatus = await CacheStatusService.GetCacheStatusAsync();
+            Console.WriteLine($"Cache status retrieved: Enabled={cacheStatus.IsEnabled}, Type={cacheStatus.CacheType}, Items={cacheStatus.TotalItems}");
+            
             cacheStats = new CacheStats
             {
                 TotalItems = cacheStatus.TotalItems,
@@ -584,6 +580,7 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error checking cache status: {ex.Message}");
+            Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
             cacheStats = null;
         }
         finally

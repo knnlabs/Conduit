@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.DTOs.VirtualKey; 
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.WebUI.Services; 
+using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Interfaces; 
 
 using Microsoft.AspNetCore.Authorization; 
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +13,10 @@ namespace ConduitLLM.WebUI.Controllers;
 [Route("api/[controller]")] // Route: /api/virtualkeys
 public class VirtualKeysController : ControllerBase
 {
-    private readonly VirtualKeyServiceNew _virtualKeyService;
+    private readonly ConduitLLM.WebUI.Interfaces.IVirtualKeyService _virtualKeyService;
     private readonly ILogger<VirtualKeysController> _logger;
 
-    public VirtualKeysController(VirtualKeyServiceNew virtualKeyService, ILogger<VirtualKeysController> logger)
+    public VirtualKeysController(ConduitLLM.WebUI.Interfaces.IVirtualKeyService virtualKeyService, ILogger<VirtualKeysController> logger)
     {
         _virtualKeyService = virtualKeyService;
         _logger = logger;

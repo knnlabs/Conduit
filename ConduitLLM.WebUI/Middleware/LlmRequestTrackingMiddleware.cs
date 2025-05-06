@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 
 using Microsoft.Extensions.Logging;
@@ -100,7 +100,7 @@ public class LlmRequestTrackingMiddleware
             // Get a scoped instance of RequestLogService
             using (var scope = _serviceProvider.CreateScope())
             {
-                var requestLogService = scope.ServiceProvider.GetRequiredService<RequestLogService>();
+                var requestLogService = scope.ServiceProvider.GetRequiredService<IRequestLogService>();
                 
                 // Log the request
                 await requestLogService.CreateRequestLogAsync(
@@ -145,7 +145,7 @@ public class LlmRequestTrackingMiddleware
             {
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var requestLogService = scope.ServiceProvider.GetRequiredService<RequestLogService>();
+                    var requestLogService = scope.ServiceProvider.GetRequiredService<IRequestLogService>();
                     
                     await requestLogService.CreateRequestLogAsync(
                         virtualKeyId: virtualKeyId,
