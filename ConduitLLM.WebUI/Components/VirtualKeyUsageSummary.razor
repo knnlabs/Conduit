@@ -5,122 +5,131 @@
 @inject IVirtualKeyService VirtualKeyService
 @inject ILogger<VirtualKeyUsageSummary> Logger
 
-<MudPaper Elevation="2" Class="mb-4">
-    <div class="d-flex justify-space-between align-center pa-4">
-        <MudText Typo="Typo.h6">Virtual Key Usage</MudText>
-        <MudButton 
-            Variant="Variant.Outlined" 
-            Size="Size.Small" 
-            Color="Color.Secondary" 
-            StartIcon="@Icons.Material.Filled.Refresh" 
-            OnClick="RefreshData">
-            Refresh
-        </MudButton>
+<div class="card mb-4 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center p-3">
+        <h5 class="mb-0">Virtual Key Usage</h5>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshData">
+            <i class="fa fa-refresh me-1"></i> Refresh
+        </button>
     </div>
     
-    <MudDivider />
+    <hr class="m-0" />
     
-    <div class="pa-4">
+    <div class="card-body p-3">
         @if (isLoading)
         {
-            <div class="d-flex flex-column align-center pa-4">
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Medium" />
-                <MudText Class="mt-3">Loading key usage data...</MudText>
+            <div class="d-flex flex-column align-items-center p-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Loading key usage data...</p>
             </div>
         }
         else if (errorMessage != null)
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+            <div class="alert alert-danger mb-4">@errorMessage</div>
         }
         else if (keyStats == null || keyStats.TotalKeys == 0)
         {
-            <div class="d-flex flex-column align-center pa-4">
-                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Color="Color.Default" Size="Size.Large" />
-                <MudText Class="mt-3 mb-3">No virtual keys created yet.</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/virtualkeys">Manage Virtual Keys</MudButton>
+            <div class="d-flex flex-column align-items-center p-4">
+                <i class="fa fa-key fa-2x text-muted"></i>
+                <p class="mt-3 mb-3">No virtual keys created yet.</p>
+                <a href="/virtualkeys" class="btn btn-primary">Manage Virtual Keys</a>
             </div>
         }
         else
         {
-            <MudGrid>
-                <MudItem xs="12" sm="4">
-                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
-                        <MudText Typo="Typo.h4">@keyStats.TotalKeys</MudText>
-                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Keys</MudText>
-                    </MudPaper>
-                </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
-                        <MudText Typo="Typo.h4">@keyStats.ActiveKeys</MudText>
-                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Active Keys</MudText>
-                    </MudPaper>
-                </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudPaper Elevation="0" Class="pa-4 mud-background-gray d-flex flex-column align-center">
-                        <MudText Typo="Typo.h4">@FormatCurrency(keyStats.TotalSpending)</MudText>
-                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Total Spend</MudText>
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
+            <div class="row">
+                <div class="col-12 col-sm-4">
+                    <div class="bg-light p-4 d-flex flex-column align-items-center rounded">
+                        <h4>@keyStats.TotalKeys</h4>
+                        <p class="text-secondary mb-0">Total Keys</p>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="bg-light p-4 d-flex flex-column align-items-center rounded">
+                        <h4>@keyStats.ActiveKeys</h4>
+                        <p class="text-secondary mb-0">Active Keys</p>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <div class="bg-light p-4 d-flex flex-column align-items-center rounded">
+                        <h4>@FormatCurrency(keyStats.TotalSpending)</h4>
+                        <p class="text-secondary mb-0">Total Spend</p>
+                    </div>
+                </div>
+            </div>
 
             @if (keyStats.HighUsageKeys.Any())
             {
-                <div class="mt-6">
-                    <MudText Typo="Typo.h6" Class="mb-3">High-Usage Keys</MudText>
-                    <MudTable Items="@keyStats.HighUsageKeys" Hover="true" Dense="true">
-                        <HeaderContent>
-                            <MudTh>Key Name</MudTh>
-                            <MudTh>Usage</MudTh>
-                            <MudTh>Status</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Key Name">
-                                <MudLink Href="@($"/virtualkeys/edit/{context.Id}")">@context.KeyName</MudLink>
-                            </MudTd>
-                            <MudTd DataLabel="Usage">
-                                @{
-                                    var budgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
-                                    var statusColor = GetBudgetStatusColor(budgetPercentage);
-                                }
-                                
-                                @if (context.MaxBudget.HasValue)
+                <div class="mt-5">
+                    <h6 class="mb-3">High-Usage Keys</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Key Name</th>
+                                    <th>Usage</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var context in keyStats.HighUsageKeys)
                                 {
-                                    <div>
-                                        <div class="d-flex justify-space-between">
-                                            <MudText Typo="Typo.caption">@FormatCurrency(context.CurrentSpend)</MudText>
-                                            <MudText Typo="Typo.caption">@FormatCurrency(context.MaxBudget.Value)</MudText>
-                                        </div>
-                                        <MudProgressLinear 
-                                            Color="@statusColor" 
-                                            Value="@(Convert.ToDouble(Math.Min(budgetPercentage, 100m)))" 
-                                            Class="my-1" 
-                                            Style="height: 4px;" />
-                                    </div>
+                                    <tr>
+                                        <td>
+                                            <a href="@($"/virtualkeys/edit/{context.Id}")">@context.KeyName</a>
+                                        </td>
+                                        <td>
+                                            @{
+                                                var usageBudgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
+                                                var statusColorClass = GetProgressBarColorClass(usageBudgetPercentage);
+                                            }
+                                            
+                                            @if (context.MaxBudget.HasValue)
+                                            {
+                                                <div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <small>@FormatCurrency(context.CurrentSpend)</small>
+                                                        <small>@FormatCurrency(context.MaxBudget.Value)</small>
+                                                    </div>
+                                                    <div class="progress my-1" style="height: 4px;">
+                                                        <div class="progress-bar @statusColorClass" 
+                                                            role="progressbar" 
+                                                            style="width: @(Math.Min(usageBudgetPercentage, 100))%"
+                                                            aria-valuenow="@Math.Min(usageBudgetPercentage, 100)" 
+                                                            aria-valuemin="0" 
+                                                            aria-valuemax="100"></div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span>@FormatCurrency(context.CurrentSpend) (No limit)</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @{
+                                                var statusBudgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
+                                                var statusBadgeClass = GetStatusBadgeClass(statusBudgetPercentage, context);
+                                                var statusText = GetStatusText(context, statusBudgetPercentage);
+                                            }
+                                            <span class="badge @statusBadgeClass">@statusText</span>
+                                        </td>
+                                    </tr>
                                 }
-                                else
-                                {
-                                    <MudText>@FormatCurrency(context.CurrentSpend) (No limit)</MudText>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Status">
-                                @{
-                                    var budgetPercentage = context.MaxBudget.HasValue ? (context.CurrentSpend / context.MaxBudget.Value) * 100 : 0;
-                                    var statusColor = GetBudgetStatusColor(budgetPercentage);
-                                    var statusText = GetStatusText(context, budgetPercentage);
-                                }
-                                <MudChip T="string" Size="Size.Small" Color="@statusColor" Label="true">@statusText</MudChip>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             }
 
-            <div class="d-flex justify-end mt-6">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/virtualkeys">View All Keys</MudButton>
+            <div class="d-flex justify-content-end mt-5">
+                <a href="/virtualkeys" class="btn btn-outline-primary">View All Keys</a>
             </div>
         }
     </div>
-</MudPaper>
+</div>
 
 @code {
     private bool isLoading = true;
@@ -185,14 +194,21 @@
         };
     }
     
-    private Color GetBudgetStatusColor(decimal percentage)
+    private string GetStatusBadgeClass(decimal percentage, VirtualKeyDto key)
     {
-        return percentage switch
-        {
-            >= 90 => Color.Error,
-            >= 75 => Color.Warning,
-            _ => Color.Success
-        };
+        if (!key.IsEnabled)
+            return "bg-secondary";
+        else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTime.UtcNow)
+            return "bg-secondary";
+        else if (key.MaxBudget.HasValue && key.CurrentSpend >= key.MaxBudget.Value)
+            return "bg-danger";
+        else
+            return percentage switch
+            {
+                >= 90 => "bg-danger",
+                >= 75 => "bg-warning",
+                _ => "bg-success"
+            };
     }
     
     private string GetStatusText(VirtualKeyDto key, decimal budgetPercentage)

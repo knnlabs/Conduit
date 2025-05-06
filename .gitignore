@@ -114,6 +114,11 @@ StyleCopReport.xml
 *.svclog
 *.scc
 
+# Compiled binary files
+*.dll
+*.dylib
+*.so
+
 # ReSharper
 _ReSharper*/
 *.[Rr]e[Ss]harper

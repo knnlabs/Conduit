@@ -18,76 +18,77 @@
 
 @if (InsecureModeProvider.IsInsecureMode)
 {
-    <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mx-auto mt-8" Style="max-width: 500px;">
-        <div class="d-flex align-center">
-            <MudIcon Icon="@Icons.Material.Filled.Info" Class="me-2" Size="Size.Medium" />
+    <div class="alert alert-info mx-auto mt-5" style="max-width: 500px;">
+        <div class="d-flex align-items-center">
+            <i class="fa fa-info-circle me-2 fa-lg"></i>
             <div>
-                <MudText>Redirecting to home page...</MudText>
-                <MudText Typo="Typo.body2">Login is bypassed in insecure mode.</MudText>
+                <p class="mb-1">Redirecting to home page...</p>
+                <p class="small mb-0">Login is bypassed in insecure mode.</p>
             </div>
         </div>
-    </MudAlert>
+    </div>
     NavigationManager.NavigateTo("/");
 }
 else
 {
-    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
-        <MudCard Elevation="3">
-            <MudCardHeader Class="primary darken-1 py-4">
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h5" Color="Color.Surface">ConduitLLM Admin Login</MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent Class="pa-6">
-                <form method="post" action="/account/login">
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
-                            @errorMessage
-                        </MudAlert>
-                    }
-
-                    @* Add hidden field for returnUrl *@
-                    <input type="hidden" name="returnUrl" value="@returnUrl" />
-                    
-                    @* Add hidden field for Antiforgery token *@
-                    @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
-                    {
-                        <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
-                    }
-
-                    <MudTextField T="string" @bind-Value="masterKey" 
-                                  Label="Master Key" 
-                                  name="masterKey"
-                                  type="InputType.Password"
-                                  Required="true"
-                                  RequiredError="Master key is required"
-                                  FullWidth="true" 
-                                  Variant="Variant.Outlined" 
-                                  Margin="Margin.Dense"
-                                  Adornment="Adornment.End" 
-                                  AdornmentIcon="@Icons.Material.Filled.Key"
-                                  autocomplete="off"
-                                  Class="mb-4" />
-
-                    <div class="mb-4">
-                        <input type="checkbox" id="rememberMe" name="rememberMe" @bind="rememberMe" />
-                        <label for="rememberMe" class="ms-2">Remember me</label>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h5 class="mb-0">ConduitLLM Admin Login</h5>
                     </div>
-                    
-                    <div class="d-flex justify-end">
-                        <MudButton Variant="Variant.Filled" 
-                                 Color="Color.Primary" 
-                                 Size="Size.Large"
-                                 ButtonType="ButtonType.Submit"
-                                 StartIcon="@Icons.Material.Filled.Login">
-                            Login
-                        </MudButton>
+                    <div class="card-body p-4">
+                        <form method="post" action="/account/login">
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger mb-4">
+                                    @errorMessage
+                                </div>
+                            }
+
+                            @* Add hidden field for returnUrl *@
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            
+                            @* Add hidden field for Antiforgery token *@
+                            @if (!string.IsNullOrEmpty(requestToken) && !string.IsNullOrEmpty(requestTokenFormFieldName))
+                            {
+                                <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
+                            }
+
+                            <div class="form-group mb-4">
+                                <label for="masterKey">Master Key</label>
+                                <div class="input-group">
+                                    <input type="password" 
+                                           id="masterKey" 
+                                           name="masterKey" 
+                                           class="form-control" 
+                                           required 
+                                           autocomplete="off" 
+                                           @bind="masterKey" />
+                                    <span class="input-group-text">
+                                        <i class="fa fa-key"></i>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input type="checkbox" id="rememberMe" name="rememberMe" class="form-check-input" @bind="rememberMe" />
+                                <label for="rememberMe" class="form-check-label">Remember me</label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-sign-in-alt me-2"></i>
+                                    Login
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
-            </MudCardContent>
-        </MudCard>
-    </MudContainer>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {

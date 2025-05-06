@@ -1,3 +1,4 @@
+using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,19 +21,19 @@ using Xunit;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
-    public class VirtualKeyServiceNewTests
+    public class VirtualKeyServiceTests
     {
         private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
         private readonly Mock<IVirtualKeySpendHistoryRepository> _mockSpendHistoryRepository;
-        private readonly ILogger<VirtualKeyServiceNew> _logger;
-        private readonly VirtualKeyServiceNew _service;
+        private readonly ILogger<VirtualKeyService> _logger;
+        private readonly VirtualKeyService _service;
 
-        public VirtualKeyServiceNewTests()
+        public VirtualKeyServiceTests()
         {
             _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
             _mockSpendHistoryRepository = new Mock<IVirtualKeySpendHistoryRepository>();
-            _logger = NullLogger<VirtualKeyServiceNew>.Instance;
-            _service = new VirtualKeyServiceNew(
+            _logger = NullLogger<VirtualKeyService>.Instance;
+            _service = new VirtualKeyService(
                 _mockVirtualKeyRepository.Object,
                 _mockSpendHistoryRepository.Object,
                 _logger);

@@ -1,66 +1,71 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using ConduitLLM.WebUI.Interfaces
-@using MudBlazor
 @inject NavigationManager NavigationManager
 @inject IInsecureModeProvider InsecureModeProvider
+@inject IJSRuntime JSRuntime
 
 <CascadingValue Value="this">
-    <MudThemeProvider />
-    <MudDialogProvider />
-    <MudSnackbarProvider />
-    <MudPopoverProvider />
+    <!-- No theme providers needed with standard Blazor -->
 </CascadingValue>
 
 @if (InsecureModeProvider.IsInsecureMode)
 {
     <div class="warning-banner">
-        <MudAlert Severity="Severity.Warning" Dense="true" Class="ma-0 rounded-0 py-2" 
-                 Icon="@Icons.Material.Filled.Security">
-            <div class="d-flex justify-center align-center text-error">
+        <div class="alert alert-warning py-2">
+            <div class="d-flex justify-content-center align-items-center text-error">
+                <i class="fa fa-shield-alt mr-2"></i>
                 <strong>Warning:</strong>&nbsp;Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
             </div>
-        </MudAlert>
+        </div>
     </div>
 }
 
 <div class="d-flex flex-column" style="min-height: 100vh;">    
-    <MudLayout Class="flex-grow-1">
-        <MudAppBar Elevation="1" Class="appbar">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-            <MudText Typo="Typo.h6" Class="ml-3">Conduit</MudText>
-            <MudSpacer />
-            <NotificationDisplay />
-            <CascadingAuthenticationState>
-                <AuthorizeView>
-                    <Authorized>
-                        <MudText Color="Color.Success" Class="me-3">
-                            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
-                            Admin
-                        </MudText>
-                        <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Error" Edge="Edge.End" Href="/logout" />
-                    </Authorized>
-                </AuthorizeView>
-            </CascadingAuthenticationState>
-            <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit" Edge="Edge.End" Href="https://github.com/knnlabs/Conduit" Target="_blank" />
-        </MudAppBar>
+    <div class="layout flex-grow-1">
+        <header class="app-bar appbar">
+            <div class="app-bar-container">
+                <button class="btn btn-icon" @onclick="DrawerToggle">
+                    <i class="fa fa-bars"></i>
+                </button>
+                <h6 class="app-title ml-3">Conduit</h6>
+                <div class="spacer"></div>
+                <NotificationDisplay />
+                <CascadingAuthenticationState>
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="text-success me-3">
+                                <i class="fa fa-user-check"></i>
+                                Admin
+                            </div>
+                            <a href="/logout" class="btn btn-icon">
+                                <i class="fa fa-sign-out-alt text-error"></i>
+                            </a>
+                        </Authorized>
+                    </AuthorizeView>
+                </CascadingAuthenticationState>
+                <a href="https://github.com/knnlabs/Conduit" target="_blank" class="btn btn-icon">
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+        </header>
         
-        <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+        <div class="drawer @(_drawerOpen ? "drawer-open" : "drawer-closed")">
             <NavMenu />
-        </MudDrawer>
+        </div>
         
-        <MudMainContent>
-            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+        <main class="main-content">
+            <div class="container container-xxl mt-4">
                 @Body
-            </MudContainer>
-        </MudMainContent>
-    </MudLayout>
+            </div>
+        </main>
+    </div>
 </div>
 
 <style>
     .warning-banner {
         width: 100%;
-        z-index: 1300; /* Higher than MudAppBar's z-index */
+        z-index: 1300;
         position: fixed;
         top: 0;
         left: 0;
@@ -72,14 +77,83 @@
         top: @(InsecureModeProvider.IsInsecureMode ? "36px" : "0") !important;
     }
     
-    /* Push down content when banner is shown */
-    ::deep .mud-drawer {
-        top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px") !important;
-        height: @(InsecureModeProvider.IsInsecureMode ? "calc(100% - 100px)" : "calc(100% - 64px)") !important;
+    /* Layout styles */
+    .layout {
+        display: flex;
+        flex-direction: column;
     }
     
-    ::deep .mud-main-content {
-        padding-top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px") !important;
+    .app-bar {
+        background-color: #1976d2;
+        color: white;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .app-bar-container {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .app-title {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+    
+    .spacer {
+        flex-grow: 1;
+    }
+    
+    .drawer {
+        width: 250px;
+        position: fixed;
+        top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px");
+        bottom: 0;
+        left: 0;
+        background-color: white;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        z-index: 900;
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+    }
+    
+    .drawer-closed {
+        transform: translateX(-100%);
+    }
+    
+    .drawer-open {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 250px;
+        padding-top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px");
+        min-height: 100vh;
+        transition: margin-left 0.3s ease;
+    }
+    
+    /* When drawer is closed */
+    .drawer-closed + .main-content {
+        margin-left: 0;
+    }
+    
+    @@media screen and (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+        }
+        
+        .drawer {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
     }
 </style>
 

@@ -9,33 +9,37 @@ using System.Threading.Tasks;
 namespace ConduitLLM.WebUI.Controllers
 {
     /// <summary>
-    /// Provides endpoints for retrieving cost data for the dashboard.
+    /// Provides API endpoints for retrieving cost and usage data for the cost dashboard.
     /// </summary>
     /// <remarks>
-    /// This controller provides API endpoints for retrieving cost data to be displayed
-    /// in the Cost Dashboard UI. It supports filtering data by date range, virtual key,
-    /// and model name, as well as retrieving trend data over different time periods.
-    /// All endpoints require authentication.
+    /// <para>
+    /// This controller provides endpoints for accessing cost and usage data aggregated by different dimensions
+    /// such as time period, virtual key, and model.
+    /// </para>
+    /// <para>
+    /// The dashboard data includes cost summaries, usage trends, and detailed breakdowns
+    /// to help monitor LLM API usage and expenditure.
+    /// </para>
     /// </remarks>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     public class CostDashboardController : ControllerBase
     {
-        private readonly ICostDashboardService _costDashboardService;
+        private readonly CostDashboardService _costDashboardService;
         private readonly ILogger<CostDashboardController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CostDashboardController"/> class.
         /// </summary>
         /// <param name="costDashboardService">The service for retrieving cost dashboard data.</param>
-        /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <param name="logger">The logger instance.</param>
         public CostDashboardController(
-            ICostDashboardService costDashboardService,
+            CostDashboardService costDashboardService,
             ILogger<CostDashboardController> logger)
         {
-            _costDashboardService = costDashboardService;
-            _logger = logger;
+            _costDashboardService = costDashboardService ?? throw new ArgumentNullException(nameof(costDashboardService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>

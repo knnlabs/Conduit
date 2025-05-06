@@ -155,142 +155,126 @@
     }
 }
 
-<MudContainer Class="mt-4">
-    <MudPaper Elevation="3" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h4" Class="mb-4">Database Status</MudText>
+<div class="container container-xxl mt-4">
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-4">Database Status</h4>
 
-        <MudCard Elevation="0" Outlined="true">
-            <MudCardContent>
-                <MudGrid>
-                    <MudItem xs="12">
-                        <MudPaper Class="d-flex flex-row align-center pa-3" Elevation="0">
-                            <MudIcon Icon="@(DbProvider == "postgres" ? @Icons.Material.Filled.Storage : @Icons.Material.Filled.DataObject)" 
-                                     Color="Color.Primary" Size="Size.Large" Class="mr-3" />
-                            <MudText Typo="Typo.h6">
+        <div class="card border mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex flex-row align-items-center p-3">
+                            <i class="fa @(DbProvider == "postgres" ? "fa-database" : "fa-file-o") fa-2x text-primary me-3"></i>
+                            <h6 class="mb-0">
                                 @(DbProvider == "postgres" ? "PostgreSQL" : "SQLite") Database
-                            </MudText>
-                        </MudPaper>
-                    </MudItem>
-                </MudGrid>
+                            </h6>
+                        </div>
+                    </div>
+                </div>
                 
                 @if (DbProvider == "sqlite")
                 {
-                    <MudSimpleTable Striped="true" Hover="true" Dense="true" Class="mt-3">
-                        <tbody>
-                            <tr>
-                                <td style="width:200px"><MudText Typo="Typo.subtitle2">Path Source</MudText></td>
-                                <td><MudText>@Source</MudText></td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">File Path</MudText></td>
-                                <td><MudText>@DatabasePath</MudText></td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Exists</MudText></td>
-                                <td>
-                                    <MudBadge Color="@(Exists ? Color.Success : Color.Error)" 
-                                              Overlap="true" 
-                                              Class="ml-2">
-                                        <MudText Color="@(Exists ? Color.Success : Color.Error)">
-                                            @(Exists ? "Yes" : "No")
-                                        </MudText>
-                                    </MudBadge>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Readable</MudText></td>
-                                <td>
-                                    <MudBadge Color="@(Readable ? Color.Success : Color.Error)" 
-                                              Overlap="true" 
-                                              Class="ml-2">
-                                        <MudText Color="@(Readable ? Color.Success : Color.Error)">
-                                            @(Readable ? "Yes" : "No")
-                                        </MudText>
-                                    </MudBadge>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Writable</MudText></td>
-                                <td>
-                                    <MudBadge Color="@(Writable ? Color.Success : Color.Error)" 
-                                              Overlap="true" 
-                                              Class="ml-2">
-                                        <MudText Color="@(Writable ? Color.Success : Color.Error)">
-                                            @(Writable ? "Yes" : "No")
-                                        </MudText>
-                                    </MudBadge>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">File Size</MudText></td>
-                                <td><MudText>@FileSize</MudText></td>
-                            </tr>
-                            @if (!string.IsNullOrEmpty(Error))
-                            {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-sm mt-3">
+                            <tbody>
                                 <tr>
-                                    <td><MudText Typo="Typo.subtitle2" Color="Color.Error">Error</MudText></td>
-                                    <td><MudText Color="Color.Error">@Error</MudText></td>
+                                    <td style="width:200px"><strong>Path Source</strong></td>
+                                    <td>@Source</td>
                                 </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
+                                <tr>
+                                    <td><strong>File Path</strong></td>
+                                    <td>@DatabasePath</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Exists</strong></td>
+                                    <td>
+                                        <span class="badge @(Exists ? "bg-success" : "bg-danger") ms-2">
+                                            @(Exists ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Readable</strong></td>
+                                    <td>
+                                        <span class="badge @(Readable ? "bg-success" : "bg-danger") ms-2">
+                                            @(Readable ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Writable</strong></td>
+                                    <td>
+                                        <span class="badge @(Writable ? "bg-success" : "bg-danger") ms-2">
+                                            @(Writable ? "Yes" : "No")
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>File Size</strong></td>
+                                    <td>@FileSize</td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(Error))
+                                {
+                                    <tr>
+                                        <td><strong class="text-danger">Error</strong></td>
+                                        <td class="text-danger">@Error</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
                 else if (DbProvider == "postgres")
                 {
-                    <MudSimpleTable Striped="true" Hover="true" Dense="true" Class="mt-3">
-                        <tbody>
-                            <tr>
-                                <td style="width:200px"><MudText Typo="Typo.subtitle2">Host</MudText></td>
-                                <td><MudText>@PgHost</MudText></td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Database</MudText></td>
-                                <td><MudText>@PgDatabase</MudText></td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Connection String</MudText></td>
-                                <td>
-                                    <MudText Class="mud-text-secondary text-truncate" Style="max-width: 500px;">
-                                        @PgConnStrMasked
-                                    </MudText>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><MudText Typo="Typo.subtitle2">Status</MudText></td>
-                                <td>
-                                    <MudBadge Color="@(PgReachable ? Color.Success : Color.Error)" 
-                                              Overlap="true" 
-                                              Class="ml-2">
-                                        <MudText Color="@(PgReachable ? Color.Success : Color.Error)">
-                                            @(PgReachable ? "Connected" : "Disconnected")
-                                        </MudText>
-                                    </MudBadge>
-                                </td>
-                            </tr>
-                            @if (!string.IsNullOrEmpty(PgError))
-                            {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-sm mt-3">
+                            <tbody>
                                 <tr>
-                                    <td><MudText Typo="Typo.subtitle2" Color="Color.Error">Error</MudText></td>
+                                    <td style="width:200px"><strong>Host</strong></td>
+                                    <td>@PgHost</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Database</strong></td>
+                                    <td>@PgDatabase</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Connection String</strong></td>
                                     <td>
-                                        <MudAlert Severity="Severity.Error" Dense="true" Class="my-2">@PgError</MudAlert>
+                                        <span class="text-secondary text-truncate d-inline-block" style="max-width: 500px;">
+                                            @PgConnStrMasked
+                                        </span>
                                     </td>
                                 </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
+                                <tr>
+                                    <td><strong>Status</strong></td>
+                                    <td>
+                                        <span class="badge @(PgReachable ? "bg-success" : "bg-danger") ms-2">
+                                            @(PgReachable ? "Connected" : "Disconnected")
+                                        </span>
+                                    </td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(PgError))
+                                {
+                                    <tr>
+                                        <td><strong class="text-danger">Error</strong></td>
+                                        <td>
+                                            <div class="alert alert-danger py-2 my-2" role="alert">@PgError</div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
-            </MudCardContent>
-        </MudCard>
-    </MudPaper>
+            </div>
+        </div>
+    </div>
 
-    <MudButton Variant="Variant.Filled" 
-               Color="Color.Secondary" 
-               StartIcon="@Icons.Material.Filled.ArrowBack" 
-               Class="mt-4" 
-               OnClick="GoToSystemInfo">
+    <button type="button" class="btn btn-secondary mt-4" @onclick="GoToSystemInfo">
+        <i class="fa fa-arrow-left me-1"></i>
         Back to System Info
-    </MudButton>
-</MudContainer>
+    </button>
+</div>
 
 @code {
     private void GoToSystemInfo() => Navigation.NavigateTo("/system-info");

@@ -1,3 +1,4 @@
+using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,27 +8,34 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 using Moq;
 using Xunit;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
-    public class GlobalSettingServiceNewTests
+    public class GlobalSettingServiceTests
     {
+        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockConfigContextFactory;
+        private readonly ILogger<GlobalSettingService> _logger;
+        private readonly GlobalSettingService _service;
+        
+        // Legacy mocks kept for test compatibility
         private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
-        private readonly ILogger<GlobalSettingServiceNew> _logger;
-        private readonly GlobalSettingServiceNew _service;
 
-        public GlobalSettingServiceNewTests()
+        public GlobalSettingServiceTests()
         {
+            _mockConfigContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _logger = NullLogger<GlobalSettingService>.Instance;
             _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
-            _logger = NullLogger<GlobalSettingServiceNew>.Instance;
-            _service = new GlobalSettingServiceNew(
-                _mockGlobalSettingRepository.Object,
+            
+            _service = new GlobalSettingService(
+                _mockConfigContextFactory.Object,
                 _logger);
         }
 
@@ -38,25 +46,27 @@ namespace ConduitLLM.Tests.RepositoryServices
             string key = "TestKey";
             string expectedValue = "TestValue";
             
-            _mockGlobalSettingRepository.Setup(repo => repo.GetByKeyAsync(
-                key, 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new GlobalSetting 
-                { 
-                    Key = key, 
-                    Value = expectedValue 
-                });
+            var mockContext = new Mock<ConfigurationDbContext>();
+            var mockDbSet = new Mock<DbSet<GlobalSetting>>();
+            
+            var setting = new GlobalSetting { Key = key, Value = expectedValue };
+            var settings = new List<GlobalSetting> { setting }.AsQueryable();
+            
+            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.Provider).Returns(settings.Provider);
+            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.Expression).Returns(settings.Expression);
+            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.ElementType).Returns(settings.ElementType);
+            mockDbSet.As<IQueryable<GlobalSetting>>().Setup(m => m.GetEnumerator()).Returns(settings.GetEnumerator());
+            
+            mockContext.Setup(c => c.GlobalSettings).Returns(mockDbSet.Object);
+            
+            _mockConfigContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockContext.Object);
 
             // Act
             var result = await _service.GetSettingAsync(key);
 
             // Assert
             Assert.Equal(expectedValue, result);
-            
-            _mockGlobalSettingRepository.Verify(repo => repo.GetByKeyAsync(
-                key, 
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
         }
 
         [Fact]

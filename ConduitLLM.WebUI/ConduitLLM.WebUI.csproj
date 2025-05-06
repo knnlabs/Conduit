@@ -8,9 +8,6 @@
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <NoWarn>$(NoWarn);MUD0002</NoWarn>
-  </PropertyGroup>
 
   <PropertyGroup>
     <WebUIHttpPort Condition="'$(WebUIHttpPort)' == ''">5001</WebUIHttpPort>
@@ -24,7 +21,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
-    <PackageReference Include="MudBlazor" Version="8.6.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />

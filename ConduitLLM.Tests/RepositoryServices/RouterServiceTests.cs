@@ -12,38 +12,46 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Routing;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 
 using Moq;
 using Xunit;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
-    public class RouterServiceNewTests
+    public class RouterServiceTests
     {
+        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockConfigContextFactory;
+        private readonly Mock<ILLMClientFactory> _mockClientFactory;
+        private readonly Mock<IOptionsMonitor<RouterOptions>> _mockRouterOptions;
+        private readonly ILogger<RouterService> _logger;
+        private readonly Mock<IServiceProvider> _mockServiceProvider;
+        private readonly RouterService _service;
+        
+        // Legacy mocks kept for test compatibility
         private readonly Mock<IGlobalSettingRepository> _mockGlobalSettingRepository;
         private readonly Mock<IModelDeploymentRepository> _mockModelDeploymentRepository;
         private readonly Mock<ConduitLLM.Configuration.Repositories.IRouterConfigRepository> _mockRouterConfigRepository;
         private readonly Mock<IFallbackConfigurationRepository> _mockFallbackConfigRepository;
-        private readonly Mock<ILLMClientFactory> _mockClientFactory;
-        private readonly Mock<IOptionsMonitor<RouterOptions>> _mockRouterOptions;
-        private readonly ILogger<RouterServiceNew> _logger;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly RouterServiceNew _service;
 
-        public RouterServiceNewTests()
+        public RouterServiceTests()
         {
+            _mockConfigContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _mockClientFactory = new Mock<ILLMClientFactory>();
+            _mockRouterOptions = new Mock<IOptionsMonitor<RouterOptions>>();
+            _logger = NullLogger<RouterService>.Instance;
+            _mockServiceProvider = new Mock<IServiceProvider>();
+            
+            // Initialize legacy mocks
             _mockGlobalSettingRepository = new Mock<IGlobalSettingRepository>();
             _mockModelDeploymentRepository = new Mock<IModelDeploymentRepository>();
             _mockRouterConfigRepository = new Mock<ConduitLLM.Configuration.Repositories.IRouterConfigRepository>();
             _mockFallbackConfigRepository = new Mock<IFallbackConfigurationRepository>();
-            _mockClientFactory = new Mock<ILLMClientFactory>();
-            _mockRouterOptions = new Mock<IOptionsMonitor<RouterOptions>>();
-            _logger = NullLogger<RouterServiceNew>.Instance;
-            _mockServiceProvider = new Mock<IServiceProvider>();
             
             // Setup router options
             var routerOptions = new RouterOptions
@@ -72,11 +80,8 @@ namespace ConduitLLM.Tests.RepositoryServices
             _mockRouterOptions.Setup(m => m.CurrentValue).Returns(routerOptions);
             
             // Create the service
-            _service = new RouterServiceNew(
-                _mockGlobalSettingRepository.Object,
-                _mockModelDeploymentRepository.Object,
-                _mockRouterConfigRepository.Object,
-                _mockFallbackConfigRepository.Object,
+            _service = new RouterService(
+                _mockConfigContextFactory.Object,
                 _mockClientFactory.Object,
                 _logger,
                 _mockRouterOptions.Object,

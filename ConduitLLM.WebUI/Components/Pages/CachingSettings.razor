@@ -12,251 +12,307 @@
 
 <PageTitle>Cache Settings</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">
-    <MudIcon Icon="@Icons.Material.Filled.Storage" Class="mr-2" />
+<h4 class="heading-4 mb-4">
+    <i class="fa fa-database me-2"></i>
     Cache Settings
-</MudText>
-<MudDivider Class="mb-4" />
+</h4>
+<hr class="mb-4" />
 
-<MudGrid>
-    <MudItem xs="12" md="8">
-        <MudCard Elevation="2" Class="mb-4">
-            <MudCardHeader>
-                <MudText Typo="Typo.h6">Cache Configuration</MudText>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudSwitch T="bool" @bind-Checked="_isEnabled" Color="Color.Primary" Label="Enable Cache" 
-                          Class="mb-4" />
+<div class="grid">
+    <div class="col-12 col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="heading-6">Cache Configuration</h6>
+            </div>
+            <div class="card-body">
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" id="enableCacheSwitch" 
+                           @bind="@_isEnabled" />
+                    <label class="form-check-label" for="enableCacheSwitch">Enable Cache</label>
+                </div>
 
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudSelect @bind-Value="_cacheType" Label="Cache Type" Disabled="@(!_isEnabled)" 
-                                  Variant="Variant.Outlined" Class="mb-4">
-                            @foreach (var option in _cacheTypeOptions)
-                            {
-                                <MudSelectItem Value="@option.Value">@option.Label</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudNumericField @bind-Value="_maxCacheItems" Label="Max Cache Items" Min="100"
-                                        Disabled="@(!_isEnabled)" Variant="Variant.Outlined" Class="mb-4" />
-                    </MudItem>
-                </MudGrid>
+                <div class="row mb-4">
+                    <div class="col-12 col-md-6">
+                        <div class="form-group">
+                            <label for="cacheTypeSelect">Cache Type</label>
+                            <select id="cacheTypeSelect" class="form-select" 
+                                    @bind="@_cacheType" disabled="@(!_isEnabled)">
+                                @foreach (var option in _cacheTypeOptions)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-group">
+                            <label for="maxCacheItems">Max Cache Items</label>
+                            <input type="number" id="maxCacheItems" class="form-control" 
+                                   @bind="@_maxCacheItems" min="100" disabled="@(!_isEnabled)" />
+                        </div>
+                    </div>
+                </div>
 
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudNumericField @bind-Value="_defaultExpirationMinutes" Label="Default Expiration (minutes)" 
-                                        Min="1" Disabled="@(!_isEnabled)" Variant="Variant.Outlined" Class="mb-4" />
-                    </MudItem>
-                </MudGrid>
+                <div class="row mb-4">
+                    <div class="col-12 col-md-6">
+                        <div class="form-group">
+                            <label for="defaultExpiration">Default Expiration (minutes)</label>
+                            <input type="number" id="defaultExpiration" class="form-control" 
+                                   @bind="@_defaultExpirationMinutes" min="1" disabled="@(!_isEnabled)" />
+                        </div>
+                    </div>
+                </div>
 
                 @if (_cacheType == "Redis")
                 {
-                    <MudCard Elevation="0" Outlined="true" Class="mb-4">
-                        <MudCardHeader>
-                            <MudText Typo="Typo.h6">Redis Settings</MudText>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudTextField @bind-Value="_redisConnectionString" Label="Connection String" 
-                                         Placeholder="localhost:6379" Disabled="@(!_isEnabled)"
-                                         Variant="Variant.Outlined" Class="mb-4" />
-                            <MudTextField @bind-Value="_redisInstanceName" Label="Redis Instance Name" 
-                                         Placeholder="conduitllm-cache" Disabled="@(!_isEnabled)"
-                                         Variant="Variant.Outlined" Class="mb-4" />
-                        </MudCardContent>
-                    </MudCard>
+                    <div class="card card-outlined mb-4">
+                        <div class="card-header">
+                            <h6 class="heading-6">Redis Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-4">
+                                <label for="redisConnectionString">Connection String</label>
+                                <input type="text" id="redisConnectionString" class="form-control" 
+                                       @bind="@_redisConnectionString" placeholder="localhost:6379" 
+                                       disabled="@(!_isEnabled)" />
+                            </div>
+                            <div class="form-group mb-4">
+                                <label for="redisInstanceName">Redis Instance Name</label>
+                                <input type="text" id="redisInstanceName" class="form-control" 
+                                       @bind="@_redisInstanceName" placeholder="conduitllm-cache" 
+                                       disabled="@(!_isEnabled)" />
+                            </div>
+                        </div>
+                    </div>
                 }
 
-                <MudExpansionPanels disableGutters="true" Elevation="0" Class="mb-4">
-                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="false">
-                        <TitleContent>
-                            <MudText Typo="Typo.body1">Cache Key Settings</MudText>
-                        </TitleContent>
-                        <ChildContent>
-                            <MudGrid>
-                                <MudItem xs="12" md="6">
-                                    <MudCheckBox T="bool" @bind-Checked="_includeModelInKey" Label="Include Model" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-Checked="_includeProviderInKey" Label="Include Provider" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-Checked="_includeApiKeyInKey" Label="Include API Key" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                </MudItem>
-                                <MudItem xs="12" md="6">
-                                    <MudCheckBox T="bool" @bind-Checked="_includeTemperatureInKey" Label="Include Temperature" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-Checked="_includeMaxTokensInKey" Label="Include Max Tokens" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                    <MudCheckBox T="bool" @bind-Checked="_includeTopPInKey" Label="Include Top P" 
-                                                Disabled="@(!_isEnabled)" Color="Color.Primary" Class="mb-2" />
-                                </MudItem>
-                            </MudGrid>
-                        </ChildContent>
-                    </MudExpansionPanel>
+                <div class="accordion mb-4">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#cacheKeySettings" 
+                                    disabled="@(!_isEnabled)">
+                                Cache Key Settings
+                            </button>
+                        </h2>
+                        <div id="cacheKeySettings" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-12 col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeModelInKey" 
+                                                   @bind="@_includeModelInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeModelInKey">Include Model</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeProviderInKey" 
+                                                   @bind="@_includeProviderInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeProviderInKey">Include Provider</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeApiKeyInKey" 
+                                                   @bind="@_includeApiKeyInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeApiKeyInKey">Include API Key</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeTemperatureInKey" 
+                                                   @bind="@_includeTemperatureInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeTemperatureInKey">Include Temperature</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeMaxTokensInKey" 
+                                                   @bind="@_includeMaxTokensInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeMaxTokensInKey">Include Max Tokens</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="includeTopPInKey" 
+                                                   @bind="@_includeTopPInKey" disabled="@(!_isEnabled)" />
+                                            <label class="form-check-label" for="includeTopPInKey">Include Top P</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <MudExpansionPanel Disabled="@(!_isEnabled)" isInitiallyExpanded="false">
-                        <TitleContent>
-                            <MudText Typo="Typo.body1">Model-Specific Rules</MudText>
-                        </TitleContent>
-                        <ChildContent>
-                            @foreach (var rule in _modelRules)
-                            {
-                                <MudCard Elevation="0" Outlined="true" Class="mb-2">
-                                    <MudCardContent>
-                                        <MudGrid>
-                                            <MudItem xs="12" md="5">
-                                                <MudTextField @bind-Value="rule.ModelNamePattern" Label="Model Pattern" 
-                                                             Disabled="@(!_isEnabled)" Variant="Variant.Outlined" Class="mb-2" />
-                                            </MudItem>
-                                            <MudItem xs="12" md="3">
-                                                <MudSelect @bind-Value="rule.CacheBehavior" Label="Behavior" 
-                                                          Disabled="@(!_isEnabled)" Variant="Variant.Outlined" Class="mb-2">
-                                                    <MudSelectItem Value="@CacheBehavior.Default">Default</MudSelectItem>
-                                                    <MudSelectItem Value="@CacheBehavior.Always">Always</MudSelectItem>
-                                                    <MudSelectItem Value="@CacheBehavior.Never">Never</MudSelectItem>
-                                                </MudSelect>
-                                            </MudItem>
-                                            <MudItem xs="12" md="3">
-                                                <MudNumericField @bind-Value="rule.ExpirationMinutes" Label="Expiration (min)" 
-                                                               Disabled="@(!_isEnabled || rule.CacheBehavior == CacheBehavior.Never)" 
-                                                               Variant="Variant.Outlined" Class="mb-2" />
-                                            </MudItem>
-                                            <MudItem xs="12" md="1" Class="d-flex align-center">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
-                                                             Size="Size.Small" OnClick="@(() => RemoveModelRule(rule))" 
-                                                             Disabled="@(!_isEnabled)" />
-                                            </MudItem>
-                                        </MudGrid>
-                                    </MudCardContent>
-                                </MudCard>
-                            }
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddModelRule" 
-                                      StartIcon="@Icons.Material.Filled.Add" Disabled="@(!_isEnabled)" Class="mt-2">
-                                Add Model Rule
-                            </MudButton>
-                        </ChildContent>
-                    </MudExpansionPanel>
-                </MudExpansionPanels>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#modelRules" 
+                                    disabled="@(!_isEnabled)">
+                                Model-Specific Rules
+                            </button>
+                        </h2>
+                        <div id="modelRules" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                @foreach (var rule in _modelRules)
+                                {
+                                    <div class="card card-outlined mb-2">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-12 col-md-5">
+                                                    <div class="form-group mb-2">
+                                                        <label>Model Pattern</label>
+                                                        <input type="text" class="form-control" 
+                                                               @bind="@rule.ModelNamePattern" disabled="@(!_isEnabled)" />
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-md-3">
+                                                    <div class="form-group mb-2">
+                                                        <label>Behavior</label>
+                                                        <select class="form-select" @bind="@rule.CacheBehavior" disabled="@(!_isEnabled)">
+                                                            <option value="@CacheBehavior.Default">Default</option>
+                                                            <option value="@CacheBehavior.Always">Always</option>
+                                                            <option value="@CacheBehavior.Never">Never</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-md-3">
+                                                    <div class="form-group mb-2">
+                                                        <label>Expiration (min)</label>
+                                                        <input type="number" class="form-control" 
+                                                               @bind="@rule.ExpirationMinutes" 
+                                                               disabled="@(!_isEnabled || rule.CacheBehavior == CacheBehavior.Never)" />
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-md-1 d-flex align-items-center">
+                                                    <button type="button" class="btn btn-danger btn-sm" 
+                                                            @onclick="@(() => RemoveModelRule(rule))" 
+                                                            disabled="@(!_isEnabled)">
+                                                        <i class="fa fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                <button type="button" class="btn btn-outline-primary mt-2" 
+                                        @onclick="AddModelRule" disabled="@(!_isEnabled)">
+                                    <i class="fa fa-plus me-2"></i> Add Model Rule
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                <MudGrid>
-                    <MudItem xs="6" Class="d-flex">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveConfiguration" 
-                                 StartIcon="@Icons.Material.Filled.Save" Disabled="@(!_isInitialized)">
-                            Save Changes
-                        </MudButton>
-                    </MudItem>
-                    <MudItem xs="6" Class="d-flex justify-end">
-                        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ClearCache" 
-                                 StartIcon="@Icons.Material.Filled.Delete" Disabled="@(!_isEnabled)">
-                            Clear Cache
-                        </MudButton>
-                    </MudItem>
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
+                <div class="row">
+                    <div class="col-6 d-flex">
+                        <button type="button" class="btn btn-primary" 
+                                @onclick="SaveConfiguration" disabled="@(!_isInitialized)">
+                            <i class="fa fa-save me-2"></i> Save Changes
+                        </button>
+                    </div>
+                    <div class="col-6 d-flex justify-content-end">
+                        <button type="button" class="btn btn-danger" 
+                                @onclick="ClearCache" disabled="@(!_isEnabled)">
+                            <i class="fa fa-trash me-2"></i> Clear Cache
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <MudItem xs="12" md="4">
-        <MudCard Elevation="2" Class="mb-4">
-            <MudCardHeader>
-                <MudText Typo="Typo.h6">Cache Statistics</MudText>
-            </MudCardHeader>
-            <MudCardContent>
+    <div class="col-12 col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="heading-6">Cache Statistics</h6>
+            </div>
+            <div class="card-body">
                 @if (_isLoading)
                 {
-                    <div class="d-flex justify-center my-4">
-                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    <div class="d-flex justify-content-center my-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
                 }
                 else
                 {
-                    <MudList T="string" clickable="false" Dense="true">
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Status:</MudText>
-                                <MudChip T="string" Color="@(_cacheStats.IsEnabled ? Color.Success : Color.Default)" 
-                                        Size="Size.Small">
-                                    @(_cacheStats.IsEnabled ? "Enabled" : "Disabled")
-                                </MudChip>
-                            </div>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Type:</MudText>
-                                <MudText>@_cacheStats.CacheType</MudText>
-                            </div>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Total Items:</MudText>
-                                <MudText>@_cacheStats.TotalItems</MudText>
-                            </div>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Hit Rate:</MudText>
-                                <MudText>@(_cacheStats.HitRate.ToString("P2"))</MudText>
-                            </div>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Memory Usage:</MudText>
-                                <MudText>@FormatBytes(_cacheStats.MemoryUsageBytes)</MudText>
-                            </div>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <div class="d-flex justify-space-between">
-                                <MudText>Avg. Response Time:</MudText>
-                                <MudText>@_cacheStats.AvgResponseTime.ToString("F2") ms</MudText>
-                            </div>
-                        </MudListItem>
-                    </MudList>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Status:</span>
+                            <span class="badge @(_cacheStats.IsEnabled ? "bg-success" : "bg-secondary")">
+                                @(_cacheStats.IsEnabled ? "Enabled" : "Disabled")
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Type:</span>
+                            <span>@_cacheStats.CacheType</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Total Items:</span>
+                            <span>@_cacheStats.TotalItems</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Hit Rate:</span>
+                            <span>@(_cacheStats.HitRate.ToString("P2"))</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Memory Usage:</span>
+                            <span>@FormatBytes(_cacheStats.MemoryUsageBytes)</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Avg. Response Time:</span>
+                            <span>@_cacheStats.AvgResponseTime.ToString("F2") ms</span>
+                        </li>
+                    </ul>
                     
-                    <div class="d-flex justify-end mt-3">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadCacheStatisticsAsync" 
-                                 StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small">
-                            Refresh
-                        </MudButton>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" 
+                                @onclick="LoadCacheStatisticsAsync">
+                            <i class="fa fa-refresh me-2"></i> Refresh
+                        </button>
                     </div>
                 }
-            </MudCardContent>
-        </MudCard>
+            </div>
+        </div>
 
-        <MudCard Elevation="2" Class="mb-4">
-            <MudCardHeader>
-                <MudText Typo="Typo.h6">Model-Specific Statistics</MudText>
-            </MudCardHeader>
-            <MudCardContent>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="heading-6">Model-Specific Statistics</h6>
+            </div>
+            <div class="card-body">
                 @if (_modelStats.Count == 0)
                 {
-                    <MudAlert Severity="Severity.Info" Class="my-2">
+                    <div class="alert alert-info my-2">
                         No model-specific statistics available.
-                    </MudAlert>
+                    </div>
                 }
                 else
                 {
-                    <MudTable Items="_modelStats" Dense="true" Hover="true" Bordered="false" Striped="true">
-                        <HeaderContent>
-                            <MudTh>Model</MudTh>
-                            <MudTh>Hits</MudTh>
-                            <MudTh>Misses</MudTh>
-                            <MudTh>Hit Rate</MudTh>
-                            <MudTh>Avg Time</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Model">@context.ModelName</MudTd>
-                            <MudTd DataLabel="Hits">@context.Hits</MudTd>
-                            <MudTd DataLabel="Misses">@context.Misses</MudTd>
-                            <MudTd DataLabel="Hit Rate">@context.HitRate.ToString("P2")</MudTd>
-                            <MudTd DataLabel="Avg Time">@context.AvgResponseTime.ToString("F2") ms</MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Hits</th>
+                                    <th>Misses</th>
+                                    <th>Hit Rate</th>
+                                    <th>Avg Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var stat in _modelStats)
+                                {
+                                    <tr>
+                                        <td>@stat.ModelName</td>
+                                        <td>@stat.Hits</td>
+                                        <td>@stat.Misses</td>
+                                        <td>@stat.HitRate.ToString("P2")</td>
+                                        <td>@stat.AvgResponseTime.ToString("F2") ms</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-</MudGrid>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private readonly List<CacheTypeOption> _cacheTypeOptions = new()

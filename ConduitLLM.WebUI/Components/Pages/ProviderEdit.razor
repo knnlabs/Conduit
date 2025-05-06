@@ -12,15 +12,19 @@
 @inject ILogger<ProviderEdit> _logger
 @rendermode InteractiveServer
 
-<MudText Typo="Typo.h3" Class="mb-4">@(Id.HasValue ? "Edit Provider" : "Add Provider")</MudText>
+<h3 class="mb-4">@(Id.HasValue ? "Edit Provider" : "Add Provider")</h3>
 
 @if (isLoading)
 {
-    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 }
 else if (provider == null)
 {
-    <MudAlert Severity="Severity.Error">Provider not found or error loading.</MudAlert>
+    <div class="alert alert-danger">Provider not found or error loading.</div>
 }
 else
 {
@@ -32,188 +36,181 @@ else
         @* Display general errors above the form *@
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+            <div class="alert alert-danger mb-4">@errorMessage</div>
         }
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudPaper Elevation="2" Class="pa-4 mb-4">
-                    <MudSelect T="string" 
-                              Label="Provider Name"
-                              @bind-Value="provider.ProviderName"
-                              Disabled="@Id.HasValue" 
-                              Variant="Variant.Outlined"
-                              Class="mb-4"
-                              For="@(() => provider.ProviderName)">
-                        <MudSelectItem Value="@("")">-- Select Provider --</MudSelectItem>
-                        @foreach (var name in _supportedProviders)
-                        {
-                            <MudSelectItem Value="@name">@name</MudSelectItem>
-                        }
-                    </MudSelect>
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div class="card p-4 mb-4">
+                    <div class="mb-4">
+                        <label for="providerName" class="form-label">Provider Name</label>
+                        <select id="providerName" class="form-select" 
+                                @bind="provider.ProviderName" 
+                                disabled="@Id.HasValue">
+                            <option value="">-- Select Provider --</option>
+                            @foreach (var name in _supportedProviders)
+                            {
+                                <option value="@name">@name</option>
+                            }
+                        </select>
+                        <ValidationMessage For="@(() => provider.ProviderName)" />
+                    </div>
+                    
                     @if (Id.HasValue)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">Provider name cannot be changed after creation.</MudText>
+                        <small class="text-secondary mb-4">Provider name cannot be changed after creation.</small>
                     }
 
                     @* Conditionally hide BaseUrl for OpenRouter *@
                     @if (provider.ProviderName != "OpenRouter")
                     {
-                        <MudTextField 
-                            T="string" 
-                            @bind-Value="provider.BaseUrl" 
-                            Label="API Base URL (Optional, leave empty for default)" 
-                            Placeholder="https://api.example.com" 
-                            Variant="Variant.Outlined"
-                            For="@(() => provider.BaseUrl)"
-                            Class="mb-4" />
+                        <div class="mb-4">
+                            <label for="baseUrl" class="form-label">API Base URL (Optional, leave empty for default)</label>
+                            <input type="text" class="form-control" id="baseUrl" 
+                                   @bind="provider.BaseUrl" 
+                                   placeholder="https://api.example.com" />
+                            <ValidationMessage For="@(() => provider.BaseUrl)" />
+                        </div>
                     }
 
-                    <MudTextField 
-                        T="string" 
-                        @bind-Value="provider.ApiVersion" 
-                        Label="API Version (Optional)" 
-                        Placeholder="v1" 
-                        Variant="Variant.Outlined"
-                        For="@(() => provider.ApiVersion)"
-                        Class="mb-4" />
+                    <div class="mb-4">
+                        <label for="apiVersion" class="form-label">API Version (Optional)</label>
+                        <input type="text" class="form-control" id="apiVersion" 
+                               @bind="provider.ApiVersion" 
+                               placeholder="v1" />
+                        <ValidationMessage For="@(() => provider.ApiVersion)" />
+                    </div>
 
-                    <MudTextField 
-                        T="string" 
-                        @bind-Value="provider.ApiKey" 
-                        Label="API Key" 
-                        InputType="InputType.Password"
-                        Placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")"
-                        Variant="Variant.Outlined"
-                        For="@(() => provider.ApiKey)"
-                        HelperText="Existing keys are not displayed for security reasons. Leave empty to keep the current key."
-                        Class="mb-4" />
+                    <div class="mb-4">
+                        <label for="apiKey" class="form-label">API Key</label>
+                        <input type="password" class="form-control" id="apiKey" 
+                               @bind="provider.ApiKey" 
+                               placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")" />
+                        <div class="form-text">Existing keys are not displayed for security reasons. Leave empty to keep the current key.</div>
+                        <ValidationMessage For="@(() => provider.ApiKey)" />
+                    </div>
                 
                     @if (!string.IsNullOrEmpty(provider.ProviderName) && 
                           (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
                            ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
                     {
-                        <MudPaper Elevation="0" Class="pa-4 mb-4 mud-background-gray">
-                            <MudText Typo="Typo.h6" Class="mb-3">@provider.ProviderName Resources</MudText>
-                            <MudStack>
+                        <div class="p-4 mb-4 bg-light">
+                            <h6 class="mb-3">@provider.ProviderName Resources</h6>
+                            <div class="d-flex flex-column">
                                 @if (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
                                 {
-                                    <MudLink Href="@ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" Target="_blank" Class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2" Size="Size.Small" />
+                                    <a href="@ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center mb-2">
+                                        <i class="fa fa-key me-2"></i>
                                         Get API Key
-                                    </MudLink>
+                                    </a>
                                 }
                                 @if (ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
                                 {
-                                    <MudLink Href="@ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" Target="_blank" Class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Class="mr-2" Size="Size.Small" />
+                                    <a href="@ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center">
+                                        <i class="fa fa-book me-2"></i>
                                         View Documentation
-                                    </MudLink>
+                                    </a>
                                 }
-                            </MudStack>
-                        </MudPaper>
+                            </div>
+                        </div>
                     }
-                </MudPaper>
-            </MudItem>
+                </div>
+            </div>
 
-            <MudItem xs="12" md="6">
+            <div class="col-12 col-md-6">
                 @if (!string.IsNullOrEmpty(provider.ProviderName) && !string.IsNullOrEmpty(provider.ApiKey))
                 {
-                    <MudPaper Elevation="2" Class="pa-4 mb-4">
-                        <MudText Typo="Typo.h6" Class="mb-4">Connection Test</MudText>
+                    <div class="card p-4 mb-4">
+                        <h6 class="mb-4">Connection Test</h6>
                         
                         @if (showConnectionStatus)
                         {
-                            <MudAlert Severity="@(connectionStatus?.IsOnline ?? false ? Severity.Success : Severity.Error)" 
-                                    Class="mb-3" 
-                                    Icon="@(connectionStatus?.IsOnline ?? false ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)">
+                            <div class="alert @(connectionStatus?.IsOnline ?? false ? "alert-success" : "alert-danger") mb-3">
                                 @if (connectionStatus?.IsOnline ?? false)
                                 {
-                                    <MudText Typo="Typo.body1"><strong>Connected successfully!</strong></MudText>
+                                    <p class="fw-bold"><i class="fa fa-check-circle me-2"></i>Connected successfully!</p>
                                 }
                                 else
                                 {
                                     <div>
-                                        <MudText Typo="Typo.body1"><strong>Connection failed</strong></MudText>
-                                        <MudText Typo="Typo.body2" Class="mt-2">@connectionStatusMessage</MudText>
+                                        <p class="fw-bold"><i class="fa fa-exclamation-circle me-2"></i>Connection failed</p>
+                                        <p class="mt-2">@connectionStatusMessage</p>
                                     </div>
                                 }
-                            </MudAlert>
+                            </div>
                             
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                            <small class="text-secondary mb-4 d-block">
                                 Last tested: @(connectionStatus != null ? connectionStatus.LastCheckedUtc.ToLocalTime().ToString("g") : "")
-                            </MudText>
+                            </small>
                         }
                         
-                        <MudButton 
-                            Variant="Variant.Outlined" 
-                            Color="Color.Primary" 
-                            OnClick="TestConnection" 
-                            Disabled="@isTestingConnection"
-                            StartIcon="@(isTestingConnection ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Bolt)"
-                            Class="mb-2">
+                        <button 
+                            type="button"
+                            class="btn btn-outline-primary mb-2"
+                            @onclick="TestConnection" 
+                            disabled="@isTestingConnection">
                             @if (isTestingConnection)
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                 <span>Testing...</span>
                             }
                             else
                             {
+                                <i class="fa fa-bolt me-2"></i>
                                 <span>Test Connection</span>
                             }
-                        </MudButton>
+                        </button>
                         
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        <small class="text-secondary">
                             Verifies your API key and connection settings
-                        </MudText>
-                    </MudPaper>
+                        </small>
+                    </div>
                 }
-            </MudItem>
-        </MudGrid>
+            </div>
+        </div>
 
-        <MudPaper Elevation="0" Class="d-flex gap-2 mt-6">
-            <MudButton 
-                ButtonType="ButtonType.Submit" 
-                Variant="Variant.Filled" 
-                Color="Color.Primary" 
-                Disabled="@isSaving"
-                StartIcon="@Icons.Material.Filled.Save">
+        <div class="d-flex gap-2 mt-4">
+            <button 
+                type="submit" 
+                class="btn btn-primary"
+                disabled="@isSaving">
                 @if (isSaving)
                 {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                     <span>Saving...</span>
                 }
                 else
                 {
+                    <i class="fa fa-save me-2"></i>
                     <span>Save Provider</span>
                 }
-            </MudButton>
+            </button>
             
-            <MudButton 
-                Variant="Variant.Outlined" 
-                Color="Color.Secondary" 
-                OnClick="Cancel" 
-                Disabled="@isSaving">
+            <button 
+                type="button"
+                class="btn btn-outline-secondary"
+                @onclick="Cancel" 
+                disabled="@isSaving">
                 Cancel
-            </MudButton>
+            </button>
             
-            <MudButton 
-                Variant="Variant.Outlined" 
-                Color="Color.Primary" 
-                OnClick="TestConnection" 
-                Disabled="@(isTestingConnection || isSaving)"
-                StartIcon="@Icons.Material.Filled.Bolt">
+            <button 
+                type="button"
+                class="btn btn-outline-primary"
+                @onclick="TestConnection" 
+                disabled="@(isTestingConnection || isSaving)">
                 @if (isTestingConnection)
                 {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                     <span>Testing...</span>
                 }
                 else
                 {
+                    <i class="fa fa-bolt me-2"></i>
                     <span>Test Connection</span>
                 }
-            </MudButton>
-        </MudPaper>
+            </button>
+        </div>
     </EditForm>
 }
 

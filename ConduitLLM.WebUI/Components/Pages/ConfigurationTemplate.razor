@@ -21,345 +21,351 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Configuration Management</MudText>
+<div class="container-fluid mt-4">
+    <h2 class="mb-4">Configuration Management</h2>
 
     @if (!string.IsNullOrEmpty(deleteErrorMessage))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+        <div class="alert alert-danger mb-4">
             @deleteErrorMessage
-        </MudAlert>
+        </div>
     }
 
-    <MudCard Class="mb-6" Elevation="2">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5">LLM Providers</MudText>
-            </CardHeaderContent>
-            <CardHeaderActions>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                          StartIcon="@Icons.Material.Filled.Add" 
-                          OnClick="AddProvider" Size="Size.Small">
-                    Add Provider
-                </MudButton>
-                <MudMenu Icon="@Icons.Material.Filled.AutoFixHigh" Color="Color.Secondary" 
-                        AnchorOrigin="Origin.BottomRight" 
-                        TransformOrigin="Origin.TopRight" Dense="true" Class="ml-2">
-                    <MudText Typo="Typo.subtitle2" Class="px-2 py-1">Quick Setup</MudText>
-                    <MudDivider Class="mb-1" />
-                    @foreach (var provider in _supportedProviders)
-                    {
-                        <MudMenuItem OnClick="() => LaunchGuidedSetup(provider)">@provider</MudMenuItem>
-                    }
-                </MudMenu>
-            </CardHeaderActions>
-        </MudCardHeader>
+    <div class="card mb-5 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">LLM Providers</h5>
+            <div class="d-flex">
+                <button class="btn btn-primary btn-sm me-2" @onclick="AddProvider">
+                    <i class="fa fa-plus me-1"></i> Add Provider
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="quickSetupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-magic me-1"></i> Quick Setup
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickSetupDropdown">
+                        <li><span class="dropdown-header">Quick Setup</span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        @foreach (var provider in _supportedProviders)
+                        {
+                            <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">@provider</button></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
         
-        <MudCardContent>
+        <div class="card-body">
             @if (providerCredentials == null)
             {
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             }
             else if (!providerCredentials.Any())
             {
-                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Info" Class="mb-4">
+                <div class="alert alert-info border mb-4">
+                    <i class="fa fa-info-circle me-2"></i>
                     No providers configured yet. Add an LLM provider to get started.
-                </MudAlert>
+                </div>
 
-                <MudGrid>
+                <div class="row">
                     @foreach (var provider in _supportedProviders)
                     {
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudCard Elevation="1" Class="h-100">
-                                <MudCardHeader>
-                                    <CardHeaderContent>
-                                        <MudText Typo="Typo.h6">@provider</MudText>
-                                    </CardHeaderContent>
-                                </MudCardHeader>
-                                <MudCardContent>
-                                    <MudText Typo="Typo.body2" Class="flex-grow-1 my-4">
+                        <div class="col-12 col-sm-6 col-md-4 mb-3">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header">
+                                    <h6 class="mb-0">@provider</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="flex-grow-1 my-4 small">
                                         @GetProviderDescription(provider)
-                                    </MudText>
-                                </MudCardContent>
-                                <MudCardActions>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                                             FullWidth="true" OnClick="() => LaunchGuidedSetup(provider)"
-                                             StartIcon="@Icons.Material.Filled.AutoFixHigh">
-                                        Setup @provider
-                                    </MudButton>
-                                </MudCardActions>
-                            </MudCard>
-                        </MudItem>
+                                    </p>
+                                </div>
+                                <div class="card-footer text-center">
+                                    <button class="btn btn-primary w-100" @onclick="() => LaunchGuidedSetup(provider)">
+                                        <i class="fa fa-magic me-1"></i> Setup @provider
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     }
-                </MudGrid>
+                </div>
             }
             else
             {
-                <MudTable Items="@providerCredentials" Hover="true" Bordered="false" Striped="false" Elevation="0">
-                    <HeaderContent>
-                        <MudTh>Provider</MudTh>
-                        <MudTh>API Key</MudTh>
-                        <MudTh>Base URL</MudTh>
-                        <MudTh>Actions</MudTh>
-                    </HeaderContent>
-                    <RowTemplate Context="cred">
-                        <MudTd DataLabel="Provider">@cred.ProviderName</MudTd>
-                        <MudTd DataLabel="API Key">
-                            <MudText Color="Color.Secondary">@(string.IsNullOrEmpty(cred.ApiKey) ? "Not set" : "••••••••")</MudText>
-                        </MudTd>
-                        <MudTd DataLabel="Base URL">@(string.IsNullOrEmpty(cred.BaseUrl) ? "Default" : cred.BaseUrl)</MudTd>
-                        <MudTd>
-                            <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                             Color="Color.Primary" Size="Size.Small"
-                                             OnClick="() => EditProvider(cred)" 
-                                             title="Edit Provider" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                             Color="Color.Error" Size="Size.Small"
-                                             OnClick="() => DeleteProvider(cred)" 
-                                             title="Delete Provider" />
-                            </MudButtonGroup>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>API Key</th>
+                                <th>Base URL</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cred in providerCredentials)
+                            {
+                                <tr>
+                                    <td>@cred.ProviderName</td>
+                                    <td class="text-secondary">@(string.IsNullOrEmpty(cred.ApiKey) ? "Not set" : "••••••••")</td>
+                                    <td>@(string.IsNullOrEmpty(cred.BaseUrl) ? "Default" : cred.BaseUrl)</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" title="Edit Provider" @onclick="() => EditProvider(cred)">
+                                                <i class="fa fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" title="Delete Provider" @onclick="() => DeleteProvider(cred)">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
-        </MudCardContent>
-    </MudCard>
+        </div>
+    </div>
 
-    <MudDivider Class="my-6" />
+    <hr class="my-5" />
 
     <!-- Model Mappings Section -->
-    <MudCard Class="mb-6" Elevation="2">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5">Model Mappings</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
+    <div class="card mb-5 shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Model Mappings</h5>
+        </div>
         
-        <MudCardContent>
-            <MudText Typo="Typo.body1" Class="mb-4">
+        <div class="card-body">
+            <p class="mb-4">
                 Map user-friendly model names to specific provider models. For example, you can map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
-            </MudText>
+            </p>
             
             @if (modelMappings == null)
             {
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             }
             else if (!modelMappings.Any())
             {
-                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                <div class="alert alert-info border mb-4">
+                    <i class="fa fa-info-circle me-2"></i>
                     No model mappings defined yet. Add one below.
-                </MudAlert>
+                </div>
             }
             else
             {
-                <MudTable Items="@modelMappings" Hover="true" Bordered="false" Striped="true" Elevation="0" Class="mb-4">
-                    <HeaderContent>
-                        <MudTh>Model Alias</MudTh>
-                        <MudTh>Provider</MudTh>
-                        <MudTh>Provider Model</MudTh>
-                        <MudTh>Actions</MudTh>
-                    </HeaderContent>
-                    <RowTemplate Context="mapping">
-                        <MudTd DataLabel="Model Alias">@mapping.ModelAlias</MudTd>
-                        <MudTd DataLabel="Provider">@mapping.ProviderCredential.ProviderName</MudTd>
-                        <MudTd DataLabel="Provider Model">@mapping.ProviderModelName</MudTd>
-                        <MudTd>
-                            <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                             Color="Color.Primary" Size="Size.Small"
-                                             OnClick="@(() => EditMapping(mapping))" 
-                                             title="Edit Mapping" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                             Color="Color.Error" Size="Size.Small"
-                                             OnClick="@(() => DeleteMapping(mapping))" 
-                                             title="Delete Mapping" />
-                            </MudButtonGroup>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <div class="table-responsive mb-4">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Model Alias</th>
+                                <th>Provider</th>
+                                <th>Provider Model</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var mapping in modelMappings)
+                            {
+                                <tr>
+                                    <td>@mapping.ModelAlias</td>
+                                    <td>@mapping.ProviderCredential.ProviderName</td>
+                                    <td>@mapping.ProviderModelName</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" title="Edit Mapping" @onclick="@(() => EditMapping(mapping))">
+                                                <i class="fa fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" title="Delete Mapping" @onclick="@(() => DeleteMapping(mapping))">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
             
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                     StartIcon="@Icons.Material.Filled.Add" 
-                     OnClick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
-                Add Model Mapping
-            </MudButton>
-        </MudCardContent>
-    </MudCard>
+            <button class="btn btn-primary" 
+                 @onclick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
+                <i class="fa fa-plus me-1"></i> Add Model Mapping
+            </button>
+        </div>
+    </div>
 
     <!-- Global Settings Section Template -->
-    <MudCard Class="mb-6" Elevation="2">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5">Global Settings</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <MudTextField T="string" @bind-Value="proxyUrl" Label="Proxy Base URL" 
-                        helperText="Base URL for the proxy service (e.g., http://localhost:5000)"
-                        Variant="Variant.Outlined" Class="mb-3" />
+    <div class="card mb-5 shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Global Settings</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="proxyUrl" class="form-label">Proxy Base URL</label>
+                <input type="text" class="form-control" id="proxyUrl" @bind="proxyUrl" 
+                       placeholder="http://localhost:5000" />
+                <div class="form-text">Base URL for the proxy service (e.g., http://localhost:5000)</div>
+            </div>
             
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                     OnClick="SaveProxyUrl" Class="mb-3">
+            <button class="btn btn-primary mb-3" @onclick="SaveProxyUrl">
                 Save Proxy URL
-            </MudButton>
-        </MudCardContent>
-    </MudCard>
+            </button>
+        </div>
+    </div>
 
     <!-- HTTP Settings Section Template -->
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="2" Class="mb-6">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">HTTP Retry Settings</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudNumericField T="int" @bind-Value="httpRetryOptions.MaxRetries"
-                                    Label="Maximum Retry Attempts"
-                                    Min="0" Max="10"
-                                    Variant="Variant.Outlined"
-                                    helperText="Number of times to retry failed requests" 
-                                    Class="mb-4" />
-                                    
-                    <MudNumericField T="int" @bind-Value="httpRetryOptions.InitialDelaySeconds"
-                                    Label="Initial Delay (seconds)"
-                                    Min="1" Max="60"
-                                    Variant="Variant.Outlined"
-                                    helperText="Initial delay before first retry attempt"
-                                    Class="mb-4" />
-                                    
-                    <MudNumericField T="int" @bind-Value="httpRetryOptions.MaxDelaySeconds"
-                                    Label="Maximum Delay (seconds)"
-                                    Min="1" Max="300"
-                                    Variant="Variant.Outlined"
-                                    helperText="Maximum delay cap for any retry attempt"
-                                    Class="mb-4" />
-                                    
-                    <MudCheckBox T="bool" 
-                              @bind-checked="httpRetryOptions.EnableRetryLogging"
-                              Label="Enable Retry Logging"
-                              Class="mb-4" />
-                               
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                             OnClick="SaveHttpRetryOptionsAsync"
-                             StartIcon="@Icons.Material.Filled.Save"
-                             Class="mb-2">
-                        Save Retry Settings
-                    </MudButton>
+    <div class="row">
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header">
+                    <h6 class="mb-0">HTTP Retry Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="maxRetries" class="form-label">Maximum Retry Attempts</label>
+                        <input type="number" class="form-control" id="maxRetries" @bind="httpRetryOptions.MaxRetries" 
+                               min="0" max="10" />
+                        <div class="form-text">Number of times to retry failed requests</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="initialDelay" class="form-label">Initial Delay (seconds)</label>
+                        <input type="number" class="form-control" id="initialDelay" @bind="httpRetryOptions.InitialDelaySeconds" 
+                               min="1" max="60" />
+                        <div class="form-text">Initial delay before first retry attempt</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="maxDelay" class="form-label">Maximum Delay (seconds)</label>
+                        <input type="number" class="form-control" id="maxDelay" @bind="httpRetryOptions.MaxDelaySeconds" 
+                               min="1" max="300" />
+                        <div class="form-text">Maximum delay cap for any retry attempt</div>
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="enableRetryLogging" 
+                               @bind="httpRetryOptions.EnableRetryLogging" />
+                        <label class="form-check-label" for="enableRetryLogging">
+                            Enable Retry Logging
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary mb-2" @onclick="SaveHttpRetryOptionsAsync">
+                        <i class="fa fa-save me-1"></i> Save Retry Settings
+                    </button>
                     
                     @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
                     {
-                        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mt-3">
+                        <div class="alert alert-success mt-3">
                             @httpRetryOptionsSaveMessage
-                        </MudAlert>
+                        </div>
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="2" Class="mb-6">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">HTTP Timeout Settings</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudNumericField T="int" @bind-Value="httpTimeoutOptions.TimeoutSeconds"
-                                    Label="Timeout Duration (seconds)"
-                                    Min="1" Max="600"
-                                    Variant="Variant.Outlined"
-                                    helperText="Maximum time to wait for responses from LLM providers"
-                                    Class="mb-4" />
-                                    
-                    <MudCheckBox T="bool" 
-                              @bind-checked="httpTimeoutOptions.EnableTimeoutLogging"
-                              Label="Enable Timeout Logging"
-                              helperText="Log timeout events to the console"
-                              Class="mb-4" />
-                               
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                             OnClick="SaveHttpTimeoutOptionsAsync"
-                             StartIcon="@Icons.Material.Filled.Save"
-                             Class="mb-2">
-                        Save Timeout Settings
-                    </MudButton>
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header">
+                    <h6 class="mb-0">HTTP Timeout Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="timeoutSeconds" class="form-label">Timeout Duration (seconds)</label>
+                        <input type="number" class="form-control" id="timeoutSeconds" @bind="httpTimeoutOptions.TimeoutSeconds" 
+                               min="1" max="600" />
+                        <div class="form-text">Maximum time to wait for responses from LLM providers</div>
+                    </div>
+                    
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="enableTimeoutLogging" 
+                               @bind="httpTimeoutOptions.EnableTimeoutLogging" />
+                        <label class="form-check-label" for="enableTimeoutLogging">
+                            Enable Timeout Logging
+                        </label>
+                        <div class="form-text">Log timeout events to the console</div>
+                    </div>
+                    
+                    <button class="btn btn-primary mb-2" @onclick="SaveHttpTimeoutOptionsAsync">
+                        <i class="fa fa-save me-1"></i> Save Timeout Settings
+                    </button>
                     
                     @if (!string.IsNullOrEmpty(httpTimeoutOptionsSaveMessage))
                     {
-                        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mt-3">
+                        <div class="alert alert-success mt-3">
                             @httpTimeoutOptionsSaveMessage
-                        </MudAlert>
+                        </div>
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Help and Information Cards -->
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1" Class="mb-6">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">About HTTP Client Settings</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body2" Class="mb-3">
+    <div class="row">
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header">
+                    <h6 class="mb-0">About HTTP Client Settings</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-3">
                         These settings control how ConduitLLM handles retry logic when communicating with LLM provider APIs.
-                    </MudText>
-                    <MudList T="string" Dense="true">
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Timer" Value="@("initialdelay")">
-                            <MudText>Initial Delay</MudText>
-                        </MudListItem>
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Repeat" Value="@("maxretries")">
-                            <MudText>Maximum Retry Attempts</MudText>
-                        </MudListItem>
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.AccessTime" Value="@("maxdelay")">
-                            <MudText>Maximum Delay</MudText>
-                        </MudListItem>
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.ErrorOutline" Value="@("retrylogging")">
-                            <MudText>Retry Logging</MudText>
-                        </MudListItem>
-                    </MudList>
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                    </p>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-clock-o me-2"></i> Initial Delay
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-repeat me-2"></i> Maximum Retry Attempts
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-clock me-2"></i> Maximum Delay
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-exclamation-circle me-2"></i> Retry Logging
+                        </li>
+                    </ul>
+                    <div class="alert alert-info border mt-3">
                         These settings apply to all provider clients and provide resilience against temporary API outages and rate limiting.
-                    </MudAlert>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1" Class="mb-6">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">About HTTP Timeout Settings</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body2" Class="mb-3">
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header">
+                    <h6 class="mb-0">About HTTP Timeout Settings</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-3">
                         Configure how ConduitLLM handles timeouts when communicating with LLM provider APIs.
-                    </MudText>
-                    <MudList T="string" Dense="true">
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Timer" Value="@("timeoutduration")">
-                            <MudText>Timeout Duration</MudText>
-                        </MudListItem>
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.ErrorOutline" Value="@("timeoutlogging")">
-                            <MudText>Timeout Logging</MudText>
-                        </MudListItem>
-                    </MudList>
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                    </p>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-clock-o me-2"></i> Timeout Duration
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fa fa-exclamation-circle me-2"></i> Timeout Logging
+                        </li>
+                    </ul>
+                    <div class="alert alert-info border mt-3">
                         These settings apply to all provider clients and provide resilience against slow or unresponsive APIs.
-                    </MudAlert>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     // State management

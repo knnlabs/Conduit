@@ -6,7 +6,6 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
 @using ConduitLLM.WebUI.Components.Shared
-@using MudBlazor
 @attribute [Authorize]
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
@@ -14,44 +13,58 @@
 
 <PageTitle>Request Logs - ConduitLLM</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Request Logs</MudText>
+<h2 class="mb-4">Request Logs</h2>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-3">Filters</MudText>
-    <MudGrid>
-        <MudItem xs="12" md="3">
-            <MudSelect T="string" Label="Virtual Key" Value="@selectedVirtualKeyId" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2">
-                <MudSelectItem Value="@("")">All Keys</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="3">
-            <MudSelect T="string" Label="Model" Value="@selectedModel" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2">
-                <MudSelectItem Value="@("")">All Models</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="2">
-            <MudSelect T="string" Label="Date Range" Value="@selectedDateRange" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2">
-                <MudSelectItem Value="@("24h")">Last 24 Hours</MudSelectItem>
-                <MudSelectItem Value="@("7d")">Last 7 Days</MudSelectItem>
-                <MudSelectItem Value="@("30d")">Last 30 Days</MudSelectItem>
-                <MudSelectItem Value="@("custom")">Custom Range</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" md="2">
-            <MudSelect T="string" Label="Status Code" Value="@selectedStatusCode" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2">
-                <MudSelectItem Value="@("")">All</MudSelectItem>
-                <MudSelectItem Value="@("200")">200 (Success)</MudSelectItem>
-                <MudSelectItem Value="@("400")">400 (Bad Request)</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" Class="d-flex justify-end">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2">Apply Filters</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ClearFilters">Clear Filters</MudButton>
-        </MudItem>
-    </MudGrid>
-</MudPaper>
+<div class="card mb-4 shadow-sm">
+    <div class="card-body p-4">
+        <h5 class="mb-3">Filters</h5>
+        <div class="row">
+            <div class="col-12 col-md-3">
+                <div class="form-group mb-2">
+                    <label for="virtualKey">Virtual Key</label>
+                    <select class="form-select" id="virtualKey" @bind="selectedVirtualKeyId">
+                        <option value="">All Keys</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="form-group mb-2">
+                    <label for="model">Model</label>
+                    <select class="form-select" id="model" @bind="selectedModel">
+                        <option value="">All Models</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-2">
+                <div class="form-group mb-2">
+                    <label for="dateRange">Date Range</label>
+                    <select class="form-select" id="dateRange" @bind="selectedDateRange">
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 col-md-2">
+                <div class="form-group mb-2">
+                    <label for="statusCode">Status Code</label>
+                    <select class="form-select" id="statusCode" @bind="selectedStatusCode">
+                        <option value="">All</option>
+                        <option value="200">200 (Success)</option>
+                        <option value="400">400 (Bad Request)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-12 mt-3 d-flex justify-content-end">
+                <button type="button" class="btn btn-primary me-2" @onclick="ApplyFilters">Apply Filters</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="ClearFilters">Clear Filters</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<MudText Typo="Typo.body1">No logs found. Please try adjusting your filters.</MudText>
+<p class="text-muted">No logs found. Please try adjusting your filters.</p>
 
 @code {
     private string? selectedVirtualKeyId;

@@ -10,141 +10,141 @@
 
 @if (_loading)
 {
-    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-    <p>Loading...</p>
+    <div class="d-flex flex-column align-items-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading...</p>
+    </div>
 }
 else if (_error)
 {
-    <MudAlert Severity="Severity.Error" Class="my-2">
+    <div class="alert alert-danger my-2" role="alert">
         Error loading data: @_errorMessage
-    </MudAlert>
+    </div>
 }
 else
 {
-    <MudGrid>
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard>
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Repository Pattern Status</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body1">
-                        <MudChip T="string" Color="@(_config.IsEnabled ? Color.Success : Color.Error)" Size="Size.Medium">
-                            @(_config.IsEnabled ? "Enabled" : "Disabled")
-                        </MudChip>
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+    <div class="row">
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">Repository Pattern Status</h6>
+                </div>
+                <div class="card-body">
+                    <span class="badge @(_config.IsEnabled ? "bg-success" : "bg-danger")">
+                        @(_config.IsEnabled ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard>
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Detailed Logging</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body1">
-                        <MudChip T="string" Color="@(_config.DetailedLoggingEnabled ? Color.Success : Color.Default)" Size="Size.Medium">
-                            @(_config.DetailedLoggingEnabled ? "Enabled" : "Disabled")
-                        </MudChip>
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">Detailed Logging</h6>
+                </div>
+                <div class="card-body">
+                    <span class="badge @(_config.DetailedLoggingEnabled ? "bg-success" : "bg-secondary")">
+                        @(_config.DetailedLoggingEnabled ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard>
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Performance Tracking</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body1">
-                        <MudChip T="string" Color="@(_config.TrackPerformanceMetrics ? Color.Success : Color.Default)" Size="Size.Medium">
-                            @(_config.TrackPerformanceMetrics ? "Enabled" : "Disabled")
-                        </MudChip>
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">Performance Tracking</h6>
+                </div>
+                <div class="card-body">
+                    <span class="badge @(_config.TrackPerformanceMetrics ? "bg-success" : "bg-secondary")">
+                        @(_config.TrackPerformanceMetrics ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" sm="6" md="3">
-            <MudCard>
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Parallel Verification</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText Typo="Typo.body1">
-                        <MudChip T="string" Color="@(_config.ParallelVerificationEnabled ? Color.Success : Color.Default)" Size="Size.Medium">
-                            @(_config.ParallelVerificationEnabled ? "Enabled" : "Disabled")
-                        </MudChip>
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
+        <div class="col-12 col-sm-6 col-md-3 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="mb-0">Parallel Verification</h6>
+                </div>
+                <div class="card-body">
+                    <span class="badge @(_config.ParallelVerificationEnabled ? "bg-success" : "bg-secondary")">
+                        @(_config.ParallelVerificationEnabled ? "Enabled" : "Disabled")
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <MudDivider Class="my-6" />
+    <hr class="my-4" />
     
-    <MudGrid>
-        <MudItem xs="12">
-            <MudText Typo="Typo.h5">Repository Operation Metrics</MudText>
-            <MudButton Class="ml-4" 
-                      Color="Color.Primary" 
-                      Variant="Variant.Outlined" 
-                      OnClick="ReloadMetrics" 
-                      StartIcon="@Icons.Material.Filled.Refresh">
-                Refresh
-            </MudButton>
-            <MudButton Class="ml-2" 
-                      Color="Color.Warning" 
-                      Variant="Variant.Outlined" 
-                      OnClick="ClearMetrics" 
-                      StartIcon="@Icons.Material.Filled.Clear"
-                      Disabled="@(!_config.TrackPerformanceMetrics)">
-                Clear Metrics
-            </MudButton>
-        </MudItem>
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0">Repository Operation Metrics</h5>
+                <button type="button" class="btn btn-outline-primary ms-3" @onclick="ReloadMetrics">
+                    <i class="fa fa-refresh me-1"></i>
+                    Refresh
+                </button>
+                <button type="button" class="btn btn-outline-warning ms-2" @onclick="ClearMetrics" disabled="@(!_config.TrackPerformanceMetrics)">
+                    <i class="fa fa-eraser me-1"></i>
+                    Clear Metrics
+                </button>
+            </div>
+        </div>
         
         @if (!_config.TrackPerformanceMetrics)
         {
-            <MudItem xs="12">
-                <MudAlert Severity="Severity.Warning" Class="my-2">
+            <div class="col-12">
+                <div class="alert alert-warning my-2" role="alert">
                     Performance metrics tracking is disabled. Enable it in the configuration to see metrics.
-                </MudAlert>
-            </MudItem>
+                </div>
+            </div>
         }
         else if (_metrics.Count == 0)
         {
-            <MudItem xs="12">
-                <MudAlert Severity="Severity.Info" Class="my-2">
+            <div class="col-12">
+                <div class="alert alert-info my-2" role="alert">
                     No metrics available yet. Use the application to generate some repository operations.
-                </MudAlert>
-            </MudItem>
+                </div>
+            </div>
         }
         else
         {
-            <MudItem xs="12">
-                <MudPaper Class="pa-4">
-                    <MudTable Items="@_metrics.Values" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
-                        <HeaderContent>
-                            <MudTh>Operation</MudTh>
-                            <MudTh>Count</MudTh>
-                            <MudTh>Average (ms)</MudTh>
-                            <MudTh>Min (ms)</MudTh>
-                            <MudTh>Max (ms)</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Operation">@context.OperationName</MudTd>
-                            <MudTd DataLabel="Count">@context.Count</MudTd>
-                            <MudTd DataLabel="Average (ms)">@Math.Round(context.AverageMs, 2)</MudTd>
-                            <MudTd DataLabel="Min (ms)">@Math.Round(context.MinMs, 2)</MudTd>
-                            <MudTd DataLabel="Max (ms)">@Math.Round(context.MaxMs, 2)</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudPaper>
-            </MudItem>
+            <div class="col-12">
+                <div class="card p-4">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Operation</th>
+                                    <th>Count</th>
+                                    <th>Average (ms)</th>
+                                    <th>Min (ms)</th>
+                                    <th>Max (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _metrics.Values)
+                                {
+                                    <tr>
+                                        <td data-label="Operation">@item.OperationName</td>
+                                        <td data-label="Count">@item.Count</td>
+                                        <td data-label="Average (ms)">@Math.Round(item.AverageMs, 2)</td>
+                                        <td data-label="Min (ms)">@Math.Round(item.MinMs, 2)</td>
+                                        <td data-label="Max (ms)">@Math.Round(item.MaxMs, 2)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         }
-    </MudGrid>
+    </div>
 }
 
 @code {

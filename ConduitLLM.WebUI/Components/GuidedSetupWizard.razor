@@ -11,84 +11,93 @@
 @if (IsOpen)
 {
     <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <MudPaper Elevation="4" Style="width: 600px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
-            <MudAppBar Color="Color.Primary" Dense="true" Style="height: 56px;">
-                <MudText Typo="Typo.h6">@GetWizardTitle()</MudText>
-                <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CloseWizard" aria-label="Close" />
-            </MudAppBar>
+        <div class="card" style="width: 600px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+            <div class="bg-primary text-white d-flex justify-content-between align-items-center p-3" style="height: 56px;">
+                <h6 class="m-0">@GetWizardTitle()</h6>
+                <button type="button" class="btn-close btn-close-white" @onclick="CloseWizard" aria-label="Close"></button>
+            </div>
             
-            <MudContainer Class="pa-4">
+            <div class="container p-4">
                 @if (currentStep == 0)
                 {
-                    <MudText Typo="Typo.h5" Class="mb-2">Welcome to @(providerModel?.ProviderName ?? "Provider") Setup</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-4">This wizard will guide you through configuring @(providerModel?.ProviderName ?? "the provider") for use with ConduitLLM.</MudText>
+                    <h5 class="mb-2">Welcome to @(providerModel?.ProviderName ?? "Provider") Setup</h5>
+                    <p class="mb-4">This wizard will guide you through configuring @(providerModel?.ProviderName ?? "the provider") for use with ConduitLLM.</p>
                     
-                    <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">You'll need:</MudText>
-                    <MudList T="string">
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"An active {providerModel?.ProviderName ?? "provider"} account") />
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"An API key from {providerModel?.ProviderName ?? "the provider"}") />
+                    <h6 class="mt-4 mb-2">You'll need:</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <i class="fa fa-check-circle text-success me-2"></i>
+                            An active @(providerModel?.ProviderName ?? "provider") account
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fa fa-check-circle text-success me-2"></i>
+                            An API key from @(providerModel?.ProviderName ?? "the provider")
+                        </li>
                         @if (providerModel?.ProviderName == "OpenAI" || providerModel?.ProviderName == "Anthropic")
                         {
-                            <MudListItem T="string" Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success" Text=@($"Payment method set up with {providerModel?.ProviderName}") />
+                            <li class="list-group-item">
+                                <i class="fa fa-check-circle text-success me-2"></i>
+                                Payment method set up with @(providerModel?.ProviderName)
+                            </li>
                         }
-                    </MudList>
+                    </ul>
 
                     @if (!string.IsNullOrEmpty(providerModel?.ProviderName) && ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName) != null)
                     {
                         <div class="mt-4">
-                            <MudButton 
-                                Variant="Variant.Outlined" 
-                                Color="Color.Primary" 
-                                StartIcon="@Icons.Material.Filled.Key"
-                                Href="@ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName)"
-                                Target="_blank">
+                            <a href="@ProviderApiInfo.GetApiKeyUrl(providerModel.ProviderName)" 
+                               target="_blank" 
+                               class="btn btn-outline-primary">
+                                <i class="fa fa-key me-2"></i>
                                 Get @(providerModel.ProviderName) API Key
-                            </MudButton>
-                            <MudText Typo="Typo.caption" Class="mt-1">
+                            </a>
+                            <p class="small text-muted mt-1">
                                 Opens the @(providerModel.ProviderName) website where you can create an API key
-                            </MudText>
+                            </p>
                         </div>
                     }
                 }
                 else if (currentStep == 1)
                 {
-                    <MudText Typo="Typo.h5" Class="mb-2">Enter API Key and Settings</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-4">Provide your @(providerModel?.ProviderName ?? "provider") API key and any other required settings:</MudText>
+                    <h5 class="mb-2">Enter API Key and Settings</h5>
+                    <p class="mb-4">Provide your @(providerModel?.ProviderName ?? "provider") API key and any other required settings:</p>
                     
-                    <MudTextField 
-                        @bind-Value="providerModel!.ApiKey" 
-                        Label="API Key" 
-                        Variant="Variant.Outlined" 
-                        InputType="InputType.Password"
-                        FullWidth="true"
-                        Margin="Margin.Dense"
-                        Immediate="true"
-                        Error="@(string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext)"
-                        ErrorText="@(string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext ? "API key is required" : null)" />
+                    <div class="form-group mb-3">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" 
+                               id="apiKey" 
+                               class="form-control @(string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext ? "is-invalid" : "")" 
+                               @bind="providerModel!.ApiKey" />
+                        @if (string.IsNullOrWhiteSpace(providerModel?.ApiKey) && attemptedNext)
+                        {
+                            <div class="invalid-feedback">API key is required</div>
+                        }
+                    </div>
                     
                     @if (providerModel?.ProviderName == "OpenRouter" || providerModel?.ProviderName == "Fireworks")
                     {
-                        <MudTextField 
-                            @bind-Value="providerModel!.BaseUrl" 
-                            Label="API Base URL (Optional)" 
-                            Variant="Variant.Outlined" 
-                            FullWidth="true"
-                            Margin="Margin.Dense"
-                            Immediate="true"
-                            HelperText="Usually you can leave this empty to use the default." />
+                        <div class="form-group mb-3">
+                            <label for="baseUrl">API Base URL (Optional)</label>
+                            <input type="text" 
+                                   id="baseUrl" 
+                                   class="form-control" 
+                                   @bind="providerModel!.BaseUrl" />
+                            <div class="form-text">Usually you can leave this empty to use the default.</div>
+                        </div>
                     }
                 }
                 else if (currentStep == 2)
                 {
-                    <MudText Typo="Typo.h5" Class="mb-2">Test Connection</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-4">Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</MudText>
+                    <h5 class="mb-2">Test Connection</h5>
+                    <p class="mb-4">Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</p>
                     
                     @if (isTesting)
                     {
-                        <div class="d-flex flex-column align-center my-4">
-                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-                            <MudText Class="mt-3">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</MudText>
+                        <div class="d-flex flex-column align-items-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-3">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</p>
                         </div>
                     }
                     else if (testStatus != null)
@@ -96,94 +105,89 @@
                         <div class="my-4">
                             @if (testStatus.IsOnline)
                             {
-                                <MudAlert Severity="Severity.Success" Variant="Variant.Filled">
-                                    <MudText><strong>Connection Successful!</strong></MudText>
-                                    <MudText>Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</MudText>
-                                </MudAlert>
+                                <div class="alert alert-success">
+                                    <p class="fw-bold mb-1">Connection Successful!</p>
+                                    <p class="mb-0">Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</p>
+                                </div>
                             }
                             else
                             {
-                                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
-                                    <MudText><strong>Connection Failed</strong></MudText>
-                                    <MudText>Error: @testStatus.StatusMessage</MudText>
-                                </MudAlert>
+                                <div class="alert alert-danger">
+                                    <p class="fw-bold mb-1">Connection Failed</p>
+                                    <p class="mb-0">Error: @testStatus.StatusMessage</p>
+                                </div>
                                 
                                 <div class="mt-4">
-                                    <MudButton 
-                                        Variant="Variant.Filled" 
-                                        Color="Color.Primary" 
-                                        StartIcon="@Icons.Material.Filled.Refresh"
-                                        OnClick="TestConnection">
+                                    <button type="button" 
+                                            class="btn btn-primary" 
+                                            @onclick="TestConnection">
+                                        <i class="fa fa-refresh me-2"></i>
                                         Try Again
-                                    </MudButton>
+                                    </button>
                                 </div>
                             }
                         </div>
                     }
                     else
                     {
-                        <div class="d-flex justify-center my-4">
-                            <MudButton 
-                                Variant="Variant.Filled" 
-                                Color="Color.Primary" 
-                                StartIcon="@Icons.Material.Filled.Bolt"
-                                OnClick="TestConnection">
+                        <div class="d-flex justify-content-center my-4">
+                            <button type="button" 
+                                    class="btn btn-primary" 
+                                    @onclick="TestConnection">
+                                <i class="fa fa-bolt me-2"></i>
                                 Test Connection
-                            </MudButton>
+                            </button>
                         </div>
                     }
                 }
-            </MudContainer>
+            </div>
             
-            <MudDivider />
+            <hr class="my-0" />
             
-            <MudContainer Class="pa-4">
-                <div class="d-flex justify-space-between align-center">
-                    <MudButton 
-                        Variant="Variant.Outlined" 
-                        Color="Color.Default" 
-                        StartIcon="@Icons.Material.Filled.ArrowBack"
-                        OnClick="PreviousStep" 
-                        Disabled="@(currentStep == 0)">
+            <div class="container p-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <button type="button" 
+                            class="btn btn-outline-secondary" 
+                            @onclick="PreviousStep" 
+                            disabled="@(currentStep == 0)">
+                        <i class="fa fa-arrow-left me-2"></i>
                         Back
-                    </MudButton>
+                    </button>
                     
                     <div>
                         @for (int i = 0; i < totalSteps; i++)
                         {
                             int stepIndex = i;
-                            <MudIconButton 
-                                Icon="@(currentStep == stepIndex ? Icons.Material.Filled.Circle : Icons.Material.Filled.RadioButtonUnchecked)"
-                                Color="@(currentStep == stepIndex ? Color.Primary : Color.Default)" 
-                                Size="Size.Small"
-                                OnClick="() => GoToStep(stepIndex)"
-                                Style="margin: 0 2px;" />
+                            <button type="button" 
+                                    class="btn btn-sm @(currentStep == stepIndex ? "btn-primary" : "btn-outline-secondary")" 
+                                    style="width: 30px; height: 30px; padding: 0; border-radius: 50%; margin: 0 2px;"
+                                    @onclick="() => GoToStep(stepIndex)">
+                                @(i + 1)
+                            </button>
                         }
                     </div>
                     
                     @if (currentStep < totalSteps - 1)
                     {
-                        <MudButton 
-                            Variant="Variant.Filled" 
-                            Color="Color.Primary" 
-                            EndIcon="@Icons.Material.Filled.ArrowForward"
-                            OnClick="NextStep">
+                        <button type="button" 
+                                class="btn btn-primary" 
+                                @onclick="NextStep">
                             Next
-                        </MudButton>
+                            <i class="fa fa-arrow-right ms-2"></i>
+                        </button>
                     }
                     else
                     {
-                        <MudButton 
-                            Variant="Variant.Filled" 
-                            Color="Color.Success" 
-                            EndIcon="@Icons.Material.Filled.Check"
-                            OnClick="FinishSetup">
+                        <button type="button" 
+                                class="btn btn-success" 
+                                @onclick="FinishSetup">
                             Finish
-                        </MudButton>
+                            <i class="fa fa-check ms-2"></i>
+                        </button>
                     }
                 </div>
-            </MudContainer>
-        </MudPaper>
+            </div>
+        </div>
     </div>
 }
 

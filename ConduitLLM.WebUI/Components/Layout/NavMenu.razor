@@ -1,64 +1,212 @@
 @using Microsoft.AspNetCore.Components.Routing
-@using MudBlazor
 
-<MudNavMenu Bordered="true" Rounded="true" Class="mt-2">
-    <MudText Typo="Typo.h6" Class="px-4 py-2">Menu</MudText>
-    <MudDivider Class="mb-2"/>
+<div class="nav-menu mt-2">
+    <h6 class="nav-header px-4 py-2">Menu</h6>
+    <hr class="divider mb-2"/>
     
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
-        Dashboard
-    </MudNavLink>
+    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+        <i class="fa fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+    </NavLink>
     
-    <MudNavGroup Title="Core" Icon="@Icons.Material.Filled.Extension" Expanded="true">
-        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
-            Home
-        </MudNavLink>
-        <MudNavLink Href="chat" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat">
-            Chat
-        </MudNavLink>
-    </MudNavGroup>
+    <div class="nav-group">
+        <div class="nav-group-header @(coreExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref coreExpanded)">
+            <i class="fa fa-puzzle-piece"></i>
+            <span>Core</span>
+            <i class="fa @(coreExpanded ? "fa-chevron-down" : "fa-chevron-right") ml-auto"></i>
+        </div>
+        
+        <div class="nav-group-content @(coreExpanded ? "show" : "")">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <i class="fa fa-home"></i>
+                <span>Home</span>
+            </NavLink>
+            <NavLink class="nav-link" href="chat" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-comment"></i>
+                <span>Chat</span>
+            </NavLink>
+        </div>
+    </div>
     
-    <MudNavGroup Title="Configuration" Icon="@Icons.Material.Filled.Settings" Expanded="true">
-        <MudNavLink Href="configuration" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">
-            General Config
-        </MudNavLink>
-        <MudNavLink Href="routing-settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Shuffle">
-            Routing
-        </MudNavLink>
-        <MudNavLink Href="caching-settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
-            Caching
-        </MudNavLink>
-    </MudNavGroup>
+    <div class="nav-group">
+        <div class="nav-group-header @(configExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref configExpanded)">
+            <i class="fa fa-cog"></i>
+            <span>Configuration</span>
+            <i class="fa @(configExpanded ? "fa-chevron-down" : "fa-chevron-right") ml-auto"></i>
+        </div>
+        
+        <div class="nav-group-content @(configExpanded ? "show" : "")">
+            <NavLink class="nav-link" href="configuration" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-sliders-h"></i>
+                <span>General Config</span>
+            </NavLink>
+            <NavLink class="nav-link" href="routing-settings" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-random"></i>
+                <span>Routing</span>
+            </NavLink>
+            <NavLink class="nav-link" href="caching-settings" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-database"></i>
+                <span>Caching</span>
+            </NavLink>
+        </div>
+    </div>
     
-    <MudNavGroup Title="Keys & Costs" Icon="@Icons.Material.Filled.Key" Expanded="true">
-        <MudNavLink Href="virtualkeys" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Key">
-            Virtual Keys
-        </MudNavLink>
-        <MudNavLink Href="virtualkeys/dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Insights">
-            Keys Dashboard
-        </MudNavLink>
-        <MudNavLink Href="cost-dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AttachMoney">
-            Cost Dashboard
-        </MudNavLink>
-        <MudNavLink Href="request-logs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">
-            Request Logs
-        </MudNavLink>
-        <MudNavLink Href="model-costs" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MonetizationOn">
-            Model Costs
-        </MudNavLink>
-    </MudNavGroup>
+    <div class="nav-group">
+        <div class="nav-group-header @(keysExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref keysExpanded)">
+            <i class="fa fa-key"></i>
+            <span>Keys & Costs</span>
+            <i class="fa @(keysExpanded ? "fa-chevron-down" : "fa-chevron-right") ml-auto"></i>
+        </div>
+        
+        <div class="nav-group-content @(keysExpanded ? "show" : "")">
+            <NavLink class="nav-link" href="virtualkeys" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-key"></i>
+                <span>Virtual Keys</span>
+            </NavLink>
+            <NavLink class="nav-link" href="virtualkeys/dashboard" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-chart-line"></i>
+                <span>Keys Dashboard</span>
+            </NavLink>
+            <NavLink class="nav-link" href="cost-dashboard" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-dollar-sign"></i>
+                <span>Cost Dashboard</span>
+            </NavLink>
+            <NavLink class="nav-link" href="request-logs" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-history"></i>
+                <span>Request Logs</span>
+            </NavLink>
+            <NavLink class="nav-link" href="model-costs" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-money-bill"></i>
+                <span>Model Costs</span>
+            </NavLink>
+        </div>
+    </div>
     
-    <MudNavGroup Title="System" Icon="@Icons.Material.Filled.Info" Expanded="true">
-        <MudNavLink Href="system-info" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info">
-            System Information
-        </MudNavLink>
-        <MudNavLink Href="db-status" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
-            Database Status
-        </MudNavLink>
-        <MudNavLink Href="repository-monitoring" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MonitorHeart">
-            Repository Monitoring
-        </MudNavLink>
-    </MudNavGroup>
+    <div class="nav-group">
+        <div class="nav-group-header @(systemExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref systemExpanded)">
+            <i class="fa fa-info-circle"></i>
+            <span>System</span>
+            <i class="fa @(systemExpanded ? "fa-chevron-down" : "fa-chevron-right") ml-auto"></i>
+        </div>
+        
+        <div class="nav-group-content @(systemExpanded ? "show" : "")">
+            <NavLink class="nav-link" href="system-info" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-info-circle"></i>
+                <span>System Information</span>
+            </NavLink>
+            <NavLink class="nav-link" href="db-status" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-database"></i>
+                <span>Database Status</span>
+            </NavLink>
+            <NavLink class="nav-link" href="repository-monitoring" Match="NavLinkMatch.Prefix">
+                <i class="fa fa-heartbeat"></i>
+                <span>Repository Monitoring</span>
+            </NavLink>
+        </div>
+    </div>
     
-    <MudDivider Class="my-2"/>
-</MudNavMenu>
+    <hr class="divider my-2"/>
+</div>
+
+<style>
+    .nav-menu {
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem;
+        height: 100%;
+    }
+    
+    .nav-header {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 0;
+    }
+    
+    .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        transition: background-color 0.2s;
+    }
+    
+    .nav-link i {
+        margin-right: 0.75rem;
+        width: 20px;
+        text-align: center;
+    }
+    
+    .nav-link:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        text-decoration: none;
+    }
+    
+    .nav-link.active {
+        background-color: #1976d2;
+        color: white;
+    }
+    
+    .divider {
+        height: 1px;
+        border: none;
+        background-color: rgba(0, 0, 0, 0.12);
+        margin: 0.5rem 0;
+    }
+    
+    .nav-group {
+        margin-bottom: 0.5rem;
+    }
+    
+    .nav-group-header {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .nav-group-header:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .nav-group-header i:first-child {
+        margin-right: 0.75rem;
+        width: 20px;
+        text-align: center;
+    }
+    
+    .nav-group-header.expanded {
+        color: #1976d2;
+    }
+    
+    .nav-group-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .nav-group-content.show {
+        max-height: 500px;
+    }
+    
+    .nav-group-content .nav-link {
+        padding-left: 3rem;
+    }
+</style>
+
+@code {
+    private bool coreExpanded = true;
+    private bool configExpanded = true;
+    private bool keysExpanded = true;
+    private bool systemExpanded = true;
+    
+    private void ToggleSection(ref bool expanded)
+    {
+        expanded = !expanded;
+    }
+}

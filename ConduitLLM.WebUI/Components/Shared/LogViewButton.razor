@@ -1,12 +1,10 @@
 @using ConduitLLM.WebUI.DTOs
-@using MudBlazor
 @using System.ComponentModel.DataAnnotations
 @rendermode InteractiveServer
 
-<MudIconButton Icon="@Icons.Material.Filled.Visibility" 
-              Color="Color.Info" 
-              Size="Size.Small" 
-              OnClick="ButtonClicked" />
+<button type="button" class="btn btn-sm btn-icon text-info" @onclick="ButtonClicked">
+    <i class="fa fa-eye"></i>
+</button>
 
 @code {
     [Parameter, Required]

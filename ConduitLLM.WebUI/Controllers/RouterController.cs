@@ -1,12 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core.Models.Routing;
-using ConduitLLM.WebUI.Authorization;
-using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Controllers
 {
@@ -17,13 +18,13 @@ namespace ConduitLLM.WebUI.Controllers
     [Route("api/[controller]")]
     public class RouterController : ControllerBase
     {
-        private readonly IRouterService _routerService;
+        private readonly RouterService _routerService;
         private readonly ILogger<RouterController> _logger;
 
         /// <summary>
         /// Creates a new instance of the RouterController
         /// </summary>
-        public RouterController(IRouterService routerService, ILogger<RouterController> logger)
+        public RouterController(RouterService routerService, ILogger<RouterController> logger)
         {
             _routerService = routerService ?? throw new ArgumentNullException(nameof(routerService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

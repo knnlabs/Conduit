@@ -1,119 +1,169 @@
 @using ConduitLLM.WebUI.Models
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Components.Shared
 @inject NotificationService NotificationService
 @implements IDisposable
 
-<div>
-    <MudIconButton 
-        Icon="@Icons.Material.Filled.Notifications" 
-        Color="Color.Inherit"
-        OnClick="ToggleNotificationPanel"
-        Class="px-2">
+<div class="notification-container">
+    <button class="btn btn-icon notification-button" @onclick="ToggleNotificationPanel">
+        <i class="fa fa-bell"></i>
         @if (UnreadCount > 0)
         {
-            <MudBadge Color="Color.Error" Content="@UnreadCount" Overlap="true" Bordered="true" />
+            <span class="notification-badge">@UnreadCount</span>
         }
-    </MudIconButton>
+    </button>
 
     @if (IsOpen)
     {
-        <div style="position: absolute; top: 100%; right: 0; z-index: 1000;">
-            <MudPaper Elevation="4" Class="notification-panel d-flex flex-column">
-                <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-2 gap-2">
-                    <MudText Typo="Typo.h6" Class="flex-grow-1">Notifications</MudText>
-                    <MudTooltip Text="Mark All Read">
-                        <MudIconButton 
-                            Size="Size.Small" 
-                            OnClick="MarkAllAsRead" 
-                            Icon="@Icons.Material.Filled.DoneAll" 
-                            Variant="Variant.Outlined" 
-                            Color="Color.Default" />
-                    </MudTooltip>
-                    <MudTooltip Text="Clear Read Notifications">
-                        <MudIconButton 
-                            Size="Size.Small" 
-                            OnClick="ClearReadNotifications" 
-                            Icon="@Icons.Material.Filled.DeleteOutline" 
-                            Variant="Variant.Outlined" 
-                            Color="Color.Error" />
-                    </MudTooltip>
-                </MudToolBar>
+        <div class="notification-dropdown">
+            <div class="paper notification-panel">
+                <div class="notification-header">
+                    <h6 class="text-h6 mb-0 flex-grow-1">Notifications</h6>
+                    <div class="notification-actions">
+                        <Tooltip Text="Mark All Read">
+                            <button class="btn btn-sm btn-outlined" @onclick="MarkAllAsRead">
+                                <i class="fa fa-check-double"></i>
+                            </button>
+                        </Tooltip>
+                        <Tooltip Text="Clear Read Notifications">
+                            <button class="btn btn-sm btn-outlined text-error" @onclick="ClearReadNotifications">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </Tooltip>
+                    </div>
+                </div>
                 
-                <MudDivider />
+                <hr class="divider my-0" />
                 
-                <MudContainer Class="pa-0 overflow-y-auto notification-list">
+                <div class="notification-list">
                     @if (!Notifications.Any())
                     {
-                        <MudStack Spacing="2" Class="pa-8" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
-                            <MudText Typo="Typo.body2" Color="Color.Default" Align="Align.Center">No notifications</MudText>
-                        </MudStack>
+                        <div class="d-flex flex-column align-items-center p-4">
+                            <i class="fa fa-inbox fa-2x text-secondary mb-2"></i>
+                            <p class="text-body2 text-secondary text-center">No notifications</p>
+                        </div>
                     }
                     else
                     {
-                        <MudList T="Notification" Clickable="true" DisablePadding="true" Dense="true">
+                        <ul class="notification-items">
                             @foreach (var notification in Notifications)
                             {
-                                <MudListItem T="Notification" Class="@($"notification-item {GetNotificationClass(notification)}")">
-                                    <div class="d-flex align-center" style="width: 100%">
-                                        <MudAvatar Size="Size.Small" Class="mr-3" Color="@GetNotificationColor(notification)">
-                                            <MudIcon Icon="@GetNotificationIcon(notification)" Size="Size.Small" />
-                                        </MudAvatar>
+                                <li class="@($"notification-item {GetNotificationClass(notification)}")">
+                                    <div class="d-flex align-items-center w-100">
+                                        <div class="notification-avatar @GetNotificationColorClass(notification)">
+                                            <i class="@GetNotificationIconClass(notification)"></i>
+                                        </div>
                                         
-                                        <div style="flex-grow: 1">
-                                            <MudText Typo="Typo.body1" Style="@(notification.IsRead ? "" : "font-weight: 500")">
+                                        <div class="notification-content">
+                                            <p class="@(notification.IsRead ? "text-body1" : "text-body1 fw-medium")">
                                                 @notification.Message
-                                            </MudText>
+                                            </p>
                                             
                                             @if (!string.IsNullOrEmpty(notification.Source))
                                             {
-                                                <MudText Typo="Typo.caption" Color="Color.Default">
+                                                <small class="text-secondary d-block">
                                                     @notification.Source
-                                                </MudText>
+                                                </small>
                                             }
                                             
                                             @if (!string.IsNullOrEmpty(notification.Details))
                                             {
-                                                <MudText Typo="Typo.caption" Style="white-space: pre-wrap;" Color="Color.Dark">
+                                                <small class="notification-details text-dark">
                                                     @notification.Details
-                                                </MudText>
+                                                </small>
                                             }
                                             
-                                            <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-1">
+                                            <small class="text-secondary d-block mt-1">
                                                 @FormatTimeAgo(notification.Timestamp)
-                                            </MudText>
+                                            </small>
                                         </div>
                                         
                                         @if (!notification.IsRead)
                                         {
-                                            <MudIconButton 
-                                                Size="Size.Small" 
-                                                OnClick="() => MarkAsRead(notification.Id)" 
-                                                Icon="@Icons.Material.Filled.Check" 
-                                                Color="Color.Primary" />
+                                            <button class="btn btn-icon btn-sm text-primary" @onclick="() => MarkAsRead(notification.Id)">
+                                                <i class="fa fa-check"></i>
+                                            </button>
                                         }
                                     </div>
-                                </MudListItem>
-                                <MudDivider />
+                                </li>
+                                <hr class="divider my-0" />
                             }
-                        </MudList>
+                        </ul>
                     }
-                </MudContainer>
-            </MudPaper>
+                </div>
+            </div>
         </div>
     }
 </div>
 
 <style>
+    .notification-container {
+        position: relative;
+    }
+    
+    .notification-button {
+        position: relative;
+        background: transparent;
+        color: white;
+    }
+    
+    .notification-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: #f44336;
+        color: white;
+        border-radius: 50%;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        min-width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid white;
+    }
+    
+    .notification-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 1000;
+    }
+    
     .notification-panel {
         width: 350px;
         max-height: 500px;
         z-index: 1000;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+    }
+    
+    .notification-header {
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .notification-actions {
+        display: flex;
+        gap: 0.5rem;
     }
     
     .notification-list {
         max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .notification-items {
+        list-style: none;
+        padding: 0;
+        margin: 0;
     }
     
     .notification-item {
@@ -127,23 +177,65 @@
     }
     
     .notification-item:hover {
-        background-color: var(--mud-palette-background-grey);
+        background-color: #f5f5f5;
     }
     
     .notification-item.info {
-        border-left: 3px solid var(--mud-palette-info);
+        border-left: 3px solid #2196f3;
     }
     
     .notification-item.warning {
-        border-left: 3px solid var(--mud-palette-warning);
+        border-left: 3px solid #ff9800;
     }
     
     .notification-item.error {
-        border-left: 3px solid var(--mud-palette-error);
+        border-left: 3px solid #f44336;
     }
     
     .notification-item.success {
-        border-left: 3px solid var(--mud-palette-success);
+        border-left: 3px solid #4caf50;
+    }
+    
+    .notification-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        color: white;
+        font-size: 14px;
+    }
+    
+    .notification-avatar.bg-info {
+        background-color: #2196f3;
+    }
+    
+    .notification-avatar.bg-warning {
+        background-color: #ff9800;
+    }
+    
+    .notification-avatar.bg-error {
+        background-color: #f44336;
+    }
+    
+    .notification-avatar.bg-success {
+        background-color: #4caf50;
+    }
+    
+    .notification-avatar.bg-default {
+        background-color: #9e9e9e;
+    }
+    
+    .notification-content {
+        flex-grow: 1;
+        font-size: 0.9rem;
+    }
+    
+    .notification-details {
+        white-space: pre-wrap;
+        display: block;
     }
 </style>
 
@@ -233,31 +325,31 @@
         };
     }
     
-    private Color GetNotificationColor(Notification notification)
+    private string GetNotificationColorClass(Notification notification)
     {
         return notification.Type switch
         {
-            NotificationType.System => Color.Info,
-            NotificationType.BudgetWarning => Color.Warning,
-            NotificationType.KeyExpiration => Color.Warning,
-            NotificationType.VirtualKeyValidation => Color.Warning,
-            NotificationType.Security => Color.Error,
-            NotificationType.Error => Color.Error,
-            _ => Color.Default
+            NotificationType.System => "bg-info",
+            NotificationType.BudgetWarning => "bg-warning",
+            NotificationType.KeyExpiration => "bg-warning",
+            NotificationType.VirtualKeyValidation => "bg-warning",
+            NotificationType.Security => "bg-error",
+            NotificationType.Error => "bg-error",
+            _ => "bg-default"
         };
     }
     
-    private string GetNotificationIcon(Notification notification)
+    private string GetNotificationIconClass(Notification notification)
     {
         return notification.Type switch
         {
-            NotificationType.System => Icons.Material.Filled.Info,
-            NotificationType.BudgetWarning => Icons.Material.Filled.Warning,
-            NotificationType.KeyExpiration => Icons.Material.Filled.Warning,
-            NotificationType.VirtualKeyValidation => Icons.Material.Filled.Warning,
-            NotificationType.Security => Icons.Material.Filled.Error,
-            NotificationType.Error => Icons.Material.Filled.Error,
-            _ => Icons.Material.Filled.Notifications
+            NotificationType.System => "fa fa-info",
+            NotificationType.BudgetWarning => "fa fa-exclamation-triangle",
+            NotificationType.KeyExpiration => "fa fa-exclamation-triangle",
+            NotificationType.VirtualKeyValidation => "fa fa-exclamation-triangle",
+            NotificationType.Security => "fa fa-exclamation-circle",
+            NotificationType.Error => "fa fa-exclamation-circle",
+            _ => "fa fa-bell"
         };
     }
 

@@ -1,3 +1,4 @@
+using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,22 +14,22 @@ using Xunit;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
-    public class RequestLogServiceNewTests
+    public class RequestLogServiceTests
     {
         private readonly Mock<IRequestLogRepository> _mockRequestLogRepository;
         private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
-        private readonly Mock<ILogger<RequestLogServiceNew>> _mockLogger;
+        private readonly Mock<ILogger<RequestLogService>> _mockLogger;
         private readonly Mock<IMemoryCache> _mockMemoryCache;
-        private readonly RequestLogServiceNew _service;
+        private readonly RequestLogService _service;
 
-        public RequestLogServiceNewTests()
+        public RequestLogServiceTests()
         {
             _mockRequestLogRepository = new Mock<IRequestLogRepository>();
             _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
-            _mockLogger = new Mock<ILogger<RequestLogServiceNew>>();
+            _mockLogger = new Mock<ILogger<RequestLogService>>();
             _mockMemoryCache = new Mock<IMemoryCache>();
             
-            _service = new RequestLogServiceNew(
+            _service = new RequestLogService(
                 _mockRequestLogRepository.Object,
                 _mockVirtualKeyRepository.Object,
                 _mockLogger.Object,
@@ -185,8 +186,8 @@ namespace ConduitLLM.Tests.RepositoryServices
             Assert.Equal(2000, summary.AverageResponseTime);
             Assert.Equal(600, summary.TotalInputTokens);
             Assert.Equal(300, summary.TotalOutputTokens);
-            Assert.Equal(now.AddDays(-10).Date, summary.FirstRequestTime?.Date);
-            Assert.Equal(now.Date, summary.LastRequestTime?.Date);
+            Assert.Equal(now.AddDays(-10).Date, summary.FirstRequestTime.Date);
+            Assert.Equal(now.Date, summary.LastRequestTime.Date);
             Assert.Equal(2, summary.RequestsLast24Hours);
             Assert.Equal(2, summary.RequestsLast7Days);
             Assert.Equal(3, summary.RequestsLast30Days);

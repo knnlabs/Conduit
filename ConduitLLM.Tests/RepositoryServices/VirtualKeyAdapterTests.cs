@@ -1,3 +1,4 @@
+using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,15 +14,15 @@ namespace ConduitLLM.Tests.RepositoryServices
 {
     public class RepositoryVirtualKeyServiceTests
     {
-        private readonly Mock<IVirtualKeyServiceNew> _mockVirtualKeyServiceNew;
+        private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ILogger<RepositoryVirtualKeyService>> _mockLogger;
         private readonly RepositoryVirtualKeyService _service;
 
         public RepositoryVirtualKeyServiceTests()
         {
-            _mockVirtualKeyServiceNew = new Mock<IVirtualKeyServiceNew>();
+            _mockVirtualKeyService = new Mock<IVirtualKeyService>();
             _mockLogger = new Mock<ILogger<RepositoryVirtualKeyService>>();
-            _service = new RepositoryVirtualKeyService(_mockVirtualKeyServiceNew.Object, _mockLogger.Object);
+            _service = new RepositoryVirtualKeyService(_mockVirtualKeyService.Object, _mockLogger.Object);
         }
 
         [Fact]
@@ -41,7 +42,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                 KeyInfo = new VirtualKeyDto { Id = 1, KeyName = "Test Key" }
             };
 
-            _mockVirtualKeyServiceNew.Setup(s => s.GenerateVirtualKeyAsync(request))
+            _mockVirtualKeyService.Setup(s => s.GenerateVirtualKeyAsync(request))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -49,7 +50,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.Same(expectedResponse, result);
-            _mockVirtualKeyServiceNew.Verify(s => s.GenerateVirtualKeyAsync(request), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.GenerateVirtualKeyAsync(request), Times.Once);
         }
 
         [Fact]
@@ -59,7 +60,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             int keyId = 123;
             var expectedDto = new VirtualKeyDto { Id = keyId, KeyName = "Test Key" };
 
-            _mockVirtualKeyServiceNew.Setup(s => s.GetVirtualKeyInfoAsync(keyId))
+            _mockVirtualKeyService.Setup(s => s.GetVirtualKeyInfoAsync(keyId))
                 .ReturnsAsync(expectedDto);
 
             // Act
@@ -67,7 +68,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.Same(expectedDto, result);
-            _mockVirtualKeyServiceNew.Verify(s => s.GetVirtualKeyInfoAsync(keyId), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.GetVirtualKeyInfoAsync(keyId), Times.Once);
         }
 
         [Fact]
@@ -80,7 +81,7 @@ namespace ConduitLLM.Tests.RepositoryServices
                 new VirtualKeyDto { Id = 2, KeyName = "Key 2" }
             };
 
-            _mockVirtualKeyServiceNew.Setup(s => s.ListVirtualKeysAsync())
+            _mockVirtualKeyService.Setup(s => s.ListVirtualKeysAsync())
                 .ReturnsAsync(expectedKeys);
 
             // Act
@@ -88,7 +89,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.Same(expectedKeys, result);
-            _mockVirtualKeyServiceNew.Verify(s => s.ListVirtualKeysAsync(), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.ListVirtualKeysAsync(), Times.Once);
         }
 
         [Fact]
@@ -99,7 +100,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             string requestedModel = "gpt-4";
             var expectedVirtualKey = new VirtualKey { Id = 1, KeyName = "Test Key" };
 
-            _mockVirtualKeyServiceNew.Setup(s => s.ValidateVirtualKeyAsync(key, requestedModel))
+            _mockVirtualKeyService.Setup(s => s.ValidateVirtualKeyAsync(key, requestedModel))
                 .ReturnsAsync(expectedVirtualKey);
 
             // Act
@@ -107,7 +108,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.Same(expectedVirtualKey, result);
-            _mockVirtualKeyServiceNew.Verify(s => s.ValidateVirtualKeyAsync(key, requestedModel), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.ValidateVirtualKeyAsync(key, requestedModel), Times.Once);
         }
 
         [Fact]
@@ -117,7 +118,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             int keyId = 123;
             var cancellationToken = CancellationToken.None;
             
-            _mockVirtualKeyServiceNew.Setup(s => s.ResetBudgetIfExpiredAsync(keyId, cancellationToken))
+            _mockVirtualKeyService.Setup(s => s.ResetBudgetIfExpiredAsync(keyId, cancellationToken))
                 .ReturnsAsync(true);
 
             // Act
@@ -125,7 +126,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.True(result);
-            _mockVirtualKeyServiceNew.Verify(s => s.ResetBudgetIfExpiredAsync(keyId, cancellationToken), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.ResetBudgetIfExpiredAsync(keyId, cancellationToken), Times.Once);
         }
 
         [Fact]
@@ -136,7 +137,7 @@ namespace ConduitLLM.Tests.RepositoryServices
             var cancellationToken = CancellationToken.None;
             var expectedVirtualKey = new VirtualKey { Id = keyId, KeyName = "Test Key" };
             
-            _mockVirtualKeyServiceNew.Setup(s => s.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken))
+            _mockVirtualKeyService.Setup(s => s.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken))
                 .ReturnsAsync(expectedVirtualKey);
 
             // Act
@@ -144,7 +145,7 @@ namespace ConduitLLM.Tests.RepositoryServices
 
             // Assert
             Assert.Same(expectedVirtualKey, result);
-            _mockVirtualKeyServiceNew.Verify(s => s.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken), Times.Once);
+            _mockVirtualKeyService.Verify(s => s.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken), Times.Once);
         }
     }
 }

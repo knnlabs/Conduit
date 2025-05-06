@@ -11,157 +11,163 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 
 @inject ILogger<VirtualKeys> Logger
-@inject ISnackbar Snackbar
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge">
-    <MudText Typo="Typo.h3" Class="mb-2">Virtual Keys Management</MudText>
+<div class="container container-xxl">
+    <h3 class="mb-2">Virtual Keys Management</h3>
     
-    <MudText Typo="Typo.body1" Class="mb-4">
+    <p class="mb-4">
         Virtual keys allow external applications to access ConduitLLM's API with controlled permissions and spending limits.
-    </MudText>
+    </p>
     
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <MudAlert Severity="Severity.Error" Class="my-2">@errorMessage</MudAlert>
+        <div class="alert alert-danger my-2" role="alert">@errorMessage</div>
     }
     
-    <MudPaper Class="pa-4 mb-4" Elevation="2">
-        <div class="d-flex justify-space-between align-center mb-3">
-            <MudText Typo="Typo.h5">Virtual Keys</MudText>
-            <MudButton Variant="Variant.Filled" 
-                     Color="Color.Primary" 
-                     StartIcon="@Icons.Material.Filled.Add" 
-                     OnClick="AddVirtualKey">
+    <div class="card p-4 mb-4 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Virtual Keys</h5>
+            <button type="button" class="btn btn-primary" @onclick="AddVirtualKey">
+                <i class="fa fa-plus me-1"></i>
                 Add Key
-            </MudButton>
+            </button>
         </div>
         
         @if (virtualKeys == null)
         {
-            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
         }
         else if (!virtualKeys.Any())
         {
-            <MudAlert Severity="Severity.Info" Class="mb-4">
-                <MudText>No virtual keys configured yet. Add a key to enable API access with controlled permissions.</MudText>
-            </MudAlert>
+            <div class="alert alert-info mb-4" role="alert">
+                <p>No virtual keys configured yet. Add a key to enable API access with controlled permissions.</p>
+            </div>
             
-            <MudCard Class="mb-4">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">About Virtual Keys</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudText>Virtual keys let you:</MudText>
-                    <MudList T="string" Clickable="true" Dense="true">
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Check" Text="Grant API access to third-party applications without sharing your provider credentials" />
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Check" Text="Set spending limits to control costs" />
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Check" Text="Restrict access to specific models" />
-                        <MudListItem T="string" Icon="@Icons.Material.Filled.Check" Text="Set expiration dates for temporary access" />
-                    </MudList>
-                    <MudButton Variant="Variant.Filled" 
-                             Color="Color.Primary" 
-                             StartIcon="@Icons.Material.Filled.Add" 
-                             Class="mt-3" 
-                             OnClick="AddVirtualKey">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">About Virtual Keys</h6>
+                </div>
+                <div class="card-body">
+                    <p>Virtual keys let you:</p>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item"><i class="fa fa-check me-2"></i> Grant API access to third-party applications without sharing your provider credentials</li>
+                        <li class="list-group-item"><i class="fa fa-check me-2"></i> Set spending limits to control costs</li>
+                        <li class="list-group-item"><i class="fa fa-check me-2"></i> Restrict access to specific models</li>
+                        <li class="list-group-item"><i class="fa fa-check me-2"></i> Set expiration dates for temporary access</li>
+                    </ul>
+                    <button type="button" class="btn btn-primary mt-3" @onclick="AddVirtualKey">
+                        <i class="fa fa-plus me-1"></i>
                         Create Your First Key
-                    </MudButton>
-                </MudCardContent>
-            </MudCard>
+                    </button>
+                </div>
+            </div>
         }
         else
         {
-            <MudTable Items="@virtualKeys" Hover="true" Breakpoint="Breakpoint.Sm">
-                <HeaderContent>
-                    <MudTh>Name</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Budget</MudTh>
-                    <MudTh>Models</MudTh>
-                    <MudTh>Created</MudTh>
-                    <MudTh>Expires</MudTh>
-                    <MudTh>Actions</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Name">@context.KeyName</MudTd>
-                    <MudTd DataLabel="Status">
-                        @if (context.IsEnabled)
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Budget</th>
+                            <th>Models</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in virtualKeys)
                         {
-                            <MudChip T="string" Label="true" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                            <tr>
+                                <td data-label="Name">@item.KeyName</td>
+                                <td data-label="Status">
+                                    @if (item.IsEnabled)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Disabled</span>
+                                    }
+                                    @if (item.ExpiresAt.HasValue && item.ExpiresAt.Value < DateTime.UtcNow)
+                                    {
+                                        <span class="badge bg-secondary ms-1">Expired</span>
+                                    }
+                                </td>
+                                <td data-label="Budget">
+                                    @if (item.MaxBudget.HasValue)
+                                    {
+                                        <div>
+                                            $@item.CurrentSpend.ToString("F2") / $@item.MaxBudget.Value.ToString("F2")
+                                            @{
+                                                var percentage = item.MaxBudget.Value > 0 
+                                                    ? Math.Min((double)(item.CurrentSpend / item.MaxBudget.Value) * 100, 100.0) 
+                                                    : 0.0;
+                                                var progressClass = percentage switch {
+                                                    > 90.0 => "bg-danger",
+                                                    > 70.0 => "bg-warning",
+                                                    _ => "bg-success"
+                                                };
+                                            }
+                                            <div class="progress my-1" style="height: 6px;">
+                                                <div class="progress-bar @progressClass" role="progressbar" style="width: @percentage%" 
+                                                     aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <small class="text-muted">@(item.BudgetDuration ?? "Total")</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>No limit</span>
+                                    }
+                                </td>
+                                <td data-label="Models">
+                                    @if (string.IsNullOrEmpty(item.AllowedModels))
+                                    {
+                                        <span>All models</span>
+                                    }
+                                    else
+                                    {
+                                        <span title="@item.AllowedModels">
+                                            @(item.AllowedModels.Length > 15 
+                                                ? item.AllowedModels.Substring(0, 12) + "..." 
+                                                : item.AllowedModels)
+                                        </span>
+                                    }
+                                </td>
+                                <td data-label="Created">@item.CreatedAt.ToLocalTime().ToString("g")</td>
+                                <td data-label="Expires">
+                                    @if (item.ExpiresAt.HasValue)
+                                    {
+                                        @item.ExpiresAt.Value.ToLocalTime().ToString("g")
+                                    }
+                                    else
+                                    {
+                                        <span>Never</span>
+                                    }
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => EditVirtualKey(item.Id)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-outline-warning" @onclick="() => ResetKeySpend(item.Id, item.KeyName)">Reset spend</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => DeleteVirtualKey(item.Id, item.KeyName)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
                         }
-                        else
-                        {
-                            <MudChip T="string" Label="true" Color="Color.Error" Size="Size.Small">Disabled</MudChip>
-                        }
-                        @if (context.ExpiresAt.HasValue && context.ExpiresAt.Value < DateTime.UtcNow)
-                        {
-                            <MudChip T="string" Label="true" Color="Color.Default" Size="Size.Small" Class="ml-1">Expired</MudChip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Budget">
-                        @if (context.MaxBudget.HasValue)
-                        {
-                            <div>
-                                $@context.CurrentSpend.ToString("F2") / $@context.MaxBudget.Value.ToString("F2")
-                                @{
-                                    var percentage = context.MaxBudget.Value > 0 
-                                        ? Math.Min((double)(context.CurrentSpend / context.MaxBudget.Value) * 100, 100.0) 
-                                        : 0.0;
-                                    var progressColor = percentage switch {
-                                        > 90.0 => Color.Error,
-                                        > 70.0 => Color.Warning,
-                                        _ => Color.Success
-                                    };
-                                }
-                                <MudProgressLinear Color="@progressColor" Value="@percentage" Class="my-1" />
-                                <MudText Typo="Typo.caption">@(context.BudgetDuration ?? "Total")</MudText>
-                            </div>
-                        }
-                        else
-                        {
-                            <MudText>No limit</MudText>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Models">
-                        @if (string.IsNullOrEmpty(context.AllowedModels))
-                        {
-                            <MudText>All models</MudText>
-                        }
-                        else
-                        {
-                            <MudTooltip Text="@context.AllowedModels">
-                                <MudText>
-                                    @(context.AllowedModels.Length > 15 
-                                        ? context.AllowedModels.Substring(0, 12) + "..." 
-                                        : context.AllowedModels)
-                                </MudText>
-                            </MudTooltip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Created">@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd DataLabel="Expires">
-                        @if (context.ExpiresAt.HasValue)
-                        {
-                            @context.ExpiresAt.Value.ToLocalTime().ToString("g")
-                        }
-                        else
-                        {
-                            <MudText>Never</MudText>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Actions">
-                        <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
-                            <MudButton Color="Color.Primary" OnClick="() => EditVirtualKey(context.Id)">Edit</MudButton>
-                            <MudButton Color="Color.Warning" OnClick="() => ResetKeySpend(context.Id, context.KeyName)">Reset spend</MudButton>
-                            <MudButton Color="Color.Error" OnClick="() => DeleteVirtualKey(context.Id, context.KeyName)">Delete</MudButton>
-                        </MudButtonGroup>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+                    </tbody>
+                </table>
+            </div>
         }
-    </MudPaper>
-</MudContainer>
+    </div>
+</div>
 
 @code {
     private List<VirtualKeyDto>? virtualKeys;
@@ -211,19 +217,19 @@
             if (success)
             {
                 await LoadDataAsync();
-                Snackbar.Add($"Virtual key '{keyName}' deleted successfully", Severity.Success);
+                await JSRuntime.InvokeVoidAsync("alert", $"Virtual key '{keyName}' deleted successfully");
             }
             else
             {
                 errorMessage = $"Could not delete key with ID {id}. The key may have been already deleted.";
-                Snackbar.Add("Failed to delete virtual key", Severity.Error);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete virtual key");
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error deleting virtual key: {ex.Message}";
             Logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", id);
-            Snackbar.Add("An error occurred while deleting the virtual key", Severity.Error);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the virtual key");
         }
     }
 
@@ -242,19 +248,19 @@
             if (success)
             {
                 await LoadDataAsync();
-                Snackbar.Add($"Spend for key '{keyName}' reset successfully", Severity.Success);
+                await JSRuntime.InvokeVoidAsync("alert", $"Spend for key '{keyName}' reset successfully");
             }
             else
             {
                 errorMessage = $"Could not reset spend for key with ID {id}. The key may not exist.";
-                Snackbar.Add("Failed to reset key spend", Severity.Error);
+                await JSRuntime.InvokeVoidAsync("alert", "Failed to reset key spend");
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error resetting spend: {ex.Message}";
             Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", id);
-            Snackbar.Add("An error occurred while resetting key spend", Severity.Error);
+            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while resetting key spend");
         }
     }
 }

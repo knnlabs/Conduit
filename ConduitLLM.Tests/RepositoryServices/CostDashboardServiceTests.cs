@@ -1,3 +1,4 @@
+using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.WebUI.DTOs;
@@ -11,24 +12,30 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Tests.RepositoryServices
 {
-    public class CostDashboardServiceNewTests
+    public class CostDashboardServiceTests
     {
+        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _mockDbContextFactory;
+        private readonly ILogger<CostDashboardService> _logger;
+        private readonly CostDashboardService _service;
+        
+        // Legacy mocks kept for test compatibility
         private readonly Mock<IRequestLogRepository> _mockRequestLogRepository;
         private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
-        private readonly ILogger<CostDashboardServiceNew> _logger;
-        private readonly CostDashboardServiceNew _service;
 
-        public CostDashboardServiceNewTests()
+        public CostDashboardServiceTests()
         {
+            _mockDbContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _logger = NullLogger<CostDashboardService>.Instance;
             _mockRequestLogRepository = new Mock<IRequestLogRepository>();
             _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
-            _logger = NullLogger<CostDashboardServiceNew>.Instance;
-            _service = new CostDashboardServiceNew(
-                _mockRequestLogRepository.Object,
-                _mockVirtualKeyRepository.Object,
+            
+            _service = new CostDashboardService(
+                _mockDbContextFactory.Object,
                 _logger);
         }
 

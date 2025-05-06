@@ -12,339 +12,390 @@
 @inject IRouterService RouterService
 @inject RouterOptionsService RouterOptionsService
 @inject ILogger<RoutingSettings> Logger
-@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Routing Settings</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">
-    <MudIcon Icon="@Icons.Material.Filled.Shuffle" Class="mr-2" />
+<h2 class="mb-4">
+    <i class="fa fa-random me-2"></i>
     Routing Settings
-</MudText>
-<MudDivider Class="mb-4" />
+</h2>
+<hr class="mb-4" />
 
 @if (!_isInitialized)
 {
-    <MudGrid>
-        <MudItem xs="12" Class="d-flex flex-column align-center py-8">
-            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-            <MudText Typo="Typo.body1" Class="mt-4">Loading routing settings...</MudText>
-        </MudItem>
-    </MudGrid>
+    <div class="row">
+        <div class="col-12 d-flex flex-column align-items-center py-4">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-4">Loading routing settings...</p>
+        </div>
+    </div>
 }
 else
 {
-    <MudPaper Elevation="0" Class="mb-4" 
-             Style="@(_isEnabled ? "background-color: var(--mud-palette-success-lighten)" : "background-color: var(--mud-palette-warning-lighten)")">
-        <MudGrid Class="pa-4">
-            <MudItem xs="12" Class="d-flex align-center">
-                <MudIcon Icon="@(_isEnabled ? Icons.Material.Filled.ToggleOn : Icons.Material.Filled.ToggleOff)" 
-                        Color="@(_isEnabled ? Color.Success : Color.Warning)" Size="Size.Large" Class="mr-3" />
+    <div class="card mb-4" style="background-color: @(_isEnabled ? "#d4edda" : "#fff3cd")">
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center">
+                <i class="fa @(_isEnabled ? "fa-toggle-on text-success" : "fa-toggle-off text-warning") fa-2x me-3"></i>
                 <div class="flex-grow-1">
-                    <MudText Typo="Typo.h5" GutterBottom="false">Router is @(_isEnabled ? "enabled" : "disabled")</MudText>
-                    <MudText Typo="Typo.caption">Router @(_isEnabled ? "is" : "is not") currently handling model requests</MudText>
+                    <h5 class="mb-0">Router is @(_isEnabled ? "enabled" : "disabled")</h5>
+                    <small>Router @(_isEnabled ? "is" : "is not") currently handling model requests</small>
                 </div>
-                <MudButton Variant="Variant.Filled" 
-                         Color="@(_isEnabled ? Color.Warning : Color.Success)" 
-                         OnClick="ToggleRouterEnabled">
+                <button class="btn @(_isEnabled ? "btn-warning" : "btn-success")" @onclick="ToggleRouterEnabled">
                     @(_isEnabled ? "Disable" : "Enable") Router
-                </MudButton>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+                </button>
+            </div>
+        </div>
+    </div>
 
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="2" Class="mb-4">
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Router Configuration</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudSelect T="string" Label="Default Routing Strategy" @bind-Value="_config.DefaultRoutingStrategy"
-                              Variant="Variant.Outlined" Class="mb-4">
-                        <MudSelectItem Value="@("simple")">Simple (Use first available model)</MudSelectItem>
-                        <MudSelectItem Value="@("random")">Random (Random model selection)</MudSelectItem>
-                        <MudSelectItem Value="@("round-robin")">Round Robin (Equal distribution)</MudSelectItem>
-                    </MudSelect>
+    <div class="row">
+        <div class="col-12 col-md-6">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Router Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="routingStrategy" class="form-label">Default Routing Strategy</label>
+                        <select id="routingStrategy" class="form-select" @bind="_config.DefaultRoutingStrategy">
+                            <option value="simple">Simple (Use first available model)</option>
+                            <option value="random">Random (Random model selection)</option>
+                            <option value="round-robin">Round Robin (Equal distribution)</option>
+                        </select>
+                    </div>
                     
-                    <MudNumericField T="int" Label="Maximum Retries" @bind-Value="_config.MaxRetries" 
-                                   Min="0" Max="10" Variant="Variant.Outlined" Class="mb-4" />
-                                   
-                    <MudNumericField T="int" Label="Base Retry Delay (ms)" @bind-Value="_config.RetryBaseDelayMs" 
-                                   Min="100" Step="100" Variant="Variant.Outlined" Class="mb-4" />
-                                   
-                    <MudNumericField T="int" Label="Maximum Retry Delay (ms)" @bind-Value="_config.RetryMaxDelayMs" 
-                                   Min="500" Step="500" Variant="Variant.Outlined" Class="mb-4" />
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                    <div class="mb-4">
+                        <label for="maxRetries" class="form-label">Maximum Retries</label>
+                        <input type="number" id="maxRetries" class="form-control" @bind="_config.MaxRetries" min="0" max="10" />
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="baseRetryDelay" class="form-label">Base Retry Delay (ms)</label>
+                        <input type="number" id="baseRetryDelay" class="form-control" @bind="_config.RetryBaseDelayMs" min="100" step="100" />
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="maxRetryDelay" class="form-label">Maximum Retry Delay (ms)</label>
+                        <input type="number" id="maxRetryDelay" class="form-control" @bind="_config.RetryMaxDelayMs" min="500" step="500" />
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="2" Class="mb-4 h-100">
-                <MudCardHeader>
-                    <MudText Typo="Typo.h6">Routing Strategies Explained</MudText>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudList T="string" Clickable="true" Dense="true">
-                        <MudListItem T="string">
-                            <MudText Typo="Typo.subtitle1">Simple</MudText>
-                            <MudText Typo="Typo.body2">Uses the first available model deployment in the list. If it fails, falls back to the next one.</MudText>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <MudText Typo="Typo.subtitle1">Random</MudText>
-                            <MudText Typo="Typo.body2">Randomly selects from available model deployments. Provides load distribution across all deployments.</MudText>
-                        </MudListItem>
-                        <MudListItem T="string">
-                            <MudText Typo="Typo.subtitle1">Round Robin</MudText>
-                            <MudText Typo="Typo.body2">Evenly distributes requests across all model deployments in a sequential order.</MudText>
-                        </MudListItem>
-                    </MudList>
-                    <MudAlert Severity="Severity.Info" Class="mt-4" Variant="Variant.Filled">
-                        <MudText Typo="Typo.body2"><strong>Note:</strong> Fallback configuration is applied regardless of the routing strategy when a model fails.</MudText>
-                    </MudAlert>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
+        <div class="col-12 col-md-6">
+            <div class="card mb-4 shadow-sm h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Routing Strategies Explained</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <h6>Simple</h6>
+                            <p class="small">Uses the first available model deployment in the list. If it fails, falls back to the next one.</p>
+                        </li>
+                        <li class="list-group-item">
+                            <h6>Random</h6>
+                            <p class="small">Randomly selects from available model deployments. Provides load distribution across all deployments.</p>
+                        </li>
+                        <li class="list-group-item">
+                            <h6>Round Robin</h6>
+                            <p class="small">Evenly distributes requests across all model deployments in a sequential order.</p>
+                        </li>
+                    </ul>
+                    <div class="alert alert-info mt-4">
+                        <p class="small mb-0"><strong>Note:</strong> Fallback configuration is applied regardless of the routing strategy when a model fails.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" Class="d-flex justify-end">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                     OnClick="async () => await SaveConfigurationAsync()"
-                     StartIcon="@Icons.Material.Filled.Save">
-                Save Configuration
-            </MudButton>
-        </MudItem>
-    </MudGrid>
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-end">
+            <button class="btn btn-primary" @onclick="async () => await SaveConfigurationAsync()">
+                <i class="fa fa-save me-1"></i> Save Configuration
+            </button>
+        </div>
+    </div>
 
-    <MudCard Elevation="2" Class="mb-4">
-        <MudCardHeader>
-            <MudText Typo="Typo.h6">Model Deployments</MudText>
-            <MudToolBar DisableGutters="true">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                         OnClick="AddNewDeploymentAsync" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small">
-                    Add Deployment
-                </MudButton>
-            </MudToolBar>
-        </MudCardHeader>
-        <MudCardContent>
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Model Deployments</h5>
+            <button class="btn btn-primary btn-sm" @onclick="AddNewDeploymentAsync">
+                <i class="fa fa-plus me-1"></i> Add Deployment
+            </button>
+        </div>
+        <div class="card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-2">
+                <div class="alert alert-warning border my-2">
                     No model deployments configured. Add deployments to enable routing between models.
-                </MudAlert>
+                </div>
             }
             else
             {
-                <MudTable Items="@_config.ModelDeployments" Hover="true" Bordered="false" Dense="true">
-                    <HeaderContent>
-                        <MudTh>Model Name</MudTh>
-                        <MudTh>Provider</MudTh>
-                        <MudTh>Weight</MudTh>
-                        <MudTh>Health Check</MudTh>
-                        <MudTh>Status</MudTh>
-                        <MudTh>Actions</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Model Name">@context.ModelName</MudTd>
-                        <MudTd DataLabel="Provider">@context.ProviderName</MudTd>
-                        <MudTd DataLabel="Weight">@context.Weight</MudTd>
-                        <MudTd DataLabel="Health Check">
-                            <MudChip T="string" Size="Size.Small" 
-                                   Color="@(_isEnabled ? Color.Success : Color.Default)">
-                                @(context.HealthCheckEnabled ? "Enabled" : "Disabled")
-                            </MudChip>
-                        </MudTd>
-                        <MudTd DataLabel="Status">
-                            <MudChip T="string" Size="Size.Small" 
-                                   Color="@(_isEnabled ? Color.Success : Color.Default)">
-                                @(context.IsHealthy && context.IsEnabled ? "Healthy" : 
-                                  !context.IsEnabled ? "Disabled" : "Unhealthy")
-                            </MudChip>
-                        </MudTd>
-                        <MudTd DataLabel="Actions">
-                            <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" 
-                                             OnClick="() => EditDeploymentAsync(context)" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
-                                             OnClick="() => DeleteDeploymentAsync(context)" />
-                            </MudButtonGroup>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Model Name</th>
+                                <th>Provider</th>
+                                <th>Weight</th>
+                                <th>Health Check</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var deployment in _config.ModelDeployments)
+                            {
+                                <tr>
+                                    <td>@deployment.ModelName</td>
+                                    <td>@deployment.ProviderName</td>
+                                    <td>@deployment.Weight</td>
+                                    <td>
+                                        <span class="badge bg-@(_isEnabled ? "success" : "secondary") rounded-pill">
+                                            @(deployment.HealthCheckEnabled ? "Enabled" : "Disabled")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@(_isEnabled ? "success" : "secondary") rounded-pill">
+                                            @(deployment.IsHealthy && deployment.IsEnabled ? "Healthy" : 
+                                            !deployment.IsEnabled ? "Disabled" : "Unhealthy")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" @onclick="() => EditDeploymentAsync(deployment)" title="Edit">
+                                                <i class="fa fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" @onclick="() => DeleteDeploymentAsync(deployment)" title="Delete">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             }
-        </MudCardContent>
-    </MudCard>
+        </div>
+    </div>
     
-    <MudCard Elevation="2" Class="mb-4">
-        <MudCardHeader>
-            <MudText Typo="Typo.h6">Fallback Configurations</MudText>
-        </MudCardHeader>
-        <MudCardContent>
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Fallback Configurations</h5>
+        </div>
+        <div class="card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="my-2">
+                <div class="alert alert-warning border my-2">
                     You need to add model deployments before configuring fallbacks.
-                </MudAlert>
+                </div>
             }
             else
             {
                 <div class="mb-3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
-                             OnClick="AddFallbackConfigAsync" StartIcon="@Icons.Material.Filled.Add">
-                        Add Fallback Configuration
-                    </MudButton>
+                    <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                        <i class="fa fa-plus me-1"></i> Add Fallback Configuration
+                    </button>
                 </div>
                 
                 @if (_config.FallbackConfigurations?.Count > 0)
                 {
-                    <MudTable Items="@_config.FallbackConfigurations" Hover="true" Bordered="false" Dense="true">
-                        <HeaderContent>
-                            <MudTh>Primary Model</MudTh>
-                            <MudTh>Fallback Models</MudTh>
-                            <MudTh>Actions</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Primary Model">@GetModelDisplayName(context.PrimaryModelDeploymentId)</MudTd>
-                            <MudTd DataLabel="Fallback Models">
-                                @if (context.FallbackModelDeploymentIds.Count == 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Primary Model</th>
+                                    <th>Fallback Models</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var fallback in _config.FallbackConfigurations)
                                 {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">No fallbacks</MudChip>
+                                    <tr>
+                                        <td>@GetModelDisplayName(fallback.PrimaryModelDeploymentId)</td>
+                                        <td>
+                                            @if (fallback.FallbackModelDeploymentIds.Count == 0)
+                                            {
+                                                <span class="badge bg-warning text-dark rounded-pill">No fallbacks</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach (var modelId in fallback.FallbackModelDeploymentIds)
+                                                    {
+                                                        <span class="badge bg-info text-dark rounded-pill m-1">
+                                                            @GetModelDisplayName(modelId)
+                                                        </span>
+                                                    }
+                                                </div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" @onclick="() => EditFallbackAsync(fallback)" title="Edit">
+                                                    <i class="fa fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => DeleteFallbackAsync(fallback)" title="Delete">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info border my-2">
+                        No fallback configurations defined. Fallbacks determine which models to use when a preferred model is unavailable.
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    
+    <div class="modal @(_showDeploymentModal ? "show" : "")" style="display: @(_showDeploymentModal ? "block" : "none")">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingDeployment.Id == Guid.Empty ? "Add" : "Edit") Model Deployment</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDeploymentModal"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="modelName" class="form-label">Model Name</label>
+                            <select id="modelName" class="form-select" @bind="_editingDeployment.ModelName" required>
+                                <option value="">-- Select Model --</option>
+                                @foreach (var model in _availableModelMappings)
+                                {
+                                    <option value="@model.ModelAlias">@model.ModelAlias</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="providerName" class="form-label">Provider Name</label>
+                            <select id="providerName" class="form-select" @bind="_editingDeployment.ProviderName" required>
+                                <option value="">-- Select Provider --</option>
+                                @foreach (var provider in _availableProviders)
+                                {
+                                    <option value="@provider.ProviderName">@provider.ProviderName</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">Weight</label>
+                            <input type="number" id="weight" class="form-control" @bind="_editingDeployment.Weight" min="1" required />
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="healthCheckEnabled" @bind="_editingDeployment.HealthCheckEnabled" />
+                            <label class="form-check-label" for="healthCheckEnabled">Enable Health Checks</label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="isEnabled" @bind="_editingDeployment.IsEnabled" />
+                            <label class="form-check-label" for="isEnabled">Enabled</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDeploymentModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveDeploymentAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal @(_showFallbackModal ? "show" : "")" style="display: @(_showFallbackModal ? "block" : "none")">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingFallback.Id == Guid.Empty ? "Add" : "Edit") Fallback Configuration</h5>
+                    <button type="button" class="btn-close" @onclick="CloseFallbackModal"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="primaryModel" class="form-label">Primary Model</label>
+                            <select id="primaryModel" class="form-select" @bind="_editingFallback.PrimaryModelDeploymentId" required>
+                                <option value="">-- Select Primary Model --</option>
+                                @foreach (var model in _config.ModelDeployments)
+                                {
+                                    <option value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <h6 class="mb-2">Fallback Models (in order)</h6>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                @if (_editingFallback.FallbackModelDeploymentIds.Any())
+                                {
+                                    <ul class="list-group list-group-flush">
+                                        @foreach (var fallbackId in _editingFallback.FallbackModelDeploymentIds)
+                                        {
+                                            var model = _config.ModelDeployments.FirstOrDefault(m => m.Id.ToString() == fallbackId);
+                                            if (model != null)
+                                            {
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    @model.ModelName (@model.ProviderName)
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFallbackModelAsync(fallbackId)">
+                                                        <i class="fa fa-trash"></i>
+                                                    </button>
+                                                </li>
+                                            }
+                                        }
+                                    </ul>
                                 }
                                 else
                                 {
-                                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
-                                        @foreach (var modelId in context.FallbackModelDeploymentIds)
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ma-1">
-                                                @GetModelDisplayName(modelId)
-                                            </MudChip>
-                                        }
-                                    </MudStack>
+                                    <p class="p-2 mb-0">No fallback models selected yet.</p>
                                 }
-                            </MudTd>
-                            <MudTd DataLabel="Actions">
-                                <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" 
-                                                 OnClick="() => EditFallbackAsync(context)" />
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" 
-                                                 OnClick="() => DeleteFallbackAsync(context)" />
-                                </MudButtonGroup>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                }
-                else
-                {
-                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-2">
-                        No fallback configurations defined. Fallbacks determine which models to use when a preferred model is unavailable.
-                    </MudAlert>
-                }
-            }
-        </MudCardContent>
-    </MudCard>
-    
-    <MudDialog @bind-IsVisible="_showDeploymentModal" Options="dialogOptions">
-        <TitleContent>
-            <MudText Typo="Typo.h6">@(_editingDeployment.Id == Guid.Empty ? "Add" : "Edit") Model Deployment</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudSelect T="string" Label="Model Name" Required="true" @bind-Value="_editingDeployment.ModelName" 
-                      AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
-                <MudSelectItem Value="@string.Empty">-- Select Model --</MudSelectItem>
-                @foreach (var model in _availableModelMappings)
-                {
-                    <MudSelectItem Value="@model.ModelAlias">@model.ModelAlias</MudSelectItem>
-                }
-            </MudSelect>
-            
-            <MudSelect T="string" Label="Provider Name" Required="true" @bind-Value="_editingDeployment.ProviderName" 
-                      AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
-                <MudSelectItem Value="@string.Empty">-- Select Provider --</MudSelectItem>
-                @foreach (var provider in _availableProviders)
-                {
-                    <MudSelectItem Value="@provider.ProviderName">@provider.ProviderName</MudSelectItem>
-                }
-            </MudSelect>
-            
-            <MudNumericField T="int" Label="Weight" Required="true" @bind-Value="_editingDeployment.Weight" 
-                           Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
-                           
-            <MudCheckBox T="bool" @bind-checked="_editingDeployment.HealthCheckEnabled" Label="Enable Health Checks" 
-                        Color="Color.Primary" Class="mb-3" />
+                            </div>
+                        </div>
                         
-            <MudCheckBox T="bool" @bind-checked="_editingDeployment.IsEnabled" Label="Enabled" 
-                        Color="Color.Primary" Class="mb-3" />
-        </DialogContent>
-        <DialogActions>
-            <MudButton Variant="Variant.Text" OnClick="CloseDeploymentModal" Color="Color.Default">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled" OnClick="SaveDeploymentAsync" Color="Color.Primary">Save</MudButton>
-        </DialogActions>
-    </MudDialog>
-    
-    <MudDialog @bind-IsVisible="_showFallbackModal" Options="dialogOptions">
-        <TitleContent>
-            <MudText Typo="Typo.h6">@(_editingFallback.Id == Guid.Empty ? "Add" : "Edit") Fallback Configuration</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudSelect T="string" Label="Primary Model" Required="true" @bind-Value="_editingFallback.PrimaryModelDeploymentId" 
-                      AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3">
-                <MudSelectItem Value="@string.Empty">-- Select Primary Model --</MudSelectItem>
-                @foreach (var model in _config.ModelDeployments)
-                {
-                    <MudSelectItem Value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</MudSelectItem>
-                }
-            </MudSelect>
-            
-            <MudText Typo="Typo.subtitle1" Class="mb-2">Fallback Models (in order)</MudText>
-            
-            <MudPaper Elevation="0" Outlined="true" Class="pa-2 mb-3">
-                @if (_editingFallback.FallbackModelDeploymentIds.Any())
-                {
-                    <MudList T="string" Dense="true" Clickable="true">
-                        @foreach (var fallbackId in _editingFallback.FallbackModelDeploymentIds)
-                        {
-                            var model = _config.ModelDeployments.FirstOrDefault(m => m.Id.ToString() == fallbackId);
-                            if (model != null)
-                            {
-                                <MudListItem T="string">
-                                    <div class="d-flex align-center">
-                                        <MudText>@model.ModelName (@model.ProviderName)</MudText>
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-                                                     Class="ml-auto" OnClick="() => RemoveFallbackModelAsync(fallbackId)" />
-                                    </div>
-                                </MudListItem>
-                            }
-                        }
-                    </MudList>
-                }
-                else
-                {
-                    <MudText Typo="Typo.body2" Class="pa-2">No fallback models selected yet.</MudText>
-                }
-            </MudPaper>
-            
-            <MudSelect T="string" Label="Add Fallback Model" @bind-Value="_selectedFallbackModelId" 
-                      AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2">
-                <MudSelectItem Value="@string.Empty">-- Add Fallback Model --</MudSelectItem>
-                @foreach (var model in _config.ModelDeployments.Where(m => 
-                    m.Id.ToString() != _editingFallback.PrimaryModelDeploymentId && 
-                    !_editingFallback.FallbackModelDeploymentIds.Contains(m.Id.ToString())))
-                {
-                    <MudSelectItem Value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</MudSelectItem>
-                }
-            </MudSelect>
-            
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                     OnClick="AddFallbackModelAsync" Disabled="@(string.IsNullOrEmpty(_selectedFallbackModelId))"
-                     StartIcon="@Icons.Material.Filled.Add" Class="mb-3">
-                Add Model
-            </MudButton>
-        </DialogContent>
-        <DialogActions>
-            <MudButton Variant="Variant.Text" OnClick="CloseFallbackModal" Color="Color.Default">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled" OnClick="SaveFallbackAsync" Color="Color.Primary">Save</MudButton>
-        </DialogActions>
-    </MudDialog>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <select class="form-select" @bind="_selectedFallbackModelId">
+                                    <option value="">-- Add Fallback Model --</option>
+                                    @foreach (var model in _config.ModelDeployments.Where(m => 
+                                        m.Id.ToString() != _editingFallback.PrimaryModelDeploymentId && 
+                                        !_editingFallback.FallbackModelDeploymentIds.Contains(m.Id.ToString())))
+                                    {
+                                        <option value="@model.Id.ToString()">@model.ModelName (@model.ProviderName)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        @onclick="AddFallbackModelAsync" 
+                                        disabled="@(string.IsNullOrEmpty(_selectedFallbackModelId))">
+                                    <i class="fa fa-plus me-1"></i> Add Model
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseFallbackModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveFallbackAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
@@ -366,11 +417,10 @@ else
     private List<ConduitLLM.Configuration.Entities.ProviderCredential> _availableProviders = new();
     private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> _availableModelMappings = new();
 
-    // Dialog options
-    private DialogOptions dialogOptions = new() { 
-        // CloseOnEscapeKey property removed in MudBlazor v8.6.0
-        MaxWidth = MaxWidth.Medium,
-        FullWidth = true
+    // Dialog options for standard modal dialogs
+    private Dictionary<string, object> dialogOptions = new() { 
+        { "class", "modal-dialog modal-lg" },
+        { "role", "dialog" }
     };
 
     protected override async Task OnInitializedAsync()
@@ -389,7 +439,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing routing settings");
-            ShowMessage("Failed to load routing settings: " + ex.Message, true);
+            await ShowMessage("Failed to load routing settings: " + ex.Message, true);
             _isInitialized = true; // Still mark as initialized to show the error
         }
     }
@@ -426,7 +476,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load router configuration");
-            ShowMessage("Failed to load router configuration: " + ex.Message, true);
+            await ShowMessage("Failed to load router configuration: " + ex.Message, true);
         }
     }
     
@@ -438,12 +488,12 @@ else
         try
         {
             _isSaving = true;
-            ShowMessage("Saving router configuration...", false);
+            await ShowMessage("Saving router configuration...", false);
             
             // Validate configuration before saving
             if (_config == null)
             {
-                ShowMessage("Error: Router configuration is null", true);
+                await ShowMessage("Error: Router configuration is null", true);
                 return false;
             }
             
@@ -456,7 +506,7 @@ else
                 
             if (duplicateNames.Any())
             {
-                ShowMessage($"Error: Duplicate deployment names found: {string.Join(", ", duplicateNames)}", true);
+                await ShowMessage($"Error: Duplicate deployment names found: {string.Join(", ", duplicateNames)}", true);
                 return false;
             }
 
@@ -465,18 +515,18 @@ else
             
             if (success)
             {
-                ShowMessage("Router configuration saved successfully", false);
+                await ShowMessage("Router configuration saved successfully", false);
                 await ReloadConfiguration(); // Refresh data
             }
             else
             {
-                ShowMessage("Failed to save router configuration", true);
+                await ShowMessage("Failed to save router configuration", true);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving router configuration");
-            ShowMessage($"Error saving configuration: {ex.Message}", true);
+            await ShowMessage($"Error saving configuration: {ex.Message}", true);
             success = false;
         }
         finally
@@ -493,7 +543,7 @@ else
         {
             // Toggle the router enabled state
             bool newState = !_isEnabled;
-            ShowMessage($"Updating router state to {(newState ? "enabled" : "disabled")}...", false);
+            await ShowMessage($"Updating router state to {(newState ? "enabled" : "disabled")}...", false);
             StateHasChanged();
             
             // Update the router state
@@ -502,7 +552,7 @@ else
             if (success)
             {
                 _isEnabled = newState;
-                ShowMessage($"Router {(_isEnabled ? "enabled" : "disabled")} successfully", false);
+                await ShowMessage($"Router {(_isEnabled ? "enabled" : "disabled")} successfully", false);
                 
                 // If enabling, initialize the router to ensure it's properly set up
                 if (_isEnabled)
@@ -512,20 +562,20 @@ else
             }
             else
             {
-                ShowMessage("Failed to save router state", true);
+                await ShowMessage("Failed to save router state", true);
                 Logger.LogError("Failed to save router state");
             }
         }
         catch (Exception ex)
         {
             // Revert the UI state on error
-            ShowMessage("Error toggling router state: " + ex.Message, true);
+            await ShowMessage("Error toggling router state: " + ex.Message, true);
             Logger.LogError(ex, "Failed to toggle router state");
         }
     }
     
     // Model Deployment methods
-    private void AddNewDeploymentAsync()
+    private async Task AddNewDeploymentAsync()
     {
         _editingDeployment = new ModelDeployment
         {
@@ -536,9 +586,10 @@ else
         };
         _showDeploymentModal = true;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
-    private void EditDeploymentAsync(ModelDeployment deployment)
+    private async Task EditDeploymentAsync(ModelDeployment deployment)
     {
         _editingDeployment = new ModelDeployment
         {
@@ -551,6 +602,7 @@ else
         };
         _showDeploymentModal = true;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
     private async Task SaveDeploymentAsync()
@@ -560,19 +612,19 @@ else
             // Validate the deployment
             if (string.IsNullOrWhiteSpace(_editingDeployment.DeploymentName))
             {
-                ShowMessage("Deployment name cannot be empty", true);
+                await ShowMessage("Deployment name cannot be empty", true);
                 return;
             }
             
             if (string.IsNullOrWhiteSpace(_editingDeployment.ModelName))
             {
-                ShowMessage("Model name cannot be empty", true);
+                await ShowMessage("Model name cannot be empty", true);
                 return;
             }
             
             if (string.IsNullOrWhiteSpace(_editingDeployment.ProviderName))
             {
-                ShowMessage("Provider name cannot be empty", true);
+                await ShowMessage("Provider name cannot be empty", true);
                 return;
             }
             
@@ -609,7 +661,7 @@ else
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error saving deployment: {ex.Message}", true);
+            await ShowMessage($"Error saving deployment: {ex.Message}", true);
             Logger.LogError(ex, "Error saving model deployment");
             StateHasChanged();
         }
@@ -640,7 +692,7 @@ else
             
             if (usedInFallbacks)
             {
-                ShowMessage($"Cannot delete '{deploymentName}' because it's used in fallback configurations", true);
+                await ShowMessage($"Cannot delete '{deploymentName}' because it's used in fallback configurations", true);
                 return;
             }
             
@@ -654,14 +706,14 @@ else
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error deleting deployment: {ex.Message}", true);
+            await ShowMessage($"Error deleting deployment: {ex.Message}", true);
             Logger.LogError(ex, "Error deleting model deployment");
             StateHasChanged();
         }
     }
     
     // Fallback Configuration methods
-    private void AddFallbackConfigAsync()
+    private async Task AddFallbackConfigAsync()
     {
         _editingFallback = new FallbackConfiguration
         {
@@ -671,9 +723,10 @@ else
         _selectedFallbackModelId = string.Empty;
         _showFallbackModal = true;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
-    private void EditFallbackAsync(FallbackConfiguration fallback)
+    private async Task EditFallbackAsync(FallbackConfiguration fallback)
     {
         _editingFallback = new FallbackConfiguration
         {
@@ -684,6 +737,7 @@ else
         _selectedFallbackModelId = string.Empty;
         _showFallbackModal = true;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
     private async Task SaveFallbackAsync()
@@ -693,14 +747,14 @@ else
             // Validate the fallback configuration
             if (string.IsNullOrEmpty(_editingFallback.PrimaryModelDeploymentId))
             {
-                ShowMessage("Primary model must be selected", true);
+                await ShowMessage("Primary model must be selected", true);
                 return;
             }
             
             if (_editingFallback.FallbackModelDeploymentIds == null || 
                 !_editingFallback.FallbackModelDeploymentIds.Any())
             {
-                ShowMessage("At least one fallback model must be selected", true);
+                await ShowMessage("At least one fallback model must be selected", true);
                 return;
             }
             
@@ -736,7 +790,7 @@ else
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error saving fallback configuration: {ex.Message}", true);
+            await ShowMessage($"Error saving fallback configuration: {ex.Message}", true);
             Logger.LogError(ex, "Error saving fallback configuration");
             StateHasChanged();
         }
@@ -756,13 +810,13 @@ else
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error deleting fallback configuration: {ex.Message}", true);
+            await ShowMessage($"Error deleting fallback configuration: {ex.Message}", true);
             Logger.LogError(ex, "Error deleting fallback configuration");
             StateHasChanged();
         }
     }
     
-    private void AddFallbackModelAsync()
+    private async Task AddFallbackModelAsync()
     {
         if (!string.IsNullOrEmpty(_selectedFallbackModelId) && 
             !_editingFallback.FallbackModelDeploymentIds.Contains(_selectedFallbackModelId))
@@ -771,24 +825,28 @@ else
             _selectedFallbackModelId = string.Empty;
             StateHasChanged();
         }
+        await Task.CompletedTask;
     }
     
-    private void RemoveFallbackModelAsync(string modelId)
+    private async Task RemoveFallbackModelAsync(string modelId)
     {
         _editingFallback.FallbackModelDeploymentIds.Remove(modelId);
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
-    private void CloseDeploymentModal()
+    private async Task CloseDeploymentModal()
     {
         _showDeploymentModal = false;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
-    private void CloseFallbackModal()
+    private async Task CloseFallbackModal()
     {
         _showFallbackModal = false;
         StateHasChanged();
+        await Task.CompletedTask;
     }
     
     private string GetModelDisplayName(string modelId)
@@ -797,9 +855,9 @@ else
         return model != null ? $"{model.ModelName} ({model.ProviderName})" : "Unknown Model";
     }
     
-    private void ShowMessage(string message, bool isError)
+    private async Task ShowMessage(string message, bool isError)
     {
-        Snackbar.Add(message, isError ? Severity.Error : Severity.Success);
+        await JSRuntime.InvokeVoidAsync("alert", message);
         StateHasChanged();
     }
     
@@ -818,7 +876,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading providers and mappings");
-            ShowMessage("Failed to load providers and mappings: " + ex.Message, true);
+            await ShowMessage("Failed to load providers and mappings: " + ex.Message, true);
         }
     }
 }

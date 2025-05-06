@@ -16,185 +16,243 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Chat Playground</MudText>
+<div class="container container-xxl mt-4">
+    <h4 class="mb-4">Chat Playground</h4>
 
     @if (modelMappings == null || !modelMappings.Any())
     {
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
-            No models configured. Please add models in the <MudLink Href="/configuration">Configuration</MudLink> page.
-        </MudAlert>
+        <div class="alert alert-warning">
+            No models configured. Please add models in the <a href="/configuration">Configuration</a> page.
+        </div>
     }
     else
     {
-        <MudGrid>
-            <MudItem xs="12" md="8">
-                <MudPaper Elevation="2" Class="pa-4">
-                    <MudTextField T="string" Label="System Prompt (Optional)" 
-                                 @bind-Value="systemPrompt" Lines="3" 
-                                 Variant="Variant.Outlined" Class="mb-4"
-                                 HelperText="Instructions that define the AI's behavior for the entire conversation (e.g., 'You are a helpful assistant', 'Respond as a SQL expert')" />
+        <div class="row">
+            <div class="col-12 col-md-8">
+                <div class="card p-4 mb-4">
+                    <div class="form-group mb-4">
+                        <label for="systemPrompt">System Prompt (Optional)</label>
+                        <textarea id="systemPrompt" 
+                                  class="form-control" 
+                                  rows="3" 
+                                  @bind="systemPrompt"></textarea>
+                        <div class="form-text">
+                            Instructions that define the AI's behavior for the entire conversation (e.g., 'You are a helpful assistant', 'Respond as a SQL expert')
+                        </div>
+                    </div>
                     
-                    <MudTextField T="string" Label="User Message" 
-                                 @bind-Value="userMessage" Lines="5" 
-                                 Variant="Variant.Outlined" Class="mb-4"
-                                 Placeholder="Enter your message here..." />
+                    <div class="form-group mb-4">
+                        <label for="userMessage">User Message</label>
+                        <textarea id="userMessage" 
+                                  class="form-control" 
+                                  rows="5" 
+                                  placeholder="Enter your message here..." 
+                                  @bind="userMessage"></textarea>
+                    </div>
                     
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
-                              OnClick="SendRequest" Disabled="@isLoading" 
-                              StartIcon="@Icons.Material.Filled.Send" Class="mr-2">
-                        @if (isLoading)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                            <MudText>Sending...</MudText>
-                        }
-                        else
-                        {
-                            <MudText>Send Request</MudText>
-                        }
-                    </MudButton>
-                    
-                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" 
-                              OnClick="ClearChat" Disabled="@isLoading"
-                              StartIcon="@Icons.Material.Filled.ClearAll">
-                        Clear
-                    </MudButton>
+                    <div class="d-flex mb-4">
+                        <button type="button" 
+                                class="btn btn-primary me-2" 
+                                @onclick="SendRequest" 
+                                disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Sending...</span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-paper-plane me-2"></i>
+                                <span>Send Request</span>
+                            }
+                        </button>
+                        
+                        <button type="button" 
+                                class="btn btn-outline-secondary" 
+                                @onclick="ClearChat" 
+                                disabled="@isLoading">
+                            <i class="fa fa-trash me-2"></i>
+                            Clear
+                        </button>
+                    </div>
                     
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
-                        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                        <div class="alert alert-danger mt-4">
                             @errorMessage
-                        </MudAlert>
+                        </div>
                     }
                     
                     <!-- Chat History Display -->
-                    <MudPaper Elevation="0" Class="mt-4 pa-4" Style="max-height: 500px; overflow-y: auto; background-color: var(--mud-palette-background-grey);">
+                    <div class="card bg-light mt-4 p-4" style="max-height: 500px; overflow-y: auto;">
                         @if (!chatHistory.Any() && !isLoading)
                         {
-                            <MudText Align="Align.Center" Color="Color.Secondary">
+                            <p class="text-muted text-center">
                                 Chat history will appear here.
-                            </MudText>
+                            </p>
                         }
                         @foreach (var message in chatHistory)
                         {
-                            <MudPaper Elevation="0" Class="@($"mb-3 pa-3 {GetMessageClass(message.Role)}")">
-                                <MudText Typo="Typo.subtitle2" Style="text-transform: capitalize;">
+                            <div class="card mb-3 p-3 @GetMessageClass(message.Role)">
+                                <h6 class="text-capitalize mb-2">
                                     @message.Role
-                                </MudText>
-                                <MudDivider Class="my-1" />
+                                </h6>
+                                <hr class="my-1" />
                                 @RenderMessageContent(message.Content ?? string.Empty)
-                            </MudPaper>
+                            </div>
                         }
                         @if (isLoading && _streamResponse)
                         {
-                            <MudPaper Elevation="0" Class="mb-3 pa-3 assistant-message">
-                                <MudText Typo="Typo.subtitle2">
+                            <div class="card mb-3 p-3 assistant-message">
+                                <h6 class="text-capitalize mb-2">
                                     Assistant
-                                </MudText>
-                                <MudDivider Class="my-1" />
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                            </MudPaper>
+                                </h6>
+                                <hr class="my-1" />
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
                         }
                         @if (isLoading && !_streamResponse)
                         {
-                            <MudPaper Elevation="0" Class="mb-3 pa-3 assistant-message">
-                                <MudText Typo="Typo.subtitle2">
+                            <div class="card mb-3 p-3 assistant-message">
+                                <h6 class="text-capitalize mb-2">
                                     Assistant
-                                </MudText>
-                                <MudDivider Class="my-1" />
-                                <MudText Color="Color.Secondary">
-                                    Waiting for response... <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ml-2" />
-                                </MudText>
-                            </MudPaper>
+                                </h6>
+                                <hr class="my-1" />
+                                <p class="text-muted">
+                                    Waiting for response... 
+                                    <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                </p>
+                            </div>
                         }
-                    </MudPaper>
-                </MudPaper>
-            </MudItem>
+                    </div>
+                </div>
+            </div>
             
-            <MudItem xs="12" md="4">
-                <MudPaper Elevation="2" Class="pa-4">
-                    <MudText Typo="Typo.h6" Class="mb-4">Parameters</MudText>
+            <div class="col-12 col-md-4">
+                <div class="card p-4">
+                    <h6 class="mb-4">Parameters</h6>
                     
-                    <MudSelect T="string" Label="Model" @bind-Value="selectedModelAlias" 
-                               Variant="Variant.Outlined" Class="mb-4" FullWidth="true"
-                               AnchorOrigin="Origin.BottomCenter">
-                        @foreach (var mapping in modelMappings)
-                        {
-                            <MudSelectItem Value="@mapping.ModelAlias">@mapping.ModelAlias</MudSelectItem>
-                        }
-                    </MudSelect>
+                    <div class="form-group mb-4">
+                        <label for="modelSelect">Model</label>
+                        <select id="modelSelect" 
+                                class="form-select" 
+                                @bind="selectedModelAlias">
+                            @foreach (var mapping in modelMappings)
+                            {
+                                <option value="@mapping.ModelAlias">@mapping.ModelAlias</option>
+                            }
+                        </select>
+                    </div>
                     
-                    <MudTextField T="string" Label="API Key (Optional)" 
-                                 @bind-Value="apiKey" Variant="Variant.Outlined" 
-                                 HelperText="Overrides key from configuration for this request."
-                                 Class="mb-4" />
+                    <div class="form-group mb-4">
+                        <label for="apiKey">API Key (Optional)</label>
+                        <input type="text" 
+                               id="apiKey" 
+                               class="form-control" 
+                               @bind="apiKey" />
+                        <div class="form-text">Overrides key from configuration for this request.</div>
+                    </div>
                     
-                    <MudSwitch T="bool"
-                               Label="Stream Response"
-                               Color="Color.Primary"
-                               HelperText="Stream the response word-by-word, like ChatGPT."
-                               @bind-Checked="_streamResponse"
-                               Style="width: 100%"
-                               Class="mb-2" />
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="streamResponse" 
+                               @bind="_streamResponse" />
+                        <label class="form-check-label" for="streamResponse">Stream Response</label>
+                        <div class="form-text">Stream the response word-by-word, like ChatGPT.</div>
+                    </div>
                     
-                    <MudSwitch T="bool"
-                               Label="Show Raw Message"
-                               Color="Color.Primary"
-                               @bind-Checked="_showRawMessage"
-                               Style="width: 100%"
-                               Class="mb-2" />
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="showRawMessage" 
+                               @bind="_showRawMessage" />
+                        <label class="form-check-label" for="showRawMessage">Show Raw Message</label>
+                    </div>
                     
-                    <MudSwitch T="bool"
-                               Label="Append Function Result"
-                               HelperText="Append the result of successful function calls to the chat history."
-                               Color="Color.Primary"
-                               @bind-Checked="_appendFunctionResult" />
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="appendFunctionResult" 
+                               @bind="_appendFunctionResult" />
+                        <label class="form-check-label" for="appendFunctionResult">Append Function Result</label>
+                        <div class="form-text">Append the result of successful function calls to the chat history.</div>
+                    </div>
                     
-                    <MudSwitch T="bool"
-                               Label="Execute Functions"
-                               Color="Color.Primary"
-                               @bind-Checked="_executeFunctions" />
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="executeFunctions" 
+                               @bind="_executeFunctions" />
+                        <label class="form-check-label" for="executeFunctions">Execute Functions</label>
+                    </div>
                     
-                    <MudText Typo="Typo.subtitle2" Class="mb-1">Temperature: @temperature</MudText>
-                    <MudSlider T="double" Value="@temperature" ValueChanged="@((double val) => temperature = val)" 
-                               Min="0" Max="1" Step="0.01" Class="mb-4" />
+                    <div class="mb-4">
+                        <label for="temperatureSlider" class="form-label">Temperature: @temperature</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="temperatureSlider" 
+                               min="0" max="1" step="0.01" 
+                               @bind-value="temperature" 
+                               @bind-value:event="oninput" />
+                    </div>
                     
-                    <MudText Typo="Typo.subtitle2" Class="mb-1">Top P: @topP</MudText>
-                    <MudSlider T="double" Value="@topP" ValueChanged="@((double val) => topP = val)" 
-                               Min="0" Max="1" Step="0.01" Class="mb-4" />
+                    <div class="mb-4">
+                        <label for="topPSlider" class="form-label">Top P: @topP</label>
+                        <input type="range" 
+                               class="form-range" 
+                               id="topPSlider" 
+                               min="0" max="1" step="0.01" 
+                               @bind-value="topP" 
+                               @bind-value:event="oninput" />
+                    </div>
                     
-                    <MudTextField T="string" Label="Stop Sequences (Optional)" 
-                                 @bind-Value="stopSequences" Variant="Variant.Outlined" 
-                                 HelperText="Comma-separated list of sequences to stop generation."
-                                 Class="mb-4" />
+                    <div class="form-group mb-4">
+                        <label for="stopSequences">Stop Sequences (Optional)</label>
+                        <input type="text" 
+                               id="stopSequences" 
+                               class="form-control" 
+                               @bind="stopSequences" />
+                        <div class="form-text">Comma-separated list of sequences to stop generation.</div>
+                    </div>
                     
-                    <MudSwitch T="bool" 
-                               Label="Auto Scroll"
-                               HelperText="Automatically scroll to the bottom when new messages arrive."
-                               @bind-Checked="_autoScroll"
-                               Class="mb-2" />
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="autoScroll" 
+                               @bind="_autoScroll" />
+                        <label class="form-check-label" for="autoScroll">Auto Scroll</label>
+                        <div class="form-text">Automatically scroll to the bottom when new messages arrive.</div>
+                    </div>
                     
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ClearChat" Class="mt-4">Clear Chat</MudButton>
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
+                    <button type="button" 
+                            class="btn btn-danger mt-2" 
+                            @onclick="ClearChat">
+                        <i class="fa fa-trash me-2"></i>
+                        Clear Chat
+                    </button>
+                </div>
+            </div>
+        </div>
     }
-</MudContainer>
+</div>
 
 <style>
     .user-message {
-        background-color: var(--mud-palette-primary-lighten);
-        border-left: 4px solid var(--mud-palette-primary);
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196f3;
     }
     
     .assistant-message {
-        background-color: var(--mud-palette-secondary-lighten);
-        border-left: 4px solid var(--mud-palette-secondary);
+        background-color: #f3e5f5;
+        border-left: 4px solid #9c27b0;
     }
     
     .system-message {
-        background-color: var(--mud-palette-info-lighten);
-        border-left: 4px solid var(--mud-palette-info);
+        background-color: #e8f5e9;
+        border-left: 4px solid #4caf50;
     }
 </style>
 

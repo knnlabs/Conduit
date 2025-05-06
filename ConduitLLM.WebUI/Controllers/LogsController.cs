@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
 using ConduitLLM.WebUI.DTOs;
-using ConduitLLM.WebUI.Extensions;
+using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -12,13 +12,17 @@ using System.Threading.Tasks;
 namespace ConduitLLM.WebUI.Controllers
 {
     /// <summary>
-    /// Provides endpoints for retrieving and querying request logs.
+    /// Provides API endpoints for retrieving and searching request logs.
     /// </summary>
     /// <remarks>
-    /// This controller provides API endpoints for searching and retrieving request logs,
-    /// as well as summary data about logs. It supports filtering logs by various criteria
-    /// such as virtual key, model, date range, and status code. All endpoints require 
-    /// authentication.
+    /// <para>
+    /// This controller provides endpoints for accessing request logs, including filtering, pagination, and
+    /// retrieving summaries and metadata.
+    /// </para>
+    /// <para>
+    /// Request logs track API usage including token counts, models used, costs,
+    /// and performance metrics.
+    /// </para>
     /// </remarks>
     [Route("api/[controller]")]
     [ApiController]
@@ -32,40 +36,34 @@ namespace ConduitLLM.WebUI.Controllers
         /// <summary>
         /// Initializes a new instance of the <see cref="LogsController"/> class.
         /// </summary>
-        /// <param name="requestLogService">The service for retrieving request logs.</param>
-        /// <param name="virtualKeyService">The service for retrieving virtual keys.</param>
-        /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <param name="requestLogService">The service for accessing request logs.</param>
+        /// <param name="virtualKeyService">The service for accessing virtual keys.</param>
+        /// <param name="logger">The logger instance.</param>
         public LogsController(
             IRequestLogService requestLogService,
             IVirtualKeyService virtualKeyService,
             ILogger<LogsController> logger)
         {
-            _requestLogService = requestLogService;
-            _virtualKeyService = virtualKeyService;
-            _logger = logger;
+            _requestLogService = requestLogService ?? throw new ArgumentNullException(nameof(requestLogService));
+            _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
-        /// Searches for request logs based on the specified criteria.
+        /// Searches for request logs based on various filter criteria.
         /// </summary>
-        /// <param name="virtualKeyId">Optional filter for a specific virtual key.</param>
-        /// <param name="modelFilter">Optional filter for a specific model.</param>
-        /// <param name="startDate">The start date for the search range. Defaults to 24 hours ago if not specified.</param>
-        /// <param name="endDate">The end date for the search range. Defaults to the current date if not specified.</param>
-        /// <param name="statusCode">Optional filter for a specific HTTP status code.</param>
-        /// <param name="page">The page number to retrieve. Defaults to 1.</param>
-        /// <param name="pageSize">The number of items per page. Defaults to 20, maximum 100.</param>
+        /// <param name="virtualKeyId">Optional virtual key ID to filter by.</param>
+        /// <param name="modelFilter">Optional model name to filter by.</param>
+        /// <param name="startDate">The start date for the search (defaults to 24 hours ago).</param>
+        /// <param name="endDate">The end date for the search (defaults to current time).</param>
+        /// <param name="statusCode">Optional HTTP status code to filter by.</param>
+        /// <param name="page">The page number for pagination (1-based).</param>
+        /// <param name="pageSize">The number of items per page (max 100).</param>
         /// <returns>
-        /// An <see cref="IActionResult"/> containing the search results as a paged collection.
-        /// Returns:
-        /// - 200 OK with the search results if successful
-        /// - 500 Internal Server Error if an unexpected error occurs
+        /// A paged collection of request log entries matching the filter criteria.
         /// </returns>
-        /// <remarks>
-        /// This endpoint searches for request logs matching the specified criteria and returns
-        /// a paged collection of results. It includes information about each log entry, such as
-        /// the virtual key used, model name, token counts, cost, and response time.
-        /// </remarks>
+        /// <response code="200">Returns the matched log entries</response>
+        /// <response code="500">If an error occurs while searching logs</response>
         [HttpGet("search")]
         public async Task<IActionResult> SearchLogs(
             [FromQuery] int? virtualKeyId = null,
@@ -98,7 +96,7 @@ namespace ConduitLLM.WebUI.Controllers
                     pageSize);
 
                 // Map to DTO
-                var logDtos = result.Logs.Select(l => new ConduitLLM.WebUI.DTOs.RequestLogDto
+                var logDtos = result.Logs.Select(l => new RequestLogDto
                 {
                     Id = l.Id,
                     VirtualKeyId = l.VirtualKeyId,
@@ -116,7 +114,7 @@ namespace ConduitLLM.WebUI.Controllers
                     StatusCode = l.StatusCode
                 }).ToList();
 
-                return Ok(new ConduitLLM.WebUI.DTOs.PagedResult<ConduitLLM.WebUI.DTOs.RequestLogDto>
+                return Ok(new PagedResult<RequestLogDto>
                 {
                     Items = logDtos,
                     TotalCount = result.TotalCount,
@@ -133,21 +131,19 @@ namespace ConduitLLM.WebUI.Controllers
         }
 
         /// <summary>
-        /// Retrieves a summary of request logs for the specified date range.
+        /// Retrieves a summary of request log data for the specified time period.
         /// </summary>
-        /// <param name="startDate">The start date for the summary range. Defaults to 7 days ago if not specified.</param>
-        /// <param name="endDate">The end date for the summary range. Defaults to the current date if not specified.</param>
+        /// <param name="startDate">The start date for the summary (defaults to 7 days ago).</param>
+        /// <param name="endDate">The end date for the summary (defaults to current time).</param>
         /// <returns>
-        /// An <see cref="IActionResult"/> containing the logs summary.
-        /// Returns:
-        /// - 200 OK with the logs summary if successful
-        /// - 500 Internal Server Error if an unexpected error occurs
+        /// A summary object containing aggregated metrics about request logs.
         /// </returns>
         /// <remarks>
-        /// This endpoint retrieves a summary of request logs for the specified date range,
-        /// including aggregated statistics such as total requests, total cost, total tokens,
-        /// and average response time.
+        /// The summary includes metrics such as total requests, token usage, average response times,
+        /// success rates, and cost information.
         /// </remarks>
+        /// <response code="200">Returns the logs summary object</response>
+        /// <response code="500">If an error occurs while retrieving the summary</response>
         [HttpGet("summary")]
         public async Task<IActionResult> GetLogsSummary(
             [FromQuery] DateTime? startDate = null,
@@ -172,25 +168,22 @@ namespace ConduitLLM.WebUI.Controllers
         }
 
         /// <summary>
-        /// Retrieves a list of available virtual keys.
+        /// Retrieves a list of all virtual keys for filtering logs.
         /// </summary>
         /// <returns>
-        /// An <see cref="IActionResult"/> containing the list of virtual keys.
-        /// Returns:
-        /// - 200 OK with the list of virtual keys if successful
-        /// - 500 Internal Server Error if an unexpected error occurs
+        /// A list of virtual key IDs and names.
         /// </returns>
         /// <remarks>
-        /// This endpoint retrieves a list of all available virtual keys in the system,
-        /// returning their IDs and names. This is typically used for populating filter
-        /// dropdown lists in the UI.
+        /// This endpoint is used by the logs UI to populate filter dropdowns.
         /// </remarks>
+        /// <response code="200">Returns the list of virtual keys</response>
+        /// <response code="500">If an error occurs while retrieving the keys</response>
         [HttpGet("keys")]
         public async Task<IActionResult> GetVirtualKeys()
         {
             try
             {
-                var keys = await _virtualKeyService.GetAllVirtualKeysAsync();
+                var keys = await _virtualKeyService.ListVirtualKeysAsync();
                 return Ok(keys.Select(k => new { k.Id, k.KeyName }).ToList());
             }
             catch (Exception ex)
@@ -201,18 +194,16 @@ namespace ConduitLLM.WebUI.Controllers
         }
 
         /// <summary>
-        /// Retrieves a list of distinct model names from the logs.
+        /// Retrieves a list of all distinct model names that appear in the logs.
         /// </summary>
         /// <returns>
-        /// An <see cref="IActionResult"/> containing the list of model names.
-        /// Returns:
-        /// - 200 OK with the list of model names if successful
-        /// - 500 Internal Server Error if an unexpected error occurs
+        /// A list of model names.
         /// </returns>
         /// <remarks>
-        /// This endpoint retrieves a list of all distinct model names found in the request logs.
-        /// This is typically used for populating filter dropdown lists in the UI.
+        /// This endpoint is used by the logs UI to populate filter dropdowns.
         /// </remarks>
+        /// <response code="200">Returns the list of distinct model names</response>
+        /// <response code="500">If an error occurs while retrieving the models</response>
         [HttpGet("models")]
         public async Task<IActionResult> GetDistinctModels()
         {
