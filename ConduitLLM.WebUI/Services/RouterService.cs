@@ -225,31 +225,59 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc/>
         public async Task<RouterConfig> GetRouterConfigAsync()
         {
-            // Use the correct context factory
-            await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-            
-            // Try to load the configuration from the database
-            var dbSetting = await dbContext.GlobalSettings
-                .FirstOrDefaultAsync(s => s.Key == ROUTER_CONFIG_KEY);
-            
-            if (dbSetting != null)
+            try
             {
-                try
+                // Use the correct context factory
+                await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
+                
+                if (dbContext == null)
                 {
-                    // Deserialize the configuration
-                    var config = System.Text.Json.JsonSerializer.Deserialize<RouterConfig>(dbSetting.Value);
-                    if (config != null)
+                    _logger.LogError("Database context is null in GetRouterConfigAsync");
+                    return CreateDefaultConfig();
+                }
+                
+                if (dbContext.GlobalSettings == null)
+                {
+                    _logger.LogError("GlobalSettings DbSet is null in database context");
+                    return CreateDefaultConfig();
+                }
+                
+                // Try to load the configuration from the database
+                var dbSetting = await dbContext.GlobalSettings
+                    .FirstOrDefaultAsync(s => s.Key == ROUTER_CONFIG_KEY);
+                
+                if (dbSetting != null)
+                {
+                    try
                     {
-                        return config;
+                        // Deserialize the configuration
+                        var config = System.Text.Json.JsonSerializer.Deserialize<RouterConfig>(dbSetting.Value);
+                        if (config != null)
+                        {
+                            return config;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error deserializing router configuration");
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error deserializing router configuration");
-                }
+                
+                // If we get here, either the configuration doesn't exist or couldn't be deserialized
+                return CreateDefaultConfig();
             }
-            
-            // If we get here, either the configuration doesn't exist or couldn't be deserialized
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading router configuration");
+                return new RouterConfig();
+            }
+        }
+        
+        /// <summary>
+        /// Creates a default configuration from options or returns an empty one
+        /// </summary>
+        private RouterConfig CreateDefaultConfig()
+        {
             // Create a new configuration from options or defaults
             var options = _routerOptions.CurrentValue;
             if (options != null)
@@ -369,34 +397,54 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         private async Task SaveRouterConfigAsync(RouterConfig config)
         {
-            // Use the correct context factory
-            await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-
-            // Serialize the configuration
-            string serializedConfig = System.Text.Json.JsonSerializer.Serialize(config);
-
-            // Check if we already have a setting
-            var existingSetting = await dbContext.GlobalSettings
-                .FirstOrDefaultAsync(s => s.Key == ROUTER_CONFIG_KEY);
-
-            if (existingSetting != null)
+            try
             {
-                // Update the existing setting
-                existingSetting.Value = serializedConfig;
-            }
-            else
-            {
-                // Create a new setting
-                // Use the correct GlobalSetting entity type
-                dbContext.GlobalSettings.Add(new ConduitLLM.Configuration.Entities.GlobalSetting 
+                // Use the correct context factory
+                await using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
+                
+                if (dbContext == null)
                 {
-                    Key = ROUTER_CONFIG_KEY,
-                    Value = serializedConfig
-                });
-            }
+                    _logger.LogError("Database context is null in SaveRouterConfigAsync");
+                    return;
+                }
+                
+                if (dbContext.GlobalSettings == null)
+                {
+                    _logger.LogError("GlobalSettings DbSet is null in database context");
+                    return;
+                }
 
-            // Save changes
-            await dbContext.SaveChangesAsync();
+                // Serialize the configuration
+                string serializedConfig = System.Text.Json.JsonSerializer.Serialize(config);
+
+                // Check if we already have a setting
+                var existingSetting = await dbContext.GlobalSettings
+                    .FirstOrDefaultAsync(s => s.Key == ROUTER_CONFIG_KEY);
+
+                if (existingSetting != null)
+                {
+                    // Update the existing setting
+                    existingSetting.Value = serializedConfig;
+                }
+                else
+                {
+                    // Create a new setting
+                    // Use the correct GlobalSetting entity type
+                    dbContext.GlobalSettings.Add(new ConduitLLM.Configuration.Entities.GlobalSetting 
+                    {
+                        Key = ROUTER_CONFIG_KEY,
+                        Value = serializedConfig
+                    });
+                }
+
+                // Save changes
+                await dbContext.SaveChangesAsync();
+                _logger.LogDebug("Router configuration saved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving router configuration");
+            }
         }
 
         /// <summary>

@@ -64,9 +64,30 @@ public class GlobalSettingService : IGlobalSettingService
             throw new ArgumentException("Setting key cannot be null or empty", nameof(key));
         }
         
-        using var context = await _configContextFactory.CreateDbContextAsync(); 
-        var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
-        return setting?.Value;
+        try
+        {
+            using var context = await _configContextFactory.CreateDbContextAsync();
+            
+            if (context == null)
+            {
+                _logger.LogError("Database context is null in GetSettingAsync");
+                return null;
+            }
+            
+            if (context.GlobalSettings == null)
+            {
+                _logger.LogError("GlobalSettings DbSet is null in database context");
+                return null;
+            }
+            
+            var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+            return setting?.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting setting for key '{Key}'", key);
+            return null;
+        }
     }
 
     /// <inheritdoc/>
@@ -82,25 +103,38 @@ public class GlobalSettingService : IGlobalSettingService
             throw new ArgumentNullException(nameof(value), "Setting value cannot be null");
         }
         
-        using var context = await _configContextFactory.CreateDbContextAsync(); 
-        var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
-        
-        if (setting == null)
-        {
-            // Create a new setting
-            setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
-            context.GlobalSettings.Add(setting);
-            _logger.LogDebug("Creating new setting with key '{Key}'", key);
-        }
-        else
-        {
-            // Update existing setting
-            setting.Value = value;
-            _logger.LogDebug("Updating existing setting with key '{Key}'", key);
-        }
-        
         try
         {
+            using var context = await _configContextFactory.CreateDbContextAsync();
+            
+            if (context == null)
+            {
+                _logger.LogError("Database context is null in SetSettingAsync");
+                return;
+            }
+            
+            if (context.GlobalSettings == null)
+            {
+                _logger.LogError("GlobalSettings DbSet is null in database context");
+                return;
+            }
+            
+            var setting = await context.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
+            
+            if (setting == null)
+            {
+                // Create a new setting
+                setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
+                context.GlobalSettings.Add(setting);
+                _logger.LogDebug("Creating new setting with key '{Key}'", key);
+            }
+            else
+            {
+                // Update existing setting
+                setting.Value = value;
+                _logger.LogDebug("Updating existing setting with key '{Key}'", key);
+            }
+            
             await context.SaveChangesAsync();
             _logger.LogDebug("Successfully saved setting with key '{Key}'", key);
         }

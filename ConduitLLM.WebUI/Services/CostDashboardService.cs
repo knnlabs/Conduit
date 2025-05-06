@@ -107,25 +107,45 @@ namespace ConduitLLM.WebUI.Services
             int? virtualKeyId = null,
             string? modelName = null)
         {
-            // Build the query with filters
-            var query = dbContext.RequestLogs
-                .AsNoTracking()
-                .Include(r => r.VirtualKey)
-                .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
-            
-            // Apply optional filters
-            if (virtualKeyId.HasValue)
+            if (dbContext == null)
             {
-                query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
+                _logger.LogError("Database context is null in GetFilteredLogsAsync");
+                return new List<RequestLog>();
+            }
+
+            if (dbContext.RequestLogs == null)
+            {
+                _logger.LogError("RequestLogs DbSet is null in database context");
+                return new List<RequestLog>();
             }
             
-            if (!string.IsNullOrWhiteSpace(modelName))
+            try
             {
-                query = query.Where(r => r.ModelName == modelName);
+                // Build the query with filters
+                var query = dbContext.RequestLogs
+                    .AsNoTracking()
+                    .Include(r => r.VirtualKey)
+                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+                
+                // Apply optional filters
+                if (virtualKeyId.HasValue)
+                {
+                    query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
+                }
+                
+                if (!string.IsNullOrWhiteSpace(modelName))
+                {
+                    query = query.Where(r => r.ModelName == modelName);
+                }
+                
+                // Execute the query
+                return await query.ToListAsync();
             }
-            
-            // Execute the query
-            return await query.ToListAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing query in GetFilteredLogsAsync");
+                return new List<RequestLog>();
+            }
         }
         
         /// <summary>
@@ -256,6 +276,18 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+
+                if (dbContext == null)
+                {
+                    _logger.LogError("Database context is null in GetAvailableModelsAsync");
+                    return new List<string>();
+                }
+
+                if (dbContext.RequestLogs == null)
+                {
+                    _logger.LogError("RequestLogs DbSet is null in database context");
+                    return new List<string>();
+                }
                 
                 return await dbContext.RequestLogs
                     .AsNoTracking()
@@ -267,7 +299,7 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting available models");
-                throw;
+                return new List<string>(); // Return empty list instead of throwing
             }
         }
         
