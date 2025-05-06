@@ -1,0 +1,50 @@
+@code {
+    [Parameter] public bool IsEnabled { get; set; }
+    [Parameter] public EventCallback<bool> IsEnabledChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Feature";
+    [Parameter] public string EnabledDescription { get; set; } = "Feature is active";
+    [Parameter] public string DisabledDescription { get; set; } = "Feature is inactive";
+    [Parameter] public string EnabledBackgroundColor { get; set; } = "#d4edda";
+    [Parameter] public string DisabledBackgroundColor { get; set; } = "#fff3cd";
+    [Parameter] public string EnabledButtonText { get; set; } = "Disable";
+    [Parameter] public string DisabledButtonText { get; set; } = "Enable";
+    [Parameter] public string EnabledIconClass { get; set; } = "fa-toggle-on text-success";
+    [Parameter] public string DisabledIconClass { get; set; } = "fa-toggle-off text-warning";
+    [Parameter] public bool ShowIcon { get; set; } = true;
+    [Parameter] public bool Compact { get; set; } = false;
+
+    private async Task ToggleState()
+    {
+        IsEnabled = !IsEnabled;
+        await IsEnabledChanged.InvokeAsync(IsEnabled);
+    }
+}
+
+@if (Compact)
+{
+    <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" id="@($"toggle_{Title.Replace(" ", "")}")" 
+               checked="@IsEnabled" @onchange="ToggleState" />
+        <label class="form-check-label" for="@($"toggle_{Title.Replace(" ", "")}")">@Title</label>
+    </div>
+}
+else
+{
+    <div class="card mb-4" style="background-color: @(IsEnabled ? EnabledBackgroundColor : DisabledBackgroundColor)">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center">
+                @if (ShowIcon)
+                {
+                    <i class="fa @(IsEnabled ? EnabledIconClass : DisabledIconClass) fa-2x me-3"></i>
+                }
+                <div class="flex-grow-1">
+                    <h5 class="mb-0">@Title is @(IsEnabled ? "enabled" : "disabled")</h5>
+                    <small>@(IsEnabled ? EnabledDescription : DisabledDescription)</small>
+                </div>
+                <button class="btn @(IsEnabled ? "btn-warning" : "btn-success")" @onclick="ToggleState">
+                    @(IsEnabled ? EnabledButtonText : DisabledButtonText)
+                </button>
+            </div>
+        </div>
+    </div>
+}

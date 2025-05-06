@@ -3,6 +3,7 @@
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.Core.Caching
 @using Microsoft.Extensions.Configuration
+@using ConduitLLM.WebUI.Components.Shared
 @inject IConfiguration Configuration
 @inject ICacheStatusService CacheStatusService
 @inject ICacheMetricsService MetricsService
@@ -20,16 +21,18 @@
 
 <div class="grid">
     <div class="col-12 col-md-8">
+        <ToggleCard
+            IsEnabled="@_isEnabled"
+            IsEnabledChanged="@OnToggleChanged"
+            Title="Cache"
+            EnabledDescription="Cache is currently active and handling requests"
+            DisabledDescription="Cache is currently inactive" />
+            
         <div class="card mb-4">
             <div class="card-header">
                 <h6 class="heading-6">Cache Configuration</h6>
             </div>
             <div class="card-body">
-                <div class="form-check form-switch mb-4">
-                    <input class="form-check-input" type="checkbox" id="enableCacheSwitch" 
-                           @bind="@_isEnabled" />
-                    <label class="form-check-label" for="enableCacheSwitch">Enable Cache</label>
-                </div>
 
                 <div class="row mb-4">
                     <div class="col-12 col-md-6">
@@ -463,8 +466,7 @@
     {
         try
         {
-            // In a real implementation, this would save configuration to a service
-            // For this sample, we'll just log the configuration
+            // Log the configuration changes
             Logger.LogInformation("Saving cache configuration: Enabled={Enabled}, Type={Type}", _isEnabled, _cacheType);
             
             // Update cache status with new settings
@@ -479,6 +481,13 @@
         {
             Logger.LogError(ex, "Error saving cache configuration");
         }
+    }
+    
+    // Handle the toggle changed event directly from the component
+    private async Task OnToggleChanged(bool newValue)
+    {
+        _isEnabled = newValue;
+        await SaveConfiguration();
     }
     
     

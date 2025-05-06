@@ -7,6 +7,7 @@
 @using ConduitLLM.Core.Routing
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Components.Shared
 @using Microsoft.Extensions.Logging
 @inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject IRouterService RouterService
@@ -61,20 +62,12 @@
 }
 else
 {
-    <div class="card mb-4" style="background-color: @(_isEnabled ? "#d4edda" : "#fff3cd")">
-        <div class="card-body p-4">
-            <div class="d-flex align-items-center">
-                <i class="fa @(_isEnabled ? "fa-toggle-on text-success" : "fa-toggle-off text-warning") fa-2x me-3"></i>
-                <div class="flex-grow-1">
-                    <h5 class="mb-0">Router is @(_isEnabled ? "enabled" : "disabled")</h5>
-                    <small>Router @(_isEnabled ? "is" : "is not") currently handling model requests</small>
-                </div>
-                <button class="btn @(_isEnabled ? "btn-warning" : "btn-success")" @onclick="ToggleRouterEnabled">
-                    @(_isEnabled ? "Disable" : "Enable") Router
-                </button>
-            </div>
-        </div>
-    </div>
+    <ToggleCard 
+        IsEnabled="@_isEnabled"
+        IsEnabledChanged="@ToggleRouterEnabled" 
+        Title="Router"
+        EnabledDescription="Router is currently handling model requests"
+        DisabledDescription="Router is not currently handling model requests" />
 
     <div class="row">
         <div class="col-12 col-md-6">
@@ -568,12 +561,10 @@ else
         return success; // Return the success status
     }
     
-    private async Task ToggleRouterEnabled()
+    private async Task ToggleRouterEnabled(bool newState)
     {
         try
         {
-            // Toggle the router enabled state
-            bool newState = !_isEnabled;
             StateHasChanged();
             
             // Update the router state
@@ -592,6 +583,8 @@ else
             else
             {
                 Logger.LogError("Failed to save router state");
+                // Revert the UI if the backend update failed
+                _isEnabled = !newState;
             }
             
             // Update UI to reflect the current state
@@ -601,6 +594,8 @@ else
         {
             // Log error but don't show popup
             Logger.LogError(ex, "Failed to toggle router state");
+            // Revert the UI if an exception occurred
+            _isEnabled = !newState;
             StateHasChanged();
         }
     }
