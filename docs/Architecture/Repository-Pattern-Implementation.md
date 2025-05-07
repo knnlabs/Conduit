@@ -120,21 +120,15 @@ The following tasks have been completed:
 
 1. **Repository Pattern Implementation** - All major controllers now have repository-based implementations
 2. **Service Registration** - Repository-based services are registered in the DI container
-3. **Configuration-Based Switching** - Program.cs now uses the `CONDUIT_USE_REPOSITORY_PATTERN` environment variable to determine which implementation to use
+3. **Integrated Implementation** - Program.cs now uses the repository pattern implementation by default
 4. **Controller Registration** - Repository-based controllers are registered with the appropriate routes
 
-## Enabling the Repository Pattern
+## Repository Pattern Implementation
 
-To enable the repository pattern implementation, set the following environment variable:
-
-```
-CONDUIT_USE_REPOSITORY_PATTERN=true
-```
-
-This will cause the application to:
-1. Register repository-based controllers and services
-2. Use repository-based implementations for all interfaces
-3. Override the routing table to use the new controllers
+The repository pattern implementation is now enabled by default in the application:
+1. Repository-based controllers and services are registered automatically
+2. Repository-based implementations are used for all interfaces
+3. All routing uses the repository pattern controllers
 
 ## Unit Tests
 

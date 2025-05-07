@@ -18,7 +18,6 @@ This document provides comprehensive information about all environment variables
 | `ASPNETCORE_ENVIRONMENT` | String | `Production` | Controls the .NET runtime environment. Set to `Development` for detailed error information or `Production` for optimized performance. |
 | `ASPNETCORE_URLS` | String | `http://+:80` | The URL(s) on which the application will listen for HTTP requests inside the container. Use `http://+:80` for Docker. |
 | `CONDUIT_API_BASE_URL` | String | `null` | Specifies the public base URL where the Conduit API and WebUI are accessible, especially when deployed behind a reverse proxy (e.g., `https://conduit.yourdomain.com`). This is used for generating correct absolute URLs. |
-| `CONDUIT_USE_REPOSITORY_PATTERN` | Boolean | `false` | When set to `true`, enables the repository pattern implementation for data access. This provides better separation of concerns and improved testability. |
 
 ## Cache Configuration
 
@@ -70,7 +69,6 @@ services:
       - ASPNETCORE_URLS=http://+:80
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
       - CONDUIT_API_BASE_URL=https://your-public-conduit-url.com
-      - CONDUIT_USE_REPOSITORY_PATTERN=true
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
@@ -102,7 +100,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:80
 ENV CONDUIT_API_BASE_URL=""
 ENV CONDUIT_MASTER_KEY=""
-ENV CONDUIT_USE_REPOSITORY_PATTERN=true
 ENV CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
 ENV CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
 ENV CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
