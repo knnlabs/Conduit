@@ -89,55 +89,95 @@
                 else if (currentStep == 2)
                 {
                     <h5 class="mb-2">Test Connection</h5>
-                    <p class="mb-4">Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</p>
                     
-                    @if (isTesting)
-                    {
-                        <div class="d-flex flex-column align-items-center my-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="mt-3">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</p>
-                        </div>
-                    }
-                    else if (testStatus != null)
+                    @if (!IsConnectionTestingSupported())
                     {
                         <div class="my-4">
-                            @if (testStatus.IsOnline)
+                            <div class="alert alert-info">
+                                <p class="fw-bold mb-1">Connection Testing Not Available</p>
+                                <p class="mb-0">Connection testing is not available for @(providerModel?.ProviderName ?? "this provider"). 
+                                   Your credentials will be validated when you make an actual request.</p>
+                            </div>
+                            
+                            @if (!string.IsNullOrWhiteSpace(providerModel?.ApiKey))
                             {
-                                <div class="alert alert-success">
-                                    <p class="fw-bold mb-1">Connection Successful!</p>
-                                    <p class="mb-0">Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</p>
+                                <div class="alert alert-success mt-3">
+                                    <p class="mb-0">API key has been provided. You can click Finish to save this provider configuration.</p>
                                 </div>
                             }
                             else
                             {
-                                <div class="alert alert-danger">
-                                    <p class="fw-bold mb-1">Connection Failed</p>
-                                    <p class="mb-0">Error: @testStatus.StatusMessage</p>
-                                </div>
-                                
-                                <div class="mt-4">
-                                    <button type="button" 
-                                            class="btn btn-primary" 
-                                            @onclick="TestConnection">
-                                        <i class="fa fa-refresh me-2"></i>
-                                        Try Again
-                                    </button>
+                                <div class="alert alert-warning mt-3">
+                                    <p class="mb-0">Please go back and provide an API key before finishing the setup.</p>
                                 </div>
                             }
                         </div>
                     }
                     else
                     {
-                        <div class="d-flex justify-content-center my-4">
-                            <button type="button" 
-                                    class="btn btn-primary" 
-                                    @onclick="TestConnection">
-                                <i class="fa fa-bolt me-2"></i>
-                                Test Connection
-                            </button>
-                        </div>
+                        <p class="mb-4">Let's verify your @(providerModel?.ProviderName ?? "provider") API key works correctly:</p>
+                        
+                        @if (isTesting)
+                        {
+                            <div class="d-flex flex-column align-items-center my-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3">Testing connection to @(providerModel?.ProviderName ?? "the provider")...</p>
+                            </div>
+                        }
+                        else if (testStatus != null)
+                        {
+                            <div class="my-4">
+                                @if (testStatus.IsOnline)
+                                {
+                                    <div class="alert alert-success">
+                                        <p class="fw-bold mb-1">Connection Successful!</p>
+                                        <p class="mb-0">Your @(providerModel?.ProviderName ?? "provider") API key is valid and working.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-danger">
+                                        <p class="fw-bold mb-1">Connection Failed</p>
+                                        <p class="mb-0">Error: @testStatus.StatusMessage</p>
+                                    </div>
+                                    
+                                    <div class="mt-4 d-flex gap-2">
+                                        <button type="button" 
+                                                class="btn btn-primary" 
+                                                @onclick="TestConnection">
+                                            <i class="fa fa-refresh me-2"></i>
+                                            Try Again
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-warning"
+                                                @onclick="() => overrideTestFailure = true">
+                                            <i class="fa fa-exclamation-triangle me-2"></i>
+                                            Continue Anyway
+                                        </button>
+                                    </div>
+                                    
+                                    @if (overrideTestFailure)
+                                    {
+                                        <div class="alert alert-warning mt-3">
+                                            <p class="mb-0">You're proceeding with a connection that failed testing. The provider may not work correctly.</p>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex justify-content-center my-4">
+                                <button type="button" 
+                                        class="btn btn-primary" 
+                                        @onclick="TestConnection">
+                                    <i class="fa fa-bolt me-2"></i>
+                                    Test Connection
+                                </button>
+                            </div>
+                        }
                     }
                 }
             </div>
@@ -206,7 +246,17 @@
     private ConduitLLM.Configuration.Entities.ProviderCredential providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
     private bool attemptedNext = false;
     private bool isTesting = false;
+    private bool overrideTestFailure = false;
     private ProviderStatus? testStatus = null;
+    
+    // Providers that don't support or need connection testing
+    private readonly HashSet<string> providersWithoutConnectionTest = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Azure", // Uses deployment-specific URLs and keys
+        "AWS",   // SageMaker and Bedrock have complex auth mechanisms
+        "HuggingFace", // Varies based on deployment method
+        "CustomProvider" // User-defined integrations
+    };
 
     public async Task OpenForProvider(string providerName)
     {
@@ -216,6 +266,7 @@
         testStatus = null;
         attemptedNext = false;
         isTesting = false;
+        overrideTestFailure = false;
         IsOpen = true;
         await IsOpenChanged.InvokeAsync(true);
         Logger.LogDebug("GuidedSetupWizard.OpenForProvider - Initialized providerModel.ProviderName to: '{ModelProviderName}'", providerModel.ProviderName);
@@ -225,6 +276,41 @@
     private string GetWizardTitle()
     {
         return $"Configure {providerModel?.ProviderName ?? "Provider"} - Step {currentStep + 1} of {totalSteps}";
+    }
+    
+    private bool IsConnectionTestingSupported()
+    {
+        // If the provider name is null or empty, assume testing is supported
+        if (string.IsNullOrEmpty(providerModel?.ProviderName))
+        {
+            return true;
+        }
+        
+        // Check if the provider is in our list of providers without connection testing
+        return !providersWithoutConnectionTest.Contains(providerModel.ProviderName);
+    }
+    
+    private bool ShouldSkipConnectionTest()
+    {
+        // Skip if the provider doesn't support testing
+        if (!IsConnectionTestingSupported())
+        {
+            return true;
+        }
+        
+        // Skip if user has chosen to override a failed test
+        if (overrideTestFailure)
+        {
+            return true;
+        }
+        
+        // Skip if we already have a successful test result
+        if (testStatus != null && testStatus.IsOnline)
+        {
+            return true;
+        }
+        
+        return false;
     }
 
     private async Task NextStep()
@@ -268,6 +354,22 @@
     {
         if (providerModel == null)
             return;
+            
+        // Don't attempt tests for providers that don't support it
+        if (!IsConnectionTestingSupported())
+        {
+            Logger.LogDebug("Skipping connection test for {Provider} which doesn't support testing", providerModel.ProviderName);
+            
+            // Instead, create a fake successful status
+            testStatus = new ProviderStatus
+            {
+                IsOnline = true,
+                StatusMessage = "Connection testing not supported for this provider.",
+                LastCheckedUtc = DateTime.UtcNow
+            };
+            return;
+        }
+        
         isTesting = true;
         StateHasChanged();
         try
@@ -280,6 +382,19 @@
                 ApiVersion = providerModel.ApiVersion
             };
             testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials); 
+            Logger.LogDebug("Connection test result for {Provider}: {Status}", 
+                providerModel.ProviderName, 
+                testStatus.IsOnline ? "Success" : "Failed");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error testing connection for {Provider}", providerModel.ProviderName);
+            testStatus = new ProviderStatus
+            {
+                IsOnline = false,
+                StatusMessage = $"Test error: {ex.Message}",
+                LastCheckedUtc = DateTime.UtcNow
+            };
         }
         finally
         {
@@ -290,64 +405,128 @@
 
     private async Task FinishSetup()
     {
-        // First check if we need to test the connection
-        if (testStatus == null)
+        try
         {
-            await TestConnection();
-            // If test failed or is still running, don't proceed
-            if (testStatus == null || !testStatus.IsOnline) return;
-        }
-        else if (!testStatus.IsOnline)
-        {
-             // If test already ran and failed, don't proceed
-             return;
-        }
-
-        // Check if this provider already exists before invoking the callback
-        using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
-        var existingProvider = await dbContext.ProviderCredentials
-            .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
-
-        if (existingProvider != null)
-        {
-            testStatus = new ProviderStatus
+            Logger.LogDebug("FinishSetup called for provider: {ProviderName}", providerModel?.ProviderName);
+            
+            // Check if connection testing is needed
+            if (IsConnectionTestingSupported())
             {
-                IsOnline = false,
-                StatusMessage = $"A provider named '{providerModel?.ProviderName}' already exists",
-                LastCheckedUtc = DateTime.UtcNow
-            };
-            StateHasChanged();
-            return;
-        }
-
-        // Create a new instance to pass to the callback
-        if (providerModel != null)
-        {
-            var newProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+                // If testing is supported but API key is missing, don't proceed
+                if (string.IsNullOrWhiteSpace(providerModel?.ApiKey))
+                {
+                    Logger.LogWarning("API key is missing, not proceeding with finish");
+                    return;
+                }
+                
+                // For providers that support testing...
+                if (ShouldSkipConnectionTest())
+                {
+                    Logger.LogDebug("Skipping connection test because: provider={Provider}, override={Override}, status={Status}", 
+                        !IsConnectionTestingSupported(),
+                        overrideTestFailure,
+                        testStatus?.IsOnline);
+                }
+                else if (testStatus == null)
+                {
+                    // Run the test if we haven't done so yet
+                    await TestConnection();
+                    
+                    // If test failed and user hasn't overridden, don't proceed
+                    if ((testStatus == null || !testStatus.IsOnline) && !overrideTestFailure)
+                    {
+                        Logger.LogWarning("Connection test failed, not proceeding with finish (override: {Override})", overrideTestFailure);
+                        return;
+                    }
+                }
+                else if (!testStatus.IsOnline && !overrideTestFailure)
+                {
+                     // If test already ran and failed, and user hasn't overridden, don't proceed
+                     Logger.LogWarning("Connection test previously failed, not proceeding with finish (override: {Override})", overrideTestFailure);
+                     return;
+                }
+            }
+            else 
             {
-                ProviderName = providerModel.ProviderName,
-                ApiKey = providerModel.ApiKey,
-                BaseUrl = providerModel.BaseUrl,
-                ApiVersion = providerModel.ApiVersion,
-                IsEnabled = true, 
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // For providers that don't support testing, just verify API key is present
+                if (string.IsNullOrWhiteSpace(providerModel?.ApiKey))
+                {
+                    Logger.LogWarning("API key is missing for {Provider}, not proceeding with finish", providerModel?.ProviderName);
+                    return;
+                }
+                
+                Logger.LogDebug("Skipping connection test for {Provider} since it doesn't support testing", providerModel?.ProviderName);
+            }
 
-            await OnSetupComplete.InvokeAsync(newProvider);
+            // Check if this provider already exists before invoking the callback
+            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            var existingProvider = await dbContext.ProviderCredentials
+                .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
+
+            if (existingProvider != null)
+            {
+                testStatus = new ProviderStatus
+                {
+                    IsOnline = false,
+                    StatusMessage = $"A provider named '{providerModel?.ProviderName}' already exists",
+                    LastCheckedUtc = DateTime.UtcNow
+                };
+                Logger.LogWarning("Provider already exists: {ProviderName}, not proceeding with finish", providerModel?.ProviderName);
+                StateHasChanged();
+                return;
+            }
+
+            // Create a new instance to pass to the callback
+            if (providerModel != null)
+            {
+                var newProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+                {
+                    ProviderName = providerModel.ProviderName,
+                    ApiKey = providerModel.ApiKey,
+                    BaseUrl = providerModel.BaseUrl,
+                    ApiVersion = providerModel.ApiVersion,
+                    IsEnabled = true, 
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                Logger.LogDebug("Invoking OnSetupComplete callback");
+                await OnSetupComplete.InvokeAsync(newProvider);
+                
+                // Close the modal after the callback completes
+                Logger.LogDebug("Closing wizard after successful setup");
+                await CloseWizard();
+            }
+            else
+            {
+                Logger.LogWarning("Provider model is null, cannot complete setup");
+            }
         }
-
-        await CloseWizard();
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in FinishSetup method");
+            // Even if there's an error, try to close the modal
+            await CloseWizard();
+        }
     }
 
     private async Task CloseWizard()
     {
+        Logger.LogDebug("CloseWizard called - setting IsOpen to false");
         IsOpen = false;
+        
         // Reset state for next time
         currentStep = 0;
         testStatus = null;
         attemptedNext = false;
         providerModel = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = string.Empty }; 
+        
+        // Notify parent component that we are closed
         await IsOpenChanged.InvokeAsync(false);
+        
+        // Force re-render to ensure UI updates
+        StateHasChanged();
+        
+        Logger.LogDebug("CloseWizard completed");
     }
 }

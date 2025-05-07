@@ -445,7 +445,7 @@
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
     OnSetupComplete="HandleSetupComplete"
-    IsOpenChanged="(value) => { isGuidedSetupOpen = value; StateHasChanged(); }" />
+    IsOpenChanged="HandleIsOpenChanged" />
 
 @code {
     // --- Providers and Mappings State ---
@@ -689,10 +689,21 @@
         }
     }
 
+    private async Task HandleIsOpenChanged(bool isOpen)
+    {
+        Logger.LogDebug("HandleIsOpenChanged called with value: {IsOpen}", isOpen);
+        isGuidedSetupOpen = isOpen;
+        
+        // Force UI update
+        await InvokeAsync(StateHasChanged);
+    }
+    
     private async Task HandleSetupComplete(ConduitLLM.Configuration.Entities.ProviderCredential newProvider) 
     {
         try
         {
+            Logger.LogDebug("HandleSetupComplete called for provider: {ProviderName}", newProvider.ProviderName);
+            
             using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
             await dbContext.ProviderCredentials.AddAsync(newProvider);
             await dbContext.SaveChangesAsync();
@@ -700,13 +711,16 @@
             await LoadProvidersAsync();
             await LoadModelMappingsAsync();
             
+            // The wizard should close itself via the IsOpenChanged event
+            // We don't need to set isGuidedSetupOpen = false here as it will be set in HandleIsOpenChanged
+            
             await JSRuntime.InvokeVoidAsync("alert", $"Provider '{newProvider.ProviderName}' added successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving provider from guided setup");
             deleteErrorMessage = $"Error saving provider: {ex.Message}";
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
