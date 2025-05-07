@@ -187,6 +187,9 @@ Console.WriteLine($"[Conduit WebUI] Using repository pattern for environment: {b
 // Register non-repository pattern services
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
 
+// Register database backup service
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.DatabaseBackupService>();
+
 // Adapter for Core interfaces
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
 
