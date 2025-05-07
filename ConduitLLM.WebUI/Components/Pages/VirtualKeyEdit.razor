@@ -11,7 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeyEdit> Logger
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject VirtualKeyService VirtualKeyService
+@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
@@ -117,11 +117,15 @@ else
                         </div>
                         
                         <div class="border p-0" style="height: 250px; overflow-y: auto;">
-                            @if (availableModels == null || availableModels.Count == 0)
+                            @if (availableModels == null)
                             {
                                 <div class="spinner-border text-primary m-3" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
+                            }
+                            else if (availableModels.Count == 0)
+                            {
+                                <p class="p-3 text-secondary">No models available. Please add model mappings to the database.</p>
                             }
                             else
                             {
@@ -453,8 +457,14 @@ else
             using var dbContext = await DbContextFactory.CreateDbContextAsync();
             
             // Load model mappings from the consolidated context
-            availableModels = await dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
+            var query = dbContext.ModelProviderMappings
+                .Include(m => m.ProviderCredential);
+            
+            // Log the SQL query for troubleshooting
+            var queryString = query.ToQueryString();
+            Logger.LogInformation("Models query: {Query}", queryString);
+            
+            availableModels = await query
                 .Select(m => new ModelMappingViewModel
                 {
                     ModelAlias = m.ModelAlias,
@@ -462,7 +472,9 @@ else
                     ProviderModelId = m.ProviderModelName
                 })
                 .ToListAsync();
-                
+            
+            Logger.LogInformation("Loaded {Count} models from database", availableModels.Count);
+            
             if (Id.HasValue && !string.IsNullOrEmpty(request?.AllowedModels))
             {
                 selectedModels = new HashSet<string>(
@@ -472,7 +484,10 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading available models");
-            errorMessage = "Failed to load available models. See logs for details.";
+            errorMessage = "Failed to load model mappings. Please check database configuration.";
+            
+            // Initialize to empty list instead of null to avoid spinner
+            availableModels = new List<ModelMappingViewModel>();
         }
     }
     

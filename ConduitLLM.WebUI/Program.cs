@@ -184,16 +184,7 @@ builder.Services.AddRepositoryServices();
 // Repository pattern is now fully integrated
 Console.WriteLine($"[Conduit WebUI] Using repository pattern for environment: {builder.Environment.EnvironmentName}");
 
-// Register all repository-pattern services
-var webUIInterfaces = typeof(ConduitLLM.WebUI.Interfaces.IVirtualKeyService).Namespace;
-var webUIServices = typeof(ConduitLLM.WebUI.Services.VirtualKeyService).Namespace;
-
-// Core service interfaces
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Services.GlobalSettingService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICostDashboardService, ConduitLLM.WebUI.Services.CostDashboardService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRouterService, ConduitLLM.WebUI.Services.RouterService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.VirtualKeyService>();
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRequestLogService, ConduitLLM.WebUI.Services.RequestLogService>();
+// Register non-repository pattern services
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
 
 // Adapter for Core interfaces
