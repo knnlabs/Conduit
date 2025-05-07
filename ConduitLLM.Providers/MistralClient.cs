@@ -28,7 +28,28 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class MistralClient : OpenAICompatibleClient
     {
-        private const string DefaultMistralApiBase = "https://api.mistral.ai/v1";
+        // API configuration constants
+        private static class Constants
+        {
+            public static class Urls
+            {
+                public const string DefaultApiBase = "https://api.mistral.ai/v1";
+            }
+            
+            public static class Endpoints
+            {
+                public const string ChatCompletions = "/chat/completions";
+                public const string Models = "/models";
+                public const string Embeddings = "/embeddings";
+            }
+            
+            public static class ErrorMessages
+            {
+                public const string ModelNotFound = "Model not found. Available Mistral models include: mistral-tiny, mistral-small, mistral-medium, mistral-large-latest, mistral-embed";
+                public const string RateLimitExceeded = "Mistral API rate limit exceeded. Please try again later or reduce your request frequency.";
+                public const string InvalidApiKey = "Invalid Mistral API key. Please check your credentials.";
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MistralClient"/> class.
@@ -60,7 +81,7 @@ namespace ConduitLLM.Providers
         private static string DetermineBaseUrl(ProviderCredentials credentials)
         {
             return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? DefaultMistralApiBase
+                ? Constants.Urls.DefaultApiBase
                 : credentials.ApiBase.TrimEnd('/');
         }
 
@@ -87,7 +108,7 @@ namespace ConduitLLM.Providers
             var mistralCredentials = new ProviderCredentials
             {
                 ApiKey = credentials.ApiKey,
-                ApiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultMistralApiBase : credentials.ApiBase,
+                ApiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? Constants.Urls.DefaultApiBase : credentials.ApiBase,
                 ApiVersion = credentials.ApiVersion,
                 ProviderName = "mistral"
             };
@@ -242,21 +263,21 @@ namespace ConduitLLM.Providers
                 msg.Contains("The model", StringComparison.OrdinalIgnoreCase) && 
                 msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
             {
-                return $"Model not found. Available Mistral models include: mistral-tiny, mistral-small, mistral-medium, mistral-large-latest, mistral-embed";
+                return Constants.ErrorMessages.ModelNotFound;
             }
             
             // For rate limit errors, provide a clearer message
             if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("too many requests", StringComparison.OrdinalIgnoreCase))
             {
-                return "Mistral API rate limit exceeded. Please try again later or reduce your request frequency.";
+                return Constants.ErrorMessages.RateLimitExceeded;
             }
             
             // For common authentication errors
             if (msg.Contains("invalid api key", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("authentication", StringComparison.OrdinalIgnoreCase))
             {
-                return "Invalid Mistral API key. Please check your credentials.";
+                return Constants.ErrorMessages.InvalidApiKey;
             }
             
             // Look for Body data

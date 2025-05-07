@@ -33,7 +33,7 @@ namespace ConduitLLM.Providers
         private readonly string _region;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="BedrockClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="BedrockClient"/> class.
         /// </summary>
         /// <param name="credentials">The provider credentials.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>

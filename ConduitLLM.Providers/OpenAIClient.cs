@@ -28,9 +28,28 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class OpenAIClient : OpenAICompatibleClient
     {
-        // Default base URL for OpenAI API
-        private const string DefaultOpenAIApiBase = "https://api.openai.com/v1";
-        private const string DefaultAzureApiVersion = "2024-02-01"; // Default Azure API version
+        // Default API configuration constants
+        private static class Constants
+        {
+            public static class Urls
+            {
+                public const string DefaultOpenAIApiBase = "https://api.openai.com/v1";
+            }
+            
+            public static class ApiVersions
+            {
+                public const string DefaultAzureApiVersion = "2024-02-01";
+            }
+            
+            public static class Endpoints
+            {
+                public const string ChatCompletions = "/chat/completions";
+                public const string Models = "/models";
+                public const string Embeddings = "/embeddings";
+                public const string ImageGenerations = "/images/generations";
+            }
+        }
+        
         private readonly bool _isAzure;
 
         /// <summary>
@@ -79,7 +98,7 @@ namespace ConduitLLM.Providers
             
             // For standard OpenAI or compatible providers
             return string.IsNullOrWhiteSpace(credentials.ApiBase) 
-                ? DefaultOpenAIApiBase 
+                ? Constants.Urls.DefaultOpenAIApiBase 
                 : credentials.ApiBase.TrimEnd('/');
         }
 
@@ -112,12 +131,12 @@ namespace ConduitLLM.Providers
             {
                 string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
                     ? Credentials.ApiVersion 
-                    : DefaultAzureApiVersion;
+                    : Constants.ApiVersions.DefaultAzureApiVersion;
                 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/chat/completions?api-version={apiVersion}";
             }
             
-            return $"{BaseUrl}/chat/completions";
+            return $"{BaseUrl}{Constants.Endpoints.ChatCompletions}";
         }
 
         /// <summary>
@@ -129,12 +148,12 @@ namespace ConduitLLM.Providers
             {
                 string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
                     ? Credentials.ApiVersion 
-                    : DefaultAzureApiVersion;
+                    : Constants.ApiVersions.DefaultAzureApiVersion;
                 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments?api-version={apiVersion}";
             }
             
-            return $"{BaseUrl}/models";
+            return $"{BaseUrl}{Constants.Endpoints.Models}";
         }
 
         /// <summary>
@@ -146,12 +165,12 @@ namespace ConduitLLM.Providers
             {
                 string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
                     ? Credentials.ApiVersion 
-                    : DefaultAzureApiVersion;
+                    : Constants.ApiVersions.DefaultAzureApiVersion;
                 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/embeddings?api-version={apiVersion}";
             }
             
-            return $"{BaseUrl}/embeddings";
+            return $"{BaseUrl}{Constants.Endpoints.Embeddings}";
         }
 
         /// <summary>
@@ -163,12 +182,12 @@ namespace ConduitLLM.Providers
             {
                 string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
                     ? Credentials.ApiVersion 
-                    : DefaultAzureApiVersion;
+                    : Constants.ApiVersions.DefaultAzureApiVersion;
                 
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/images/generations?api-version={apiVersion}";
             }
             
-            return $"{BaseUrl}/images/generations";
+            return $"{BaseUrl}{Constants.Endpoints.ImageGenerations}";
         }
         
         /// <summary>

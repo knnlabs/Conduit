@@ -28,10 +28,30 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class GroqClient : OpenAICompatibleClient
     {
-        private const string DefaultGroqApiBase = "https://api.groq.com/v1";
+        // API configuration constants
+        private static class Constants
+        {
+            public static class Urls
+            {
+                public const string DefaultApiBase = "https://api.groq.com/v1";
+            }
+            
+            public static class Endpoints
+            {
+                public const string ChatCompletions = "/chat/completions";
+                public const string Models = "/models";
+                public const string Completions = "/completions";
+            }
+            
+            public static class ErrorMessages
+            {
+                public const string ModelNotFound = "Model not found. Available Groq models include: llama3-8b-8192, llama3-70b-8192, llama2-70b-4096, mixtral-8x7b-32768, gemma-7b-it";
+                public const string RateLimitExceeded = "Groq API rate limit exceeded. Please try again later or reduce your request frequency.";
+            }
+        }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GroqClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="GroqClient"/> class.
         /// </summary>
         /// <param name="credentials">The credentials for the Groq API.</param>
         /// <param name="providerModelId">The model ID to use.</param>
@@ -60,7 +80,7 @@ namespace ConduitLLM.Providers
         private static string DetermineBaseUrl(ProviderCredentials credentials)
         {
             return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? DefaultGroqApiBase
+                ? Constants.Urls.DefaultApiBase
                 : credentials.ApiBase.TrimEnd('/');
         }
 
@@ -87,7 +107,7 @@ namespace ConduitLLM.Providers
             var groqCredentials = new ProviderCredentials
             {
                 ApiKey = credentials.ApiKey,
-                ApiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultGroqApiBase : credentials.ApiBase,
+                ApiBase = string.IsNullOrWhiteSpace(credentials.ApiBase) ? Constants.Urls.DefaultApiBase : credentials.ApiBase,
                 ApiVersion = credentials.ApiVersion,
                 ProviderName = "groq"
             };
@@ -242,14 +262,14 @@ namespace ConduitLLM.Providers
                 msg.Contains("The model", StringComparison.OrdinalIgnoreCase) && 
                 msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
             {
-                return $"Model not found. Available Groq models include: llama3-8b-8192, llama3-70b-8192, llama2-70b-4096, mixtral-8x7b-32768, gemma-7b-it";
+                return Constants.ErrorMessages.ModelNotFound;
             }
             
             // For rate limit errors, provide a clearer message
             if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("too many requests", StringComparison.OrdinalIgnoreCase))
             {
-                return "Groq API rate limit exceeded. Please try again later or reduce your request frequency.";
+                return Constants.ErrorMessages.RateLimitExceeded;
             }
             
             // Look for Body data

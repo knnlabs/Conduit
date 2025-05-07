@@ -209,6 +209,12 @@ builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 // Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
 
+// Register Redis Cache Metrics Service (only when Redis is configured)
+if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.ToLowerInvariant() == "redis")
+{
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRedisCacheMetricsService, ConduitLLM.WebUI.Services.RedisCacheMetricsService>();
+}
+
 // Register Cost Calculation Service
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 

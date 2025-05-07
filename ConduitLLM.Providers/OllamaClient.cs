@@ -32,7 +32,7 @@ namespace ConduitLLM.Providers
         private const string DefaultOllamaApiBase = "http://localhost:11434";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OllamaClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="OllamaClient"/> class.
         /// </summary>
         /// <param name="credentials">The credentials for accessing the Ollama API.</param>
         /// <param name="providerModelId">The model identifier to use (e.g., llama3:latest).</param>

@@ -31,7 +31,7 @@ namespace ConduitLLM.Providers
         private const string DefaultApiBase = "https://api-inference.huggingface.co/models/";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="HuggingFaceClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="HuggingFaceClient"/> class.
         /// </summary>
         /// <param name="credentials">The provider credentials.</param>
         /// <param name="providerModelId">The provider's model identifier.</param>

@@ -303,7 +303,12 @@
         try 
         {
             await Task.Run(() => {
-                _proxyBaseUrl = "http://localhost:5000";
+                // Read the base URL from environment variable, fallback to localhost or docker container
+                _proxyBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
+                               (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
+                                "http://api:8080" : "http://localhost:5000");
+                
+                Console.WriteLine($"[Chat Component] Using API base URL: {_proxyBaseUrl}");
             });
         }
         catch (Exception ex)

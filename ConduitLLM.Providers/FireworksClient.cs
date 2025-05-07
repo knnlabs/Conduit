@@ -31,7 +31,7 @@ namespace ConduitLLM.Providers
         private const string DefaultFireworksApiBase = "https://api.fireworks.ai/inference/v1";
         
         /// <summary>
-        /// Initializes a new instance of the <see cref="FireworksClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="FireworksClient"/> class.
         /// </summary>
         /// <param name="credentials">The credentials for accessing the Fireworks API.</param>
         /// <param name="providerModelId">The model identifier to use (e.g., accounts/fireworks/models/llama-v3-8b-instruct).</param>

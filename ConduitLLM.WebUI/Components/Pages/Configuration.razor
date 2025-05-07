@@ -181,7 +181,7 @@
             }
             
             <button class="btn btn-primary" 
-                  @onclick="() => { isEditingMapping = true; currentMapping = new ConduitLLM.Configuration.ModelProviderMapping { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty }; mappingErrorMessage = null; }">
+                  @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; mappingErrorMessage = null; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
         </div>
@@ -458,11 +458,21 @@
 
     // Mapping form state
     private bool isEditingMapping = false;
-    private ConduitLLM.Configuration.ModelProviderMapping currentMapping = new() 
+    // Create a custom model for the form to include an ID field
+    private class MappingFormModel
+    {
+        public int Id { get; set; } = 0;
+        public string ModelAlias { get; set; } = "";
+        public string ProviderName { get; set; } = "";
+        public string ProviderModelId { get; set; } = "";
+    }
+    
+    private MappingFormModel currentMapping = new() 
     { 
         ModelAlias = "",
         ProviderName = "",
-        ProviderModelId = ""
+        ProviderModelId = "",
+        Id = 0
     };
     private string? mappingErrorMessage;
 
@@ -754,8 +764,9 @@
             
         if (mapping != null)
         {
-            currentMapping = new ConduitLLM.Configuration.ModelProviderMapping
+            currentMapping = new MappingFormModel
             {
+                Id = mapping.Id, // Store the ID to identify this record for updates
                 ModelAlias = mapping.ModelAlias,
                 ProviderName = mapping.ProviderCredential.ProviderName,
                 ProviderModelId = mapping.ProviderModelName
@@ -798,12 +809,12 @@
             return;
         }
         
+        // Check for duplicate alias only if we're creating a new mapping or changing the alias
+        // For updates to existing mappings, we need to exclude the current mapping from the duplicate check
         var existingMapping = await dbContext.ModelProviderMappings
             .Include(m => m.ProviderCredential)
             .FirstOrDefaultAsync(m => m.ModelAlias == currentMapping.ModelAlias && 
-                                     !(m.ModelAlias == currentMapping.ModelAlias && 
-                                       m.ProviderCredential.ProviderName == currentMapping.ProviderName && 
-                                       m.ProviderModelName == currentMapping.ProviderModelId));
+                                       m.Id != currentMapping.Id); // Exclude the current mapping by ID
                                      
         if (existingMapping != null)
         {
@@ -813,34 +824,54 @@
 
         try
         {
-            var mappingToUpdate = await dbContext.ModelProviderMappings
-                .FirstOrDefaultAsync(m => m.ModelAlias == currentMapping.ModelAlias);
-                
-            if (mappingToUpdate != null)
+            // Determine if this is an update or a new record
+            bool isUpdate = currentMapping.Id > 0;
+            ConduitLLM.Configuration.Entities.ModelProviderMapping mappingEntity;
+            
+            if (isUpdate)
             {
-                dbContext.ModelProviderMappings.Remove(mappingToUpdate);
-                await dbContext.SaveChangesAsync();
+                // Get the existing entity for update
+                mappingEntity = await dbContext.ModelProviderMappings.FindAsync(currentMapping.Id) ?? new ConduitLLM.Configuration.Entities.ModelProviderMapping();
+                
+                if (mappingEntity == null)
+                {
+                    mappingErrorMessage = "The mapping you're trying to update no longer exists.";
+                    return;
+                }
+                
+                // Update the existing entity's properties
+                mappingEntity.ModelAlias = currentMapping.ModelAlias;
+                mappingEntity.ProviderModelName = currentMapping.ProviderModelId;
+                mappingEntity.ProviderCredentialId = provider.Id;
+                mappingEntity.UpdatedAt = DateTime.UtcNow;
+                
+                dbContext.ModelProviderMappings.Update(mappingEntity);
+            }
+            else
+            {
+                // Create a new entity
+                mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                {
+                    ModelAlias = currentMapping.ModelAlias,
+                    ProviderModelName = currentMapping.ProviderModelId,
+                    ProviderCredentialId = provider.Id,
+                    IsEnabled = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                
+                dbContext.ModelProviderMappings.Add(mappingEntity);
             }
             
-            var newMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
-            {
-                ModelAlias = currentMapping.ModelAlias,
-                ProviderModelName = currentMapping.ProviderModelId,
-                ProviderCredentialId = provider.Id,
-                IsEnabled = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            dbContext.ModelProviderMappings.Add(newMapping);
             await dbContext.SaveChangesAsync();
             
             isEditingMapping = false;
-            currentMapping = new ConduitLLM.Configuration.ModelProviderMapping 
+            currentMapping = new MappingFormModel 
             { 
                 ModelAlias = "",
                 ProviderName = "",
-                ProviderModelId = ""
+                ProviderModelId = "",
+                Id = 0
             };
             await LoadModelMappingsAsync();
             mappingErrorMessage = null;

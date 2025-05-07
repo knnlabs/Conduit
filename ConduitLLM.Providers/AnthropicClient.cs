@@ -44,15 +44,61 @@ namespace ConduitLLM.Providers
     /// </remarks>
     public class AnthropicClient : BaseLLMClient
     {
-        /// <summary>
-        /// Default base URL for the Anthropic API
-        /// </summary>
-        private const string DefaultApiBase = "https://api.anthropic.com/v1";
-        
-        /// <summary>
-        /// Required Anthropic API version header value
-        /// </summary>
-        private const string AnthropicVersion = "2023-06-01";
+        // API configuration constants
+        private static class Constants
+        {
+            public static class Urls
+            {
+                /// <summary>
+                /// Default base URL for the Anthropic API
+                /// </summary>
+                public const string DefaultApiBase = "https://api.anthropic.com/v1";
+            }
+            
+            public static class Headers
+            {
+                /// <summary>
+                /// Required Anthropic API version header value
+                /// </summary>
+                public const string AnthropicVersion = "2023-06-01";
+                
+                /// <summary>
+                /// Anthropic API key header name
+                /// </summary>
+                public const string ApiKeyHeader = "x-api-key";
+                
+                /// <summary>
+                /// Anthropic API version header name
+                /// </summary>
+                public const string VersionHeader = "anthropic-version";
+            }
+            
+            public static class Endpoints
+            {
+                public const string Messages = "/v1/messages";
+            }
+            
+            public static class StreamEvents
+            {
+                /// <summary>
+                /// Event type for content block deltas in streaming responses
+                /// </summary>
+                public const string ContentBlockDelta = "content_block_delta";
+                
+                /// <summary>
+                /// Event type for message stop in streaming responses
+                /// </summary>
+                public const string MessageStop = "message_stop";
+            }
+            
+            public static class ErrorMessages
+            {
+                public const string MissingApiKey = "API key (x-api-key) is missing for provider 'anthropic'";
+                public const string RateLimitExceeded = "Anthropic API rate limit exceeded. Please try again later or reduce your request frequency.";
+                public const string InvalidApiKey = "Invalid Anthropic API key. Please check your credentials.";
+                public const string ModelNotFound = "Model not found or not available. Available Anthropic models include: claude-3-opus, claude-3-sonnet, claude-3-haiku, claude-2.1, claude-2.0, claude-instant-1.2";
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the AnthropicClient class.
@@ -94,7 +140,7 @@ namespace ConduitLLM.Providers
         {
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
-                throw new ConfigurationException($"API key (x-api-key) is missing for provider '{ProviderName}'");
+                throw new ConfigurationException(Constants.ErrorMessages.MissingApiKey);
             }
         }
 
@@ -129,14 +175,14 @@ namespace ConduitLLM.Providers
             // Set Anthropic-specific headers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("anthropic-version", AnthropicVersion);
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            client.DefaultRequestHeaders.Add(Constants.Headers.VersionHeader, Constants.Headers.AnthropicVersion);
+            client.DefaultRequestHeaders.Add(Constants.Headers.ApiKeyHeader, apiKey);
             
             // Remove the Authorization header set by the base class
             client.DefaultRequestHeaders.Authorization = null;
             
             // Set the base address
-            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? DefaultApiBase : Credentials.ApiBase;
+            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? Constants.Urls.DefaultApiBase : Credentials.ApiBase;
             client.BaseAddress = new Uri(apiBase.TrimEnd('/'));
         }
 
@@ -174,23 +220,39 @@ namespace ConduitLLM.Providers
         {
             ValidateRequest(request, "ChatCompletion");
             
-            return await ExecuteApiRequestAsync(async () =>
+            try
             {
-                using var client = CreateHttpClient(apiKey);
-                var anthropicRequest = MapToAnthropicRequest(request);
-                
-                var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<AnthropicMessageRequest, AnthropicMessageResponse>(
-                    client,
-                    HttpMethod.Post,
-                    "/v1/messages",
-                    anthropicRequest,
-                    null,
-                    DefaultJsonOptions,
-                    Logger,
-                    cancellationToken);
-                
-                return MapFromAnthropicResponse(response, request.Model);
-            }, "ChatCompletion", cancellationToken);
+                return await ExecuteApiRequestAsync(async () =>
+                {
+                    using var client = CreateHttpClient(apiKey);
+                    var anthropicRequest = MapToAnthropicRequest(request);
+                    
+                    var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<AnthropicMessageRequest, AnthropicMessageResponse>(
+                        client,
+                        HttpMethod.Post,
+                        Constants.Endpoints.Messages,
+                        anthropicRequest,
+                        null,
+                        DefaultJsonOptions,
+                        Logger,
+                        cancellationToken);
+                    
+                    return MapFromAnthropicResponse(response, request.Model);
+                }, "ChatCompletion", cancellationToken);
+            }
+            catch (LLMCommunicationException ex)
+            {
+                // Enhance error message handling for Anthropic and re-throw
+                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                throw new LLMCommunicationException(enhancedErrorMessage, ex);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Handle other exceptions not caught by the base method
+                var errorMessage = ExtractEnhancedErrorMessage(ex);
+                Logger.LogError(ex, "Anthropic API error: {Message}", errorMessage);
+                throw new LLMCommunicationException(errorMessage, ex);
+            }
         }
 
         /// <summary>
@@ -254,7 +316,7 @@ namespace ConduitLLM.Providers
                 response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
                     client,
                     HttpMethod.Post,
-                    "/v1/messages",
+                    Constants.Endpoints.Messages,
                     anthropicRequest,
                     null,
                     DefaultJsonOptions,
@@ -263,8 +325,9 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Logger.LogError(ex, "Error streaming chat completion from Anthropic: {ErrorMessage}", ex.Message);
-                throw new LLMCommunicationException($"Error streaming chat completion from Anthropic: {ex.Message}", ex);
+                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                Logger.LogError(ex, "Error streaming chat completion from Anthropic: {ErrorMessage}", enhancedErrorMessage);
+                throw new LLMCommunicationException(enhancedErrorMessage, ex);
             }
             
             // Process the stream outside of the try/catch block to avoid yielding in try
@@ -300,15 +363,16 @@ namespace ConduitLLM.Providers
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Logger.LogError(ex, "Error initializing Anthropic stream: {ErrorMessage}", ex.Message);
-                throw new LLMCommunicationException($"Error initializing Anthropic stream: {ex.Message}", ex);
+                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                Logger.LogError(ex, "Error initializing Anthropic stream: {ErrorMessage}", enhancedErrorMessage);
+                throw new LLMCommunicationException(enhancedErrorMessage, ex);
             }
             
             // Process the events outside the try/catch block
             await foreach (var chunk in streamEvents.WithCancellation(cancellationToken))
             {
                 // Only process content blocks, ignore other event types
-                if (chunk.Type == "content_block_delta")
+                if (chunk.Type == Constants.StreamEvents.ContentBlockDelta)
                 {
                     // Map Anthropic stream event to chat completion chunk
                     var deltaContent = chunk.Delta?.Text ?? "";
@@ -337,7 +401,7 @@ namespace ConduitLLM.Providers
                         OriginalModelAlias = modelId
                     };
                 }
-                else if (chunk.Type == "message_stop")
+                else if (chunk.Type == Constants.StreamEvents.MessageStop)
                 {
                     // We've reached the end of the response
                     // Return a final chunk with finish_reason
@@ -799,5 +863,110 @@ namespace ConduitLLM.Providers
         /// OpenAI-compatible streaming format.
         /// </para>
         /// </remarks>
+        
+        /// <summary>
+        /// Extracts a more helpful error message from exception details for Anthropic errors.
+        /// </summary>
+        /// <param name="ex">The exception to extract information from.</param>
+        /// <returns>An enhanced error message specific to Anthropic errors.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method extracts detailed error information from Anthropic API exceptions, using
+        /// several strategies to find the most helpful error message:
+        /// </para>
+        /// <list type="number">
+        ///   <item><description>Looking for specific error patterns in the exception message</description></item>
+        ///   <item><description>Examining JSON content in the message for error details</description></item>
+        ///   <item><description>Checking for response body data stored in the exception</description></item>
+        ///   <item><description>Examining inner exceptions</description></item>
+        /// </list>
+        /// <para>
+        /// For common error conditions, this method returns standardized, user-friendly
+        /// error messages that provide clear guidance on how to resolve the issue.
+        /// </para>
+        /// </remarks>
+        protected string ExtractEnhancedErrorMessage(Exception ex)
+        {
+            // Extract the message from the exception
+            var msg = ex.Message;
+            
+            // Check for model not found errors
+            if (msg.Contains("model not found", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("not supported", StringComparison.OrdinalIgnoreCase) && 
+                msg.Contains("model", StringComparison.OrdinalIgnoreCase))
+            {
+                return Constants.ErrorMessages.ModelNotFound;
+            }
+            
+            // Check for authentication errors
+            if (msg.Contains("invalid api key", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("invalid_auth", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("authentication", StringComparison.OrdinalIgnoreCase) && 
+                msg.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("unauthorized", StringComparison.OrdinalIgnoreCase))
+            {
+                return Constants.ErrorMessages.InvalidApiKey;
+            }
+            
+            // Check for rate limit errors
+            if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("rate_limit", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("too many requests", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("429", StringComparison.OrdinalIgnoreCase))
+            {
+                return Constants.ErrorMessages.RateLimitExceeded;
+            }
+            
+            // Look for JSON content in the message
+            var jsonStart = msg.IndexOf("{");
+            var jsonEnd = msg.LastIndexOf("}");
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                var jsonPart = msg.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                try
+                {
+                    var json = JsonDocument.Parse(jsonPart);
+                    if (json.RootElement.TryGetProperty("error", out var errorElement))
+                    {
+                        if (errorElement.TryGetProperty("message", out var messageElement))
+                        {
+                            var errorMsg = messageElement.GetString();
+                            if (!string.IsNullOrEmpty(errorMsg))
+                            {
+                                return $"Anthropic API error: {errorMsg}";
+                            }
+                        }
+                        else if (errorElement.ValueKind == JsonValueKind.String)
+                        {
+                            var errorMsg = errorElement.GetString();
+                            if (!string.IsNullOrEmpty(errorMsg))
+                            {
+                                return $"Anthropic API error: {errorMsg}";
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // If parsing fails, continue to the next method
+                }
+            }
+            
+            // Look for Body data in the exception's Data dictionary
+            if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
+            {
+                return $"Anthropic API error: {body}";
+            }
+            
+            // Try inner exception
+            if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
+            {
+                return $"Anthropic API error: {ex.InnerException.Message}";
+            }
+            
+            // Fallback to original message with provider name
+            return $"Anthropic API error: {msg}";
+        }
     }
 }

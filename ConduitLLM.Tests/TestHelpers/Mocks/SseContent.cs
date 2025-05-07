@@ -29,8 +29,12 @@ namespace ConduitLLM.Tests.TestHelpers.Mocks
                 if (_throwOnRead)
                     throw new IOException("Simulated stream failure");
                 var json = System.Text.Json.JsonSerializer.Serialize(chunk);
+                
+                // Write the line in the format the StreamHelper expects
+                // Note: Each chunk should be a complete SSE message with data: prefix and double newline at the end
                 var sseLine = $"data: {json}\n\n";
                 var bytes = Encoding.UTF8.GetBytes(sseLine);
+                
                 await stream.WriteAsync(bytes, 0, bytes.Length);
                 await stream.FlushAsync();
                 if (_delayMs > 0)

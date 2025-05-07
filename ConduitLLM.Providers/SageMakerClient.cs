@@ -30,7 +30,7 @@ namespace ConduitLLM.Providers
         private readonly string _endpointName;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SageMakerClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="SageMakerClient"/> class.
         /// </summary>
         /// <param name="credentials">The provider credentials.</param>
         /// <param name="endpointName">The SageMaker endpoint name.</param>

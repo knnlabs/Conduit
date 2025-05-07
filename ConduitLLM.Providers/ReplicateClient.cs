@@ -34,7 +34,7 @@ namespace ConduitLLM.Providers
         private static readonly TimeSpan MaxPollingDuration = TimeSpan.FromMinutes(10);
         
         /// <summary>
-        /// Initializes a new instance of the <see cref="ReplicateClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="ReplicateClient"/> class.
         /// </summary>
         /// <param name="credentials">The credentials for accessing the Replicate API.</param>
         /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>

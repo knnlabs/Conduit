@@ -35,7 +35,7 @@ namespace ConduitLLM.Providers
         private readonly string _apiVersion;
         
         /// <summary>
-        /// Initializes a new instance of the <see cref="GeminiClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="GeminiClient"/> class.
         /// </summary>
         /// <param name="credentials">The credentials for accessing the Gemini API.</param>
         /// <param name="providerModelId">The provider model ID to use (e.g., gemini-1.5-flash-latest).</param>

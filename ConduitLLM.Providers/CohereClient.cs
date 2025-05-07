@@ -48,7 +48,7 @@ namespace ConduitLLM.Providers
         private const string ChatEndpoint = "v1/chat";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CohereClientRevised"/> class.
+        /// Initializes a new instance of the <see cref="CohereClient"/> class.
         /// </summary>
         /// <param name="credentials">Provider credentials containing API key and endpoint configuration.</param>
         /// <param name="providerModelId">The specific Cohere model ID to use (e.g., command-r-plus).</param>
