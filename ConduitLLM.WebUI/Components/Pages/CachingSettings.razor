@@ -324,6 +324,21 @@
                             <span>Type:</span>
                             <span>@_cacheStats.CacheType</span>
                         </li>
+                        @if (_cacheType == "Redis")
+                        {
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Redis Connection:</span>
+                                <span class="badge @(_redisConnectionSuccess ? "bg-success" : "bg-danger")">
+                                    @(_redisConnectionSuccess ? "Connected" : "Failed")
+                                </span>
+                            </li>
+                            @if (!_redisConnectionSuccess && !string.IsNullOrEmpty(_redisConnectionError))
+                            {
+                                <li class="list-group-item">
+                                    <small class="text-danger">@_redisConnectionError</small>
+                                </li>
+                            }
+                        }
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Total Items:</span>
                             <span>@_cacheStats.TotalItems</span>
@@ -438,12 +453,24 @@
         await LoadConfigurationAsync();
         _isInitialized = true;
         
+        // Load cache statistics and synchronize UI state with actual runtime state
+        await LoadCacheStatisticsAsync();
+        
+        // Ensure UI controls match the actual runtime state
+        _isEnabled = _cacheStats.IsEnabled;
+        _cacheType = _cacheStats.CacheType;
+        
         // Set up a timer to refresh cache statistics every 30 seconds
         _refreshTimer = new Timer(async _ => 
         {
             try 
             {
                 await LoadCacheStatisticsAsync();
+                
+                // Keep UI controls in sync with statistics during refresh
+                _isEnabled = _cacheStats.IsEnabled;
+                _cacheType = _cacheStats.CacheType;
+                
                 await InvokeAsync(StateHasChanged);
             }
             catch (Exception ex)
@@ -459,9 +486,17 @@
         
         try
         {
+            // First get current settings from the CacheStatusService for accurate runtime state
+            var cacheStatus = await CacheStatusService.GetCacheStatusAsync();
+            
+            // Default initialization from configuration as fallback
             var cacheSection = Configuration.GetSection("Caching");
-            _isEnabled = cacheSection?.GetValue<bool>("Enabled") ?? false;
-            _cacheType = cacheSection?.GetValue<string>("Provider") ?? "Memory";
+            
+            // Now use cacheStatus as primary source, falling back to config values
+            _isEnabled = cacheStatus.IsEnabled; 
+            _cacheType = cacheStatus.CacheType;
+            
+            // These other values still come from configuration
             _maxCacheItems = cacheSection?.GetValue<int>("MaxItems") ?? 10000;
             _defaultExpirationMinutes = cacheSection?.GetValue<int>("DefaultExpirationMinutes") ?? 60;
             _redisConnectionString = cacheSection?.GetValue<string>("RedisConnectionString") ?? "localhost:6379";
@@ -472,6 +507,13 @@
             _includeTemperatureInKey = cacheSection?.GetValue<bool>("IncludeTemperatureInKey") ?? true;
             _includeMaxTokensInKey = cacheSection?.GetValue<bool>("IncludeMaxTokensInKey") ?? false;
             _includeTopPInKey = cacheSection?.GetValue<bool>("IncludeTopPInKey") ?? false;
+            
+            // If using Redis, get connection info from runtime
+            if (_cacheType == "Redis" && cacheStatus.RedisConnection != null)
+            {
+                _redisConnectionString = cacheSection?.GetValue<string>("RedisConnectionString") ?? "redis:6379";
+                _redisInstanceName = cacheStatus.RedisConnection.InstanceName;
+            }
             
             // Load model rules
             _modelRules = new List<ModelCacheRule>();
