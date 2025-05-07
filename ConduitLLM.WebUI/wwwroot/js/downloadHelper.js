@@ -78,14 +78,26 @@ window.uploadFile = function(accept, dotNetReference, methodName) {
             const file = input.files[0];
             
             try {
-                // Read file as array buffer
-                const arrayBuffer = await file.arrayBuffer();
+                // Convert to base64 - handling binary data safely using FileReader API
+                const reader = new FileReader();
                 
-                // Convert to base64
-                const base64 = btoa(
-                    new Uint8Array(arrayBuffer)
-                        .reduce((data, byte) => data + String.fromCharCode(byte), '')
-                );
+                // Create a promise to handle the FileReader asynchronously
+                const base64Promise = new Promise((resolve, reject) => {
+                    reader.onload = () => {
+                        // The result will be in format "data:application/octet-stream;base64,BASE64DATA"
+                        // We need to extract just the base64 part
+                        const result = reader.result;
+                        const base64 = result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                });
+                
+                // Start reading the file as Data URL
+                reader.readAsDataURL(file);
+                
+                // Wait for the reading to complete
+                const base64 = await base64Promise;
                 
                 // Call .NET method with file info
                 await dotNetReference.invokeMethodAsync(methodName, {
@@ -96,6 +108,8 @@ window.uploadFile = function(accept, dotNetReference, methodName) {
                 });
             } catch (error) {
                 console.error('Error handling file upload:', error);
+                // Report error back to .NET
+                await dotNetReference.invokeMethodAsync('HandleFileUploadError', { error: error.message });
             }
             
             // Clean up

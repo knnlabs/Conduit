@@ -4,12 +4,13 @@
 @using System.Text.RegularExpressions
 @using ConduitLLM.Core
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.JSInterop
 @using System.Threading.Tasks
 @using System.Text.Json
 @inject NavigationManager Navigation
 @inject IConfiguration Configuration
-@inject IJSRuntime JSRuntime
+@inject IJSRuntime JS
 @inject ConduitLLM.WebUI.Interfaces.IDatabaseBackupService BackupService
 @implements IAsyncDisposable
 
@@ -29,18 +30,18 @@
     private string? PgConnStrMasked;
 
     // Backup/Restore state
-    private bool IsBackupInProgress = false;
+    // Removed IsBackupInProgress as we're using direct link for backup
     private bool IsRestoreInProgress = false;
-    private string? BackupError;
+    // Removed BackupError since we're using direct link approach
     private string? RestoreError;
     private string? RestoreSuccess;
     private DotNetObjectReference<DbStatus>? objRef;
 
-    // JavaScript module reference
-    private IJSObjectReference? _jsModule;
+    // Removed JavaScript module reference as we're using direct DOM interactions
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
+        Console.WriteLine($"DbStatus.OnInitializedAsync() called at {DateTime.Now}");
         // Use the same logic as DbConnectionHelper to determine database provider
         // First check for DATABASE_URL (Postgres)
         var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -126,28 +127,17 @@
             }
         }
 
-        // Import JavaScript module
-        try {
-            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/downloadHelper.js");
-        }
-        catch (Exception ex) {
-            Error = $"Failed to load JavaScript module: {ex.Message}";
-        }
-
-        // Initialize the object reference
+        // Initialize the object reference for JS interop if needed later
         objRef = DotNetObjectReference.Create(this);
+        
+        return Task.CompletedTask;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        // Dispose JavaScript module
-        if (_jsModule != null)
-        {
-            await _jsModule.DisposeAsync();
-        }
-        
-        // Dispose object reference
+        // Just dispose object reference
         objRef?.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     private string ParsePostgresUrl(string url)
@@ -194,104 +184,44 @@
         return string.Join(';', maskedParts);
     }
 
-    // Backup database method
-    private async Task BackupDatabaseAsync()
+    // Note: Direct link approach is used instead of this method
+    // Keeping this method for reference but it's not used anymore
+    private void LogBackupRequest()
     {
-        try
-        {
-            IsBackupInProgress = true;
-            BackupError = null;
-            StateHasChanged();
-
-            // Instead of directly fetching from service, use API endpoint
-            var baseUrl = Navigation.BaseUri.TrimEnd('/');
-            var url = $"{baseUrl}/api/DatabaseBackup/backup";
-            
-            // Create timestamp for the file
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-            
-            // Create filename with appropriate extension based on the database provider
-            var fileExtension = DbProvider == "sqlite" ? "db" : "json";
-            var fileName = $"conduit_backup_{timestamp}.{fileExtension}";
-            
-            // Trigger the download from the URL
-            if (_jsModule != null)
-            {
-                await _jsModule.InvokeVoidAsync("downloadFromUrl", url, fileName);
-            }
-            else
-            {
-                BackupError = "JavaScript module not loaded. Please refresh the page and try again.";
-            }
-        }
-        catch (Exception ex)
-        {
-            BackupError = $"Error creating backup: {ex.Message}";
-        }
-        finally
-        {
-            IsBackupInProgress = false;
-            StateHasChanged();
-        }
+        Console.WriteLine($"Backup requested at {DateTime.Now}");
     }
     
-    // Trigger file dialog for restore
-    private async Task TriggerRestoreFileDialogAsync()
+    // Note: InputFile component is used instead of this method
+    // This method isn't used anymore as we use the InputFile component directly
+    private void LogRestoreRequest()
     {
-        try
-        {
-            RestoreError = null;
-            RestoreSuccess = null;
-            StateHasChanged();
-            
-            // Determine the accept file types based on database provider
-            string acceptTypes = DbProvider == "sqlite" ? ".db" : ".json";
-            
-            // Trigger file upload dialog
-            if (_jsModule != null && objRef != null)
-            {
-                await _jsModule.InvokeVoidAsync("uploadFile", acceptTypes, objRef, "HandleFileUpload");
-            }
-            else
-            {
-                RestoreError = "JavaScript module not loaded. Please refresh the page and try again.";
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            RestoreError = $"Error initializing file dialog: {ex.Message}";
-            StateHasChanged();
-        }
+        Console.WriteLine($"Restore requested at {DateTime.Now}");
     }
     
-    // Method called by JavaScript when a file is selected
-    [JSInvokable]
-    public async Task HandleFileUpload(object fileInfo)
+    // New handler for InputFile component
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         try
         {
+            Console.WriteLine($"File selected at {DateTime.Now}: {e.File.Name}");
             IsRestoreInProgress = true;
             RestoreError = null;
             RestoreSuccess = null;
             StateHasChanged();
             
-            // Convert fileInfo to JSON and parse properties
-            var fileJson = JsonSerializer.Serialize(fileInfo);
-            var fileData = JsonSerializer.Deserialize<Dictionary<string, object>>(fileJson);
-            
-            if (fileData == null || !fileData.ContainsKey("base64Content"))
+            var file = e.File;
+            if (file == null)
             {
-                RestoreError = "Invalid file data received";
+                RestoreError = "No file selected";
                 return;
             }
             
-            // Get file properties
-            string fileName = fileData.ContainsKey("fileName") ? (fileData["fileName"]?.ToString() ?? "unknown") : "unknown";
-            string base64Content = fileData["base64Content"]?.ToString() ?? string.Empty;
+            // Read the file content
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(memoryStream);
+            byte[] fileBytes = memoryStream.ToArray();
             
-            // Decode base64 to byte array
-            byte[] fileBytes = Convert.FromBase64String(base64Content);
+            Console.WriteLine($"Read {fileBytes.Length} bytes from file");
             
             // Validate the backup
             if (!await BackupService.ValidateBackupAsync(fileBytes))
@@ -305,7 +235,7 @@
             
             if (success)
             {
-                RestoreSuccess = $"Database successfully restored from {fileName}. You may need to restart the application for changes to take effect.";
+                RestoreSuccess = $"Database successfully restored from {file.Name}. You may need to restart the application for changes to take effect.";
             }
             else
             {
@@ -315,6 +245,36 @@
         catch (Exception ex)
         {
             RestoreError = $"Error restoring database: {ex.Message}";
+            Console.WriteLine($"Exception in HandleFileSelected: {ex}");
+        }
+        finally
+        {
+            IsRestoreInProgress = false;
+            StateHasChanged();
+        }
+    }
+    
+    // Method called by JavaScript when there's an error with file upload
+    [JSInvokable]
+    public void HandleFileUploadError(object errorInfo)
+    {
+        try
+        {
+            var errorJson = JsonSerializer.Serialize(errorInfo);
+            var errorData = JsonSerializer.Deserialize<Dictionary<string, object>>(errorJson);
+            
+            if (errorData != null && errorData.ContainsKey("error"))
+            {
+                RestoreError = $"JavaScript error: {errorData["error"]}";
+            }
+            else
+            {
+                RestoreError = "An unknown error occurred during file upload";
+            }
+        }
+        catch (Exception ex)
+        {
+            RestoreError = $"Error handling JavaScript error: {ex.Message}";
         }
         finally
         {
@@ -323,6 +283,7 @@
         }
     }
 }
+
 
 <div class="container container-xxl mt-4">
     <div class="card shadow-sm p-4 mb-4">
@@ -451,22 +412,10 @@
                             </div>
                             <div class="card-body">
                                 <p>Create a backup file of the current database state. This will download a @(DbProvider == "sqlite" ? ".db" : ".json") file that you can store as a backup.</p>
-                                <button class="btn btn-primary" @onclick="BackupDatabaseAsync" disabled="@IsBackupInProgress">
-                                    @if (IsBackupInProgress)
-                                    {
-                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                        <span> Creating Backup...</span>
-                                    }
-                                    else
-                                    {
-                                        <i class="fa fa-download me-2"></i>
-                                        <span>Backup Database</span>
-                                    }
-                                </button>
-                                @if (!string.IsNullOrEmpty(BackupError))
-                                {
-                                    <div class="alert alert-danger mt-3">@BackupError</div>
-                                }
+                                <a href="@($"{Navigation.BaseUri.TrimEnd('/')}/api/DatabaseBackup/backup")" class="btn btn-primary" download="@($"conduit_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{(DbProvider == "sqlite" ? "db" : "json")}")" @onclick="LogBackupRequest">
+                                    <i class="fa fa-download me-2"></i>
+                                    <span>Backup Database</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -481,7 +430,8 @@
                                     <i class="fa fa-exclamation-triangle me-2"></i>
                                     <strong>Warning:</strong> This will overwrite your current database. Make sure to backup first.
                                 </div>
-                                <button class="btn btn-danger" @onclick="TriggerRestoreFileDialogAsync" disabled="@IsRestoreInProgress">
+                                <InputFile OnChange="@HandleFileSelected" accept="@(DbProvider == "sqlite" ? ".db" : ".json")" disabled="@IsRestoreInProgress" class="d-none" id="fileUpload" />
+                                <label for="fileUpload" class="btn btn-danger">
                                     @if (IsRestoreInProgress)
                                     {
                                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -492,7 +442,7 @@
                                         <i class="fa fa-upload me-2"></i>
                                         <span>Restore Database</span>
                                     }
-                                </button>
+                                </label>
                                 @if (!string.IsNullOrEmpty(RestoreError))
                                 {
                                     <div class="alert alert-danger mt-3">@RestoreError</div>

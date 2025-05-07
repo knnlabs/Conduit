@@ -14,7 +14,7 @@ namespace ConduitLLM.WebUI.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Policy = "MasterKeyOnly")]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class DatabaseBackupController : ControllerBase
     {
         private readonly IDatabaseBackupService _backupService;
