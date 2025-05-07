@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -10,6 +11,7 @@ namespace ConduitLLM.WebUI.Interfaces
     /// - Retrieving current cache status and metrics
     /// - Enabling or disabling the cache
     /// - Clearing all items from the cache
+    /// - Managing Redis-specific cache settings
     /// 
     /// Implementations of this interface are responsible for tracking cache performance,
     /// persisting cache configuration, and providing cache management operations.
@@ -28,6 +30,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// - The cache hit rate
         /// - Memory usage estimates
         /// - Average response time
+        /// - Redis-specific metrics when using Redis cache
         /// 
         /// This information is useful for monitoring cache performance and making decisions
         /// about cache configuration adjustments.
@@ -63,79 +66,66 @@ namespace ConduitLLM.WebUI.Interfaces
         /// - After updating model configuration or credentials
         /// </remarks>
         Task ClearCacheAsync();
+        
+        /// <summary>
+        /// Updates the cache type (Memory or Redis)
+        /// </summary>
+        /// <param name="cacheType">The type of cache to use</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method changes the type of cache being used. When changing from memory
+        /// to Redis or vice versa, the cache is cleared and reconfigured.
+        /// </remarks>
+        Task SetCacheTypeAsync(string cacheType);
+        
+        /// <summary>
+        /// Updates the Redis connection settings
+        /// </summary>
+        /// <param name="connectionString">The Redis connection string</param>
+        /// <param name="instanceName">The Redis instance name</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method updates the Redis connection settings. If the cache type is
+        /// Redis, the connection will be re-established with the new settings.
+        /// </remarks>
+        Task UpdateRedisSettingsAsync(string connectionString, string instanceName);
+        
+        /// <summary>
+        /// Tests the Redis connection with the specified settings
+        /// </summary>
+        /// <param name="connectionString">The Redis connection string to test</param>
+        /// <returns>A result object indicating success or failure with error details</returns>
+        /// <remarks>
+        /// This method tests the Redis connection with the specified settings without
+        /// changing the current cache configuration. It's useful for validating
+        /// connection settings before applying them.
+        /// </remarks>
+        Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString);
     }
     
     /// <summary>
-    /// Represents the status and metrics of the LLM response cache
+    /// Results of a Redis connection test
     /// </summary>
-    /// <remarks>
-    /// This class encapsulates information about the current state of the cache,
-    /// including configuration settings and performance metrics. It is used to
-    /// provide cache monitoring data to the UI and API consumers.
-    /// </remarks>
-    public class CacheStatus
+    public class RedisConnectionTestResult
     {
         /// <summary>
-        /// Whether the LLM response cache is currently enabled
+        /// Whether the connection test was successful
         /// </summary>
-        /// <remarks>
-        /// When true, identical or similar LLM requests may return cached responses.
-        /// When false, all requests are sent directly to the LLM provider.
-        /// </remarks>
-        public bool IsEnabled { get; set; }
+        public bool IsSuccess { get; set; }
         
         /// <summary>
-        /// The type of cache being used (Memory, Redis, etc.)
+        /// Error message if the connection test failed
         /// </summary>
-        /// <remarks>
-        /// Different cache types have different performance characteristics and persistence models:
-        /// - Memory: Fast but limited by available RAM and lost on application restart
-        /// - Redis: Potentially larger capacity and shared across instances but higher latency
-        /// </remarks>
-        public string CacheType { get; set; } = "Memory";
+        public string? ErrorMessage { get; set; }
         
         /// <summary>
-        /// The total number of items currently stored in the cache
+        /// Redis server version if connection was successful
         /// </summary>
-        /// <remarks>
-        /// This represents the number of unique request/response pairs that have been
-        /// cached. Each item typically corresponds to a specific LLM prompt or request
-        /// configuration.
-        /// </remarks>
-        public int TotalItems { get; set; }
+        public string? ServerVersion { get; set; }
         
         /// <summary>
-        /// The cache hit rate (0.0 to 1.0) representing the proportion of requests served from cache
+        /// Latency of the connection test in milliseconds
         /// </summary>
-        /// <remarks>
-        /// A higher hit rate indicates better cache efficiency. For example:
-        /// - 0.0 means no requests are being served from cache
-        /// - 0.5 means half of all requests are served from cache
-        /// - 1.0 means all requests are served from cache
-        /// 
-        /// The hit rate is an important metric for evaluating cache effectiveness and
-        /// potential cost savings from reduced LLM API calls.
-        /// </remarks>
-        public double HitRate { get; set; }
-        
-        /// <summary>
-        /// The estimated memory usage of the cache in bytes
-        /// </summary>
-        /// <remarks>
-        /// This is an approximation of how much memory the cached responses are consuming.
-        /// For in-memory caches, this helps monitor resource usage. For Redis caches,
-        /// this is a rougher estimate based on item count and average response size.
-        /// </remarks>
-        public long MemoryUsageBytes { get; set; }
-        
-        /// <summary>
-        /// The average cache retrieval time in milliseconds
-        /// </summary>
-        /// <remarks>
-        /// This measures how quickly responses are retrieved from the cache, which is typically
-        /// much faster than getting responses from the LLM provider. This metric helps evaluate
-        /// the performance benefits of caching in addition to the cost savings.
-        /// </remarks>
-        public double AvgResponseTime { get; set; }
+        public double LatencyMs { get; set; }
     }
 }

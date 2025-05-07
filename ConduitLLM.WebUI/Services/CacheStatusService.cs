@@ -36,6 +36,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
         private readonly Configuration.Services.ICacheService _cacheService;
+        private readonly IRedisCacheMetricsService? _redisCacheMetrics;
         
         private const string CACHE_CONFIG_KEY = "CacheConfig";
         private Timer? _statisticsTimer;
@@ -50,13 +51,15 @@ namespace ConduitLLM.WebUI.Services
             Configuration.Services.ICacheService cacheService,
             ICacheMetricsService metricsService,
             IOptions<CacheOptions> cacheOptions,
-            ILogger<CacheStatusService> logger)
+            ILogger<CacheStatusService> logger,
+            IRedisCacheMetricsService? redisCacheMetrics = null)
         {
             _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
             _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
             _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _redisCacheMetrics = redisCacheMetrics;
             
             // Initialize cache settings asynchronously - with error handling
             _ = Task.Run(async () => 
@@ -87,11 +90,16 @@ namespace ConduitLLM.WebUI.Services
         
         /// <inheritdoc/>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during status retrieval</exception>
-        public Task<CacheStatus> GetCacheStatusAsync()
+        public async Task<Models.CacheStatus> GetCacheStatusAsync()
         {
             try
             {
                 var options = _cacheOptions.Value;
+                var result = new Models.CacheStatus
+                {
+                    IsEnabled = options.IsEnabled,
+                    CacheType = options.CacheType
+                };
                 
                 // Get current metrics
                 var totalRequests = _metricsService.GetTotalRequests();
@@ -103,27 +111,82 @@ namespace ConduitLLM.WebUI.Services
                 {
                     _logger.LogDebug("Using persisted cache statistics from database");
                     
-                    return Task.FromResult(new CacheStatus
-                    {
-                        IsEnabled = options.IsEnabled,
-                        CacheType = options.CacheType,
-                        TotalItems = _lastLoadedConfig.TotalItems,
-                        HitRate = _lastLoadedConfig.HitRate,
-                        MemoryUsageBytes = _lastLoadedConfig.MemoryUsageBytes,
-                        AvgResponseTime = _lastLoadedConfig.AvgResponseTimeMs
-                    });
+                    result.TotalItems = _lastLoadedConfig.TotalItems;
+                    result.HitRate = _lastLoadedConfig.HitRate;
+                    result.MemoryUsageBytes = _lastLoadedConfig.MemoryUsageBytes;
+                    result.AvgResponseTime = _lastLoadedConfig.AvgResponseTimeMs;
+                }
+                else
+                {
+                    // Use current metrics
+                    result.TotalItems = (int)totalRequests;
+                    result.HitRate = hitRate;
+                    result.MemoryUsageBytes = EstimateMemoryUsage(options);
+                    result.AvgResponseTime = avgResponseTime;
                 }
                 
-                // Use current metrics
-                return Task.FromResult(new CacheStatus
+                // Add Redis-specific info if using Redis cache
+                if (options.CacheType?.ToLowerInvariant() == "redis" && _redisCacheMetrics != null)
                 {
-                    IsEnabled = options.IsEnabled,
-                    CacheType = options.CacheType,
-                    TotalItems = (int)totalRequests,
-                    HitRate = hitRate,
-                    MemoryUsageBytes = EstimateMemoryUsage(options),
-                    AvgResponseTime = avgResponseTime
-                });
+                    try
+                    {
+                        // Get Redis connection status
+                        result.IsRedisConnected = await _redisCacheMetrics.IsConnectedAsync();
+                        
+                        if (result.IsRedisConnected)
+                        {
+                            // Get Redis client info
+                            var clientInfo = await _redisCacheMetrics.GetClientInfoAsync();
+                            var memoryStats = await _redisCacheMetrics.GetMemoryStatsAsync();
+                            var dbStats = await _redisCacheMetrics.GetDatabaseStatsAsync();
+                            var serverInfo = await _redisCacheMetrics.GetServerInfoAsync();
+                            
+                            // Set Redis connection info
+                            result.RedisConnection = new Models.RedisConnectionInfo
+                            {
+                                ConnectedClients = clientInfo.ConnectedClients,
+                                Endpoint = serverInfo.TryGetValue("server:redis_version", out var version) ? 
+                                    serverInfo.TryGetValue("server:os", out var os) ? $"{os} (Redis {version})" : $"Redis {version}" : 
+                                    "Redis Server",
+                                Version = serverInfo.TryGetValue("server:redis_version", out var v) ? v : "Unknown",
+                                InstanceName = options.RedisInstanceName
+                            };
+                            
+                            // Set Redis memory info
+                            result.RedisMemory = new Models.RedisMemoryInfo
+                            {
+                                UsedMemory = memoryStats.UsedMemory,
+                                PeakMemory = memoryStats.PeakMemory,
+                                FragmentationRatio = memoryStats.FragmentationRatio,
+                                CachedMemory = memoryStats.CachedMemory
+                            };
+                            
+                            // Set Redis database info
+                            result.RedisDatabase = new Models.RedisDatabaseInfo
+                            {
+                                KeyCount = dbStats.KeyCount,
+                                ExpiredKeys = dbStats.ExpiredKeys,
+                                EvictedKeys = dbStats.EvictedKeys,
+                                Hits = dbStats.Hits,
+                                Misses = dbStats.Misses,
+                                HitRatePercentage = dbStats.HitRate
+                            };
+                            
+                            // Update memory usage from Redis stats
+                            if (memoryStats.UsedMemory > 0)
+                            {
+                                result.MemoryUsageBytes = memoryStats.UsedMemory;
+                            }
+                        }
+                    }
+                    catch (Exception redisEx)
+                    {
+                        _logger.LogWarning(redisEx, "Error getting Redis metrics");
+                        result.IsRedisConnected = false;
+                    }
+                }
+                
+                return result;
             }
             catch (Exception ex)
             {
@@ -134,7 +197,7 @@ namespace ConduitLLM.WebUI.Services
                     _cacheOptions.Value?.CacheType ?? "Unknown",
                     _metricsService != null);
                     
-                return Task.FromResult(new CacheStatus
+                return new Models.CacheStatus
                 {
                     IsEnabled = false,
                     CacheType = "Unknown",
@@ -142,7 +205,7 @@ namespace ConduitLLM.WebUI.Services
                     HitRate = 0,
                     MemoryUsageBytes = 0,
                     AvgResponseTime = 0
-                });
+                };
             }
         }
         
@@ -186,6 +249,111 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error clearing cache");
+            }
+        }
+        
+        /// <inheritdoc/>
+        public async Task SetCacheTypeAsync(string cacheType)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(cacheType))
+                {
+                    throw new ArgumentException("Cache type cannot be empty");
+                }
+                
+                var options = _cacheOptions.Value;
+                var oldType = options.CacheType;
+                
+                // Validate cache type
+                if (cacheType.ToLowerInvariant() != "memory" && cacheType.ToLowerInvariant() != "redis")
+                {
+                    throw new ArgumentException($"Invalid cache type: {cacheType}. Valid values are 'Memory' or 'Redis'");
+                }
+                
+                // If changing type, clear cache first
+                if (oldType?.ToLowerInvariant() != cacheType.ToLowerInvariant() && options.IsEnabled)
+                {
+                    await ClearCacheAsync();
+                }
+                
+                // Update options
+                options.CacheType = cacheType;
+                
+                // Save configuration
+                await SaveCacheConfigAsync();
+                
+                _logger.LogInformation("Cache type set to {CacheType}", cacheType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting cache type to {CacheType}", cacheType);
+                throw;
+            }
+        }
+        
+        /// <inheritdoc/>
+        public async Task UpdateRedisSettingsAsync(string connectionString, string instanceName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new ArgumentException("Redis connection string cannot be empty");
+                }
+                
+                var options = _cacheOptions.Value;
+                
+                // Test connection before saving
+                if (_redisCacheMetrics != null)
+                {
+                    var testResult = await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
+                    if (!testResult.IsSuccess)
+                    {
+                        throw new Exception($"Failed to connect to Redis: {testResult.ErrorMessage}");
+                    }
+                }
+                
+                // Update options
+                options.RedisConnectionString = connectionString;
+                options.RedisInstanceName = instanceName ?? "conduit:";
+                
+                // Save configuration
+                await SaveCacheConfigAsync();
+                
+                _logger.LogInformation("Redis settings updated");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating Redis settings");
+                throw;
+            }
+        }
+        
+        /// <inheritdoc/>
+        public async Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString)
+        {
+            try
+            {
+                if (_redisCacheMetrics == null)
+                {
+                    return new RedisConnectionTestResult
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = "Redis metrics service is not available"
+                    };
+                }
+                
+                return await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing Redis connection");
+                return new RedisConnectionTestResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = $"Exception testing connection: {ex.Message}"
+                };
             }
         }
         

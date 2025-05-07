@@ -1,6 +1,7 @@
 @page "/caching-settings"
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Models
 @using ConduitLLM.Core.Caching
 @using Microsoft.Extensions.Configuration
 @using ConduitLLM.WebUI.Components.Shared
@@ -70,14 +71,39 @@
                 {
                     <div class="card card-outlined mb-4">
                         <div class="card-header">
-                            <h6 class="heading-6">Redis Settings</h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="heading-6 mb-0">Redis Settings</h6>
+                                @if (_redisConnectionTested)
+                                {
+                                    @if (_redisConnectionSuccess)
+                                    {
+                                        <span class="badge bg-success">Connected</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Connection Failed</span>
+                                    }
+                                }
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="form-group mb-4">
                                 <label for="redisConnectionString">Connection String</label>
-                                <input type="text" id="redisConnectionString" class="form-control" 
-                                       @bind="@_redisConnectionString" placeholder="localhost:6379" 
-                                       disabled="@(!_isEnabled)" />
+                                <div class="input-group">
+                                    <input type="text" id="redisConnectionString" class="form-control" 
+                                           @bind="@_redisConnectionString" placeholder="localhost:6379" 
+                                           disabled="@(!_isEnabled)" />
+                                    <button class="btn btn-outline-primary" type="button" 
+                                            @onclick="TestRedisConnection" disabled="@(!_isEnabled || string.IsNullOrEmpty(_redisConnectionString))">
+                                        <i class="fa fa-check-circle me-1"></i> Test
+                                    </button>
+                                </div>
+                                @if (_redisConnectionTested && !_redisConnectionSuccess)
+                                {
+                                    <div class="text-danger mt-2">
+                                        <small>@_redisConnectionError</small>
+                                    </div>
+                                }
                             </div>
                             <div class="form-group mb-4">
                                 <label for="redisInstanceName">Redis Instance Name</label>
@@ -85,6 +111,59 @@
                                        @bind="@_redisInstanceName" placeholder="conduitllm-cache" 
                                        disabled="@(!_isEnabled)" />
                             </div>
+                            
+                            @if (_redisConnectionTested && _redisConnectionSuccess)
+                            {
+                                <div class="alert alert-success">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Connected to Redis server</span>
+                                        <span>Version: @_redisServerVersion</span>
+                                    </div>
+                                    <small>Connection latency: @_redisConnectionLatency.ToString("F2") ms</small>
+                                </div>
+                            }
+                            
+                            @if (_cacheStats.RedisConnection != null)
+                            {
+                                <div class="card card-outlined mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="heading-6">Redis Connection Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Endpoint:</strong> @_cacheStats.RedisConnection.Endpoint</p>
+                                                <p><strong>Connected Clients:</strong> @_cacheStats.RedisConnection.ConnectedClients</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Server Version:</strong> @_cacheStats.RedisConnection.Version</p>
+                                                <p><strong>Instance Name:</strong> @_cacheStats.RedisConnection.InstanceName</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            
+                            @if (_cacheStats.RedisMemory != null)
+                            {
+                                <div class="card card-outlined">
+                                    <div class="card-header bg-light">
+                                        <h6 class="heading-6">Redis Memory Usage</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Memory Used:</strong> @FormatBytes(_cacheStats.RedisMemory.UsedMemory)</p>
+                                                <p><strong>Peak Memory:</strong> @FormatBytes(_cacheStats.RedisMemory.PeakMemory)</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Cached Data:</strong> @FormatBytes(_cacheStats.RedisMemory.CachedMemory)</p>
+                                                <p><strong>Fragmentation Ratio:</strong> @_cacheStats.RedisMemory.FragmentationRatio.ToString("F2")</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -338,11 +417,18 @@
     private bool _includeTopPInKey = false;
     private List<ModelCacheRule> _modelRules = new();
     
+    // Redis connection state
+    private bool _redisConnectionTested = false;
+    private bool _redisConnectionSuccess = false;
+    private string _redisConnectionError = string.Empty;
+    private string _redisServerVersion = string.Empty;
+    private double _redisConnectionLatency = 0;
+    
     private bool _isInitialized = false;
     private bool _isLoading = true;
     
     // Cache statistics
-    private CacheStats _cacheStats = new();
+    private CacheStatus _cacheStats = new();
     private List<ModelStatistics> _modelStats = new();
     
     private Timer? _refreshTimer;
@@ -404,6 +490,12 @@
             };
             
             await LoadCacheStatisticsAsync();
+            
+            // If Redis is selected, test the connection
+            if (_cacheType == "Redis" && _isEnabled && !string.IsNullOrEmpty(_redisConnectionString))
+            {
+                await TestRedisConnection();
+            }
         }
         catch (Exception ex)
         {
@@ -419,16 +511,7 @@
     {
         try
         {
-            var status = await CacheStatusService.GetCacheStatusAsync();
-            _cacheStats = new CacheStats
-            {
-                IsEnabled = status.IsEnabled,
-                CacheType = status.CacheType,
-                TotalItems = status.TotalItems,
-                HitRate = status.HitRate,
-                MemoryUsageBytes = status.MemoryUsageBytes,
-                AvgResponseTime = status.AvgResponseTime
-            };
+            _cacheStats = await CacheStatusService.GetCacheStatusAsync();
             
             // Load model-specific statistics from the metrics service
             _modelStats.Clear();
@@ -469,8 +552,15 @@
             // Log the configuration changes
             Logger.LogInformation("Saving cache configuration: Enabled={Enabled}, Type={Type}", _isEnabled, _cacheType);
             
-            // Update cache status with new settings
+            // Update cache settings
+            await CacheStatusService.SetCacheTypeAsync(_cacheType);
             await CacheStatusService.SetCacheEnabledAsync(_isEnabled);
+            
+            // If Redis is selected, update Redis settings
+            if (_cacheType == "Redis")
+            {
+                await CacheStatusService.UpdateRedisSettingsAsync(_redisConnectionString, _redisInstanceName);
+            }
             
             // Refresh the statistics
             await LoadCacheStatisticsAsync();
@@ -490,6 +580,38 @@
         await SaveConfiguration();
     }
     
+    private async Task TestRedisConnection()
+    {
+        try
+        {
+            _redisConnectionTested = true;
+            _redisConnectionSuccess = false;
+            _redisConnectionError = string.Empty;
+            
+            // Test the Redis connection
+            var result = await CacheStatusService.TestRedisConnectionAsync(_redisConnectionString);
+            
+            _redisConnectionSuccess = result.IsSuccess;
+            _redisConnectionLatency = result.LatencyMs;
+            
+            if (result.IsSuccess)
+            {
+                _redisServerVersion = result.ServerVersion ?? "Unknown";
+                Logger.LogInformation("Redis connection test successful: {Version}", _redisServerVersion);
+            }
+            else
+            {
+                _redisConnectionError = result.ErrorMessage ?? "Unknown error";
+                Logger.LogWarning("Redis connection test failed: {Error}", _redisConnectionError);
+            }
+        }
+        catch (Exception ex)
+        {
+            _redisConnectionSuccess = false;
+            _redisConnectionError = $"Error testing connection: {ex.Message}";
+            Logger.LogError(ex, "Error testing Redis connection");
+        }
+    }
     
     private void AddModelRule()
     {
@@ -566,16 +688,6 @@
         public string ModelNamePattern { get; set; } = string.Empty;
         public CacheBehavior CacheBehavior { get; set; } = CacheBehavior.Default;
         public int? ExpirationMinutes { get; set; }
-    }
-    
-    private class CacheStats
-    {
-        public bool IsEnabled { get; set; }
-        public string CacheType { get; set; } = "Memory";
-        public int TotalItems { get; set; }
-        public double HitRate { get; set; }
-        public long MemoryUsageBytes { get; set; }
-        public double AvgResponseTime { get; set; }
     }
 
     private class ModelStatistics
