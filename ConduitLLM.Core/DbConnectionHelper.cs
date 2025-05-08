@@ -1,87 +1,93 @@
 using System;
-using System.Text.RegularExpressions;
+using ConduitLLM.Core.Data;
+using ConduitLLM.Core.Data.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Core
 {
+    /// <summary>
+    /// Helper class for database connection string operations.
+    /// </summary>
+    /// <remarks>
+    /// This class is maintained for backward compatibility and delegates to the new
+    /// <see cref="IConnectionStringManager"/> implementation.
+    /// Consider using the new interface directly for new code.
+    /// </remarks>
+    [Obsolete("Use IConnectionStringManager instead. This class will be removed in a future version.")]
     public static class DbConnectionHelper
     {
+        // Lazy-initialized instance for static methods
+        private static readonly Lazy<IConnectionStringManager> _connectionManager = 
+            new Lazy<IConnectionStringManager>(() => new ConnectionStringManager());
+
+        /// <summary>
+        /// Gets the database provider and connection string based on environment configuration.
+        /// </summary>
+        /// <param name="logger">Optional logger action for connection details.</param>
+        /// <returns>A tuple containing the provider name and connection string.</returns>
         public static (string Provider, string ConnectionString) GetProviderAndConnectionString(Action<string>? logger = null)
         {
-            // Check for DATABASE_URL (Postgres)
-            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            if (!string.IsNullOrEmpty(databaseUrl) &&
-                (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://")))
-            {
-                var connStr = ParsePostgresUrl(databaseUrl);
-                ValidatePostgres(connStr);
-                logger?.Invoke($"[DB] Using provider: postgres, connection: {SanitizeConnectionString(connStr)}");
-                return ("postgres", connStr);
-            }
-            
-            // If DATABASE_URL exists but doesn't match expected prefix, log and continue to SQLite fallback
-            if (!string.IsNullOrEmpty(databaseUrl))
-            {
-                logger?.Invoke($"[DB] Invalid DATABASE_URL prefix: {databaseUrl}. Falling back to SQLite.");
-            }
-
-            // Fallback to SQLite
-            var sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");
-            if (!string.IsNullOrEmpty(sqlitePath))
-            {
-                ValidateSqlite(sqlitePath);
-                logger?.Invoke($"[DB] Using provider: sqlite, connection: Data Source={SanitizeConnectionString(sqlitePath)}");
-                return ("sqlite", $"Data Source={sqlitePath}");
-            }
-
-            // Last fallback: in-memory SQLite (dev/test)
-            logger?.Invoke("[DB] Using provider: sqlite, connection: Data Source=ConduitConfig.db (default)");
-            return ("sqlite", "Data Source=ConduitConfig.db");
+            var result = _connectionManager.Value.GetProviderAndConnectionString(logger);
+            return (result.ProviderName, result.ConnectionStringValue);
         }
 
-        private static string ParsePostgresUrl(string url)
+        /// <summary>
+        /// Parses a PostgreSQL URL into a connection string.
+        /// </summary>
+        /// <param name="url">The PostgreSQL URL to parse.</param>
+        /// <returns>A formatted connection string.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when URL format is invalid.</exception>
+        [Obsolete("Use IConnectionStringManager.ParsePostgresUrl instead. This method will be removed in a future version.")]
+        public static string ParsePostgresUrl(string url)
         {
-            // Accepts both postgres:// and postgresql://
-            var pattern = @"^(postgres(?:ql)?):\/\/(?<user>[^:]+):(?<password>[^@]+)@(?<host>[^:/]+)(?::(?<port>\d+))?\/(?<database>[^?]+)";
-            var match = Regex.Match(url, pattern);
-            if (!match.Success)
-                throw new InvalidOperationException($"Invalid DATABASE_URL format: {url}");
-
-            var user = match.Groups["user"].Value;
-            var password = match.Groups["password"].Value;
-            var host = match.Groups["host"].Value;
-            var port = match.Groups["port"].Success ? match.Groups["port"].Value : "5432";
-            var database = match.Groups["database"].Value;
-
-            // Optionally handle query params (e.g., sslmode)
-            var uri = new Uri(url);
-            var query = uri.Query;
-            var queryString = string.IsNullOrEmpty(query) ? string.Empty : query.TrimStart('?');
-
-            var connStr = $"Host={host};Port={port};Database={database};Username={user};Password={password}";
-            if (!string.IsNullOrEmpty(queryString))
-                connStr += ";" + queryString.Replace("&", ";");
-            return connStr;
+            return _connectionManager.Value.ParsePostgresUrl(url);
         }
 
-        private static void ValidatePostgres(string connStr)
+        /// <summary>
+        /// Validates a connection string for the specified provider.
+        /// </summary>
+        /// <param name="provider">The database provider.</param>
+        /// <param name="connectionString">The connection string to validate.</param>
+        /// <exception cref="InvalidOperationException">Thrown when validation fails.</exception>
+        [Obsolete("Use IConnectionStringManager.ValidateConnectionString instead. This method will be removed in a future version.")]
+        public static void ValidateConnectionString(string provider, string connectionString)
         {
-            // Basic validation for required fields
-            if (!connStr.Contains("Host=") || !connStr.Contains("Database=") ||
-                !connStr.Contains("Username=") || !connStr.Contains("Password="))
-                throw new InvalidOperationException($"Postgres connection string missing required fields: {SanitizeConnectionString(connStr)}");
+            _connectionManager.Value.ValidateConnectionString(provider, connectionString);
         }
 
-        private static void ValidateSqlite(string path)
+        /// <summary>
+        /// Sanitizes a connection string by masking sensitive information.
+        /// </summary>
+        /// <param name="connectionString">The connection string to sanitize.</param>
+        /// <returns>A sanitized connection string safe for logging.</returns>
+        [Obsolete("Use IConnectionStringManager.SanitizeConnectionString instead. This method will be removed in a future version.")]
+        public static string SanitizeConnectionString(string connectionString)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new InvalidOperationException("SQLite path is empty or whitespace.");
-            // Optionally check for invalid chars, etc.
+            return _connectionManager.Value.SanitizeConnectionString(connectionString);
         }
 
-        private static string SanitizeConnectionString(string connStr)
+        // For backward compatibility, exposing the previous private methods as public
+
+        /// <summary>
+        /// Validates a PostgreSQL connection string.
+        /// </summary>
+        /// <param name="connStr">The connection string to validate.</param>
+        /// <exception cref="InvalidOperationException">Thrown when validation fails.</exception>
+        [Obsolete("Use IConnectionStringManager.ValidateConnectionString instead. This method will be removed in a future version.")]
+        public static void ValidatePostgres(string connStr)
         {
-            // Mask password in connection string
-            return Regex.Replace(connStr, @"Password=([^;]+)", "Password=*****", RegexOptions.IgnoreCase);
+            _connectionManager.Value.ValidateConnectionString("postgres", connStr);
+        }
+
+        /// <summary>
+        /// Validates a SQLite database path.
+        /// </summary>
+        /// <param name="path">The SQLite database path to validate.</param>
+        /// <exception cref="InvalidOperationException">Thrown when validation fails.</exception>
+        [Obsolete("Use IConnectionStringManager.ValidateConnectionString instead. This method will be removed in a future version.")]
+        public static void ValidateSqlite(string path)
+        {
+            _connectionManager.Value.ValidateConnectionString("sqlite", $"Data Source={path}");
         }
     }
 }

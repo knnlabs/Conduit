@@ -79,7 +79,8 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, C
 builder.Services.AddMemoryCache();
 
 // 2. Register DbContext Factory (using connection string from environment variables)
-var (dbProvider, dbConnectionString) = DbConnectionHelper.GetProviderAndConnectionString();
+var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
+var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>

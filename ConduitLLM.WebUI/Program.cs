@@ -47,7 +47,8 @@ builder.Configuration.Sources.Clear();
 builder.Configuration.AddEnvironmentVariables();
 
 // Database configuration
-var (dbProvider, dbConnectionString) = DbConnectionHelper.GetProviderAndConnectionString();
+var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
+var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
@@ -248,7 +249,8 @@ var app = builder.Build();
 
 // Log database configuration ONCE, avoid duplicate logger declarations
 var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbConnection");
-DbConnectionHelper.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
+var connMgr = new ConduitLLM.Core.Data.ConnectionStringManager();
+connMgr.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
 
 // Check if using EnsureCreated mode
 bool useEnsureCreated = Environment.GetEnvironmentVariable("CONDUIT_DATABASE_ENSURE_CREATED") == "true";
