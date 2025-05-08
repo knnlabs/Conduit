@@ -17,6 +17,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
 
@@ -67,6 +68,44 @@ namespace ConduitLLM.Providers
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
+            }
+        }
+        
+        /// <summary>
+        /// Validates that the request is compatible with the selected model,
+        /// particularly checking if multimodal content is being sent to a text-only model.
+        /// </summary>
+        /// <param name="request">The request to validate</param>
+        /// <param name="methodName">Name of the calling method for logging</param>
+        protected override void ValidateRequest<TRequest>(TRequest request, string methodName)
+        {
+            base.ValidateRequest(request, methodName);
+            
+            // Only apply vision validation for chat completion requests
+            if (request is ChatCompletionRequest chatRequest)
+            {
+                // Check if we're sending multimodal content to a non-vision model
+                bool containsImages = false;
+                
+                foreach (var message in chatRequest.Messages)
+                {
+                    if (message.Content != null && message.Content is not string)
+                    {
+                        // If content is not a string, assume it might contain images
+                        containsImages = true;
+                        break;
+                    }
+                }
+                
+                if (containsImages && !IsVisionCapableModel(ProviderModelId))
+                {
+                    Logger.LogWarning(
+                        "Multimodal content detected but model '{ProviderModelId}' does not support vision capabilities.", 
+                        ProviderModelId);
+                    throw new ValidationException(
+                        $"Cannot send image content to model '{ProviderModelId}' as it does not support vision capabilities. " +
+                        $"Please use a vision-capable model such as 'gemini-pro-vision' or 'gemini-1.5-pro'.");
+                }
             }
         }
         
@@ -287,21 +326,27 @@ namespace ConduitLLM.Providers
                         // Filter for models that support 'generateContent' as we are focused on chat
                         var chatModels = modelListResponse.Models
                             .Where(m => m.SupportedGenerationMethods?.Contains("generateContent") ?? false)
-                            .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id)
-                                .WithName(m.DisplayName ?? m.Id)
-                                .WithCapabilities(new ModelCapabilities
-                                {
-                                    Chat = true,
-                                    TextGeneration = true,
-                                    Embeddings = false,
-                                    ImageGeneration = false
-                                })
-                                .WithTokenLimits(new ModelTokenLimits
-                                {
-                                    MaxInputTokens = m.InputTokenLimit,
-                                    MaxOutputTokens = m.OutputTokenLimit
-                                })
-                            )
+                            .Select(m => 
+                            {
+                                // Check if this is a vision-capable model
+                                bool isVisionCapable = IsVisionCapableModel(m.Id);
+                                
+                                return InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id)
+                                    .WithName(m.DisplayName ?? m.Id)
+                                    .WithCapabilities(new ModelCapabilities
+                                    {
+                                        Chat = true,
+                                        TextGeneration = true,
+                                        Embeddings = false,
+                                        ImageGeneration = false,
+                                        Vision = isVisionCapable
+                                    })
+                                    .WithTokenLimits(new ModelTokenLimits
+                                    {
+                                        MaxInputTokens = m.InputTokenLimit,
+                                        MaxOutputTokens = m.OutputTokenLimit
+                                    });
+                            })
                             .ToList();
                         
                         Logger.LogInformation($"Successfully retrieved {chatModels.Count} chat-compatible models from Gemini.");
@@ -502,6 +547,27 @@ namespace ConduitLLM.Providers
         
         #endregion
         
+        #region Helper Methods
+        
+        /// <summary>
+        /// Determines if a Gemini model is capable of processing image inputs.
+        /// </summary>
+        /// <param name="modelId">The Gemini model ID</param>
+        /// <returns>True if the model supports vision capabilities</returns>
+        private bool IsVisionCapableModel(string modelId)
+        {
+            // Check for vision-capable models based on naming patterns
+            // Gemini 1.5 and above support vision input
+            return modelId.Contains("gemini-1.5", StringComparison.OrdinalIgnoreCase) ||
+                   // The original Gemini Pro Vision model
+                   modelId.Contains("gemini-pro-vision", StringComparison.OrdinalIgnoreCase) ||
+                   // Future-proof for Gemini 2.0+ models (assuming they will be multimodal)
+                   modelId.Contains("gemini-2", StringComparison.OrdinalIgnoreCase) ||
+                   modelId.Contains("gemini-3", StringComparison.OrdinalIgnoreCase);
+        }
+        
+        #endregion
+        
         #region Mapping Methods
         
         private GeminiGenerateContentRequest MapToGeminiRequest(ChatCompletionRequest coreRequest)
@@ -516,10 +582,7 @@ namespace ConduitLLM.Providers
                 contents.Add(new GeminiContent
                 {
                     Role = "user", // Gemini doesn't have a system role, use user
-                    Parts = new List<GeminiPart>
-                    {
-                        new GeminiPart { Text = ContentHelper.GetContentAsString(systemMessage.Content) }
-                    }
+                    Parts = MapToGeminiParts(systemMessage.Content)
                 });
             }
             
@@ -542,10 +605,7 @@ namespace ConduitLLM.Providers
                 contents.Add(new GeminiContent
                 {
                     Role = role,
-                    Parts = new List<GeminiPart>
-                    {
-                        new GeminiPart { Text = ContentHelper.GetContentAsString(message.Content) }
-                    }
+                    Parts = MapToGeminiParts(message.Content)
                 });
             }
             
@@ -562,6 +622,101 @@ namespace ConduitLLM.Providers
                     StopSequences = coreRequest.Stop
                 }
             };
+        }
+        
+        /// <summary>
+        /// Maps content from the core model format to Gemini's part format, handling both text and images.
+        /// </summary>
+        /// <param name="content">The content to map, can be string, list of content parts, or JSON</param>
+        /// <returns>A list of Gemini content parts</returns>
+        private List<GeminiPart> MapToGeminiParts(object? content)
+        {
+            var parts = new List<GeminiPart>();
+            
+            // Handle simple text content
+            if (content is string textContent)
+            {
+                parts.Add(new GeminiPart { Text = textContent });
+                return parts;
+            }
+            
+            // Check if we have multimodal content
+            if (ContentHelper.IsTextOnly(content))
+            {
+                // For text-only content, just extract as string
+                string text = ContentHelper.GetContentAsString(content);
+                if (!string.IsNullOrEmpty(text))
+                {
+                    parts.Add(new GeminiPart { Text = text });
+                }
+                return parts;
+            }
+            
+            // Handle multimodal content (text + images)
+            var textParts = ContentHelper.ExtractMultimodalContent(content);
+            var imageUrls = ContentHelper.ExtractImageUrls(content);
+            
+            // Add text parts
+            if (textParts.Any())
+            {
+                // Join all text parts with newlines to preserve formatting
+                string combinedText = string.Join(Environment.NewLine, textParts);
+                parts.Add(new GeminiPart { Text = combinedText });
+            }
+            
+            // Add image parts
+            foreach (var imageUrl in imageUrls)
+            {
+                // For Gemini, we need to handle image data encoding
+                try
+                {
+                    if (imageUrl.IsBase64DataUrl)
+                    {
+                        // Already have base64 data in the URL, extract and use it
+                        string mimeType = imageUrl.MimeType ?? "image/jpeg";
+                        string base64Data = imageUrl.Base64Data ?? string.Empty;
+                        
+                        if (!string.IsNullOrEmpty(base64Data))
+                        {
+                            parts.Add(new GeminiPart 
+                            { 
+                                InlineData = new GeminiInlineData 
+                                { 
+                                    MimeType = mimeType,
+                                    Data = base64Data
+                                } 
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // For regular URLs, we need to download the image and convert to base64
+                        var imageData = ImageUtility.DownloadImageAsync(imageUrl.Url).GetAwaiter().GetResult();
+                        if (imageData != null && imageData.Length > 0)
+                        {
+                            // Detect mime type from image data
+                            string? mimeType = ImageUtility.DetectMimeType(imageData) ?? "image/jpeg";
+                            string base64Data = Convert.ToBase64String(imageData);
+                            
+                            parts.Add(new GeminiPart 
+                            { 
+                                InlineData = new GeminiInlineData 
+                                { 
+                                    MimeType = mimeType,
+                                    Data = base64Data
+                                } 
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to process image URL '{Url}' for Gemini request", imageUrl.Url);
+                    // Continue with other content if an image fails
+                }
+            }
+            
+            return parts;
         }
         
         private ChatCompletionResponse MapToCoreResponse(GeminiGenerateContentResponse geminiResponse, string originalModelAlias)

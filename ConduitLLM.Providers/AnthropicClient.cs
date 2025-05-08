@@ -508,13 +508,35 @@ namespace ConduitLLM.Providers
             // Anthropic doesn't have a models endpoint, so we return a static list of supported models
             return await Task.FromResult(new List<InternalModels.ExtendedModelInfo>
             {
-                InternalModels.ExtendedModelInfo.Create("claude-3-opus-20240229", "anthropic", "claude-3-opus-20240229"),
-                InternalModels.ExtendedModelInfo.Create("claude-3-sonnet-20240229", "anthropic", "claude-3-sonnet-20240229"),
-                InternalModels.ExtendedModelInfo.Create("claude-3-haiku-20240307", "anthropic", "claude-3-haiku-20240307"),
+                CreateVisionCapableModel("claude-3-opus-20240229", "anthropic"),
+                CreateVisionCapableModel("claude-3-sonnet-20240229", "anthropic"),
+                CreateVisionCapableModel("claude-3-haiku-20240307", "anthropic"),
                 InternalModels.ExtendedModelInfo.Create("claude-2.1", "anthropic", "claude-2.1"),
                 InternalModels.ExtendedModelInfo.Create("claude-2.0", "anthropic", "claude-2.0"),
                 InternalModels.ExtendedModelInfo.Create("claude-instant-1.2", "anthropic", "claude-instant-1.2")
             });
+        }
+        
+        /// <summary>
+        /// Creates an ExtendedModelInfo with vision capability set to true.
+        /// </summary>
+        /// <param name="id">The model ID</param>
+        /// <param name="provider">The provider name</param>
+        /// <param name="displayName">The display name (optional)</param>
+        /// <returns>An ExtendedModelInfo with vision capability</returns>
+        private static InternalModels.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
+        {
+            var modelInfo = InternalModels.ExtendedModelInfo.Create(id, provider, displayName ?? id);
+            
+            // Set the vision capability
+            if (modelInfo.Capabilities == null)
+            {
+                modelInfo.Capabilities = new InternalModels.ModelCapabilities();
+            }
+            
+            modelInfo.Capabilities.Vision = true;
+            
+            return modelInfo;
         }
 
         /// <summary>
@@ -652,6 +674,17 @@ namespace ConduitLLM.Providers
                             }
                         };
                     }
+                    else if (!ContentHelper.IsTextOnly(message.Content))
+                    {
+                        // Multimodal message with images
+                        var contentBlocks = MapToAnthropicContentBlocks(message.Content);
+                        
+                        anthropicMessage = new AnthropicMessage
+                        {
+                            Role = message.Role.ToLowerInvariant(),
+                            Content = contentBlocks
+                        };
+                    }
                     else
                     {
                         // Standard text message
@@ -681,6 +714,110 @@ namespace ConduitLLM.Providers
             };
 
             return anthropicRequest;
+        }
+        
+        /// <summary>
+        /// Maps multimodal content to Anthropic's content blocks format.
+        /// </summary>
+        /// <param name="content">The content object which may contain text and images</param>
+        /// <returns>A list of Anthropic content blocks</returns>
+        private List<AnthropicContentBlock> MapToAnthropicContentBlocks(object? content)
+        {
+            var contentBlocks = new List<AnthropicContentBlock>();
+            
+            if (content == null)
+                return contentBlocks;
+            
+            // Add text content blocks
+            var textParts = ContentHelper.ExtractMultimodalContent(content);
+            foreach (var text in textParts)
+            {
+                if (!string.IsNullOrEmpty(text))
+                {
+                    contentBlocks.Add(new AnthropicContentBlock 
+                    { 
+                        Type = "text", 
+                        Text = text 
+                    });
+                }
+            }
+            
+            // Add image content blocks
+            var imageUrls = ContentHelper.ExtractImageUrls(content);
+            foreach (var imageUrl in imageUrls)
+            {
+                // Anthropic requires base64 images, so make sure we have a base64 data URL
+                if (imageUrl.IsBase64DataUrl)
+                {
+                    // Extract the MIME type and base64 data
+                    var mimeType = imageUrl.MimeType;
+                    var base64Data = imageUrl.Base64Data;
+                    
+                    if (!string.IsNullOrEmpty(mimeType) && !string.IsNullOrEmpty(base64Data))
+                    {
+                        contentBlocks.Add(new AnthropicContentBlock
+                        {
+                            Type = "image",
+                            Source = new AnthropicImageSource
+                            {
+                                Type = "base64",
+                                MediaType = mimeType,
+                                Data = base64Data
+                            }
+                        });
+                    }
+                }
+                else
+                {
+                    // If it's a URL, we need to download it and convert to base64
+                    // We'll use the async method, but make it synchronous for this method
+                    try
+                    {
+                        var imageData = Core.Utilities.ImageUtility.DownloadImageAsync(imageUrl.Url)
+                            .ConfigureAwait(false).GetAwaiter().GetResult();
+                            
+                        // Try to determine the MIME type
+                        string mimeType = "image/jpeg"; // Default fallback
+                        if (imageData.Length >= 2)
+                        {
+                            if (imageData[0] == 0xFF && imageData[1] == 0xD8) // JPEG
+                                mimeType = "image/jpeg";
+                            else if (imageData.Length >= 8 && 
+                                    imageData[0] == 0x89 && imageData[1] == 0x50 && 
+                                    imageData[2] == 0x4E && imageData[3] == 0x47) // PNG
+                                mimeType = "image/png";
+                            else if (imageData.Length >= 3 && 
+                                    imageData[0] == 0x47 && imageData[1] == 0x49 && 
+                                    imageData[2] == 0x46) // GIF
+                                mimeType = "image/gif";
+                            else if (imageData.Length >= 4 && 
+                                    (imageData[0] == 0x42 && imageData[1] == 0x4D)) // BMP
+                                mimeType = "image/bmp";
+                        }
+                        
+                        // Convert to base64
+                        var base64Data = Convert.ToBase64String(imageData);
+                        
+                        contentBlocks.Add(new AnthropicContentBlock
+                        {
+                            Type = "image",
+                            Source = new AnthropicImageSource
+                            {
+                                Type = "base64",
+                                MediaType = mimeType,
+                                Data = base64Data
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Failed to download and convert image from URL: {Url}", imageUrl.Url);
+                        // Skip this image
+                    }
+                }
+            }
+            
+            return contentBlocks;
         }
 
         /// <summary>

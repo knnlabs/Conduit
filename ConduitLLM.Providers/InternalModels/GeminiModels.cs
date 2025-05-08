@@ -34,8 +34,19 @@ internal record GeminiContent
 internal record GeminiPart
 {
     [JsonPropertyName("text")]
-    public required string Text { get; init; }
-    // TODO: Add other part types like inlineData if needed
+    public string? Text { get; init; }
+    
+    [JsonPropertyName("inline_data")]
+    public GeminiInlineData? InlineData { get; init; }
+}
+
+internal record GeminiInlineData
+{
+    [JsonPropertyName("mime_type")]
+    public required string MimeType { get; init; }
+    
+    [JsonPropertyName("data")]
+    public required string Data { get; init; }
 }
 
 internal record GeminiGenerationConfig

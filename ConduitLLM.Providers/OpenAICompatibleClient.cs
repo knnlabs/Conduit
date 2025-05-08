@@ -61,12 +61,21 @@ namespace ConduitLLM.Providers
         {
             ["openai"] = new List<InternalModels.ExtendedModelInfo>
             {
-                InternalModels.ExtendedModelInfo.Create("gpt-4o", "openai", "gpt-4o"),
-                InternalModels.ExtendedModelInfo.Create("gpt-4-turbo", "openai", "gpt-4-turbo"),
+                // GPT-4 Vision models
+                CreateVisionCapableModel("gpt-4o", "openai", "gpt-4o"),
+                CreateVisionCapableModel("gpt-4-vision", "openai", "gpt-4-vision"),
+                CreateVisionCapableModel("gpt-4-vision-preview", "openai", "gpt-4-vision-preview"),
+                CreateVisionCapableModel("gpt-4-turbo", "openai", "gpt-4-turbo"),
+                
+                // Standard GPT models
                 InternalModels.ExtendedModelInfo.Create("gpt-4", "openai", "gpt-4"),
                 InternalModels.ExtendedModelInfo.Create("gpt-3.5-turbo", "openai", "gpt-3.5-turbo"),
+                
+                // Embeddings
                 InternalModels.ExtendedModelInfo.Create("text-embedding-3-large", "openai", "text-embedding-3-large"),
                 InternalModels.ExtendedModelInfo.Create("text-embedding-3-small", "openai", "text-embedding-3-small"),
+                
+                // Image generation
                 InternalModels.ExtendedModelInfo.Create("dall-e-3", "openai", "dall-e-3")
             },
             ["mistral"] = new List<InternalModels.ExtendedModelInfo>
@@ -86,6 +95,28 @@ namespace ConduitLLM.Providers
                 InternalModels.ExtendedModelInfo.Create("gemma-7b-it", "groq", "gemma-7b-it")
             }
         };
+        
+        /// <summary>
+        /// Creates an ExtendedModelInfo with vision capability set to true.
+        /// </summary>
+        /// <param name="id">The model ID</param>
+        /// <param name="provider">The provider name</param>
+        /// <param name="displayName">The display name (optional)</param>
+        /// <returns>An ExtendedModelInfo with vision capability</returns>
+        private static InternalModels.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
+        {
+            var modelInfo = InternalModels.ExtendedModelInfo.Create(id, provider, displayName ?? id);
+            
+            // Set the vision capability
+            if (modelInfo.Capabilities == null)
+            {
+                modelInfo.Capabilities = new InternalModels.ModelCapabilities();
+            }
+            
+            modelInfo.Capabilities.Vision = true;
+            
+            return modelInfo;
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenAICompatibleClient"/> class.
@@ -494,7 +525,7 @@ namespace ConduitLLM.Providers
                     Size = request.Size,
                     Quality = request.Quality,
                     Style = request.Style,
-                    ResponseFormat = request.ResponseFormat,
+                    ResponseFormat = "b64_json",
                     User = request.User ?? string.Empty
                 };
                 
@@ -625,18 +656,41 @@ namespace ConduitLLM.Providers
                 openAiToolChoice = request.ToolChoice;
             }
             
-            // Map messages with their content
-            var messages = request.Messages.Select(m => new OpenAIModels.OpenAIMessage
-            {
-                Role = m.Role,
-                Content = m.Content,
-                Name = m.Name,
-                ToolCalls = m.ToolCalls?.Select(tc => new OpenAIModels.ToolCall
+            // Map messages with their content - handle multimodal content for vision models
+            var messages = request.Messages.Select(m => {
+                // Check if this is a multimodal message
+                if (ProviderHelpers.ContentHelper.IsTextOnly(m.Content))
                 {
-                    Tool = tc.Type ?? "function",
-                    Name = tc.Function?.Name
-                }).ToList(),
-                ToolCallId = m.ToolCallId
+                    // Simple text-only message
+                    return new OpenAIModels.OpenAIMessage
+                    {
+                        Role = m.Role,
+                        Content = ProviderHelpers.ContentHelper.GetContentAsString(m.Content),
+                        Name = m.Name,
+                        ToolCalls = m.ToolCalls?.Select(tc => new OpenAIModels.ToolCall
+                        {
+                            Tool = tc.Type ?? "function",
+                            Name = tc.Function?.Name
+                        }).ToList(),
+                        ToolCallId = m.ToolCallId
+                    };
+                }
+                else
+                {
+                    // Multimodal message with potential images
+                    return new OpenAIModels.OpenAIMessage
+                    {
+                        Role = m.Role,
+                        Content = MapMultimodalContent(m.Content),
+                        Name = m.Name,
+                        ToolCalls = m.ToolCalls?.Select(tc => new OpenAIModels.ToolCall
+                        {
+                            Tool = tc.Type ?? "function",
+                            Name = tc.Function?.Name
+                        }).ToList(),
+                        ToolCallId = m.ToolCallId
+                    };
+                }
             }).ToList();
             
             // Create the OpenAI request
@@ -645,9 +699,64 @@ namespace ConduitLLM.Providers
                 Model = request.Model ?? ProviderModelId,
                 Messages = messages,
                 MaxTokens = request.MaxTokens,
-                Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null
-                // Add other fields as needed
+                Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null,
+                Tools = openAiTools?.Cast<OpenAIModels.Tool>().ToList(),
+                ToolChoice = openAiToolChoice,
+                ResponseFormat = new OpenAIModels.ResponseFormat { Type = "text" },
+                Stream = request.Stream ?? false
             };
+        }
+        
+        /// <summary>
+        /// Maps multimodal content to the format expected by OpenAI's API.
+        /// </summary>
+        /// <param name="content">The content object which may contain text and images</param>
+        /// <returns>A properly formatted list of content parts for OpenAI</returns>
+        protected virtual object MapMultimodalContent(object? content)
+        {
+            if (content == null)
+                return "";
+                
+            if (content is string textContent)
+                return textContent;
+                
+            // Create a list to hold the formatted content parts
+            var contentParts = new List<object>();
+            
+            // Extract text parts
+            var textParts = ProviderHelpers.ContentHelper.ExtractMultimodalContent(content);
+            foreach (var text in textParts)
+            {
+                if (!string.IsNullOrEmpty(text))
+                {
+                    contentParts.Add(new
+                    {
+                        type = "text",
+                        text = text
+                    });
+                }
+            }
+            
+            // Extract image URLs
+            var imageUrls = ProviderHelpers.ContentHelper.ExtractImageUrls(content);
+            foreach (var imageUrl in imageUrls)
+            {
+                contentParts.Add(new
+                {
+                    type = "image_url",
+                    image_url = new
+                    {
+                        url = imageUrl.Url,
+                        detail = string.IsNullOrEmpty(imageUrl.Detail) ? "auto" : imageUrl.Detail
+                    }
+                });
+            }
+            
+            // If no parts were added, return an empty string
+            if (contentParts.Count == 0)
+                return "";
+                
+            return contentParts;
         }
         
         /// <summary>

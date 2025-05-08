@@ -17,6 +17,12 @@ namespace ConduitLLM.Core
                 logger?.Invoke($"[DB] Using provider: postgres, connection: {SanitizeConnectionString(connStr)}");
                 return ("postgres", connStr);
             }
+            
+            // If DATABASE_URL exists but doesn't match expected prefix, log and continue to SQLite fallback
+            if (!string.IsNullOrEmpty(databaseUrl))
+            {
+                logger?.Invoke($"[DB] Invalid DATABASE_URL prefix: {databaseUrl}. Falling back to SQLite.");
+            }
 
             // Fallback to SQLite
             var sqlitePath = Environment.GetEnvironmentVariable("CONDUIT_SQLITE_PATH");

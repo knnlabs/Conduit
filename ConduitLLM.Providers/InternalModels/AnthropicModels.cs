@@ -83,27 +83,62 @@ internal record AnthropicMessageResponse
 internal record AnthropicContentBlock
 {
     [JsonPropertyName("type")]
-    public required string Type { get; init; } // e.g., "text", "tool_use", "tool_result"
+    public required string Type { get; init; } // e.g., "text", "image", "tool_use", "tool_result"
 
     [JsonPropertyName("text")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; init; }
+    
+    // For image blocks
+    [JsonPropertyName("source")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AnthropicImageSource? Source { get; init; }
     
     // For tool_use blocks
     [JsonPropertyName("id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Id { get; init; }
     
     [JsonPropertyName("name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Name { get; init; }
     
     [JsonPropertyName("input")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Input { get; init; }
     
     // For tool_result blocks
     [JsonPropertyName("tool_call_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolCallId { get; init; }
     
     [JsonPropertyName("content")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Content { get; init; }
+}
+
+/// <summary>
+/// Represents an image source in Anthropic's message format.
+/// </summary>
+internal record AnthropicImageSource
+{
+    /// <summary>
+    /// The type of image source. Currently only "base64" is supported.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = "base64";
+    
+    /// <summary>
+    /// The media type of the image (e.g., "image/jpeg").
+    /// </summary>
+    [JsonPropertyName("media_type")]
+    public required string MediaType { get; init; }
+    
+    /// <summary>
+    /// The base64-encoded image data (without the data:image/... prefix).
+    /// </summary>
+    [JsonPropertyName("data")]
+    public required string Data { get; init; }
 }
 
 internal record AnthropicUsage

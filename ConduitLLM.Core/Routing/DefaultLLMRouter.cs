@@ -98,6 +98,7 @@ namespace ConduitLLM.Core.Routing
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<DefaultLLMRouter> _logger;
+        private readonly IModelCapabilityDetector? _capabilityDetector;
         
         /// <summary>
         /// Tracks the health status (true = healthy, false = unhealthy) of each model
@@ -132,10 +133,15 @@ namespace ConduitLLM.Core.Routing
         /// </summary>
         /// <param name="clientFactory">Factory for creating LLM clients</param>
         /// <param name="logger">Logger instance</param>
-        public DefaultLLMRouter(ILLMClientFactory clientFactory, ILogger<DefaultLLMRouter> logger)
+        /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
+        public DefaultLLMRouter(
+            ILLMClientFactory clientFactory, 
+            ILogger<DefaultLLMRouter> logger,
+            IModelCapabilityDetector? capabilityDetector = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityDetector = capabilityDetector;
         }
 
         /// <summary>
@@ -144,8 +150,13 @@ namespace ConduitLLM.Core.Routing
         /// <param name="clientFactory">Factory for creating LLM clients</param>
         /// <param name="logger">Logger instance</param>
         /// <param name="config">Router configuration</param>
-        public DefaultLLMRouter(ILLMClientFactory clientFactory, ILogger<DefaultLLMRouter> logger, RouterConfig config)
-            : this(clientFactory, logger)
+        /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
+        public DefaultLLMRouter(
+            ILLMClientFactory clientFactory, 
+            ILogger<DefaultLLMRouter> logger, 
+            RouterConfig config,
+            IModelCapabilityDetector? capabilityDetector = null)
+            : this(clientFactory, logger, capabilityDetector)
         {
             Initialize(config);
         }
@@ -485,17 +496,57 @@ namespace ConduitLLM.Core.Routing
             string? apiKey,
             CancellationToken cancellationToken)
         {
-            // Get the next model based on strategy
-            string? selectedModel = await SelectModelAsync(originalModelRequested, strategy, attemptedModels, cancellationToken);
+            // Check if request contains images and requires vision capabilities
+            bool containsImages = false;
+            
+            if (_capabilityDetector != null)
+            {
+                containsImages = _capabilityDetector.ContainsImageContent(request);
+                if (containsImages)
+                {
+                    _logger.LogInformation("Request contains image content, selecting a vision-capable model");
+                }
+            }
+            else
+            {
+                // Fallback check for images if capability detector isn't available
+                foreach (var message in request.Messages)
+                {
+                    if (message.Content != null && message.Content is not string)
+                    {
+                        // Simple check for potential multimodal content - look for non-string content
+                        containsImages = true; // If content is not a string, assume it might contain images
+                        _logger.LogInformation("Request potentially contains non-text content (basic detection)");
+                        break;
+                    }
+                }
+            }
+            
+            // Get the next model based on strategy, considering vision requirements
+            string? selectedModel = await SelectModelAsync(
+                originalModelRequested, 
+                strategy, 
+                attemptedModels, 
+                cancellationToken,
+                containsImages);
             
             if (selectedModel == null)
             {
-                _logger.LogWarning("No suitable model found");
+                if (containsImages)
+                {
+                    _logger.LogWarning("No suitable vision-capable model found");
+                    attemptContext.LastException = new ModelUnavailableException(
+                        "No suitable vision-capable model is available to process this request with image content");
+                }
+                else
+                {
+                    _logger.LogWarning("No suitable model found");
+                }
                 return null;
             }
             
-            _logger.LogInformation("Selected model {ModelName} for request using {Strategy} strategy",
-                selectedModel, strategy);
+            _logger.LogInformation("Selected model {ModelName} for request using {Strategy} strategy{VisionCapable}",
+                selectedModel, strategy, containsImages ? " (vision-capable)" : "");
                 
             // Add this model to the list of attempted ones
             attemptedModels.Add(selectedModel);
@@ -696,23 +747,66 @@ namespace ConduitLLM.Core.Routing
             CancellationToken cancellationToken)
         {
             string? modelToUse = null;
+            
+            // Check if request contains images and requires vision capabilities
+            bool containsImages = false;
+            if (_capabilityDetector != null)
+            {
+                containsImages = _capabilityDetector.ContainsImageContent(request);
+                if (containsImages)
+                {
+                    _logger.LogInformation("Streaming request contains image content, selecting a vision-capable model");
+                }
+            }
+            else
+            {
+                // Fallback check if capability detector is not available
+                foreach (var message in request.Messages)
+                {
+                    if (message.Content != null && message.Content is not string)
+                    {
+                        containsImages = true; // If content is not a string, assume it might contain images
+                        if (containsImages)
+                        {
+                            _logger.LogInformation("Streaming request potentially contains image content (basic detection)");
+                            break;
+                        }
+                    }
+                }
+            }
 
             // If we're using a passthrough strategy and have a model, just use it directly
             if (!string.IsNullOrEmpty(request.Model) &&
                 strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase))
             {
                 modelToUse = request.Model;
+                
+                // Still need to check if the passthrough model supports vision if needed
+                if (containsImages && _capabilityDetector != null && 
+                    !_capabilityDetector.HasVisionCapability(modelToUse))
+                {
+                    throw new ModelUnavailableException(
+                        $"Model {request.Model} does not support vision capabilities required by this streaming request");
+                }
             }
             else
             {
                 // Otherwise, select a model using our routing logic
                 modelToUse = await SelectModelForStreamingAsync(
-                    request.Model, strategy, _maxRetries, cancellationToken);
+                    request.Model, strategy, _maxRetries, cancellationToken, containsImages);
 
                 if (modelToUse == null)
                 {
-                    throw new ModelUnavailableException(
-                        $"No suitable model found for streaming request with original model {request.Model}");
+                    if (containsImages)
+                    {
+                        throw new ModelUnavailableException(
+                            $"No suitable vision-capable model found for streaming request with original model {request.Model}");
+                    }
+                    else
+                    {
+                        throw new ModelUnavailableException(
+                            $"No suitable model found for streaming request with original model {request.Model}");
+                    }
                 }
             }
             
@@ -834,6 +928,7 @@ namespace ConduitLLM.Core.Routing
         /// <param name="strategy">The routing strategy to use for selection.</param>
         /// <param name="maxRetries">Maximum number of retry attempts.</param>
         /// <param name="cancellationToken">A token for cancelling the operation.</param>
+        /// <param name="visionRequired">If true, only vision-capable models will be considered.</param>
         /// <returns>The name of the selected model, or null if no suitable model could be found.</returns>
         /// <remarks>
         /// This method specifically handles model selection for streaming requests, with retry logic
@@ -844,7 +939,8 @@ namespace ConduitLLM.Core.Routing
             string? requestedModel,
             string strategy,
             int maxRetries,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool visionRequired = false)
         {
             // Start tracking retry attempt count
             int attemptCount = 0;
@@ -855,18 +951,24 @@ namespace ConduitLLM.Core.Routing
                 attemptCount++;
 
                 // Select a model based on strategy using the same SelectModelAsync method
-                // that now delegates to our strategy pattern
-                string? selectedModel = await SelectModelAsync(requestedModel, strategy, attemptedModels, cancellationToken);
+                // that now delegates to our strategy pattern, with vision requirements if needed
+                string? selectedModel = await SelectModelAsync(
+                    requestedModel, 
+                    strategy, 
+                    attemptedModels, 
+                    cancellationToken,
+                    visionRequired);
 
                 if (selectedModel == null)
                 {
-                    _logger.LogWarning("No suitable model found for streaming after {AttemptsCount} attempts",
-                        attemptCount);
+                    string visionMessage = visionRequired ? " vision-capable" : "";
+                    _logger.LogWarning("No suitable{VisionMessage} model found for streaming after {AttemptsCount} attempts",
+                        visionMessage, attemptCount);
                     break;
                 }
 
-                _logger.LogInformation("Selected model {ModelName} for streaming using {Strategy} strategy",
-                    selectedModel, strategy);
+                _logger.LogInformation("Selected model {ModelName} for streaming using {Strategy} strategy{VisionMessage}",
+                    selectedModel, strategy, visionRequired ? " (vision-capable)" : "");
 
                 // Add this model to attempted list regardless of health status
                 attemptedModels.Add(selectedModel);
@@ -1031,6 +1133,7 @@ namespace ConduitLLM.Core.Routing
         /// <param name="strategy">The routing strategy to use for selection (e.g., "simple", "roundrobin", "leastcost").</param>
         /// <param name="excludeModels">List of model names to exclude from consideration (typically models that have already been attempted).</param>
         /// <param name="cancellationToken">A token for cancelling the operation.</param>
+        /// <param name="visionRequest">Set to true if the request contains images and requires a vision-capable model.</param>
         /// <returns>The name of the selected model, or null if no suitable model could be found.</returns>
         /// <remarks>
         /// This method implements the core model selection logic:
@@ -1047,7 +1150,8 @@ namespace ConduitLLM.Core.Routing
             string? requestedModel,
             string strategy,
             List<string> excludeModels,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            bool visionRequest = false)
         {
             // Small delay to make this actually async
             await Task.Delay(1, cancellationToken);
@@ -1065,11 +1169,26 @@ namespace ConduitLLM.Core.Routing
             // Handle passthrough strategy as a special case
             if (IsPassthroughStrategy(strategy))
             {
+                // Even in passthrough mode, we need to check vision capability if required
+                if (visionRequest && _capabilityDetector != null)
+                {
+                    var firstModel = availableModels.FirstOrDefault();
+                    if (firstModel != null)
+                    {
+                        string modelAlias = GetModelAliasForDeployment(firstModel);
+                        if (!_capabilityDetector.HasVisionCapability(modelAlias))
+                        {
+                            _logger.LogWarning("Requested model {Model} does not support vision capabilities required by this request",
+                                modelAlias);
+                            return null;
+                        }
+                    }
+                }
                 return availableModels.FirstOrDefault();
             }
 
-            // Select model using the appropriate strategy
-            return SelectModelUsingStrategy(strategy, availableModels, availableDeployments);
+            // Select model using the appropriate strategy, filtering for vision-capable models if needed
+            return SelectModelUsingStrategy(strategy, availableModels, availableDeployments, visionRequest);
         }
         
         /// <summary>
@@ -1107,17 +1226,38 @@ namespace ConduitLLM.Core.Routing
         private string? SelectModelUsingStrategy(
             string strategy, 
             List<string> availableModels, 
-            Dictionary<string, ModelDeployment> availableDeployments)
+            Dictionary<string, ModelDeployment> availableDeployments,
+            bool visionRequired = false)
         {
+            // If vision is required, filter models to only vision-capable ones
+            var candidateModels = availableModels;
+            if (visionRequired && _capabilityDetector != null)
+            {
+                candidateModels = availableModels
+                    .Where(model => _capabilityDetector.HasVisionCapability(GetModelAliasForDeployment(model)))
+                    .ToList();
+                
+                if (!candidateModels.Any())
+                {
+                    _logger.LogWarning("No vision-capable models available from the {Count} candidate models",
+                        availableModels.Count);
+                    return null;
+                }
+                
+                _logger.LogInformation("Found {Count} vision-capable models out of {TotalCount} candidates",
+                    candidateModels.Count, availableModels.Count);
+            }
+            
             // Use the strategy factory to get the appropriate strategy and delegate selection
             var modelSelectionStrategy = ModelSelectionStrategyFactory.GetStrategy(strategy);
             
             _logger.LogDebug("Using {Strategy} strategy to select from {ModelCount} models", 
-                strategy, availableModels.Count);
+                strategy, candidateModels.Count);
                 
             return modelSelectionStrategy.SelectModel(
-                availableModels,
-                availableDeployments,
+                candidateModels,
+                availableDeployments.Where(kv => candidateModels.Contains(kv.Key))
+                                   .ToDictionary(kv => kv.Key, kv => kv.Value),
                 _modelUsageCount);
         }
         

@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.Helpers
 {
     /// <summary>
-    /// Helper class for handling multimodal message content.
+    /// Helper class for handling multimodal message content, providing utilities for
+    /// working with text and image content parts in messages.
     /// </summary>
     public static class ContentHelper
     {
         /// <summary>
-        /// Extracts multimodal content as a list of text content parts.
+        /// Extracts multimodal content as a list of text content parts,
+        /// filtering out non-text content like images.
         /// </summary>
         /// <param name="content">The message content (can be string or content parts)</param>
         /// <returns>List of string content parts</returns>
@@ -53,6 +57,23 @@ namespace ConduitLLM.Providers.Helpers
                 }
             }
             
+            // Handle ContentParts from direct API usage
+            if (content is IEnumerable<object> contentList)
+            {
+                foreach (var part in contentList)
+                {
+                    if (part is TextContentPart textPart)
+                    {
+                        textParts.Add(textPart.Text);
+                    }
+                }
+                
+                if (textParts.Any())
+                {
+                    return textParts;
+                }
+            }
+            
             // Try to serialize and then extract text parts (for collections or other objects)
             try
             {
@@ -84,11 +105,13 @@ namespace ConduitLLM.Providers.Helpers
             textParts.Add(content.ToString() ?? string.Empty);
             return textParts;
         }
+        
         /// <summary>
         /// Converts message content (which could be a string or content parts) to a simple string.
+        /// Useful for providers that don't support multimodal inputs.
         /// </summary>
         /// <param name="content">The message content (can be string or content parts)</param>
-        /// <returns>String representation of the content</returns>
+        /// <returns>String representation of the content, omitting non-text parts</returns>
         public static string GetContentAsString(object? content)
         {
             if (content == null)
@@ -113,10 +136,41 @@ namespace ConduitLLM.Providers.Helpers
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
-                            sb.AppendLine(textElement.GetString());
+                            string? text = textElement.GetString();
+                            if (!string.IsNullOrEmpty(text))
+                            {
+                                if (sb.Length > 0)
+                                    sb.AppendLine();
+                                    
+                                sb.Append(text);
+                            }
                         }
-                        // For now, we ignore image_url parts in providers that don't support them
+                        // Image content is omitted for providers that don't support them
                     }
+                    return sb.ToString();
+                }
+            }
+            
+            // Handle ContentParts from direct API usage
+            if (content is IEnumerable<object> contentList)
+            {
+                var sb = new StringBuilder();
+                foreach (var part in contentList)
+                {
+                    if (part is TextContentPart textPart)
+                    {
+                        if (!string.IsNullOrEmpty(textPart.Text))
+                        {
+                            if (sb.Length > 0)
+                                sb.AppendLine();
+                                
+                            sb.Append(textPart.Text);
+                        }
+                    }
+                }
+                
+                if (sb.Length > 0)
+                {
                     return sb.ToString();
                 }
             }
@@ -138,7 +192,14 @@ namespace ConduitLLM.Providers.Helpers
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
-                            sb.AppendLine(textElement.GetString());
+                            string? text = textElement.GetString();
+                            if (!string.IsNullOrEmpty(text))
+                            {
+                                if (sb.Length > 0)
+                                    sb.AppendLine();
+                                    
+                                sb.Append(text);
+                            }
                         }
                     }
                     return sb.ToString();
@@ -163,6 +224,24 @@ namespace ConduitLLM.Providers.Helpers
             if (content == null || content is string)
                 return true;
             
+            // Handle ContentParts from direct API usage
+            if (content is IEnumerable<object> contentList)
+            {
+                foreach (var part in contentList)
+                {
+                    if (part is ImageUrlContentPart)
+                        return false;
+                        
+                    // Check for type property dynamically for custom implementations
+                    var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
+                    if (type == "image_url")
+                        return false;
+                }
+                
+                return true;
+            }
+            
+            // Handle JSON Element
             if (content is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
@@ -209,6 +288,141 @@ namespace ConduitLLM.Providers.Helpers
                 // If we can't process it, assume it's text-only
                 return true;
             }
+        }
+        
+        /// <summary>
+        /// Extracts image URLs from multimodal content.
+        /// </summary>
+        /// <param name="content">The message content (can be string or content parts)</param>
+        /// <returns>List of image URLs found in the content</returns>
+        public static List<ImageUrl> ExtractImageUrls(object? content)
+        {
+            var imageUrls = new List<ImageUrl>();
+            
+            if (content == null)
+                return imageUrls;
+                
+            if (content is string)
+                return imageUrls; // Plain strings don't contain images
+            
+            // Handle ContentParts from direct API usage
+            if (content is IEnumerable<object> contentList)
+            {
+                foreach (var part in contentList)
+                {
+                    if (part is ImageUrlContentPart imagePart && imagePart.ImageUrl != null)
+                    {
+                        imageUrls.Add(imagePart.ImageUrl);
+                    }
+                }
+                
+                if (imageUrls.Any())
+                {
+                    return imageUrls;
+                }
+            }
+            
+            // Handle JSON Element
+            if (content is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (element.TryGetProperty("type", out var typeElement) && 
+                        typeElement.GetString() == "image_url" &&
+                        element.TryGetProperty("image_url", out var imageUrlElement))
+                    {
+                        string? url = null;
+                        string? detail = null;
+                        
+                        if (imageUrlElement.TryGetProperty("url", out var urlElement))
+                        {
+                            url = urlElement.GetString();
+                        }
+                        
+                        if (imageUrlElement.TryGetProperty("detail", out var detailElement))
+                        {
+                            detail = detailElement.GetString();
+                        }
+                        
+                        if (!string.IsNullOrEmpty(url))
+                        {
+                            imageUrls.Add(new ImageUrl
+                            {
+                                Url = url,
+                                Detail = detail
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return imageUrls;
+        }
+        
+        /// <summary>
+        /// Creates a standard multimodal content list combining text and image parts.
+        /// </summary>
+        /// <param name="text">Text content to include</param>
+        /// <param name="imageUrls">Optional collection of image URLs to include</param>
+        /// <returns>A list of content parts (TextContentPart and ImageUrlContentPart objects)</returns>
+        public static List<object> CreateMultimodalContent(string text, IEnumerable<ImageUrl>? imageUrls = null)
+        {
+            var content = new List<object>();
+            
+            // Add text content if present
+            if (!string.IsNullOrEmpty(text))
+            {
+                content.Add(new TextContentPart { Text = text });
+            }
+            
+            // Add images if present
+            if (imageUrls != null)
+            {
+                foreach (var imageUrl in imageUrls)
+                {
+                    content.Add(new ImageUrlContentPart { ImageUrl = imageUrl });
+                }
+            }
+            
+            return content;
+        }
+        
+        /// <summary>
+        /// Creates a string description of any multimodal content (useful for logging).
+        /// </summary>
+        /// <param name="content">The message content to describe</param>
+        /// <returns>A string description of the content</returns>
+        public static string DescribeContent(object? content)
+        {
+            if (content == null)
+                return "[null]";
+                
+            if (content is string textContent)
+                return $"Text: {(textContent.Length > 50 ? textContent.Substring(0, 47) + "..." : textContent)}";
+                
+            var textParts = ExtractMultimodalContent(content);
+            var imageUrls = ExtractImageUrls(content);
+            
+            var sb = new StringBuilder();
+            
+            if (textParts.Any())
+            {
+                var combinedText = string.Join(" ", textParts);
+                sb.Append($"Text parts: {textParts.Count} ({(combinedText.Length > 50 ? combinedText.Substring(0, 47) + "..." : combinedText)})");
+            }
+            
+            if (imageUrls.Any())
+            {
+                if (sb.Length > 0)
+                    sb.Append(", ");
+                    
+                sb.Append($"Image parts: {imageUrls.Count}");
+            }
+            
+            if (sb.Length == 0)
+                return "[unknown content format]";
+                
+            return sb.ToString();
         }
     }
 }
