@@ -32,6 +32,8 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
 - **Extensible Architecture**: Easily add support for new LLM providers
 
+![ConduitLLM Dashboard](docs/assets/dashboard-home.png)
+
 ## 🏗️ Architecture
 
 ConduitLLM follows a modular architecture with distinct components handling specific responsibilities:

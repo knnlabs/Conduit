@@ -321,6 +321,10 @@ var request = new ChatCompletionRequest
 
 ConduitLLM includes a provider health monitoring system that actively checks the status of each configured provider to ensure they are available and responding correctly.
 
+![Provider Health Dashboard](../assets/provider-health.png)
+
+The Provider Health Dashboard shows the status of all configured providers, including response times and historical metrics.
+
 ### Status Types
 
 Providers can have one of three status types:

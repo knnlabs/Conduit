@@ -278,6 +278,8 @@ The token counter in ConduitLLM provides an approximation of token usage when wo
 
 ## Web UI Support
 
+![Chat Interface](../assets/chat-interface.png)
+
 The ConduitLLM Web UI has been updated to support displaying both text and image content in chat messages. Images are displayed as responsive images within the chat interface.
 
 ## Examples

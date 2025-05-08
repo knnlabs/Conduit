@@ -6,7 +6,9 @@ The ConduitLLM Dashboard serves as the central hub for monitoring system status,
 
 ## Dashboard Layout
 
-The dashboard is organized into several key sections:
+![Dashboard Home](../assets/dashboard-home.png)
+
+The dashboard is organized into several key sections as shown above:
 
 ### Header Section
 

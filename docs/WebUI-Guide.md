@@ -197,9 +197,9 @@ Test LLM interactions directly:
 
 ### Provider Edit Form
 
-![Provider Edit Form](https://example.com/images/provider-edit.png)
+![Provider Health Monitoring](../assets/provider-health.png)
 
-*Screenshot pending: This is a placeholder. Please add a real screenshot of the Provider Edit Form.*
+The Provider Health Monitoring page shows the status of all configured providers.
 
 This form includes:
 - Provider type selection
@@ -211,9 +211,9 @@ This form includes:
 
 ### Model Mapping Manager
 
-![Model Mapping Manager](https://example.com/images/model-mapping.png)
+![Model Mapping Manager](../assets/config-model-mapping.png)
 
-*Screenshot pending: This is a placeholder. Please add a real screenshot of the Model Mapping Manager.*
+The Model Mapping interface allows you to create and manage model aliases that map to provider-specific models.
 
 Features:
 - Generic model name field
@@ -224,9 +224,9 @@ Features:
 
 ### Virtual Key Creator
 
-![Virtual Key Creator](https://example.com/images/virtual-key.png)
+![Dashboard Home](../assets/dashboard-home.png)
 
-*Screenshot pending: This is a placeholder. Please add a real screenshot of the Virtual Key Creator.*
+The Dashboard provides an overview of system status including provider health, routing configuration, and caching system status.
 
 Includes:
 - Name field
@@ -238,9 +238,9 @@ Includes:
 
 ### Chat Interface
 
-![Chat Interface](https://example.com/images/chat.png)
+![Chat Interface](../assets/chat-interface.png)
 
-*Screenshot pending: This is a placeholder. Please add a real screenshot of the Chat Interface.*
+The Chat interface allows you to test model responses directly from the WebUI with configurable parameters.
 
 Provides:
 - Model selection dropdown
