@@ -33,7 +33,12 @@ public enum NotificationType
     /// <summary>
     /// General errors
     /// </summary>
-    Error
+    Error,
+    
+    /// <summary>
+    /// Success notifications
+    /// </summary>
+    Success
 }
 
 /// <summary>
@@ -89,6 +94,7 @@ public class Notification
             NotificationType.KeyExpiration => "warning",
             NotificationType.VirtualKeyValidation => "warning",
             NotificationType.System => "info",
+            NotificationType.Success => "success",
             _ => "secondary"
         };
     }
@@ -106,6 +112,7 @@ public class Notification
             NotificationType.KeyExpiration => "bi-clock-history",
             NotificationType.VirtualKeyValidation => "bi-key-fill",
             NotificationType.System => "bi-info-circle-fill",
+            NotificationType.Success => "bi-check-circle-fill",
             _ => "bi-bell-fill"
         };
     }

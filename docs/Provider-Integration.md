@@ -317,6 +317,66 @@ var request = new ChatCompletionRequest
 };
 ```
 
+## Provider Health Monitoring
+
+ConduitLLM includes a provider health monitoring system that actively checks the status of each configured provider to ensure they are available and responding correctly.
+
+### Status Types
+
+Providers can have one of three status types:
+
+- **Online** (green): The provider is responding correctly and API keys are validated
+- **Offline** (red): The provider is not responding or is returning errors
+- **Unknown** (gray): The provider's status cannot be determined with certainty
+
+### Provider-Specific Behaviors
+
+Different providers have different health check behaviors:
+
+| Provider   | Status Check Method | API Key Validation | Notes |
+|------------|---------------------|-------------------|-------|
+| OpenAI     | `/v1/models` endpoint | Yes | Full validation |
+| Anthropic  | `/v1/models` endpoint | Yes | Full validation |
+| Cohere     | `/v1/models` endpoint | Yes | Full validation |
+| Gemini     | Models endpoint | Yes | Full validation |
+| Fireworks  | Models endpoint | Yes | Full validation |
+| OpenRouter | `/api/v1/models` endpoint | No | Shows as "Unknown" status because API keys aren't validated at this endpoint |
+
+> **Note for OpenRouter**: OpenRouter does not validate API keys at the `/api/v1/models` endpoint used for health checks, therefore its status will appear as "Unknown" even when it's functioning correctly. This is expected behavior and doesn't indicate a problem with your OpenRouter configuration.
+
+### Health Check Process
+
+The health monitoring system:
+
+1. Periodically checks each provider's status (default: every 5 minutes)
+2. Tests connectivity to the provider's API endpoint
+3. Validates API key correctness when possible
+4. Records response times and error details
+5. Updates the status in the database and UI
+
+### Viewing Provider Health Status
+
+Provider health status is displayed in multiple locations:
+
+1. **Dashboard**: The home page shows status indicators for all providers
+2. **Provider Configuration**: The provider list shows detailed status
+3. **Provider Health Page**: A dedicated page shows comprehensive health metrics
+
+### Troubleshooting Provider Health
+
+If a provider shows as **Offline**, check:
+
+1. API key validity and expiration
+2. Network connectivity to the provider's endpoints
+3. Provider service status (check the provider's status page)
+4. Rate limiting or quota issues
+
+If a provider shows as **Unknown**:
+
+1. This is normal for providers like OpenRouter that don't validate API keys in their health check endpoints
+2. Test the provider using the Chat interface to verify it's working correctly
+3. Check provider documentation for endpoint-specific behaviors
+
 ## Troubleshooting
 
 ### Common Issues

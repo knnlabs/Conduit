@@ -17,7 +17,13 @@ function renderLineChart(canvasId, labels, data) {
     chartInstances[canvasId].destroy();
   }
 
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    return;
+  }
+  
+  const ctx = canvas.getContext('2d');
   
   chartInstances[canvasId] = new Chart(ctx, {
     type: 'line',
@@ -78,7 +84,13 @@ function renderPieChart(canvasId, labels, data, colors) {
     chartInstances[canvasId].destroy();
   }
 
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    return;
+  }
+  
+  const ctx = canvas.getContext('2d');
   
   chartInstances[canvasId] = new Chart(ctx, {
     type: 'pie',
@@ -132,14 +144,24 @@ function renderPieChart(canvasId, labels, data, colors) {
  * @param {string[]} labels - The labels for the chart
  * @param {number[]} data - The data points for the chart
  * @param {string} label - The label for the dataset
+ * @param {string} xAxisLabel - Label for the X axis
+ * @param {string} yAxisLabel - Label for the Y axis
+ * @param {string} orientation - 'vertical' or 'horizontal'
  */
-function renderBarChart(canvasId, labels, data, label) {
+function renderBarChart(canvasId, labels, data, label, xAxisLabel, yAxisLabel, orientation) {
   // Destroy previous chart instance if exists
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy();
   }
 
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    return;
+  }
+  
+  const ctx = canvas.getContext('2d');
+  const isHorizontal = orientation === 'horizontal';
   
   chartInstances[canvasId] = new Chart(ctx, {
     type: 'bar',
@@ -154,6 +176,7 @@ function renderBarChart(canvasId, labels, data, label) {
       }]
     },
     options: {
+      indexAxis: isHorizontal ? 'y' : 'x',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -167,8 +190,82 @@ function renderBarChart(canvasId, labels, data, label) {
         }
       },
       scales: {
+        x: {
+          beginAtZero: true,
+          title: {
+            display: !!xAxisLabel,
+            text: xAxisLabel || ''
+          }
+        },
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: !!yAxisLabel,
+            text: yAxisLabel || ''
+          }
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Renders a stacked bar chart using raw chart data object
+ * @param {string} canvasId - The ID of the canvas element
+ * @param {string} chartDataJson - JSON string of chart data object
+ * @param {string} title - Title for the chart
+ * @param {string} xAxisLabel - Label for the X axis
+ * @param {string} yAxisLabel - Label for the Y axis
+ */
+function renderStackedBarChart(canvasId, chartDataJson, title, xAxisLabel, yAxisLabel) {
+  // Destroy previous chart instance if exists
+  if (chartInstances[canvasId]) {
+    chartInstances[canvasId].destroy();
+  }
+
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.warn(`Canvas element with id ${canvasId} not found. Chart rendering skipped.`);
+    return;
+  }
+  
+  const ctx = canvas.getContext('2d');
+  const chartData = typeof chartDataJson === 'string' ? JSON.parse(chartDataJson) : chartDataJson;
+  
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: chartData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: !!title,
+          text: title || ''
+        },
+        legend: {
+          position: 'top',
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          title: {
+            display: !!xAxisLabel,
+            text: xAxisLabel || ''
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: !!yAxisLabel,
+            text: yAxisLabel || ''
+          }
         }
       }
     }

@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.WebUI.Data;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,19 +22,28 @@ namespace ConduitLLM.WebUI.Services
     public class ProviderStatusService
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        // Inject the factory for the CORRECT DbContext that manages ProviderCredentials
-        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
+        private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory;
         private readonly ILogger<ProviderStatusService> _logger;
+        private readonly IProviderHealthRepository? _providerHealthRepository;
+        private readonly Stopwatch _stopwatch = new Stopwatch();
 
-        // Update constructor signature
+        /// <summary>
+        /// Initializes a new instance of the ProviderStatusService class.
+        /// </summary>
+        /// <param name="httpClientFactory">The HTTP client factory</param>
+        /// <param name="configContextFactory">The database context factory</param>
+        /// <param name="logger">The logger</param>
+        /// <param name="providerHealthRepository">Optional repository for recording health checks</param>
         public ProviderStatusService(
             IHttpClientFactory httpClientFactory,
             IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
-            ILogger<ProviderStatusService> logger)
+            ILogger<ProviderStatusService> logger,
+            IProviderHealthRepository? providerHealthRepository = null)
         {
-            _httpClientFactory = httpClientFactory;
-            _configContextFactory = configContextFactory; // Assign the correct factory
-            _logger = logger;
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _providerHealthRepository = providerHealthRepository;
         }
 
         /// <summary>
@@ -43,10 +56,8 @@ namespace ConduitLLM.WebUI.Services
             
             try
             {
-                // Use the correct context factory
-                using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-                // Use the correct entity type
-                var providers = await dbContext.ProviderCredentials.ToListAsync(); 
+                using var dbContext = await _configContextFactory.CreateDbContextAsync();
+                var providers = await dbContext.ProviderCredentials.ToListAsync();
                 
                 foreach (var provider in providers)
                 {
@@ -60,8 +71,10 @@ namespace ConduitLLM.WebUI.Services
                         _logger.LogError(ex, "Error checking status for provider {ProviderName}", provider.ProviderName);
                         result[provider.ProviderName] = new ProviderStatus 
                         { 
-                            IsOnline = false, 
-                            StatusMessage = $"Error: {ex.Message}"
+                            IsOnline = false,
+                            StatusMessage = $"Error: {ex.Message}",
+                            ErrorCategory = CategorizeError(ex.Message),
+                            ResponseTimeMs = 0
                         };
                     }
                 }
@@ -69,7 +82,6 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving providers from database");
-                // Return empty dictionary rather than throwing
             }
             
             return result;
@@ -79,66 +91,90 @@ namespace ConduitLLM.WebUI.Services
         /// Check the status of a specific provider
         /// </summary>
         /// <param name="provider">The provider credentials to check</param>
+        /// <param name="timeoutSeconds">Optional timeout in seconds (default is 10)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
         /// <returns>The status of the provider</returns>
-        // Update parameter type to use the Configuration entity
-        public async Task<ProviderStatus> CheckProviderStatusAsync(ConduitLLM.Configuration.Entities.ProviderCredential provider) 
+        public async Task<ProviderStatus> CheckProviderStatusAsync(
+            ProviderCredential provider,
+            int timeoutSeconds = 10,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(provider.ApiKey))
             {
                 return new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Unknown,
                     StatusMessage = "No API key configured",
-                    LastCheckedUtc = DateTime.UtcNow
+                    LastCheckedUtc = DateTime.UtcNow,
+                    ErrorCategory = "Configuration"
                 };
             }
 
             try
             {
+                _stopwatch.Restart();
+
                 // Get the appropriate endpoint for this provider
                 var requestUri = GetProviderTestEndpoint(provider);
                 if (string.IsNullOrEmpty(requestUri))
                 {
+                    _stopwatch.Stop();
                     return new ProviderStatus
                     {
-                        IsOnline = false,
+                        Status = ProviderStatus.StatusType.Unknown,
                         StatusMessage = "Unknown provider or no endpoint configured",
-                        LastCheckedUtc = DateTime.UtcNow
+                        LastCheckedUtc = DateTime.UtcNow,
+                        ErrorCategory = "Configuration",
+                        ResponseTimeMs = _stopwatch.ElapsedMilliseconds
                     };
                 }
 
                 // Create a minimal request to test the API
                 using var client = _httpClientFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(5); // Set a short timeout
+                client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+                string? customEndpointUrl = await GetCustomEndpointUrlAsync(provider.ProviderName);
+                string actualEndpoint = customEndpointUrl ?? requestUri;
+
+                ProviderStatus status;
 
                 // For Gemini, the API key is passed as a query parameter instead of an Authorization header
                 if (provider.ProviderName.Equals("Gemini", StringComparison.OrdinalIgnoreCase))
                 {
                     // Add the API key as a query parameter
-                    var separator = requestUri.Contains("?") ? "&" : "?";
-                    var requestUriWithKey = $"{requestUri}{separator}key={provider.ApiKey}";
+                    var separator = actualEndpoint.Contains("?") ? "&" : "?";
+                    var requestUriWithKey = $"{actualEndpoint}{separator}key={provider.ApiKey}";
                     
                     using var request = new HttpRequestMessage(HttpMethod.Get, requestUriWithKey);
-                    using var response = await client.SendAsync(request);
+                    using var response = await client.SendAsync(request, cancellationToken);
+                    _stopwatch.Stop();
 
                     // Only consider 2xx status codes as success for validation
                     if (response.IsSuccessStatusCode) 
                     {
-                        return new ProviderStatus
+                        status = new ProviderStatus
                         {
-                            IsOnline = true,
+                            Status = ProviderStatus.StatusType.Online,
                             StatusMessage = "Connected",
-                            LastCheckedUtc = DateTime.UtcNow
+                            LastCheckedUtc = DateTime.UtcNow,
+                            ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                            EndpointUrl = actualEndpoint
                         };
                     }
                     else
                     {
-                        var content = await response.Content.ReadAsStringAsync();
-                        return new ProviderStatus
+                        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                        string errorMessage = $"API Error: {response.StatusCode} - {content}";
+                        string errorCategory = CategorizeErrorFromStatusCode(response.StatusCode);
+                        
+                        status = new ProviderStatus
                         {
-                            IsOnline = false,
-                            StatusMessage = $"API Error: {response.StatusCode} - {content}",
-                            LastCheckedUtc = DateTime.UtcNow
+                            Status = ProviderStatus.StatusType.Offline,
+                            StatusMessage = errorMessage,
+                            LastCheckedUtc = DateTime.UtcNow,
+                            ErrorCategory = errorCategory,
+                            ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                            EndpointUrl = actualEndpoint
                         };
                     }
                 }
@@ -147,98 +183,174 @@ namespace ConduitLLM.WebUI.Services
                     // Special case: OpenRouter does not validate API keys at /api/v1/models
                     if (provider.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
                     {
-                        return new ProviderStatus
+                        _stopwatch.Stop();
+                        status = new ProviderStatus
                         {
-                            IsOnline = false,
-                            StatusMessage = "WARNING: OpenRouter does not validate API keys at the /api/v1/models endpoint. Key validity cannot be confirmed.",
-                            LastCheckedUtc = DateTime.UtcNow
-                        };
-                    }
-                    // Standard Bearer token authorization for other providers
-                    using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-                    request.Headers.Add("Authorization", $"Bearer {provider.ApiKey}");
-                    
-                    // Most model endpoints are GET requests
-                    using var response = await client.SendAsync(request);
-
-                    // Only consider 2xx status codes as success for validation
-                    if (response.IsSuccessStatusCode)
-                    {
-                        // Special handling for OpenRouter: check response body for error
-                        if (provider.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var content = await response.Content.ReadAsStringAsync();
-                            try
-                            {
-                                using var doc = JsonDocument.Parse(content);
-                                if (doc.RootElement.TryGetProperty("error", out var errorProp))
-                                {
-                                    return new ProviderStatus
-                                    {
-                                        IsOnline = false,
-                                        StatusMessage = $"API Error: {errorProp.GetRawText()}",
-                                        LastCheckedUtc = DateTime.UtcNow
-                                    };
-                                }
-                            }
-                            catch (JsonException)
-                            {
-                                // Ignore parse errors, treat as valid if no error property
-                            }
-                        }
-                        return new ProviderStatus
-                        {
-                            IsOnline = true,
-                            StatusMessage = "Connected",
-                            LastCheckedUtc = DateTime.UtcNow
+                            Status = ProviderStatus.StatusType.Unknown,
+                            StatusMessage = "OpenRouter does not validate API keys at the /api/v1/models endpoint. Status cannot be determined.",
+                            LastCheckedUtc = DateTime.UtcNow,
+                            ErrorCategory = null,
+                            ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                            EndpointUrl = actualEndpoint
                         };
                     }
                     else
                     {
-                        var content = await response.Content.ReadAsStringAsync();
-                        return new ProviderStatus
+                        // Standard Bearer token authorization for other providers
+                        using var request = new HttpRequestMessage(HttpMethod.Get, actualEndpoint);
+                        request.Headers.Add("Authorization", $"Bearer {provider.ApiKey}");
+                        
+                        // Most model endpoints are GET requests
+                        using var response = await client.SendAsync(request, cancellationToken);
+                        _stopwatch.Stop();
+
+                        // Only consider 2xx status codes as success for validation
+                        if (response.IsSuccessStatusCode)
                         {
-                            IsOnline = false,
-                            StatusMessage = $"API Error: {response.StatusCode} - {content}",
-                            LastCheckedUtc = DateTime.UtcNow
-                        };
+                            // Special handling for OpenRouter: check response body for error
+                            if (provider.ProviderName.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                                try
+                                {
+                                    using var doc = JsonDocument.Parse(content);
+                                    if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                                    {
+                                        string errorMessage = $"API Error: {errorProp.GetRawText()}";
+                                        status = new ProviderStatus
+                                        {
+                                            Status = ProviderStatus.StatusType.Offline,
+                                            StatusMessage = errorMessage,
+                                            LastCheckedUtc = DateTime.UtcNow,
+                                            ErrorCategory = "API",
+                                            ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                                            EndpointUrl = actualEndpoint
+                                        };
+                                        return status;
+                                    }
+                                }
+                                catch (JsonException)
+                                {
+                                    // Ignore parse errors, treat as valid if no error property
+                                }
+                            }
+                            
+                            status = new ProviderStatus
+                            {
+                                Status = ProviderStatus.StatusType.Online,
+                                StatusMessage = "Connected",
+                                LastCheckedUtc = DateTime.UtcNow,
+                                ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                                EndpointUrl = actualEndpoint
+                            };
+                        }
+                        else
+                        {
+                            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                            string errorMessage = $"API Error: {response.StatusCode} - {content}";
+                            string errorCategory = CategorizeErrorFromStatusCode(response.StatusCode);
+                            
+                            status = new ProviderStatus
+                            {
+                                Status = ProviderStatus.StatusType.Offline,
+                                StatusMessage = errorMessage,
+                                LastCheckedUtc = DateTime.UtcNow,
+                                ErrorCategory = errorCategory,
+                                ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                                EndpointUrl = actualEndpoint
+                            };
+                        }
                     }
                 }
+
+                // If we have a repository, record this health check
+                if (_providerHealthRepository != null)
+                {
+                    try
+                    {
+                        var record = new ProviderHealthRecord
+                        {
+                            ProviderName = provider.ProviderName,
+                            IsOnline = status.IsOnline,
+                            StatusMessage = status.StatusMessage,
+                            TimestampUtc = status.LastCheckedUtc,
+                            ResponseTimeMs = status.ResponseTimeMs,
+                            ErrorCategory = status.IsOnline ? null : status.ErrorCategory,
+                            ErrorDetails = status.IsOnline ? null : status.StatusMessage,
+                            EndpointUrl = status.EndpointUrl
+                        };
+                        
+                        await _providerHealthRepository.SaveStatusAsync(record);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error recording provider health check");
+                    }
+                }
+
+                return status;
             }
             catch (TaskCanceledException)
             {
-                return new ProviderStatus
+                _stopwatch.Stop();
+                var status = new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = "Connection timeout",
-                    LastCheckedUtc = DateTime.UtcNow
+                    LastCheckedUtc = DateTime.UtcNow,
+                    ErrorCategory = "Timeout",
+                    ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetProviderTestEndpoint(provider)
                 };
+                
+                // Record the health check
+                await RecordHealthCheckAsync(provider, status);
+                
+                return status;
             }
             catch (HttpRequestException ex)
             {
-                return new ProviderStatus
+                _stopwatch.Stop();
+                var status = new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = $"Network Error: {ex.Message}",
-                    LastCheckedUtc = DateTime.UtcNow
+                    LastCheckedUtc = DateTime.UtcNow,
+                    ErrorCategory = "Network",
+                    ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetProviderTestEndpoint(provider)
                 };
+                
+                // Record the health check
+                await RecordHealthCheckAsync(provider, status);
+                
+                return status;
             }
             catch (Exception ex)
             {
-                return new ProviderStatus
+                _stopwatch.Stop();
+                string errorCategory = CategorizeError(ex.Message);
+                var status = new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = $"Error: {ex.Message}",
-                    LastCheckedUtc = DateTime.UtcNow
+                    LastCheckedUtc = DateTime.UtcNow,
+                    ErrorCategory = errorCategory,
+                    ResponseTimeMs = _stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetProviderTestEndpoint(provider)
                 };
+                
+                // Record the health check
+                await RecordHealthCheckAsync(provider, status);
+                
+                return status;
             }
         }
 
         /// <summary>
         /// Gets the appropriate endpoint URL for a provider to test connectivity
         /// </summary>
-        // Update parameter type to use the Configuration entity
-        private string GetProviderTestEndpoint(ConduitLLM.Configuration.Entities.ProviderCredential provider) 
+        private string GetProviderTestEndpoint(ProviderCredential provider) 
         {
             // Use BaseUrl property from the Configuration entity
             _logger.LogDebug("GetProviderTestEndpoint called for ProviderName: '{ProviderName}', BaseUrl: '{BaseUrl}'", provider.ProviderName, provider.BaseUrl); 
@@ -328,6 +440,141 @@ namespace ConduitLLM.WebUI.Services
                     return $"{baseUrl}/v1/models";
             }
         }
+        
+        /// <summary>
+        /// Gets a custom endpoint URL for a provider if configured in the health monitoring settings
+        /// </summary>
+        private async Task<string?> GetCustomEndpointUrlAsync(string providerName)
+        {
+            if (_providerHealthRepository == null)
+            {
+                return null;
+            }
+            
+            try
+            {
+                var config = await _providerHealthRepository.GetConfigurationAsync(providerName);
+                return config?.CustomEndpointUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting custom endpoint URL for provider {ProviderName}", providerName);
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Records a health check in the repository
+        /// </summary>
+        private async Task RecordHealthCheckAsync(ProviderCredential provider, ProviderStatus status)
+        {
+            if (_providerHealthRepository == null)
+            {
+                return;
+            }
+            
+            try
+            {
+                var record = new ProviderHealthRecord
+                {
+                    ProviderName = provider.ProviderName,
+                    Status = (ProviderHealthRecord.StatusType)status.Status, // Map the status enum
+                    StatusMessage = status.StatusMessage,
+                    TimestampUtc = status.LastCheckedUtc,
+                    ResponseTimeMs = status.ResponseTimeMs,
+                    ErrorCategory = status.IsOnline ? null : status.ErrorCategory,
+                    ErrorDetails = status.IsOnline ? null : status.StatusMessage,
+                    EndpointUrl = status.EndpointUrl
+                };
+                
+                await _providerHealthRepository.SaveStatusAsync(record);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording provider health check");
+            }
+        }
+        
+        /// <summary>
+        /// Categorizes an error message into a standard error category
+        /// </summary>
+        private string CategorizeError(string errorMessage)
+        {
+            if (string.IsNullOrEmpty(errorMessage))
+            {
+                return "Unknown";
+            }
+            
+            if (errorMessage.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+                errorMessage.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Timeout";
+            }
+            else if (errorMessage.Contains("network", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("dns", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("connect", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Network";
+            }
+            else if (errorMessage.Contains("authentication", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("auth", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("authoriz", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("api key", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("401", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Authentication";
+            }
+            else if (errorMessage.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("too many", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("429", StringComparison.OrdinalIgnoreCase))
+            {
+                return "RateLimit";
+            }
+            else if (errorMessage.Contains("server", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("5", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("503", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("502", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("500", StringComparison.OrdinalIgnoreCase))
+            {
+                return "ServerError";
+            }
+            else if (errorMessage.Contains("configuration", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("config", StringComparison.OrdinalIgnoreCase) ||
+                     errorMessage.Contains("setting", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Configuration";
+            }
+            
+            return "Unknown";
+        }
+        
+        /// <summary>
+        /// Categorizes an error from an HTTP status code
+        /// </summary>
+        private string CategorizeErrorFromStatusCode(System.Net.HttpStatusCode statusCode)
+        {
+            int code = (int)statusCode;
+            
+            if (code == 401 || code == 403)
+            {
+                return "Authentication";
+            }
+            else if (code == 429)
+            {
+                return "RateLimit";
+            }
+            else if (code >= 500)
+            {
+                return "ServerError";
+            }
+            else if (code >= 400)
+            {
+                return "ClientError";
+            }
+            
+            return "Unknown";
+        }
     }
 
     /// <summary>
@@ -336,9 +583,39 @@ namespace ConduitLLM.WebUI.Services
     public class ProviderStatus
     {
         /// <summary>
-        /// Whether the provider is online
+        /// Status type for a provider
         /// </summary>
-        public bool IsOnline { get; set; }
+        public enum StatusType
+        {
+            /// <summary>
+            /// Provider is online
+            /// </summary>
+            Online,
+            
+            /// <summary>
+            /// Provider is offline
+            /// </summary>
+            Offline,
+            
+            /// <summary>
+            /// Provider status cannot be determined
+            /// </summary>
+            Unknown
+        }
+        
+        /// <summary>
+        /// The status of the provider
+        /// </summary>
+        public StatusType Status { get; set; } = StatusType.Unknown;
+        
+        /// <summary>
+        /// Whether the provider is online (maintained for compatibility)
+        /// </summary>
+        public bool IsOnline 
+        { 
+            get => Status == StatusType.Online;
+            set => Status = value ? StatusType.Online : StatusType.Offline;
+        }
         
         /// <summary>
         /// The status message for the provider
@@ -349,5 +626,20 @@ namespace ConduitLLM.WebUI.Services
         /// When the status was last checked
         /// </summary>
         public DateTime LastCheckedUtc { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// The response time of the health check in milliseconds
+        /// </summary>
+        public double ResponseTimeMs { get; set; }
+        
+        /// <summary>
+        /// The category of error if the provider is offline
+        /// </summary>
+        public string? ErrorCategory { get; set; }
+        
+        /// <summary>
+        /// The endpoint URL that was checked
+        /// </summary>
+        public string? EndpointUrl { get; set; }
     }
 }

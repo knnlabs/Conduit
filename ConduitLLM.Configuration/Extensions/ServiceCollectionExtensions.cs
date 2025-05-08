@@ -1,4 +1,5 @@
 using System;
+using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
@@ -23,6 +24,10 @@ namespace ConduitLLM.Configuration.Extensions
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
+            // Register DbContext interface
+            services.AddScoped<IConfigurationDbContext>(provider => 
+                provider.GetRequiredService<ConfigurationDbContext>());
+                
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
             services.AddScoped<IProviderCredentialRepository, ProviderCredentialRepository>();

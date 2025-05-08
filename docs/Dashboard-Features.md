@@ -66,10 +66,16 @@ Summary of important system metrics:
 Individual cards for each configured provider:
 
 - **Status Indicator**: Shows if the provider is active/inactive
-- **Connection Status**: Displays current connectivity
+- **Connection Status**: Displays current connectivity with one of three states:
+  - **Online** (green): Provider is responding correctly and API keys are validated
+  - **Offline** (red): Provider is not responding or returning errors
+  - **Unknown** (gray): Status cannot be determined with certainty (e.g., OpenRouter)
 - **Request Count**: Number of requests sent to this provider
 - **Error Rate**: Percentage of failed requests
+- **Response Time**: Time taken to respond to health check requests
 - **Quick Actions**: Test connection, edit configuration
+
+> **Note**: Some providers like OpenRouter will show as "Unknown" status because they don't validate API keys at their health check endpoints. This is expected behavior and doesn't indicate a problem with your configuration. You can still use these providers in the Chat interface.
 
 ### Provider Usage Chart
 

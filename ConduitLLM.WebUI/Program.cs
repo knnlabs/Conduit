@@ -53,10 +53,14 @@ if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseSqlite(dbConnectionString));
+    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseSqlite(dbConnectionString));
 }
 else if (dbProvider == "postgres")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+        options.UseNpgsql(dbConnectionString));
+    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
         options.UseNpgsql(dbConnectionString));
 }
 else
@@ -237,6 +241,10 @@ builder.Services.AddHttpClient("ConduitAPI", client => {
 
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
+
+// Add Provider Health Monitoring services
+builder.Services.AddProviderHealthMonitoring(builder.Configuration);
+builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ProviderHealthMonitorService>();
 
 // Add Razor Components
 builder.Services.AddRazorComponents()

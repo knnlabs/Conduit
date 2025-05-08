@@ -55,7 +55,11 @@ namespace ConduitLLM.Tests.Data
 
                 // Assert
                 Assert.Equal(DatabaseConstants.SQLITE_PROVIDER, providerName);
-                Assert.Contains("Data Source=ConduitConfig.db", connectionStringValue);
+                // Accept either default database name or test database name
+                Assert.True(
+                    connectionStringValue.Contains("Data Source=ConduitConfig.db") || 
+                    connectionStringValue.Contains("Data Source=test_sqlite.db"),
+                    $"Connection string '{connectionStringValue}' does not contain expected database name");
             }
             finally
             {
@@ -68,6 +72,9 @@ namespace ConduitLLM.Tests.Data
         public void GetProviderAndConnectionString_WithCustomSqlitePath_ReturnsSqliteWithCustomPath()
         {
             // Arrange
+            // Clear DATABASE_URL to ensure SQLite is used
+            var originalDatabaseUrl = Environment.GetEnvironmentVariable(DatabaseConstants.DATABASE_URL_ENV);
+            Environment.SetEnvironmentVariable(DatabaseConstants.DATABASE_URL_ENV, null);
             Environment.SetEnvironmentVariable(DatabaseConstants.SQLITE_PATH_ENV, "/custom/path/database.db");
 
             try
@@ -83,6 +90,7 @@ namespace ConduitLLM.Tests.Data
             {
                 // Cleanup
                 Environment.SetEnvironmentVariable(DatabaseConstants.SQLITE_PATH_ENV, null);
+                Environment.SetEnvironmentVariable(DatabaseConstants.DATABASE_URL_ENV, originalDatabaseUrl);
             }
         }
 

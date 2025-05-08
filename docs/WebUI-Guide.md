@@ -28,6 +28,7 @@ The WebUI features a consistent navigation layout:
 - **Dashboard**: Home page with system overview and statistics
 - **Configuration**: Manage providers, models, and router settings
 - **Virtual Keys**: Create and manage API access keys
+- **Provider Health**: Monitor the status and health of LLM providers
 - **Chat**: Test LLM interactions directly
 - **About**: Information about the ConduitLLM project
 
@@ -118,6 +119,25 @@ Manage API access through virtual keys:
 - Track budget consumption
 - Identify usage patterns
 - Export usage data
+
+### Provider Health Page
+
+Monitor the status and health of LLM providers:
+
+- View a comprehensive list of all configured providers with their current status
+- See detailed information including:
+  - Status type (Online/Offline/Unknown)
+  - Last check timestamp
+  - Response time
+  - Error details (if any)
+  - Monitoring configuration
+- Status types explained:
+  - **Online** (green): Provider is responding correctly and API keys are validated
+  - **Offline** (red): Provider is not responding or returning errors
+  - **Unknown** (gray): Status cannot be determined with certainty (e.g., OpenRouter)
+- Filter providers by status type
+- Manually trigger health checks for specific providers
+- View historical health data and response time trends
 
 ### Chat Page
 

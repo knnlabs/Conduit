@@ -95,6 +95,16 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for provider health records
+        /// </summary>
+        public virtual DbSet<ProviderHealthRecord> ProviderHealthRecords { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for provider health configurations
+        /// </summary>
+        public virtual DbSet<ProviderHealthConfiguration> ProviderHealthConfigurations { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -205,6 +215,20 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasIndex(e => new { e.FallbackConfigurationId, e.Order }).IsUnique();
                 entity.HasIndex(e => new { e.FallbackConfigurationId, e.ModelDeploymentId }).IsUnique();
+            });
+
+            // Configure Provider Health entities
+            modelBuilder.Entity<ProviderHealthRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.ProviderName, e.TimestampUtc });
+                entity.HasIndex(e => e.IsOnline);
+            });
+
+            modelBuilder.Entity<ProviderHealthConfiguration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ProviderName).IsUnique();
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

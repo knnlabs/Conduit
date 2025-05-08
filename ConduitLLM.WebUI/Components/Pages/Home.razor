@@ -8,12 +8,15 @@
 @using ConduitLLM.Core.Models.Routing
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.Repositories
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
+@inject IProviderHealthRepository ProviderHealthRepository
 @inject IConfiguration Configuration
 @inject IRouterService RouterService
 @inject ConduitLLM.WebUI.Interfaces.ICacheStatusService CacheStatusService
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -40,18 +43,23 @@
             <div class="card mb-4" style="display: flex; flex-direction: column;">
                 <div class="card-header px-4 d-flex justify-content-between align-items-center">
                     <h6 class="text-h6 m-0">Provider Status</h6>
-                    <button class="btn btn-icon" @onclick="CheckAllProvidersStatus" disabled="@isCheckingStatus">
-                        @if (isCheckingStatus)
-                        {
-                            <div class="spinner-border spinner-border-sm" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <i class="fa fa-sync-alt"></i>
-                        }
-                    </button>
+                    <div>
+                        <a href="/provider-health" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="fa fa-chart-line"></i>
+                        </a>
+                        <button class="btn btn-icon" @onclick="CheckAllProvidersStatus" disabled="@isCheckingStatus">
+                            @if (isCheckingStatus)
+                            {
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <i class="fa fa-sync-alt"></i>
+                            }
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if (isLoading)
@@ -87,7 +95,8 @@
                                     <tr>
                                         <th>Provider</th>
                                         <th>Status</th>
-                                        <th>Last Checked</th>
+                                        <th>Response Time</th>
+                                        <th>Monitoring</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -100,18 +109,25 @@
                                             <td>
                                                 @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
                                                 {
-                                                    @if (status.IsOnline)
+                                                    @if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Online)
                                                     {
                                                         <span class="text-success">
                                                             <i class="fa fa-check-circle me-1"></i>
                                                             Online
                                                         </span>
                                                     }
-                                                    else
+                                                    else if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline)
                                                     {
-                                                        <span class="text-error">
+                                                        <span class="text-danger">
                                                             <i class="fa fa-exclamation-circle me-1"></i>
                                                             Offline
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-secondary">
+                                                            <i class="fa fa-question-circle me-1"></i>
+                                                            Unknown
                                                         </span>
                                                     }
                                                 }
@@ -124,13 +140,30 @@
                                                 }
                                             </td>
                                             <td>
-                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var lastStatus) && lastStatus.LastCheckedUtc != default)
+                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var responseStatus) && responseStatus.ResponseTimeMs > 0)
                                                 {
-                                                    <small>@lastStatus.LastCheckedUtc.ToLocalTime().ToString("g")</small>
+                                                    <small>@responseStatus.ResponseTimeMs.ToString("F2") ms</small>
                                                 }
                                                 else
                                                 {
                                                     <small>-</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (providerConfigurations.TryGetValue(provider.ProviderName, out var config))
+                                                {
+                                                    @if (config.MonitoringEnabled)
+                                                    {
+                                                        <span class="badge bg-success">Auto</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Manual</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Manual</span>
                                                 }
                                             </td>
                                         </tr>
@@ -138,10 +171,16 @@
                                 </tbody>
                             </table>
                             
-                            <a href="/configuration" class="btn btn-text text-primary mt-3 px-3">
-                                <span class="me-2">Manage Providers</span>
-                                <i class="fa fa-arrow-right"></i>
-                            </a>
+                            <div class="d-flex justify-content-between mt-3">
+                                <a href="/configuration" class="btn btn-text text-primary px-3">
+                                    <span class="me-2">Manage Providers</span>
+                                    <i class="fa fa-arrow-right"></i>
+                                </a>
+                                <a href="/provider-health" class="btn btn-text text-primary px-3">
+                                    <span class="me-2">Health Dashboard</span>
+                                    <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </div>
                         }
                         else
                         {
@@ -435,6 +474,7 @@
     
     private List<ProviderCredential> providers = new();
     private Dictionary<string, ProviderStatus> providerStatuses = new();
+    private Dictionary<string, ProviderHealthConfiguration> providerConfigurations = new();
     private bool isLoading = true;
     private bool isCheckingStatus = false;
     private int providerCount = 0;
@@ -467,8 +507,13 @@
             StateHasChanged();
             
             // Load providers
-            var virtualKeys = await VirtualKeyService.ListVirtualKeysAsync();
-            providerCount = virtualKeys.Count;
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            providers = await dbContext.ProviderCredentials.ToListAsync();
+            providerCount = providers.Count;
+            
+            // Load provider configurations
+            var configs = await ProviderHealthRepository.GetAllConfigurationsAsync();
+            providerConfigurations = configs.ToDictionary(c => c.ProviderName, c => c);
             
             // Initial checks
             await CheckAllProvidersStatus();

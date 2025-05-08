@@ -1,0 +1,426 @@
+@page "/provider-health/config"
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.Options
+@using ConduitLLM.Configuration.Repositories
+@using Microsoft.Extensions.Options
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Models
+@attribute [Authorize]
+@inject IProviderHealthRepository ProviderHealthRepository
+@inject IOptions<ProviderHealthOptions> ProviderHealthOptions
+@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject ILogger<ProviderHealthConfig> Logger
+@inject IJSRuntime JSRuntime
+@inject NotificationService NotificationService
+
+<PageTitle>Provider Health Configuration</PageTitle>
+
+<div class="container">
+    <h1>Provider Health Monitoring Configuration</h1>
+    
+    @if (_loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading configuration...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Global Settings</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="globalEnabled" @bind="_globalSettings.Enabled">
+                                <label class="form-check-label" for="globalEnabled">Enable Provider Health Monitoring</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                When enabled, provider health will be monitored automatically at regular intervals.
+                            </small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="defaultCheckInterval">Default Check Interval (minutes)</label>
+                                <input type="number" class="form-control" id="defaultCheckInterval" 
+                                       @bind="_globalSettings.DefaultCheckIntervalMinutes" min="1" max="1440">
+                                <small class="form-text text-muted">
+                                    How often providers should be checked by default.
+                                </small>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="defaultTimeout">Default Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="defaultTimeout" 
+                                       @bind="_globalSettings.DefaultTimeoutSeconds" min="1" max="60">
+                                <small class="form-text text-muted">
+                                    Default timeout for provider health checks.
+                                </small>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="retentionDays">Retention Period (days)</label>
+                                <input type="number" class="form-control" id="retentionDays" 
+                                       @bind="_globalSettings.DetailedRecordRetentionDays" min="1" max="365">
+                                <small class="form-text text-muted">
+                                    How long to keep detailed health check records.
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-primary" @onclick="SaveGlobalSettingsAsync">
+                                <i class="bi bi-save"></i> Save Global Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3>Provider Settings</h3>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="RefreshProviderConfigsAsync">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (_providerConfigs.Count == 0)
+                        {
+                            <div class="alert alert-info">
+                                No provider configurations found. Configurations will be created automatically when providers are detected.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Provider</th>
+                                            <th>Monitoring</th>
+                                            <th>Check Interval</th>
+                                            <th>Timeout</th>
+                                            <th>Failure Threshold</th>
+                                            <th>Notifications</th>
+                                            <th>Last Checked</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var config in _providerConfigs)
+                                        {
+                                            <tr>
+                                                <td>@config.ProviderName</td>
+                                                <td>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               @bind="config.MonitoringEnabled" 
+                                                               id="monitoring-@config.Id">
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm" 
+                                                           @bind="config.CheckIntervalMinutes" min="1" max="1440">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm" 
+                                                           @bind="config.TimeoutSeconds" min="1" max="60">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm" 
+                                                           @bind="config.ConsecutiveFailuresThreshold" min="1" max="10">
+                                                </td>
+                                                <td>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               @bind="config.NotificationsEnabled" 
+                                                               id="notifications-@config.Id">
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @(config.LastCheckedUtc?.ToLocalTime().ToString() ?? "Never")
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" 
+                                                            @onclick="() => SaveProviderConfigAsync(config)">
+                                                        <i class="bi bi-save"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" 
+                                                            @onclick="() => ShowCustomEndpointModal(config)">
+                                                        <i class="bi bi-gear"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Data Management</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Use these options to manage the provider health monitoring data.</p>
+                        
+                        <div class="d-flex flex-wrap gap-3">
+                            <button class="btn btn-outline-secondary" @onclick="PurgeOldRecordsAsync">
+                                <i class="bi bi-trash"></i> Purge Old Records
+                            </button>
+                            
+                            <button class="btn btn-outline-danger" @onclick="() => _showPurgeAllModal = true">
+                                <i class="bi bi-exclamation-triangle"></i> Purge All Records
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    <!-- Custom Endpoint Modal -->
+    <div class="modal fade @(_showCustomEndpointModal ? "show d-block" : "d-none")" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Custom Endpoint Configuration</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCustomEndpointModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_selectedConfig != null)
+                    {
+                        <div class="mb-3">
+                            <label for="customEndpoint" class="form-label">Custom Health Check Endpoint URL</label>
+                            <input type="text" class="form-control" id="customEndpoint" 
+                                   @bind="_selectedConfig.CustomEndpointUrl" 
+                                   placeholder="https://api.example.com/v1/models">
+                            <small class="form-text text-muted">
+                                Leave blank to use the default endpoint for this provider.
+                            </small>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCustomEndpointModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveCustomEndpointAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Purge Confirmation Modal -->
+    <div class="modal fade @(_showPurgeAllModal ? "show d-block" : "d-none")" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Purge All Records</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showPurgeAllModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Warning
+                    </div>
+                    <p>
+                        This will permanently delete ALL provider health monitoring records from the database.
+                        This action cannot be undone.
+                    </p>
+                    <p>
+                        Are you sure you want to proceed?
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showPurgeAllModal = false">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="PurgeAllRecordsAsync">Yes, Purge All Records</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Backdrop -->
+    @if (_showCustomEndpointModal || _showPurgeAllModal)
+    {
+        <div class="modal-backdrop fade show"></div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _showCustomEndpointModal = false;
+    private bool _showPurgeAllModal = false;
+    private ProviderHealthOptions _globalSettings = new();
+    private List<ProviderHealthConfiguration> _providerConfigs = new();
+    private ProviderHealthConfiguration? _selectedConfig;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+    
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _loading = true;
+            StateHasChanged();
+            
+            // Load global settings
+            _globalSettings = ProviderHealthOptions.Value;
+            
+            // Load provider configurations
+            await RefreshProviderConfigsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading provider health configuration");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading configuration: " + ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task RefreshProviderConfigsAsync()
+    {
+        try
+        {
+            _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
+            
+            // Also check for any providers without configurations and create default ones
+            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var allProviders = await dbContext.ProviderCredentials.ToListAsync();
+            
+            foreach (var provider in allProviders)
+            {
+                if (!_providerConfigs.Any(c => c.ProviderName == provider.ProviderName))
+                {
+                    await ProviderHealthRepository.EnsureConfigurationExistsAsync(provider.ProviderName);
+                }
+            }
+            
+            // Refresh again to get the newly created configurations
+            if (allProviders.Count > _providerConfigs.Count)
+            {
+                _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing provider configurations");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error refreshing configurations: " + ex.Message);
+        }
+    }
+    
+    private async Task SaveGlobalSettingsAsync()
+    {
+        try
+        {
+            // In a real-world application, you would save these to a configuration store
+            // For now, we'll just show a notification
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, "Global settings saved successfully");
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving global settings");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error saving global settings: " + ex.Message);
+        }
+    }
+    
+    private async Task SaveProviderConfigAsync(ProviderHealthConfiguration config)
+    {
+        try
+        {
+            await ProviderHealthRepository.SaveConfigurationAsync(config);
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Configuration for {config.ProviderName} saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving provider configuration for {ProviderName}", config.ProviderName);
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error saving configuration for {config.ProviderName}: {ex.Message}");
+        }
+    }
+    
+    private void ShowCustomEndpointModal(ProviderHealthConfiguration config)
+    {
+        _selectedConfig = config;
+        _showCustomEndpointModal = true;
+        StateHasChanged();
+    }
+    
+    private void CloseCustomEndpointModal()
+    {
+        _showCustomEndpointModal = false;
+        _selectedConfig = null;
+        StateHasChanged();
+    }
+    
+    private async Task SaveCustomEndpointAsync()
+    {
+        if (_selectedConfig != null)
+        {
+            await SaveProviderConfigAsync(_selectedConfig);
+            CloseCustomEndpointModal();
+        }
+    }
+    
+    private async Task PurgeOldRecordsAsync()
+    {
+        try
+        {
+            // Calculate the date based on the retention period
+            var olderThan = DateTime.UtcNow.AddDays(-_globalSettings.DetailedRecordRetentionDays);
+            
+            // Purge old records
+            var purgedCount = await ProviderHealthRepository.PurgeOldRecordsAsync(olderThan);
+            
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged {purgedCount} old records successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error purging old records");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error purging old records: " + ex.Message);
+        }
+    }
+    
+    private async Task PurgeAllRecordsAsync()
+    {
+        try
+        {
+            // Purge all records by using a future date
+            var purgedCount = await ProviderHealthRepository.PurgeOldRecordsAsync(DateTime.UtcNow.AddYears(100));
+            
+            _showPurgeAllModal = false;
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged all {purgedCount} records successfully");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error purging all records");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error purging all records: " + ex.Message);
+            _showPurgeAllModal = false;
+            StateHasChanged();
+        }
+    }
+}

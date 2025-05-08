@@ -88,6 +88,17 @@ namespace ConduitLLM.WebUI.Services
             // Default to end of current day if not specified
             endDate ??= DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
             
+            // Ensure both dates are in UTC format to work with PostgreSQL
+            if (startDate.Value.Kind != DateTimeKind.Utc)
+            {
+                startDate = startDate.Value.ToUniversalTime();
+            }
+            
+            if (endDate.Value.Kind != DateTimeKind.Utc)
+            {
+                endDate = endDate.Value.ToUniversalTime();
+            }
+            
             return (startDate.Value, endDate.Value);
         }
         
@@ -121,11 +132,15 @@ namespace ConduitLLM.WebUI.Services
             
             try
             {
+                // Ensure dates are in UTC format for PostgreSQL
+                var utcStartDate = startDate.Kind != DateTimeKind.Utc ? startDate.ToUniversalTime() : startDate;
+                var utcEndDate = endDate.Kind != DateTimeKind.Utc ? endDate.ToUniversalTime() : endDate;
+                
                 // Build the query with filters
                 var query = dbContext.RequestLogs
                     .AsNoTracking()
                     .Include(r => r.VirtualKey)
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
                 
                 // Apply optional filters
                 if (virtualKeyId.HasValue)
@@ -173,6 +188,10 @@ namespace ConduitLLM.WebUI.Services
             DateTime startDate, 
             DateTime endDate)
         {
+            // Ensure dates are in UTC for consistency
+            var utcStartDate = startDate.Kind != DateTimeKind.Utc ? startDate.ToUniversalTime() : startDate;
+            var utcEndDate = endDate.Kind != DateTimeKind.Utc ? endDate.ToUniversalTime() : endDate;
+            
             // Group logs by date and calculate daily metrics
             var dailyCosts = logs
                 .GroupBy(r => r.Timestamp.Date)

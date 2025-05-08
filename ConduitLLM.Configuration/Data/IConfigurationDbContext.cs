@@ -75,6 +75,16 @@ namespace ConduitLLM.Configuration.Data
         DbSet<FallbackModelMappingEntity> FallbackModelMappings { get; }
 
         /// <summary>
+        /// Database set for provider health records
+        /// </summary>
+        DbSet<ProviderHealthRecord> ProviderHealthRecords { get; }
+
+        /// <summary>
+        /// Database set for provider health configurations
+        /// </summary>
+        DbSet<ProviderHealthConfiguration> ProviderHealthConfigurations { get; }
+
+        /// <summary>
         /// Flag indicating if this is a test environment
         /// </summary>
         bool IsTestEnvironment { get; set; }
