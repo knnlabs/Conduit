@@ -217,6 +217,18 @@ else
 @code {
     [Parameter]
     public int? Id { get; set; }
+    
+    // This is needed to properly handle string route parameters
+    [SupplyParameterFromQuery(Name = "id")]
+    public string? IdParam
+    {
+        get => Id?.ToString();
+        set
+        {
+            if (int.TryParse(value, out var parsed))
+                Id = parsed;
+        }
+    }
 
     private ConduitLLM.Configuration.Entities.ProviderCredential provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; // Use correct entity type
     private string? errorMessage;
