@@ -34,6 +34,20 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 
 ![ConduitLLM Dashboard](docs/assets/dashboard-home.png)
 
+## 📦 Versioning
+
+Conduit uses Semantic Versioning (MAJOR.MINOR.PATCH):
+
+- **Docker Tags**: Images are tagged with semantic versions (e.g., `v1.0.0`), branch names, and the `latest` tag.
+- **Version Checking**: The WebUI displays the current version and can check for updates automatically.
+- **Configuration**: Version checking can be controlled via environment variables:
+  ```
+  CONDUIT_VERSION_CHECK_ENABLED=true
+  CONDUIT_VERSION_CHECK_INTERVAL_HOURS=24
+  ```
+
+For detailed information on Conduit's versioning approach, see [Versioning Guide](docs/Versioning.md).
+
 ## 🏗️ Architecture
 
 ConduitLLM follows a modular architecture with distinct components handling specific responsibilities:

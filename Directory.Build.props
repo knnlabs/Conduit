@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <!-- Central version configuration for all projects -->
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0</AssemblyVersion>
+    <FileVersion>0.1.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    
+    <!-- Keep track of when releases occur -->
+    <ReleaseDate>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</ReleaseDate>
+    
+    <!-- Common properties for NuGet packages -->
+    <!-- Don't set PackageId here as it needs to be unique per project -->
+    <PackageFamilyName>knnlabs.Conduit</PackageFamilyName>
+    <PackageName>Conduit</PackageName>
+    <Authors>KNN Labs, Inc.</Authors>
+    <Company>KNN Labs, Inc.</Company>
+    <Product>Conduit</Product>
+    <Description>A unified .NET client library for interacting with various LLM providers</Description>
+    <Copyright>© $([System.DateTime]::UtcNow.Year) KNN Labs, Inc.</Copyright>
+    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/knnlabs/Conduit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

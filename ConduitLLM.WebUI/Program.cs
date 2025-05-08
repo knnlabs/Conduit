@@ -211,6 +211,12 @@ builder.Services.AddRouting(options => {
 builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 
+// Register Version Check Service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
+builder.Services.AddHttpClient("GithubApi", client => {
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-Version-Check");
+});
+
 // Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
 
@@ -470,11 +476,30 @@ using (var scope = app.Services.CreateScope())
                 logger.LogError(ex, "Error initializing LLM Router: {Message}", ex.Message);
             }
         }
+        
+        // Initialize VersionCheckService
+        try
+        {
+            var versionCheckService = services.GetRequiredService<ConduitLLM.WebUI.Services.VersionCheckService>();
+            versionCheckService.Initialize();
+            
+            // Get logger specifically for this section
+            var versionLogger = services.GetRequiredService<ILogger<Program>>();
+            versionLogger.LogInformation("Version check service initialized successfully");
+            
+            // Perform an initial version check
+            await versionCheckService.CheckForNewVersionAsync(forceCheck: true);
+        }
+        catch (Exception ex)
+        {
+            var versionLogger = services.GetRequiredService<ILogger<Program>>();
+            versionLogger.LogError(ex, "Error initializing version check service: {Message}", ex.Message);
+        }
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during router initialization.");
+        logger.LogError(ex, "An error occurred during initialization.");
     }
 }
 

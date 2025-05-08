@@ -69,6 +69,8 @@ services:
       CONDUIT_CACHE_TYPE: "Redis"
       CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+      CONDUIT_VERSION_CHECK_ENABLED: "true"
+      CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
     ports:
       - "5001:8080"
     restart: on-failure
