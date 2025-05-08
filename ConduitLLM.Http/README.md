@@ -30,7 +30,7 @@
 
 - `HttpApiHttpPort` (default: 5000): HTTP port for the API
 - `HttpApiHttpsPort` (default: 5003): HTTPS port for the API
-- `ASPNETCORE_URLS`: Used internally by `start.sh` to set the actual listen URLs
+- `ASPNETCORE_URLS`: Sets the actual listen URLs (usually http://+:80 for Docker)
 - Provider API keys can be set via environment variables or `appsettings.json` (see below)
 
 ### appsettings.json
@@ -72,7 +72,7 @@ No other DB-related variables are needed. The service will auto-detect the provi
 ### Docker & Port Management
 
 - Designed for containerization. Ports are set via environment variables for flexible deployment.
-- The `start.sh` script configures ports and launches the API with correct settings.
+- When using Docker Compose, ports are configured in the docker-compose.yml file.
 
 ## Persistent Database Storage (Docker)
 
@@ -113,9 +113,9 @@ For more help, see the Database Status page in the WebUI.
    docker build -t conduitllm-http .
    docker run -e HttpApiHttpPort=5000 -e HttpApiHttpsPort=5003 -p 5000:5000 -p 5003:5003 conduitllm-http
    ```
-3. **With start.sh:**
+3. **With Docker Compose:**
    ```bash
-   ./start.sh
+   docker compose up -d
    ```
 
 ## API Usage
@@ -196,8 +196,9 @@ livenessProbe:
 
 ## Troubleshooting
 
-- Use `stop.sh` to terminate all ConduitLLM processes (covers all ports and process names)
+- When using Docker Compose, use `docker compose down` to stop all services
 - Logs are output to the console by default (configurable in `appsettings.json`)
+- Use `docker compose logs` to view container logs
 
 ## License
 

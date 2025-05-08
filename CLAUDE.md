@@ -8,8 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run specific test: `dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMethodName"`
 - Start API server: `dotnet run --project ConduitLLM.Http`
 - Start web UI: `dotnet run --project ConduitLLM.WebUI`
-- Start both services: `./start.sh`
-- Docker compose: `docker-compose up -d`
+- Start both services: `docker compose up -d`
 
 ## Code Style Guidelines
 - **Naming**: 

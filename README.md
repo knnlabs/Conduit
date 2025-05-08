@@ -153,7 +153,7 @@ For more details, see the per-service README files.
 
 3. **Start the Services**
    ```bash
-   ./start.sh
+   docker compose up -d
    ```
 
 4. **Access ConduitLLM**

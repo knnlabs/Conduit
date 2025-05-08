@@ -14,7 +14,7 @@ This document provides comprehensive information about all environment variables
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for administrative operations and API endpoint security. This value should be kept secure. |
 | `ASPNETCORE_ENVIRONMENT` | String | `Production` | Controls the .NET runtime environment. Set to `Development` for detailed error information or `Production` for optimized performance. |
 | `ASPNETCORE_URLS` | String | `http://+:80` | The URL(s) on which the application will listen for HTTP requests inside the container. Use `http://+:80` for Docker. |
 | `CONDUIT_API_BASE_URL` | String | `null` | Specifies the public base URL where the Conduit API and WebUI are accessible, especially when deployed behind a reverse proxy (e.g., `https://conduit.yourdomain.com`). This is used for generating correct absolute URLs. |
@@ -37,7 +37,7 @@ ConduitLLM provides environment variables for configuring security-related aspec
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Generated on first start if you use ./start.sh* | Master key for administrative operations. Required for certain API endpoints. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for administrative operations. Required for certain API endpoints. |
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
 

@@ -28,13 +28,26 @@ The WebUI can be configured using environment variables, especially for port and
 - `WebUIHttpPort` (default: **5001**): HTTP port for the WebUI
 - `WebUIHttpsPort` (default: **5002**): HTTPS port for the WebUI
 
-These are typically set in the `start.sh` script or via Docker environment variables. The application uses these to set the `ASPNETCORE_URLS` variable for Kestrel hosting.
+These are typically set via Docker environment variables or directly when running the application. The application uses these to set the `ASPNETCORE_URLS` variable for Kestrel hosting.
+
+#### Example (Docker Compose):
+```yaml
+services:
+  webui:
+    image: ghcr.io/knnlabs/conduit-webui:latest
+    environment:
+      - WebUIHttpPort=8080
+      - WebUIHttpsPort=8443
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+```
 
 #### Example (Linux shell):
 ```sh
 export WebUIHttpPort=8080
 export WebUIHttpsPort=8443
-./start.sh
+dotnet run --project ConduitLLM.WebUI
 ```
 
 ### App Settings
@@ -89,8 +102,9 @@ Substitute with your configured ports if different.
 - For advanced configuration, see the shared `ConduitLLM.Configuration` project.
 
 ## Troubleshooting
-- If ports are in use, adjust `WebUIHttpPort`/`WebUIHttpsPort` or stop existing processes (see `stop.sh`).
+- If ports are in use, adjust `WebUIHttpPort`/`WebUIHttpsPort` or stop existing processes using Docker commands (`docker compose down`).
 - Logs are output to the console by default; adjust logging in `appsettings.json` as needed.
+- When using Docker Compose, use `docker compose logs webui` to view container logs.
 
 ## License
 See the root of the repository for license information.

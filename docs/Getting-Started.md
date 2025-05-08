@@ -46,16 +46,16 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
      ghcr.io/knnlabs/conduit:latest
    ```
 
-### Option 2: Using the scripts (Local Development)
+### Option 2: Using Docker Compose (Local Development)
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/your-org/ConduitLLM.git
    cd ConduitLLM
    ```
-2. Run the start script:
+2. Start the services with Docker Compose:
    ```bash
-   ./start.sh
+   docker compose up -d
    ```
 
 ### Option 3: Manual setup (Advanced)
@@ -126,7 +126,7 @@ docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:late
 ## Initial Configuration
 
 1. Open your browser and navigate to the WebUI.
-   - **Local Development (`./start.sh`):** `http://localhost:5001`
+   - **Local Development (Docker Compose):** `http://localhost:5001`
    - **Docker/Deployed:** Access via the URL configured in the `CONDUIT_API_BASE_URL` environment variable (e.g., `https://conduit.yourdomain.com`), typically through an HTTPS reverse proxy, or `http://localhost:5000` if running locally.
 
 2. Navigate to the Configuration page to set up:

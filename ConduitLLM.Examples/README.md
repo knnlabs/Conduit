@@ -34,7 +34,7 @@
 
 2. **Start Core Services**  
    Ensure `ConduitLLM.Http` and/or `ConduitLLM.WebUI` are running.  
-   Use the provided `start.sh` script or run via Visual Studio.
+   Use Docker Compose (`docker compose up -d`) or run directly with the .NET CLI.
 
 3. **Run an Example**  
    Navigate to the `ConduitLLM.Examples` directory and run a sample:
