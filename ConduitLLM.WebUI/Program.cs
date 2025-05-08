@@ -221,6 +221,19 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, C
 // Add Conduit related services
 builder.Services.AddSingleton<ConduitLLM.Core.ConduitRegistry>();
 
+// Add provider models service for dropdown UI
+builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
+
+// Configure HTTP client for API access
+builder.Services.AddHttpClient("ConduitAPI", client => {
+    // Read the base URL from environment variable, fallback to "http://api:8080" for container env
+    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
+                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
+                     "http://api:8080" : "http://localhost:5000");
+    client.BaseAddress = new Uri(apiBaseUrl);
+    Console.WriteLine($"[Conduit WebUI] Configuring ConduitAPI client with BaseAddress: {apiBaseUrl}");
+});
+
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 

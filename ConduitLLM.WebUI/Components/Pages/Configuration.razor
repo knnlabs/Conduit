@@ -18,6 +18,7 @@
 @inject HttpRetryConfigurationService HttpRetryService
 @inject HttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
+@inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
 
 <div class="container-fluid">
@@ -209,7 +210,8 @@
                 <div class="form-group mb-4">
                     <label for="providerName">Provider</label>
                     <select class="form-select" id="providerName" 
-                            @bind="currentMapping.ProviderName">
+                            value="@currentMapping.ProviderName"
+                            @onchange="@(async (ChangeEventArgs e) => { currentMapping.ProviderName = e.Value?.ToString() ?? ""; await LoadModelsForSelectedProvider(); })">
                         <option value="">-- Select Provider --</option>
                         @if (providerCredentials != null)
                         {
@@ -223,9 +225,78 @@
                 
                 <div class="form-group mb-4">
                     <label for="providerModelId">Provider Model ID</label>
-                    <input type="text" class="form-control" id="providerModelId" 
-                           @bind="currentMapping.ProviderModelId" />
-                    <small class="form-text text-muted">The actual model ID used by the provider (e.g., 'gpt-4-turbo-preview', 'claude-3-opus-20240229')</small>
+                    
+                    @if (isLoadingModels)
+                    {
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Loading models...</span>
+                        </div>
+                    }
+                    else if (showModelTextbox || (!availableModels.Any() && !string.IsNullOrEmpty(currentMapping.ProviderName)))
+                    {
+                        <div>
+                            <input type="text" class="form-control" id="providerModelIdInput"
+                                   @bind="currentMapping.ProviderModelId"
+                                   placeholder="Enter model ID"
+                                   disabled="@string.IsNullOrEmpty(currentMapping.ProviderName)" />
+                            
+                            @if (!availableModels.Any() && !string.IsNullOrEmpty(currentMapping.ProviderName))
+                            {
+                                <small class="text-muted mt-1 d-block">
+                                    Could not retrieve model list. Please enter the model ID manually.
+                                </small>
+                            }
+                            
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        @onclick="RefreshModelsList"
+                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
+                                    <i class="fa fa-refresh me-1"></i> Try loading models again
+                                </button>
+                                
+                                @if (showModelTextbox && availableModels.Any())
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                            @onclick="ToggleModelInputMode">
+                                        <i class="fa fa-list me-1"></i> Show dropdown
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="input-group">
+                            <select class="form-select" id="providerModelId"
+                                    @bind="currentMapping.ProviderModelId"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
+                                @if (string.IsNullOrEmpty(currentMapping.ProviderName))
+                                {
+                                    <option value="">Select a provider first</option>
+                                }
+                                else
+                                {
+                                    <option value="">-- Select a model --</option>
+                                    @foreach (var model in availableModels.OrderBy(m => m))
+                                    {
+                                        <option value="@model">@model</option>
+                                    }
+                                }
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @onclick="RefreshModelsList"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @onclick="ToggleModelInputMode"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Select from available models or click <i class="fa fa-pencil"></i> to enter manually</small>
+                    }
                 </div>
                 
                 <div class="d-flex justify-content-end">
@@ -475,6 +546,9 @@
         Id = 0
     };
     private string? mappingErrorMessage;
+    private List<string> availableModels = new();
+    private bool isLoadingModels = false;
+    private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
 
     // Settings state
     private ConduitLLM.Configuration.Entities.GlobalSetting currentSettings = new();
@@ -773,6 +847,9 @@
             };
             isEditingMapping = true;
             mappingErrorMessage = null;
+            
+            // Load models for the selected provider
+            await LoadModelsForSelectedProvider();
         }
     }
 
@@ -964,6 +1041,73 @@
         {
             Logger.LogError(ex, "Error checking if provider has mappings");
             return false;
+        }
+    }
+    
+    private async Task LoadModelsForSelectedProvider()
+    {
+        if (string.IsNullOrEmpty(currentMapping.ProviderName))
+        {
+            availableModels.Clear();
+            return;
+        }
+
+        try
+        {
+            isLoadingModels = true;
+            StateHasChanged();
+            
+            availableModels = await ProviderModelsService.GetModelsAsync(currentMapping.ProviderName);
+            
+            // If the previously selected model is not in the list, clear it
+            if (!string.IsNullOrEmpty(currentMapping.ProviderModelId) && 
+                !availableModels.Contains(currentMapping.ProviderModelId))
+            {
+                currentMapping.ProviderModelId = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading models for provider {ProviderName}", currentMapping.ProviderName);
+            availableModels.Clear();
+        }
+        finally
+        {
+            isLoadingModels = false;
+            StateHasChanged();
+        }
+    }
+    
+    private void ToggleModelInputMode()
+    {
+        // Toggle between dropdown and textbox
+        showModelTextbox = !showModelTextbox;
+    }
+    
+    private async Task RefreshModelsList()
+    {
+        if (string.IsNullOrEmpty(currentMapping.ProviderName))
+        {
+            return;
+        }
+        
+        try
+        {
+            isLoadingModels = true;
+            StateHasChanged();
+            
+            // Force refresh from API
+            availableModels = await ProviderModelsService.GetModelsAsync(currentMapping.ProviderName, true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing models for provider {ProviderName}", currentMapping.ProviderName);
+            availableModels.Clear();
+        }
+        finally
+        {
+            isLoadingModels = false;
+            StateHasChanged();
         }
     }
 }

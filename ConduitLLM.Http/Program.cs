@@ -125,12 +125,22 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderCreden
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
 
+// Register provider model list service
+builder.Services.AddScoped<ModelListService>();
+
 // Register Conduit service
 builder.Services.AddScoped<Conduit>();
+
+// Add Controller support
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
 // Add a health check endpoint
+// Add controllers to the app
+app.MapControllers();
+Console.WriteLine("[Conduit API] Controllers registered");
+
 // Add a health check endpoint
 app.MapGet("/health", () => {
     return Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });

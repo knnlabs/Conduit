@@ -18,6 +18,7 @@
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
 @inject IHttpClientFactory HttpClientFactory
 @inject VirtualKeyService VirtualKeyService
+@inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
 
 <h3 class="mb-4">@(Id.HasValue ? "Edit Mapping" : "Add Mapping")</h3>
@@ -80,53 +81,77 @@ else
             <div class="d-flex align-items-center gap-2 mb-4">
                 <div class="flex-grow-1">
                     <label for="providerModelId" class="form-label">Provider Model ID</label>
-                    <select class="form-select" id="providerModelId"
-                            value="@dtoMapping.ProviderModelId"
-                            disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
-                            @onchange="@((ChangeEventArgs e) => ProviderModelSelected(e.Value?.ToString() ?? ""))">
-                        @if (isLoadingModels)
-                        {
-                            <option value="" disabled>
-                                Loading models...
-                            </option>
-                        }
-                        else if (providerModels == null || !providerModels.Any())
-                        {
-                            <option value="" disabled>
-                                @(string.IsNullOrEmpty(dtoMapping.ProviderName) ? "Select provider first" : "No models found or error")
-                            </option>
-                        }
-                        else
-                        {
-                            <option value="">-- Select Model --</option>
-                            @foreach (var modelId in providerModels.OrderBy(m => m))
-                            {
-                                <option value="@modelId">@modelId</option>
-                            }
-                        }
-                    </select>
-                    <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
-                    @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
-                    {
-                        <small class="text-danger mt-1 d-block">@modelLoadErrorMessage</small>
-                    }
-                </div>
-                <button type="button" 
-                        class="btn btn-primary"
-                        style="margin-top: 32px;"
-                        @onclick="@(() => RefreshModels(true))"
-                        disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
                     @if (isLoadingModels)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span class="d-none d-sm-inline">Loading...</span>
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Loading models...</span>
+                        </div>
+                    }
+                    else if (showModelTextbox || (providerModels == null || !providerModels.Any()))
+                    {
+                        <div>
+                            <input type="text" class="form-control" id="providerModelIdInput"
+                                   @bind="dtoMapping.ProviderModelId"
+                                   placeholder="Enter model ID"
+                                   disabled="@string.IsNullOrEmpty(dtoMapping.ProviderName)" />
+                            
+                            @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
+                            {
+                                <small class="text-danger mt-1 d-block">@modelLoadErrorMessage</small>
+                            }
+                            @if (providerModels == null || !providerModels.Any())
+                            {
+                                <small class="text-muted mt-1 d-block">
+                                    @(string.IsNullOrEmpty(dtoMapping.ProviderName) 
+                                        ? "Select provider first" 
+                                        : "Could not retrieve model list. Please enter the model ID manually.")
+                                </small>
+                            }
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => RefreshModels(true))"
+                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                    <i class="fa fa-refresh me-1"></i> Try loading models again
+                                </button>
+                                @if (showModelTextbox && providerModels != null && providerModels.Any())
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                            @onclick="ToggleModelInputMode">
+                                        <i class="fa fa-list me-1"></i> Show dropdown
+                                    </button>
+                                }
+                            </div>
+                        </div>
                     }
                     else
                     {
-                        <i class="fa fa-refresh me-2"></i>
-                        <span class="d-none d-sm-inline">Refresh Models</span>
+                        <div class="input-group">
+                            <select class="form-select" id="providerModelId"
+                                    value="@dtoMapping.ProviderModelId"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
+                                    @onchange="@((ChangeEventArgs e) => ProviderModelSelected(e.Value?.ToString() ?? ""))">
+                                <option value="">-- Select Model --</option>
+                                @foreach (var modelId in providerModels.OrderBy(m => m))
+                                {
+                                    <option value="@modelId">@modelId</option>
+                                }
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @onclick="@(() => RefreshModels(true))"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    @onclick="ToggleModelInputMode"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                <i class="fa fa-pencil"></i>
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Select from available models or click <i class="fa fa-pencil"></i> to enter manually</small>
                     }
-                </button>
+                    <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
+                </div>
             </div>
         </div>
             
@@ -173,6 +198,7 @@ else
     private string? modelLoadErrorMessage; // Specific error for model loading
     private bool isLoadingModels = false; // Loading provider-specific models
     private bool isLoadingPage = true;
+    private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
     private EditContext? editContext;
     private ValidationMessageStore? messageStore;
     private bool isSaving = false; // Saving the mapping
@@ -264,7 +290,7 @@ else
             if (!MemoryCache.TryGetValue(cacheKey, out List<string>? cachedModels))
             {
                 // No valid cache, load from API
-                cachedModels = LoadModelsFromApi(provider);
+                cachedModels = await LoadModelsFromApi(provider);
                 
                 if (cachedModels != null && cachedModels.Any())
                 {
@@ -274,9 +300,15 @@ else
             }
             
             // Update the model list
-            if (cachedModels != null)
+            if (cachedModels != null && cachedModels.Any())
             {
                 providerModels.AddRange(cachedModels);
+                _logger.LogInformation("Loaded {Count} models for provider {ProviderName}", 
+                    cachedModels.Count, providerName);
+            }
+            else
+            {
+                _logger.LogWarning("No models returned for provider {ProviderName}", providerName);
             }
         }
         catch (Exception ex)
@@ -291,38 +323,17 @@ else
         }
     }
 
-    private List<string> LoadModelsFromApi(ProviderCredential provider)
+    private async Task<List<string>> LoadModelsFromApi(ProviderCredential provider)
     {
         try
         {
-            // Create a client using the factory
-            using var client = HttpClientFactory.CreateClient();
-            
-            // TODO: Replace with actual model list API endpoint and authentication
-            // This is a placeholder - need to implement actual provider-specific API calls
-            
-            // Mock implementation - in a real application, use provider-specific API client logic
-            return new List<string>
-            {
-                // Common model examples across various providers
-                "gpt-4o",
-                "gpt-4-turbo",
-                "gpt-3.5-turbo",
-                "claude-3-opus",
-                "claude-3-sonnet",
-                "claude-3-haiku",
-                "gemini-pro",
-                "mistral-large",
-                "mistral-medium",
-                "mistral-small",
-                $"{provider.ProviderName.ToLower()}-default-model",
-                "custom-model-1",
-                "custom-model-2",
-            };
+            _logger.LogInformation("Loading models for provider {ProviderName}", provider.ProviderName);
+            // Use the ProviderModelsService to fetch models from the API
+            return await ProviderModelsService.GetModelsAsync(provider.ProviderName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling provider API");
+            _logger.LogError(ex, "Error loading models for provider {ProviderName}", provider.ProviderName);
             throw; // Rethrow to be handled by caller
         }
     }
@@ -351,29 +362,40 @@ else
     {
         dtoMapping.ProviderModelId = selectedModel ?? "";
     }
+    
+    private void ToggleModelInputMode()
+    {
+        // Toggle between dropdown and textbox
+        showModelTextbox = !showModelTextbox;
+    }
 
     private async Task RefreshModels(bool forceRefresh)
     {
         if (!string.IsNullOrEmpty(dtoMapping.ProviderName))
         {
-            // Force clear cache by invalidating the provider credential
-            if (forceRefresh)
+            try
             {
-                // Clear cached models for this provider
-                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-                var provider = await dbContext.ProviderCredentials
-                    .FirstOrDefaultAsync(p => p.ProviderName == dtoMapping.ProviderName);
-                    
-                if (provider != null)
-                {
-                    // Update the timestamp to force cache key change
-                    provider.UpdatedAt = DateTime.UtcNow;
-                    await dbContext.SaveChangesAsync();
-                }
+                // Show loading state
+                isLoadingModels = true;
+                modelLoadErrorMessage = null;
+                StateHasChanged();
+                
+                // Directly use the ProviderModelsService to get models with forceRefresh option
+                providerModels = await ProviderModelsService.GetModelsAsync(dtoMapping.ProviderName, forceRefresh);
+                
+                _logger.LogInformation("Refreshed models for provider {ProviderName}, found {Count} models",
+                    dtoMapping.ProviderName, providerModels.Count);
             }
-            
-            // Load fresh models
-            await LoadProviderModelsAsync(dtoMapping.ProviderName);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing models for provider {ProviderName}", dtoMapping.ProviderName);
+                modelLoadErrorMessage = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                isLoadingModels = false;
+                StateHasChanged();
+            }
         }
     }
 
