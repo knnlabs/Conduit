@@ -58,6 +58,15 @@ namespace ConduitLLM.WebUI.Models
         /// Redis database stats (Redis cache only)
         /// </summary>
         public RedisDatabaseInfo? RedisDatabase { get; set; }
+        
+        /// <summary>
+        /// Optional status message providing additional information about the cache state
+        /// </summary>
+        /// <remarks>
+        /// This property can contain error messages, warnings, or other information about
+        /// the current state of the cache. It is particularly useful for diagnosing issues.
+        /// </remarks>
+        public string? StatusMessage { get; set; }
     }
     
     /// <summary>

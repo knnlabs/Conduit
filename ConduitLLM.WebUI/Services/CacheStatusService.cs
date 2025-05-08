@@ -42,6 +42,8 @@ namespace ConduitLLM.WebUI.Services
         private Timer? _statisticsTimer;
         private CacheConfig? _lastLoadedConfig;
         private readonly SemaphoreSlim _configLock = new SemaphoreSlim(1, 1);
+        private bool _isDisposed;
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         /// <summary>
         /// Creates a new instance of the CacheStatusService
@@ -66,14 +68,22 @@ namespace ConduitLLM.WebUI.Services
             {
                 try 
                 {
-                    await InitializeCacheAsync();
+                    // Check for cancellation before starting
+                    if (_cts.Token.IsCancellationRequested)
+                        return;
+                
+                    await InitializeCacheAsync(_cts.Token);
                     
                     // Start a timer to periodically update cache statistics
                     _statisticsTimer = new Timer(async _ => 
                     {
                         try 
                         {
-                            await SaveStatisticsToConfigAsync();
+                            // Skip if service is disposed or cancellation requested
+                            if (_isDisposed || _cts.Token.IsCancellationRequested)
+                                return;
+                                
+                            await SaveStatisticsToConfigAsync(false, _cts.Token);
                         }
                         catch (Exception ex)
                         {
@@ -85,13 +95,28 @@ namespace ConduitLLM.WebUI.Services
                 {
                     _logger.LogError(ex, "Error initializing cache settings");
                 }
-            });
+            }, _cts.Token);
         }
         
         /// <inheritdoc/>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during status retrieval</exception>
         public async Task<Models.CacheStatus> GetCacheStatusAsync()
         {
+            // Check if service is disposed
+            if (_isDisposed)
+            {
+                return new Models.CacheStatus
+                {
+                    IsEnabled = false,
+                    CacheType = "Unknown",
+                    TotalItems = 0,
+                    HitRate = 0,
+                    MemoryUsageBytes = 0,
+                    AvgResponseTime = 0,
+                    StatusMessage = "Cache service is disposed"
+                };
+            }
+            
             try
             {
                 var options = _cacheOptions.Value;
@@ -125,21 +150,49 @@ namespace ConduitLLM.WebUI.Services
                     result.AvgResponseTime = avgResponseTime;
                 }
                 
+                // Check again if service is disposed before potentially lengthy operations
+                if (_isDisposed)
+                {
+                    result.StatusMessage = "Cache service was disposed during status retrieval";
+                    return result;
+                }
+                
                 // Add Redis-specific info if using Redis cache
                 if (options.CacheType?.ToLowerInvariant() == "redis" && _redisCacheMetrics != null)
                 {
                     try
                     {
+                        // Check if service is disposed before Redis operations
+                        if (_isDisposed)
+                        {
+                            result.StatusMessage = "Cache service was disposed during Redis status check";
+                            return result;
+                        }
+                        
                         // Get Redis connection status
                         result.IsRedisConnected = await _redisCacheMetrics.IsConnectedAsync();
                         
                         if (result.IsRedisConnected)
                         {
+                            // Check if service is disposed before Redis detail operations
+                            if (_isDisposed)
+                            {
+                                result.StatusMessage = "Cache service was disposed during Redis detail retrieval";
+                                return result;
+                            }
+                            
                             // Get Redis client info
                             var clientInfo = await _redisCacheMetrics.GetClientInfoAsync();
                             var memoryStats = await _redisCacheMetrics.GetMemoryStatsAsync();
                             var dbStats = await _redisCacheMetrics.GetDatabaseStatsAsync();
                             var serverInfo = await _redisCacheMetrics.GetServerInfoAsync();
+                            
+                            // Final check if service is disposed before constructing result
+                            if (_isDisposed)
+                            {
+                                result.StatusMessage = "Cache service was disposed during Redis metrics collection";
+                                return result;
+                            }
                             
                             // Set Redis connection info
                             result.RedisConnection = new Models.RedisConnectionInfo
@@ -179,14 +232,33 @@ namespace ConduitLLM.WebUI.Services
                             }
                         }
                     }
+                    catch (ObjectDisposedException)
+                    {
+                        result.IsRedisConnected = false;
+                        result.StatusMessage = "Redis services were disposed during metrics collection";
+                    }
                     catch (Exception redisEx)
                     {
                         _logger.LogWarning(redisEx, "Error getting Redis metrics");
                         result.IsRedisConnected = false;
+                        result.StatusMessage = $"Redis metrics error: {redisEx.Message}";
                     }
                 }
                 
                 return result;
+            }
+            catch (ObjectDisposedException)
+            {
+                return new Models.CacheStatus
+                {
+                    IsEnabled = false,
+                    CacheType = "Unknown",
+                    TotalItems = 0,
+                    HitRate = 0,
+                    MemoryUsageBytes = 0,
+                    AvgResponseTime = 0,
+                    StatusMessage = "Cache service was disposed during status retrieval"
+                };
             }
             catch (Exception ex)
             {
@@ -204,7 +276,8 @@ namespace ConduitLLM.WebUI.Services
                     TotalItems = 0,
                     HitRate = 0,
                     MemoryUsageBytes = 0,
-                    AvgResponseTime = 0
+                    AvgResponseTime = 0,
+                    StatusMessage = $"Error: {ex.Message}"
                 };
             }
         }
@@ -213,15 +286,27 @@ namespace ConduitLLM.WebUI.Services
         /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task SetCacheEnabledAsync(bool enabled)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
             try
             {
                 // Update options and save to database
                 var options = _cacheOptions.Value;
                 options.IsEnabled = enabled;
                 
-                await SaveCacheConfigAsync();
+                await SaveCacheConfigAsync(_cts.Token);
                 
                 _logger.LogInformation("Cache {Status}", enabled ? "enabled" : "disabled");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Setting cache enabled state was cancelled");
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogInformation("Cannot set cache enabled state - service is disposed");
             }
             catch (Exception ex)
             {
@@ -233,6 +318,10 @@ namespace ConduitLLM.WebUI.Services
         /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task ClearCacheAsync()
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
             try
             {
                 // Clear the entire LLM response cache
@@ -242,9 +331,17 @@ namespace ConduitLLM.WebUI.Services
                 _metricsService.Reset();
                 
                 // Save updated (empty) statistics
-                await SaveStatisticsToConfigAsync();
+                await SaveStatisticsToConfigAsync(false, _cts.Token);
                 
                 _logger.LogInformation("Cache cleared");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Clearing cache was cancelled");
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogInformation("Cannot clear cache - service is disposed");
             }
             catch (Exception ex)
             {
@@ -255,6 +352,10 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc/>
         public async Task SetCacheTypeAsync(string cacheType)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
             try
             {
                 if (string.IsNullOrEmpty(cacheType))
@@ -271,19 +372,35 @@ namespace ConduitLLM.WebUI.Services
                     throw new ArgumentException($"Invalid cache type: {cacheType}. Valid values are 'Memory' or 'Redis'");
                 }
                 
+                // Check if service is disposed before expensive operation
+                if (_isDisposed)
+                    return;
+                    
                 // If changing type, clear cache first
                 if (oldType?.ToLowerInvariant() != cacheType.ToLowerInvariant() && options.IsEnabled)
                 {
                     await ClearCacheAsync();
+                    
+                    // Re-check if service is disposed after potentially expensive operation
+                    if (_isDisposed)
+                        return;
                 }
                 
                 // Update options
                 options.CacheType = cacheType;
                 
                 // Save configuration
-                await SaveCacheConfigAsync();
+                await SaveCacheConfigAsync(_cts.Token);
                 
                 _logger.LogInformation("Cache type set to {CacheType}", cacheType);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Setting cache type was cancelled");
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogInformation("Cannot set cache type - service is disposed");
             }
             catch (Exception ex)
             {
@@ -295,6 +412,10 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc/>
         public async Task UpdateRedisSettingsAsync(string connectionString, string instanceName)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
             try
             {
                 if (string.IsNullOrEmpty(connectionString))
@@ -307,11 +428,19 @@ namespace ConduitLLM.WebUI.Services
                 // Test connection before saving
                 if (_redisCacheMetrics != null)
                 {
+                    // Check if service is disposed before external call
+                    if (_isDisposed)
+                        return;
+                        
                     var testResult = await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
                     if (!testResult.IsSuccess)
                     {
                         throw new Exception($"Failed to connect to Redis: {testResult.ErrorMessage}");
                     }
+                    
+                    // Re-check if service is disposed after external call
+                    if (_isDisposed)
+                        return;
                 }
                 
                 // Update options
@@ -319,9 +448,17 @@ namespace ConduitLLM.WebUI.Services
                 options.RedisInstanceName = instanceName ?? "conduit:";
                 
                 // Save configuration
-                await SaveCacheConfigAsync();
+                await SaveCacheConfigAsync(_cts.Token);
                 
                 _logger.LogInformation("Redis settings updated");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Updating Redis settings was cancelled");
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogInformation("Cannot update Redis settings - service is disposed");
             }
             catch (Exception ex)
             {
@@ -333,6 +470,16 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc/>
         public async Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+            {
+                return new RedisConnectionTestResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Cache service is disposed"
+                };
+            }
+            
             try
             {
                 if (_redisCacheMetrics == null)
@@ -344,7 +491,25 @@ namespace ConduitLLM.WebUI.Services
                     };
                 }
                 
+                // Use the cancellation token to ensure we can cancel if needed
                 return await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Testing Redis connection was cancelled");
+                return new RedisConnectionTestResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Connection test was cancelled"
+                };
+            }
+            catch (ObjectDisposedException)
+            {
+                return new RedisConnectionTestResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Cache service was disposed during connection test"
+                };
             }
             catch (Exception ex)
             {
@@ -360,6 +525,7 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Initializes the cache from configuration stored in the database
         /// </summary>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>A task representing the asynchronous operation</returns>
         /// <remarks>
         /// This method retrieves cache configuration from the database and applies it to the current
@@ -367,11 +533,26 @@ namespace ConduitLLM.WebUI.Services
         /// If no configuration exists in the database, it creates a default configuration.
         /// </remarks>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during initialization</exception>
-        private async Task InitializeCacheAsync()
+        private async Task InitializeCacheAsync(CancellationToken cancellationToken = default)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+            
+            bool lockAcquired = false;
             try
             {
-                await _configLock.WaitAsync();
+                // Try to acquire the lock with cancellation support
+                lockAcquired = await _configLock.WaitAsync(5000, cancellationToken);
+                if (!lockAcquired)
+                {
+                    _logger.LogWarning("Failed to acquire config lock for initialization after timeout");
+                    return;
+                }
+                
+                // Double-check cancellation and disposal after lock acquisition
+                if (cancellationToken.IsCancellationRequested || _isDisposed)
+                    return;
                 
                 try
                 {
@@ -422,6 +603,10 @@ namespace ConduitLLM.WebUI.Services
                                     }
                                 }
                                 
+                                // Check for cancellation and disposal again before potentially lengthy operation
+                                if (cancellationToken.IsCancellationRequested || _isDisposed)
+                                    return;
+                                
                                 // Initialize metrics service with persisted values if it doesn't have data yet
                                 if (_metricsService.GetTotalRequests() == 0 && config.TotalRequests > 0)
                                 {
@@ -466,22 +651,43 @@ namespace ConduitLLM.WebUI.Services
                     }
                     else
                     {
+                        // Check for cancellation and disposal before creating default settings
+                        if (cancellationToken.IsCancellationRequested || _isDisposed)
+                            return;
+                            
                         // Create default cache settings
-                        await SaveCacheConfigAsync();
+                        await SaveCacheConfigAsync(cancellationToken);
                         _logger.LogInformation("Default cache configuration created");
                     }
                 }
                 finally
                 {
-                    _configLock.Release();
+                    if (lockAcquired && !_isDisposed)
+                    {
+                        _configLock.Release();
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Cache initialization was cancelled");
+                // Rethrow cancellation
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error initializing cache");
-                if (_configLock.CurrentCount == 0)
+                // Only release if we acquired the lock and it hasn't been disposed
+                if (lockAcquired && !_isDisposed && _configLock.CurrentCount == 0)
                 {
-                    _configLock.Release();
+                    try
+                    {
+                        _configLock.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Ignore if already disposed
+                    }
                 }
             }
         }
@@ -489,34 +695,66 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Saves the current cache configuration to the database
         /// </summary>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>A task representing the asynchronous operation</returns>
         /// <remarks>
         /// This method saves the current cache configuration options along with the latest statistics
         /// to the database for persistence. It uses a semaphore to ensure thread safety during database access.
         /// </remarks>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during the save operation</exception>
-        private async Task SaveCacheConfigAsync()
+        private async Task SaveCacheConfigAsync(CancellationToken cancellationToken = default)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
+            bool lockAcquired = false;
             try
             {
-                await _configLock.WaitAsync();
+                // Try to acquire the lock with cancellation support
+                lockAcquired = await _configLock.WaitAsync(5000, cancellationToken);
+                if (!lockAcquired)
+                {
+                    _logger.LogWarning("Failed to acquire config lock for saving configuration after timeout");
+                    return;
+                }
+                
+                // Double-check cancellation and disposal after lock acquisition
+                if (cancellationToken.IsCancellationRequested || _isDisposed)
+                    return;
                 
                 try
                 {
                     // Get the latest metrics before saving
-                    await SaveStatisticsToConfigAsync(includeConfig: true);
+                    await SaveStatisticsToConfigAsync(true, cancellationToken);
                 }
                 finally
                 {
-                    _configLock.Release();
+                    if (lockAcquired && !_isDisposed)
+                    {
+                        _configLock.Release();
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Saving cache configuration was cancelled");
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving cache configuration");
-                if (_configLock.CurrentCount == 0)
+                // Only release if we acquired the lock and it hasn't been disposed
+                if (lockAcquired && !_isDisposed && _configLock.CurrentCount == 0)
                 {
-                    _configLock.Release();
+                    try 
+                    {
+                        _configLock.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Ignore if already disposed
+                    }
                 }
             }
         }
@@ -525,6 +763,7 @@ namespace ConduitLLM.WebUI.Services
         /// Saves the current cache statistics to the configuration in the database
         /// </summary>
         /// <param name="includeConfig">Whether to include configuration settings in the save operation</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>A task representing the asynchronous operation</returns>
         /// <remarks>
         /// This method persists the current cache statistics to the database, and optionally also saves
@@ -532,16 +771,35 @@ namespace ConduitLLM.WebUI.Services
         /// This is called periodically by a timer to ensure statistics are not lost on application shutdown.
         /// </remarks>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during the save operation</exception>
-        private async Task SaveStatisticsToConfigAsync(bool includeConfig = false)
+        private async Task SaveStatisticsToConfigAsync(bool includeConfig = false, CancellationToken cancellationToken = default)
         {
+            // Check if service is disposed
+            if (_isDisposed)
+                return;
+                
+            bool lockAcquired = false;
             try
             {
-                await _configLock.WaitAsync();
+                // Try to acquire the lock with cancellation support
+                lockAcquired = await _configLock.WaitAsync(5000, cancellationToken);
+                if (!lockAcquired)
+                {
+                    _logger.LogWarning("Failed to acquire config lock for saving statistics after timeout");
+                    return;
+                }
+                
+                // Double-check cancellation and disposal after lock acquisition
+                if (cancellationToken.IsCancellationRequested || _isDisposed)
+                    return;
                 
                 try
                 {
                     // Get existing config or create new one using repository
                     var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
+                    
+                    // Check for cancellation after repository call
+                    if (cancellationToken.IsCancellationRequested || _isDisposed)
+                        return;
                     
                     CacheConfig config;
                     if (cacheSetting != null)
@@ -564,6 +822,10 @@ namespace ConduitLLM.WebUI.Services
                         
                         // Add the new setting
                         await _globalSettingRepository.CreateAsync(cacheSetting);
+                        
+                        // Check for cancellation after repository update
+                        if (cancellationToken.IsCancellationRequested || _isDisposed)
+                            return;
                     }
                     
                     var options = _cacheOptions.Value;
@@ -611,6 +873,10 @@ namespace ConduitLLM.WebUI.Services
                     config.TotalRequests = _metricsService.GetTotalRequests();
                     config.LastUpdated = DateTime.UtcNow;
                     
+                    // Final cancellation check before expensive or database operations
+                    if (cancellationToken.IsCancellationRequested || _isDisposed)
+                        return;
+                    
                     // Update model-specific statistics
                     config.ModelStats.Clear();
                     
@@ -644,15 +910,31 @@ namespace ConduitLLM.WebUI.Services
                 }
                 finally
                 {
-                    _configLock.Release();
+                    if (lockAcquired && !_isDisposed)
+                    {
+                        _configLock.Release();
+                    }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Saving cache statistics was cancelled");
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving cache statistics");
-                if (_configLock.CurrentCount == 0)
+                // Only release if we acquired the lock and it hasn't been disposed
+                if (lockAcquired && !_isDisposed && _configLock.CurrentCount == 0)
                 {
-                    _configLock.Release();
+                    try 
+                    {
+                        _configLock.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Ignore if already disposed
+                    }
                 }
             }
         }
@@ -703,9 +985,29 @@ namespace ConduitLLM.WebUI.Services
         /// </remarks>
         public void Dispose()
         {
-            // Stop and dispose of the timer
-            _statisticsTimer?.Dispose();
-            _configLock.Dispose();
+            if (_isDisposed)
+                return;
+                
+            _isDisposed = true;
+            
+            try
+            {
+                // Signal cancellation to stop any pending operations
+                _cts.Cancel();
+                
+                // Stop and dispose of the timer
+                _statisticsTimer?.Dispose();
+                
+                // Dispose the cancellation token source
+                _cts.Dispose();
+                
+                // Only dispose the semaphore after pending operations should be stopped
+                _configLock.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during CacheStatusService disposal");
+            }
         }
         
         /// <summary>
