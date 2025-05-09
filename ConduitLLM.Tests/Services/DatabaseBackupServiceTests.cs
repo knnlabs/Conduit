@@ -173,13 +173,25 @@ namespace ConduitLLM.Tests.Services
         public async Task CreateBackupAsync_For_SQLite_Should_Throw_When_FileNotFound()
         {
             // Arrange
-            // Point to a non-existent file
-            Environment.SetEnvironmentVariable("CONDUIT_SQLITE_PATH", "non_existent_file.db");
-            
+            // Create a unique non-existent path to avoid any test environment interference
+            string nonExistentPath = $"non_existent_file_{Guid.NewGuid()}.db";
+
+            // Ensure the file definitely doesn't exist
+            if (File.Exists(nonExistentPath))
+            {
+                File.Delete(nonExistentPath);
+            }
+
+            // Point to the non-existent file
+            Environment.SetEnvironmentVariable("CONDUIT_SQLITE_PATH", nonExistentPath);
+
             var service = new DatabaseBackupService(_dbContextFactoryMock.Object, _loggerMock.Object);
-            
+
             // Act & Assert
             await Assert.ThrowsAsync<FileNotFoundException>(() => service.CreateBackupAsync());
+
+            // Cleanup
+            Environment.SetEnvironmentVariable("CONDUIT_SQLITE_PATH", null);
         }
         
         #endregion
