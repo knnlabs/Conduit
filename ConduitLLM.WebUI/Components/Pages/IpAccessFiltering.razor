@@ -12,6 +12,7 @@
 @inject NotificationService NotificationService
 @inject ILogger<IpAccessFiltering> Logger
 @inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
 <PageTitle>IP Access Filtering - Conduit LLM</PageTitle>
 
@@ -49,32 +50,42 @@
                                     DisabledBackgroundColor="#fff3cd" />
 
                         <div class="mt-4">
-                            <div class="form-group mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="defaultAllowSwitch"
-                                           @bind="_settings.DefaultAllow">
-                                    <label class="form-check-label" for="defaultAllowSwitch">
-                                        <strong>Default Allow</strong>
-                                    </label>
+                            <div class="row mb-3">
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <div class="form-check form-switch ps-0">
+                                            <label class="form-check-label mb-2" for="defaultAllowSwitch">
+                                                <strong>Default Allow</strong>
+                                            </label>
+                                            <div class="d-flex align-items-center">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" id="defaultAllowSwitch"
+                                                     @bind="_settings.DefaultAllow">
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            When enabled, IP addresses that don't match any rule are allowed.
+                                            When disabled, IP addresses that don't match any rule are blocked.
+                                        </small>
+                                    </div>
                                 </div>
-                                <small class="form-text text-muted">
-                                    When enabled, IP addresses that don't match any rule are allowed.
-                                    When disabled, IP addresses that don't match any rule are blocked.
-                                </small>
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="bypassAdminUiSwitch"
-                                           @bind="_settings.BypassForAdminUi">
-                                    <label class="form-check-label" for="bypassAdminUiSwitch">
-                                        <strong>Bypass for Admin UI</strong>
-                                    </label>
+
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <div class="form-check form-switch ps-0">
+                                            <label class="form-check-label mb-2" for="bypassAdminUiSwitch">
+                                                <strong>Bypass for Admin UI</strong>
+                                            </label>
+                                            <div class="d-flex align-items-center">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" id="bypassAdminUiSwitch"
+                                                     @bind="_settings.BypassForAdminUi">
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            When enabled, IP filtering rules are not applied to the admin UI.
+                                            This allows administrators to access the UI even if their IP is blocked from API access.
+                                        </small>
+                                    </div>
                                 </div>
-                                <small class="form-text text-muted">
-                                    When enabled, IP filtering rules are not applied to the admin UI.
-                                    This allows administrators to access the UI even if their IP is blocked from API access.
-                                </small>
                             </div>
                             
                             <div class="form-group mb-3">
@@ -167,11 +178,11 @@
                                                 <td>@filter.CreatedAt.ToLocalTime().ToString("g")</td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        <button class="btn btn-sm btn-outline-primary" 
+                                                        <button class="btn btn-sm btn-outline-primary"
                                                                 @onclick="() => ShowFilterModal(filter)">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-danger" 
+                                                        <button class="btn btn-sm btn-outline-danger"
                                                                 @onclick="() => ShowDeleteConfirmation(filter)">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
@@ -366,7 +377,7 @@
     private bool _showDeleteModal = false;
     private string? _validationError;
     private string _excludedEndpointsText = string.Empty;
-    
+
     private IpFilterSettings _settings = new();
     private List<IpFilterDto> _filters = new();
     private IpFilterDto? _filterToDelete;
@@ -457,7 +468,7 @@
     private void ShowFilterModal(IpFilterDto? filter)
     {
         _validationError = null;
-        
+
         if (filter == null)
         {
             // Creating a new filter
@@ -471,16 +482,7 @@
         }
         else
         {
-            // Editing an existing filter
-            _editingFilter = new CreateIpFilterDto
-            {
-                FilterType = filter.FilterType,
-                IpAddressOrCidr = filter.IpAddressOrCidr,
-                Description = filter.Description,
-                IsEnabled = filter.IsEnabled
-            };
-            
-            // For existing filter, use UpdateIpFilterDto instead
+            // Editing an existing filter (use UpdateIpFilterDto)
             _editingFilter = new UpdateIpFilterDto
             {
                 Id = filter.Id,
@@ -490,7 +492,8 @@
                 IsEnabled = filter.IsEnabled
             };
         }
-        
+
+        // Show the modal
         _showFilterModal = true;
         StateHasChanged();
     }
@@ -639,7 +642,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting IP filter with ID {Id}", _filterToDelete.Id);
-            NotificationService.AddNotification(NotificationType.Error, 
+            NotificationService.AddNotification(NotificationType.Error,
                 "Error deleting IP filter", ex.Message);
             CloseModals();
         }
