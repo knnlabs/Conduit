@@ -3,6 +3,10 @@ name: Build and Publish Docker images
 on:
   push:
     branches: ['master', 'dev']
+    paths-ignore:
+      - 'website/**'
+      - '**/*.md'
+      - 'docs/**'
   release:
     types: [published]
 
