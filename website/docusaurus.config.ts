@@ -13,12 +13,12 @@ const config: Config = {
   url: 'https://knnlabs.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/conduit/',
+  baseUrl: '/Conduit/', // Changed to match exact case of repository name
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'knnlabs', // Usually your GitHub org/user name.
-  projectName: 'conduit', // Usually your repo name.
+  projectName: 'Conduit', // Changed to match exact case of repository name
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -44,7 +44,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           // Set the edit URL to the main repository
-          editUrl: 'https://github.com/knnlabs/conduit/tree/main/website/',
+          editUrl: 'https://github.com/knnlabs/Conduit/tree/main/website/',
         },
         blog: false, // Disable blog
         theme: {

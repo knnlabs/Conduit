@@ -40,6 +40,8 @@ This command generates static content into the `build` directory that can be ser
 
 The documentation site is automatically deployed to GitHub Pages through a GitHub Actions workflow whenever changes are pushed to the `master` branch.
 
+The site should be available at: https://knnlabs.github.io/Conduit/
+
 ## Contributing
 
 When contributing to the documentation:
