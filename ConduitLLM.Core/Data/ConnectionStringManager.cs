@@ -32,8 +32,8 @@ namespace ConduitLLM.Core.Data
             // Check for PostgreSQL DATABASE_URL
             var databaseUrl = Environment.GetEnvironmentVariable(DatabaseConstants.DATABASE_URL_ENV);
             if (!string.IsNullOrEmpty(databaseUrl) &&
-                (databaseUrl.StartsWith(DatabaseConstants.POSTGRES_URL_PREFIX) || 
-                 databaseUrl.StartsWith(DatabaseConstants.POSTGRESQL_URL_PREFIX)))
+                (databaseUrl.StartsWith(DatabaseConstants.POSTGRES_URL_PREFIX, StringComparison.OrdinalIgnoreCase) ||
+                 databaseUrl.StartsWith(DatabaseConstants.POSTGRESQL_URL_PREFIX, StringComparison.OrdinalIgnoreCase)))
             {
                 try
                 {
@@ -87,7 +87,7 @@ namespace ConduitLLM.Core.Data
 
             // Accepts both postgres:// and postgresql://
             var pattern = @"^(postgres(?:ql)?):\/\/(?<user>[^:]+):(?<password>[^@]+)@(?<host>[^:/]+)(?::(?<port>\d+))?\/(?<database>[^?]+)";
-            var match = Regex.Match(postgresUrl, pattern);
+            var match = Regex.Match(postgresUrl, pattern, RegexOptions.IgnoreCase);
             
             if (!match.Success)
             {
