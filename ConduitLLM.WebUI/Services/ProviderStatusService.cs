@@ -271,15 +271,15 @@ namespace ConduitLLM.WebUI.Services
                         var record = new ProviderHealthRecord
                         {
                             ProviderName = provider.ProviderName,
-                            IsOnline = status.IsOnline,
+                            Status = (ProviderHealthRecord.StatusType)status.Status, // Direct mapping between enums
                             StatusMessage = status.StatusMessage,
                             TimestampUtc = status.LastCheckedUtc,
                             ResponseTimeMs = status.ResponseTimeMs,
-                            ErrorCategory = status.IsOnline ? null : status.ErrorCategory,
-                            ErrorDetails = status.IsOnline ? null : status.StatusMessage,
+                            ErrorCategory = status.Status == ProviderStatus.StatusType.Online ? null : status.ErrorCategory,
+                            ErrorDetails = status.Status == ProviderStatus.StatusType.Online ? null : status.StatusMessage,
                             EndpointUrl = status.EndpointUrl
                         };
-                        
+
                         await _providerHealthRepository.SaveStatusAsync(record);
                     }
                     catch (Exception ex)
@@ -472,21 +472,21 @@ namespace ConduitLLM.WebUI.Services
             {
                 return;
             }
-            
+
             try
             {
                 var record = new ProviderHealthRecord
                 {
                     ProviderName = provider.ProviderName,
-                    Status = (ProviderHealthRecord.StatusType)status.Status, // Map the status enum
+                    Status = (ProviderHealthRecord.StatusType)status.Status, // Direct mapping between enums
                     StatusMessage = status.StatusMessage,
                     TimestampUtc = status.LastCheckedUtc,
                     ResponseTimeMs = status.ResponseTimeMs,
-                    ErrorCategory = status.IsOnline ? null : status.ErrorCategory,
-                    ErrorDetails = status.IsOnline ? null : status.StatusMessage,
+                    ErrorCategory = status.Status == ProviderStatus.StatusType.Online ? null : status.ErrorCategory,
+                    ErrorDetails = status.Status == ProviderStatus.StatusType.Online ? null : status.StatusMessage,
                     EndpointUrl = status.EndpointUrl
                 };
-                
+
                 await _providerHealthRepository.SaveStatusAsync(record);
             }
             catch (Exception ex)
@@ -590,17 +590,17 @@ namespace ConduitLLM.WebUI.Services
             /// <summary>
             /// Provider is online
             /// </summary>
-            Online,
-            
+            Online = 0,
+
             /// <summary>
             /// Provider is offline
             /// </summary>
-            Offline,
-            
+            Offline = 1,
+
             /// <summary>
             /// Provider status cannot be determined
             /// </summary>
-            Unknown
+            Unknown = 2
         }
         
         /// <summary>

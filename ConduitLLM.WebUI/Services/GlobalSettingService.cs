@@ -1,7 +1,9 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -37,7 +39,12 @@ public class GlobalSettingService : IGlobalSettingService
     /// Key for storing the algorithm used to hash the master key.
     /// </summary>
     private const string MasterKeyHashAlgorithmSettingKey = "MasterKeyHashAlgorithm";
-    
+
+    /// <summary>
+    /// Key for storing provider health options.
+    /// </summary>
+    private const string ProviderHealthOptionsSettingKey = "ProviderHealthOptions";
+
     /// <summary>
     /// Default hashing algorithm to use for master keys.
     /// </summary>
@@ -229,5 +236,67 @@ public class GlobalSettingService : IGlobalSettingService
             // Add other algorithms as needed
             _ => SHA256.Create() // Default to SHA256
         };
+    }
+
+    /// <summary>
+    /// Gets the provider health options from the database
+    /// </summary>
+    /// <returns>The provider health options, or null if not found</returns>
+    public async Task<ProviderHealthOptions?> GetProviderHealthOptionsAsync()
+    {
+        try
+        {
+            var optionsJson = await GetSettingAsync(ProviderHealthOptionsSettingKey);
+
+            if (string.IsNullOrEmpty(optionsJson))
+            {
+                _logger.LogDebug("No provider health options found in database");
+                return null;
+            }
+
+            var options = JsonSerializer.Deserialize<ProviderHealthOptions>(optionsJson);
+            _logger.LogDebug("Successfully loaded provider health options from database");
+            return options;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error deserializing provider health options");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving provider health options");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Saves the provider health options to the database
+    /// </summary>
+    /// <param name="options">The options to save</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    public async Task SaveProviderHealthOptionsAsync(ProviderHealthOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        try
+        {
+            var optionsJson = JsonSerializer.Serialize(options);
+            await SetSettingAsync(ProviderHealthOptionsSettingKey, optionsJson);
+            _logger.LogInformation("Provider health options saved successfully");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error serializing provider health options");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving provider health options");
+            throw;
+        }
     }
 }

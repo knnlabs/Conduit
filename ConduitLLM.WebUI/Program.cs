@@ -527,7 +527,8 @@ app.MapStaticAssets();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add Virtual Key Authentication and LLM Request Tracking middleware
+// Add IP Filtering, Virtual Key Authentication, and LLM Request Tracking middleware
+app.UseIpFiltering();
 app.UseVirtualKeyAuthentication();
 app.UseLlmRequestTracking();
 

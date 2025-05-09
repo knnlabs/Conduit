@@ -9,7 +9,8 @@
 @using ConduitLLM.WebUI.Models
 @attribute [Authorize]
 @inject IProviderHealthRepository ProviderHealthRepository
-@inject IOptions<ProviderHealthOptions> ProviderHealthOptions
+@inject IOptions<ProviderHealthOptions> ProviderHealthOptionsSnapshot
+@inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 @inject ILogger<ProviderHealthConfig> Logger
 @inject IJSRuntime JSRuntime
@@ -282,10 +283,11 @@
         {
             _loading = true;
             StateHasChanged();
-            
-            // Load global settings
-            _globalSettings = ProviderHealthOptions.Value;
-            
+
+            // Load global settings from database if they exist, otherwise use the default settings
+            var dbOptions = await GlobalSettingService.GetProviderHealthOptionsAsync();
+            _globalSettings = dbOptions ?? ProviderHealthOptionsSnapshot.Value;
+
             // Load provider configurations
             await RefreshProviderConfigsAsync();
         }
@@ -336,10 +338,11 @@
     {
         try
         {
-            // In a real-world application, you would save these to a configuration store
-            // For now, we'll just show a notification
+            // Save the global settings to the database
+            await GlobalSettingService.SaveProviderHealthOptionsAsync(_globalSettings);
+
+            // Show success notification
             NotificationService.AddNotification(WebUI.Models.NotificationType.Success, "Global settings saved successfully");
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {

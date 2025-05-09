@@ -105,6 +105,11 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<ProviderHealthConfiguration> ProviderHealthConfigurations { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for IP filters
+        /// </summary>
+        public virtual DbSet<IpFilterEntity> IpFilters { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -229,6 +234,16 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.ProviderName).IsUnique();
+            });
+
+            // Configure IP Filter entity
+            modelBuilder.Entity<IpFilterEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                // Create a non-unique index on the filter type and IP address/CIDR fields
+                entity.HasIndex(e => new { e.FilterType, e.IpAddressOrCidr });
+                // Create an index for IsEnabled to quickly filter active rules
+                entity.HasIndex(e => e.IsEnabled);
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

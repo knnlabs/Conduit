@@ -446,9 +446,9 @@ else
                 // Name doesn't exist
             };
             // Assuming ProviderConnectionTester can handle the Configuration entity type
-            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider); 
+            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
             showConnectionStatus = true;
-            if (connectionStatus.IsOnline)
+            if (connectionStatus.Status == ProviderStatus.StatusType.Online)
             {
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
             }

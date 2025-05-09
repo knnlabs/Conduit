@@ -129,7 +129,7 @@
                         else if (testStatus != null)
                         {
                             <div class="my-4">
-                                @if (testStatus.IsOnline)
+                                @if (testStatus.Status == ProviderStatus.StatusType.Online)
                                 {
                                     <div class="alert alert-success">
                                         <p class="fw-bold mb-1">Connection Successful!</p>
@@ -305,7 +305,7 @@
         }
         
         // Skip if we already have a successful test result
-        if (testStatus != null && testStatus.IsOnline)
+        if (testStatus != null && testStatus.Status == ProviderStatus.StatusType.Online)
         {
             return true;
         }
@@ -363,7 +363,7 @@
             // Instead, create a fake successful status
             testStatus = new ProviderStatus
             {
-                IsOnline = true,
+                Status = ProviderStatus.StatusType.Online,
                 StatusMessage = "Connection testing not supported for this provider.",
                 LastCheckedUtc = DateTime.UtcNow
             };
@@ -382,16 +382,16 @@
                 ApiVersion = providerModel.ApiVersion
             };
             testStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testCredentials); 
-            Logger.LogDebug("Connection test result for {Provider}: {Status}", 
-                providerModel.ProviderName, 
-                testStatus.IsOnline ? "Success" : "Failed");
+            Logger.LogDebug("Connection test result for {Provider}: {Status}",
+                providerModel.ProviderName,
+                testStatus.Status == ProviderStatus.StatusType.Online ? "Success" : "Failed");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error testing connection for {Provider}", providerModel.ProviderName);
             testStatus = new ProviderStatus
             {
-                IsOnline = false,
+                Status = ProviderStatus.StatusType.Offline,
                 StatusMessage = $"Test error: {ex.Message}",
                 LastCheckedUtc = DateTime.UtcNow
             };
@@ -422,10 +422,10 @@
                 // For providers that support testing...
                 if (ShouldSkipConnectionTest())
                 {
-                    Logger.LogDebug("Skipping connection test because: provider={Provider}, override={Override}, status={Status}", 
+                    Logger.LogDebug("Skipping connection test because: provider={Provider}, override={Override}, status={Status}",
                         !IsConnectionTestingSupported(),
                         overrideTestFailure,
-                        testStatus?.IsOnline);
+                        testStatus?.Status == ProviderStatus.StatusType.Online);
                 }
                 else if (testStatus == null)
                 {
@@ -433,13 +433,13 @@
                     await TestConnection();
                     
                     // If test failed and user hasn't overridden, don't proceed
-                    if ((testStatus == null || !testStatus.IsOnline) && !overrideTestFailure)
+                    if ((testStatus == null || testStatus.Status != ProviderStatus.StatusType.Online) && !overrideTestFailure)
                     {
                         Logger.LogWarning("Connection test failed, not proceeding with finish (override: {Override})", overrideTestFailure);
                         return;
                     }
                 }
-                else if (!testStatus.IsOnline && !overrideTestFailure)
+                else if (testStatus.Status != ProviderStatus.StatusType.Online && !overrideTestFailure)
                 {
                      // If test already ran and failed, and user hasn't overridden, don't proceed
                      Logger.LogWarning("Connection test previously failed, not proceeding with finish (override: {Override})", overrideTestFailure);
@@ -467,7 +467,7 @@
             {
                 testStatus = new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = $"A provider named '{providerModel?.ProviderName}' already exists",
                     LastCheckedUtc = DateTime.UtcNow
                 };

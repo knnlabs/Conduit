@@ -185,35 +185,35 @@ namespace ConduitLLM.WebUI.Services
                             TimestampUtc = now,
                             EndpointUrl = GetEndpointUrlForProvider(provider)
                         };
-                        
+
                         // Measure response time
                         _stopwatch.Restart();
-                        
+
                         // Custom timeout for the provider
                         var timeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(config.TimeoutSeconds)).Token;
                         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutToken, cancellationToken);
-                        
+
                         var status = await CheckProviderWithTimeoutAsync(statusService, provider, linkedCts.Token);
-                        
+
                         _stopwatch.Stop();
-                        
+
                         // Update the record with the results
-                        record.IsOnline = status.IsOnline; // This property maintains compatibility
+                        record.Status = (ProviderHealthRecord.StatusType)status.Status; // Direct mapping between enums
                         record.StatusMessage = status.StatusMessage;
                         record.ResponseTimeMs = _stopwatch.Elapsed.TotalMilliseconds;
-                        
+
                         if (status.Status == ProviderStatus.StatusType.Offline)
                         {
                             // Categorize the error if the provider is offline
                             (record.ErrorCategory, record.ErrorDetails) = CategorizeError(status.StatusMessage);
-                            
+
                             // Increment consecutive failure count
                             if (!_consecutiveFailures.TryGetValue(provider.ProviderName, out int failures))
                             {
                                 failures = 0;
                             }
                             _consecutiveFailures[provider.ProviderName] = failures + 1;
-                            
+
                             // Send notification if threshold is reached
                             if (config.NotificationsEnabled && failures + 1 >= config.ConsecutiveFailuresThreshold)
                             {
@@ -222,7 +222,7 @@ namespace ConduitLLM.WebUI.Services
                                     $"Provider {provider.ProviderName} is down: {record.ErrorCategory} - {status.StatusMessage}",
                                     "/home"
                                 );
-                                
+
                                 _logger.LogWarning("Provider {ProviderName} is down: {ErrorCategory} - {StatusMessage}",
                                     provider.ProviderName, record.ErrorCategory, status.StatusMessage);
                             }
@@ -238,11 +238,11 @@ namespace ConduitLLM.WebUI.Services
                                     $"Provider {provider.ProviderName} is back online after {failures} consecutive failures.",
                                     "/home"
                                 );
-                                
+
                                 _logger.LogInformation("Provider {ProviderName} is back online after {Failures} consecutive failures.",
                                     provider.ProviderName, failures);
                             }
-                            
+
                             // Reset consecutive failures
                             _consecutiveFailures[provider.ProviderName] = 0;
                         }
@@ -251,11 +251,11 @@ namespace ConduitLLM.WebUI.Services
                             // Provider status is unknown
                             record.ErrorCategory = null;
                             record.ErrorDetails = null;
-                            
+
                             // Log at debug level
                             _logger.LogDebug("Provider {ProviderName} status is unknown: {StatusMessage}",
                                 provider.ProviderName, status.StatusMessage);
-                            
+
                             // Don't change consecutive failures counter
                         }
                         

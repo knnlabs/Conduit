@@ -32,7 +32,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 return new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = "API key is required",
                     LastCheckedUtc = DateTime.UtcNow,
                     ErrorCategory = "Configuration"
@@ -78,7 +78,7 @@ namespace ConduitLLM.WebUI.Services
                 
                 return new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = $"Error: {errorMsg}",
                     LastCheckedUtc = DateTime.UtcNow,
                     ErrorCategory = errorCategory,
