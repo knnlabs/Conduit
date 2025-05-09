@@ -37,6 +37,7 @@ using ConduitLLM.Configuration.Repositories;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.StaticWebAssets;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.Data;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
     Args = args,
@@ -67,6 +68,9 @@ else
 {
     throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
 }
+
+// Add database initialization services
+builder.Services.AddDatabaseInitialization();
 
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
@@ -266,158 +270,40 @@ var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("D
 var connMgr = new ConduitLLM.Core.Data.ConnectionStringManager();
 connMgr.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
 
-// Check if using EnsureCreated mode
-bool useEnsureCreated = Environment.GetEnvironmentVariable("CONDUIT_DATABASE_ENSURE_CREATED") == "true";
-
 // Initialize the database FIRST - before any services try to use it
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var dbContextFactory = scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>>();
-    
     logger.LogInformation("Initializing database...");
-    
-    // Retry pattern to wait for database to be ready
-    const int maxRetries = 20;
-    bool connected = false;
-    for (int retry = 0; retry < maxRetries; retry++)
+
+    try
     {
-        try
+        // Initialize the database with our new DatabaseInitializer
+        var success = await scope.ServiceProvider.InitializeDatabaseAsync(maxRetries: 20, retryDelayMs: 3000);
+
+        if (success)
         {
-            // Initialize database context
-            using var dbContext = dbContextFactory.CreateDbContext();
-            
-            // Just check if we can connect
-            if (dbContext.Database.CanConnect())
-            {
-                logger.LogInformation("Connected to database. Checking pending migrations...");
-                
-                try {
-                    // ALWAYS try to create tables even if migrations don't report as pending
-                    logger.LogInformation("Ensuring database schema is created...");
-                    dbContext.Database.EnsureCreated();
-                    logger.LogInformation("Database schema created successfully");
-                    
-                    // Also try migrations just to be sure
-                    var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
-                    if (pendingMigrations.Any())
-                    {
-                        logger.LogInformation("Found {Count} pending migrations: {Migrations}", 
-                            pendingMigrations.Count, 
-                            string.Join(", ", pendingMigrations));
-                        
-                        // Apply migrations
-                        dbContext.Database.Migrate();
-                        logger.LogInformation("Database migrations applied successfully");
-                    }
-                    else
-                    {
-                        logger.LogInformation("No pending migrations found");
-                        
-                        // Ensure the GlobalSettings table exists by checking for it explicitly
-                        try {
-                            var tableExists = false;
-                            
-                            if (dbProvider == "postgres")
-                            {
-                                // For PostgreSQL, check if the table exists in the public schema using raw SQL
-                                try
-                                {
-                                    var command = dbContext.Database.GetDbConnection().CreateCommand();
-                                    command.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'GlobalSettings');";
-                                    
-                                    if (dbContext.Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-                                    {
-                                        dbContext.Database.GetDbConnection().Open();
-                                    }
-                                    
-                                    var result = command.ExecuteScalar();
-                                    tableExists = result != null && (result is bool boolResult ? boolResult : Convert.ToBoolean(result));
-                                    
-                                    logger.LogInformation("GlobalSettings table exists: {TableExists}", tableExists);
-                                    
-                                    if (!tableExists)
-                                    {
-                                        // Try to create the GlobalSettings table directly for Postgres
-                                        logger.LogWarning("GlobalSettings table doesn't exist. Attempting to create it directly...");
-                                        command = dbContext.Database.GetDbConnection().CreateCommand();
-                                        command.CommandText = @"
-                                            CREATE TABLE IF NOT EXISTS ""GlobalSettings"" (
-                                                ""Id"" SERIAL PRIMARY KEY,
-                                                ""Key"" VARCHAR(100) NOT NULL,
-                                                ""Value"" VARCHAR(2000) NOT NULL,
-                                                ""Description"" VARCHAR(500) NULL,
-                                                ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                                ""UpdatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                            );
-                                            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_GlobalSettings_Key"" ON ""GlobalSettings"" (""Key"");";
-                                        command.ExecuteNonQuery();
-                                        logger.LogInformation("GlobalSettings table created directly");
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    logger.LogError(ex, "Error checking if GlobalSettings table exists in PostgreSQL");
-                                    tableExists = false;
-                                }
-                            }
-                            else if (dbProvider == "sqlite")
-                            {
-                                // For SQLite, check if the table exists using raw SQL
-                                try
-                                {
-                                    var command = dbContext.Database.GetDbConnection().CreateCommand();
-                                    command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='GlobalSettings';";
-                                    
-                                    if (dbContext.Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-                                    {
-                                        dbContext.Database.GetDbConnection().Open();
-                                    }
-                                    
-                                    var result = command.ExecuteScalar();
-                                    tableExists = result != null && Convert.ToInt32(result) > 0;
-                                }
-                                catch (Exception ex)
-                                {
-                                    logger.LogError(ex, "Error checking if GlobalSettings table exists in SQLite");
-                                    tableExists = false;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogError(ex, "Error checking for GlobalSettings table. Using EnsureCreated instead.");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Error applying migrations. Trying to ensure created as fallback...");
-                    dbContext.Database.EnsureCreated();
-                    logger.LogInformation("Database schema created successfully with EnsureCreated fallback");
-                }
-                
-                connected = true;
-                break;
-            }
-            
-            logger.LogWarning("Cannot connect to database. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
-                retry + 1, maxRetries);
-                
-            Thread.Sleep(3000);
+            logger.LogInformation("Database initialized successfully");
+
+            // Ensure specific critical tables exist
+            await scope.ServiceProvider.EnsureTablesExistAsync(
+                "GlobalSettings",
+                "VirtualKeys",
+                "ModelCosts",
+                "RequestLogs",
+                "VirtualKeySpendHistory",
+                "ProviderHealthRecords",
+                "IpFilters"
+            );
         }
-        catch (Exception ex) when (retry < maxRetries - 1)
+        else
         {
-            logger.LogWarning(ex, "Database connection failed. Attempt {Retry}/{MaxRetries}. Retrying in 3 seconds...", 
-                retry + 1, maxRetries);
-                
-            Thread.Sleep(3000);
+            logger.LogWarning("Database initialization completed with warnings. Some functionality may be limited.");
         }
     }
-    
-    if (!connected)
+    catch (Exception ex)
     {
-        logger.LogError("Failed to connect to the database after {MaxRetries} attempts. Starting application anyway, but functionality may be limited.", maxRetries);
+        logger.LogError(ex, "Error during database initialization. Starting application anyway, but functionality may be limited.");
     }
 }
 
