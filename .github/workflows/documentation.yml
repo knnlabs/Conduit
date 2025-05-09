@@ -2,15 +2,19 @@ name: Deploy Docusaurus
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'website/**'
       - '.github/workflows/documentation.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'website/**'
       - '.github/workflows/documentation.yml'
+
+# Set permissions required for GitHub Pages deployment
+permissions:
+  contents: write
 
 jobs:
   build:

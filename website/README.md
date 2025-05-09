@@ -1,41 +1,50 @@
-# Website
+# Conduit Documentation
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator for Conduit's documentation.
 
-### Installation
+## Installation
 
+```bash
+# Using npm
+npm install
+
+# Using Yarn
+yarn
 ```
-$ yarn
-```
 
-### Local Development
+## Local Development
 
-```
-$ yarn start
+```bash
+# Using npm
+npm start
+
+# Using Yarn
+yarn start
 ```
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
-### Build
+## Build
 
-```
-$ yarn build
-```
+```bash
+# Using npm
+npm run build
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
+# Using Yarn
+yarn build
 ```
 
-Not using SSH:
+This command generates static content into the `build` directory that can be served by any static hosting service.
 
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
+## Deployment
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The documentation site is automatically deployed to GitHub Pages through a GitHub Actions workflow whenever changes are pushed to the `master` branch.
+
+## Contributing
+
+When contributing to the documentation:
+
+1. Always preview your changes locally before pushing
+2. Follow the established structure and formatting
+3. Include appropriate front matter in all pages
+4. Use Markdown features like admonitions, tabs, and code blocks for better readability
