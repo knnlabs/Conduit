@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-architecture/overview" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.7.0">
+<title data-rh="true">Architecture Overview | Conduit Documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://knnlabs.github.io/conduit/img/conduit-social-card.png"><meta data-rh="true" name="twitter:image" content="https://knnlabs.github.io/conduit/img/conduit-social-card.png"><meta data-rh="true" property="og:url" content="https://knnlabs.github.io/conduit/docs/architecture/overview"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Architecture Overview | Conduit Documentation"><meta data-rh="true" name="description" content="High-level overview of Conduit&#x27;s architecture"><meta data-rh="true" property="og:description" content="High-level overview of Conduit&#x27;s architecture"><link data-rh="true" rel="icon" href="/conduit/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://knnlabs.github.io/conduit/docs/architecture/overview"><link data-rh="true" rel="alternate" href="https://knnlabs.github.io/conduit/docs/architecture/overview" hreflang="en"><link data-rh="true" rel="alternate" href="https://knnlabs.github.io/conduit/docs/architecture/overview" hreflang="x-default"><link rel="stylesheet" href="/conduit/assets/css/styles.bb5e6f38.css">
+<script src="/conduit/assets/js/runtime~main.a0c3d6f4.js" defer="defer"></script>
+<script src="/conduit/assets/js/main.5ec484a0.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<script>!function(){function t(t){document.documentElement.setAttribute("data-theme",t)}var e=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();null!==e?t(e):window.matchMedia("(prefers-color-scheme: dark)").matches?t("dark"):(window.matchMedia("(prefers-color-scheme: light)").matches,t("light"))}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><link rel="preload" as="image" href="/conduit/img/logo.svg"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="navbar navbar--fixed-top"><div class="navbar__inner"><div class="navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/conduit/"><div class="navbar__logo"><img src="/conduit/img/logo.svg" alt="Conduit Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/conduit/img/logo.svg" alt="Conduit Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Conduit</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/conduit/docs/intro">Documentation</a></div><div class="navbar__items navbar__items--right"><a href="https://github.com/knnlabs/conduit" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Switch between dark and light mode (currently light mode)" aria-label="Switch between dark and light mode (currently light mode)" aria-live="polite" aria-pressed="false"><svg viewBox="0 0 24 24" width="24" height="24" class="lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" class="darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/conduit/docs/intro">Introduction</a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="true" href="/conduit/docs/getting-started/installation">Getting Started</a></div><ul style="display:block;overflow:visible;height:auto" class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/conduit/docs/getting-started/installation">Installation</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/conduit/docs/getting-started/quick-start">Quick Start</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/conduit/docs/getting-started/configuration">Configuration Guide</a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/conduit/docs/features/api-gateway">Features</a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/conduit/docs/guides/environment-variables">Guides</a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/conduit/docs/api-reference/overview">API Reference</a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/conduit/docs/architecture/overview">Architecture</a></div><ul style="display:block;overflow:visible;height:auto" class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/conduit/docs/architecture/overview">Architecture Overview</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/conduit/docs/architecture/components">Components</a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/conduit/docs/architecture/repository-pattern">Repository Pattern</a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/conduit/docs/troubleshooting/common-issues">Troubleshooting</a></div></li></ul></nav><button type="button" title="Collapse sidebar" aria-label="Collapse sidebar" class="button button--secondary button--outline collapseSidebarButton_PEFL"><svg width="20" height="20" aria-hidden="true" class="collapseSidebarButtonIcon_kv0_"><g fill="#7a7a7a"><path d="M9.992 10.023c0 .2-.062.399-.172.547l-4.996 7.492a.982.982 0 01-.828.454H1c-.55 0-1-.453-1-1 0-.2.059-.403.168-.551l4.629-6.942L.168 3.078A.939.939 0 010 2.528c0-.548.45-.997 1-.997h2.996c.352 0 .649.18.828.45L9.82 9.472c.11.148.172.347.172.55zm0 0"></path><path d="M19.98 10.023c0 .2-.058.399-.168.547l-4.996 7.492a.987.987 0 01-.828.454h-3c-.547 0-.996-.453-.996-1 0-.2.059-.403.168-.551l4.625-6.942-4.625-6.945a.939.939 0 01-.168-.55 1 1 0 01.996-.997h3c.348 0 .649.18.828.45l4.996 7.492c.11.148.168.347.168.55zm0 0"></path></g></svg></button></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs" itemscope="" itemtype="https://schema.org/BreadcrumbList"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/conduit/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Architecture</span><meta itemprop="position" content="1"></li><li itemscope="" itemprop="itemListElement" itemtype="https://schema.org/ListItem" class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link" itemprop="name">Architecture Overview</span><meta itemprop="position" content="2"></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Architecture Overview</h1></header>
+<p>Conduit is built with a modern, modular architecture that prioritizes maintainability, extensibility, and performance. This document provides a high-level overview of the system&#x27;s architecture.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="system-architecture">System Architecture<a href="#system-architecture" class="hash-link" aria-label="Direct link to System Architecture" title="Direct link to System Architecture">​</a></h2>
+<!-- -->
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="key-components">Key Components<a href="#key-components" class="hash-link" aria-label="Direct link to Key Components" title="Direct link to Key Components">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="api-gateway-conduitllmhttp">API Gateway (ConduitLLM.Http)<a href="#api-gateway-conduitllmhttp" class="hash-link" aria-label="Direct link to API Gateway (ConduitLLM.Http)" title="Direct link to API Gateway (ConduitLLM.Http)">​</a></h3>
+<p>The API Gateway serves as the entry point for all client requests. It handles:</p>
+<ul>
+<li>Authentication and authorization</li>
+<li>Request validation</li>
+<li>Rate limiting</li>
+<li>Request logging</li>
+<li>Response formatting</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="core-services-conduitllmcore">Core Services (ConduitLLM.Core)<a href="#core-services-conduitllmcore" class="hash-link" aria-label="Direct link to Core Services (ConduitLLM.Core)" title="Direct link to Core Services (ConduitLLM.Core)">​</a></h3>
+<p>The Core Services module contains the core business logic, including:</p>
+<ul>
+<li>Request routing</li>
+<li>Context management</li>
+<li>Token counting</li>
+<li>Cost calculation</li>
+<li>Router configuration</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="provider-clients-conduitllmproviders">Provider Clients (ConduitLLM.Providers)<a href="#provider-clients-conduitllmproviders" class="hash-link" aria-label="Direct link to Provider Clients (ConduitLLM.Providers)" title="Direct link to Provider Clients (ConduitLLM.Providers)">​</a></h3>
+<p>The Provider Clients module handles communication with various LLM providers:</p>
+<ul>
+<li>Provider-specific API clients</li>
+<li>Request/response mapping</li>
+<li>Error handling and retries</li>
+<li>Model capability detection</li>
+<li>Token utilization tracking</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="configuration-conduitllmconfiguration">Configuration (ConduitLLM.Configuration)<a href="#configuration-conduitllmconfiguration" class="hash-link" aria-label="Direct link to Configuration (ConduitLLM.Configuration)" title="Direct link to Configuration (ConduitLLM.Configuration)">​</a></h3>
+<p>The Configuration module manages all system settings and data storage:</p>
+<ul>
+<li>Model mappings</li>
+<li>Provider credentials</li>
+<li>Router settings</li>
+<li>Virtual keys</li>
+<li>Request logs</li>
+<li>Usage statistics</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="web-ui-conduitllmwebui">Web UI (ConduitLLM.WebUI)<a href="#web-ui-conduitllmwebui" class="hash-link" aria-label="Direct link to Web UI (ConduitLLM.WebUI)" title="Direct link to Web UI (ConduitLLM.WebUI)">​</a></h3>
+<p>The Web UI provides a user-friendly interface for:</p>
+<ul>
+<li>System configuration</li>
+<li>Virtual key management</li>
+<li>Usage monitoring</li>
+<li>Cost tracking</li>
+<li>Request logging</li>
+<li>Testing capabilities</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="cache-service">Cache Service<a href="#cache-service" class="hash-link" aria-label="Direct link to Cache Service" title="Direct link to Cache Service">​</a></h3>
+<p>The Cache Service improves performance and reduces costs by:</p>
+<ul>
+<li>Storing responses for identical requests</li>
+<li>Supporting multiple cache providers (in-memory, Redis)</li>
+<li>Implementing configurable TTL and cache strategies</li>
+<li>Tracking cache performance metrics</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="data-flow">Data Flow<a href="#data-flow" class="hash-link" aria-label="Direct link to Data Flow" title="Direct link to Data Flow">​</a></h2>
+<ol>
+<li>
+<p><strong>Request Flow</strong>:</p>
+<ul>
+<li>Client sends a request to the API Gateway</li>
+<li>Gateway authenticates the request using a virtual key</li>
+<li>Router selects the appropriate provider and model</li>
+<li>Provider client communicates with the LLM service</li>
+<li>Response is returned to the client</li>
+</ul>
+</li>
+<li>
+<p><strong>Configuration Flow</strong>:</p>
+<ul>
+<li>Admin updates settings via Web UI</li>
+<li>Configuration is stored in the database</li>
+<li>Changes are applied immediately through in-memory cache</li>
+<li>Components read configuration as needed</li>
+</ul>
+</li>
+<li>
+<p><strong>Monitoring Flow</strong>:</p>
+<ul>
+<li>All requests are logged to the database</li>
+<li>Usage metrics are calculated and stored</li>
+<li>Cost data is aggregated for reporting</li>
+<li>Health checks monitor provider availability</li>
+</ul>
+</li>
+</ol>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="core-design-principles">Core Design Principles<a href="#core-design-principles" class="hash-link" aria-label="Direct link to Core Design Principles" title="Direct link to Core Design Principles">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="abstraction-and-standardization">Abstraction and Standardization<a href="#abstraction-and-standardization" class="hash-link" aria-label="Direct link to Abstraction and Standardization" title="Direct link to Abstraction and Standardization">​</a></h3>
+<p>Conduit abstracts the differences between LLM providers, presenting a unified API to client applications. This abstraction allows for:</p>
+<ul>
+<li>Provider independence</li>
+<li>Consistent interface</li>
+<li>Simplified client development</li>
+<li>Enhanced flexibility</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="modularity-and-extensibility">Modularity and Extensibility<a href="#modularity-and-extensibility" class="hash-link" aria-label="Direct link to Modularity and Extensibility" title="Direct link to Modularity and Extensibility">​</a></h3>
+<p>The system is designed with a modular architecture that enables:</p>
+<ul>
+<li>Easy addition of new providers</li>
+<li>Customization of routing strategies</li>
+<li>Extensibility through plug-in mechanisms</li>
+<li>Clean separation of concerns</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="resilience-and-reliability">Resilience and Reliability<a href="#resilience-and-reliability" class="hash-link" aria-label="Direct link to Resilience and Reliability" title="Direct link to Resilience and Reliability">​</a></h3>
+<p>Reliability features include:</p>
+<ul>
+<li>Fallback mechanisms for provider failures</li>
+<li>Circuit breakers to prevent cascading failures</li>
+<li>Comprehensive error handling</li>
+<li>Request retries with exponential backoff</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="security">Security<a href="#security" class="hash-link" aria-label="Direct link to Security" title="Direct link to Security">​</a></h3>
+<p>Security is a primary concern, implemented through:</p>
+<ul>
+<li>Virtual key authentication</li>
+<li>Fine-grained permission control</li>
+<li>Secure credential storage</li>
+<li>Rate limiting and abuse prevention</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="technology-stack">Technology Stack<a href="#technology-stack" class="hash-link" aria-label="Direct link to Technology Stack" title="Direct link to Technology Stack">​</a></h2>
+<p>Conduit is built using modern .NET technologies:</p>
+<ul>
+<li><strong>.NET 8</strong>: Core runtime and framework</li>
+<li><strong>ASP.NET Core</strong>: Web API and UI framework</li>
+<li><strong>Entity Framework Core</strong>: Data access and ORM</li>
+<li><strong>Redis</strong> (optional): Distributed caching</li>
+<li><strong>SQLite/PostgreSQL</strong>: Data storage</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="deployment-architecture">Deployment Architecture<a href="#deployment-architecture" class="hash-link" aria-label="Direct link to Deployment Architecture" title="Direct link to Deployment Architecture">​</a></h2>
+<p>Conduit can be deployed in various configurations:</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="single-server-deployment">Single-Server Deployment<a href="#single-server-deployment" class="hash-link" aria-label="Direct link to Single-Server Deployment" title="Direct link to Single-Server Deployment">​</a></h3>
+<!-- -->
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="microservices-deployment">Microservices Deployment<a href="#microservices-deployment" class="hash-link" aria-label="Direct link to Microservices Deployment" title="Direct link to Microservices Deployment">​</a></h3>
+<!-- -->
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="next-steps">Next Steps<a href="#next-steps" class="hash-link" aria-label="Direct link to Next Steps" title="Direct link to Next Steps">​</a></h2>
+<ul>
+<li><a href="/conduit/docs/architecture/components">Components</a>: Detailed information about each component</li>
+<li><a href="/conduit/docs/architecture/repository-pattern">Repository Pattern</a>: How data access is implemented</li>
+<li><a href="/conduit/docs/features/virtual-keys">Virtual Keys</a>: Authentication and authorization</li>
+<li><a href="/conduit/docs/features/model-routing">Model Routing</a>: Request routing mechanisms</li>
+</ul></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col"><a href="https://github.com/knnlabs/conduit/tree/main/website/docs/architecture/overview.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="pagination-nav docusaurus-mt-lg" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/conduit/docs/api-reference/models"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Models API</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/conduit/docs/architecture/components"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Components</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#system-architecture" class="table-of-contents__link toc-highlight">System Architecture</a></li><li><a href="#key-components" class="table-of-contents__link toc-highlight">Key Components</a><ul><li><a href="#api-gateway-conduitllmhttp" class="table-of-contents__link toc-highlight">API Gateway (ConduitLLM.Http)</a></li><li><a href="#core-services-conduitllmcore" class="table-of-contents__link toc-highlight">Core Services (ConduitLLM.Core)</a></li><li><a href="#provider-clients-conduitllmproviders" class="table-of-contents__link toc-highlight">Provider Clients (ConduitLLM.Providers)</a></li><li><a href="#configuration-conduitllmconfiguration" class="table-of-contents__link toc-highlight">Configuration (ConduitLLM.Configuration)</a></li><li><a href="#web-ui-conduitllmwebui" class="table-of-contents__link toc-highlight">Web UI (ConduitLLM.WebUI)</a></li><li><a href="#cache-service" class="table-of-contents__link toc-highlight">Cache Service</a></li></ul></li><li><a href="#data-flow" class="table-of-contents__link toc-highlight">Data Flow</a></li><li><a href="#core-design-principles" class="table-of-contents__link toc-highlight">Core Design Principles</a><ul><li><a href="#abstraction-and-standardization" class="table-of-contents__link toc-highlight">Abstraction and Standardization</a></li><li><a href="#modularity-and-extensibility" class="table-of-contents__link toc-highlight">Modularity and Extensibility</a></li><li><a href="#resilience-and-reliability" class="table-of-contents__link toc-highlight">Resilience and Reliability</a></li><li><a href="#security" class="table-of-contents__link toc-highlight">Security</a></li></ul></li><li><a href="#technology-stack" class="table-of-contents__link toc-highlight">Technology Stack</a></li><li><a href="#deployment-architecture" class="table-of-contents__link toc-highlight">Deployment Architecture</a><ul><li><a href="#single-server-deployment" class="table-of-contents__link toc-highlight">Single-Server Deployment</a></li><li><a href="#microservices-deployment" class="table-of-contents__link toc-highlight">Microservices Deployment</a></li></ul></li><li><a href="#next-steps" class="table-of-contents__link toc-highlight">Next Steps</a></li></ul></div></div></div></div></main></div></div></div><footer class="footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/conduit/docs/intro">Introduction</a></li><li class="footer__item"><a class="footer__link-item" href="/conduit/docs/getting-started/installation">Getting Started</a></li><li class="footer__item"><a class="footer__link-item" href="/conduit/docs/api-reference/overview">API Reference</a></li></ul></div><div class="col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/knnlabs/conduit/discussions" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub Discussions<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a></li><li class="footer__item"><a href="https://github.com/knnlabs/conduit/issues" target="_blank" rel="noopener noreferrer" class="footer__link-item">Issues<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a></li></ul></div><div class="col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/knnlabs/conduit" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2025 KNN Labs, Inc.</div></div></div></footer></div>
+</body>
+</html>
