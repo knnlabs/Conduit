@@ -147,6 +147,88 @@ app.MapGet("/health", () => {
     return Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
 });
 
+// Add completions endpoint (legacy)
+app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {
+    logger.LogInformation("Legacy /completions endpoint called.");
+    return Results.Json(
+        new {
+            error = "The /completions endpoint is not implemented. Please use /chat/completions."
+        },
+        statusCode: 501,
+        options: jsonSerializerOptions
+    );
+});
+
+// Add embeddings endpoint
+app.MapPost("/v1/embeddings", (
+    [FromBody] EmbeddingRequest? request,
+    [FromServices] ILogger<Program> logger) => {
+
+    if (request == null) {
+        return Results.BadRequest(new { error = "Invalid request body." });
+    }
+
+    try {
+        // Currently embeddings are not fully implemented
+        logger.LogWarning("Embeddings endpoint called but CreateEmbeddingAsync not implemented.");
+        return Results.Json(
+            new {
+                error = "Embeddings routing not yet implemented."
+            },
+            statusCode: 501,
+            options: jsonSerializerOptions
+        );
+
+        // Future implementation:
+        // var response = await router.CreateEmbeddingAsync(request, cancellationToken);
+        // return Results.Json(response, options: jsonSerializerOptions);
+    }
+    catch (Exception ex) {
+        logger.LogError(ex, "Error processing embeddings request for model: {Model}", request.Model);
+        return Results.Json(new OpenAIErrorResponse {
+            Error = new OpenAIError {
+                Message = ex.Message,
+                Type = "server_error",
+                Code = "internal_error"
+            }
+        }, statusCode: 500, options: jsonSerializerOptions);
+    }
+});
+
+// Add models endpoint
+app.MapGet("/v1/models", ([FromServices] ILLMRouter router, [FromServices] ILogger<Program> logger) => {
+    try {
+        logger.LogInformation("Getting available models");
+
+        // Get model names from the router
+        var modelNames = router.GetAvailableModels();
+
+        // Convert to OpenAI format
+        var basicModelData = modelNames.Select(m => new {
+            id = m,
+            @object = "model"
+        }).ToList();
+
+        // Create the response envelope
+        var response = new {
+            data = basicModelData,
+            @object = "list"
+        };
+
+        return Results.Json(response, options: jsonSerializerOptions);
+    }
+    catch (Exception ex) {
+        logger.LogError(ex, "Error retrieving models list");
+        return Results.Json(new OpenAIErrorResponse {
+            Error = new OpenAIError {
+                Message = ex.Message,
+                Type = "server_error",
+                Code = "internal_error"
+            }
+        }, statusCode: 500, options: jsonSerializerOptions);
+    }
+});
+
 // Add chat completions endpoint
 app.MapPost("/v1/chat/completions", async (
     [FromBody] ChatCompletionRequest request,

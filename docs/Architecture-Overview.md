@@ -29,12 +29,14 @@ ConduitLLM
 ### ConduitLLM.Http
 - Exposes OpenAI-compatible endpoints (`/v1/chat/completions`, `/v1/models`, etc.)
 - Handles authentication (virtual keys), rate limiting, and error handling
-- Middleware for request tracking, usage, and spend enforcement (now logs detailed usage and analytics, including virtual key and model usage)
+- Middleware for request tracking, usage, and spend enforcement
+- **IMPORTANT: Contains ALL external API functionality**
+- Serves as the only entry point for LLM API clients
 
 ### ConduitLLM.Providers
 - Integrates with multiple LLM providers (OpenAI, Anthropic, Gemini, Cohere, etc.)
 - Maps generic model names to provider-specific models
-- Supports multimodal (vision) and streaming APIs where available (including flexible object-based content)
+- Supports multimodal (vision) and streaming APIs where available
 - Handles provider-specific request/response formatting
 
 ### ConduitLLM.WebUI
@@ -42,6 +44,8 @@ ConduitLLM
 - Organized navigation (Core, Configuration, Keys & Costs, System)
 - Pages for provider setup, model mapping, routing, virtual key management, and usage analytics
 - Real-time notification for budget, key status, and system health
+- **IMPORTANT: No external API functionality** - clean separation of concerns
+- Consumes ConduitLLM.Http API for LLM operations
 
 ## Key Subsystems
 

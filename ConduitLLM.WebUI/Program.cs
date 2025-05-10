@@ -242,11 +242,21 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 // Configure HTTP client for API access
 builder.Services.AddHttpClient("ConduitAPI", client => {
     // Read the base URL from environment variable, fallback to "http://api:8080" for container env
-    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
-                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
+    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
+                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ?
                      "http://api:8080" : "http://localhost:5000");
     client.BaseAddress = new Uri(apiBaseUrl);
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitAPI client with BaseAddress: {apiBaseUrl}");
+});
+
+// Register the Conduit API client
+builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
+    // Same API Base URL as the default named client
+    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
+                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ?
+                     "http://api:8080" : "http://localhost:5000");
+    client.BaseAddress = new Uri(apiBaseUrl);
+    Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {apiBaseUrl}");
 });
 
 // Add Virtual Key maintenance background service
