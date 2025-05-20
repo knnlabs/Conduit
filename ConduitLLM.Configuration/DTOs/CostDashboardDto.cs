@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ConduitLLM.WebUI.DTOs
+namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
     /// Data transfer object for cost dashboard statistics

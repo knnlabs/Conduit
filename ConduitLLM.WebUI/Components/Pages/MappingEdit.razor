@@ -1,17 +1,19 @@
 @page "/configuration/mapping/edit"
 @page "/configuration/mapping/edit/{id:int}"
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Caching.Memory
 @using System.ComponentModel.DataAnnotations
 @using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
+@using ConfigDTO = ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
 @using System.Text.Json
 @using System.Net.Http
 @using System.Net.Http.Headers
 @using Microsoft.Extensions.Logging
 
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject Interfaces.IProviderCredentialService ProviderCredentialService
+@inject Interfaces.IModelProviderMappingService ModelProviderMappingService
+@inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
 @inject ILogger<MappingEdit> _logger
 @inject IMemoryCache MemoryCache
@@ -50,8 +52,8 @@ else
             <div class="mb-4">
                 <label for="modelAlias" class="form-label">Model Alias</label>
                 <input type="text" class="form-control" id="modelAlias" 
-                       @bind="dtoMapping.ModelAlias" />
-                <ValidationMessage For="@(() => dtoMapping.ModelAlias)" />
+                       @bind="dtoMapping.ModelId" />
+                <ValidationMessage For="@(() => dtoMapping.ModelId)" />
             </div>
 
             @if (availableProviders == null)
@@ -66,7 +68,7 @@ else
                 <div class="mb-4">
                     <label for="providerName" class="form-label">Provider Name</label>
                     <select class="form-select" id="providerName" 
-                            value="@dtoMapping.ProviderName"
+                            value="@providerName"
                             @onchange="@(async (ChangeEventArgs e) => await ProviderSelectedAsync(e.Value?.ToString() ?? ""))">
                         <option value="">-- Select Provider --</option>
                         @foreach (var provider in availableProviders)
@@ -74,7 +76,7 @@ else
                             <option value="@provider.ProviderName">@provider.ProviderName</option>
                         }
                     </select>
-                    <ValidationMessage For="@(() => dtoMapping.ProviderName)" />
+                    <ValidationMessage For="@(() => providerName)" />
                 </div>
             }
 
@@ -94,7 +96,7 @@ else
                             <input type="text" class="form-control" id="providerModelIdInput"
                                    @bind="dtoMapping.ProviderModelId"
                                    placeholder="Enter model ID"
-                                   disabled="@string.IsNullOrEmpty(dtoMapping.ProviderName)" />
+                                   disabled="@string.IsNullOrEmpty(providerName)" />
                             
                             @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
                             {
@@ -103,7 +105,7 @@ else
                             @if (providerModels == null || !providerModels.Any())
                             {
                                 <small class="text-muted mt-1 d-block">
-                                    @(string.IsNullOrEmpty(dtoMapping.ProviderName) 
+                                    @(string.IsNullOrEmpty(providerName) 
                                         ? "Select provider first" 
                                         : "Could not retrieve model list. Please enter the model ID manually.")
                                 </small>
@@ -111,7 +113,7 @@ else
                             <div class="mt-2">
                                 <button type="button" class="btn btn-sm btn-outline-secondary"
                                         @onclick="@(() => RefreshModels(true))"
-                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
                                     <i class="fa fa-refresh me-1"></i> Try loading models again
                                 </button>
                                 @if (showModelTextbox && providerModels != null && providerModels.Any())
@@ -129,7 +131,7 @@ else
                         <div class="input-group">
                             <select class="form-select" id="providerModelId"
                                     value="@dtoMapping.ProviderModelId"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))"
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
                                     @onchange="@((ChangeEventArgs e) => ProviderModelSelected(e.Value?.ToString() ?? ""))">
                                 <option value="">-- Select Model --</option>
                                 @foreach (var modelId in providerModels.OrderBy(m => m))
@@ -139,12 +141,12 @@ else
                             </select>
                             <button class="btn btn-outline-secondary" type="button"
                                     @onclick="@(() => RefreshModels(true))"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
                                 <i class="fa fa-refresh"></i>
                             </button>
                             <button class="btn btn-outline-secondary" type="button"
                                     @onclick="ToggleModelInputMode"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderName))">
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
                                 <i class="fa fa-pencil"></i>
                             </button>
                         </div>
@@ -185,14 +187,15 @@ else
     [Parameter]
     public int? Id { get; set; }
     
-    private ConduitLLM.Configuration.ModelProviderMapping dtoMapping = new() 
+    private ConfigDTO.ModelProviderMappingDto dtoMapping = new() 
     { 
-        ModelAlias = "",
-        ProviderName = "",
+        ModelId = "",
+        ProviderId = "",
         ProviderModelId = ""
     };
     
-    private List<ConduitLLM.Configuration.Entities.ProviderCredential> availableProviders = new();
+    private string providerName = "";
+    private List<ConfigDTO.ProviderCredentialDto> availableProviders = new();
     private List<string> providerModels = new();
     private string? errorMessage; // General errors displayed at the form level
     private string? modelLoadErrorMessage; // Specific error for model loading
@@ -207,30 +210,28 @@ else
     {
         try
         {
-            // Load available providers (from Config context)
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            availableProviders = await dbContext.ProviderCredentials.ToListAsync();
+            // Load available providers
+            var providers = await ProviderCredentialService.GetAllAsync();
+            availableProviders = providers.ToList();
             
             if (Id.HasValue) // Editing existing
             {
-                var entityMapping = await dbContext.ModelProviderMappings
-                    .Include(m => m.ProviderCredential)
-                    .FirstOrDefaultAsync(m => m.Id == Id.Value);
+                var entityMapping = await ModelProviderMappingService.GetByIdAsync(Id.Value);
                 
                 if (entityMapping != null)
                 {
-                    // Convert from entity to DTO
-                    dtoMapping = new ConduitLLM.Configuration.ModelProviderMapping
-                    {
-                        ModelAlias = entityMapping.ModelAlias,
-                        ProviderName = entityMapping.ProviderCredential?.ProviderName ?? "",
-                        ProviderModelId = entityMapping.ProviderModelName ?? ""
-                    };
+                    dtoMapping = entityMapping;
                     
-                    // Load provider models for the selected provider
-                    if (!string.IsNullOrEmpty(dtoMapping.ProviderName))
+                    // Set the provider name for the UI
+                    var provider = await ProviderCredentialService.GetByIdAsync(
+                        int.TryParse(dtoMapping.ProviderId, out int id) ? id : 0);
+                    
+                    if (provider != null)
                     {
-                        await LoadProviderModelsAsync(dtoMapping.ProviderName);
+                        providerName = provider.ProviderName;
+                        
+                        // Load provider models for the selected provider
+                        await LoadProviderModelsAsync(providerName);
                     }
                 }
                 else
@@ -240,10 +241,10 @@ else
             }
             else
             {
-                dtoMapping = new ConduitLLM.Configuration.ModelProviderMapping
+                dtoMapping = new ConfigDTO.ModelProviderMappingDto
                 {
-                    ModelAlias = "",
-                    ProviderName = "",
+                    ModelId = "",
+                    ProviderId = "",
                     ProviderModelId = ""
                 };
             }
@@ -273,9 +274,7 @@ else
         try
         {
             // First check if we have a valid credential for this provider
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var provider = await dbContext.ProviderCredentials
-                .FirstOrDefaultAsync(p => p.ProviderName == providerName);
+            var provider = await ProviderCredentialService.GetByProviderNameAsync(providerName);
                 
             if (provider == null)
             {
@@ -323,7 +322,7 @@ else
         }
     }
 
-    private async Task<List<string>> LoadModelsFromApi(ProviderCredential provider)
+    private async Task<List<string>> LoadModelsFromApi(ConfigDTO.ProviderCredentialDto provider)
     {
         try
         {
@@ -347,11 +346,18 @@ else
             return;
         }
         
-        if (selectedProvider != dtoMapping.ProviderName)
+        if (selectedProvider != providerName)
         {
-            // Update the DTO and clear the model ID since provider changed
-            dtoMapping.ProviderName = selectedProvider;
+            // Update the provider name and clear the model ID since provider changed
+            providerName = selectedProvider;
             dtoMapping.ProviderModelId = ""; // Reset model selection
+            
+            // Set ProviderId based on selected provider
+            var selectedProviderObj = availableProviders.FirstOrDefault(p => p.ProviderName == selectedProvider);
+            if (selectedProviderObj != null)
+            {
+                dtoMapping.ProviderId = selectedProviderObj.Id.ToString();
+            }
             
             // Load models for the selected provider
             await LoadProviderModelsAsync(selectedProvider);
@@ -371,7 +377,7 @@ else
 
     private async Task RefreshModels(bool forceRefresh)
     {
-        if (!string.IsNullOrEmpty(dtoMapping.ProviderName))
+        if (!string.IsNullOrEmpty(providerName))
         {
             try
             {
@@ -381,14 +387,14 @@ else
                 StateHasChanged();
                 
                 // Directly use the ProviderModelsService to get models with forceRefresh option
-                providerModels = await ProviderModelsService.GetModelsAsync(dtoMapping.ProviderName, forceRefresh);
+                providerModels = await ProviderModelsService.GetModelsAsync(providerName, forceRefresh);
                 
                 _logger.LogInformation("Refreshed models for provider {ProviderName}, found {Count} models",
-                    dtoMapping.ProviderName, providerModels.Count);
+                    providerName, providerModels.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error refreshing models for provider {ProviderName}", dtoMapping.ProviderName);
+                _logger.LogError(ex, "Error refreshing models for provider {ProviderName}", providerName);
                 modelLoadErrorMessage = $"Error: {ex.Message}";
             }
             finally
@@ -410,51 +416,50 @@ else
         try
         {
             // Validate required fields
-            if (string.IsNullOrWhiteSpace(dtoMapping.ModelAlias) || 
-                string.IsNullOrWhiteSpace(dtoMapping.ProviderName) ||
+            if (string.IsNullOrWhiteSpace(dtoMapping.ModelId) || 
+                string.IsNullOrWhiteSpace(providerName) ||
                 string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId))
             {
                 errorMessage = "All fields are required";
                 return;
             }
             
-            // Check if model alias already exists (from Config context) and it's not the current one
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            
-            var provider = await dbContext.ProviderCredentials
-                .FirstOrDefaultAsync(p => p.ProviderName == dtoMapping.ProviderName);
+            // Check if provider exists
+            var provider = await ProviderCredentialService.GetByProviderNameAsync(providerName);
                 
             if (provider == null)
             {
-                errorMessage = $"Provider '{dtoMapping.ProviderName}' not found.";
+                errorMessage = $"Provider '{providerName}' not found.";
                 return;
             }
             
             // Check if alias exists, excluding the current mapping if editing
-            bool aliasExists = await dbContext.ModelProviderMappings
-                .AnyAsync(m => m.ModelAlias == dtoMapping.ModelAlias && 
+            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            bool aliasExists = allMappings.Any(m => m.ModelId == dtoMapping.ModelId && 
                          (Id == null || m.Id != Id.Value));
 
             if (aliasExists)
             {
-                 // Add validation message specifically for the ModelAlias field
-                 messageStore?.Add(() => dtoMapping.ModelAlias, $"Model alias '{dtoMapping.ModelAlias}' already exists.");
+                 // Add validation message specifically for the ModelId field
+                 messageStore?.Add(() => dtoMapping.ModelId, $"Model alias '{dtoMapping.ModelId}' already exists.");
                  editContext?.NotifyValidationStateChanged(); // Trigger UI update for validation messages
                  return; // Stop processing
             }
 
-            // --- Database Operations (on Config context) ---
+            // Update mapping DTO with provider ID
+            dtoMapping.ProviderId = provider.Id.ToString();
+            // Set additional properties for backward compatibility
+            
+            
+            // Save the mapping
+            ConfigDTO.ModelProviderMappingDto? result;
+            
             if (Id.HasValue) // Update
             {
-                var existingMapping = await dbContext.ModelProviderMappings.FindAsync(Id.Value);
-                if (existingMapping != null)
-                {
-                    existingMapping.ModelAlias = dtoMapping.ModelAlias;
-                    existingMapping.ProviderCredentialId = provider.Id;
-                    existingMapping.ProviderModelName = dtoMapping.ProviderModelId;
-                    dbContext.ModelProviderMappings.Update(existingMapping);
-                }
-                else
+                dtoMapping.Id = Id.Value;
+                result = await ModelProviderMappingService.UpdateAsync(dtoMapping);
+                
+                if (result == null)
                 {
                     errorMessage = "Error: Mapping not found during update.";
                     StateHasChanged();
@@ -463,28 +468,21 @@ else
             }
             else // Add
             {
-                var newMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                result = await ModelProviderMappingService.CreateAsync(dtoMapping);
+                
+                if (result == null)
                 {
-                    ModelAlias = dtoMapping.ModelAlias,
-                    ProviderCredentialId = provider.Id,
-                    ProviderModelName = dtoMapping.ProviderModelId,
-                    IsEnabled = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                dbContext.ModelProviderMappings.Add(newMapping);
+                    errorMessage = "Error: Failed to create mapping.";
+                    StateHasChanged();
+                    return;
+                }
             }
-
-            await dbContext.SaveChangesAsync();
             
             // Notify the Conduit HTTP proxy about configuration changes
             try
             {
-                // Get the proxy base URL from global settings (from Config context)
-                var proxyUrlSetting = await dbContext.GlobalSettings
-                    .FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
-                
-                string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
+                // Get the proxy base URL from global settings service
+                var proxyUrl = await GlobalSettingService.GetSettingAsync("ConduitSettings:ProxyBaseUrl") ?? "http://localhost:5000";
                 
                 bool notificationSuccess = await ConfigChangeNotifier.NotifyConfigurationChangedAsync(proxyUrl);
                 if (!notificationSuccess)
@@ -500,11 +498,6 @@ else
             }
             
             NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
-        }
-        catch (DbUpdateException dbEx)
-        {
-            errorMessage = $"Database error saving mapping: {dbEx.InnerException?.Message ?? dbEx.Message}";
-            // StateHasChanged(); // EditContext changes trigger state update
         }
         catch (Exception ex)
         {

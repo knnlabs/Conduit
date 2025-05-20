@@ -298,7 +298,7 @@ namespace ConduitLLM.Configuration.Services
         }
 
         /// <inheritdoc/>
-        public async Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
+        public async Task<Services.Dtos.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
         {
             try
             {
@@ -308,7 +308,7 @@ namespace ConduitLLM.Configuration.Services
                     .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                     .ToListAsync();
 
-                var summary = new LogsSummaryDto
+                var summary = new Services.Dtos.LogsSummaryDto
                 {
                     TotalRequests = logs.Count,
                     TotalCost = logs.Sum(r => r.Cost),
@@ -333,7 +333,7 @@ namespace ConduitLLM.Configuration.Services
 
                 foreach (var model in modelGroups)
                 {
-                    summary.RequestsByModel[model.ModelName] = model.RequestCount;
+                    summary.RequestsByModelDict[model.ModelName] = model.RequestCount;
                     summary.CostByModel[model.ModelName] = model.TotalCost;
                 }
 

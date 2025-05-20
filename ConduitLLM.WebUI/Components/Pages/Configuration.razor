@@ -1,19 +1,24 @@
 @page "/configuration"
 @using System.Text.Json
-@using Microsoft.EntityFrameworkCore
 @using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
+@using ConfigDTOs = ConduitLLM.Configuration.DTOs
+@using WebUIDTOs = ConduitLLM.WebUI.DTOs
 @using ConduitLLM.Providers.Configuration
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
 @using Microsoft.Extensions.Logging
 @using System.Collections.Generic
 @using System.Linq
 @using System.Threading.Tasks
 @using Microsoft.JSInterop
+@using Microsoft.EntityFrameworkCore
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject Interfaces.IProviderCredentialService ProviderCredentialService
+@inject Interfaces.IModelProviderMappingService ModelProviderMappingService
+@inject IGlobalSettingService GlobalSettingService
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
 @inject HttpRetryConfigurationService HttpRetryService
 @inject HttpTimeoutConfigurationService HttpTimeoutService
@@ -103,7 +108,7 @@
                                     <td>
                                         <span class="text-secondary">@(string.IsNullOrEmpty(context.ApiKey) ? "Not set" : "••••••••")</span>
                                     </td>
-                                    <td>@(string.IsNullOrEmpty(context.BaseUrl) ? "Default" : context.BaseUrl)</td>
+                                    <td>@(string.IsNullOrEmpty(context.ApiBase) ? "Default" : context.ApiBase)</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditProvider(context.Id)">Edit</button>
@@ -161,9 +166,9 @@
                             @foreach (var context in modelMappings)
                             {
                                 <tr>
-                                    <td>@context.ModelAlias</td>
-                                    <td>@context.ProviderCredential?.ProviderName</td>
-                                    <td>@context.ProviderModelName</td>
+                                    <td>@context.ModelId</td>
+                                    <td>@GetProviderNameById(context.ProviderId)</td>
+                                    <td>@context.ProviderModelId</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => HandleEditMapping(context.Id)">
@@ -515,17 +520,17 @@
 <GuidedSetupWizard
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
-    OnSetupComplete="HandleSetupComplete"
+    OnSetupComplete="@(async (ConduitLLM.Configuration.Entities.ProviderCredential provider) => await HandleSetupComplete(provider))"
     IsOpenChanged="HandleIsOpenChanged" />
 
 @code {
     // --- Providers and Mappings State ---
-    private List<ConduitLLM.Configuration.Entities.ProviderCredential> providerCredentials = new();
-    private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
-    private List<ConduitLLM.Configuration.Entities.GlobalSetting> globalSettings = new();
+    private List<ConfigDTOs.ProviderCredentialDto> providerCredentials = new();
+    private List<ConfigDTOs.ModelProviderMappingDto> modelMappings = new();
+    private List<ConfigDTOs.GlobalSettingDto> globalSettings = new();
 
     // Provider form state
-    private ConduitLLM.Configuration.Entities.ProviderCredential currentProvider = new();
+    private ConfigDTOs.ProviderCredentialDto currentProvider = new();
 
     // Mapping form state
     private bool isEditingMapping = false;
@@ -551,7 +556,7 @@
     private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
 
     // Settings state
-    private ConduitLLM.Configuration.Entities.GlobalSetting currentSettings = new();
+    private ConfigDTOs.GlobalSettingDto currentSettings = new();
     
     // HTTP options state
     private string? proxyBaseUrlInput;
@@ -599,13 +604,13 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            providerCredentials = await dbContext.ProviderCredentials.ToListAsync();
+            var providers = await ProviderCredentialService.GetAllAsync();
+            providerCredentials = providers.ToList();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider credentials");
-            providerCredentials = new List<ConduitLLM.Configuration.Entities.ProviderCredential>(); 
+            providerCredentials = new List<ConfigDTOs.ProviderCredentialDto>(); 
         }
     }
     
@@ -613,16 +618,13 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            modelMappings = await dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
-                .OrderBy(m => m.ModelAlias)
-                .ToListAsync();
+            var mappings = await ModelProviderMappingService.GetAllAsync();
+            modelMappings = mappings.OrderBy(m => m.ModelId).ToList();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading model mappings");
-            modelMappings = new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
+            modelMappings = new List<ConfigDTOs.ModelProviderMappingDto>();
         }
     }
     
@@ -630,9 +632,7 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
-            proxyBaseUrlInput = proxyUrlSetting?.Value;
+            proxyBaseUrlInput = await GlobalSettingService.GetSettingAsync("ConduitSettings:ProxyBaseUrl");
         }
         catch (Exception ex)
         {
@@ -669,8 +669,7 @@
         try
         {
             deleteErrorMessage = null;
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            var providerToDelete = await dbContext.ProviderCredentials.FindAsync(id);
+            var providerToDelete = await ProviderCredentialService.GetByIdAsync(id);
             if (providerToDelete == null) return;
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
@@ -678,23 +677,29 @@
 
             if (!confirmed) return;
 
-            var relatedMappings = await dbContext.ModelProviderMappings
-                .Where(m => m.ProviderCredentialId == providerToDelete.Id)
-                .ToListAsync();
+            // Get related mappings and delete them first
+            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            var relatedMappings = allMappings.Where(m => int.Parse(m.ProviderId) == providerToDelete.Id).ToList();
 
-            if (relatedMappings.Any())
+            foreach (var mapping in relatedMappings)
             {
-                dbContext.ModelProviderMappings.RemoveRange(relatedMappings);
+                await ModelProviderMappingService.DeleteAsync(mapping.Id);
             }
 
-            dbContext.ProviderCredentials.Remove(providerToDelete);
-            await dbContext.SaveChangesAsync(); 
-
-            await LoadProvidersAsync(); 
-            await LoadModelMappingsAsync();
+            var success = await ProviderCredentialService.DeleteAsync(id);
             
-            deleteErrorMessage = null;
-            await JSRuntime.InvokeVoidAsync("alert", $"Provider '{providerToDelete.ProviderName}' deleted successfully");
+            if (success)
+            {
+                await LoadProvidersAsync(); 
+                await LoadModelMappingsAsync();
+                
+                deleteErrorMessage = null;
+                await JSRuntime.InvokeVoidAsync("alert", $"Provider '{providerToDelete.ProviderName}' deleted successfully");
+            }
+            else
+            {
+                deleteErrorMessage = "Failed to delete provider.";
+            }
         }
         catch (Exception ex)
         {
@@ -718,19 +723,24 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var mapping = await dbContext.ModelProviderMappings.FindAsync(id);
+            var mapping = await ModelProviderMappingService.GetByIdAsync(id);
             if (mapping == null)
             {
                 Logger.LogError("No mapping found with ID {Id}", id);
                 return;
             }
 
-            dbContext.ModelProviderMappings.Remove(mapping);
-            await dbContext.SaveChangesAsync();
+            var success = await ModelProviderMappingService.DeleteAsync(id);
             
-            await LoadModelMappingsAsync();
-            await JSRuntime.InvokeVoidAsync("alert", "Model mapping deleted successfully");
+            if (success)
+            {
+                await LoadModelMappingsAsync();
+                await JSRuntime.InvokeVoidAsync("alert", "Model mapping deleted successfully");
+            }
+            else
+            {
+                Logger.LogError("Failed to delete mapping with ID {Id}", id);
+            }
         }
         catch (Exception ex)
         {
@@ -782,23 +792,38 @@
         await InvokeAsync(StateHasChanged);
     }
     
-    private async Task HandleSetupComplete(ConduitLLM.Configuration.Entities.ProviderCredential newProvider) 
+    private async Task HandleSetupComplete(ConduitLLM.Configuration.Entities.ProviderCredential providerEntity) 
     {
         try
         {
-            Logger.LogDebug("HandleSetupComplete called for provider: {ProviderName}", newProvider.ProviderName);
+            Logger.LogDebug("HandleSetupComplete called for provider: {ProviderName}", providerEntity.ProviderName);
             
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            await dbContext.ProviderCredentials.AddAsync(newProvider);
-            await dbContext.SaveChangesAsync();
-
-            await LoadProvidersAsync();
-            await LoadModelMappingsAsync();
+            // Convert entity to DTO
+            var newProvider = new ConfigDTOs.CreateProviderCredentialDto
+            {
+                ProviderName = providerEntity.ProviderName,
+                ApiKey = providerEntity.ApiKey,
+                ApiBase = providerEntity.BaseUrl,
+                IsEnabled = providerEntity.IsEnabled
+            };
             
-            // The wizard should close itself via the IsOpenChanged event
-            // We don't need to set isGuidedSetupOpen = false here as it will be set in HandleIsOpenChanged
+            var createdProvider = await ProviderCredentialService.CreateAsync(newProvider);
             
-            await JSRuntime.InvokeVoidAsync("alert", $"Provider '{newProvider.ProviderName}' added successfully");
+            if (createdProvider != null)
+            {
+                await LoadProvidersAsync();
+                await LoadModelMappingsAsync();
+                
+                // The wizard should close itself via the IsOpenChanged event
+                // We don't need to set isGuidedSetupOpen = false here as it will be set in HandleIsOpenChanged
+                
+                await JSRuntime.InvokeVoidAsync("alert", $"Provider '{newProvider.ProviderName}' added successfully");
+            }
+            else
+            {
+                deleteErrorMessage = "Failed to create provider. It may already exist.";
+                await InvokeAsync(StateHasChanged);
+            }
         }
         catch (Exception ex)
         {
@@ -826,24 +851,34 @@
             _ => "Connect to AI models through this provider"
         };
     }
+    
+    private string GetProviderNameById(string providerId)
+    {
+        if (string.IsNullOrEmpty(providerId) || !int.TryParse(providerId, out int id))
+        {
+            return "Unknown";
+        }
+        
+        var provider = providerCredentials.FirstOrDefault(p => p.Id == id);
+        return provider?.ProviderName ?? "Unknown";
+    }
 
     // --- Mapping form state ---
     private async Task HandleEditMapping(int id)
     {
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
-        
-        var mapping = await dbContext.ModelProviderMappings
-            .Include(m => m.ProviderCredential)
-            .FirstOrDefaultAsync(m => m.Id == id);
+        var mapping = await ModelProviderMappingService.GetByIdAsync(id);
             
         if (mapping != null)
         {
+            // Get provider by ID to get the provider name
+            var provider = await ProviderCredentialService.GetByIdAsync(int.Parse(mapping.ProviderId));
+            
             currentMapping = new MappingFormModel
             {
                 Id = mapping.Id, // Store the ID to identify this record for updates
-                ModelAlias = mapping.ModelAlias,
-                ProviderName = mapping.ProviderCredential.ProviderName,
-                ProviderModelId = mapping.ProviderModelName
+                ModelAlias = mapping.ModelId,
+                ProviderName = provider?.ProviderName ?? "",
+                ProviderModelId = mapping.ProviderModelId
             };
             isEditingMapping = true;
             mappingErrorMessage = null;
@@ -875,10 +910,8 @@
             return;
         }
 
-        using var dbContext = await DbContextFactory.CreateDbContextAsync();
-        
-        var provider = await dbContext.ProviderCredentials
-            .FirstOrDefaultAsync(p => p.ProviderName == currentMapping.ProviderName);
+        // Get provider by name to ensure it exists
+        var provider = await ProviderCredentialService.GetByProviderNameAsync(currentMapping.ProviderName);
             
         if (provider == null)
         {
@@ -887,11 +920,9 @@
         }
         
         // Check for duplicate alias only if we're creating a new mapping or changing the alias
-        // For updates to existing mappings, we need to exclude the current mapping from the duplicate check
-        var existingMapping = await dbContext.ModelProviderMappings
-            .Include(m => m.ProviderCredential)
-            .FirstOrDefaultAsync(m => m.ModelAlias == currentMapping.ModelAlias && 
-                                       m.Id != currentMapping.Id); // Exclude the current mapping by ID
+        var allMappings = await ModelProviderMappingService.GetAllAsync();
+        var existingMapping = allMappings.FirstOrDefault(m => m.ModelId == currentMapping.ModelAlias && 
+                                                              m.Id != currentMapping.Id); // Exclude the current mapping by ID
                                      
         if (existingMapping != null)
         {
@@ -903,44 +934,40 @@
         {
             // Determine if this is an update or a new record
             bool isUpdate = currentMapping.Id > 0;
-            ConduitLLM.Configuration.Entities.ModelProviderMapping mappingEntity;
+            
+            var mappingDto = new ConfigDTOs.ModelProviderMappingDto
+            {
+                Id = currentMapping.Id,
+                ModelId = currentMapping.ModelAlias,
+                ProviderModelId = currentMapping.ProviderModelId,
+                ProviderId = provider.Id.ToString(),
+                IsEnabled = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            ConfigDTOs.ModelProviderMappingDto? result;
             
             if (isUpdate)
             {
-                // Get the existing entity for update
-                mappingEntity = await dbContext.ModelProviderMappings.FindAsync(currentMapping.Id) ?? new ConduitLLM.Configuration.Entities.ModelProviderMapping();
+                result = await ModelProviderMappingService.UpdateAsync(mappingDto);
                 
-                if (mappingEntity == null)
+                if (result == null)
                 {
                     mappingErrorMessage = "The mapping you're trying to update no longer exists.";
                     return;
                 }
-                
-                // Update the existing entity's properties
-                mappingEntity.ModelAlias = currentMapping.ModelAlias;
-                mappingEntity.ProviderModelName = currentMapping.ProviderModelId;
-                mappingEntity.ProviderCredentialId = provider.Id;
-                mappingEntity.UpdatedAt = DateTime.UtcNow;
-                
-                dbContext.ModelProviderMappings.Update(mappingEntity);
             }
             else
             {
-                // Create a new entity
-                mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
-                {
-                    ModelAlias = currentMapping.ModelAlias,
-                    ProviderModelName = currentMapping.ProviderModelId,
-                    ProviderCredentialId = provider.Id,
-                    IsEnabled = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+                result = await ModelProviderMappingService.CreateAsync(mappingDto);
                 
-                dbContext.ModelProviderMappings.Add(mappingEntity);
+                if (result == null)
+                {
+                    mappingErrorMessage = "Failed to create the mapping.";
+                    return;
+                }
             }
-            
-            await dbContext.SaveChangesAsync();
             
             isEditingMapping = false;
             currentMapping = new MappingFormModel 
@@ -966,21 +993,7 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-            var proxyUrlSetting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == "ConduitSettings:ProxyBaseUrl");
-            
-            if (proxyUrlSetting == null)
-            {
-                proxyUrlSetting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = "ConduitSettings:ProxyBaseUrl", Value = proxyBaseUrlInput ?? string.Empty }; 
-                dbContext.GlobalSettings.Add(proxyUrlSetting);
-            }
-            else
-            {
-                proxyUrlSetting.Value = proxyBaseUrlInput ?? string.Empty;
-                dbContext.GlobalSettings.Update(proxyUrlSetting);
-            }
-            
-            await dbContext.SaveChangesAsync();
+            await GlobalSettingService.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
             
             proxyUrlSaveMessage = "Base URL saved successfully";
             await JSRuntime.InvokeVoidAsync("alert", "Base URL saved successfully");

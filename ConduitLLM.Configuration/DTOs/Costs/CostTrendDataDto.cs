@@ -1,9 +1,9 @@
 using System;
 
-namespace ConduitLLM.WebUI.DTOs
+namespace ConduitLLM.Configuration.DTOs.Costs
 {
     /// <summary>
-    /// Cost trend data for charting
+    /// Cost trend data point for charting
     /// </summary>
     public class CostTrendDataDto
     {
@@ -16,10 +16,5 @@ namespace ConduitLLM.WebUI.DTOs
         /// Cost amount
         /// </summary>
         public decimal Cost { get; set; }
-        
-        /// <summary>
-        /// Number of requests
-        /// </summary>
-        public int Requests { get; set; }
     }
 }

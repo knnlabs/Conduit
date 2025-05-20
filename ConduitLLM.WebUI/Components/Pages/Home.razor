@@ -1,14 +1,14 @@
 @page "/"
 @using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Configuration
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.Core.Caching
 @using ConduitLLM.Core.Models.Routing
 @using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.Configuration.Repositories
+@using ConduitLLM.Configuration.Entities
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
 @inject IProviderHealthRepository ProviderHealthRepository
@@ -16,7 +16,7 @@
 @inject IRouterService RouterService
 @inject ConduitLLM.WebUI.Interfaces.ICacheStatusService CacheStatusService
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject Interfaces.IProviderCredentialService ProviderCredentialService
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -472,9 +472,9 @@
 @code {
     private bool IsMasterKeySet => !string.IsNullOrEmpty(Configuration["CONDUIT_MASTER_KEY"]);
     
-    private List<ProviderCredential> providers = new();
+    private List<ProviderCredentialDto> providers = new();
     private Dictionary<string, ProviderStatus> providerStatuses = new();
-    private Dictionary<string, ProviderHealthConfiguration> providerConfigurations = new();
+    private Dictionary<string, ProviderHealthConfigurationDto> providerConfigurations = new();
     private bool isLoading = true;
     private bool isCheckingStatus = false;
     private int providerCount = 0;
@@ -507,13 +507,31 @@
             StateHasChanged();
             
             // Load providers
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            providers = await dbContext.ProviderCredentials.ToListAsync();
+            var allProviders = await ProviderCredentialService.GetAllAsync();
+            providers = allProviders.ToList();
             providerCount = providers.Count;
             
             // Load provider configurations
             var configs = await ProviderHealthRepository.GetAllConfigurationsAsync();
-            providerConfigurations = configs.ToDictionary(c => c.ProviderName, c => c);
+            var providerConfigDtos = new List<ProviderHealthConfigurationDto>();
+            
+            foreach (var config in configs)
+            {
+                providerConfigDtos.Add(new ProviderHealthConfigurationDto 
+                { 
+                    Id = config.Id,
+                    ProviderName = config.ProviderName,
+                    MonitoringEnabled = config.MonitoringEnabled,
+                    CheckIntervalMinutes = config.CheckIntervalMinutes,
+                    ConsecutiveFailuresThreshold = config.ConsecutiveFailuresThreshold,
+                    NotificationsEnabled = config.NotificationsEnabled,
+                    LastCheckedUtc = config.LastCheckedUtc,
+                    CustomEndpointUrl = config.CustomEndpointUrl,
+                    TimeoutSeconds = config.TimeoutSeconds
+                });
+            }
+            
+            providerConfigurations = providerConfigDtos.ToDictionary(c => c.ProviderName, c => c);
             
             // Initial checks
             await CheckAllProvidersStatus();

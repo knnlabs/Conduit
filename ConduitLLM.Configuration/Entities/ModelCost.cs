@@ -90,4 +90,16 @@ public class ModelCost
     /// Should be updated whenever the cost record is modified.
     /// </remarks>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Optional description for this model cost entry (for backward compatibility)
+    /// </summary>
+    [NotMapped]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Optional priority value for this model cost entry (for backward compatibility)
+    /// </summary>
+    [NotMapped]
+    public int Priority { get; set; }
 }

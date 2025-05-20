@@ -1,45 +1,21 @@
 using System;
+using Conf = ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.WebUI.DTOs
 {
     /// <summary>
-    /// Detailed cost data for export
+    /// Wrapper for ConduitLLM.Configuration.DTOs.DetailedCostDataDto that adds backward compatibility properties.
+    /// This class should be used in the WebUI project to ensure compatibility with older code.
     /// </summary>
-    public class DetailedCostDataDto
+    public class DetailedCostDataDto : Conf.DetailedCostDataDto
     {
         /// <summary>
-        /// Date of the cost data
+        /// Number of requests (legacy property name)
         /// </summary>
-        public DateTime Date { get; set; }
-        
-        /// <summary>
-        /// Model name
-        /// </summary>
-        public string Model { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Virtual key name
-        /// </summary>
-        public string KeyName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Number of requests
-        /// </summary>
-        public int Requests { get; set; }
-        
-        /// <summary>
-        /// Total input tokens
-        /// </summary>
-        public int InputTokens { get; set; }
-        
-        /// <summary>
-        /// Total output tokens
-        /// </summary>
-        public int OutputTokens { get; set; }
-        
-        /// <summary>
-        /// Total cost
-        /// </summary>
-        public decimal Cost { get; set; }
+        public int RequestCount 
+        { 
+            get => base.Requests; 
+            set => base.Requests = value;
+        }
     }
 }

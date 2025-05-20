@@ -4,6 +4,7 @@ using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Tests.Extensions;
 using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;

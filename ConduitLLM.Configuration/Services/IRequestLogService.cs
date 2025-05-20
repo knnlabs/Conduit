@@ -90,7 +90,7 @@ namespace ConduitLLM.Configuration.Services
         /// <param name="startDate">Start date of the period</param>
         /// <param name="endDate">End date of the period</param>
         /// <returns>Summary statistics</returns>
-        Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate);
+        Task<Services.Dtos.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate);
         
         /// <summary>
         /// Gets all distinct model names from the request logs

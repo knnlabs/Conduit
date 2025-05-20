@@ -1,31 +1,12 @@
-using System.ComponentModel.DataAnnotations;
+// This file provides backward compatibility - use ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto instead
 
 namespace ConduitLLM.WebUI.DTOs;
 
 /// <summary>
-/// DTO for requesting the creation of a new Virtual Key.
+/// Type alias for the CreateVirtualKeyRequestDto from ConduitLLM.Configuration.DTOs.VirtualKey
+/// This exists to maintain backward compatibility while consolidating duplicate definitions.
 /// </summary>
-public class CreateVirtualKeyRequestDto
+public class CreateVirtualKeyRequestDto : ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto
 {
-    [Required]
-    [MaxLength(100)]
-    public string KeyName { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Optional comma-separated list of allowed model aliases.
-    /// If null/empty, all models are allowed.
-    /// </summary>
-    public string? AllowedModels { get; set; }
-
-    public decimal? MaxBudget { get; set; }
-
-    [MaxLength(20)]
-    public string? BudgetDuration { get; set; } // e.g., "Total", "Monthly"
-
-    public DateTime? ExpiresAt { get; set; }
-
-    /// <summary>
-    /// Optional JSON string for metadata.
-    /// </summary>
-    public string? Metadata { get; set; }
+    // All functionality is inherited from the base class
 }

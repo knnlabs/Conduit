@@ -78,6 +78,27 @@ flowchart LR
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
+- **ConduitLLM.Admin**: Administrative API for configuration management
+
+### Admin API Client
+
+The Admin API client provides a way for the WebUI to interact with the Admin API service without direct project references. This breaks the circular dependency between the projects and improves the architecture.
+
+To configure the Admin API client in your deployment:
+
+```yaml
+# Docker Compose environment variables
+environment:
+  CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
+  CONDUIT_MASTER_KEY: your_master_key       # Master key for authentication
+  CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
+```
+
+Key features:
+- **Decoupled Architecture**: WebUI and Admin projects are fully decoupled
+- **Flexible Deployment**: Services can be deployed separately in distributed environments
+- **Clean API Contracts**: API contracts explicitly defined through interfaces and DTOs
+- **Configuration Control**: Toggle between direct DB access and API access with a simple flag
 
 ### Docker Images: WebUI and Http Separation
 
@@ -233,6 +254,9 @@ See the `docs/` directory for detailed documentation:
 
 - [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
+  - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
+  - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
+  - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
 - [Budget Management](docs/Budget-Management.md)
 - [Cache Configuration](docs/Cache-Configuration.md)
 - [Configuration Guide](docs/Configuration-Guide.md)

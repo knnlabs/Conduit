@@ -1,7 +1,7 @@
 @page "/cost-dashboard"
 @using System.Globalization
 @using System.Text
-@using ConduitLLM.WebUI.DTOs
+@using ConfigDTO = ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
@@ -62,7 +62,7 @@
                             {
                                 @foreach (var key in virtualKeys)
                                 {
-                                    <option value="@key.Id.ToString()">@key.KeyName</option>
+                                    <option value="@key.Id.ToString()">@key.Name</option>
                                 }
                             }
                         </select>
@@ -221,8 +221,8 @@
                                         @foreach (var item in dashboardData.CostByModel.OrderByDescending(m => m.Cost))
                                         {
                                             <tr>
-                                                <td>@item.Model</td>
-                                                <td>@item.Requests.ToString("N0")</td>
+                                                <td>@item.ModelName</td>
+                                                <td>@item.RequestCount.ToString("N0")</td>
                                                 <td>$@item.Cost.ToString("F2")</td>
                                                 <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                             </tr>
@@ -279,8 +279,8 @@
                                 @foreach (var item in dashboardData.CostByVirtualKey.OrderByDescending(k => k.Cost))
                                 {
                                     <tr>
-                                        <td>@item.KeyName</td>
-                                        <td>@item.Requests.ToString("N0")</td>
+                                        <td>@item.VirtualKeyName</td>
+                                        <td>@item.RequestCount.ToString("N0")</td>
                                         <td>$@item.Cost.ToString("F2")</td>
                                         <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                     </tr>
@@ -304,8 +304,8 @@
     private string selectedModel = "all";
     
     // Data state
-    private CostDashboardDto? dashboardData;
-    private List<VirtualKey>? virtualKeys;
+    private ConfigDTO.CostDashboardDto? dashboardData;
+    private List<ConfigDTO.VirtualKey.VirtualKeyDto>? virtualKeys;
     private List<string>? models;
     private bool isLoading = false;
     
@@ -404,7 +404,7 @@
         {
             var orderedModels = dashboardData.CostByModel.OrderByDescending(m => m.Cost).ToList();
             modelUsageData = orderedModels.Select(m => (double)m.Cost).ToArray();
-            modelUsageLabels = orderedModels.Select(m => m.Model).ToArray();
+            modelUsageLabels = orderedModels.Select(m => m.ModelName).ToArray();
         }
         
         // Prepare cost trend line chart data
@@ -503,7 +503,7 @@
             // Add data rows
             foreach (var item in detailedData)
             {
-                sb.AppendLine($"{item.Date:yyyy-MM-dd},{item.Model},{item.KeyName},{item.Requests},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                sb.AppendLine($"{item.Timestamp:yyyy-MM-dd},{item.ModelName},{item.VirtualKeyName},{item.Requests},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
             }
             
             // Create file name with current date

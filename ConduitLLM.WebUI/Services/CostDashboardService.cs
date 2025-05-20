@@ -1,8 +1,8 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using ConfigDTO = ConduitLLM.Configuration.DTOs;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -28,7 +28,7 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <inheritdoc/>
-        public async Task<CostDashboardDto> GetDashboardDataAsync(
+        public async Task<ConfigDTO.CostDashboardDto> GetDashboardDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -47,7 +47,7 @@ namespace ConduitLLM.WebUI.Services
                 var logs = await GetFilteredLogsAsync(dbContext, startDate.Value, endDate.Value, virtualKeyId, modelName);
                 
                 // Create the dashboard data
-                var dashboardData = new CostDashboardDto
+                var dashboardData = new ConfigDTO.CostDashboardDto
                 {
                     StartDate = startDate.Value,
                     EndDate = endDate.Value
@@ -168,7 +168,7 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         /// <param name="logs">The filtered request logs.</param>
         /// <param name="dashboardData">The dashboard data to populate.</param>
-        private void CalculateSummaryMetrics(List<RequestLog> logs, CostDashboardDto dashboardData)
+        private void CalculateSummaryMetrics(List<RequestLog> logs, ConfigDTO.CostDashboardDto dashboardData)
         {
             dashboardData.TotalCost = logs.Sum(r => r.Cost);
             dashboardData.TotalRequests = logs.Count;
@@ -183,9 +183,9 @@ namespace ConduitLLM.WebUI.Services
         /// <param name="startDate">The start date of the period.</param>
         /// <param name="endDate">The end date of the period.</param>
         /// <returns>List of daily cost trends.</returns>
-        private List<CostTrendDataDto> GenerateDailyCostTrends(
-            List<RequestLog> logs, 
-            DateTime startDate, 
+        private List<ConfigDTO.CostTrendDataDto> GenerateDailyCostTrends(
+            List<RequestLog> logs,
+            DateTime startDate,
             DateTime endDate)
         {
             // Ensure dates are in UTC for consistency
@@ -195,16 +195,18 @@ namespace ConduitLLM.WebUI.Services
             // Group logs by date and calculate daily metrics
             var dailyCosts = logs
                 .GroupBy(r => r.Timestamp.Date)
-                .Select(g => new CostTrendDataDto
+                .Select(g => new ConfigDTO.CostTrendDataDto
                 {
                     Date = g.Key,
                     Cost = g.Sum(r => r.Cost),
-                    Requests = g.Count()
+                    Requests = g.Count(),
+                    InputTokens = g.Sum(r => r.InputTokens),
+                    OutputTokens = g.Sum(r => r.OutputTokens)
                 })
                 .ToDictionary(d => d.Date.Date);
             
             // Create a continuous series with all dates in the range
-            var result = new List<CostTrendDataDto>();
+            var result = new List<ConfigDTO.CostTrendDataDto>();
             var currentDate = startDate.Date;
             
             while (currentDate <= endDate.Date)
@@ -216,11 +218,13 @@ namespace ConduitLLM.WebUI.Services
                 }
                 else
                 {
-                    result.Add(new CostTrendDataDto
+                    result.Add(new ConfigDTO.CostTrendDataDto
                     {
                         Date = currentDate,
                         Cost = 0,
-                        Requests = 0
+                        Requests = 0,
+                        InputTokens = 0,
+                        OutputTokens = 0
                     });
                 }
                 
@@ -236,16 +240,18 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         /// <param name="logs">The filtered request logs.</param>
         /// <returns>List of model cost data.</returns>
-        private List<ModelCostDataDto> CalculateCostBreakdownByModel(List<RequestLog> logs)
+        private List<ConfigDTO.ModelCostDataDto> CalculateCostBreakdownByModel(List<RequestLog> logs)
         {
             return logs
                 .GroupBy(r => r.ModelName)
                 .OrderByDescending(g => g.Sum(r => r.Cost))
-                .Select(g => new ModelCostDataDto
+                .Select(g => new ConfigDTO.ModelCostDataDto
                 {
-                    Model = g.Key,
+                    ModelName = g.Key,
                     Requests = g.Count(),
-                    Cost = g.Sum(r => r.Cost)
+                    Cost = g.Sum(r => r.Cost),
+                    InputTokens = g.Sum(r => r.InputTokens),
+                    OutputTokens = g.Sum(r => r.OutputTokens)
                 })
                 .ToList();
         }
@@ -255,32 +261,48 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         /// <param name="logs">The filtered request logs.</param>
         /// <returns>List of virtual key cost data.</returns>
-        private List<VirtualKeyCostDataDto> CalculateCostBreakdownByVirtualKey(List<RequestLog> logs)
+        private List<ConfigDTO.VirtualKeyCostDataDto> CalculateCostBreakdownByVirtualKey(List<RequestLog> logs)
         {
             return logs
                 .GroupBy(r => new { r.VirtualKeyId, KeyName = r.VirtualKey?.KeyName ?? $"Key ID {r.VirtualKeyId}" })
                 .OrderByDescending(g => g.Sum(r => r.Cost))
-                .Select(g => new VirtualKeyCostDataDto
+                .Select(g => new ConfigDTO.VirtualKeyCostDataDto
                 {
-                    KeyId = g.Key.VirtualKeyId,
-                    KeyName = g.Key.KeyName,
+                    VirtualKeyId = g.Key.VirtualKeyId,
+                    VirtualKeyName = g.Key.KeyName,
                     Requests = g.Count(),
-                    Cost = g.Sum(r => r.Cost)
+                    TotalCost = g.Sum(r => r.Cost)
                 })
                 .ToList();
         }
         
         /// <inheritdoc/>
-        public async Task<List<VirtualKey>> GetVirtualKeysAsync()
+        public async Task<List<ConfigDTO.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync()
         {
             try
             {
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                
-                return await dbContext.VirtualKeys
+
+                var entities = await dbContext.VirtualKeys
                     .AsNoTracking()
                     .OrderBy(k => k.KeyName)
                     .ToListAsync();
+
+                // Convert from entity to DTO
+                return entities.Select(entity => new ConfigDTO.VirtualKey.VirtualKeyDto
+                {
+                    Id = entity.Id,
+                    KeyName = entity.KeyName,
+                    Description = entity.Description,
+                    IsEnabled = entity.IsEnabled,
+                    MaxBudget = entity.MaxBudget,
+                    RateLimitRpm = entity.RateLimitRpm,
+                    CurrentSpend = entity.CurrentSpend,
+                    BudgetDuration = entity.BudgetDuration,
+                    BudgetStartDate = entity.BudgetStartDate,
+                    CreatedAt = entity.CreatedAt,
+                    UpdatedAt = entity.UpdatedAt
+                }).ToList();
             }
             catch (Exception ex)
             {
@@ -323,7 +345,7 @@ namespace ConduitLLM.WebUI.Services
         }
         
         /// <inheritdoc/>
-        public async Task<List<DetailedCostDataDto>> GetDetailedCostDataAsync(
+        public async Task<List<ConfigDTO.DetailedCostDataDto>> GetDetailedCostDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -356,7 +378,7 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         /// <param name="logs">The filtered request logs.</param>
         /// <returns>List of detailed cost data.</returns>
-        private List<DetailedCostDataDto> CalculateDetailedCostBreakdown(List<RequestLog> logs)
+        private List<ConfigDTO.DetailedCostDataDto> CalculateDetailedCostBreakdown(List<RequestLog> logs)
         {
             return logs
                 .GroupBy(r => new 
@@ -369,11 +391,12 @@ namespace ConduitLLM.WebUI.Services
                 .OrderBy(g => g.Key.Date)
                 .ThenBy(g => g.Key.ModelName)
                 .ThenBy(g => g.Key.KeyName)
-                .Select(g => new DetailedCostDataDto
+                .Select(g => new ConfigDTO.DetailedCostDataDto
                 {
-                    Date = g.Key.Date,
-                    Model = g.Key.ModelName,
-                    KeyName = g.Key.KeyName,
+                    Timestamp = g.Key.Date,
+                    ModelName = g.Key.ModelName,
+                    VirtualKeyName = g.Key.KeyName,
+                    VirtualKeyId = g.Key.VirtualKeyId,
                     Requests = g.Count(),
                     InputTokens = g.Sum(r => r.InputTokens),
                     OutputTokens = g.Sum(r => r.OutputTokens),

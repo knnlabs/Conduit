@@ -219,16 +219,17 @@ public class IpFilterService : IIpFilterService
                 IsEnabled = _options.Value.Enabled,
                 DefaultAllow = _options.Value.DefaultAllow,
                 BypassForAdminUi = _options.Value.BypassForAdminUi,
-                ExcludedEndpoints = new List<string>(_options.Value.ExcludedEndpoints)
+                ExcludedEndpoints = new List<string>(_options.Value.ExcludedEndpoints),
+                FilterMode = _options.Value.DefaultAllow ? "permissive" : "restrictive"
             };
-            
+
             // Override from environment variables
             var envEnabled = Environment.GetEnvironmentVariable(IpFilterConstants.IP_FILTERING_ENABLED_ENV);
             if (!string.IsNullOrEmpty(envEnabled))
             {
                 settings.IsEnabled = bool.TryParse(envEnabled, out var enabled) && enabled;
             }
-            
+
             // Override from database settings
             var dbEnabled = await _globalSettingService.GetSettingAsync(SettingsEnabledKey);
             if (!string.IsNullOrEmpty(dbEnabled))
@@ -241,6 +242,8 @@ public class IpFilterService : IIpFilterService
             if (!string.IsNullOrEmpty(dbDefaultAllow))
             {
                 settings.DefaultAllow = bool.TryParse(dbDefaultAllow, out var defaultAllow) && defaultAllow;
+                // Update filter mode based on default allow setting
+                settings.FilterMode = settings.DefaultAllow ? "permissive" : "restrictive";
             }
 
             var dbBypassAdminUi = await _globalSettingService.GetSettingAsync(SettingsBypassAdminUiKey);
@@ -257,7 +260,19 @@ public class IpFilterService : IIpFilterService
                     .Where(e => !string.IsNullOrEmpty(e))
                     .ToList();
             }
-            
+
+            // Get whitelist and blacklist filters
+            var filters = await _repository.GetEnabledAsync();
+            settings.WhitelistFilters = filters
+                .Where(f => f.FilterType == "whitelist")
+                .Select(MapEntityToDto)
+                .ToList();
+
+            settings.BlacklistFilters = filters
+                .Where(f => f.FilterType == "blacklist")
+                .Select(MapEntityToDto)
+                .ToList();
+
             return settings;
         }
         catch (Exception ex)
@@ -269,7 +284,8 @@ public class IpFilterService : IIpFilterService
                 IsEnabled = _options.Value.Enabled,
                 DefaultAllow = _options.Value.DefaultAllow,
                 BypassForAdminUi = _options.Value.BypassForAdminUi,
-                ExcludedEndpoints = new List<string>(_options.Value.ExcludedEndpoints)
+                ExcludedEndpoints = new List<string>(_options.Value.ExcludedEndpoints),
+                FilterMode = _options.Value.DefaultAllow ? "permissive" : "restrictive"
             };
         }
     }

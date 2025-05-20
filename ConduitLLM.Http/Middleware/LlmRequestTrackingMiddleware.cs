@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Services;
 
 using Microsoft.AspNetCore.Http;

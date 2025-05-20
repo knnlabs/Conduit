@@ -8,6 +8,7 @@ This document provides comprehensive information about all environment variables
 - [Cache Configuration](#cache-configuration)
 - [Security Configuration](#security-configuration)
 - [Database](#database)
+- [Admin API Configuration](#admin-api-configuration)
 - [Docker Configuration Examples](#docker-configuration-examples)
 
 ## Core Application Variables
@@ -53,6 +54,17 @@ ConduitLLM provides environment variables for configuring security-related aspec
 - For SQLite, set `CONDUIT_SQLITE_PATH`.
 - For PostgreSQL, set `CONDUIT_POSTGRES_CONNECTION_STRING`.
 
+## Admin API Configuration
+
+The following environment variables configure the WebUI's interaction with the Admin API service:
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5000` | The base URL of the Admin API service. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
+| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true, WebUI uses the Admin API client and adapters; when false, it uses direct repository access. |
+| `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
+
 ## Docker Configuration Examples
 
 Below is an example of setting environment variables in a docker-compose.yml file:
@@ -82,6 +94,10 @@ services:
       # Database settings (PostgreSQL example)
       # - DB_PROVIDER=postgres
       # - CONDUIT_POSTGRES_CONNECTION_STRING=Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret
+      # Admin API configuration
+      - CONDUIT_ADMIN_API_URL=http://admin:8080
+      - CONDUIT_USE_ADMIN_API=true
+      - CONDUIT_ADMIN_TIMEOUT_SECONDS=30
     ports:
       - "80:80"
     volumes:

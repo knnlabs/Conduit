@@ -88,16 +88,15 @@ namespace ConduitLLM.WebUI.Extensions
                     var router = sp.GetRequiredService<ILLMRouter>();
                     var logger = sp.GetRequiredService<ILogger<Conduit>>();
                     var contextManager = sp.GetService<IContextManager>();
-                    var modelProviderMappingService = sp.GetService<IModelProviderMappingService>();
+                    var modelProviderMappingService = sp.GetService<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService>();
                     var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
                     
                     return new Conduit(
                         clientFactory, 
                         logger,
-                        router,
-                        contextManager,
-                        modelProviderMappingService,
-                        contextOptions);
+                        router: router,
+                        contextManager: contextManager,
+                        contextOptions: contextOptions);
                 });
             }
             else
@@ -111,14 +110,13 @@ namespace ConduitLLM.WebUI.Extensions
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
                     var logger = sp.GetRequiredService<ILogger<Conduit>>();
                     var contextManager = sp.GetService<IContextManager>();
-                    var modelProviderMappingService = sp.GetService<IModelProviderMappingService>();
+                    var modelProviderMappingService = sp.GetService<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService>();
                     var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
                     
                     return new Conduit(
                         clientFactory,
                         logger,
                         contextManager: contextManager,
-                        modelProviderMappingService: modelProviderMappingService,
                         contextOptions: contextOptions);
                 });
             }

@@ -259,6 +259,12 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {apiBaseUrl}");
 });
 
+// Register the Admin API client
+builder.Services.AddAdminApiClient(builder.Configuration);
+
+// Register Admin API service adapters
+builder.Services.AddAdminApiAdapters(builder.Configuration);
+
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 
@@ -399,6 +405,38 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Check for auto-login preference
+using (var autoLoginScope = app.Services.CreateScope())
+{
+    var globalSettingService = autoLoginScope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Interfaces.IGlobalSettingService>();
+    var logger = autoLoginScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        var autoLoginSetting = await globalSettingService.GetSettingAsync("AutoLogin");
+        logger.LogInformation("Retrieved AutoLogin setting: {AutoLoginSetting}", autoLoginSetting);
+        if (bool.TryParse(autoLoginSetting, out bool autoLogin) && autoLogin)
+        {
+            logger.LogInformation("Auto-login is enabled, checking for master key in environment");
+            
+            string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+            if (!string.IsNullOrEmpty(envMasterKey))
+            {
+                logger.LogInformation("Master key found in environment, auto-login will be performed");
+                // Note: Actual login will happen on first page access
+            }
+            else
+            {
+                logger.LogWarning("Auto-login is enabled but CONDUIT_MASTER_KEY is not set");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error checking auto-login preference");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -437,9 +475,10 @@ Console.WriteLine("[Conduit WebUI] Controllers registered");
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)
-app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger) =>
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService) =>
 {
     logger.LogInformation("POST /account/login received.");
+    logger.LogInformation("Remember me checkbox value: {RememberMe}", rememberMe);
     string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
     bool isValid = false;
 
@@ -458,6 +497,14 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
     if (isValid)
     {
         logger.LogInformation("Login successful via POST /account/login.");
+        
+        // Save the auto-login preference
+        if (rememberMe.HasValue)
+        {
+            await globalSettingService.SetSettingAsync("AutoLogin", rememberMe.Value.ToString());
+            logger.LogInformation("Auto-login preference saved: {AutoLogin}", rememberMe.Value);
+        }
+        
         var claims = new List<System.Security.Claims.Claim>
         {
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Admin"),

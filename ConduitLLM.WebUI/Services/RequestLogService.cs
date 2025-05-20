@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
-using ConduitLLM.Configuration.Services.Dtos;
-using ConduitLLM.WebUI.DTOs;
+using WebUIDTOs = ConduitLLM.WebUI.DTOs;
+using ConfigDTOs = ConduitLLM.Configuration.DTOs;
+using ConfigServiceDTOs = ConduitLLM.Configuration.Services.Dtos;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -123,45 +124,46 @@ public class RequestLogService : IRequestLogService
     /// <summary>
     /// Gets summary statistics for a specific virtual key
     /// </summary>
-    public async Task<KeyUsageSummary?> GetKeyUsageSummaryAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    public async Task<WebUIDTOs.KeyUsageSummary?> GetKeyUsageSummaryAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"KeyUsageSummary_{virtualKeyId}";
-        
+
         // Try to get from cache first
-        if (_memoryCache.TryGetValue(cacheKey, out KeyUsageSummary? cachedSummary))
+        if (_memoryCache.TryGetValue(cacheKey, out WebUIDTOs.KeyUsageSummary? cachedSummary))
         {
             return cachedSummary;
         }
-        
+
         try
         {
             // Get all logs for this key
             var logs = await _requestLogRepository.GetByVirtualKeyIdAsync(virtualKeyId, cancellationToken);
-            
+
             if (logs.Count == 0)
             {
                 return null;
             }
-            
+
             // Calculate summary statistics
             var now = DateTime.UtcNow;
-            var summary = new KeyUsageSummary
+            var summary = new WebUIDTOs.KeyUsageSummary
             {
+                VirtualKeyId = virtualKeyId,
                 TotalRequests = logs.Count,
                 TotalCost = logs.Sum(l => l.Cost),
-                AverageResponseTime = logs.Average(l => l.ResponseTimeMs),
+                AverageResponseTimeMs = logs.Average(l => l.ResponseTimeMs),
                 TotalInputTokens = logs.Sum(l => l.InputTokens),
                 TotalOutputTokens = logs.Sum(l => l.OutputTokens),
                 FirstRequestTime = logs.Min(l => l.Timestamp),
-                LastRequestTime = logs.Max(l => l.Timestamp),
+                LastRequestDate = logs.Max(l => l.Timestamp),
                 RequestsLast24Hours = logs.Count(l => l.Timestamp > now.AddDays(-1)),
                 RequestsLast7Days = logs.Count(l => l.Timestamp > now.AddDays(-7)),
                 RequestsLast30Days = logs.Count(l => l.Timestamp > now.AddDays(-30))
             };
-            
+
             // Cache the result for 10 minutes
             _memoryCache.Set(cacheKey, summary, TimeSpan.FromMinutes(10));
-            
+
             return summary;
         }
         catch (Exception ex)
@@ -174,35 +176,35 @@ public class RequestLogService : IRequestLogService
     /// <summary>
     /// Gets aggregated usage data for all virtual keys in the system
     /// </summary>
-    public async Task<List<KeyAggregateSummary>?> GetAllKeysUsageSummaryAsync(CancellationToken cancellationToken = default)
+    public async Task<List<WebUIDTOs.KeyAggregateSummary>?> GetAllKeysUsageSummaryAsync(CancellationToken cancellationToken = default)
     {
         var cacheKey = "AllKeysUsageSummary";
-        
+
         // Try to get from cache first
-        if (_memoryCache.TryGetValue(cacheKey, out List<KeyAggregateSummary>? cachedSummaries))
+        if (_memoryCache.TryGetValue(cacheKey, out List<WebUIDTOs.KeyAggregateSummary>? cachedSummaries))
         {
             return cachedSummaries;
         }
-        
+
         try
         {
             // Get all virtual keys
             var keys = await _virtualKeyRepository.GetAllAsync(cancellationToken);
             var keyDict = keys.ToDictionary(k => k.Id, k => k.KeyName);
-            
+
             if (!keyDict.Any())
             {
-                return new List<KeyAggregateSummary>();
+                return new List<WebUIDTOs.KeyAggregateSummary>();
             }
-            
+
             // Get all logs
             var logs = await _requestLogRepository.GetAllAsync(cancellationToken);
             var now = DateTime.UtcNow;
-            
+
             // Group by virtual key
             var keyStats = logs
                 .GroupBy(r => r.VirtualKeyId)
-                .Select(g => new KeyAggregateSummary
+                .Select(g => new WebUIDTOs.KeyAggregateSummary
                 {
                     VirtualKeyId = g.Key,
                     TotalRequests = g.Count(),
@@ -211,7 +213,7 @@ public class RequestLogService : IRequestLogService
                     RecentRequests = g.Count(r => r.Timestamp > now.AddDays(-1))
                 })
                 .ToList();
-            
+
             // Add key names to the summaries
             foreach (var stat in keyStats)
             {
@@ -220,10 +222,10 @@ public class RequestLogService : IRequestLogService
                     stat.KeyName = name;
                 }
             }
-            
+
             // Cache the result for 5 minutes
             _memoryCache.Set(cacheKey, keyStats, TimeSpan.FromMinutes(5));
-            
+
             return keyStats;
         }
         catch (Exception ex)
@@ -236,20 +238,20 @@ public class RequestLogService : IRequestLogService
     /// <summary>
     /// Gets daily usage statistics for a specific period
     /// </summary>
-    public async Task<List<DailyUsageSummary>?> GetDailyUsageStatsAsync(
+    public async Task<List<WebUIDTOs.DailyUsageSummary>?> GetDailyUsageStatsAsync(
         int? virtualKeyId = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
         CancellationToken cancellationToken = default)
     {
         var cacheKey = $"DailyUsageStats_{virtualKeyId}_{startDate?.ToString("yyyyMMdd")}_{endDate?.ToString("yyyyMMdd")}";
-        
+
         // Try to get from cache first
-        if (_memoryCache.TryGetValue(cacheKey, out List<DailyUsageSummary>? cachedStats))
+        if (_memoryCache.TryGetValue(cacheKey, out List<WebUIDTOs.DailyUsageSummary>? cachedStats))
         {
             return cachedStats;
         }
-        
+
         try
         {
             startDate ??= DateTime.UtcNow.AddDays(-30);
@@ -270,17 +272,18 @@ public class RequestLogService : IRequestLogService
             // Group by date
             var dailyStats = logs
                 .GroupBy(r => r.Timestamp.Date)
-                .Select(g => new DailyUsageSummary
+                .Select(g => new WebUIDTOs.DailyUsageSummary
                 {
                     Date = g.Key,
                     RequestCount = g.Count(),
                     TotalCost = g.Sum(r => r.Cost),
                     InputTokens = g.Sum(r => r.InputTokens),
-                    OutputTokens = g.Sum(r => r.OutputTokens)
+                    OutputTokens = g.Sum(r => r.OutputTokens),
+                    VirtualKeyId = virtualKeyId
                 })
                 .OrderBy(s => s.Date)
                 .ToList();
-                
+
             // Cache the result for 10 minutes
             _memoryCache.Set(cacheKey, dailyStats, TimeSpan.FromMinutes(10));
 
@@ -349,7 +352,7 @@ public class RequestLogService : IRequestLogService
     /// <summary>
     /// Gets a summary of logs for the specified date range
     /// </summary>
-    public async Task<LogsSummaryDto> GetLogsSummaryAsync(
+    public async Task<WebUIDTOs.LogsSummaryDto> GetLogsSummaryAsync(
         DateTime startDate,
         DateTime endDate,
         CancellationToken cancellationToken = default)
@@ -358,9 +361,9 @@ public class RequestLogService : IRequestLogService
         {
             // Get logs for the date range
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
-            
-            // Calculate summary statistics
-            var summary = new LogsSummaryDto
+
+            // First create the service DTO with all the detailed information
+            var configSummary = new ConfigServiceDTOs.LogsSummaryDto
             {
                 TotalRequests = logs.Count,
                 TotalInputTokens = logs.Sum(l => l.InputTokens),
@@ -370,68 +373,93 @@ public class RequestLogService : IRequestLogService
                 StartDate = startDate,
                 EndDate = endDate
             };
-            
+
             // Get requests by model
             var modelGroups = logs
                 .GroupBy(l => l.ModelName ?? "Unknown")
-                .Select(g => new 
+                .Select(g => new
                 {
                     ModelName = g.Key,
                     RequestCount = g.Count(),
                     TotalCost = g.Sum(l => l.Cost)
                 })
                 .ToList();
-                
+
             foreach (var model in modelGroups)
             {
-                summary.RequestsByModel[model.ModelName] = model.RequestCount;
-                summary.CostByModel[model.ModelName] = model.TotalCost;
+                configSummary.RequestsByModelDict[model.ModelName] = model.RequestCount;
+                configSummary.CostByModel[model.ModelName] = model.TotalCost;
+
+                // Also populate the RequestsByModel list for newer API
+                configSummary.RequestsByModel.Add(new ConfigServiceDTOs.RequestsByModelDto
+                {
+                    ModelName = model.ModelName,
+                    RequestCount = model.RequestCount,
+                    TotalCost = model.TotalCost
+                });
             }
-            
+
             // Get requests by key
             var keyGroups = logs
                 .GroupBy(l => l.VirtualKeyId)
-                .Select(g => new 
+                .Select(g => new
                 {
                     VirtualKeyId = g.Key,
                     RequestCount = g.Count(),
                     TotalCost = g.Sum(l => l.Cost)
                 })
                 .ToList();
-                
+
             foreach (var keyGroup in keyGroups)
             {
                 var key = await _virtualKeyRepository.GetByIdAsync(keyGroup.VirtualKeyId, cancellationToken);
-                var keySummary = new KeySummary
+                var keySummary = new ConfigServiceDTOs.KeySummary
                 {
                     KeyName = key?.KeyName ?? "Unknown",
                     RequestCount = keyGroup.RequestCount,
                     TotalCost = keyGroup.TotalCost
                 };
-                
-                summary.RequestsByKey[keyGroup.VirtualKeyId] = keySummary;
+
+                configSummary.RequestsByKey[keyGroup.VirtualKeyId] = keySummary;
             }
-            
+
             // Calculate success rate
             var successfulRequests = logs.Count(l => l.StatusCode >= 200 && l.StatusCode < 300);
-            summary.SuccessRate = logs.Count > 0 ? (double)successfulRequests / logs.Count * 100 : 0;
-            
+            configSummary.SuccessRate = logs.Count > 0 ? (double)successfulRequests / logs.Count * 100 : 0;
+            configSummary.SuccessfulRequests = successfulRequests;
+            configSummary.FailedRequests = logs.Count - successfulRequests;
+
             // Get requests by status
             var statusGroups = logs
                 .GroupBy(l => l.StatusCode ?? 0)
                 .Select(g => new { StatusCode = g.Key, Count = g.Count() })
                 .ToList();
-                
+
             foreach (var status in statusGroups)
             {
-                summary.RequestsByStatus[status.StatusCode] = status.Count;
+                configSummary.RequestsByStatus[status.StatusCode] = status.Count;
             }
-            
-            return summary;
+
+            // Now convert to the WebUI DTO
+            var webUiSummary = new WebUIDTOs.LogsSummaryDto
+            {
+                TotalRequests = configSummary.TotalRequests,
+                EstimatedCost = configSummary.TotalCost,
+                InputTokens = configSummary.TotalInputTokens,
+                OutputTokens = configSummary.TotalOutputTokens,
+                AverageResponseTime = configSummary.AverageResponseTimeMs,
+                StartDate = configSummary.StartDate,
+                EndDate = configSummary.EndDate,
+                SuccessRate = configSummary.SuccessRate,
+                SuccessfulRequests = configSummary.SuccessfulRequests,
+                FailedRequests = configSummary.FailedRequests
+            };
+
+            return webUiSummary;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting logs summary for date range {StartDate} to {EndDate}", 
+            _logger.LogError(ex, "Error getting logs summary for date range {StartDate} to {EndDate}",
                 startDate, endDate);
             throw;
         }

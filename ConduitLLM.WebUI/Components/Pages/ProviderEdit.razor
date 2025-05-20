@@ -3,9 +3,12 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.Interfaces
+@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
+@inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
 @inject ProviderStatusService ProviderStatusService
 @inject ConfigurationChangeNotifier ConfigNotifier

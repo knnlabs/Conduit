@@ -1,10 +1,17 @@
-namespace ConduitLLM.Configuration.Services
+using System;
+
+namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
     /// Data transfer object for logging a request
     /// </summary>
     public class LogRequestDto
     {
+        /// <summary>
+        /// Unique identifier for the log entry
+        /// </summary>
+        public int Id { get; set; }
+
         /// <summary>
         /// ID of the virtual key used for the request
         /// </summary>
@@ -59,5 +66,10 @@ namespace ConduitLLM.Configuration.Services
         /// Optional status code of the response
         /// </summary>
         public int? StatusCode { get; set; }
+
+        /// <summary>
+        /// Timestamp of when the request was made
+        /// </summary>
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

@@ -1,30 +1,22 @@
 using System;
+using Conf = ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.WebUI.DTOs
 {
     /// <summary>
-    /// Cost data for a specific virtual key
+    /// Extended wrapper for ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto that adds backward compatibility properties.
+    /// This class should be used in the WebUI project to ensure compatibility with older code.
     /// </summary>
-    public class VirtualKeyCostDataDto
+    public class VirtualKeyCostDataDto : Conf.VirtualKeyCostDataDto
     {
         /// <summary>
-        /// Virtual key ID
+        /// Number of input tokens
         /// </summary>
-        public int KeyId { get; set; }
-        
+        public int InputTokens { get; set; }
+
         /// <summary>
-        /// Virtual key name
+        /// Number of output tokens
         /// </summary>
-        public string KeyName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Number of requests
-        /// </summary>
-        public int Requests { get; set; }
-        
-        /// <summary>
-        /// Total cost
-        /// </summary>
-        public decimal Cost { get; set; }
+        public int OutputTokens { get; set; }
     }
 }
