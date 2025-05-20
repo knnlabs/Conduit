@@ -228,7 +228,8 @@ public class RouterServiceAdapter : IRouterService
         {
             try
             {
-                return await _adminApiClient.GetRouterConfigAsync();
+                var result = await _adminApiClient.GetRouterConfigAsync();
+                return result ?? await _repositoryService.GetRouterConfigAsync();
             }
             catch (Exception ex)
             {

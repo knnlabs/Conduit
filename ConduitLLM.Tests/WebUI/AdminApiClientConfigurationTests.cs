@@ -78,7 +78,8 @@ namespace ConduitLLM.Tests.WebUI
             // Assert
             var headerExists = httpClient.DefaultRequestHeaders.TryGetValues("X-Master-Key", out var values);
             Assert.True(headerExists);
-            Assert.Equal("custom-master-key", values.First());
+            Assert.NotNull(values);
+            Assert.Equal("custom-master-key", values!.First());
         }
 
         [Fact]
@@ -86,7 +87,7 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Arrange
             var optionsMock = new Mock<IOptions<AdminApiOptions>>();
-            optionsMock.Setup(o => o.Value).Returns((AdminApiOptions)null);
+            optionsMock.Setup(o => o.Value).Returns((AdminApiOptions?)null);
 
             // Act
             using var httpClient = new HttpClient(_handlerMock.Object);
@@ -106,7 +107,7 @@ namespace ConduitLLM.Tests.WebUI
             optionsMock.Setup(o => o.Value).Returns(options);
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminApiClient(null, optionsMock.Object, _loggerMock.Object));
+            Assert.Throws<ArgumentNullException>(() => new AdminApiClient(null!, optionsMock.Object, _loggerMock.Object));
         }
 
         [Fact]
@@ -119,7 +120,7 @@ namespace ConduitLLM.Tests.WebUI
             using var httpClient = new HttpClient(_handlerMock.Object);
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminApiClient(httpClient, optionsMock.Object, null));
+            Assert.Throws<ArgumentNullException>(() => new AdminApiClient(httpClient, optionsMock.Object, null!));
         }
 
         [Fact]

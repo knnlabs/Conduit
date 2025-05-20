@@ -6,8 +6,15 @@ using System.Reflection;
 
 namespace ConduitLLM.Admin;
 
+/// <summary>
+/// Entry point for the Admin API application
+/// </summary>
 public class Program
 {
+    /// <summary>
+    /// Application entry point that configures and starts the web application
+    /// </summary>
+    /// <param name="args">Command line arguments</param>
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);

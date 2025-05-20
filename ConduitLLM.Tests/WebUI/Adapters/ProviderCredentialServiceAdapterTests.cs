@@ -187,7 +187,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetProviderCredentialByNameAsync("NonExistentProvider"))
-                .ReturnsAsync((ProviderCredentialDto)null);
+                .ReturnsAsync((ProviderCredentialDto?)null);
 
             // Act
             var result = await _adapter.GetCredentialsForProviderAsync("NonExistentProvider");
@@ -240,7 +240,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error getting credentials for provider")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
     }

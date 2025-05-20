@@ -235,7 +235,7 @@ public class AdminIpFilterService : IAdminIpFilterService
     }
     
     /// <inheritdoc/>
-    public async Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings)
+    public Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings)
     {
         try
         {
@@ -259,12 +259,12 @@ public class AdminIpFilterService : IAdminIpFilterService
             
             _logger.LogWarning("IP filter settings updated in memory only - actual settings update implementation needed");
             
-            return (true, null);
+            return Task.FromResult<(bool Success, string? ErrorMessage)>((true, null));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating IP filter settings");
-            return (false, "An unexpected error occurred");
+            return Task.FromResult<(bool Success, string? ErrorMessage)>((false, "An unexpected error occurred"));
         }
     }
     

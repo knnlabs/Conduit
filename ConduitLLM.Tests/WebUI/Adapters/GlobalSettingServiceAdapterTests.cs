@@ -112,7 +112,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetGlobalSettingByKeyAsync("NonExistentKey"))
-                .ReturnsAsync((GlobalSettingDto)null);
+                .ReturnsAsync((GlobalSettingDto?)null);
 
             // Act
             var result = await _adapter.GetSettingValueAsync("NonExistentKey");
@@ -127,7 +127,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetGlobalSettingByKeyAsync("NewKey"))
-                .ReturnsAsync((GlobalSettingDto)null);
+                .ReturnsAsync((GlobalSettingDto?)null);
 
             _adminApiClientMock.Setup(c => c.UpsertGlobalSettingAsync(It.Is<GlobalSettingDto>(s => 
                 s.Key == "NewKey" && s.Value == "NewValue")))
@@ -171,10 +171,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetGlobalSettingByKeyAsync("TestKey"))
-                .ReturnsAsync((GlobalSettingDto)null);
+                .ReturnsAsync((GlobalSettingDto?)null);
 
             _adminApiClientMock.Setup(c => c.UpsertGlobalSettingAsync(It.IsAny<GlobalSettingDto>()))
-                .ReturnsAsync((GlobalSettingDto)null);
+                .ReturnsAsync((GlobalSettingDto?)null);
 
             // Act
             var result = await _adapter.SetSettingValueAsync("TestKey", "TestValue");

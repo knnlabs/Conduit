@@ -41,15 +41,15 @@ public class AdminRouterService : IAdminRouterService
     }
     
     /// <inheritdoc />
-    public async Task<RouterConfig> GetRouterConfigAsync()
+    public Task<RouterConfig> GetRouterConfigAsync()
     {
         _logger.LogInformation("Getting router configuration");
         // For now, we'll just return an empty config since the implementation is incomplete
-        return new RouterConfig();
+        return Task.FromResult(new RouterConfig());
     }
     
     /// <inheritdoc />
-    public async Task<bool> UpdateRouterConfigAsync(RouterConfig config)
+    public Task<bool> UpdateRouterConfigAsync(RouterConfig config)
     {
         try
         {
@@ -58,38 +58,38 @@ public class AdminRouterService : IAdminRouterService
             if (config == null)
             {
                 _logger.LogWarning("Router configuration is null");
-                return false;
+                return Task.FromResult(false);
             }
             
             // Implementation would normally call _routerConfigRepository.SaveConfigAsync(config)
             // but we'll leave this as a stub for now
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating router configuration");
-            return false;
+            return Task.FromResult(false);
         }
     }
     
     /// <inheritdoc />
-    public async Task<List<ModelDeployment>> GetModelDeploymentsAsync()
+    public Task<List<ModelDeployment>> GetModelDeploymentsAsync()
     {
         _logger.LogInformation("Getting all model deployments");
         // Return empty list for now
-        return new List<ModelDeployment>();
+        return Task.FromResult(new List<ModelDeployment>());
     }
     
     /// <inheritdoc />
-    public async Task<ModelDeployment?> GetModelDeploymentAsync(string deploymentName)
+    public Task<ModelDeployment?> GetModelDeploymentAsync(string deploymentName)
     {
         _logger.LogInformation("Getting model deployment: {DeploymentName}", deploymentName);
         // Return null for now
-        return null;
+        return Task.FromResult<ModelDeployment?>(null);
     }
     
     /// <inheritdoc />
-    public async Task<bool> SaveModelDeploymentAsync(ModelDeployment deployment)
+    public Task<bool> SaveModelDeploymentAsync(ModelDeployment deployment)
     {
         try
         {
@@ -98,34 +98,34 @@ public class AdminRouterService : IAdminRouterService
             if (deployment == null || string.IsNullOrWhiteSpace(deployment.DeploymentName))
             {
                 _logger.LogWarning("Invalid model deployment");
-                return false;
+                return Task.FromResult(false);
             }
             
             // Implementation would normally call _modelDeploymentRepository.SaveAsync(deployment)
             // but we'll leave this as a stub for now
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving model deployment: {DeploymentName}", deployment?.DeploymentName);
-            return false;
+            return Task.FromResult(false);
         }
     }
     
     /// <inheritdoc />
-    public async Task<bool> DeleteModelDeploymentAsync(string deploymentName)
+    public Task<bool> DeleteModelDeploymentAsync(string deploymentName)
     {
         try
         {
             _logger.LogInformation("Deleting model deployment: {DeploymentName}", deploymentName);
             
             // This would normally check if the deployment exists and then delete it
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting model deployment: {DeploymentName}", deploymentName);
-            return false;
+            return Task.FromResult(false);
         }
     }
     

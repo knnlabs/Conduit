@@ -243,7 +243,7 @@ public class AdminLogService : IAdminLogService
             // Group logs by status code
             var requestsByStatus = logs
                 .Where(l => l.StatusCode.HasValue)
-                .GroupBy(l => l.StatusCode.Value)
+                .GroupBy(l => l.StatusCode!.Value)  // Non-null assertion is safe because of the Where clause
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // Create logs summary DTO

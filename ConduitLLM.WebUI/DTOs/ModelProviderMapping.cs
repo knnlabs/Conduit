@@ -70,7 +70,11 @@ namespace ConduitLLM.WebUI.DTOs
                 var idProperty = mapping.GetType().GetProperty("Id");
                 if (idProperty != null)
                 {
-                    Id = (int)idProperty.GetValue(mapping);
+                    var value = idProperty.GetValue(mapping);
+                    if (value != null)
+                    {
+                        Id = (int)value;
+                    }
                 }
             }
         }

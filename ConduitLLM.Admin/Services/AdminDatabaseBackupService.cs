@@ -173,7 +173,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     }
     
     /// <inheritdoc/>
-    public async Task<(Stream FileStream, string ContentType, string FileName)?> DownloadBackupAsync(string backupId)
+    public Task<(Stream FileStream, string ContentType, string FileName)?> DownloadBackupAsync(string backupId)
     {
         try
         {
@@ -186,7 +186,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             if (backupFile == null)
             {
                 _logger.LogError("Backup file not found: {BackupId}", backupId);
-                return null;
+                return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
             }
             
             // Create file stream
@@ -195,12 +195,12 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             
             // Create a tuple with the file stream, content type, and file name
             var result = ((Stream)fileStream, "application/zip", fileName);
-            return result;
+            return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId);
-            return null;
+            return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
         }
     }
     

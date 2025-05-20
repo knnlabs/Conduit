@@ -77,87 +77,87 @@ namespace ConduitLLM.WebUI.Services.Adapters
         }
 
         /// <inheritdoc />
-        public async Task<bool> ResetSpendAsync(int id)
+        public Task<bool> ResetSpendAsync(int id)
         {
             try
             {
                 _logger.LogInformation("Resetting spend for virtual key {KeyId}", id);
                 // This would need API endpoint implementation
                 // For now, log and return success to avoid blocking
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error resetting spend for virtual key {KeyId}", id);
-                return false;
+                return Task.FromResult(false);
             }
         }
 
         /// <inheritdoc />
-        public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
+        public Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
             try
             {
                 _logger.LogInformation("Validating virtual key for model {Model}", requestedModel ?? "any");
                 // This would need API endpoint implementation
                 // For now, return null indicating validation failure
-                return null;
+                return Task.FromResult<VirtualKey?>(null);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating virtual key");
-                return null;
+                return Task.FromResult<VirtualKey?>(null);
             }
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateSpendAsync(int keyId, decimal cost)
+        public Task<bool> UpdateSpendAsync(int keyId, decimal cost)
         {
             try
             {
                 _logger.LogInformation("Updating spend for virtual key {KeyId} by {Cost}", keyId, cost);
                 // This would need API endpoint implementation
                 // For now, log and return success to avoid blocking
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating spend for virtual key {KeyId}", keyId);
-                return false;
+                return Task.FromResult(false);
             }
         }
 
         /// <inheritdoc />
-        public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
+        public Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Checking if budget expired for virtual key {KeyId}", keyId);
                 // This would need API endpoint implementation
                 // For now, return no reset needed
-                return false;
+                return Task.FromResult(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking budget expiration for virtual key {KeyId}", keyId);
-                return false;
+                return Task.FromResult(false);
             }
         }
 
         /// <inheritdoc />
-        public async Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
+        public Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Getting virtual key {KeyId} for validation", keyId);
                 // This would need API endpoint implementation
                 // For now, return null to indicate key not found
-                return null;
+                return Task.FromResult<VirtualKey?>(null);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting virtual key {KeyId} for validation", keyId);
-                return null;
+                return Task.FromResult<VirtualKey?>(null);
             }
         }
     }

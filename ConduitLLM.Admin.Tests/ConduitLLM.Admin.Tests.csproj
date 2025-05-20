@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <NoWarn>CS8600;CS8602;CS8603;CS8604;CS8620;CS8625;xUnit2013</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

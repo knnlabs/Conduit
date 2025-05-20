@@ -130,7 +130,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
 
             // Assert
             Assert.Equal(2, result.WhitelistFilters.Count);
-            Assert.Equal(1, result.BlacklistFilters.Count);
+            Assert.Single(result.BlacklistFilters);
             Assert.Equal("restrictive", result.FilterMode); // Should be restrictive because whitelists exist
             
             // Check whitelist
@@ -188,7 +188,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error getting IP filter settings")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
     }

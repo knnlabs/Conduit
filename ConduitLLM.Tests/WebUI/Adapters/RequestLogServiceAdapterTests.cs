@@ -56,7 +56,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             _adminApiClientMock.Setup(c => c.GetRequestLogsAsync(
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<string>(),
                 It.IsAny<DateTime?>(), It.IsAny<DateTime?>()))
-                .ReturnsAsync((ConfigDTOs.PagedResult<ConfigDTOs.RequestLogDto>)null);
+                .ReturnsAsync((ConfigDTOs.PagedResult<ConfigDTOs.RequestLogDto>?)null);
 
             // Act
             var result = await _adapter.GetRequestLogsAsync(1, 20);
@@ -124,7 +124,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             // Arrange
             _adminApiClientMock.Setup(c => c.GetLogsSummaryAsync(
                 It.IsAny<int>(), It.IsAny<int?>()))
-                .ReturnsAsync((ConfigDTOs.LogsSummaryDto)null);
+                .ReturnsAsync((ConfigDTOs.LogsSummaryDto?)null);
 
             // Act
             var result = await _adapter.GetLogsSummaryAsync(30, 2);

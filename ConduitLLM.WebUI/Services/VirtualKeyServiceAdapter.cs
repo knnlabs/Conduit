@@ -44,7 +44,8 @@ public class VirtualKeyServiceAdapter : IVirtualKeyService
         {
             try
             {
-                return await _adminApiClient.CreateVirtualKeyAsync(request);
+                var result = await _adminApiClient.CreateVirtualKeyAsync(request);
+                return result ?? await _repositoryService.GenerateVirtualKeyAsync(request);
             }
             catch (Exception ex)
             {

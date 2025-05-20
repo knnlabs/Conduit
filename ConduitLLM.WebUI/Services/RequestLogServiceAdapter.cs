@@ -145,7 +145,9 @@ public class RequestLogServiceAdapter : IRequestLogService
                     endDate);
                 
                 // Convert DTOs to entities
-                var logs = pagedResult.Items.Select(dto => new RequestLog
+                var logs = pagedResult?.Items == null 
+                    ? Enumerable.Empty<RequestLog>() 
+                    : pagedResult.Items.Select(dto => new RequestLog
                 {
                     Id = dto.Id,
                     VirtualKeyId = dto.VirtualKeyId,
@@ -162,7 +164,7 @@ public class RequestLogServiceAdapter : IRequestLogService
                     StatusCode = dto.StatusCode
                 }).ToList();
                 
-                return (logs, pagedResult.TotalItems);
+                return (new List<RequestLog>(logs), pagedResult?.TotalItems ?? 0);
             }
             catch (Exception ex)
             {

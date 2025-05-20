@@ -71,6 +71,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Get &&
+                        req.RequestUri != null && 
                         req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
@@ -129,7 +130,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Get &&
-                        req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
+                        req.RequestUri != null && req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
@@ -157,7 +158,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Get &&
-                        req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/999"),
+                        req.RequestUri != null && req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/999"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
@@ -201,7 +202,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Post &&
-                        req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys"),
+                        req.RequestUri != null && req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
@@ -234,7 +235,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Put &&
-                        req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
+                        req.RequestUri != null && req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
@@ -256,7 +257,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Delete &&
-                        req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
+                        req.RequestUri != null && req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys/1"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
