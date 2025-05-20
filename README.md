@@ -54,14 +54,18 @@ ConduitLLM follows a modular architecture with distinct components handling spec
 
 ```mermaid
 flowchart LR
-    Client["WebUI / Client App"]
+    WebUI["ConduitLLM.WebUI(Admin Dashboard)"]
+    AdminAPI["ConduitLLM.Admin(Admin API)"]
     Http["ConduitLLM.Http(API Gateway)"]
     Core["ConduitLLM.Core(Orchestration)"]
     Providers["ConduitLLM.Providers(Provider Logic)"]
-    Config["ConduitLLM.Configuration(Settings)"]
+    Config["ConduitLLM.Configuration(Entities & DTOs)"]
     LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
     
-    Client --> Http
+    WebUI -->|Admin API Client| AdminAPI
+    AdminAPI --> Config
+    
+    Client["Client App"] --> Http
     Http --> Core
     Core --> Providers
     Providers --> LLM
@@ -100,22 +104,25 @@ Key features:
 - **Clean API Contracts**: API contracts explicitly defined through interfaces and DTOs
 - **Configuration Control**: Toggle between direct DB access and API access with a simple flag
 
-### Docker Images: WebUI and Http Separation
+### Docker Images: Component Separation
 
-As of April 2025, ConduitLLM is split into two separate Docker images:
+As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
-- **WebUI Image**: Contains the Blazor-based administrative dashboard (`ConduitLLM.WebUI`).
-- **Http Image**: Contains the OpenAI-compatible REST API gateway (`ConduitLLM.Http`).
+- **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
+- **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
+- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
 Each service is built, tagged, and published as an independent container:
 
 - `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
 - `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
 
-#### Why this change?
-- **Separation of concerns**: Web UI and API gateway can be scaled, deployed, and maintained independently.
-- **Improved security**: You can isolate the WebUI from the API gateway if desired.
-- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage.
+#### Why this architecture?
+- **Separation of concerns**: Each component can be scaled, deployed, and maintained independently
+- **Improved security**: You can isolate components and apply different security policies
+- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage
+- **Enhanced reliability**: Components can be updated independently without affecting others
 
 #### How to use the new images
 
@@ -130,21 +137,42 @@ services:
     ports:
       - "5001:8080"
     environment:
-      # ... WebUI environment variables
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_USE_ADMIN_API: "true"
+    depends_on:
+      - admin
+
+  admin:
+    image: ghcr.io/knnlabs/conduit-admin:latest
+    ports:
+      - "5002:8080"
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_MASTER_KEY: your_secure_master_key
+    depends_on:
+      - postgres
 
   http:
     image: ghcr.io/knnlabs/conduit-http:latest
     ports:
       - "5000:8080"
     environment:
-      # ... API Gateway environment variables
-```
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+    depends_on:
+      - postgres
 
-Or run separately:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
-```bash
-docker run -d --name conduit-webui -p 5001:8080 ghcr.io/knnlabs/conduit-webui:latest
-docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:latest
+volumes:
+  pgdata:
 ```
 
 > **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.

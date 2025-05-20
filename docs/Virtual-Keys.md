@@ -4,7 +4,13 @@
 
 ConduitLLM's Virtual Key Management system provides a secure and flexible way to control access to LLM services, track usage, manage budgets, and enforce usage limits. Virtual keys act as proxies for the actual provider API keys, allowing granular control and monitoring without exposing sensitive provider credentials.
 
-## Key Components
+## Architecture
+
+Virtual key management follows ConduitLLM's microservices architecture with these components:
+
+1. **Admin API**: Manages virtual keys and provides endpoints for the WebUI
+2. **LLM API**: Validates virtual keys and tracks usage for API requests
+3. **WebUI**: Provides a user interface for managing virtual keys
 
 ### Core Entities
 
@@ -50,43 +56,48 @@ public class RequestLog
 }
 ```
 
-### Services
+### Service Architecture
 
-#### VirtualKeyService
+#### Admin API Services
 
-Manages all aspects of virtual keys:
+The Admin API provides these virtual key services:
 
+**AdminVirtualKeyService**
 - **CRUD Operations**: Create, read, update, and delete virtual keys
-- **Validation**: Ensure keys are valid, active, and within budget
 - **Spend Management**: Track and update usage amounts
-- **Budget Reset**: Automatically reset spending based on configured periods
+- **Budget Reset**: Manually reset spending
 
-#### RequestLogService
-
-Handles request logging and analysis:
-
-- **Log Requests**: Record detailed information about each API call
-- **Usage Analysis**: Generate statistics and reports on usage
-- **Cost Tracking**: Calculate and attribute costs to virtual keys
-
-#### VirtualKeyMaintenanceService
-
-Handles automated maintenance tasks:
-
+**VirtualKeyMaintenanceService**
 - **Budget Reset**: Reset spending on appropriate intervals
 - **Expiration Handling**: Disable keys that have expired
 - **Notification Generation**: Create alerts for budget limits and expirations
 
-### Middleware
+#### LLM API Services
 
-#### LlmRequestTrackingMiddleware
+The LLM API handles virtual key validation and request tracking:
 
-Intercepts and processes API requests:
+**ApiVirtualKeyService**
+- **Key Validation**: Verify the provided key is valid, active, and within budget
+- **Spend Updating**: Calculate and record costs
 
+#### Middleware
+
+**LlmRequestTrackingMiddleware**
+- **Request Interception**: Process incoming API requests
+- **Key Extraction**: Extract virtual keys from request headers
 - **Key Validation**: Verify the provided key is valid
 - **Request Tracking**: Log details about the request
-- **Spend Updating**: Calculate and record costs
 - **Limit Enforcement**: Block requests that exceed budgets
+
+#### WebUI Components
+
+The WebUI provides adapter services that communicate with the Admin API:
+
+**VirtualKeyServiceAdapter**
+- Implements `IVirtualKeyService` interface
+- Translates WebUI operations to Admin API requests
+- Handles HTTP communication with the Admin API
+- Provides backward compatibility for existing UI components
 
 ## Virtual Key Features
 
@@ -135,43 +146,56 @@ Real-time alerts for key events:
 
 ## API Endpoints
 
-### List All Virtual Keys
+Virtual keys are managed through the Admin API. 
+
+### Admin API Endpoints
+
+#### List All Virtual Keys
 
 ```
-GET /api/virtual-keys
+GET /api/virtualkeys
 ```
 
-### Create Virtual Key
+#### Create Virtual Key
 
 ```
-POST /api/virtual-keys
+POST /api/virtualkeys
 ```
 
-### Get Virtual Key
+#### Get Virtual Key
 
 ```
-GET /api/virtual-keys/{id}
+GET /api/virtualkeys/{id}
 ```
 
-### Update Virtual Key
+#### Update Virtual Key
 
 ```
-PUT /api/virtual-keys/{id}
+PUT /api/virtualkeys/{id}
 ```
 
-### Delete Virtual Key
+#### Delete Virtual Key
 
 ```
-DELETE /api/virtual-keys/{id}
+DELETE /api/virtualkeys/{id}
 ```
 
-### Reset Spend
+#### Reset Spend
 
 ```
-POST /api/virtual-keys/{id}/reset-spend
+POST /api/virtualkeys/{id}/reset-spend
 ```
 
 See the [API Reference](API-Reference.md) for detailed endpoint documentation.
+
+### LLM API Usage
+
+Virtual keys are used for authentication with the LLM API:
+
+```
+POST /v1/chat/completions
+Authorization: Bearer condt_yourvirtualkey
+```
 
 ## Security
 
@@ -197,7 +221,7 @@ All virtual key data is securely stored:
 
 ## WebUI Management
 
-The WebUI provides a comprehensive interface for managing virtual keys:
+The WebUI provides a comprehensive interface for managing virtual keys via the Admin API:
 
 ### VirtualKeys Management Page
 
@@ -225,13 +249,29 @@ Real-time alerts related to virtual keys:
 - **Expiration Alerts**: Warnings when keys are nearing expiration
 - **Error Notifications**: Alerts for validation or usage issues
 
-## Implementation Example
+### Implementation Architecture
 
-### Creating a Virtual Key
+The WebUI interacts with virtual keys through a layered approach:
+
+1. **UI Components**: User interface elements in the Blazor application
+2. **Service Adapters**: Implement service interfaces and communicate with Admin API
+3. **Admin API Client**: Makes HTTP requests to the Admin API endpoints
+4. **Admin API**: Performs actual operations on the database
+
+This architecture provides:
+- **Clean separation** of UI and business logic
+- **Improved security** by restricting direct database access
+- **Scalability** through service distribution
+- **Backward compatibility** with existing UI components
+
+## Implementation Examples
+
+### WebUI - Creating a Virtual Key
 
 ```csharp
-// Using the VirtualKeyService
-var newKey = await _virtualKeyService.CreateVirtualKeyAsync(new CreateVirtualKeyDto
+// Using the VirtualKeyServiceAdapter in WebUI
+// This internally calls the Admin API
+var newKey = await _virtualKeyService.CreateVirtualKeyAsync(new CreateVirtualKeyRequestDto
 {
     Name = "Test API Access",
     Budget = 100.0m,
@@ -241,14 +281,15 @@ var newKey = await _virtualKeyService.CreateVirtualKeyAsync(new CreateVirtualKey
 });
 
 // The returned key object includes the generated key value
-string keyValue = newKey.Key; // Format: vk-xxxxxxxxxxxxxxxxxxxx
+string keyValue = newKey.Key; // Format: condt_xxxxxxxxxxxxxxxxxxxx
 ```
 
-### Validating a Virtual Key
+### LLM API - Validating a Virtual Key
 
 ```csharp
-// Using the VirtualKeyService
-var validationResult = await _virtualKeyService.ValidateVirtualKeyAsync("vk-xxxxxxxxxxxxxxxxxxxx");
+// Using the ApiVirtualKeyService in LLM API
+// This calls the Admin API to validate
+var validationResult = await _apiVirtualKeyService.ValidateVirtualKeyAsync("condt_xxxxxxxxxxxxxxxxxxxx");
 
 if (validationResult.IsValid)
 {
@@ -261,18 +302,39 @@ else
 }
 ```
 
-### Updating Spend
+### Admin API - Direct Implementation
 
 ```csharp
-// Using the VirtualKeyService
-await _virtualKeyService.UpdateSpendAsync("vk-xxxxxxxxxxxxxxxxxxxx", 0.25m);
+// Using the AdminVirtualKeyService in the Admin API
+// This accesses the database directly
+var result = await _adminVirtualKeyService.UpdateSpendAsync("condt_xxxxxxxxxxxxxxxxxxxx", 0.25m);
+
+// Reset spend
+await _adminVirtualKeyService.ResetSpendAsync("condt_xxxxxxxxxxxxxxxxxxxx");
 ```
 
-### Resetting Spend
+### Calling the Admin API Directly
 
 ```csharp
-// Using the VirtualKeyService
-await _virtualKeyService.ResetSpendAsync("vk-xxxxxxxxxxxxxxxxxxxx");
+// Example of calling the Admin API directly from any client
+using var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {masterKey}");
+
+// Create a virtual key
+var createRequest = new CreateVirtualKeyRequestDto
+{
+    Name = "External API Access",
+    Budget = 50.0m,
+    BudgetPeriod = BudgetPeriod.Monthly,
+    IsActive = true
+};
+
+var response = await httpClient.PostAsJsonAsync(
+    "http://localhost:5001/api/virtualkeys", 
+    createRequest);
+
+var newKey = await response.Content.ReadFromJsonAsync<CreateVirtualKeyResponseDto>();
+string keyValue = newKey.Key;
 ```
 
 ## Best Practices

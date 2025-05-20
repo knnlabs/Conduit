@@ -6,7 +6,9 @@ ConduitLLM is a modular .NET platform providing a unified, OpenAI-compatible API
 
 ```
 ConduitLLM
-├── ConduitLLM.Configuration  # Central configuration and entity management
+├── ConduitLLM.Admin          # Administrative API for configuration and management
+├── ConduitLLM.Admin.Tests    # Tests for Admin API functionality
+├── ConduitLLM.Configuration  # Central configuration, entities, and standardized DTOs
 ├── ConduitLLM.Core           # Core business logic, interfaces, and routing
 ├── ConduitLLM.Examples       # Example integrations and usage
 ├── ConduitLLM.Http           # OpenAI-compatible HTTP API (REST endpoints)
@@ -17,9 +19,17 @@ ConduitLLM
 
 ## Component Responsibilities
 
+### ConduitLLM.Admin
+- Provides administrative API endpoints for system configuration and management
+- Isolates administrative functions from user-facing LLM API
+- Implements controllers and services for all configuration operations
+- Interfaces with database repositories for data access
+
 ### ConduitLLM.Configuration
 - Stores provider credentials, model mappings, and global settings
 - Manages database schema for configuration and usage tracking
+- Houses all standardized DTOs used across the application
+- Provides repositories for database access
 
 ### ConduitLLM.Core
 - Defines LLM API models (including multimodal/vision content; message content uses `object?` to support both plain text and multimodal objects)
@@ -45,7 +55,8 @@ ConduitLLM
 - Pages for provider setup, model mapping, routing, virtual key management, and usage analytics
 - Real-time notification for budget, key status, and system health
 - **IMPORTANT: No external API functionality** - clean separation of concerns
-- Consumes ConduitLLM.Http API for LLM operations
+- Communicates with the Admin API via service adapters
+- Can operate in direct database mode or API client mode
 
 ## Key Subsystems
 
@@ -69,9 +80,10 @@ Manages API access, budgets, and usage tracking:
 
 A .NET Blazor web application for system configuration:
 
-1. **Database Context**: Stores all configuration and usage data.
-2. **Pages**: Home/Dashboard, Configuration, Routing, Chat, Virtual Keys, Model Costs, System Info, etc.
-3. **Navigation**: Logical grouping for Core, Configuration, Keys & Costs, System.
+1. **Service Adapters**: Interfaces with Admin API while maintaining backward compatibility.
+2. **Admin API Client**: HTTP client for communicating with the Admin API.
+3. **Pages**: Home/Dashboard, Configuration, Routing, Chat, Virtual Keys, Model Costs, System Info, etc.
+4. **Navigation**: Logical grouping for Core, Configuration, Keys & Costs, System.
 
 ## Data Flow
 
@@ -85,6 +97,8 @@ A .NET Blazor web application for system configuration:
 
 2. **Configuration Flow**:
    - Admin configures providers, models, routing via WebUI
+   - WebUI communicates with Admin API via service adapters
+   - Admin API processes and validates configuration changes
    - Configuration is stored in the database and hot-reloaded
    - Virtual keys and budgets are managed from the UI
 
@@ -97,6 +111,7 @@ A .NET Blazor web application for system configuration:
 ## Integration Points
 - LLM provider APIs (OpenAI, Anthropic, Gemini, etc.) via HTTP/HTTPS
 - Database for configuration and usage
+- Admin API for administrative operations
 - Blazor WebUI for management and analytics
 - Notification system for user/system alerts
 

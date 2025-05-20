@@ -69,22 +69,39 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
    ```bash
    dotnet build
    ```
-3. Run the WebUI project:
+3. Run the Admin API, HTTP API, and WebUI projects:
    ```bash
-   cd ConduitLLM.WebUI
+   # Run Admin API
+   cd ConduitLLM.Admin
+   dotnet run &
+   
+   # Run API Gateway
+   cd ../ConduitLLM.Http
+   dotnet run &
+   
+   # Run WebUI
+   cd ../ConduitLLM.WebUI
    dotnet run
    ```
 
-## Docker Images: WebUI and Http Separation
+Note: For WebUI to communicate with the Admin API, set the environment variable:
+```bash
+export CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
+export CONDUIT_USE_ADMIN_API=true
+```
 
-As of April 2025, ConduitLLM is distributed as two separate Docker images:
+## Docker Images: Component Separation
+
+As of May 2025, ConduitLLM is distributed as three separate Docker images:
 
 - **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
-- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
+- **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
+- **HTTP Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
 Each image is published independently:
 
 - `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
 - `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
 
 ### Running with Docker Compose
@@ -98,27 +115,48 @@ services:
     ports:
       - "5001:8080"
     environment:
-      # ... WebUI environment variables
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_USE_ADMIN_API: "true"
+    depends_on:
+      - admin
+
+  admin:
+    image: ghcr.io/knnlabs/conduit-admin:latest
+    ports:
+      - "5002:8080"
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_MASTER_KEY: your_secure_master_key
+    depends_on:
+      - postgres
 
   http:
     image: ghcr.io/knnlabs/conduit-http:latest
     ports:
       - "5000:8080"
     environment:
-      # ... API Gateway environment variables
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
 ```
 
-Then start both services:
+Then start all services:
 
 ```bash
 docker compose up -d
-```
-
-Or run separately:
-
-```bash
-docker run -d --name conduit-webui -p 5001:8080 ghcr.io/knnlabs/conduit-webui:latest
-docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:latest
 ```
 
 > **Note:** Update all deployment scripts and CI/CD workflows to use the new image tags. See `.github/workflows/docker-release.yml` for reference.
