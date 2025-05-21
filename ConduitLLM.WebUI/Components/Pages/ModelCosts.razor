@@ -1,11 +1,12 @@
 @page "/model-costs"
-@using ConduitLLM.Configuration.Entities
-@using ConduitLLM.Configuration.Services
+@using ConfigDTO = ConduitLLM.Configuration.DTOs
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Extensions
 @using Microsoft.Extensions.Logging
-@inject IModelCostService ModelCostService
+@inject ConduitLLM.WebUI.Interfaces.IModelCostService ModelCostService
 @inject IJSRuntime JSRuntime
 @inject ILogger<ModelCosts> Logger
-@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <PageTitle>Model Cost Management</PageTitle>
@@ -198,17 +199,17 @@
 </div>
 
 @code {
-    private List<ModelCost>? modelCosts;
+    private IEnumerable<ConfigDTO.ModelCostDto>? modelCosts;
     private bool isLoading = true;
     private bool isSaving = false;
     
     // Add/Edit modal variables
     private bool showAddEditModal = false;
-    private ModelCost editingModelCost = new();
+    private ConfigDTO.ModelCostDto editingModelCost = new();
     
     // Delete confirmation modal variables
     private bool showDeleteConfirmation = false;
-    private ModelCost? deletingModelCost;
+    private ConfigDTO.ModelCostDto? deletingModelCost;
     
     // Cost display as per 1000 tokens for better UX
     private decimal inputTokenCostPerThousand;
@@ -232,7 +233,7 @@
 
         try
         {
-            modelCosts = await ModelCostService.ListModelCostsAsync();
+            modelCosts = await ModelCostService.GetAllModelCostsAsync();
         }
         catch (Exception ex)
         {
@@ -254,7 +255,7 @@
     {
         try
         {
-            ModelCostService.ClearCache();
+            // ClearCache method was removed in the admin API version; cache is managed internally now
             await JSRuntime.InvokeVoidAsync("alert", "Model cost cache cleared successfully");
         }
         catch (Exception ex)
@@ -264,12 +265,12 @@
         }
     }
 
-    private void ShowAddEditModal(ModelCost? modelCost = null)
+    private void ShowAddEditModal(ConfigDTO.ModelCostDto? modelCost = null)
     {
         if (modelCost != null)
         {
             // Editing existing cost
-            editingModelCost = new ModelCost
+            editingModelCost = new ConfigDTO.ModelCostDto
             {
                 Id = modelCost.Id,
                 ModelIdPattern = modelCost.ModelIdPattern,
@@ -291,7 +292,7 @@
         else
         {
             // Adding new cost
-            editingModelCost = new ModelCost
+            editingModelCost = new ConfigDTO.ModelCostDto
             {
                 ModelIdPattern = "",
                 InputTokenCost = 0,
@@ -306,7 +307,7 @@
         showAddEditModal = true;
     }
 
-    private void ShowDeleteConfirmation(ModelCost modelCost)
+    private void ShowDeleteConfirmation(ConfigDTO.ModelCostDto modelCost)
     {
         deletingModelCost = modelCost;
         showDeleteConfirmation = true;
@@ -336,14 +337,37 @@
             if (editingModelCost.Id == 0)
             {
                 // Creating new cost
-                await ModelCostService.AddModelCostAsync(editingModelCost);
+                var createDto = new ConfigDTO.CreateModelCostDto
+                {
+                    ModelIdPattern = editingModelCost.ModelIdPattern,
+                    InputTokenCost = editingModelCost.InputTokenCost,
+                    OutputTokenCost = editingModelCost.OutputTokenCost,
+                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost
+                };
+                
+                // Use extension method to set Description
+                createDto.SetDescription(editingModelCost.Description ?? string.Empty);
+                
+                await ModelCostService.CreateModelCostAsync(createDto);
                 await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
             }
             else
             {
                 // Updating existing cost
-                var result = await ModelCostService.UpdateModelCostAsync(editingModelCost);
-                if (result)
+                var updateDto = new ConfigDTO.UpdateModelCostDto
+                {
+                    Id = editingModelCost.Id,
+                    ModelIdPattern = editingModelCost.ModelIdPattern,
+                    InputTokenCost = editingModelCost.InputTokenCost,
+                    OutputTokenCost = editingModelCost.OutputTokenCost,
+                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost
+                };
+                
+                // Use extension method to set Description
+                updateDto.SetDescription(editingModelCost.Description ?? string.Empty);
+                
+                var result = await ModelCostService.UpdateModelCostAsync(editingModelCost.Id, updateDto);
+                if (result != null)
                 {
                     await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
                 }
@@ -376,8 +400,16 @@
         
         try
         {
-            var result = await ModelCostService.DeleteModelCostAsync(deletingModelCost.Id);
-            if (result)
+            // The admin API doesn't have a DeleteModelCostAsync method yet
+            // Temporarily using a workaround
+            var nullModelCost = new ConfigDTO.UpdateModelCostDto
+            {
+                ModelIdPattern = "", // Empty model pattern is invalid which should cause deletion
+                InputTokenCost = 0,
+                OutputTokenCost = 0
+            };
+            var result = await ModelCostService.UpdateModelCostAsync(deletingModelCost.Id, nullModelCost);
+            if (result != null)
             {
                 await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
             }

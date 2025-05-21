@@ -59,4 +59,11 @@ public interface IAdminIpFilterService
     /// <param name="settings">The new settings</param>
     /// <returns>Success result with error message if failed</returns>
     Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings);
+    
+    /// <summary>
+    /// Checks if an IP address is allowed based on current filter rules
+    /// </summary>
+    /// <param name="ipAddress">The IP address to check</param>
+    /// <returns>Result indicating if the IP is allowed and reason if denied</returns>
+    Task<IpCheckResult> CheckIpAddressAsync(string ipAddress);
 }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
-using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -97,12 +96,12 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <param name="key">The virtual key string to validate</param>
         /// <param name="requestedModel">Optional. The model being requested, to check against allowed models</param>
-        /// <returns>The VirtualKey entity if validation succeeds, null if validation fails for any reason</returns>
+        /// <returns>The VirtualKeyValidationInfoDto if validation succeeds, null if validation fails for any reason</returns>
         /// <remarks>
         /// This method performs comprehensive validation of a virtual key, including checking if the key exists,
         /// verifying it's enabled, checking expiration, ensuring sufficient budget, and validating model restrictions.
         /// </remarks>
-        Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
+        Task<VirtualKeyValidationInfoDto?> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
 
         /// <summary>
         /// Updates the spend for a specific virtual key by adding the specified cost amount.
@@ -134,11 +133,24 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <param name="keyId">The ID of the virtual key to retrieve</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
-        /// <returns>The full VirtualKey entity if found, null otherwise</returns>
+        /// <returns>The full VirtualKeyValidationInfoDto if found, null otherwise</returns>
         /// <remarks>
-        /// This method retrieves the full VirtualKey entity for use in validation and budget checking.
-        /// It returns the raw entity rather than a DTO, which is useful for internal operations.
+        /// This method retrieves the full virtual key info for use in validation and budget checking.
         /// </remarks>
-        Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default);
+        Task<VirtualKeyValidationInfoDto?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Performs maintenance tasks for all virtual keys including:
+        /// - Resetting expired budgets for monthly/daily keys
+        /// - Disabling expired keys
+        /// - Checking keys approaching budget limits
+        /// </summary>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        /// <remarks>
+        /// This method is typically called periodically by a background service to
+        /// ensure virtual keys are properly maintained.
+        /// </remarks>
+        Task PerformMaintenanceAsync(CancellationToken cancellationToken = default);
     }
 }

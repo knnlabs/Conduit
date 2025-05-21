@@ -6,5 +6,5 @@
 
 global using ConfigDTOs = ConduitLLM.Configuration.DTOs;
 global using WebUIDTOs = ConduitLLM.WebUI.DTOs;
-global using ConfigServiceDtos = ConduitLLM.Configuration.Services.Dtos;
+// ConfigServiceDtos is deprecated as the DTOs have been consolidated into ConduitLLM.Configuration.DTOs
 global using ConfigEntities = ConduitLLM.Configuration.Entities;

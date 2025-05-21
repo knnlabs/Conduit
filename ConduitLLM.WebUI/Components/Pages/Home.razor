@@ -1,8 +1,5 @@
 @page "/"
-@using ConduitLLM.WebUI.Data
-@using ConduitLLM.WebUI.Services
 @using Microsoft.Extensions.Configuration
-@using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.Core.Caching
 @using ConduitLLM.Core.Models.Routing
 @using ConduitLLM.Configuration
@@ -10,13 +7,13 @@
 @using ConduitLLM.Configuration.Repositories
 @using ConduitLLM.Configuration.Entities
 @inject NavigationManager NavigationManager
-@inject ProviderStatusService ProviderStatusService
+@inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
 @inject IProviderHealthRepository ProviderHealthRepository
 @inject IConfiguration Configuration
-@inject IRouterService RouterService
+@inject ConduitLLM.WebUI.Interfaces.IRouterService RouterService
 @inject ConduitLLM.WebUI.Interfaces.ICacheStatusService CacheStatusService
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
-@inject Interfaces.IProviderCredentialService ProviderCredentialService
+@inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @implements IDisposable
 @rendermode InteractiveServer
 
@@ -109,14 +106,14 @@
                                             <td>
                                                 @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
                                                 {
-                                                    @if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Online)
+                                                    @if (status.Status == ProviderStatus.StatusType.Online)
                                                     {
                                                         <span class="text-success">
                                                             <i class="fa fa-check-circle me-1"></i>
                                                             Online
                                                         </span>
                                                     }
-                                                    else if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline)
+                                                    else if (status.Status == ProviderStatus.StatusType.Offline)
                                                     {
                                                         <span class="text-danger">
                                                             <i class="fa fa-exclamation-circle me-1"></i>

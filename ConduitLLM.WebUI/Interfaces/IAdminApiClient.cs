@@ -76,6 +76,13 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <returns>Collection of enabled IP filters</returns>
         Task<IEnumerable<IpFilterDto>> GetEnabledIpFiltersAsync();
+        
+        /// <summary>
+        /// Checks if an IP address is allowed based on current filter rules
+        /// </summary>
+        /// <param name="ipAddress">The IP address to check</param>
+        /// <returns>Result indicating if the IP is allowed and reason if denied</returns>
+        Task<IpCheckResult?> CheckIpAddressAsync(string ipAddress);
 
         #endregion
         #region Virtual Keys
@@ -127,7 +134,46 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <param name="virtualKeyId">Optional virtual key ID to filter statistics.</param>
         /// <returns>A collection of usage statistics DTOs.</returns>
-        Task<IEnumerable<VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null);
+        Task<IEnumerable<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null);
+        
+        /// <summary>
+        /// Validates a virtual key.
+        /// </summary>
+        /// <param name="key">The virtual key to validate.</param>
+        /// <param name="requestedModel">Optional model being requested.</param>
+        /// <returns>Validation result with information about the key.</returns>
+        Task<VirtualKeyValidationResult?> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
+        
+        /// <summary>
+        /// Updates the spend amount for a virtual key.
+        /// </summary>
+        /// <param name="id">The ID of the virtual key.</param>
+        /// <param name="cost">The cost to add to the current spend.</param>
+        /// <returns>True if the update was successful, false otherwise.</returns>
+        Task<bool> UpdateVirtualKeySpendAsync(int id, decimal cost);
+        
+        /// <summary>
+        /// Checks if the budget period has expired and resets if needed.
+        /// </summary>
+        /// <param name="id">The ID of the virtual key.</param>
+        /// <returns>Result indicating if a reset was performed.</returns>
+        Task<BudgetCheckResult?> CheckVirtualKeyBudgetAsync(int id);
+        
+        /// <summary>
+        /// Gets detailed information about a virtual key for validation purposes.
+        /// </summary>
+        /// <param name="id">The ID of the virtual key.</param>
+        /// <returns>Virtual key validation information or null if not found.</returns>
+        Task<VirtualKeyValidationInfoDto?> GetVirtualKeyValidationInfoAsync(int id);
+        
+        /// <summary>
+        /// Performs maintenance tasks on all virtual keys including:
+        /// - Resetting expired budgets
+        /// - Disabling expired keys
+        /// - Checking keys approaching budget limits
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation</returns>
+        Task PerformVirtualKeyMaintenanceAsync();
 
         #endregion
 
@@ -355,7 +401,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
         /// <returns>Cost dashboard data</returns>
-        Task<CostDashboardDto?> GetCostDashboardAsync(
+        Task<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto?> GetCostDashboardAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -369,7 +415,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
         /// <returns>Detailed cost data</returns>
-        Task<List<DetailedCostDataDto>?> GetDetailedCostDataAsync(
+        Task<List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>?> GetDetailedCostDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -411,7 +457,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="endDate">End date for the statistics.</param>
         /// <param name="virtualKeyId">Optional virtual key ID filter.</param>
         /// <returns>A collection of daily usage statistics.</returns>
-        Task<IEnumerable<DailyUsageStatsDto>> GetDailyUsageStatsAsync(
+        Task<IEnumerable<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>> GetDailyUsageStatsAsync(
             DateTime startDate,
             DateTime endDate,
             int? virtualKeyId = null);
@@ -515,6 +561,54 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <returns>System information</returns>
         Task<object> GetSystemInfoAsync();
+
+        #endregion
+
+        #region Provider Status
+
+        /// <summary>
+        /// Checks the status of all providers
+        /// </summary>
+        /// <returns>A dictionary mapping provider names to their status</returns>
+        Task<Dictionary<string, ConduitLLM.WebUI.Models.ProviderStatus>> CheckAllProvidersStatusAsync();
+
+        /// <summary>
+        /// Checks the status of a specific provider
+        /// </summary>
+        /// <param name="providerName">The name of the provider to check</param>
+        /// <returns>The provider status</returns>
+        Task<ConduitLLM.WebUI.Models.ProviderStatus> CheckProviderStatusAsync(string providerName);
+
+        #endregion
+
+        #region HTTP Configuration
+
+        /// <summary>
+        /// Gets a global setting by key
+        /// </summary>
+        /// <param name="key">The key of the setting to retrieve</param>
+        /// <returns>The setting value as a string</returns>
+        Task<string> GetSettingAsync(string key);
+
+        /// <summary>
+        /// Sets a global setting value
+        /// </summary>
+        /// <param name="key">The key of the setting</param>
+        /// <param name="value">The value to set</param>
+        /// <returns>A task representing the asynchronous operation</returns>
+        Task SetSettingAsync(string key, string value);
+
+        /// <summary>
+        /// Initializes HTTP timeout configuration
+        /// </summary>
+        /// <returns>True if initialization was successful, false otherwise</returns>
+        Task<bool> InitializeHttpTimeoutConfigurationAsync();
+
+        /// <summary>
+        /// Initializes HTTP retry configuration
+        /// </summary>
+        /// <returns>True if initialization was successful, false otherwise</returns>
+        Task<bool> InitializeHttpRetryConfigurationAsync();
 
         #endregion
     }

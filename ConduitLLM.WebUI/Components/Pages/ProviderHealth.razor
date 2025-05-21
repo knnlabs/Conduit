@@ -10,7 +10,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject IProviderHealthRepository ProviderHealthRepository
-@inject ProviderStatusService ProviderStatusService
+@inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
 @inject IJSRuntime JSRuntime
 @inject ILogger<ProviderHealth> Logger
 @inject NotificationService NotificationService
@@ -63,11 +63,11 @@
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <h5 class="mb-0">@status.Key</h5>
-                                    @if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Online)
+                                    @if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Online)
                                     {
                                         <span class="badge bg-success">Online</span>
                                     }
-                                    else if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline)
+                                    else if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline)
                                     {
                                         <span class="badge bg-danger">Offline</span>
                                     }
@@ -86,7 +86,7 @@
                                     <div class="mb-2">
                                         <strong>Last Checked:</strong> @status.Value.LastCheckedUtc.ToLocalTime()
                                     </div>
-                                    @if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline && !string.IsNullOrEmpty(status.Value.ErrorCategory))
+                                    @if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline && !string.IsNullOrEmpty(status.Value.ErrorCategory))
                                     {
                                         <div class="mb-2">
                                             <strong>Error Category:</strong> @status.Value.ErrorCategory

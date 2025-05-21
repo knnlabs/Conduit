@@ -1,6 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
-using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Logging;
 using System;
@@ -70,94 +69,145 @@ namespace ConduitLLM.WebUI.Services.Adapters
             return await _adminApiClient.DeleteVirtualKeyAsync(id);
         }
 
-        /// <inheritdoc />
-        public async Task<IEnumerable<VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null)
+        /// <summary>
+        /// Gets virtual key usage statistics for the specified virtual key ID.
+        /// </summary>
+        public async Task<IEnumerable<ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null)
         {
-            return await _adminApiClient.GetVirtualKeyUsageStatisticsAsync(virtualKeyId);
+            var webUiDtos = await _adminApiClient.GetVirtualKeyUsageStatisticsAsync(virtualKeyId);
+            
+            // Convert WebUI DTOs to Configuration DTOs
+            var result = new List<ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto>();
+            
+            foreach (var dto in webUiDtos)
+            {
+                result.Add(new ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto
+                {
+                    VirtualKeyId = dto.VirtualKeyId,
+                    KeyName = dto.KeyName,
+                    Cost = dto.Cost,
+                    RequestCount = dto.RequestCount
+                });
+            }
+            
+            return result;
         }
 
         /// <inheritdoc />
-        public Task<bool> ResetSpendAsync(int id)
+        public async Task<bool> ResetSpendAsync(int id)
         {
             try
             {
                 _logger.LogInformation("Resetting spend for virtual key {KeyId}", id);
-                // This would need API endpoint implementation
-                // For now, log and return success to avoid blocking
-                return Task.FromResult(true);
+                return await _adminApiClient.ResetVirtualKeySpendAsync(id);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error resetting spend for virtual key {KeyId}", id);
-                return Task.FromResult(false);
+                return false;
             }
         }
 
         /// <inheritdoc />
-        public Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
+        public async Task<VirtualKeyValidationInfoDto?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
             try
             {
                 _logger.LogInformation("Validating virtual key for model {Model}", requestedModel ?? "any");
-                // This would need API endpoint implementation
-                // For now, return null indicating validation failure
-                return Task.FromResult<VirtualKey?>(null);
+                
+                // Call the Admin API endpoint with string parameters
+                var validationResult = await _adminApiClient.ValidateVirtualKeyAsync(key, requestedModel);
+                
+                if (validationResult == null || !validationResult.IsValid)
+                {
+                    return null;
+                }
+                
+                // If validation succeeds, get the full validation info
+                if (validationResult.VirtualKeyId.HasValue)
+                {
+                    return await _adminApiClient.GetVirtualKeyValidationInfoAsync(validationResult.VirtualKeyId.Value);
+                }
+                
+                return null;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating virtual key");
-                return Task.FromResult<VirtualKey?>(null);
+                return null;
             }
         }
 
         /// <inheritdoc />
-        public Task<bool> UpdateSpendAsync(int keyId, decimal cost)
+        public async Task<bool> UpdateSpendAsync(int keyId, decimal cost)
         {
             try
             {
                 _logger.LogInformation("Updating spend for virtual key {KeyId} by {Cost}", keyId, cost);
-                // This would need API endpoint implementation
-                // For now, log and return success to avoid blocking
-                return Task.FromResult(true);
+                
+                if (cost <= 0)
+                {
+                    return true; // No cost to add, consider it successful
+                }
+                
+                return await _adminApiClient.UpdateVirtualKeySpendAsync(keyId, cost);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating spend for virtual key {KeyId}", keyId);
-                return Task.FromResult(false);
+                return false;
             }
         }
 
         /// <inheritdoc />
-        public Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
+        public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Checking if budget expired for virtual key {KeyId}", keyId);
-                // This would need API endpoint implementation
-                // For now, return no reset needed
-                return Task.FromResult(false);
+                
+                var result = await _adminApiClient.CheckVirtualKeyBudgetAsync(keyId);
+                return result?.WasReset ?? false;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking budget expiration for virtual key {KeyId}", keyId);
-                return Task.FromResult(false);
+                return false;
             }
         }
 
         /// <inheritdoc />
-        public Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
+        public async Task<VirtualKeyValidationInfoDto?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Getting virtual key {KeyId} for validation", keyId);
-                // This would need API endpoint implementation
-                // For now, return null to indicate key not found
-                return Task.FromResult<VirtualKey?>(null);
+                
+                return await _adminApiClient.GetVirtualKeyValidationInfoAsync(keyId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting virtual key {KeyId} for validation", keyId);
-                return Task.FromResult<VirtualKey?>(null);
+                return null;
+            }
+        }
+        
+        /// <inheritdoc />
+        public async Task PerformMaintenanceAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Performing virtual key maintenance via Admin API");
+                
+                // Call the Admin API endpoint for performing maintenance
+                await _adminApiClient.PerformVirtualKeyMaintenanceAsync();
+                
+                _logger.LogInformation("Virtual key maintenance completed successfully via Admin API");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error performing virtual key maintenance via Admin API");
+                throw;
             }
         }
     }

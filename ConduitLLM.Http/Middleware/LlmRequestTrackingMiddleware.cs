@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Services;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Http.Middleware
 {
@@ -19,18 +20,18 @@ namespace ConduitLLM.Http.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IRequestLogService _requestLogService;
-        private readonly ILogger<LlmRequestTrackingMiddleware>? _logger;
+        private readonly ILogger<LlmRequestTrackingMiddleware> _logger;
         
         /// <summary>
         /// Initializes a new instance of the LlmRequestTrackingMiddleware
         /// </summary>
         /// <param name="next">The next middleware in the pipeline</param>
         /// <param name="requestLogService">Service for logging requests</param>
-        /// <param name="logger">Optional logger</param>
+        /// <param name="logger">Logger instance</param>
         public LlmRequestTrackingMiddleware(
             RequestDelegate next,
             IRequestLogService requestLogService,
-            ILogger<LlmRequestTrackingMiddleware>? logger = null)
+            ILogger<LlmRequestTrackingMiddleware> logger)
         {
             _next = next;
             _requestLogService = requestLogService;
@@ -83,7 +84,7 @@ namespace ConduitLLM.Http.Middleware
             var virtualKeyId = await _requestLogService.GetVirtualKeyIdFromKeyValueAsync(keyValue);
             if (virtualKeyId == null)
             {
-                _logger?.LogWarning("Request with invalid virtual key: {KeyValue}", keyValue);
+                _logger.LogWarning("Request with invalid virtual key: {KeyValue}", keyValue);
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync("Invalid virtual key");
                 return;
@@ -156,7 +157,7 @@ namespace ConduitLLM.Http.Middleware
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error tracking request");
+                _logger.LogError(ex, "Error tracking request for path {RequestPath}", context.Request.Path);
                 throw;
             }
             finally

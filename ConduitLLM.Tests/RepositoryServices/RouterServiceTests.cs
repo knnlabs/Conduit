@@ -1,21 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Options;
-using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Routing;
+using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
-using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Microsoft.EntityFrameworkCore;
 
 using Moq;
 using Xunit;
@@ -24,445 +18,273 @@ namespace ConduitLLM.Tests.RepositoryServices
 {
     public class RouterServiceTests
     {
+        private readonly Mock<IAdminApiClient> _mockAdminApiClient;
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
-        private readonly Mock<IOptionsMonitor<RouterOptions>> _mockRouterOptions;
-        private readonly ILogger<RouterService> _logger;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly RouterOptions _routerOptions;
+        private readonly Mock<ILogger<RouterServiceAdapter>> _mockLogger;
+        private readonly RouterServiceAdapter _service;
 
         public RouterServiceTests()
         {
+            _mockAdminApiClient = new Mock<IAdminApiClient>();
             _mockClientFactory = new Mock<ILLMClientFactory>();
-            _mockRouterOptions = new Mock<IOptionsMonitor<RouterOptions>>();
-            _logger = NullLogger<RouterService>.Instance;
-            _mockServiceProvider = new Mock<IServiceProvider>();
-            
-            // Setup router options
-            _routerOptions = new RouterOptions
-            {
-                Enabled = true,
-                DefaultRoutingStrategy = "ordered",
-                MaxRetries = 3,
-                RetryBaseDelayMs = 1000,
-                RetryMaxDelayMs = 5000,
-                ModelDeployments = new List<ConduitLLM.Configuration.Options.RouterModelDeployment>
-                {
-                    new ConduitLLM.Configuration.Options.RouterModelDeployment
-                    {
-                        DeploymentName = "gpt-4",
-                        ModelAlias = "gpt-4",
-                        RPM = 100,
-                        TPM = 100000
-                    }
-                },
-                FallbackRules = new List<string>
-                {
-                    "gpt-4:claude-2,gpt-3.5-turbo"
-                }
-            };
-            
-            _mockRouterOptions.Setup(m => m.CurrentValue).Returns(_routerOptions);
-        }
-
-        private RouterService CreateRouterService(IDbContextFactory<ConfigurationDbContext> dbContextFactory)
-        {
-            return new RouterService(
-                dbContextFactory,
-                _mockClientFactory.Object,
-                _logger,
-                _mockRouterOptions.Object,
-                _mockServiceProvider.Object);
+            _mockLogger = new Mock<ILogger<RouterServiceAdapter>>();
+            _service = new RouterServiceAdapter(_mockAdminApiClient.Object, _mockLogger.Object);
         }
 
         [Fact]
-        public async Task GetRouterConfigAsync_ShouldDeserializeConfig_WhenExists()
+        public async Task GetRouterConfigAsync_ShouldReturnConfig()
         {
             // Arrange
-            var routerConfig = new RouterConfig
+            var config = new RouterConfig
             {
-                DefaultRoutingStrategy = "ordered",
+                DefaultRoutingStrategy = "simple",
+                FallbacksEnabled = true,
                 MaxRetries = 3,
+                RetryBaseDelayMs = 500,
+                RetryMaxDelayMs = 10000,
                 ModelDeployments = new List<ModelDeployment>
                 {
                     new ModelDeployment
                     {
-                        DeploymentName = "gpt-4",
-                        ModelAlias = "gpt-4",
-                        IsHealthy = true
+                        ModelName = "gpt-4",
+                        ProviderName = "openai",
+                        IsEnabled = true,
+                        Priority = 1,
+                        Weight = 1
                     }
                 }
             };
             
-            var serializedConfig = JsonSerializer.Serialize(routerConfig);
+            _mockAdminApiClient.Setup(api => api.GetRouterConfigAsync())
+                .ReturnsAsync(config);
             
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
             // Act
-            var result = await service.GetRouterConfigAsync();
+            var result = await _service.GetRouterConfigAsync();
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("ordered", result.DefaultRoutingStrategy);
+            Assert.Equal("simple", result.DefaultRoutingStrategy);
+            Assert.True(result.FallbacksEnabled);
             Assert.Equal(3, result.MaxRetries);
+            Assert.Equal(500, result.RetryBaseDelayMs);
             Assert.Single(result.ModelDeployments);
-            Assert.Equal("gpt-4", result.ModelDeployments[0].DeploymentName);
+            Assert.Equal("gpt-4", result.ModelDeployments[0].ModelName);
         }
 
         [Fact]
-        public async Task GetRouterConfigAsync_ShouldCreateFromOptions_WhenNoConfigExists()
+        public async Task GetModelDeploymentsAsync_ShouldReturnDeployments()
         {
             // Arrange
-            // Create in-memory database context factory with no initial data
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            var deployments = new List<ModelDeployment>
+            {
+                new ModelDeployment
+                {
+                    ModelName = "gpt-4",
+                    ProviderName = "openai",
+                    IsEnabled = true,
+                    Priority = 1,
+                    Weight = 1
+                },
+                new ModelDeployment
+                {
+                    ModelName = "claude-3-opus",
+                    ProviderName = "anthropic",
+                    IsEnabled = true,
+                    Priority = 2,
+                    Weight = 1
+                }
+            };
             
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
+            _mockAdminApiClient.Setup(api => api.GetAllModelDeploymentsAsync())
+                .ReturnsAsync(deployments);
+            
             // Act
-            var result = await service.GetRouterConfigAsync();
+            var result = await _service.GetModelDeploymentsAsync();
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("ordered", result.DefaultRoutingStrategy);
-            Assert.Equal(3, result.MaxRetries);
-            Assert.Single(result.ModelDeployments);
-            Assert.Equal("gpt-4", result.ModelDeployments[0].DeploymentName);
+            Assert.Equal(2, result.Count);
+            Assert.Equal("gpt-4", result[0].ModelName);
+            Assert.Equal("claude-3-opus", result[1].ModelName);
         }
 
         [Fact]
-        public async Task SaveModelDeploymentAsync_ShouldAddToDeployments()
+        public async Task GetModelDeploymentAsync_ShouldReturnDeployment()
         {
             // Arrange
-            var existingConfig = new RouterConfig
+            var deployment = new ModelDeployment
             {
-                ModelDeployments = new List<ModelDeployment>
-                {
-                    new ModelDeployment
-                    {
-                        DeploymentName = "existing-model",
-                        ModelAlias = "existing-model"
-                    }
-                }
+                ModelName = "gpt-4",
+                ProviderName = "openai",
+                IsEnabled = true,
+                Priority = 1,
+                Weight = 1
             };
             
-            var serializedConfig = JsonSerializer.Serialize(existingConfig);
+            _mockAdminApiClient.Setup(api => api.GetModelDeploymentAsync("gpt-4"))
+                .ReturnsAsync(deployment);
             
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-            
-            var newDeployment = new ModelDeployment
-            {
-                DeploymentName = "new-model",
-                ModelAlias = "new-model-alias",
-                IsHealthy = true
-            };
-
             // Act
-            var result = await service.SaveModelDeploymentAsync(newDeployment);
+            var result = await _service.GetModelDeploymentAsync("gpt-4");
 
             // Assert
-            Assert.True(result);
-            
-            // Verify that the deployment was actually added by retrieving the updated config
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                var savedSetting = await context.GlobalSettings
-                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
-                
-                Assert.NotNull(savedSetting);
-                
-                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
-                Assert.NotNull(updatedConfig);
-                Assert.Equal(2, updatedConfig.ModelDeployments.Count);
-                Assert.Contains(updatedConfig.ModelDeployments, d => d.DeploymentName == "new-model");
-            }
+            Assert.NotNull(result);
+            Assert.Equal("gpt-4", result.ModelName);
+            Assert.Equal("openai", result.ProviderName);
         }
 
         [Fact]
-        public async Task DeleteModelDeploymentAsync_ShouldRemoveFromDeployments()
+        public async Task SaveModelDeploymentAsync_ShouldSaveDeployment()
         {
             // Arrange
-            var existingConfig = new RouterConfig
+            var deployment = new ModelDeployment
             {
-                ModelDeployments = new List<ModelDeployment>
-                {
-                    new ModelDeployment
-                    {
-                        DeploymentName = "model-to-delete",
-                        ModelAlias = "model-alias"
-                    },
-                    new ModelDeployment
-                    {
-                        DeploymentName = "other-model",
-                        ModelAlias = "other-alias"
-                    }
-                },
-                Fallbacks = new Dictionary<string, List<string>>
-                {
-                    { "primary-model", new List<string> { "model-to-delete", "fallback-model" } }
-                }
+                ModelName = "gpt-4",
+                ProviderName = "openai",
+                IsEnabled = true,
+                Priority = 1,
+                Weight = 1
             };
             
-            var serializedConfig = JsonSerializer.Serialize(existingConfig);
+            _mockAdminApiClient.Setup(api => api.SaveModelDeploymentAsync(deployment))
+                .ReturnsAsync(true);
             
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
             // Act
-            var result = await service.DeleteModelDeploymentAsync("model-to-delete");
+            var result = await _service.SaveModelDeploymentAsync(deployment);
 
             // Assert
             Assert.True(result);
-            
-            // Verify that the deployment was actually removed by retrieving the updated config
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                var savedSetting = await context.GlobalSettings
-                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
-                
-                Assert.NotNull(savedSetting);
-                
-                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
-                Assert.NotNull(updatedConfig);
-                Assert.Single(updatedConfig.ModelDeployments);
-                Assert.DoesNotContain(updatedConfig.ModelDeployments, d => d.DeploymentName == "model-to-delete");
-                
-                // Verify fallbacks were also updated
-                Assert.True(updatedConfig.Fallbacks.ContainsKey("primary-model"));
-                Assert.DoesNotContain("model-to-delete", updatedConfig.Fallbacks["primary-model"]);
-            }
+            _mockAdminApiClient.Verify(api => api.SaveModelDeploymentAsync(deployment), Times.Once);
         }
 
         [Fact]
-        public async Task SetFallbackConfigurationAsync_ShouldUpdateFallbacks()
+        public async Task DeleteModelDeploymentAsync_ShouldDeleteDeployment()
         {
             // Arrange
-            var existingConfig = new RouterConfig
-            {
-                Fallbacks = new Dictionary<string, List<string>>
-                {
-                    { "existing-model", new List<string> { "existing-fallback" } }
-                }
-            };
+            _mockAdminApiClient.Setup(api => api.DeleteModelDeploymentAsync("gpt-4"))
+                .ReturnsAsync(true);
             
-            var serializedConfig = JsonSerializer.Serialize(existingConfig);
-            
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-            
-            var primaryModel = "new-primary";
-            var fallbackModels = new List<string> { "fallback1", "fallback2" };
-
             // Act
-            var result = await service.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
+            var result = await _service.DeleteModelDeploymentAsync("gpt-4");
 
             // Assert
             Assert.True(result);
-            
-            // Verify that the fallback config was actually updated by retrieving the updated config
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                var savedSetting = await context.GlobalSettings
-                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
-                
-                Assert.NotNull(savedSetting);
-                
-                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
-                Assert.NotNull(updatedConfig);
-                Assert.True(updatedConfig.Fallbacks.ContainsKey(primaryModel));
-                Assert.Equal(fallbackModels, updatedConfig.Fallbacks[primaryModel]);
-                Assert.True(updatedConfig.Fallbacks.ContainsKey("existing-model")); // Original entry should still exist
-            }
+            _mockAdminApiClient.Verify(api => api.DeleteModelDeploymentAsync("gpt-4"), Times.Once);
         }
 
         [Fact]
-        public async Task RemoveFallbackConfigurationAsync_ShouldRemoveFallbacks()
+        public async Task GetFallbackConfigurationsAsync_ShouldReturnFallbacks()
         {
             // Arrange
-            var existingConfig = new RouterConfig
+            var fallbacks = new List<FallbackConfiguration>
             {
-                Fallbacks = new Dictionary<string, List<string>>
+                new FallbackConfiguration
                 {
-                    { "model-to-remove", new List<string> { "fallback1", "fallback2" } },
-                    { "other-model", new List<string> { "other-fallback" } }
+                    PrimaryModelDeploymentId = "gpt-4",
+                    FallbackModelDeploymentIds = new List<string> { "claude-3-opus", "gpt-3.5-turbo" }
                 }
             };
             
-            var serializedConfig = JsonSerializer.Serialize(existingConfig);
+            _mockAdminApiClient.Setup(api => api.GetAllFallbackConfigurationsAsync())
+                .ReturnsAsync(fallbacks);
             
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
             // Act
-            var result = await service.RemoveFallbackConfigurationAsync("model-to-remove");
+            var result = await _service.GetFallbackConfigurationsAsync();
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Single(result);
+            Assert.Equal(2, result["gpt-4"].Count);
+            Assert.Contains("claude-3-opus", result["gpt-4"]);
+            Assert.Contains("gpt-3.5-turbo", result["gpt-4"]);
+        }
+
+        [Fact]
+        public async Task SetFallbackConfigurationAsync_ShouldSetFallback()
+        {
+            // Arrange
+            var primaryModel = "gpt-4";
+            var fallbackModels = new List<string> { "claude-3-opus", "gpt-3.5-turbo" };
+            
+            _mockAdminApiClient.Setup(api => api.SetFallbackConfigurationAsync(
+                It.Is<FallbackConfiguration>(c => 
+                    c.PrimaryModelDeploymentId == primaryModel && 
+                    c.FallbackModelDeploymentIds.SequenceEqual(fallbackModels))))
+                .ReturnsAsync(true);
+            
+            // Act
+            var result = await _service.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
 
             // Assert
             Assert.True(result);
+            _mockAdminApiClient.Verify(api => api.SetFallbackConfigurationAsync(
+                It.Is<FallbackConfiguration>(c => 
+                    c.PrimaryModelDeploymentId == primaryModel && 
+                    c.FallbackModelDeploymentIds.SequenceEqual(fallbackModels))), 
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task RemoveFallbackConfigurationAsync_ShouldRemoveFallback()
+        {
+            // Arrange
+            var primaryModel = "gpt-4";
             
-            // Verify that the fallback config was actually removed by retrieving the updated config
-            using (var context = await factory.CreateDbContextAsync())
+            _mockAdminApiClient.Setup(api => api.RemoveFallbackConfigurationAsync(primaryModel))
+                .ReturnsAsync(true);
+            
+            // Act
+            var result = await _service.RemoveFallbackConfigurationAsync(primaryModel);
+
+            // Assert
+            Assert.True(result);
+            _mockAdminApiClient.Verify(api => api.RemoveFallbackConfigurationAsync(primaryModel), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateRouterConfigAsync_ShouldUpdateConfig()
+        {
+            // Arrange
+            var config = new RouterConfig
             {
-                var savedSetting = await context.GlobalSettings
-                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
-                
-                Assert.NotNull(savedSetting);
-                
-                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
-                Assert.NotNull(updatedConfig);
-                Assert.False(updatedConfig.Fallbacks.ContainsKey("model-to-remove"));
-                Assert.True(updatedConfig.Fallbacks.ContainsKey("other-model")); // Original entry should still exist
-            }
+                DefaultRoutingStrategy = "simple",
+                FallbacksEnabled = true,
+                MaxRetries = 3,
+                RetryBaseDelayMs = 500,
+                RetryMaxDelayMs = 10000
+            };
+            
+            _mockAdminApiClient.Setup(api => api.UpdateRouterConfigAsync(config))
+                .ReturnsAsync(true);
+            
+            // Act
+            var result = await _service.UpdateRouterConfigAsync(config);
+
+            // Assert
+            Assert.True(result);
+            _mockAdminApiClient.Verify(api => api.UpdateRouterConfigAsync(config), Times.Once);
         }
 
         [Fact]
         public async Task GetRouterStatusAsync_ShouldReturnStatus()
         {
             // Arrange
-            var routerConfig = new RouterConfig
+            var config = new RouterConfig
             {
-                DefaultRoutingStrategy = "ordered",
-                MaxRetries = 3
+                DefaultRoutingStrategy = "simple",
+                FallbacksEnabled = true
             };
             
-            var serializedConfig = JsonSerializer.Serialize(routerConfig);
+            _mockAdminApiClient.Setup(api => api.GetRouterConfigAsync())
+                .ReturnsAsync(config);
             
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    globalSettings: new List<GlobalSetting> 
-                    { 
-                        new GlobalSetting { Key = "RouterConfig", Value = serializedConfig } 
-                    });
-            }
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
             // Act
-            var result = await service.GetRouterStatusAsync();
+            var result = await _service.GetRouterStatusAsync();
 
             // Assert
             Assert.NotNull(result);
-            Assert.NotNull(result.Config);
-            Assert.Equal("ordered", result.Config.DefaultRoutingStrategy);
-            Assert.Equal(3, result.Config.MaxRetries);
-        }
-
-        [Fact]
-        public async Task UpdateRouterConfigAsync_ShouldSaveConfig()
-        {
-            // Arrange
-            var newConfig = new RouterConfig
-            {
-                DefaultRoutingStrategy = "fallback",
-                MaxRetries = 5,
-                ModelDeployments = new List<ModelDeployment>
-                {
-                    new ModelDeployment
-                    {
-                        DeploymentName = "updated-model",
-                        ModelAlias = "updated-alias"
-                    }
-                }
-            };
-            
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
-            
-            // Create service with real factory
-            var service = CreateRouterService(factory);
-
-            // Act
-            var result = await service.UpdateRouterConfigAsync(newConfig);
-
-            // Assert
-            Assert.True(result);
-            
-            // Verify that the config was actually saved by retrieving it
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                var savedSetting = await context.GlobalSettings
-                    .FirstOrDefaultAsync(g => g.Key == "RouterConfig");
-                
-                Assert.NotNull(savedSetting);
-                
-                var updatedConfig = JsonSerializer.Deserialize<RouterConfig>(savedSetting.Value);
-                Assert.NotNull(updatedConfig);
-                Assert.Equal("fallback", updatedConfig.DefaultRoutingStrategy);
-                Assert.Equal(5, updatedConfig.MaxRetries);
-                Assert.Single(updatedConfig.ModelDeployments);
-                Assert.Equal("updated-model", updatedConfig.ModelDeployments[0].DeploymentName);
-            }
+            Assert.Equal(config, result.Config);
+            Assert.True(result.IsEnabled);  // This is now using the extension method
         }
     }
 }

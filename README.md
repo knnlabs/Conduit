@@ -96,7 +96,16 @@ environment:
   CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
   CONDUIT_MASTER_KEY: your_master_key       # Master key for authentication
   CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
+  CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
 ```
+
+> **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025. See [Migration Guide](docs/admin-api-migration-guide.md) for details.
+
+The WebUI includes a built-in health check indicator that monitors the connection to the Admin API:
+
+- A green checkmark indicates the Admin API is healthy
+- A red warning icon indicates connection issues
+- Click the icon to view detailed status and troubleshooting options
 
 Key features:
 - **Decoupled Architecture**: WebUI and Admin projects are fully decoupled
@@ -140,6 +149,7 @@ services:
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
       CONDUIT_MASTER_KEY: your_secure_master_key
       CONDUIT_USE_ADMIN_API: "true"
+      CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
     depends_on:
       - admin
 
@@ -296,6 +306,9 @@ See the `docs/` directory for detailed documentation:
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
+- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
+- [Admin API Implementation Status](docs/ADMIN-API-MIGRATION-STATUS.md)
+- [Legacy Mode Deprecation Timeline](docs/LEGACY-MODE-DEPRECATION-TIMELINE.md)
 
 ## Contributing
 

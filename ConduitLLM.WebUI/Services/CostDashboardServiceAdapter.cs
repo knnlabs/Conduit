@@ -1,53 +1,39 @@
-using ConduitLLM.Configuration.Entities;
-using ConfigDTO = ConduitLLM.Configuration.DTOs;
-using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.WebUI.Options;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.WebUI.Interfaces;
+using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.WebUI.Services;
-
-/// <summary>
-/// Adapter service for cost dashboard data that can use either direct repository access or the Admin API
-/// </summary>
-public class CostDashboardServiceAdapter : ICostDashboardService
+namespace ConduitLLM.WebUI.Services
 {
-    private readonly CostDashboardService _repositoryService;
-    private readonly IAdminApiClient _adminApiClient;
-    private readonly AdminApiOptions _adminApiOptions;
-    private readonly ILogger<CostDashboardServiceAdapter> _logger;
-    
     /// <summary>
-    /// Initializes a new instance of the CostDashboardServiceAdapter class
+    /// Adapter service for cost dashboard data that uses the Admin API
     /// </summary>
-    /// <param name="repositoryService">The repository-based cost dashboard service</param>
-    /// <param name="adminApiClient">The Admin API client</param>
-    /// <param name="adminApiOptions">The Admin API options</param>
-    /// <param name="logger">The logger</param>
-    public CostDashboardServiceAdapter(
-        CostDashboardService repositoryService,
-        IAdminApiClient adminApiClient,
-        IOptions<AdminApiOptions> adminApiOptions,
-        ILogger<CostDashboardServiceAdapter> logger)
+    public class CostDashboardServiceAdapter : ICostDashboardService
     {
-        _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
-        _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
-        _adminApiOptions = adminApiOptions?.Value ?? throw new ArgumentNullException(nameof(adminApiOptions));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-    
-    /// <inheritdoc />
-    public async Task<ConfigDTO.CostDashboardDto> GetDashboardDataAsync(
-        DateTime? startDate,
-        DateTime? endDate,
-        int? virtualKeyId = null,
-        string? modelName = null)
-    {
-        if (_adminApiOptions.Enabled)
+        private readonly IAdminApiClient _adminApiClient;
+        private readonly ILogger<CostDashboardServiceAdapter> _logger;
+        
+        /// <summary>
+        /// Initializes a new instance of the CostDashboardServiceAdapter class
+        /// </summary>
+        /// <param name="adminApiClient">The Admin API client</param>
+        /// <param name="logger">The logger</param>
+        public CostDashboardServiceAdapter(
+            IAdminApiClient adminApiClient,
+            ILogger<CostDashboardServiceAdapter> logger)
+        {
+            _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+        
+        /// <inheritdoc />
+        public async Task<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto> GetDashboardDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
+            int? virtualKeyId = null,
+            string? modelName = null)
         {
             try
             {
@@ -56,17 +42,15 @@ public class CostDashboardServiceAdapter : ICostDashboardService
 
                 if (configDto == null)
                 {
-                    return new ConfigDTO.CostDashboardDto
+                    return new ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto
                     {
                         StartDate = startDate.GetValueOrDefault(DateTime.UtcNow.AddDays(-7)),
                         EndDate = endDate.GetValueOrDefault(DateTime.UtcNow),
                         TotalCost = 0,
-                        TotalRequests = 0,
-                        TotalInputTokens = 0,
-                        TotalOutputTokens = 0,
-                        CostTrends = new List<ConfigDTO.CostTrendDataDto>(),
-                        CostByModel = new List<ConfigDTO.ModelCostDataDto>(),
-                        CostByVirtualKey = new List<ConfigDTO.VirtualKeyCostDataDto>()
+                        TimeFrame = "custom",
+                        TopModelsBySpend = new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>(),
+                        TopProvidersBySpend = new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>(),
+                        TopVirtualKeysBySpend = new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>()
                     };
                 }
 
@@ -74,18 +58,13 @@ public class CostDashboardServiceAdapter : ICostDashboardService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting cost dashboard data from Admin API, falling back to repository");
-                return await _repositoryService.GetDashboardDataAsync(startDate, endDate, virtualKeyId, modelName);
+                _logger.LogError(ex, "Error getting cost dashboard data from Admin API");
+                throw;
             }
         }
         
-        return await _repositoryService.GetDashboardDataAsync(startDate, endDate, virtualKeyId, modelName);
-    }
-    
-    /// <inheritdoc />
-    public async Task<List<ConfigDTO.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync()
-    {
-        if (_adminApiOptions.Enabled)
+        /// <inheritdoc />
+        public async Task<List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync()
         {
             try
             {
@@ -97,18 +76,13 @@ public class CostDashboardServiceAdapter : ICostDashboardService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting virtual keys from Admin API, falling back to repository");
-                return await _repositoryService.GetVirtualKeysAsync();
+                _logger.LogError(ex, "Error getting virtual keys from Admin API");
+                throw;
             }
         }
-
-        return await _repositoryService.GetVirtualKeysAsync();
-    }
-    
-    /// <inheritdoc />
-    public async Task<List<string>> GetAvailableModelsAsync()
-    {
-        if (_adminApiOptions.Enabled)
+        
+        /// <inheritdoc />
+        public async Task<List<string>> GetAvailableModelsAsync()
         {
             try
             {
@@ -119,22 +93,17 @@ public class CostDashboardServiceAdapter : ICostDashboardService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting available models from Admin API, falling back to repository");
-                return await _repositoryService.GetAvailableModelsAsync();
+                _logger.LogError(ex, "Error getting available models from Admin API");
+                throw;
             }
         }
         
-        return await _repositoryService.GetAvailableModelsAsync();
-    }
-    
-    /// <inheritdoc />
-    public async Task<List<ConfigDTO.DetailedCostDataDto>> GetDetailedCostDataAsync(
-        DateTime? startDate,
-        DateTime? endDate,
-        int? virtualKeyId = null,
-        string? modelName = null)
-    {
-        if (_adminApiOptions.Enabled)
+        /// <inheritdoc />
+        public async Task<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>> GetDetailedCostDataAsync(
+            DateTime? startDate,
+            DateTime? endDate,
+            int? virtualKeyId = null,
+            string? modelName = null)
         {
             try
             {
@@ -142,19 +111,22 @@ public class CostDashboardServiceAdapter : ICostDashboardService
                 var configDtos = await _adminApiClient.GetDetailedCostDataAsync(startDate, endDate, virtualKeyId, modelName);
                 if (configDtos == null)
                 {
-                    return new List<ConfigDTO.DetailedCostDataDto>();
+                    return new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>();
                 }
 
-                // Return the Configuration DTOs directly - we now use the same DTO type
-                return configDtos.ToList();
+                // Convert to the proper type
+                return configDtos.Select(dto => new ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto
+                {
+                    Name = dto.Name ?? "Unknown",
+                    Cost = dto.Cost,
+                    Percentage = dto.Percentage
+                }).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting detailed cost data from Admin API, falling back to repository");
-                return await _repositoryService.GetDetailedCostDataAsync(startDate, endDate, virtualKeyId, modelName);
+                _logger.LogError(ex, "Error getting detailed cost data from Admin API");
+                throw;
             }
         }
-        
-        return await _repositoryService.GetDetailedCostDataAsync(startDate, endDate, virtualKeyId, modelName);
     }
 }

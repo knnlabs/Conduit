@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
+// Use qualified names when referring to DTO types to avoid ambiguity
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -163,7 +164,7 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null)
+        public async Task<IEnumerable<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null)
         {
             try
             {
@@ -176,13 +177,50 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<IEnumerable<VirtualKeyCostDataDto>>(_jsonOptions);
-                return result ?? Enumerable.Empty<VirtualKeyCostDataDto>();
+                // Try to deserialize as Configuration DTOs (Costs namespace)
+                var costsDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto>>(_jsonOptions);
+                
+                if (costsDtos != null)
+                {
+                    // Convert Configuration.DTOs.Costs DTOs to WebUI DTOs
+                    return costsDtos.Select(dto => new DTOs.VirtualKeyCostDataDto
+                    {
+                        VirtualKeyId = dto.VirtualKeyId,
+                        KeyName = dto.KeyName,
+                        Cost = dto.Cost,
+                        RequestCount = dto.RequestCount,
+                        // Default values for extended properties
+                        InputTokens = 0,
+                        OutputTokens = 0,
+                        AverageResponseTimeMs = 0,
+                        LastUsedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        LastDayRequests = 0
+                    }).ToList();
+                }
+                
+                // Fallback: try deserialization as Configuration DTOs (base namespace)
+                var baseDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto>>(_jsonOptions);
+                
+                if (baseDtos != null)
+                {
+                    // Convert Configuration.DTOs DTOs to WebUI DTOs
+                    return baseDtos.Select(dto => new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
+                    {
+                        VirtualKeyId = dto.VirtualKeyId,
+                        KeyName = dto.KeyName,
+                        Cost = dto.Cost,
+                        RequestCount = dto.RequestCount
+                    }).ToList();
+                }
+                
+                // Return empty if no deserialization worked
+                return Enumerable.Empty<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving virtual key usage statistics from Admin API");
-                return Enumerable.Empty<VirtualKeyCostDataDto>();
+                return Enumerable.Empty<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>();
             }
         }
 
@@ -969,7 +1007,7 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<DailyUsageStatsDto>> GetDailyUsageStatsAsync(
+        public async Task<IEnumerable<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>> GetDailyUsageStatsAsync(
             DateTime startDate,
             DateTime endDate,
             int? virtualKeyId = null)
@@ -991,13 +1029,29 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<IEnumerable<DailyUsageStatsDto>>(_jsonOptions);
-                return result ?? Enumerable.Empty<DailyUsageStatsDto>();
+                var result = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.DailyUsageStatsDto>>(_jsonOptions);
+                
+                // Convert Configuration DTOs to WebUI DTOs
+                if (result == null)
+                {
+                    return Enumerable.Empty<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>();
+                }
+                
+                // Map the DTOs
+                return result.Select(dto => new ConduitLLM.WebUI.DTOs.DailyUsageStatsDto
+                {
+                    Date = dto.Date,
+                    RequestCount = dto.RequestCount,
+                    InputTokens = dto.InputTokens,
+                    OutputTokens = dto.OutputTokens,
+                    Cost = dto.Cost,
+                    ModelName = dto.ModelName
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving daily usage statistics from Admin API");
-                return Enumerable.Empty<DailyUsageStatsDto>();
+                return Enumerable.Empty<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>();
             }
         }
 
@@ -1047,7 +1101,7 @@ namespace ConduitLLM.WebUI.Services
         #region Cost Dashboard
 
         /// <inheritdoc />
-        public async Task<CostDashboardDto?> GetCostDashboardAsync(
+        public async Task<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto?> GetCostDashboardAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -1081,7 +1135,7 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadFromJsonAsync<CostDashboardDto>(_jsonOptions);
+                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto>(_jsonOptions);
             }
             catch (Exception ex)
             {
@@ -1091,7 +1145,7 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<DetailedCostDataDto>?> GetDetailedCostDataAsync(
+        public async Task<List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>?> GetDetailedCostDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -1125,13 +1179,28 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<List<DetailedCostDataDto>>(_jsonOptions);
-                return result ?? new List<DetailedCostDataDto>();
+                var configResult = await response.Content.ReadFromJsonAsync<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>>(_jsonOptions);
+                
+                // Convert from Configuration DTOs to WebUI DTOs
+                if (configResult == null)
+                {
+                    return new List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>();
+                }
+                
+                var webUiResult = configResult.Select(dto => new ConduitLLM.WebUI.DTOs.DetailedCostDataDto
+                {
+                    // Map Configuration DTO properties to WebUI DTO properties
+                    Name = dto.Name,
+                    Cost = dto.Cost,
+                    Percentage = dto.Percentage
+                }).ToList();
+                
+                return webUiResult;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving detailed cost data from Admin API");
-                return new List<DetailedCostDataDto>();
+                return new List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>();
             }
         }
 

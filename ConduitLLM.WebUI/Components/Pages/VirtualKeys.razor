@@ -1,13 +1,12 @@
 @page "/virtualkeys"
-@using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.Configuration.DTOs.VirtualKey
 @using Microsoft.EntityFrameworkCore 
 @using Microsoft.JSInterop 
-@using ConduitLLM.Core.Interfaces
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject IVirtualKeyService VirtualKeyService
+@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 
 @inject ILogger<VirtualKeys> Logger

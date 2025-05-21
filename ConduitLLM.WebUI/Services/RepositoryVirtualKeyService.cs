@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.WebUI.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -85,7 +86,8 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc />
         public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
-            return await _virtualKeyService.ValidateVirtualKeyAsync(key, requestedModel);
+            var validationInfo = await _virtualKeyService.ValidateVirtualKeyAsync(key, requestedModel);
+            return validationInfo.ToEntity();
         }
 
         /// <inheritdoc />
@@ -103,7 +105,8 @@ namespace ConduitLLM.WebUI.Services
         /// <inheritdoc />
         public async Task<VirtualKey?> GetVirtualKeyInfoForValidationAsync(int keyId, CancellationToken cancellationToken = default)
         {
-            return await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken);
+            var validationInfo = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(keyId, cancellationToken);
+            return validationInfo.ToEntity();
         }
     }
 }

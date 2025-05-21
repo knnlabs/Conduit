@@ -281,4 +281,33 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
+    
+    /// <summary>
+    /// Checks if an IP address is allowed based on current filter rules
+    /// </summary>
+    /// <param name="ipAddress">The IP address to check</param>
+    /// <returns>Result indicating if the IP is allowed and reason if denied</returns>
+    [HttpGet("check/{ipAddress}")]
+    [AllowAnonymous] // This needs to be accessible without authentication for performance
+    [ProducesResponseType(typeof(IpCheckResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CheckIpAddress(string ipAddress)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress))
+        {
+            return BadRequest("IP address must be provided");
+        }
+        
+        try
+        {
+            var result = await _ipFilterService.CheckIpAddressAsync(ipAddress);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking IP address {IpAddress}", ipAddress);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
 }

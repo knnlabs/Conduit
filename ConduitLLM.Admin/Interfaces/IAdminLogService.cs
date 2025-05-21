@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Services.Dtos;
 using System;
 using System.Threading.Tasks;
 
@@ -44,7 +43,7 @@ public interface IAdminLogService
     /// <param name="startDate">The start date for the summary</param>
     /// <param name="endDate">The end date for the summary</param>
     /// <returns>The logs summary</returns>
-    Task<Configuration.Services.Dtos.LogsSummaryDto> GetLogsSummaryAsync(
+    Task<LogsSummaryDto> GetLogsSummaryAsync(
         string timeframe = "daily",
         DateTime? startDate = null,
         DateTime? endDate = null);

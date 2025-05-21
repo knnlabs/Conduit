@@ -11,17 +11,15 @@
 @using System.Linq
 @using System.Threading.Tasks
 @using Microsoft.JSInterop
-@using Microsoft.EntityFrameworkCore
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject Interfaces.IProviderCredentialService ProviderCredentialService
 @inject Interfaces.IModelProviderMappingService ModelProviderMappingService
 @inject IGlobalSettingService GlobalSettingService
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject HttpRetryConfigurationService HttpRetryService
-@inject HttpTimeoutConfigurationService HttpTimeoutService
+@inject IHttpRetryConfigurationService HttpRetryService
+@inject IHttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
 @inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
@@ -1045,10 +1043,14 @@
     {
         try
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            return await dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
-                .AnyAsync(m => m.ProviderCredential.ProviderName == providerName);
+            // Get the provider ID by name
+            var provider = await ProviderCredentialService.GetByProviderNameAsync(providerName);
+            if (provider == null)
+                return false;
+                
+            // Get all mappings and check if any map to this provider
+            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            return allMappings.Any(m => m.ProviderId == provider.Id.ToString());
         }
         catch (Exception ex)
         {

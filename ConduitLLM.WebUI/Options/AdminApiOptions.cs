@@ -25,6 +25,7 @@ namespace ConduitLLM.WebUI.Options
         /// <summary>
         /// Gets or sets a value indicating whether to use the Admin API client.
         /// If false, direct repository access will be used instead.
+        /// Default is true, which means the Admin API will be used.
         /// </summary>
         public bool UseAdminApi { get; set; } = true;
 

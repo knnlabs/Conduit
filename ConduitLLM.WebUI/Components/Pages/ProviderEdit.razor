@@ -10,7 +10,7 @@
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
-@inject ProviderStatusService ProviderStatusService
+@inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
 @inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
 @rendermode InteractiveServer
@@ -94,22 +94,22 @@ else
                     </div>
                 
                     @if (!string.IsNullOrEmpty(provider.ProviderName) && 
-                          (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
-                           ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
+                          (ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
+                           ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
                     {
                         <div class="p-4 mb-4 bg-light">
                             <h6 class="mb-3">@provider.ProviderName Resources</h6>
                             <div class="d-flex flex-column">
-                                @if (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
+                                @if (ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
                                 {
-                                    <a href="@ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center mb-2">
+                                    <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center mb-2">
                                         <i class="fa fa-key me-2"></i>
                                         Get API Key
                                     </a>
                                 }
-                                @if (ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
+                                @if (ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
                                 {
-                                    <a href="@ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center">
+                                    <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center">
                                         <i class="fa fa-book me-2"></i>
                                         View Documentation
                                     </a>

@@ -7,15 +7,26 @@ namespace ConduitLLM.WebUI.DTOs
     /// Wrapper for ConduitLLM.Configuration.DTOs.DetailedCostDataDto that adds backward compatibility properties.
     /// This class should be used in the WebUI project to ensure compatibility with older code.
     /// </summary>
-    public class DetailedCostDataDto : Conf.DetailedCostDataDto
+    public class DetailedCostDataDto
     {
         /// <summary>
-        /// Number of requests (legacy property name)
+        /// Name identifier for the cost data
         /// </summary>
-        public int RequestCount 
-        { 
-            get => base.Requests; 
-            set => base.Requests = value;
-        }
+        public string? Name { get; set; }
+        
+        /// <summary>
+        /// Cost amount
+        /// </summary>
+        public decimal Cost { get; set; }
+        
+        /// <summary>
+        /// Percentage of total cost
+        /// </summary>
+        public decimal Percentage { get; set; }
+        
+        /// <summary>
+        /// Number of requests
+        /// </summary>
+        public int RequestCount { get; set; }
     }
 }

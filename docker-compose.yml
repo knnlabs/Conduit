@@ -74,6 +74,8 @@ services:
       # Admin API configuration
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
       CONDUIT_USE_ADMIN_API: "true"
+      # Legacy direct database access is disabled by default
+      CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"
     ports:
       - "5001:8080"
     restart: on-failure

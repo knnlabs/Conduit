@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using ConduitLLM.Configuration;
 using ConduitLLM.WebUI;
+using ConduitLLM.WebUI.Extensions;
 using Microsoft.AspNetCore.Authentication; 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
@@ -25,19 +25,15 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.WebUI.Authorization;
 using ConduitLLM.WebUI.Components;
-using ConduitLLM.WebUI.Data;
-using ConduitLLM.WebUI.Extensions;
+// Data directory has been removed
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
-using ConduitLLM.Configuration.Repositories;
-
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.StaticWebAssets;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Configuration.Data;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
     Args = args,
@@ -47,30 +43,8 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
 builder.Configuration.Sources.Clear();
 builder.Configuration.AddEnvironmentVariables();
 
-// Database configuration
-var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
-if (dbProvider == "sqlite")
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
-    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
-}
-else if (dbProvider == "postgres")
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-}
-else
-{
-    throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
-}
-
-// Add database initialization services
-builder.Services.AddDatabaseInitialization();
+// Entity Framework and direct database access have been removed, WebUI now only uses the Admin API
+Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
@@ -152,31 +126,30 @@ builder.Services.Configure<RouterOptions>(
 // Register Router services using the extension method
 builder.Services.AddRouterServices(builder.Configuration);
 
-// Register HTTP retry configuration services
+// Register HTTP retry configuration services - using Admin API for settings
 builder.Services.AddOptions<RetryOptions>()
     .Bind(builder.Configuration.GetSection(RetryOptions.SectionName))
     .ValidateDataAnnotations();
-builder.Services.AddScoped<HttpRetryConfigurationService>();
+builder.Services.AddScoped<IHttpRetryConfigurationService, ConduitLLM.WebUI.Services.Adapters.HttpRetryConfigurationServiceAdapter>();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 
-// Register HTTP timeout configuration services
+// Register HTTP timeout configuration services - using Admin API for settings
 builder.Services.AddOptions<TimeoutOptions>()
     .Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName))
     .ValidateDataAnnotations();
-builder.Services.AddScoped<HttpTimeoutConfigurationService>();
+builder.Services.AddScoped<IHttpTimeoutConfigurationService, ConduitLLM.WebUI.Services.Adapters.HttpTimeoutConfigurationServiceAdapter>();
 builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
 
 // Register HttpClient with retry policies for LLM providers
 builder.Services.AddLLMProviderHttpClients();
 
-// Register Services
-builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderStatusService>();
+// Register Provider Status Service using Admin API adapter
+builder.Services.AddScoped<IProviderStatusService, ConduitLLM.WebUI.Services.Adapters.ProviderStatusServiceAdapter>();
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ConfigurationChangeNotifier>();
-builder.Services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, ConduitLLM.WebUI.Services.DatabaseSettingsStartupFilter>();
-builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
+// Database settings startup filter has been removed
+// Provider Credential Service has been migrated to always use the adapter implementation
 
-// Model costs tracking service
-builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
+// Model costs tracking service - ModelCostService has been migrated to always use the adapter
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 
 // Repository pattern is now fully integrated and always enabled
@@ -185,22 +158,15 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService
 // Repository pattern configuration is now integrated directly in the repositories themselves
 // No need for separate monitoring service
 
-// Repository pattern is fully integrated, no need for separate monitoring or logging services
-
-// Register repositories and repository-based services
-builder.Services.AddRepositoryServices();
-
-// Repository pattern is now fully integrated
-Console.WriteLine($"[Conduit WebUI] Using repository pattern for environment: {builder.Environment.EnvironmentName}");
+// Repository pattern and direct database access has been removed from WebUI
 
 // Register non-repository pattern services
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
 
 // Register database backup service
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.DatabaseBackupService>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.DatabaseBackupServiceAdapter>();
 
-// Adapter for Core interfaces
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
+// Repository Virtual Key Service has been migrated to always use the adapter implementation
 
 // Register controllers
 builder.Services.AddControllers();
@@ -262,14 +228,23 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
 // Register the Admin API client
 builder.Services.AddAdminApiClient(builder.Configuration);
 
+// Add caching decorator for Admin API client
+builder.Services.Decorate<IAdminApiClient, ConduitLLM.WebUI.Services.CachingAdminApiClient>();
+
 // Register Admin API service adapters
 builder.Services.AddAdminApiAdapters(builder.Configuration);
+
+// Register Admin API health service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IAdminApiHealthService, ConduitLLM.WebUI.Services.AdminApiHealthService>();
+
+// Register Admin API cache service
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IAdminApiCacheService, ConduitLLM.WebUI.Services.AdminApiCacheService>();
 
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 
-// Add Provider Health Monitoring services
-builder.Services.AddProviderHealthMonitoring(builder.Configuration);
+// Register Provider Health Monitoring services using only the Admin API
+builder.Services.AddScoped<IProviderHealthService, ConduitLLM.WebUI.Services.Adapters.ProviderHealthServiceAdapter>();
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ProviderHealthMonitorService>();
 
 // Add Razor Components
@@ -281,46 +256,11 @@ builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
 
-// Log database configuration ONCE, avoid duplicate logger declarations
-var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbConnection");
-var connMgr = new ConduitLLM.Core.Data.ConnectionStringManager();
-connMgr.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
-
-// Initialize the database FIRST - before any services try to use it
+// Log usage mode
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Initializing database...");
-
-    try
-    {
-        // Initialize the database with our new DatabaseInitializer
-        var success = await scope.ServiceProvider.InitializeDatabaseAsync(maxRetries: 20, retryDelayMs: 3000);
-
-        if (success)
-        {
-            logger.LogInformation("Database initialized successfully");
-
-            // Ensure specific critical tables exist
-            await scope.ServiceProvider.EnsureTablesExistAsync(
-                "GlobalSettings",
-                "VirtualKeys",
-                "ModelCosts",
-                "RequestLogs",
-                "VirtualKeySpendHistory",
-                "ProviderHealthRecords",
-                "IpFilters"
-            );
-        }
-        else
-        {
-            logger.LogWarning("Database initialization completed with warnings. Some functionality may be limited.");
-        }
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error during database initialization. Starting application anyway, but functionality may be limited.");
-    }
+    logger.LogInformation("Using Admin API mode. All services are using adapter implementations.");
 }
 
 // Print master key for debugging purposes

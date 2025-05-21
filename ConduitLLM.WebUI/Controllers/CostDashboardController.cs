@@ -1,5 +1,5 @@
 using ConduitLLM.WebUI.DTOs;
-using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -26,7 +26,7 @@ namespace ConduitLLM.WebUI.Controllers
     [Authorize]
     public class CostDashboardController : ControllerBase
     {
-        private readonly CostDashboardService _costDashboardService;
+        private readonly ICostDashboardService _costDashboardService;
         private readonly ILogger<CostDashboardController> _logger;
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace ConduitLLM.WebUI.Controllers
         /// <param name="costDashboardService">The service for retrieving cost dashboard data.</param>
         /// <param name="logger">The logger instance.</param>
         public CostDashboardController(
-            CostDashboardService costDashboardService,
+            ICostDashboardService costDashboardService,
             ILogger<CostDashboardController> logger)
         {
             _costDashboardService = costDashboardService ?? throw new ArgumentNullException(nameof(costDashboardService));

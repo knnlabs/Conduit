@@ -31,6 +31,7 @@
                 <h6 class="app-title ml-3">Conduit</h6>
                 <div class="spacer"></div>
                 <NotificationDisplay />
+                <ConduitLLM.WebUI.Components.Shared.AdminApiHealthStatus />
                 <CascadingAuthenticationState>
                     <AuthorizeView>
                         <Authorized>
@@ -56,6 +57,7 @@
         
         <main class="main-content">
             <div class="container container-xxl mt-4">
+                <ConduitLLM.WebUI.Components.Shared.DeprecationWarning />
                 @Body
             </div>
         </main>

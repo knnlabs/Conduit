@@ -1,10 +1,12 @@
-@using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Models
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging 
 @using System.Text.Json
+@using ConduitLLM.Configuration.Entities
 @inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
-@inject ProviderStatusService ProviderStatusService
+@inject IProviderStatusService ProviderStatusService
 @inject NavigationManager NavigationManager
 @inject ILogger<GuidedSetupWizard> Logger
 

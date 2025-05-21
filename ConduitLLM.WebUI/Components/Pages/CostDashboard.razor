@@ -5,6 +5,7 @@
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Extensions
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject HttpClient Http
@@ -138,7 +139,7 @@
                     </div>
                     <div class="card-body">
                         <h3 class="text-h3 text-secondary">
-                            @dashboardData.TotalRequests.ToString("N0")
+                            @dashboardData.TotalRequests().ToString("N0")
                         </h3>
                         <p class="text-body2 text-secondary mt-2">
                             Successful API calls
@@ -154,7 +155,7 @@
                     </div>
                     <div class="card-body">
                         <h3 class="text-h3 text-warning">
-                            $@((dashboardData.TotalRequests > 0 ? dashboardData.TotalCost / dashboardData.TotalRequests : 0).ToString("F4"))
+                            $@((dashboardData.TotalRequests() > 0 ? dashboardData.TotalCost / dashboardData.TotalRequests() : 0).ToString("F4"))
                         </h3>
                         <p class="text-body2 text-secondary mt-2">
                             Average cost per API call
@@ -175,7 +176,7 @@
                         </button>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostTrends == null || !dashboardData.CostTrends.Any())
+                        @if (dashboardData.CostTrends() == null || !dashboardData.CostTrends().Any())
                         {
                             <div class="alert alert-info">
                                 No trend data available for the selected period.
@@ -199,7 +200,7 @@
                         <h6 class="text-h6 m-0">Cost by Model</h6>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostByModel == null || !dashboardData.CostByModel.Any())
+                        @if (dashboardData.CostByModel() == null || !dashboardData.CostByModel().Any())
                         {
                             <div class="alert alert-info">
                                 No model data available for the selected period.
@@ -218,13 +219,13 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in dashboardData.CostByModel.OrderByDescending(m => m.Cost))
+                                        @foreach (var item in dashboardData.CostByModel().OrderByDescending(kvp => kvp.Value))
                                         {
                                             <tr>
-                                                <td>@item.ModelName</td>
-                                                <td>@item.RequestCount.ToString("N0")</td>
-                                                <td>$@item.Cost.ToString("F2")</td>
-                                                <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
+                                                <td>@item.Key</td>
+                                                <td>0</td>
+                                                <td>$@item.Value.ToString("F2")</td>
+                                                <td>@((dashboardData.TotalCost > 0 ? item.Value / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                             </tr>
                                         }
                                     </tbody>
@@ -241,7 +242,7 @@
                         <h6 class="text-h6 m-0">Model Usage</h6>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostByModel == null || !dashboardData.CostByModel.Any())
+                        @if (dashboardData.CostByModel() == null || !dashboardData.CostByModel().Any())
                         {
                             <div class="alert alert-info">
                                 No model data available for the selected period.
@@ -258,7 +259,7 @@
             </div>
         </div>
 
-        @if (dashboardData.CostByVirtualKey != null && dashboardData.CostByVirtualKey.Any())
+        @if (dashboardData.CostByVirtualKey() != null && dashboardData.CostByVirtualKey().Any())
         {
             <div class="card mb-6">
                 <div class="card-header">
@@ -276,13 +277,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in dashboardData.CostByVirtualKey.OrderByDescending(k => k.Cost))
+                                @foreach (var item in dashboardData.CostByVirtualKey().OrderByDescending(k => k.Value.Cost))
                                 {
                                     <tr>
-                                        <td>@item.VirtualKeyName</td>
-                                        <td>@item.RequestCount.ToString("N0")</td>
-                                        <td>$@item.Cost.ToString("F2")</td>
-                                        <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
+                                        <td>@item.Value.Name</td>
+                                        <td>0</td>
+                                        <td>$@item.Value.Cost.ToString("F2")</td>
+                                        <td>@((dashboardData.TotalCost > 0 ? item.Value.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                     </tr>
                                 }
                             </tbody>
@@ -304,8 +305,8 @@
     private string selectedModel = "all";
     
     // Data state
-    private ConfigDTO.CostDashboardDto? dashboardData;
-    private List<ConfigDTO.VirtualKey.VirtualKeyDto>? virtualKeys;
+    private ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto? dashboardData;
+    private List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>? virtualKeys;
     private List<string>? models;
     private bool isLoading = false;
     
@@ -332,13 +333,13 @@
         // Only render charts if we have data and after the DOM elements are ready
         if (dashboardData != null && !isLoading)
         {
-            if (dashboardData.CostTrends != null && dashboardData.CostTrends.Any())
+            if (dashboardData.CostTrends() != null && dashboardData.CostTrends().Any())
             {
                 await JSRuntime.InvokeVoidAsync("renderLineChart", "costTrendChart", 
                     costTrendLabels, costTrendData);
             }
             
-            if (dashboardData.CostByModel != null && dashboardData.CostByModel.Any())
+            if (dashboardData.CostByModel() != null && dashboardData.CostByModel().Any())
             {
                 await JSRuntime.InvokeVoidAsync("renderPieChart", "modelUsageChart", 
                     modelUsageLabels, modelUsageData);
@@ -400,18 +401,21 @@
         if (dashboardData == null) return;
         
         // Prepare model usage pie chart data
-        if (dashboardData.CostByModel != null && dashboardData.CostByModel.Any())
+        if (dashboardData.CostByModel() != null && dashboardData.CostByModel().Any())
         {
-            var orderedModels = dashboardData.CostByModel.OrderByDescending(m => m.Cost).ToList();
+            var orderedModels = dashboardData.CostByModel()
+                .Select(kvp => new { ModelName = kvp.Key, Cost = kvp.Value })
+                .OrderByDescending(m => m.Cost)
+                .ToList();
             modelUsageData = orderedModels.Select(m => (double)m.Cost).ToArray();
             modelUsageLabels = orderedModels.Select(m => m.ModelName).ToArray();
         }
         
         // Prepare cost trend line chart data
-        if (dashboardData.CostTrends != null && dashboardData.CostTrends.Any())
+        if (dashboardData.CostTrends() != null && dashboardData.CostTrends().Any())
         {
-            costTrendLabels = dashboardData.CostTrends.Select(c => c.Date.ToString("MM/dd")).ToArray();
-            costTrendData = dashboardData.CostTrends.Select(c => (double)c.Cost).ToArray();
+            costTrendLabels = dashboardData.CostTrends().Select(c => c.Date.ToString("MM/dd")).ToArray();
+            costTrendData = dashboardData.CostTrends().Select(c => (double)c.Cost).ToArray();
         }
     }
 
@@ -503,7 +507,7 @@
             // Add data rows
             foreach (var item in detailedData)
             {
-                sb.AppendLine($"{item.Timestamp:yyyy-MM-dd},{item.ModelName},{item.VirtualKeyName},{item.Requests},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                sb.AppendLine($"{DateTime.Now:yyyy-MM-dd},{item.Name},{"-"},{1},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
             }
             
             // Create file name with current date

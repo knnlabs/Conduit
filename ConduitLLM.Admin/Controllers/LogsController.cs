@@ -1,7 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Services;
-using ConduitLLM.Configuration.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -117,7 +115,7 @@ public class LogsController : ControllerBase
     /// <param name="endDate">The end date for the summary</param>
     /// <returns>The logs summary</returns>
     [HttpGet("summary")]
-    [ProducesResponseType(typeof(Configuration.Services.Dtos.LogsSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LogsSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetLogsSummary(

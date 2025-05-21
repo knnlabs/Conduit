@@ -1,8 +1,7 @@
 @using ConduitLLM.Configuration.DTOs.VirtualKey
-@using ConduitLLM.Core.Interfaces
 @using Microsoft.Extensions.Logging
 @using System.Globalization
-@inject IVirtualKeyService VirtualKeyService
+@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject ILogger<VirtualKeyUsageSummary> Logger
 
 <div class="card mb-4 shadow-sm">

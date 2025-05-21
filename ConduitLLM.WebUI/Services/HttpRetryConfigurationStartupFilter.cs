@@ -1,50 +1,62 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.WebUI.Interfaces;
 
-namespace ConduitLLM.WebUI.Services;
-
-/// <summary>
-/// Startup filter to initialize HTTP retry settings from the database during application startup.
-/// </summary>
-public class HttpRetryConfigurationStartupFilter : IStartupFilter
+namespace ConduitLLM.WebUI.Services
 {
-    private readonly ILogger<HttpRetryConfigurationStartupFilter> _logger;
-
-    public HttpRetryConfigurationStartupFilter(ILogger<HttpRetryConfigurationStartupFilter> logger)
+    /// <summary>
+    /// Startup filter to initialize HTTP retry settings from the Admin API during application startup.
+    /// </summary>
+    public class HttpRetryConfigurationStartupFilter : IStartupFilter
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+        private readonly ILogger<HttpRetryConfigurationStartupFilter> _logger;
 
-    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
-    {
-        return app =>
+        /// <summary>
+        /// Initializes a new instance of the HttpRetryConfigurationStartupFilter class
+        /// </summary>
+        /// <param name="logger">Logger for tracking startup operations</param>
+        public HttpRetryConfigurationStartupFilter(ILogger<HttpRetryConfigurationStartupFilter> logger)
         {
-            // Initialize HTTP retry settings after the application is fully configured
-            app.Use(async (context, nextMiddleware) =>
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        /// <inheritdoc />
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+        {
+            return builder =>
             {
-                try
+                // Apply the retry configuration during startup
+                using (var scope = builder.ApplicationServices.CreateScope())
                 {
-                    // Only run this once at the start
-                    if (context.Request.Path == "/")
+                    var adminApiClient = scope.ServiceProvider.GetRequiredService<IAdminApiClient>();
+                    
+                    try
                     {
-                        var httpRetryConfigService = context.RequestServices.GetRequiredService<HttpRetryConfigurationService>();
-                        _logger.LogInformation("Initializing HTTP retry settings from database");
-                        await httpRetryConfigService.LoadSettingsFromDatabaseAsync();
+                        // Initialize default configuration if needed via the API
+                        var initialized = Task.Run(async () => 
+                            await adminApiClient.InitializeHttpRetryConfigurationAsync()
+                        ).GetAwaiter().GetResult();
+                        
+                        if (initialized)
+                        {
+                            _logger.LogInformation("HTTP retry configuration initialized successfully");
+                        }
+                        
+                        // Now load the settings into the application options
+                        var retryConfigService = scope.ServiceProvider.GetRequiredService<IHttpRetryConfigurationService>();
+                        Task.Run(async () => await retryConfigService.LoadSettingsFromDatabaseAsync()).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error initializing HTTP retry configuration");
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error initializing HTTP retry settings");
-                }
 
-                await nextMiddleware();
-            });
-
-            next(app);
-        };
+                // Call the next step in the pipeline
+                next(builder);
+            };
+        }
     }
 }

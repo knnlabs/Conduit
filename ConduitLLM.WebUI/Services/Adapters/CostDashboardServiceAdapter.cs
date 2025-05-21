@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs.Costs;
 using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.DTOs;
 using Microsoft.Extensions.Logging;
 
 // Alias namespaces to disambiguate types
@@ -34,7 +36,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
         }
 
         /// <inheritdoc />
-        public async Task<ConfigDTO.CostDashboardDto> GetDashboardDataAsync(
+        public async Task<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto> GetDashboardDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -91,20 +93,50 @@ namespace ConduitLLM.WebUI.Services.Adapters
 
                 // Get Virtual Key usage statistics
                 var virtualKeyStats = await _adminApiClient.GetVirtualKeyUsageStatisticsAsync(virtualKeyId);
-                var costByVirtualKey = virtualKeyStats.ToList();
+                
+                // Convert WebUI DTOs to Configuration DTOs
+                var costByVirtualKey = virtualKeyStats.Select(dto => new ConfigDTO.VirtualKeyCostDataDto
+                {
+                    VirtualKeyId = dto.VirtualKeyId,
+                    VirtualKeyName = dto.KeyName,
+                    Cost = dto.Cost,
+                    RequestCount = dto.RequestCount
+                }).ToList();
 
-                // Create and return the dashboard
-                return new ConfigDTO.CostDashboardDto
+                // Try to get the cost dashboard data from the Admin API first
+                var dashboardData = await _adminApiClient.GetCostDashboardAsync(
+                    effectiveStartDate,
+                    effectiveEndDate,
+                    virtualKeyId,
+                    modelName);
+                    
+                // Return the data directly from the API if available
+                if (dashboardData != null)
+                {
+                    return dashboardData;
+                }
+                
+                // If not available, construct a basic version from our calculations
+                return new ConfigDTO.Costs.CostDashboardDto
                 {
                     StartDate = effectiveStartDate,
                     EndDate = effectiveEndDate,
                     TotalCost = totalCost,
-                    TotalRequests = totalRequests,
-                    TotalInputTokens = totalInputTokens,
-                    TotalOutputTokens = totalOutputTokens,
-                    CostTrends = costTrends,
-                    CostByModel = costByModel,
-                    CostByVirtualKey = costByVirtualKey
+                    TimeFrame = "custom",
+                    // Convert model costs to the new format
+                    TopModelsBySpend = costByModel.Select(m => new ConfigDTO.Costs.DetailedCostDataDto 
+                    { 
+                        Name = m.ModelName,
+                        Cost = m.Cost,
+                        Percentage = totalCost > 0 ? (m.Cost / totalCost) * 100 : 0
+                    }).ToList(),
+                    // Convert virtual key costs to the new format
+                    TopVirtualKeysBySpend = costByVirtualKey.Select(k => new ConfigDTO.Costs.DetailedCostDataDto
+                    {
+                        Name = k.VirtualKeyName ?? "Unknown",
+                        Cost = k.Cost,
+                        Percentage = totalCost > 0 ? (k.Cost / totalCost) * 100 : 0
+                    }).ToList()
                 };
             }
             catch (Exception ex)
@@ -117,7 +149,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
         }
 
         /// <inheritdoc />
-        public async Task<List<ConfigDTO.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync()
+        public async Task<List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync()
         {
             try
             {
@@ -128,7 +160,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting virtual keys");
-                return new List<ConfigDTO.VirtualKey.VirtualKeyDto>();
+                return new List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>();
             }
         }
 
@@ -148,7 +180,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
         }
 
         /// <inheritdoc />
-        public async Task<List<ConfigDTO.DetailedCostDataDto>> GetDetailedCostDataAsync(
+        public async Task<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>> GetDetailedCostDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -167,28 +199,46 @@ namespace ConduitLLM.WebUI.Services.Adapters
                     virtualKeyId, 
                     modelName);
 
-                return detailedCostData ?? new List<ConfigDTO.DetailedCostDataDto>();
+                // Convert the WebUI DTO to the Configuration DTO needed by the interface
+                if (detailedCostData == null)
+                {
+                    return new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>();
+                }
+                
+                var result = new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>();
+                foreach (var dto in detailedCostData)
+                {
+                    // Convert WebUI DTO to Configuration DTO
+                    result.Add(new ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto
+                    {
+                        Name = dto.Name ?? "Unknown",
+                        Cost = dto.Cost,
+                        Percentage = dto.Percentage
+                    });
+                }
+                return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting detailed cost data");
-                return new List<ConfigDTO.DetailedCostDataDto>();
+                return new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>();
             }
         }
 
-        private ConfigDTO.CostDashboardDto CreateEmptyDashboard(DateTime startDate, DateTime endDate)
+        private ConfigDTO.Costs.CostDashboardDto CreateEmptyDashboard(DateTime startDate, DateTime endDate)
         {
-            return new ConfigDTO.CostDashboardDto
+            return new ConfigDTO.Costs.CostDashboardDto
             {
                 StartDate = startDate,
                 EndDate = endDate,
                 TotalCost = 0,
-                TotalRequests = 0,
-                TotalInputTokens = 0,
-                TotalOutputTokens = 0,
-                CostTrends = new List<ConfigDTO.CostTrendDataDto>(),
-                CostByModel = new List<ConfigDTO.ModelCostDataDto>(),
-                CostByVirtualKey = new List<ConfigDTO.VirtualKeyCostDataDto>()
+                TimeFrame = "custom",
+                Last24HoursCost = 0,
+                Last7DaysCost = 0,
+                Last30DaysCost = 0,
+                TopModelsBySpend = new List<ConfigDTO.Costs.DetailedCostDataDto>(),
+                TopProvidersBySpend = new List<ConfigDTO.Costs.DetailedCostDataDto>(),
+                TopVirtualKeysBySpend = new List<ConfigDTO.Costs.DetailedCostDataDto>()
             };
         }
     }

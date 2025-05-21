@@ -16,8 +16,8 @@
 @inject ILogger<Configuration> Logger
 @inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject HttpRetryConfigurationService HttpRetryService
-@inject HttpTimeoutConfigurationService HttpTimeoutService
+@inject ConduitLLM.WebUI.Interfaces.IHttpRetryConfigurationService HttpRetryService
+@inject ConduitLLM.WebUI.Interfaces.IHttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 

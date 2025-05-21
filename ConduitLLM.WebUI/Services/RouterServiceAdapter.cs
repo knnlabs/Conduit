@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Routing;
+using ConduitLLM.WebUI.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
 using Microsoft.Extensions.Options;
@@ -7,278 +8,275 @@ using Microsoft.Extensions.Options;
 namespace ConduitLLM.WebUI.Services;
 
 /// <summary>
-/// Adapter service for router operations that can use either direct repository access or the Admin API
+/// Adapter service for router operations using the Admin API
 /// </summary>
 public class RouterServiceAdapter : IRouterService
 {
-    private readonly RouterService _repositoryService;
     private readonly IAdminApiClient _adminApiClient;
-    private readonly AdminApiOptions _adminApiOptions;
     private readonly ILogger<RouterServiceAdapter> _logger;
+    
+    // Flag to indicate if initialization has been performed
+    private bool _routerInitialized = false;
     
     /// <summary>
     /// Initializes a new instance of the RouterServiceAdapter class
     /// </summary>
-    /// <param name="repositoryService">The repository-based router service</param>
     /// <param name="adminApiClient">The Admin API client</param>
-    /// <param name="adminApiOptions">The Admin API options</param>
     /// <param name="logger">The logger</param>
     public RouterServiceAdapter(
-        RouterService repositoryService,
         IAdminApiClient adminApiClient,
-        IOptions<AdminApiOptions> adminApiOptions,
         ILogger<RouterServiceAdapter> logger)
     {
-        _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
         _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
-        _adminApiOptions = adminApiOptions?.Value ?? throw new ArgumentNullException(nameof(adminApiOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
     
     /// <inheritdoc />
     public ILLMRouter? GetRouter()
     {
-        // Always use the repository service for this method as it provides direct access to the router instance
-        return _repositoryService.GetRouter();
+        // We need to ensure the router is initialized before returning it
+        if (!_routerInitialized)
+        {
+            _logger.LogWarning("Router not initialized. Call InitializeRouterAsync first.");
+            return null;
+        }
+        
+        // In the adapter pattern implementation, we don't maintain a local router instance
+        // Instead, all operations are delegated to the Admin API
+        _logger.LogInformation("GetRouter() is not directly supported in the adapter pattern implementation");
+        return null;
     }
     
     /// <inheritdoc />
     public async Task<List<ModelDeployment>> GetModelDeploymentsAsync()
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
-            {
-                return await _adminApiClient.GetAllModelDeploymentsAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model deployments from Admin API, falling back to repository");
-                return await _repositoryService.GetModelDeploymentsAsync();
-            }
+            var deployments = await _adminApiClient.GetAllModelDeploymentsAsync();
+            return deployments ?? new List<ModelDeployment>();
         }
-        
-        return await _repositoryService.GetModelDeploymentsAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting model deployments from Admin API");
+            return new List<ModelDeployment>();
+        }
     }
     
     /// <inheritdoc />
     public async Task<ModelDeployment?> GetModelDeploymentAsync(string deploymentName)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
-            {
-                return await _adminApiClient.GetModelDeploymentAsync(deploymentName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting model deployment {DeploymentName} from Admin API, falling back to repository", deploymentName);
-                return await _repositoryService.GetModelDeploymentAsync(deploymentName);
-            }
+            return await _adminApiClient.GetModelDeploymentAsync(deploymentName);
         }
-        
-        return await _repositoryService.GetModelDeploymentAsync(deploymentName);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting model deployment {DeploymentName} from Admin API", deploymentName);
+            return null;
+        }
     }
     
     /// <inheritdoc />
     public async Task<bool> SaveModelDeploymentAsync(ModelDeployment deployment)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
-            {
-                var success = await _adminApiClient.SaveModelDeploymentAsync(deployment);
-                
-                if (!success)
-                {
-                    _logger.LogWarning("Failed to save model deployment through Admin API, falling back to repository");
-                    return await _repositoryService.SaveModelDeploymentAsync(deployment);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving model deployment through Admin API, falling back to repository");
-                return await _repositoryService.SaveModelDeploymentAsync(deployment);
-            }
+            return await _adminApiClient.SaveModelDeploymentAsync(deployment);
         }
-        
-        return await _repositoryService.SaveModelDeploymentAsync(deployment);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving model deployment through Admin API");
+            return false;
+        }
     }
     
     /// <inheritdoc />
     public async Task<bool> DeleteModelDeploymentAsync(string deploymentName)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
-            {
-                var success = await _adminApiClient.DeleteModelDeploymentAsync(deploymentName);
-                
-                if (!success)
-                {
-                    _logger.LogWarning("Failed to delete model deployment through Admin API, falling back to repository");
-                    return await _repositoryService.DeleteModelDeploymentAsync(deploymentName);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting model deployment through Admin API, falling back to repository");
-                return await _repositoryService.DeleteModelDeploymentAsync(deploymentName);
-            }
+            return await _adminApiClient.DeleteModelDeploymentAsync(deploymentName);
         }
-        
-        return await _repositoryService.DeleteModelDeploymentAsync(deploymentName);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting model deployment through Admin API");
+            return false;
+        }
     }
     
     /// <inheritdoc />
     public async Task<Dictionary<string, List<string>>> GetFallbackConfigurationsAsync()
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
+            var fallbackConfigs = await _adminApiClient.GetAllFallbackConfigurationsAsync();
+            // Convert from FallbackConfiguration objects to Dictionary<string, List<string>>
+            var result = new Dictionary<string, List<string>>();
+            foreach (var config in fallbackConfigs)
             {
-                var fallbackConfigs = await _adminApiClient.GetAllFallbackConfigurationsAsync();
-                // Convert from FallbackConfiguration objects to Dictionary<string, List<string>>
-                var result = new Dictionary<string, List<string>>();
-                foreach (var config in fallbackConfigs)
-                {
-                    result[config.PrimaryModelDeploymentId] = config.FallbackModelDeploymentIds?.ToList() ?? new List<string>();
-                }
-                return result;
+                result[config.PrimaryModelDeploymentId] = config.FallbackModelDeploymentIds?.ToList() ?? new List<string>();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting fallback configurations from Admin API, falling back to repository");
-                return await _repositoryService.GetFallbackConfigurationsAsync();
-            }
+            return result;
         }
-
-        return await _repositoryService.GetFallbackConfigurationsAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting fallback configurations from Admin API");
+            return new Dictionary<string, List<string>>();
+        }
     }
     
     /// <inheritdoc />
     public async Task<bool> SetFallbackConfigurationAsync(string primaryModel, List<string> fallbackModels)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
+            // Create a FallbackConfiguration object to pass to the API
+            var fallbackConfig = new FallbackConfiguration
             {
-                // Create a FallbackConfiguration object to pass to the API
-                var fallbackConfig = new FallbackConfiguration
-                {
-                    PrimaryModelDeploymentId = primaryModel,
-                    FallbackModelDeploymentIds = fallbackModels
-                };
+                PrimaryModelDeploymentId = primaryModel,
+                FallbackModelDeploymentIds = fallbackModels
+            };
 
-                var success = await _adminApiClient.SetFallbackConfigurationAsync(fallbackConfig);
-
-                if (!success)
-                {
-                    _logger.LogWarning("Failed to set fallback configuration through Admin API, falling back to repository");
-                    return await _repositoryService.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
-                }
-
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting fallback configuration through Admin API, falling back to repository");
-                return await _repositoryService.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
-            }
+            return await _adminApiClient.SetFallbackConfigurationAsync(fallbackConfig);
         }
-
-        return await _repositoryService.SetFallbackConfigurationAsync(primaryModel, fallbackModels);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting fallback configuration through Admin API");
+            return false;
+        }
     }
     
     /// <inheritdoc />
     public async Task<bool> RemoveFallbackConfigurationAsync(string primaryModel)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
-            {
-                var success = await _adminApiClient.RemoveFallbackConfigurationAsync(primaryModel);
-                
-                if (!success)
-                {
-                    _logger.LogWarning("Failed to remove fallback configuration through Admin API, falling back to repository");
-                    return await _repositoryService.RemoveFallbackConfigurationAsync(primaryModel);
-                }
-                
-                return success;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error removing fallback configuration through Admin API, falling back to repository");
-                return await _repositoryService.RemoveFallbackConfigurationAsync(primaryModel);
-            }
+            return await _adminApiClient.RemoveFallbackConfigurationAsync(primaryModel);
         }
-        
-        return await _repositoryService.RemoveFallbackConfigurationAsync(primaryModel);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing fallback configuration through Admin API");
+            return false;
+        }
     }
     
     /// <inheritdoc />
     public async Task<RouterConfig> GetRouterConfigAsync()
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
+            var result = await _adminApiClient.GetRouterConfigAsync();
+            if (result == null)
             {
-                var result = await _adminApiClient.GetRouterConfigAsync();
-                return result ?? await _repositoryService.GetRouterConfigAsync();
+                _logger.LogWarning("Router configuration not found or not initialized yet in Admin API");
+                // Return a default router configuration
+                return new RouterConfig
+                {
+                    DefaultRoutingStrategy = "Simple",
+                    FallbacksEnabled = false
+                };
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting router configuration from Admin API, falling back to repository");
-                return await _repositoryService.GetRouterConfigAsync();
-            }
+            return result;
         }
-        
-        return await _repositoryService.GetRouterConfigAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting router configuration from Admin API");
+            // Return a default router configuration
+            return new RouterConfig
+            {
+                DefaultRoutingStrategy = "Simple",
+                FallbacksEnabled = false
+            };
+        }
     }
     
     /// <inheritdoc />
     public async Task<bool> UpdateRouterConfigAsync(RouterConfig config)
     {
-        if (_adminApiOptions.Enabled)
+        try
         {
-            try
+            // Update Admin API configuration 
+            var success = await _adminApiClient.UpdateRouterConfigAsync(config);
+            
+            if (success && _routerInitialized)
             {
-                var success = await _adminApiClient.UpdateRouterConfigAsync(config);
-                
-                if (!success)
+                // If successful and we're initialized, reinitialize to update local state
+                try
                 {
-                    _logger.LogWarning("Failed to update router configuration through Admin API, falling back to repository");
-                    return await _repositoryService.UpdateRouterConfigAsync(config);
+                    await InitializeRouterAsync();
                 }
-                
-                return success;
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error updating initialization state after Admin API update");
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating router configuration through Admin API, falling back to repository");
-                return await _repositoryService.UpdateRouterConfigAsync(config);
-            }
+            
+            return success;
         }
-        
-        return await _repositoryService.UpdateRouterConfigAsync(config);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating router configuration through Admin API");
+            return false;
+        }
     }
     
     /// <inheritdoc />
     public async Task InitializeRouterAsync()
     {
-        // Always use the repository service for this method as it initializes the router instance
-        await _repositoryService.InitializeRouterAsync();
+        try
+        {
+            // Get the router configuration
+            var config = await GetRouterConfigAsync();
+            
+            if (config != null)
+            {
+                // Get all model deployments
+                var deployments = await GetModelDeploymentsAsync();
+                
+                // Get fallback configurations
+                var fallbackConfigs = await GetFallbackConfigurationsAsync();
+                
+                // Initialize a local router instance if needed for direct access
+                // This would require creating a method to build a router from the configurations
+                // For now, we'll just set a flag to indicate the router is initialized
+                _routerInitialized = true;
+                _logger.LogInformation("Router initialized with {DeploymentCount} deployments and {FallbackCount} fallback configurations", 
+                    deployments.Count, fallbackConfigs.Count);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to initialize router - configuration not available");
+                _routerInitialized = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing router");
+            _routerInitialized = false;
+        }
     }
     
     /// <inheritdoc />
     public async Task<RouterStatus> GetRouterStatusAsync()
     {
-        // Always use the repository service for this method as it provides access to the router instance
-        return await _repositoryService.GetRouterStatusAsync();
+        try
+        {
+            var config = await GetRouterConfigAsync();
+            
+            return new RouterStatus
+            {
+                Config = config,
+                IsEnabled = config?.Enabled() ?? false
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting router status");
+            return new RouterStatus
+            {
+                Config = null,
+                IsEnabled = false
+            };
+        }
     }
 }

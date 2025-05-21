@@ -52,8 +52,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
         {
             try
             {
-                var filters = await _adminApiClient.GetAllIpFiltersAsync();
-                return filters.Where(f => f.IsEnabled);
+                return await _adminApiClient.GetEnabledIpFiltersAsync();
             }
             catch (Exception ex)
             {
@@ -172,18 +171,11 @@ namespace ConduitLLM.WebUI.Services.Adapters
         {
             try
             {
-                // Get the filter settings
-                var settings = await GetIpFilterSettingsAsync();
+                // Use the high-performance API endpoint instead of local processing
+                var result = await _adminApiClient.CheckIpAddressAsync(ipAddress);
                 
-                // If we're in permissive mode (no whitelist), the IP is allowed unless it's in the blacklist
-                if (settings.FilterMode == "permissive")
-                {
-                    return !IsIpInFilterList(ipAddress, settings.BlacklistFilters);
-                }
-                
-                // If we're in restrictive mode (has whitelist), the IP must be in the whitelist and not in the blacklist
-                return IsIpInFilterList(ipAddress, settings.WhitelistFilters) && 
-                       !IsIpInFilterList(ipAddress, settings.BlacklistFilters);
+                // If the check fails (result is null), default to allowing the IP
+                return result?.IsAllowed ?? true;
             }
             catch (Exception ex)
             {
@@ -198,25 +190,17 @@ namespace ConduitLLM.WebUI.Services.Adapters
         {
             try
             {
-                var filters = await _adminApiClient.GetAllIpFiltersAsync();
+                var settings = await _adminApiClient.GetIpFilterSettingsAsync();
                 
                 return new IpFilterSettings
                 {
-                    WhitelistFilters = filters
-                        .Where(f => f.FilterType == "whitelist" && f.IsEnabled)
-                        .OrderBy(f => f.Id)
-                        .ToList(),
-                    
-                    BlacklistFilters = filters
-                        .Where(f => f.FilterType == "blacklist" && f.IsEnabled)
-                        .OrderBy(f => f.Id)
-                        .ToList(),
-                    
-                    // Default mode if no whitelist filters exist is "permissive"
-                    // This means anyone can access unless blacklisted
-                    FilterMode = filters.Any(f => f.FilterType == "whitelist" && f.IsEnabled) 
-                        ? "restrictive" 
-                        : "permissive"
+                    WhitelistFilters = settings.WhitelistFilters.ToList(),
+                    BlacklistFilters = settings.BlacklistFilters.ToList(),
+                    FilterMode = settings.FilterMode,
+                    IsEnabled = settings.IsEnabled,
+                    DefaultAllow = settings.DefaultAllow,
+                    BypassForAdminUi = settings.BypassForAdminUi,
+                    ExcludedEndpoints = settings.ExcludedEndpoints.ToList()
                 };
             }
             catch (Exception ex)
@@ -228,7 +212,11 @@ namespace ConduitLLM.WebUI.Services.Adapters
                 {
                     WhitelistFilters = new List<IpFilterDto>(),
                     BlacklistFilters = new List<IpFilterDto>(),
-                    FilterMode = "permissive"
+                    FilterMode = "permissive",
+                    IsEnabled = false,
+                    DefaultAllow = true,
+                    BypassForAdminUi = true,
+                    ExcludedEndpoints = new List<string> { "/api/v1/health" }
                 };
             }
         }
@@ -238,68 +226,22 @@ namespace ConduitLLM.WebUI.Services.Adapters
         {
             try
             {
-                // Get current filters
-                var currentFilters = await _adminApiClient.GetAllIpFiltersAsync();
+                var settingsDto = new IpFilterSettingsDto
+                {
+                    IsEnabled = settings.IsEnabled,
+                    DefaultAllow = settings.DefaultAllow,
+                    BypassForAdminUi = settings.BypassForAdminUi,
+                    FilterMode = settings.FilterMode,
+                    ExcludedEndpoints = settings.ExcludedEndpoints,
+                    WhitelistFilters = settings.WhitelistFilters.ToList(),
+                    BlacklistFilters = settings.BlacklistFilters.ToList()
+                };
                 
-                // Get new filter mode
-                var newMode = settings.FilterMode;
-                if (newMode != "permissive" && newMode != "restrictive")
-                {
-                    return (false, "Filter mode must be 'permissive' or 'restrictive'");
-                }
-
-                // If switching to permissive mode, disable all whitelist filters
-                if (newMode == "permissive")
-                {
-                    foreach (var filter in currentFilters.Where(f => f.FilterType == "whitelist"))
-                    {
-                        var updateDto = new UpdateIpFilterDto
-                        {
-                            Id = filter.Id,
-                            IpAddress = filter.IpAddress,
-                            Description = filter.Description,
-                            FilterType = filter.FilterType,
-                            IsEnabled = false // Disable the filter
-                        };
-                        
-                        await _adminApiClient.UpdateIpFilterAsync(filter.Id, updateDto);
-                    }
-                }
+                var success = await _adminApiClient.UpdateIpFilterSettingsAsync(settingsDto);
                 
-                // If switching to restrictive mode, ensure we have at least one whitelist filter
-                if (newMode == "restrictive" && !currentFilters.Any(f => f.FilterType == "whitelist" && f.IsEnabled))
+                if (!success)
                 {
-                    // Check if we have any disabled whitelist filters
-                    var disabledWhitelists = currentFilters.Where(f => f.FilterType == "whitelist" && !f.IsEnabled).ToList();
-                    
-                    if (disabledWhitelists.Any())
-                    {
-                        // Enable the first one
-                        var filter = disabledWhitelists.First();
-                        var updateDto = new UpdateIpFilterDto
-                        {
-                            Id = filter.Id,
-                            IpAddress = filter.IpAddress,
-                            Description = filter.Description,
-                            FilterType = filter.FilterType,
-                            IsEnabled = true // Enable the filter
-                        };
-                        
-                        await _adminApiClient.UpdateIpFilterAsync(filter.Id, updateDto);
-                    }
-                    else
-                    {
-                        // Create a default whitelist entry for localhost
-                        var createDto = new CreateIpFilterDto
-                        {
-                            IpAddress = "127.0.0.1",
-                            Description = "Default localhost whitelist entry",
-                            FilterType = "whitelist",
-                            IsEnabled = true
-                        };
-                        
-                        await _adminApiClient.CreateIpFilterAsync(createDto);
-                    }
+                    return (false, "Failed to update IP filter settings");
                 }
                 
                 return (true, null);
@@ -316,91 +258,6 @@ namespace ConduitLLM.WebUI.Services.Adapters
         private bool IsValidIpAddress(string ipAddress)
         {
             return _ipRegex.IsMatch(ipAddress);
-        }
-
-        private bool IsIpInFilterList(string ipAddress, IEnumerable<IpFilterDto> filters)
-        {
-            if (!filters.Any())
-                return false;
-
-            // Parse the input IP address
-            if (!IPAddress.TryParse(ipAddress, out var inputIp))
-                return false;
-
-            // Convert input IP to bytes for comparison
-            var inputBytes = inputIp.GetAddressBytes();
-
-            foreach (var filter in filters)
-            {
-                // Check if the filter is a CIDR range
-                if (filter.IpAddress.Contains("/"))
-                {
-                    var cidrParts = filter.IpAddress.Split('/');
-                    if (cidrParts.Length != 2 || !int.TryParse(cidrParts[1], out var prefixLength))
-                        continue;
-
-                    // Parse the network part of the CIDR
-                    if (!IPAddress.TryParse(cidrParts[0], out var networkIp))
-                        continue;
-
-                    // Convert network IP to bytes
-                    var networkBytes = networkIp.GetAddressBytes();
-
-                    // Create network mask from prefix length
-                    var mask = CreateMask(prefixLength, networkBytes.Length);
-
-                    // Apply mask to both IPs and compare
-                    bool match = true;
-                    for (int i = 0; i < inputBytes.Length; i++)
-                    {
-                        if ((inputBytes[i] & mask[i]) != (networkBytes[i] & mask[i]))
-                        {
-                            match = false;
-                            break;
-                        }
-                    }
-
-                    if (match)
-                        return true;
-                }
-                else
-                {
-                    // Simple IP equality check
-                    if (IPAddress.TryParse(filter.IpAddress, out var filterIp))
-                    {
-                        if (inputIp.Equals(filterIp))
-                            return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        private byte[] CreateMask(int prefixLength, int byteLength)
-        {
-            var mask = new byte[byteLength];
-            
-            // Set all bits in mask according to prefix length
-            for (int i = 0; i < byteLength; i++)
-            {
-                if (prefixLength >= 8)
-                {
-                    mask[i] = 255;
-                    prefixLength -= 8;
-                }
-                else if (prefixLength > 0)
-                {
-                    mask[i] = (byte)(255 << (8 - prefixLength));
-                    prefixLength = 0;
-                }
-                else
-                {
-                    mask[i] = 0;
-                }
-            }
-            
-            return mask;
         }
     }
 }

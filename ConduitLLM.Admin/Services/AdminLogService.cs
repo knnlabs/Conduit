@@ -2,7 +2,6 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Repositories;
-using ConduitLLM.Configuration.Services.Dtos;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -145,7 +144,7 @@ public class AdminLogService : IAdminLogService
     }
     
     /// <inheritdoc/>
-    public async Task<Configuration.Services.Dtos.LogsSummaryDto> GetLogsSummaryAsync(
+    public async Task<LogsSummaryDto> GetLogsSummaryAsync(
         string timeframe = "daily",
         DateTime? startDate = null,
         DateTime? endDate = null)
@@ -213,28 +212,6 @@ public class AdminLogService : IAdminLogService
                 _ => dailyStats.ToList() // Default to daily stats
             };
             
-            // Create daily stats DTOs
-            var dailyStatsDtos = aggregatedStats.Select(d => new DailyStatsDto
-            {
-                Date = d.Date,
-                RequestCount = d.RequestCount,
-                Cost = d.Cost,
-                AverageResponseTime = d.AvgResponseTime,
-                InputTokens = d.InputTokens,
-                OutputTokens = d.OutputTokens,
-                SuccessfulRequests = logs.Count(l => l.Timestamp.Date == d.Date && l.StatusCode.HasValue && l.StatusCode.Value >= 200 && l.StatusCode.Value < 400),
-                FailedRequests = logs.Count(l => l.Timestamp.Date == d.Date && l.StatusCode.HasValue && l.StatusCode.Value >= 400)
-            }).ToList();
-            
-            // Create top models DTOs
-            var modelDtos = modelGroups.Select(m => new RequestsByModelDto
-            {
-                ModelName = m.ModelName,
-                RequestCount = m.RequestCount,
-                Cost = m.Cost,
-                Percentage = totalRequests > 0 ? (double)m.RequestCount / totalRequests * 100 : 0
-            }).ToList();
-            
             // Calculate success/failure metrics
             var successfulRequests = logs.Count(l => l.StatusCode.HasValue && l.StatusCode.Value >= 200 && l.StatusCode.Value < 400);
             var failedRequests = logs.Count(l => l.StatusCode.HasValue && l.StatusCode.Value >= 400);
@@ -246,22 +223,40 @@ public class AdminLogService : IAdminLogService
                 .GroupBy(l => l.StatusCode!.Value)  // Non-null assertion is safe because of the Where clause
                 .ToDictionary(g => g.Key, g => g.Count());
 
+            // Create request by model dictionary
+            var requestsByModel = new Dictionary<string, int>();
+            var costByModel = new Dictionary<string, decimal>();
+            foreach (var model in modelGroups)
+            {
+                requestsByModel[model.ModelName] = model.RequestCount;
+                costByModel[model.ModelName] = model.Cost;
+            }
+
+            // Create daily usage stats DTOs
+            var dailyUsageStats = aggregatedStats.Select(d => new DailyUsageStatsDto
+            {
+                Date = d.Date,
+                RequestCount = d.RequestCount,
+                Cost = d.Cost,
+                InputTokens = d.InputTokens,
+                OutputTokens = d.OutputTokens
+            }).ToList();
+
             // Create logs summary DTO
-            var summary = new Configuration.Services.Dtos.LogsSummaryDto
+            var summary = new LogsSummaryDto
             {
                 TotalRequests = totalRequests,
-                TotalCost = totalCost,
-                TotalInputTokens = totalInputTokens,
-                TotalOutputTokens = totalOutputTokens,
-                AverageResponseTimeMs = avgResponseTime,
-                StartDate = startDate.Value,
-                EndDate = endDate.Value,
-                RequestsByModel = modelDtos,
-                DailyStats = dailyStatsDtos,
+                EstimatedCost = totalCost, // Note the property name difference
+                InputTokens = totalInputTokens, // Note the property name difference
+                OutputTokens = totalOutputTokens, // Note the property name difference
+                AverageResponseTime = avgResponseTime, // Note the property name difference
+                LastRequestDate = logs.Any() ? logs.Max(l => l.Timestamp) : null,
                 SuccessfulRequests = successfulRequests,
                 FailedRequests = failedRequests,
-                SuccessRate = successRate,
-                RequestsByStatus = requestsByStatus
+                RequestsByModel = requestsByModel,
+                CostByModel = costByModel,
+                RequestsByStatus = requestsByStatus,
+                DailyStats = dailyUsageStats
             };
             
             return summary;
@@ -271,17 +266,19 @@ public class AdminLogService : IAdminLogService
             _logger.LogError(ex, "Error getting logs summary");
             
             // Return empty summary on error
-            return new Configuration.Services.Dtos.LogsSummaryDto
+            return new LogsSummaryDto
             {
                 TotalRequests = 0,
-                TotalCost = 0,
-                TotalInputTokens = 0,
-                TotalOutputTokens = 0,
-                AverageResponseTimeMs = 0,
-                StartDate = startDate ?? DateTime.UtcNow.AddDays(-30),
-                EndDate = endDate ?? DateTime.UtcNow,
-                RequestsByModel = new List<RequestsByModelDto>(),
-                DailyStats = new List<DailyStatsDto>()
+                EstimatedCost = 0,
+                InputTokens = 0,
+                OutputTokens = 0,
+                AverageResponseTime = 0,
+                SuccessfulRequests = 0,
+                FailedRequests = 0,
+                RequestsByModel = new Dictionary<string, int>(),
+                CostByModel = new Dictionary<string, decimal>(),
+                RequestsByStatus = new Dictionary<int, int>(),
+                DailyStats = new List<DailyUsageStatsDto>()
             };
         }
     }

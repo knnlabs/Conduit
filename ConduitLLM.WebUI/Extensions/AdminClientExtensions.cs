@@ -3,6 +3,8 @@ using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System;
 
 namespace ConduitLLM.WebUI.Extensions
 {
@@ -53,51 +55,39 @@ namespace ConduitLLM.WebUI.Extensions
 
         /// <summary>
         /// Adds Admin API service adapters to the service collection.
-        /// This allows WebUI to use either direct repository access or the AdminApiClient based on configuration.
+        /// All services now use their adapter implementations via the Admin API.
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="configuration">The configuration.</param>
         /// <returns>The service collection.</returns>
         public static IServiceCollection AddAdminApiAdapters(this IServiceCollection services, IConfiguration configuration)
         {
-            // Determine whether to use Admin API or direct repository access
-            bool useAdminApi = false;
-            var useAdminApiStr = configuration["CONDUIT_USE_ADMIN_API"];
-            if (!string.IsNullOrEmpty(useAdminApiStr))
-            {
-                bool.TryParse(useAdminApiStr, out useAdminApi);
-            }
 
-            if (useAdminApi)
-            {
-                // Register adapters that use the Admin API client
-                services.AddScoped<Interfaces.IGlobalSettingService, Services.Adapters.GlobalSettingServiceAdapter>();
-                services.AddScoped<Interfaces.IProviderHealthService, Services.Adapters.ProviderHealthServiceAdapter>();
-                services.AddScoped<Interfaces.IModelCostService, Services.Adapters.ModelCostServiceAdapter>();
-                services.AddScoped<Interfaces.IProviderCredentialService, Services.Adapters.ProviderCredentialServiceAdapter>();
-                services.AddScoped<Interfaces.IVirtualKeyService, Services.Adapters.VirtualKeyServiceAdapter>();
-                services.AddScoped<Interfaces.IRequestLogService, Services.Adapters.RequestLogServiceAdapter>();
-                services.AddScoped<Interfaces.IIpFilterService, Services.Adapters.IpFilterServiceAdapter>();
-                services.AddScoped<Interfaces.ICostDashboardService, Services.Adapters.CostDashboardServiceAdapter>();
-                services.AddScoped<Interfaces.IModelProviderMappingService, Services.Adapters.ModelProviderMappingServiceAdapter>();
-                services.AddScoped<Interfaces.IRouterService, Services.RouterServiceAdapter>();
-                services.AddScoped<Interfaces.IDatabaseBackupService, Services.DatabaseBackupServiceAdapter>();
-            }
-            else
-            {
-                // Register services that use direct repository access
-                services.AddScoped<Interfaces.IGlobalSettingService, Services.GlobalSettingService>();
-                services.AddScoped<Interfaces.IProviderHealthService, Services.ProviderHealthService>();
-                services.AddScoped<Interfaces.IModelCostService, Services.ModelCostService>();
-                services.AddScoped<Interfaces.IProviderCredentialService, Services.ProviderCredentialService>();
-                services.AddScoped<Interfaces.IVirtualKeyService, Services.VirtualKeyService>();
-                services.AddScoped<Interfaces.IRequestLogService, Services.RequestLogService>();
-                services.AddScoped<Interfaces.IIpFilterService, Services.IpFilterService>();
-                services.AddScoped<Interfaces.ICostDashboardService, Services.CostDashboardService>();
-                services.AddScoped<Interfaces.IModelProviderMappingService, Services.ModelProviderMappingService>();
-                services.AddScoped<Interfaces.IRouterService, Services.RouterService>();
-                services.AddScoped<Interfaces.IDatabaseBackupService, Services.DatabaseBackupService>();
-            }
+            // Register all adapter services
+            services.AddScoped<Interfaces.IGlobalSettingService, Services.Adapters.GlobalSettingServiceAdapter>();
+            services.AddScoped<Interfaces.IProviderCredentialService, Services.Adapters.ProviderCredentialServiceAdapter>();
+            services.AddScoped<Interfaces.IModelCostService, Services.Adapters.ModelCostServiceAdapter>();
+            services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService>(sp => 
+                sp.GetRequiredService<Services.Adapters.ModelCostServiceAdapter>());
+            services.AddScoped<Interfaces.IVirtualKeyService, Services.Adapters.VirtualKeyServiceAdapter>();
+            services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
+            services.AddScoped<Interfaces.IIpFilterService, Services.Adapters.IpFilterServiceAdapter>();
+            services.AddScoped<Interfaces.IProviderHealthService, Services.Adapters.ProviderHealthServiceAdapter>();
+            services.AddScoped<Interfaces.ICostDashboardService, Services.Adapters.CostDashboardServiceAdapter>();
+            services.AddScoped<Interfaces.IModelProviderMappingService, Services.Adapters.ModelProviderMappingServiceAdapter>();
+            services.AddScoped<Interfaces.IRequestLogService, Services.Adapters.RequestLogServiceAdapter>();
+            services.AddScoped<ConduitLLM.Configuration.Services.IRequestLogService>(sp => {
+                var service = sp.GetRequiredService<Interfaces.IRequestLogService>();
+                if (service is ConduitLLM.Configuration.Services.IRequestLogService configService) {
+                    return configService;
+                }
+                throw new InvalidOperationException(
+                    $"The registered IRequestLogService implementation ({service.GetType().FullName}) does not implement ConduitLLM.Configuration.Services.IRequestLogService");
+            });
+            
+            // Register adapter services that use the Admin API
+            services.AddScoped<Interfaces.IRouterService, Services.RouterServiceAdapter>();
+            services.AddScoped<Interfaces.IDatabaseBackupService, Services.DatabaseBackupServiceAdapter>();
 
             return services;
         }
