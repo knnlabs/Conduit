@@ -1,9 +1,8 @@
 @page "/chat"
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Options
 @using ConduitLLM.Core.Models
 @using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.DTOs
 @using Microsoft.AspNetCore.Components.Rendering
 @using ConduitLLM.WebUI.Components.Shared
 @using System.Text.Json
@@ -11,7 +10,8 @@
 @using System.Text
 @using System.Net.Http
 @using System.Net.Http.Headers
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@inject ConduitLLM.WebUI.Interfaces.IModelProviderMappingService ModelProviderMappingService
+@inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -141,7 +141,7 @@
                                 @bind="selectedModelAlias">
                             @foreach (var mapping in modelMappings)
                             {
-                                <option value="@mapping.ModelAlias">@mapping.ModelAlias</option>
+                                <option value="@mapping.ModelId">@mapping.ModelId</option>
                             }
                         </select>
                     </div>
@@ -258,7 +258,7 @@
 
 @code {
     private ConduitSettings settings => ConduitSettingsOptions.Value;
-    private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
+    private List<ModelProviderMappingDto> modelMappings = new();
     private string selectedModelAlias = "";
     private string systemPrompt = "";
     private string userMessage = "";
@@ -280,21 +280,23 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadProxyUrlAsync();
-        await LoadModelMappingsFromDatabase();
+        await LoadModelMappingsAsync();
         // No need to call StateHasChanged here, Blazor handles it after OnInitializedAsync
     }
 
-    private async Task LoadModelMappingsFromDatabase()
+    private async Task LoadModelMappingsAsync()
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            modelMappings = await dbContext.ModelProviderMappings.ToListAsync();
+            // Use ModelProviderMappingService from Admin API
+            var mappings = await ModelProviderMappingService.GetAllAsync();
+            modelMappings = mappings.ToList();
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading model mappings: {ex.Message}");
-            modelMappings = new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>();
+            errorMessage = $"Error loading model mappings: {ex.Message}";
+            modelMappings = new List<ModelProviderMappingDto>();
         }
     }
 
@@ -314,6 +316,7 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading proxy URL: {ex.Message}");
+            errorMessage = $"Error loading proxy URL: {ex.Message}";
             _proxyBaseUrl = "";
         }
         finally
