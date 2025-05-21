@@ -29,6 +29,7 @@ using ConduitLLM.WebUI.Components;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Services.Providers;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -130,21 +131,16 @@ builder.Services.AddRouterServices(builder.Configuration);
 builder.Services.AddOptions<RetryOptions>()
     .Bind(builder.Configuration.GetSection(RetryOptions.SectionName))
     .ValidateDataAnnotations();
-builder.Services.AddScoped<IHttpRetryConfigurationService, ConduitLLM.WebUI.Services.Adapters.HttpRetryConfigurationServiceAdapter>();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 
 // Register HTTP timeout configuration services - using Admin API for settings
 builder.Services.AddOptions<TimeoutOptions>()
     .Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName))
     .ValidateDataAnnotations();
-builder.Services.AddScoped<IHttpTimeoutConfigurationService, ConduitLLM.WebUI.Services.Adapters.HttpTimeoutConfigurationServiceAdapter>();
 builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
 
 // Register HttpClient with retry policies for LLM providers
 builder.Services.AddLLMProviderHttpClients();
-
-// Register Provider Status Service using Admin API adapter
-builder.Services.AddScoped<IProviderStatusService, ConduitLLM.WebUI.Services.Adapters.ProviderStatusServiceAdapter>();
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ConfigurationChangeNotifier>();
 // Database settings startup filter has been removed
 // Provider Credential Service has been migrated to always use the adapter implementation
@@ -160,11 +156,15 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService
 
 // Repository pattern and direct database access has been removed from WebUI
 
-// Register non-repository pattern services
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
+// Register the CacheStatusServiceProvider instead of the direct repository implementation
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.Providers.CacheStatusServiceProvider>();
 
 // Register database backup service
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.DatabaseBackupServiceAdapter>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.Providers.DatabaseBackupServiceProvider>();
+
+// Register database backup service adapter for backward compatibility (to be removed)
+// No longer needed as we're using our provider directly
+// builder.Services.AddScoped<ConduitLLM.WebUI.Services.DatabaseBackupServiceAdapter>();
 
 // Repository Virtual Key Service has been migrated to always use the adapter implementation
 
@@ -231,8 +231,53 @@ builder.Services.AddAdminApiClient(builder.Configuration);
 // Add caching decorator for Admin API client
 builder.Services.Decorate<IAdminApiClient, ConduitLLM.WebUI.Services.CachingAdminApiClient>();
 
-// Register Admin API service adapters
-builder.Services.AddAdminApiAdapters(builder.Configuration);
+// Register service providers that use the AdminApiClient
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Services.Providers.GlobalSettingServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.Providers.VirtualKeyServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelCostService, ConduitLLM.WebUI.Services.Providers.ModelCostServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IIpFilterService, ConduitLLM.WebUI.Services.Providers.IpFilterServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService, ConduitLLM.WebUI.Services.Providers.ProviderHealthServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRequestLogService, ConduitLLM.WebUI.Services.Providers.RequestLogServiceProvider>();
+
+// Register remaining service providers
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICostDashboardService, ConduitLLM.WebUI.Services.Providers.CostDashboardServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService, ConduitLLM.WebUI.Services.Providers.ModelProviderMappingServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRouterService, ConduitLLM.WebUI.Services.Providers.RouterServiceProvider>();
+
+// Register remaining service providers
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderCredentialService, ConduitLLM.WebUI.Services.Providers.ProviderCredentialServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IHttpRetryConfigurationService, ConduitLLM.WebUI.Services.Providers.HttpRetryConfigurationServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IHttpTimeoutConfigurationService, ConduitLLM.WebUI.Services.Providers.HttpTimeoutConfigurationServiceProvider>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.Providers.ProviderStatusServiceProvider>();
+
+// Register repository implementations needed by components
+builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderHealthRepository, ConduitLLM.WebUI.Services.Repositories.ProviderHealthRepositoryAdapter>();
+
+// Chat page has been migrated to use Admin API
+// No need for the workaround middleware anymore
+
+// TODO: Implement Configuration.Services interfaces
+// For now, commented out until we implement all service providers
+/*
+builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService>(sp => {
+    // Providers can implement Configuration.Services interfaces directly
+    var service = sp.GetRequiredService<IModelCostService>();
+    if (service is ConduitLLM.Configuration.Services.IModelCostService configService) {
+        return configService;
+    }
+    throw new InvalidOperationException(
+        $"The registered IModelCostService implementation does not implement ConduitLLM.Configuration.Services.IModelCostService");
+});
+    
+builder.Services.AddScoped<ConduitLLM.Configuration.Services.IRequestLogService>(sp => {
+    var service = sp.GetRequiredService<IRequestLogService>();
+    if (service is ConduitLLM.Configuration.Services.IRequestLogService configService) {
+        return configService;
+    }
+    throw new InvalidOperationException(
+        $"The registered IRequestLogService implementation does not implement ConduitLLM.Configuration.Services.IRequestLogService");
+});
+*/
 
 // Register Admin API health service
 builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IAdminApiHealthService, ConduitLLM.WebUI.Services.AdminApiHealthService>();
@@ -243,8 +288,7 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IAdminApiCacheService, Co
 // Add Virtual Key maintenance background service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 
-// Register Provider Health Monitoring services using only the Admin API
-builder.Services.AddScoped<IProviderHealthService, ConduitLLM.WebUI.Services.Adapters.ProviderHealthServiceAdapter>();
+// Register Provider Health Monitoring service
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ProviderHealthMonitorService>();
 
 // Add Razor Components
@@ -260,7 +304,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Using Admin API mode. All services are using adapter implementations.");
+    logger.LogInformation("Using Admin API mode. All services are using provider implementations.");
 }
 
 // Print master key for debugging purposes
@@ -401,10 +445,15 @@ app.MapStaticAssets();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add AdminApiConnection middleware to detect API connection issues
+app.UseMiddleware<ConduitLLM.WebUI.Middleware.AdminApiConnectionMiddleware>();
+
 // Add IP Filtering, Virtual Key Authentication, and LLM Request Tracking middleware
 app.UseIpFiltering();
 app.UseVirtualKeyAuthentication();
 app.UseLlmRequestTracking();
+
+// Chat page workaround middleware removed - now using proper Blazor component with Admin API
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
