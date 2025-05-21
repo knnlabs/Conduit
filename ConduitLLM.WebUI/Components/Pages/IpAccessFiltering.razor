@@ -378,7 +378,7 @@
     private string? _validationError;
     private string _excludedEndpointsText = string.Empty;
 
-    private IpFilterSettings _settings = new();
+    private ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto _settings = new();
     private List<IpFilterDto> _filters = new();
     private IpFilterDto? _filterToDelete;
     private object? _editingFilter; // Will store either CreateIpFilterDto or UpdateIpFilterDto

@@ -296,7 +296,8 @@ namespace ConduitLLM.Tests.WebUI
             // Assert
             Assert.NotNull(capturedRequest);
             Assert.True(capturedRequest.Headers.Contains("X-Master-Key"));
-            Assert.Equal("test-master-key", capturedRequest.Headers.GetValues("X-Master-Key").First());
+            var headerValues = capturedRequest.Headers.GetValues("X-Master-Key").ToList();
+            Assert.Equal("test-master-key", headerValues.First());
         }
 
         [Fact]

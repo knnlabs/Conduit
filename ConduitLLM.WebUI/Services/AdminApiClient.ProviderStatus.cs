@@ -1,5 +1,5 @@
-using System.Net.Http.Json;
 using ConduitLLM.WebUI.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -10,7 +10,7 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"/api/providerhealth/status/all");
+                var response = await _httpClient.GetAsync("api/providerhealth/status");
                 response.EnsureSuccessStatusCode();
                 
                 var result = await response.Content.ReadFromJsonAsync<Dictionary<string, ProviderStatus>>(_jsonOptions);
@@ -18,35 +18,32 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking status of all providers via Admin API");
+                _logger.LogError(ex, "Error checking all providers status");
                 return new Dictionary<string, ProviderStatus>();
             }
         }
-
+        
         /// <inheritdoc />
         public async Task<ProviderStatus> CheckProviderStatusAsync(string providerName)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"/api/providerhealth/status/{Uri.EscapeDataString(providerName)}");
+                var response = await _httpClient.GetAsync($"api/providerhealth/status/{Uri.EscapeDataString(providerName)}");
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return new ProviderStatus { Status = ProviderStatus.StatusType.Offline, StatusMessage = "Provider not found" };
+                }
+                
                 response.EnsureSuccessStatusCode();
                 
                 var result = await response.Content.ReadFromJsonAsync<ProviderStatus>(_jsonOptions);
-                return result ?? new ProviderStatus
-                {
-                    Status = ProviderStatus.StatusType.Unknown,
-                    StatusMessage = "Error deserializing response from API"
-                };
+                return result ?? new ProviderStatus { Status = ProviderStatus.StatusType.Unknown, StatusMessage = "Unknown error" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking status of provider {ProviderName} via Admin API", providerName);
-                return new ProviderStatus
-                {
-                    Status = ProviderStatus.StatusType.Unknown,
-                    StatusMessage = $"Error: {ex.Message}",
-                    LastCheckedUtc = DateTime.UtcNow
-                };
+                _logger.LogError(ex, "Error checking provider status for {ProviderName}", providerName);
+                return new ProviderStatus { Status = ProviderStatus.StatusType.Offline, StatusMessage = ex.Message };
             }
         }
     }

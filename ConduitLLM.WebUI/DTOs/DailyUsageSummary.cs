@@ -60,5 +60,10 @@ namespace ConduitLLM.WebUI.DTOs
         /// Virtual key ID if this summary is for a specific key, null otherwise
         /// </summary>
         public int? VirtualKeyId { get; set; }
+        
+        /// <summary>
+        /// Name of the model for this summary, if filtered by model
+        /// </summary>
+        public string? ModelName { get; set; }
     }
 }

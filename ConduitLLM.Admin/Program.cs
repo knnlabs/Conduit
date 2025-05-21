@@ -23,6 +23,9 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         
+        // Add HttpClient factory for provider connection testing
+        builder.Services.AddHttpClient();
+        
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>
         {

@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
+using ConduitLLM.WebUI.Models;
 // Use qualified names when referring to DTO types to avoid ambiguity
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,6 +49,7 @@ namespace ConduitLLM.WebUI.Services
             if (!string.IsNullOrEmpty(adminOptions.BaseUrl))
             {
                 _httpClient.BaseAddress = new Uri(adminOptions.BaseUrl);
+                _logger.LogInformation("AdminApiClient configured with base URL: {BaseUrl}", adminOptions.BaseUrl);
             }
 
             // Configure timeout
@@ -56,7 +58,24 @@ namespace ConduitLLM.WebUI.Services
             // Configure authentication headers
             if (!string.IsNullOrEmpty(adminOptions.MasterKey))
             {
-                _httpClient.DefaultRequestHeaders.Add("X-Master-Key", adminOptions.MasterKey);
+                // Remove any existing headers to avoid duplicates
+                if (_httpClient.DefaultRequestHeaders.Contains("X-Master-Key"))
+                {
+                    _httpClient.DefaultRequestHeaders.Remove("X-Master-Key");
+                }
+                
+                if (_httpClient.DefaultRequestHeaders.Contains("X-API-Key"))
+                {
+                    _httpClient.DefaultRequestHeaders.Remove("X-API-Key");
+                }
+                
+                // Add the master key header - use X-API-Key as expected by AdminAuthenticationMiddleware
+                _httpClient.DefaultRequestHeaders.Add("X-API-Key", adminOptions.MasterKey);
+                _logger.LogInformation("AdminApiClient configured with master key (length: {Length})", adminOptions.MasterKey.Length);
+            }
+            else
+            {
+                _logger.LogWarning("AdminApiClient initialized without a master key!");
             }
         }
 
@@ -251,7 +270,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/globalsettings/{Uri.EscapeDataString(key)}");
+                // Use "by-key" endpoint per the GlobalSettingsController route pattern
+                var response = await _httpClient.GetAsync($"api/globalsettings/by-key/{Uri.EscapeDataString(key)}");
                 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -273,9 +293,24 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("api/globalsettings", setting);
+                // For upsert, we need to use PUT with by-key endpoint with UpdateGlobalSettingByKeyDto
+                var updateDto = new ConduitLLM.Configuration.DTOs.UpdateGlobalSettingByKeyDto
+                {
+                    Key = setting.Key,
+                    Value = setting.Value,
+                    Description = setting.Description
+                };
+                
+                var response = await _httpClient.PutAsJsonAsync("api/globalsettings/by-key", updateDto);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    // Return the setting since PUT doesn't return content
+                    return setting;
+                }
+                
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<GlobalSettingDto>(_jsonOptions);
+                return null;
             }
             catch (Exception ex)
             {
@@ -289,7 +324,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.DeleteAsync($"api/globalsettings/{Uri.EscapeDataString(key)}");
+                // Use "by-key" endpoint per the GlobalSettingsController route pattern
+                var response = await _httpClient.DeleteAsync($"api/globalsettings/by-key/{Uri.EscapeDataString(key)}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -532,7 +568,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/modelprovidermappings");
+                // Use "modelprovider" instead of "modelprovidermappings" to match controller name
+                var response = await _httpClient.GetAsync("api/modelprovidermapping");
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<IEnumerable<ModelProviderMappingDto>>(_jsonOptions);
@@ -550,7 +587,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/modelprovidermappings/{id}");
+                // Use "modelprovider" instead of "modelprovidermappings" to match controller name
+                var response = await _httpClient.GetAsync($"api/modelprovidermapping/{id}");
 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -572,7 +610,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/modelprovidermappings/by-alias/{Uri.EscapeDataString(modelAlias)}");
+                // Use "modelprovider" and "by-model" instead to match controller route 
+                var response = await _httpClient.GetAsync($"api/modelprovidermapping/by-model/{Uri.EscapeDataString(modelAlias)}");
 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -594,7 +633,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("api/modelprovidermappings", mapping);
+                // Use "modelprovider" instead of "modelprovidermappings" to match controller name
+                var response = await _httpClient.PostAsJsonAsync("api/modelprovidermapping", mapping);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -609,7 +649,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"api/modelprovidermappings/{id}", mapping);
+                // Use "modelprovider" instead of "modelprovidermappings" to match controller name
+                var response = await _httpClient.PutAsJsonAsync($"api/modelprovidermapping/{id}", mapping);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -624,7 +665,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.DeleteAsync($"api/modelprovidermappings/{id}");
+                // Use "modelprovider" instead of "modelprovidermappings" to match controller name
+                var response = await _httpClient.DeleteAsync($"api/modelprovidermapping/{id}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -643,6 +685,7 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
+                // Use plural "providercredentials" instead of singular to match controller name
                 var response = await _httpClient.GetAsync("api/providercredentials");
                 response.EnsureSuccessStatusCode();
 
@@ -683,7 +726,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/providercredentials/by-name/{Uri.EscapeDataString(providerName)}");
+                // Use "name" instead of "by-name" to match controller route
+                var response = await _httpClient.GetAsync($"api/providercredentials/name/{Uri.EscapeDataString(providerName)}");
                 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -752,8 +796,22 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
+                // Use "test/{id}" route instead of "test-connection/{name}" to match controller
+                // We need to get the provider by name first
+                var provider = await GetProviderCredentialByNameAsync(providerName);
+                if (provider == null)
+                {
+                    return new ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto
+                    {
+                        Success = false,
+                        Message = $"Provider '{providerName}' not found",
+                        ErrorDetails = "Provider not found in the system",
+                        ProviderName = providerName
+                    };
+                }
+                
                 var response = await _httpClient.PostAsync(
-                    $"api/providercredentials/test-connection/{Uri.EscapeDataString(providerName)}",
+                    $"api/providercredentials/test/{provider.Id}",
                     new StringContent(string.Empty, Encoding.UTF8, "application/json"));
                 
                 response.EnsureSuccessStatusCode();
@@ -781,7 +839,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/ipfilters");
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.GetAsync("api/ipfilter");
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<IEnumerable<IpFilterDto>>(_jsonOptions);
@@ -799,7 +858,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/ipfilters/enabled");
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.GetAsync("api/ipfilter/enabled");
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<IEnumerable<IpFilterDto>>(_jsonOptions);
@@ -817,7 +877,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/ipfilters/settings");
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.GetAsync("api/ipfilter/settings");
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<IpFilterSettingsDto>(_jsonOptions);
@@ -857,7 +918,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync("api/ipfilters/settings", settings);
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.PutAsJsonAsync("api/ipfilter/settings", settings);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -872,7 +934,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"api/ipfilters/{id}");
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.GetAsync($"api/ipfilter/{id}");
                 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -894,7 +957,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync("api/ipfilters", ipFilter);
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.PostAsJsonAsync("api/ipfilter", ipFilter);
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IpFilterDto>(_jsonOptions);
             }
@@ -910,7 +974,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.PutAsJsonAsync($"api/ipfilters/{id}", ipFilter);
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.PutAsJsonAsync($"api/ipfilter/{id}", ipFilter);
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IpFilterDto>(_jsonOptions);
             }
@@ -926,7 +991,8 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.DeleteAsync($"api/ipfilters/{id}");
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.DeleteAsync($"api/ipfilter/{id}");
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)

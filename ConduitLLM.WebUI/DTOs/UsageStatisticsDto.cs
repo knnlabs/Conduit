@@ -69,24 +69,5 @@ namespace ConduitLLM.WebUI.DTOs
         public List<RequestsByModelDto> RequestsByModel { get; set; } = new();
     }
     
-    /// <summary>
-    /// Data transfer object for request statistics by model
-    /// </summary>
-    public class RequestsByModelDto
-    {
-        /// <summary>
-        /// The model name
-        /// </summary>
-        public string ModelName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Number of requests for this model
-        /// </summary>
-        public int RequestCount { get; set; }
-        
-        /// <summary>
-        /// Total cost of requests for this model
-        /// </summary>
-        public decimal TotalCost { get; set; }
-    }
+    // RequestsByModelDto is defined in a separate file
 }

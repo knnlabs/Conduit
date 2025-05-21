@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.DTOs.IpFilter;
+using System.Text.Json;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -9,27 +10,20 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(ipAddress))
-                {
-                    return new IpCheckResult { IsAllowed = false, DeniedReason = "IP address cannot be empty" };
-                }
+                // Use singular "ipfilter" to match the controller's route
+                var response = await _httpClient.GetAsync($"api/ipfilter/check/{Uri.EscapeDataString(ipAddress)}");
                 
-                var response = await _httpClient.GetAsync($"api/ipfilters/check/{Uri.EscapeDataString(ipAddress)}");
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
                 
                 return await response.Content.ReadFromJsonAsync<IpCheckResult>(_jsonOptions);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking IP address {IpAddress} through Admin API", ipAddress);
-                
-                // In case of error, default to allowing the IP to prevent blocking legitimate requests
-                // This is a fail-open approach for this specific function
-                return new IpCheckResult 
-                { 
-                    IsAllowed = true, 
-                    DeniedReason = "Error checking IP, defaulting to allowed" 
-                };
+                _logger.LogError(ex, "Error checking IP address {IpAddress}", ipAddress);
+                return null;
             }
         }
     }

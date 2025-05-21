@@ -59,12 +59,12 @@ public interface IIpFilterService
     /// Gets the current IP filter settings
     /// </summary>
     /// <returns>The current IP filter settings</returns>
-    Task<IpFilterSettings> GetIpFilterSettingsAsync();
+    Task<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto> GetIpFilterSettingsAsync();
     
     /// <summary>
     /// Updates the IP filter settings
     /// </summary>
     /// <param name="settings">The new settings</param>
     /// <returns>Success result with error message if failed</returns>
-    Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettings settings);
+    Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto settings);
 }

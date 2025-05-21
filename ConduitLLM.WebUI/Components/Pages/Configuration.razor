@@ -515,11 +515,14 @@
 </div>
 
 @* Guided Setup Modal Components *@
+@if (false) // Temporarily disable GuidedSetupWizard that requires direct DB access
+{
 <GuidedSetupWizard
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
     OnSetupComplete="@(async (ConduitLLM.Configuration.Entities.ProviderCredential provider) => await HandleSetupComplete(provider))"
     IsOpenChanged="HandleIsOpenChanged" />
+}
 
 @code {
     // --- Providers and Mappings State ---
@@ -754,29 +757,18 @@
         {
             Logger.LogDebug("LaunchGuidedSetup called for provider: {ProviderName}", providerName);
             
-            if (guidedSetupWizardInstance != null)
-            {
-                // Set the flag before calling the component method
-                isGuidedSetupOpen = true;
-                StateHasChanged();
-                
-                await guidedSetupWizardInstance.OpenForProvider(providerName);
-                Logger.LogDebug("GuidedSetupWizard.OpenForProvider completed successfully");
-            }
-            else
-            {
-                Logger.LogError("GuidedSetupWizard instance reference is null when trying to launch setup.");
-                deleteErrorMessage = "Error launching guided setup. Please try refreshing the page.";
-                StateHasChanged();
-                
-                // Force re-render to try to resolve the reference
-                await InvokeAsync(StateHasChanged);
-            }
+            // Show manual setup message since guided setup requires direct DB access
+            await JSRuntime.InvokeVoidAsync("alert", 
+                $"Guided setup for {providerName} is currently unavailable because direct database access is disabled. " +
+                "Please use the Admin API to create provider credentials.");
+            
+            // Navigate to the provider edit page
+            NavigationManager.NavigateTo("/configuration/provider/edit");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error launching guided setup for {ProviderName}", providerName);
-            deleteErrorMessage = $"Error launching setup: {ex.Message}";
+            Logger.LogError(ex, "Error handling guided setup for {ProviderName}", providerName);
+            deleteErrorMessage = $"Error: {ex.Message}";
             StateHasChanged();
         }
     }

@@ -34,5 +34,43 @@ namespace ConduitLLM.WebUI.Extensions
         {
             return await client.UpsertGlobalSettingAsync(setting);
         }
+        
+        /// <summary>
+        /// Gets a string value for a global setting by key
+        /// </summary>
+        /// <param name="client">The admin API client</param>
+        /// <param name="key">The setting key</param>
+        /// <returns>The setting value, or null if not found</returns>
+        public static async Task<string?> GetGlobalSettingValueAsync(
+            this IAdminApiClient client,
+            string key)
+        {
+            var setting = await client.GetGlobalSettingByKeyAsync(key);
+            return setting?.Value;
+        }
+        
+        /// <summary>
+        /// Sets a global setting with the specified key and value
+        /// </summary>
+        /// <param name="client">The admin API client</param>
+        /// <param name="key">The setting key</param>
+        /// <param name="value">The setting value</param>
+        /// <param name="description">Optional description of the setting</param>
+        /// <returns>The updated setting</returns>
+        public static async Task<GlobalSettingDto?> SetGlobalSettingAsync(
+            this IAdminApiClient client,
+            string key,
+            string value,
+            string? description = null)
+        {
+            var setting = new GlobalSettingDto
+            {
+                Key = key,
+                Value = value,
+                Description = description ?? $"Setting for {key}"
+            };
+            
+            return await client.UpsertGlobalSettingAsync(setting);
+        }
     }
 }

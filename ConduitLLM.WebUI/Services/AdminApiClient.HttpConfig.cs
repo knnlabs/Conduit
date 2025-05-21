@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using System.Text.Json;
-
 namespace ConduitLLM.WebUI.Services
 {
     public partial class AdminApiClient
@@ -10,67 +7,74 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"/api/globalsettings/{Uri.EscapeDataString(key)}");
-                response.EnsureSuccessStatusCode();
-                
-                var content = await response.Content.ReadAsStringAsync();
-                // The content is a JSON string, so we need to deserialize it
-                return JsonSerializer.Deserialize<string>(content, _jsonOptions) ?? string.Empty;
+                var setting = await GetGlobalSettingByKeyAsync(key);
+                return setting?.Value ?? string.Empty;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting setting {Key} from Admin API", key);
-                throw;
+                _logger.LogError(ex, "Error retrieving setting {Key}", key);
+                return string.Empty;
             }
         }
-
+        
         /// <inheritdoc />
         public async Task SetSettingAsync(string key, string value)
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync($"/api/globalsettings", new { Key = key, Value = value });
-                response.EnsureSuccessStatusCode();
+                await UpsertGlobalSettingAsync(new ConduitLLM.Configuration.DTOs.GlobalSettingDto
+                {
+                    Key = key,
+                    Value = value
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting {Key} to {Value} via Admin API", key, value);
+                _logger.LogError(ex, "Error setting {Key}", key);
                 throw;
             }
         }
-
+        
         /// <inheritdoc />
         public async Task<bool> InitializeHttpTimeoutConfigurationAsync()
         {
             try
             {
-                var response = await _httpClient.PostAsync($"/api/globalsettings/initialize/timeout", null);
-                response.EnsureSuccessStatusCode();
+                // We'll initialize with default values
+                var defaultOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
                 
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<bool>(content, _jsonOptions);
+                // Save to global settings via by-key endpoint
+                await SetSettingAsync("Conduit:HttpTimeout:TimeoutSeconds", defaultOptions.TimeoutSeconds.ToString());
+                await SetSettingAsync("Conduit:HttpTimeout:EnableTimeoutLogging", defaultOptions.EnableTimeoutLogging.ToString());
+                
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initializing HTTP timeout configuration via Admin API");
+                _logger.LogError(ex, "Error initializing HTTP timeout configuration");
                 return false;
             }
         }
-
+        
         /// <inheritdoc />
         public async Task<bool> InitializeHttpRetryConfigurationAsync()
         {
             try
             {
-                var response = await _httpClient.PostAsync($"/api/globalsettings/initialize/retry", null);
-                response.EnsureSuccessStatusCode();
+                // We'll initialize with default values
+                var defaultOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
                 
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<bool>(content, _jsonOptions);
+                // Save to global settings via by-key endpoint
+                await SetSettingAsync("Conduit:HttpRetry:MaxRetries", defaultOptions.MaxRetries.ToString());
+                await SetSettingAsync("Conduit:HttpRetry:InitialDelaySeconds", defaultOptions.InitialDelaySeconds.ToString());
+                await SetSettingAsync("Conduit:HttpRetry:MaxDelaySeconds", defaultOptions.MaxDelaySeconds.ToString());
+                await SetSettingAsync("Conduit:HttpRetry:EnableRetryLogging", defaultOptions.EnableRetryLogging.ToString());
+                
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initializing HTTP retry configuration via Admin API");
+                _logger.LogError(ex, "Error initializing HTTP retry configuration");
                 return false;
             }
         }

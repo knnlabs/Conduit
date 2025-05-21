@@ -1,17 +1,14 @@
 @page "/routing-settings"
-@using Microsoft.EntityFrameworkCore
-@using ConduitLLM.Configuration
 @using ConduitLLM.WebUI.Interfaces
 @using System.ComponentModel.DataAnnotations
 @using ConduitLLM.Core.Models.Routing
 @using ConduitLLM.Core.Routing
-@using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Components.Shared
 @using Microsoft.Extensions.Logging
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
 @inject IRouterService RouterService
-@inject RouterOptionsService RouterOptionsService
+@inject IModelProviderMappingService ModelProviderMappingService
+@inject IProviderCredentialService ProviderCredentialService
 @inject ILogger<RoutingSettings> Logger
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -301,7 +298,7 @@ else
                                 <option value="">-- Select Model --</option>
                                 @foreach (var model in _availableModelMappings)
                                 {
-                                    <option value="@model.ModelAlias">@model.ModelAlias</option>
+                                    <option value="@model.ModelId">@model.ModelId</option>
                                 }
                             </select>
                         </div>
@@ -441,8 +438,8 @@ else
     private string _selectedFallbackModelId = string.Empty;
     
     // Lists for dropdowns
-    private List<ConduitLLM.Configuration.Entities.ProviderCredential> _availableProviders = new();
-    private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> _availableModelMappings = new();
+    private List<ConduitLLM.Configuration.DTOs.ProviderCredentialDto> _availableProviders = new();
+    private List<ConduitLLM.Configuration.DTOs.ModelProviderMappingDto> _availableModelMappings = new();
 
     // Dialog options for standard modal dialogs
     private Dictionary<string, object> dialogOptions = new() { 
@@ -454,7 +451,8 @@ else
     {
         try
         {
-            _isEnabled = await RouterOptionsService.GetRouterEnabledAsync();
+            var status = await RouterService.GetRouterStatusAsync();
+            _isEnabled = status.IsEnabled;
             
             await ReloadConfiguration();
             
@@ -567,24 +565,20 @@ else
         {
             StateHasChanged();
             
-            // Update the router state
-            bool success = await RouterOptionsService.SetRouterEnabledAsync(newState);
+            // Create a router status update
+            var status = new RouterStatus
+            {
+                Config = _config,
+                IsEnabled = newState
+            };
             
-            if (success)
+            // Update the router status
+            _isEnabled = newState;
+            
+            // If enabling, initialize the router to ensure it's properly set up
+            if (_isEnabled)
             {
-                _isEnabled = newState;
-                
-                // If enabling, initialize the router to ensure it's properly set up
-                if (_isEnabled)
-                {
-                    await RouterService.InitializeRouterAsync();
-                }
-            }
-            else
-            {
-                Logger.LogError("Failed to save router state");
-                // Revert the UI if the backend update failed
-                _isEnabled = !newState;
+                await RouterService.InitializeRouterAsync();
             }
             
             // Update UI to reflect the current state
@@ -662,12 +656,6 @@ else
         try
         {
             // Validate the deployment
-            if (string.IsNullOrWhiteSpace(_editingDeployment.DeploymentName))
-            {
-                Logger.LogWarning("Deployment name cannot be empty");
-                return;
-            }
-            
             if (string.IsNullOrWhiteSpace(_editingDeployment.ModelName))
             {
                 Logger.LogWarning("Model name cannot be empty");
@@ -939,13 +927,13 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Load providers from AdminApiClient
+            var providers = await ProviderCredentialService.GetAllAsync();
+            _availableProviders = providers.ToList();
             
-            // Load providers
-            _availableProviders = await dbContext.ProviderCredentials.ToListAsync();
-            
-            // Load model mappings
-            _availableModelMappings = await dbContext.ModelProviderMappings.ToListAsync();
+            // Load model mappings from AdminApiClient
+            var mappings = await ModelProviderMappingService.GetAllAsync();
+            _availableModelMappings = mappings.ToList();
         }
         catch (Exception ex)
         {

@@ -50,15 +50,51 @@ services:
     ports:
       - "5000:8080"
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  admin:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Admin/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      AdminApi__MasterKey: alpha
+      AdminApi__AllowedOrigins__0: http://webui:8080
+      AdminApi__AllowedOrigins__1: http://localhost:5001
+    ports:
+      - "5002:8080"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   webui:
     build:
       context: .
       dockerfile: ConduitLLM.WebUI/Dockerfile
     depends_on:
-      - api
-      - postgres
-      - redis
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       CONDUIT_DATABASE_ENSURE_CREATED: "true"
@@ -78,23 +114,6 @@ services:
       CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"
     ports:
       - "5001:8080"
-    restart: on-failure
-    
-  admin:
-    build:
-      context: .
-      dockerfile: ConduitLLM.Admin/Dockerfile
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_DATABASE_ENSURE_CREATED: "true"
-      AdminApi__MasterKey: alpha
-      AdminApi__AllowedOrigins__0: http://webui:8080
-      AdminApi__AllowedOrigins__1: http://localhost:5001
-    ports:
-      - "5002:8080"
     restart: on-failure
 
 volumes:

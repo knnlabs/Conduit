@@ -55,13 +55,13 @@ namespace ConduitLLM.WebUI.Extensions
             var useAdminApiStr = configuration["CONDUIT_USE_ADMIN_API"];
             bool useAdminApi = string.IsNullOrEmpty(useAdminApiStr) || useAdminApiStr.ToLowerInvariant() != "false";
             
-            // Register RouterOptionsService
-            services.AddScoped<RouterOptionsService>();
+            // RouterOptionsService has been removed in favor of using the Admin API
 
-            // Register router service adapter for management
-            services.AddScoped<IRouterService, RouterServiceAdapter>();
+            // Register router service provider for management
+            services.AddScoped<IRouterService, Services.Providers.RouterServiceProvider>();
 
-            // Register the model health check service
+            // Register the model health check service 
+            // (it uses IOptionsMonitor<RouterOptions> instead of RouterOptionsService)
             services.AddHostedService<ModelHealthCheckService>();
 
             if (routerOptions.Enabled)
