@@ -182,9 +182,12 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                             if (versionResult != null)
                             {
                                 var versionString = versionResult.ToString();
-                                // Extract just the version number from the full version string
-                                var match = System.Text.RegularExpressions.Regex.Match(versionString, @"PostgreSQL (\d+\.\d+)");
-                                info.Version = match.Success ? match.Groups[1].Value : versionString;
+                                if (!string.IsNullOrEmpty(versionString))
+                                {
+                                    // Extract just the version number from the full version string
+                                    var match = System.Text.RegularExpressions.Regex.Match(versionString, @"PostgreSQL (\d+\.\d+)");
+                                    info.Version = match.Success ? match.Groups[1].Value : versionString;
+                                }
                             }
                         }
                         
