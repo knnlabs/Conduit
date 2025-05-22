@@ -32,9 +32,8 @@ public class ConduitApiClient : IConduitApiClient
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // Configure the HttpClient with the API base URL and default headers
-        var apiBaseUrl = configuration["ApiClient:BaseUrl"] ?? "http://localhost:5000";
-        _httpClient.BaseAddress = new Uri(apiBaseUrl);
+        // Note: HttpClient BaseAddress is configured in Program.cs via dependency injection
+        // Don't override it here as it may be different for local dev vs containerized deployment
         
         // Get the admin API key to use for requests
         string adminApiKey = configuration["ApiClient:AdminApiKey"] ?? "";
@@ -137,6 +136,72 @@ public class ConduitApiClient : IConduitApiClient
         {
             _logger.LogError(ex, "Error creating embeddings for model {Model}", request.Model);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Creates a streaming chat completion request to the API.
+    /// </summary>
+    /// <param name="request">The chat completion request.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An async enumerable of chat completion chunks.</returns>
+    public async IAsyncEnumerable<ChatCompletionChunk> CreateStreamingChatCompletionAsync(
+        ChatCompletionRequest request,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Creating streaming chat completion for model: {Model}", request.Model);
+
+        // Ensure streaming is enabled
+        request.Stream = true;
+        
+        var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", request, _jsonOptions, cancellationToken);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("Streaming chat completion request failed with status: {StatusCode}, Content: {Content}", 
+                response.StatusCode, errorContent);
+            response.Dispose();
+            yield break;
+        }
+        
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+        using (response)
+        {
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync(cancellationToken);
+                
+                if (string.IsNullOrEmpty(line) || !line.StartsWith("data: "))
+                    continue;
+                    
+                var jsonData = line.Substring(6); // Remove "data: " prefix
+                
+                if (jsonData == "[DONE]")
+                    break;
+                    
+                ChatCompletionChunk? chunk = null;
+                if (TryDeserializeChunk(jsonData, out chunk) && chunk != null)
+                {
+                    yield return chunk;
+                }
+            }
+        }
+    }
+
+    private bool TryDeserializeChunk(string jsonData, out ChatCompletionChunk? chunk)
+    {
+        try
+        {
+            chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(jsonData, _jsonOptions);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing stream chunk: {JsonData}", jsonData);
+            chunk = null;
+            return false;
         }
     }
 

@@ -1,681 +1,273 @@
 @page "/"
-@using ConduitLLM.WebUI.Data
-@using ConduitLLM.WebUI.Services
-@using Microsoft.Extensions.Configuration
-@using ConduitLLM.WebUI.Interfaces
-@using ConduitLLM.Core.Caching
-@using ConduitLLM.Core.Models.Routing
-@using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.DTOs
-@using ConduitLLM.Configuration.Repositories
-@using ConduitLLM.Configuration.Entities
-@inject NavigationManager NavigationManager
-@inject ProviderStatusService ProviderStatusService
-@inject IProviderHealthRepository ProviderHealthRepository
-@inject IConfiguration Configuration
-@inject IRouterService RouterService
-@inject ConduitLLM.WebUI.Interfaces.ICacheStatusService CacheStatusService
-@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
-@inject Interfaces.IProviderCredentialService ProviderCredentialService
-@implements IDisposable
 @rendermode InteractiveServer
 
+<PageTitle>ConduitLLM Dashboard</PageTitle>
+
 <div class="container container-xxl mt-4">
-    <h3 class="text-h3 mb-2">Welcome to ConduitLLM</h3>
-    <p class="text-subtitle1 mb-4">The central configuration hub for your LLM integrations</p>
-
-    @if (!IsMasterKeySet)
-    {
-        <div class="alert alert-warning my-4">
-            <p class="text-body1">
-                <strong>Master Key Not Set:</strong> For enhanced security, especially for managing virtual keys, 
-                it's highly recommended to set a Master Key using the <code>CONDUIT_MASTER_KEY</code> environment variable. 
-                This key protects sensitive operations.
-                <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/environments#set-the-environment" 
-                   target="_blank" class="underline">Learn how to set environment variables</a>
-            </p>
-        </div>
-    }
-
-    <div class="row">
-        <!-- Provider Status Card -->
-        <div class="col-12 col-md-4">
-            <div class="card mb-4" style="display: flex; flex-direction: column;">
-                <div class="card-header px-4 d-flex justify-content-between align-items-center">
-                    <h6 class="text-h6 m-0">Provider Status</h6>
-                    <div>
-                        <a href="/provider-health" class="btn btn-sm btn-outline-primary me-1">
-                            <i class="fa fa-chart-line"></i>
-                        </a>
-                        <button class="btn btn-icon" @onclick="CheckAllProvidersStatus" disabled="@isCheckingStatus">
-                            @if (isCheckingStatus)
-                            {
-                                <div class="spinner-border spinner-border-sm" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            }
-                            else
-                            {
-                                <i class="fa fa-sync-alt"></i>
-                            }
-                        </button>
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <div class="hero-section bg-gradient-primary text-white rounded-4 p-5 mb-5">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fa fa-bolt me-3"></i>ConduitLLM
+                </h1>
+                <p class="lead mb-4">
+                    Your unified gateway to multiple LLM providers with intelligent routing, cost optimization, and comprehensive management.
+                </p>
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <i class="fa fa-cloud fa-2x mb-2"></i>
+                            <h4>Multi-Provider</h4>
+                            <p>Connect to OpenAI, Anthropic, Google, and more</p>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    @if (isLoading)
-                    {
-                        <div class="d-flex justify-content-center">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <i class="fa fa-random fa-2x mb-2"></i>
+                            <h4>Smart Routing</h4>
+                            <p>Intelligent load balancing and failover</p>
                         </div>
-                    }
-                    else if (providerCount == 0)
-                    {
-                        <div class="alert alert-warning mb-3">
-                            <h6 class="text-h6">No Providers Configured</h6>
-                            <p class="text-body2">
-                                You haven't configured any LLM providers yet. To get started with ConduitLLM, 
-                                you'll need to add at least one provider.
-                            </p>
-                            <div class="mt-3">
-                                <a href="/configuration" class="btn btn-primary px-3">
-                                    <i class="fa fa-plus me-2"></i>
-                                    <span>Add Your First Provider</span>
-                                </a>
-                            </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <i class="fa fa-shield fa-2x mb-2"></i>
+                            <h4>Secure Access</h4>
+                            <p>Virtual keys and IP filtering for security</p>
                         </div>
-                    }
-                    else
-                    {
-                        @if (providerStatuses.Count > 0)
-                        {
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Provider</th>
-                                        <th>Status</th>
-                                        <th>Response Time</th>
-                                        <th>Monitoring</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var provider in providers)
-                                    {
-                                        <tr>
-                                            <td>
-                                                <span class="fw-medium">@provider.ProviderName</span>
-                                            </td>
-                                            <td>
-                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var status))
-                                                {
-                                                    @if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Online)
-                                                    {
-                                                        <span class="text-success">
-                                                            <i class="fa fa-check-circle me-1"></i>
-                                                            Online
-                                                        </span>
-                                                    }
-                                                    else if (status.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline)
-                                                    {
-                                                        <span class="text-danger">
-                                                            <i class="fa fa-exclamation-circle me-1"></i>
-                                                            Offline
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="text-secondary">
-                                                            <i class="fa fa-question-circle me-1"></i>
-                                                            Unknown
-                                                        </span>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-secondary">
-                                                        <i class="fa fa-question-circle me-1"></i>
-                                                        Unknown
-                                                    </span>
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (providerStatuses.TryGetValue(provider.ProviderName, out var responseStatus) && responseStatus.ResponseTimeMs > 0)
-                                                {
-                                                    <small>@responseStatus.ResponseTimeMs.ToString("F2") ms</small>
-                                                }
-                                                else
-                                                {
-                                                    <small>-</small>
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (providerConfigurations.TryGetValue(provider.ProviderName, out var config))
-                                                {
-                                                    @if (config.MonitoringEnabled)
-                                                    {
-                                                        <span class="badge bg-success">Auto</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">Manual</span>
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">Manual</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                            
-                            <div class="d-flex justify-content-between mt-3">
-                                <a href="/configuration" class="btn btn-text text-primary px-3">
-                                    <span class="me-2">Manage Providers</span>
-                                    <i class="fa fa-arrow-right"></i>
-                                </a>
-                                <a href="/provider-health" class="btn btn-text text-primary px-3">
-                                    <span class="me-2">Health Dashboard</span>
-                                    <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-secondary">Click refresh to check providers status</p>
-                        }
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Routing Rules Card -->
-        <div class="col-12 col-md-4">
-            <div class="card mb-4" style="display: flex; flex-direction: column;">
-                <div class="card-header px-4 d-flex justify-content-between align-items-center">
-                    <h6 class="text-h6 m-0">Routing Configuration</h6>
-                    <button class="btn btn-icon" @onclick="CheckRoutingStatus" disabled="@isCheckingRoutingStatus">
-                        @if (isCheckingRoutingStatus)
-                        {
-                            <div class="spinner-border spinner-border-sm" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <i class="fa fa-sync-alt"></i>
-                        }
-                    </button>
-                </div>
-                <div class="card-body">
-                    @if (isLoadingRouting)
-                    {
-                        <div class="d-flex justify-content-center">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-column">
-                            <div class="paper p-3 bg-light">
-                                <div class="d-flex flex-row">
-                                    <p class="text-body1 mb-0">Routing Engine:</p>
-                                    @if (isRouterEnabled)
-                                    {
-                                        <span class="text-success ms-2">
-                                            <i class="fa fa-check-circle me-1"></i>
-                                            Enabled
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-error ms-2">
-                                            <i class="fa fa-times-circle me-1"></i>
-                                            Disabled
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-
-                            @if (routerConfig != null)
-                            {
-                                <div class="paper p-3 mt-3 bg-light">
-                                    <div class="d-flex flex-column">
-                                        <p class="text-subtitle2 m-0">Current Strategy:</p>
-                                        <h6 class="text-h6 text-primary">@GetStrategyDisplayName(routerConfig.DefaultRoutingStrategy)</h6>
-                                        
-                                        <hr class="divider" />
-                                        
-                                        <p class="text-subtitle2 mt-2 mb-0">Active Routes: @(routerConfig.ModelDeployments?.Count ?? 0)</p>
-                                        
-                                        @if (routerConfig.ModelDeployments?.Count > 0)
-                                        {
-                                            <div class="mt-2">
-                                                @foreach (var route in routerConfig.ModelDeployments.Take(3))
-                                                {
-                                                    <div class="d-flex align-items-center my-1">
-                                                        <i class="fa fa-arrow-right me-2"></i>
-                                                        @route.ModelName → @route.ProviderName
-                                                    </div>
-                                                }
-                                                @if (routerConfig.ModelDeployments.Count > 3)
-                                                {
-                                                    <small class="text-secondary mt-1">
-                                                        And @(routerConfig.ModelDeployments.Count - 3) more...
-                                                    </small>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-
-                                <a href="/routing-settings" class="btn btn-text text-primary mt-3 px-3">
-                                    <span class="me-2">Manage Routing</span>
-                                    <i class="fa fa-arrow-right"></i>
-                                </a>
-                            }
-                            else
-                            {
-                                <div class="alert alert-info mt-3">
-                                    <p class="text-body2">
-                                        Routing is not configured yet. Set up routing to automatically direct requests to the right LLM provider.
-                                    </p>
-                                    <div class="mt-3">
-                                        <a href="/routing-settings" class="btn btn-primary px-3">
-                                            <i class="fa fa-cog me-2"></i>
-                                            <span>Configure Routing</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Caching System Card -->
-        <div class="col-12 col-md-4">
-            <div class="card mb-4" style="display: flex; flex-direction: column;">
-                <div class="card-header px-4 d-flex justify-content-between align-items-center">
-                    <h6 class="text-h6 m-0">Caching System</h6>
-                    <button class="btn btn-icon" @onclick="CheckCachingStatus" disabled="@isCheckingCachingStatus">
-                        @if (isCheckingCachingStatus)
-                        {
-                            <div class="spinner-border spinner-border-sm" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <i class="fa fa-sync-alt"></i>
-                        }
-                    </button>
-                </div>
-                <div class="card-body">
-                    @if (isLoadingCaching)
-                    {
-                        <div class="d-flex justify-content-center">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="paper p-3 bg-light">
-                            <div class="d-flex flex-row">
-                                <p class="text-body1 mb-0">Cache Status:</p>
-                                @if (isCacheEnabled)
-                                {
-                                    <span class="text-success ms-2">
-                                        <i class="fa fa-check-circle me-1"></i>
-                                        Enabled
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="text-error ms-2">
-                                        <i class="fa fa-times-circle me-1"></i>
-                                        Disabled
-                                    </span>
-                                }
-                            </div>
-                        </div>
-
-                        @if (cacheType != null)
-                        {
-                            <p class="text-subtitle2 mt-3 mb-0">Cache Type:</p>
-                            <p class="text-primary mt-1">@cacheType</p>
-                        }
-
-                        @if (cacheStats != null)
-                        {
-                            <div class="row mt-4">
-                                <div class="col-6">
-                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
-                                        <small class="text-secondary">Cached Items</small>
-                                        <h6 class="text-h6 text-primary">@cacheStats.TotalItems</h6>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-6">
-                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
-                                        <small class="text-secondary">Hit Rate</small>
-                                        <h6 class="text-h6 text-primary">@cacheStats.HitRate.ToString("P1")</h6>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-6 mt-2">
-                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
-                                        <small class="text-secondary">Memory Usage</small>
-                                        <h6 class="text-h6 text-primary">@FormatBytes(cacheStats.MemoryUsageBytes)</h6>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-6 mt-2">
-                                    <div class="paper p-3 d-flex flex-column align-items-center bg-light">
-                                        <small class="text-secondary">Avg Response</small>
-                                        <h6 class="text-h6 text-primary">@cacheStats.AvgResponseTime.ToString("0.##") ms</h6>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <a href="/caching-settings" class="btn btn-text text-primary mt-3 px-3">
-                                <span class="me-2">Manage Caching</span>
-                                <i class="fa fa-arrow-right"></i>
-                            </a>
-                        }
-                        else
-                        {
-                            <div class="alert alert-info mt-3">
-                                <p class="text-body2">
-                                    Caching is not configured yet. Set up caching to improve response times and reduce API costs.
-                                </p>
-                                <div class="mt-3">
-                                    <a href="/caching-settings" class="btn btn-primary px-3">
-                                        <i class="fa fa-cog me-2"></i>
-                                        <span>Configure Caching</span>
-                                    </a>
-                                </div>
-                            </div>
-                        }
-                    }
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <hr class="divider my-4" />
+    <!-- Quick Access Cards -->
+    <div class="row mb-5">
+        <div class="col-12 mb-4">
+            <h2 class="text-center mb-4">
+                <i class="fa fa-tachometer me-2"></i>Quick Access
+            </h2>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-primary text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-key fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Virtual Keys</h5>
+                    <p class="card-text">Create and manage API keys with budget controls and usage tracking.</p>
+                    <a href="/virtual-keys" class="btn btn-primary">Manage Keys</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-success text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-cogs fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Configuration</h5>
+                    <p class="card-text">Set up providers, model mappings, and system-wide settings.</p>
+                    <a href="/configuration" class="btn btn-success">Configure</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-info text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-chart-line fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Cost Dashboard</h5>
+                    <p class="card-text">Monitor spending, analyze usage patterns, and optimize costs.</p>
+                    <a href="/cost-dashboard" class="btn btn-info">View Dashboard</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-warning text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-comments fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Chat Interface</h5>
+                    <p class="card-text">Test your LLM integrations with the built-in chat interface.</p>
+                    <a href="/chat" class="btn btn-warning">Start Chat</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-danger text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-random fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Routing Settings</h5>
+                    <p class="card-text">Configure load balancing strategies and fallback models.</p>
+                    <a href="/routing-settings" class="btn btn-danger">Setup Routing</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body text-center">
+                    <div class="feature-icon bg-secondary text-white rounded-circle mx-auto mb-3">
+                        <i class="fa fa-database fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Caching Settings</h5>
+                    <p class="card-text">Configure response caching to reduce costs and improve speed.</p>
+                    <a href="/caching-settings" class="btn btn-secondary">Cache Settings</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Quick Actions Section -->
-    <h5 class="text-h5 mb-3">Quick Actions</h5>
+    <!-- Features Overview -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h2 class="text-center mb-4">
+                <i class="fa fa-star me-2"></i>Key Features
+            </h2>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="feature-highlight text-center p-4">
+                <i class="fa fa-cloud fa-3x text-primary mb-3"></i>
+                <h5>Multi-Provider Support</h5>
+                <p>Connect to OpenAI, Anthropic, Google Gemini, Cohere, Mistral, and more providers simultaneously.</p>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="feature-highlight text-center p-4">
+                <i class="fa fa-dollar-sign fa-3x text-success mb-3"></i>
+                <h5>Cost Optimization</h5>
+                <p>Track spending, set budgets, and automatically route to cost-effective models.</p>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="feature-highlight text-center p-4">
+                <i class="fa fa-shield-alt fa-3x text-warning mb-3"></i>
+                <h5>Security & Access Control</h5>
+                <p>Virtual API keys, IP filtering, and comprehensive access management.</p>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3 mb-4">
+            <div class="feature-highlight text-center p-4">
+                <i class="fa fa-tachometer-alt fa-3x text-info mb-3"></i>
+                <h5>Performance Monitoring</h5>
+                <p>Real-time metrics, health checks, and performance analytics.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
     <div class="row">
-        <div class="col-12 col-sm-6 col-md-3">
-            <div class="paper p-4 paper-2">
-                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
-                    <i class="fa fa-comment text-primary fa-2x"></i>
-                    <h6 class="text-h6">Try Chat</h6>
-                    <p class="text-body2 text-center">Test your configuration with the built-in chat interface</p>
-                    <a href="/chat" class="btn btn-primary w-100 px-3">
-                        <span>Open Chat</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-12 col-sm-6 col-md-3">
-            <div class="paper p-4 paper-2">
-                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
-                    <i class="fa fa-plus text-secondary fa-2x"></i>
-                    <h6 class="text-h6">Add Provider</h6>
-                    <p class="text-body2 text-center">Configure a new LLM provider to use with Conduit</p>
-                    <a href="/configuration" class="btn btn-secondary w-100 px-3">
-                        <span>Configure</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-12 col-sm-6 col-md-3">
-            <div class="paper p-4 paper-2">
-                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
-                    <i class="fa fa-route text-warning fa-2x"></i>
-                    <h6 class="text-h6">Setup Routing</h6>
-                    <p class="text-body2 text-center">Configure rules to route requests to the right provider</p>
-                    <a href="/routing-settings" class="btn btn-warning w-100 px-3">
-                        <span>Routing</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-12 col-sm-6 col-md-3">
-            <div class="paper p-4 paper-2">
-                <div class="d-flex flex-column align-items-center" style="gap: 0.5rem;">
-                    <i class="fa fa-key text-info fa-2x"></i>
-                    <h6 class="text-h6">Virtual Keys</h6>
-                    <p class="text-body2 text-center">Manage virtual API keys for application access</p>
-                    <a href="/virtualkeys" class="btn btn-info w-100 px-3">
-                        <span>Keys</span>
-                    </a>
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-center mb-4">
+                        <i class="fa fa-info-circle me-2"></i>Get Started
+                    </h5>
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="getting-started-step">
+                                <div class="step-number">1</div>
+                                <h6>Add Providers</h6>
+                                <p>Configure your LLM provider credentials in the Configuration section.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="getting-started-step">
+                                <div class="step-number">2</div>
+                                <h6>Create Virtual Keys</h6>
+                                <p>Generate secure API keys with custom budgets and usage limits.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="getting-started-step">
+                                <div class="step-number">3</div>
+                                <h6>Start Using</h6>
+                                <p>Test with the chat interface or integrate with your applications.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-@code {
-    private bool IsMasterKeySet => !string.IsNullOrEmpty(Configuration["CONDUIT_MASTER_KEY"]);
-    
-    private List<ProviderCredentialDto> providers = new();
-    private Dictionary<string, ProviderStatus> providerStatuses = new();
-    private Dictionary<string, ProviderHealthConfigurationDto> providerConfigurations = new();
-    private bool isLoading = true;
-    private bool isCheckingStatus = false;
-    private int providerCount = 0;
-    
-    // Routing data
-    private RouterConfig? routerConfig = null;
-    private bool isRouterEnabled = false;
-    private bool isLoadingRouting = true;
-    private bool isCheckingRoutingStatus = false;
-    
-    // Caching data
-    private CacheStats? cacheStats = null;
-    private bool isCacheEnabled = false;
-    private string? cacheType = null;
-    private bool isLoadingCaching = true;
-    private bool isCheckingCachingStatus = false;
-    
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadDataAsync();
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
     }
     
-    private async Task LoadDataAsync()
-    {
-        try
-        {
-            isLoading = true;
-            isLoadingRouting = true;
-            isLoadingCaching = true;
-            StateHasChanged();
-            
-            // Load providers
-            var allProviders = await ProviderCredentialService.GetAllAsync();
-            providers = allProviders.ToList();
-            providerCount = providers.Count;
-            
-            // Load provider configurations
-            var configs = await ProviderHealthRepository.GetAllConfigurationsAsync();
-            var providerConfigDtos = new List<ProviderHealthConfigurationDto>();
-            
-            foreach (var config in configs)
-            {
-                providerConfigDtos.Add(new ProviderHealthConfigurationDto 
-                { 
-                    Id = config.Id,
-                    ProviderName = config.ProviderName,
-                    MonitoringEnabled = config.MonitoringEnabled,
-                    CheckIntervalMinutes = config.CheckIntervalMinutes,
-                    ConsecutiveFailuresThreshold = config.ConsecutiveFailuresThreshold,
-                    NotificationsEnabled = config.NotificationsEnabled,
-                    LastCheckedUtc = config.LastCheckedUtc,
-                    CustomEndpointUrl = config.CustomEndpointUrl,
-                    TimeoutSeconds = config.TimeoutSeconds
-                });
-            }
-            
-            providerConfigurations = providerConfigDtos.ToDictionary(c => c.ProviderName, c => c);
-            
-            // Initial checks
-            await CheckAllProvidersStatus();
-            await CheckRoutingStatus();
-            await CheckCachingStatus();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error loading data: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+    .stat-card {
+        padding: 1rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 0.5rem;
     }
     
-    private async Task CheckAllProvidersStatus()
-    {
-        if (isCheckingStatus)
-            return;
-            
-        try
-        {
-            isCheckingStatus = true;
-            StateHasChanged();
-            
-            // Clear old statuses before getting new ones
-            providerStatuses.Clear();
-            providerStatuses = await ProviderStatusService.CheckAllProvidersStatusAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error checking provider status: {ex.Message}");
-        }
-        finally
-        {
-            isCheckingStatus = false;
-            StateHasChanged();
-        }
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    private async Task CheckRoutingStatus()
-    {
-        if (isCheckingRoutingStatus)
-            return;
-            
-        try
-        {
-            isCheckingRoutingStatus = true;
-            StateHasChanged();
-            
-            var routerStatus = await RouterService.GetRouterStatusAsync();
-            routerConfig = routerStatus.Config;
-            isRouterEnabled = routerStatus.IsEnabled;
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error checking routing status: {ex.Message}");
-            routerConfig = null;
-        }
-        finally
-        {
-            isCheckingRoutingStatus = false;
-            isLoadingRouting = false;
-            StateHasChanged();
-        }
+    .hover-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     }
     
-    private async Task CheckCachingStatus()
-    {
-        if (isCheckingCachingStatus)
-            return;
-            
-        try
-        {
-            isCheckingCachingStatus = true;
-            StateHasChanged();
-            
-            // Real implementation - fetch from the cache service
-            var cacheStatus = await CacheStatusService.GetCacheStatusAsync();
-            Console.WriteLine($"Cache status retrieved: Enabled={cacheStatus.IsEnabled}, Type={cacheStatus.CacheType}, Items={cacheStatus.TotalItems}");
-            
-            cacheStats = new CacheStats
-            {
-                TotalItems = cacheStatus.TotalItems,
-                HitRate = cacheStatus.HitRate,
-                MemoryUsageBytes = cacheStatus.MemoryUsageBytes,
-                AvgResponseTime = cacheStatus.AvgResponseTime
-            };
-            isCacheEnabled = cacheStatus.IsEnabled;
-            cacheType = cacheStatus.CacheType;
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error checking cache status: {ex.Message}");
-            Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
-            cacheStats = null;
-        }
-        finally
-        {
-            isCheckingCachingStatus = false;
-            isLoadingCaching = false;
-            StateHasChanged();
-        }
-    }
-
-    // Navigation methods removed in favor of simple anchor tags
-    
-    private string GetStrategyDisplayName(string strategy)
-    {
-        return strategy?.ToLower() switch
-        {
-            "simple" => "Simple",
-            "random" => "Random",
-            "round-robin" => "Round Robin",
-            _ => strategy ?? "Unknown"
-        };
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
     }
     
-    private string FormatBytes(long bytes)
-    {
-        string[] suffix = { "B", "KB", "MB", "GB", "TB" };
-        int i;
-        double dblBytes = bytes;
-        
-        for (i = 0; i < suffix.Length && bytes >= 1024; i++, bytes /= 1024)
-        {
-            dblBytes = bytes / 1024.0;
-        }
-        
-        return $"{dblBytes:0.#} {suffix[i]}";
+    .feature-highlight {
+        border-radius: 10px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
     }
     
-    private class CacheStats
-    {
-        public int TotalItems { get; set; }
-        public double HitRate { get; set; }
-        public long MemoryUsageBytes { get; set; }
-        public double AvgResponseTime { get; set; }
+    .feature-highlight:hover {
+        background: #ffffff;
+        border-color: #dee2e6;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     
-    public void Dispose()
-    {
-        // No event handlers to dispose
+    .getting-started-step {
+        padding: 1rem;
     }
-}
+    
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: #007bff;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem auto;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>

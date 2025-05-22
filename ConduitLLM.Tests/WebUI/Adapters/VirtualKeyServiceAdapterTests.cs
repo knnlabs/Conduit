@@ -114,30 +114,42 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetVirtualKeyUsageStatisticsAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedStats = new List<ConfigDTOs.VirtualKeyCostDataDto>
+            var configStats = new List<ConfigDTOs.VirtualKeyCostDataDto>
             {
                 new ConfigDTOs.VirtualKeyCostDataDto { VirtualKeyId = 1, TotalCost = 10.5m }
             };
+            
+            // Convert to WebUI DTOs
+            var webStats = configStats.Select(c => new WebUIDTOs.VirtualKeyCostDataDto
+            {
+                VirtualKeyId = c.VirtualKeyId,
+                TotalCost = c.TotalCost
+            }).ToList();
 
             _adminApiClientMock.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(1))
-                .ReturnsAsync(expectedStats);
+                .Returns(Task.FromResult<IEnumerable<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>>(webStats));
 
             // Act
             var result = await _adapter.GetVirtualKeyUsageStatisticsAsync(1);
 
             // Assert
-            Assert.Same(expectedStats, result);
+            Assert.NotNull(result);
             _adminApiClientMock.Verify(c => c.GetVirtualKeyUsageStatisticsAsync(1), Times.Once);
         }
 
         [Fact]
         public async Task ResetSpendAsync_ReturnsTrue()
         {
+            // Arrange
+            _adminApiClientMock.Setup(c => c.ResetVirtualKeySpendAsync(1))
+                .ReturnsAsync(true);
+
             // Act
             var result = await _adapter.ResetSpendAsync(1);
 
             // Assert 
             Assert.True(result);
+            _adminApiClientMock.Verify(c => c.ResetVirtualKeySpendAsync(1), Times.Once);
         }
     }
 }

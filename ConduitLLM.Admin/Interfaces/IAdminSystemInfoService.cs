@@ -42,6 +42,11 @@ public class SystemInfoDto
     /// Runtime information
     /// </summary>
     public RuntimeInfo Runtime { get; set; } = new();
+    
+    /// <summary>
+    /// Record counts from database tables
+    /// </summary>
+    public RecordCountsDto RecordCounts { get; set; } = new();
 }
 
 /// <summary>
@@ -95,6 +100,26 @@ public class DatabaseInfo
     /// Connection status
     /// </summary>
     public bool Connected { get; set; }
+    
+    /// <summary>
+    /// Masked connection string
+    /// </summary>
+    public string ConnectionString { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Database file location (for file-based databases)
+    /// </summary>
+    public string Location { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Database size
+    /// </summary>
+    public string Size { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Number of tables in the database
+    /// </summary>
+    public int TableCount { get; set; }
 }
 
 /// <summary>
@@ -153,4 +178,35 @@ public class ComponentHealth
     /// Additional health details
     /// </summary>
     public Dictionary<string, string> Data { get; set; } = new();
+}
+
+/// <summary>
+/// Record counts from database tables
+/// </summary>
+public class RecordCountsDto
+{
+    /// <summary>
+    /// Number of virtual keys
+    /// </summary>
+    public int VirtualKeys { get; set; }
+    
+    /// <summary>
+    /// Number of request logs
+    /// </summary>
+    public int Requests { get; set; }
+    
+    /// <summary>
+    /// Number of global settings
+    /// </summary>
+    public int Settings { get; set; }
+    
+    /// <summary>
+    /// Number of provider credentials
+    /// </summary>
+    public int Providers { get; set; }
+    
+    /// <summary>
+    /// Number of model provider mappings
+    /// </summary>
+    public int ModelMappings { get; set; }
 }

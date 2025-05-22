@@ -115,15 +115,26 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetIpFilterSettingsAsync_ReturnsCorrectSettings_WithWhitelists()
         {
             // Arrange
-            var filters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+            var settingsDto = new ConfigDTOs.IpFilter.IpFilterSettingsDto
             {
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" },
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "172.16.0.1", FilterType = "whitelist" }
+                WhitelistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                {
+                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
+                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "172.16.0.1", FilterType = "whitelist" }
+                },
+                BlacklistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                {
+                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" }
+                },
+                FilterMode = "restrictive",
+                IsEnabled = true,
+                DefaultAllow = false,
+                BypassForAdminUi = true,
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
 
-            _adminApiClientMock.Setup(c => c.GetAllIpFiltersAsync())
-                .ReturnsAsync(filters);
+            _adminApiClientMock.Setup(c => c.GetIpFilterSettingsAsync())
+                .ReturnsAsync(settingsDto);
 
             // Act
             var result = await _adapter.GetIpFilterSettingsAsync();
@@ -140,21 +151,30 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             // Check blacklist
             Assert.Equal(2, result.BlacklistFilters[0].Id);
             
-            _adminApiClientMock.Verify(c => c.GetAllIpFiltersAsync(), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetIpFilterSettingsAsync(), Times.Once);
         }
 
         [Fact]
         public async Task GetIpFilterSettingsAsync_ReturnsPermissiveMode_WithoutWhitelists()
         {
             // Arrange
-            var filters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+            var settingsDto = new ConfigDTOs.IpFilter.IpFilterSettingsDto
             {
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "10.0.0.1", FilterType = "blacklist" },
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.2", FilterType = "blacklist" }
+                WhitelistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>(),
+                BlacklistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                {
+                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "10.0.0.1", FilterType = "blacklist" },
+                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.2", FilterType = "blacklist" }
+                },
+                FilterMode = "permissive",
+                IsEnabled = true,
+                DefaultAllow = true,
+                BypassForAdminUi = true,
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
 
-            _adminApiClientMock.Setup(c => c.GetAllIpFiltersAsync())
-                .ReturnsAsync(filters);
+            _adminApiClientMock.Setup(c => c.GetIpFilterSettingsAsync())
+                .ReturnsAsync(settingsDto);
 
             // Act
             var result = await _adapter.GetIpFilterSettingsAsync();
@@ -163,14 +183,14 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             Assert.Empty(result.WhitelistFilters);
             Assert.Equal(2, result.BlacklistFilters.Count);
             Assert.Equal("permissive", result.FilterMode); // Should be permissive because no whitelists exist
-            _adminApiClientMock.Verify(c => c.GetAllIpFiltersAsync(), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetIpFilterSettingsAsync(), Times.Once);
         }
 
         [Fact]
         public async Task GetIpFilterSettingsAsync_HandlesExceptions()
         {
             // Arrange
-            _adminApiClientMock.Setup(c => c.GetAllIpFiltersAsync())
+            _adminApiClientMock.Setup(c => c.GetIpFilterSettingsAsync())
                 .ThrowsAsync(new Exception("Test exception"));
 
             // Act
@@ -181,7 +201,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             Assert.Empty(result.WhitelistFilters);
             Assert.Empty(result.BlacklistFilters);
             Assert.Equal("permissive", result.FilterMode);
-            _adminApiClientMock.Verify(c => c.GetAllIpFiltersAsync(), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetIpFilterSettingsAsync(), Times.Once);
             _loggerMock.Verify(
                 x => x.Log(
                     LogLevel.Error,

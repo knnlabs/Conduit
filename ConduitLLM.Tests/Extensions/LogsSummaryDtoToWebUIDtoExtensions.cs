@@ -8,9 +8,9 @@ namespace ConduitLLM.Tests.Extensions
     public static class LogsSummaryDtoToWebUIDtoExtensions
     {
         /// <summary>
-        /// Converts a Configuration.Services.Dtos.LogsSummaryDto to a WebUI.DTOs.LogsSummaryDto
+        /// Converts a Configuration.DTOs.LogsSummaryDto to a WebUI.DTOs.LogsSummaryDto
         /// </summary>
-        public static WebUIDTOs.LogsSummaryDto ToWebUILogsSummaryDto(this ConfigServiceDtos.LogsSummaryDto source)
+        public static WebUIDTOs.LogsSummaryDto ToWebUILogsSummaryDto(this ConfigDTOs.LogsSummaryDto source)
         {
             return new WebUIDTOs.LogsSummaryDto
             {
@@ -19,11 +19,10 @@ namespace ConduitLLM.Tests.Extensions
                 InputTokens = source.TotalInputTokens,
                 OutputTokens = source.TotalOutputTokens,
                 AverageResponseTime = source.AverageResponseTimeMs,
-                StartDate = source.StartDate,
-                EndDate = source.EndDate,
                 SuccessfulRequests = source.SuccessfulRequests,
-                FailedRequests = source.FailedRequests
-                // LastRequestDate is not present in the source DTO
+                FailedRequests = source.FailedRequests,
+                LastRequestDate = source.LastRequestDate
+                // StartDate and EndDate may need to be handled separately if needed
             };
         }
     }

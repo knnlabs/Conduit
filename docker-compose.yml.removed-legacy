@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conduit -d conduitdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Http/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      CONDUIT_CACHE_ENABLED: "true"
+      CONDUIT_CACHE_TYPE: "Redis"
+      CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
+      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+    ports:
+      - "5000:8080"
+    restart: on-failure
+
+  webui:
+    build:
+      context: .
+      dockerfile: ConduitLLM.WebUI/Dockerfile
+    depends_on:
+      - api
+      - admin
+    environment:
+      CONDUIT_MASTER_KEY: alpha
+      CONDUIT_INSECURE: "true"
+      CONDUIT_API_BASE_URL: http://api:8080
+      CONDUIT_CACHE_ENABLED: "true"
+      CONDUIT_CACHE_TYPE: "Redis"
+      CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
+      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+      CONDUIT_VERSION_CHECK_ENABLED: "true"
+      CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
+      # Admin API configuration (now required)
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+    ports:
+      - "5001:8080"
+    restart: on-failure
+    
+  admin:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Admin/Dockerfile
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      AdminApi__MasterKey: alpha
+      AdminApi__AllowedOrigins__0: http://webui:8080
+      AdminApi__AllowedOrigins__1: http://localhost:5001
+    ports:
+      - "5002:8080"
+    restart: on-failure
+
+volumes:
+  pgdata:
+  redis-data:

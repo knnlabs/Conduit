@@ -268,6 +268,79 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
     }
     
+    /// <inheritdoc/>
+    public async Task<IpCheckResult> CheckIpAddressAsync(string ipAddress)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", ipAddress);
+            
+            // Get current IP filter settings
+            var settings = await GetIpFilterSettingsAsync();
+            
+            // If IP filtering is disabled, allow all
+            if (!settings.IsEnabled)
+            {
+                return new IpCheckResult { IsAllowed = true };
+            }
+            
+            // Validate the IP format
+            if (!System.Net.IPAddress.TryParse(ipAddress, out _))
+            {
+                return new IpCheckResult 
+                { 
+                    IsAllowed = false, 
+                    DeniedReason = "Invalid IP address format" 
+                };
+            }
+            
+            // Get all enabled IP filters
+            var filters = await GetEnabledFiltersAsync();
+            
+            // Check whitelist (allow) filters
+            var whitelistFilters = filters.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList();
+            foreach (var filter in whitelistFilters)
+            {
+                if (IpAddressMatchesFilter(ipAddress, filter.IpAddressOrCidr))
+                {
+                    return new IpCheckResult { IsAllowed = true };
+                }
+            }
+            
+            // Check blacklist (deny) filters
+            var blacklistFilters = filters.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList();
+            foreach (var filter in blacklistFilters)
+            {
+                if (IpAddressMatchesFilter(ipAddress, filter.IpAddressOrCidr))
+                {
+                    return new IpCheckResult 
+                    { 
+                        IsAllowed = false, 
+                        DeniedReason = $"IP address matched deny filter: {filter.Description}" 
+                    };
+                }
+            }
+            
+            // No matches found, use default policy
+            return new IpCheckResult 
+            { 
+                IsAllowed = settings.DefaultAllow,
+                DeniedReason = settings.DefaultAllow ? null : "IP address did not match any allow filters" 
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", ipAddress);
+            
+            // On error, default to allowing the request (safer than potentially blocking all traffic)
+            return new IpCheckResult 
+            { 
+                IsAllowed = true,
+                DeniedReason = "Error during IP check, allowed as a failsafe" 
+            };
+        }
+    }
+    
     /// <summary>
     /// Maps an IP filter entity to a DTO
     /// </summary>
@@ -338,5 +411,49 @@ public class AdminIpFilterService : IAdminIpFilterService
             _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", ipAddressOrCidr);
             return false;
         }
+    }
+    
+    /// <summary>
+    /// Checks if an IP address matches a filter (exact match or CIDR range)
+    /// </summary>
+    /// <param name="ipAddress">The IP address to check</param>
+    /// <param name="filterValue">The filter value (IP address or CIDR notation)</param>
+    /// <returns>True if the IP matches the filter, false otherwise</returns>
+    private bool IpAddressMatchesFilter(string ipAddress, string filterValue)
+    {
+        // Simple exact match
+        if (ipAddress == filterValue)
+        {
+            return true;
+        }
+        
+        // If the filter is a CIDR range
+        if (filterValue.Contains('/'))
+        {
+            try
+            {
+                // This is a simplified implementation that would need to be replaced
+                // with actual CIDR range matching logic in a production environment
+                
+                var parts = filterValue.Split('/');
+                if (parts.Length != 2)
+                {
+                    return false;
+                }
+                
+                var networkAddress = parts[0];
+                
+                // For a very basic check, see if the IP starts with the same network portion
+                // This is NOT accurate for real CIDR matching and is just a placeholder
+                return ipAddress.StartsWith(networkAddress.Substring(0, networkAddress.LastIndexOf('.')));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", ipAddress, filterValue);
+                return false;
+            }
+        }
+        
+        return false;
     }
 }

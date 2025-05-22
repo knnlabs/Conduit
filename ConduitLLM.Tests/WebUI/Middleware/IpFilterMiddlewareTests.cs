@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
-using ConduitLLM.WebUI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -49,7 +50,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             var context = new DefaultHttpContext();
             context.Request.Path = new PathString("/api/v1/chat");
             
-            var settings = new IpFilterSettings { IsEnabled = false };
+            var settings = new IpFilterSettingsDto { IsEnabled = false };
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
             
             bool nextCalled = false;
@@ -70,10 +71,10 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             var context = new DefaultHttpContext();
             context.Request.Path = new PathString("/api/v1/health");
             
-            var settings = new IpFilterSettings 
+            var settings = new IpFilterSettingsDto 
             { 
                 IsEnabled = true,
-                ExcludedEndpoints = new() { "/api/v1/health" }
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
             
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
@@ -96,11 +97,11 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             var context = new DefaultHttpContext();
             context.Request.Path = new PathString("/configuration");
             
-            var settings = new IpFilterSettings 
+            var settings = new IpFilterSettingsDto 
             { 
                 IsEnabled = true,
                 BypassForAdminUi = true,
-                ExcludedEndpoints = new() { "/api/v1/health" }
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
             
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
@@ -124,11 +125,11 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             context.Request.Path = new PathString("/api/v1/chat");
             context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
             
-            var settings = new IpFilterSettings 
+            var settings = new IpFilterSettingsDto 
             { 
                 IsEnabled = true,
                 BypassForAdminUi = false,
-                ExcludedEndpoints = new() { "/api/v1/health" }
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
             
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
@@ -154,11 +155,11 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             context.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.1");
             context.Response.Body = new MemoryStream();
             
-            var settings = new IpFilterSettings 
+            var settings = new IpFilterSettingsDto 
             { 
                 IsEnabled = true,
                 BypassForAdminUi = false,
-                ExcludedEndpoints = new() { "/api/v1/health" }
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
             
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
@@ -184,11 +185,11 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             context.Request.Path = new PathString("/api/v1/chat");
             context.Request.Headers["X-Forwarded-For"] = "10.0.0.1, 192.168.1.100, 172.16.0.1";
             
-            var settings = new IpFilterSettings 
+            var settings = new IpFilterSettingsDto 
             { 
                 IsEnabled = true,
                 BypassForAdminUi = false,
-                ExcludedEndpoints = new() { "/api/v1/health" }
+                ExcludedEndpoints = new List<string> { "/api/v1/health" }
             };
             
             _mockIpFilterService.Setup(s => s.GetIpFilterSettingsAsync()).ReturnsAsync(settings);
@@ -218,14 +219,20 @@ namespace ConduitLLM.Tests.WebUI.Middleware
                 .ThrowsAsync(new Exception("Test exception"));
             
             bool nextCalled = false;
-            RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
+            RequestDelegate next = (HttpContext ctx) => 
+            { 
+                nextCalled = true; 
+                return Task.CompletedTask; 
+            };
+            
+            // Create a new middleware instance with our test delegate
             var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
             
-            // Act
+            // Act - the middleware should handle the exception and call next
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
             
-            // Assert
-            Assert.True(nextCalled);
+            // Assert - verify that the next delegate was called
+            Assert.True(nextCalled, "Next middleware should be called when an exception occurs");
         }
     }
 }

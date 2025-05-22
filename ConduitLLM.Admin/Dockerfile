@@ -3,6 +3,9 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl
+
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY ["ConduitLLM.Admin/ConduitLLM.Admin.csproj", "ConduitLLM.Admin/"]

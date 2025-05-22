@@ -1,21 +1,17 @@
 using System;
-using Conf = ConduitLLM.Configuration.DTOs;
+using ConfigDto = ConduitLLM.Configuration.DTOs.Costs;
 
 namespace ConduitLLM.WebUI.DTOs
 {
     /// <summary>
-    /// Wrapper for ConduitLLM.Configuration.DTOs.DetailedCostDataDto that adds backward compatibility properties.
-    /// This class should be used in the WebUI project to ensure compatibility with older code.
+    /// Type alias for the DetailedCostDataDto from ConduitLLM.Configuration.DTOs.Costs
+    /// This exists to maintain backward compatibility while consolidating duplicate definitions.
     /// </summary>
-    public class DetailedCostDataDto : Conf.DetailedCostDataDto
+    public class DetailedCostDataDto : ConfigDto.DetailedCostDataDto
     {
         /// <summary>
-        /// Number of requests (legacy property name)
+        /// Number of requests (WebUI-specific property)
         /// </summary>
-        public int RequestCount 
-        { 
-            get => base.Requests; 
-            set => base.Requests = value;
-        }
+        public int RequestCount { get; set; }
     }
 }

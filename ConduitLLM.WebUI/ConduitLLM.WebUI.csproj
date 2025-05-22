@@ -16,21 +16,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+    <PackageReference Include="Scrutor" Version="4.2.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
+    <!-- ConduitLLM.Configuration contains EF Core references which we don't need in WebUI -->
+    <!-- Only include Core and Providers which don't have database dependencies -->
     <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
+    
+    <!-- Use the shared Models, DTOs, and Interfaces from Configuration but not the database code -->
+    <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

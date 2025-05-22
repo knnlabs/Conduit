@@ -211,4 +211,125 @@ public class VirtualKeysController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
+
+    /// <summary>
+    /// Validates a virtual key
+    /// </summary>
+    /// <param name="request">The validation request containing the key and optional model</param>
+    /// <returns>The validation result</returns>
+    [HttpPost("validate")]
+    [ProducesResponseType(typeof(VirtualKeyValidationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var result = await _virtualKeyService.ValidateVirtualKeyAsync(request.Key, request.RequestedModel);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating virtual key");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Updates the spend amount for a virtual key
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <param name="request">The request containing the cost to add</param>
+    /// <returns>No content if successful</returns>
+    [HttpPost("{id}/spend")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdateSpend(int id, [FromBody] UpdateSpendRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var success = await _virtualKeyService.UpdateSpendAsync(id, request.Cost);
+            if (!success)
+            {
+                return NotFound();
+            }
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating spend for virtual key with ID {KeyId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the budget period has expired and resets if needed
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <returns>The result of the budget check</returns>
+    [HttpPost("{id}/check-budget")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(BudgetCheckResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CheckBudget(int id)
+    {
+        try
+        {
+            var key = await _virtualKeyService.GetVirtualKeyInfoAsync(id);
+            if (key == null)
+            {
+                return NotFound();
+            }
+
+            var result = await _virtualKeyService.CheckBudgetAsync(id);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking budget for virtual key with ID {KeyId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Gets detailed information about a virtual key for validation purposes
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <returns>The virtual key validation information</returns>
+    [HttpGet("{id}/validation-info")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(VirtualKeyValidationInfoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetValidationInfo(int id)
+    {
+        try
+        {
+            var info = await _virtualKeyService.GetValidationInfoAsync(id);
+            if (info == null)
+            {
+                return NotFound();
+            }
+            return Ok(info);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting validation info for virtual key with ID {KeyId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
 }

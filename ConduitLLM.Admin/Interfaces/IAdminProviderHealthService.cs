@@ -58,6 +58,12 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="limit">Maximum number of records to return</param>
         /// <returns>List of health status records</returns>
         Task<IEnumerable<ProviderHealthRecordDto>> GetStatusHistoryAsync(string providerName, int hours = 24, int limit = 100);
+        
+        /// <summary>
+        /// Gets all provider health records
+        /// </summary>
+        /// <returns>List of all provider health records</returns>
+        Task<IEnumerable<ProviderHealthRecordDto>> GetAllRecordsAsync();
 
         /// <summary>
         /// Gets health summary for all providers

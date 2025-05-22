@@ -48,4 +48,34 @@ public interface IAdminVirtualKeyService
     /// <param name="id">The ID of the virtual key</param>
     /// <returns>True if the reset was successful, false otherwise</returns>
     Task<bool> ResetSpendAsync(int id);
+
+    /// <summary>
+    /// Validates a virtual key
+    /// </summary>
+    /// <param name="key">The virtual key to validate</param>
+    /// <param name="requestedModel">Optional model being requested</param>
+    /// <returns>Validation result with information about the key</returns>
+    Task<VirtualKeyValidationResult> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
+    
+    /// <summary>
+    /// Updates the spend amount for a virtual key
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <param name="cost">The cost to add to the current spend</param>
+    /// <returns>True if the update was successful, false otherwise</returns>
+    Task<bool> UpdateSpendAsync(int id, decimal cost);
+    
+    /// <summary>
+    /// Checks if the budget period has expired and resets if needed
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <returns>Result indicating if a reset was performed</returns>
+    Task<BudgetCheckResult> CheckBudgetAsync(int id);
+    
+    /// <summary>
+    /// Gets detailed information about a virtual key for validation purposes
+    /// </summary>
+    /// <param name="id">The ID of the virtual key</param>
+    /// <returns>Virtual key validation information or null if not found</returns>
+    Task<VirtualKeyValidationInfoDto?> GetValidationInfoAsync(int id);
 }

@@ -116,6 +116,37 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
+        public async Task<IEnumerable<ProviderHealthRecordDto>> GetAllRecordsAsync()
+        {
+            try
+            {
+                // Since the GetStatusHistoryAsync method filters by provider name, 
+                // we need a different approach to get all records.
+                // Get all provider names first, then get records for each
+                var latestStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
+                var providerNames = latestStatuses.Keys.ToList();
+                
+                var allRecords = new List<ProviderHealthRecord>();
+                foreach (var providerName in providerNames)
+                {
+                    var providerRecords = await _providerHealthRepository.GetStatusHistoryAsync(
+                        providerName: providerName,
+                        since: DateTime.MinValue, // Get all records regardless of time
+                        limit: int.MaxValue); // No limit on number of records
+                    
+                    allRecords.AddRange(providerRecords);
+                }
+                
+                return allRecords.Select(r => r.ToDto()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all health records");
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
         public async Task<ProviderHealthConfigurationDto?> GetConfigurationByProviderNameAsync(string providerName)
         {
             if (string.IsNullOrWhiteSpace(providerName))

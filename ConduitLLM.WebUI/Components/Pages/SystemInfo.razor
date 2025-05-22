@@ -1,12 +1,10 @@
 @page "/system-info"
-@using Microsoft.EntityFrameworkCore
-@using ConduitLLM.WebUI.Data
 @using System.IO
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
-@inject IProviderCredentialService ProviderCredentialService
-@inject IModelProviderMappingService ModelMappingService
+@using ConduitLLM.WebUI.Interfaces
+@inject IAdminApiClient AdminApiClient
+@inject ILogger<SystemInfo> Logger
 
 <div class="container-fluid mt-4">
     <h3 class="mb-4">System Information</h3>
@@ -17,12 +15,21 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Database Information</h5>
-                    <button class="btn btn-sm btn-primary" @onclick="RefreshDatabaseInfo" aria-label="Refresh database information">
-                        <i class="fa fa-refresh"></i>
+                    <button class="btn btn-sm btn-primary" @onclick="RefreshDatabaseInfo" @onclick:preventDefault="true" aria-label="Refresh database information">
+                        @if (IsLoadingDatabase)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="ms-1">Refreshing...</span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-sync-alt"></i>
+                            <span class="ms-1">Refresh</span>
+                        }
                     </button>
                 </div>
                 <div class="card-body">
-                    @if (IsLoading)
+                    @if (IsLoading || IsLoadingDatabase)
                     {
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-primary" role="status">
@@ -109,11 +116,18 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">LLM Configuration</h5>
                     <button class="btn btn-sm btn-primary" @onclick="RefreshLlmInfo" aria-label="Refresh LLM information">
-                        <i class="fa fa-refresh"></i>
+                        @if (IsLoadingLlm)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-sync-alt"></i>
+                        }
                     </button>
                 </div>
                 <div class="card-body">
-                    @if (IsLoading)
+                    @if (IsLoading || IsLoadingLlm)
                     {
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-primary" role="status">
@@ -191,10 +205,13 @@
         </div>
     </div>
 
+
 </div>
 
 @code {
     private bool IsLoading = true;
+    private bool IsLoadingDatabase = false;
+    private bool IsLoadingLlm = false;
     private string DatabaseProvider = "Unknown";
     private string ConnectionStringMasked = "";
     private string DatabaseLocation = "";
@@ -225,99 +242,130 @@
 
     private async Task RefreshDatabaseInfo()
     {
+        Logger.LogInformation("RefreshDatabaseInfo method called");
+        Console.WriteLine("RefreshDatabaseInfo method called - Console");
         try
         {
-            // Use the correct context factory
-            using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
+            IsLoadingDatabase = true;
+            StateHasChanged();
+            Logger.LogInformation("Starting database refresh...");
             
-            // Get database provider info
-            var connectionType = context.Database.ProviderName;
-            DatabaseProvider = connectionType?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true 
-                ? "SQLite" 
-                : connectionType?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
-                    ? "PostgreSQL"
-                    : connectionType ?? "Unknown";
-
-            // Mask connection string for security
-            var connectionString = context.Database.GetConnectionString();
-            if (!string.IsNullOrEmpty(connectionString))
+            // Get system information from Admin API
+            var systemInfo = await AdminApiClient.GetSystemInfoAsync();
+            
+            // Process the system information to display database details
+            if (systemInfo is System.Text.Json.JsonElement jsonElement)
             {
-                if (connectionString.Contains("Data Source="))
+                // Extract database information
+                if (jsonElement.TryGetProperty("database", out var dbInfo))
                 {
-                    // For SQLite
-                    var path = connectionString.Replace("Data Source=", "").Trim();
-                    DatabaseLocation = path;
-                    ConnectionStringMasked = $"Data Source={Path.GetFileName(path)}";
-                    
-                    // Get database file size if available
-                    if (File.Exists(path))
+                    // Get database provider info
+                    if (dbInfo.TryGetProperty("provider", out var providerProp))
                     {
-                        var fileInfo = new FileInfo(path);
-                        DatabaseSize = FormatFileSize(fileInfo.Length);
+                        string? provider = providerProp.GetString();
+                        DatabaseProvider = provider?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true 
+                            ? "SQLite" 
+                            : provider?.Contains("Postgres", StringComparison.OrdinalIgnoreCase) == true
+                                ? "PostgreSQL"
+                                : provider ?? "Unknown";
+                    }
+                    
+                    // Get connection string (masked)
+                    if (dbInfo.TryGetProperty("connectionString", out var connStringProp))
+                    {
+                        string? connectionString = connStringProp.GetString();
+                        if (!string.IsNullOrEmpty(connectionString))
+                        {
+                            ConnectionStringMasked = connectionString;
+                        }
+                        else
+                        {
+                            ConnectionStringMasked = "Not configured";
+                        }
+                    }
+                    
+                    // Get database location
+                    if (dbInfo.TryGetProperty("location", out var locationProp))
+                    {
+                        DatabaseLocation = locationProp.GetString() ?? "Unknown";
+                    }
+                    
+                    // Get database size
+                    if (dbInfo.TryGetProperty("size", out var sizeProp))
+                    {
+                        DatabaseSize = sizeProp.GetString() ?? "Unknown";
+                    }
+                    
+                    // Get table count
+                    if (dbInfo.TryGetProperty("tableCount", out var tableCountProp) &&
+                        tableCountProp.TryGetInt32(out int count))
+                    {
+                        TableCount = count;
+                    }
+                    else
+                    {
+                        TableCount = 13; // Default approximate table count for Conduit
                     }
                 }
-                else if (connectionString.Contains("Host="))
+                
+                // Extract record counts
+                if (jsonElement.TryGetProperty("recordCounts", out var recordCounts))
                 {
-                    // For PostgreSQL
-                    ConnectionStringMasked = MaskConnectionString(connectionString);
-                    DatabaseLocation = ExtractHostFromConnectionString(connectionString);
+                    if (recordCounts.TryGetProperty("virtualKeys", out var vkCountProp) &&
+                        vkCountProp.TryGetInt32(out int vkCount))
+                    {
+                        VirtualKeyCount = vkCount;
+                    }
                     
-                    // Can't determine database size directly for PostgreSQL
-                    DatabaseSize = "Remote DB";
+                    if (recordCounts.TryGetProperty("requests", out var reqCountProp) &&
+                        reqCountProp.TryGetInt32(out int reqCount))
+                    {
+                        RequestCount = reqCount;
+                    }
+                    
+                    if (recordCounts.TryGetProperty("settings", out var settingsCountProp) &&
+                        settingsCountProp.TryGetInt32(out int settingsCount))
+                    {
+                        SettingsCount = settingsCount;
+                    }
                 }
-                else
-                {
-                    ConnectionStringMasked = "Configured";
-                    DatabaseLocation = "Unknown";
-                }
-            }
-            else
-            {
-                ConnectionStringMasked = "Not configured";
-            }
-
-            // Count records in main tables
-            VirtualKeyCount = await context.VirtualKeys.CountAsync();
-            RequestCount = await context.RequestLogs.CountAsync();
-            SettingsCount = await context.GlobalSettings.CountAsync();
-
-            // Count tables (approximation for SQLite)
-            if (DatabaseProvider == "SQLite")
-            {
-                var tables = await context.Database.SqlQuery<string>($"SELECT name FROM sqlite_master WHERE type='table'").ToListAsync();
-                TableCount = tables.Count;
-            }
-            else if (DatabaseProvider == "PostgreSQL")
-            {
-                // For PostgreSQL, schema information would require a different query
-                TableCount = 13; // Approximate count based on the known schema
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting database info: {ex.Message}");
+            Console.WriteLine($"Error getting database info from Admin API: {ex.Message}");
             // Set default values on error
             DatabaseProvider = "Error";
             ConnectionStringMasked = "Error retrieving";
             TableCount = 0;
+            VirtualKeyCount = 0;
+            RequestCount = 0;
+            SettingsCount = 0;
         }
-
-        StateHasChanged();
+        finally
+        {
+            IsLoadingDatabase = false;
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshLlmInfo()
     {
+        Logger.LogInformation("Refreshing LLM information");
         try
         {
+            IsLoadingLlm = true;
+            StateHasChanged();
+            
             // Get provider info
-            var providers = await ProviderCredentialService.GetAllCredentialsAsync();
-            ProviderCount = providers.Count;
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
+            ProviderCount = providers.Count();
             Providers = providers.Select(p => p.ProviderName).ToList();
 
             // Get model mappings
-            var modelMappings = await ModelMappingService.GetAllMappingsAsync();
-            ModelCount = modelMappings.Count;
-            Models = modelMappings.Select(m => $"{m.ModelAlias} → {m.ProviderName}/{m.ProviderModelId}").ToList();
+            var modelMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            ModelCount = modelMappings.Count();
+            Models = modelMappings.Select(m => $"{m.ModelId} → {m.ProviderId}/{m.ProviderModelId}").ToList();
         }
         catch (Exception ex)
         {
@@ -325,8 +373,11 @@
             ProviderCount = 0;
             ModelCount = 0;
         }
-
-        StateHasChanged();
+        finally
+        {
+            IsLoadingLlm = false;
+            StateHasChanged();
+        }
     }
 
     private string FormatFileSize(long bytes)

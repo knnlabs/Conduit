@@ -19,14 +19,14 @@ namespace ConduitLLM.WebUI.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly GlobalSettingService _settingService;
+        private readonly IGlobalSettingService _settingService;
         private readonly ILogger<AuthController> _logger;
 
         /// <summary>
         /// Creates a new instance of the AuthController
         /// </summary>
         public AuthController(
-            GlobalSettingService settingService,
+            IGlobalSettingService settingService,
             ILogger<AuthController> logger)
         {
             _settingService = settingService ?? throw new ArgumentNullException(nameof(settingService));

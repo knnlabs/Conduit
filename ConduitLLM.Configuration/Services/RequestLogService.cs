@@ -201,8 +201,11 @@ namespace ConduitLLM.Configuration.Services
                     await transaction.CommitAsync();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}", 
+                    request.VirtualKeyId, request.ModelName, request.RequestType);
+                
                 if (transaction != null)
                 {
                     await transaction.RollbackAsync();
@@ -292,13 +295,16 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching request logs");
+                _logger.LogError(ex, 
+                    "Error searching request logs with filters: VirtualKeyId={VirtualKeyId}, ModelFilter={ModelFilter}, " +
+                    "StatusCode={StatusCode}, StartDate={StartDate}, EndDate={EndDate}", 
+                    virtualKeyId, modelFilter, statusCode, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 throw;
             }
         }
 
         /// <inheritdoc/>
-        public async Task<Services.Dtos.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
+        public async Task<DTOs.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
         {
             try
             {
@@ -308,15 +314,14 @@ namespace ConduitLLM.Configuration.Services
                     .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                     .ToListAsync();
 
-                var summary = new Services.Dtos.LogsSummaryDto
+                var summary = new DTOs.LogsSummaryDto
                 {
                     TotalRequests = logs.Count,
                     TotalCost = logs.Sum(r => r.Cost),
                     TotalInputTokens = logs.Sum(r => r.InputTokens),
                     TotalOutputTokens = logs.Sum(r => r.OutputTokens),
                     AverageResponseTimeMs = logs.Any() ? logs.Average(r => r.ResponseTimeMs) : 0,
-                    StartDate = startDate,
-                    EndDate = endDate
+                    LastRequestDate = logs.Any() ? logs.Max(r => r.Timestamp) : null
                 };
 
                 // Group by model
@@ -326,43 +331,24 @@ namespace ConduitLLM.Configuration.Services
                     {
                         ModelName = g.Key,
                         RequestCount = g.Count(),
-                        TotalCost = g.Sum(r => r.Cost)
+                        TotalCost = g.Sum(r => r.Cost),
+                        InputTokens = g.Sum(r => r.InputTokens),
+                        OutputTokens = g.Sum(r => r.OutputTokens)
                     })
                     .OrderByDescending(g => g.RequestCount)
                     .ToList();
 
                 foreach (var model in modelGroups)
                 {
-                    summary.RequestsByModelDict[model.ModelName] = model.RequestCount;
+                    summary.RequestsByModel[model.ModelName] = model.RequestCount;
                     summary.CostByModel[model.ModelName] = model.TotalCost;
                 }
 
-                // Group by key
-                var keyGroups = logs
-                    .GroupBy(r => r.VirtualKeyId)
-                    .Select(g => new
-                    {
-                        KeyId = g.Key,
-                        KeyName = g.First().VirtualKey?.KeyName ?? "Unknown",
-                        RequestCount = g.Count(),
-                        TotalCost = g.Sum(r => r.Cost)
-                    })
-                    .ToList();
+                // Calculate success and failure counts
+                summary.SuccessfulRequests = logs.Count(r => r.StatusCode.HasValue && r.StatusCode >= 200 && r.StatusCode < 300);
+                summary.FailedRequests = logs.Count(r => r.StatusCode.HasValue && (r.StatusCode < 200 || r.StatusCode >= 300));
 
-                foreach (var key in keyGroups)
-                {
-                    summary.RequestsByKey[key.KeyId] = new KeySummary
-                    {
-                        KeyName = key.KeyName,
-                        RequestCount = key.RequestCount,
-                        TotalCost = key.TotalCost
-                    };
-                }
-
-                // Calculate success rate and group by status
-                var successCount = logs.Count(r => r.StatusCode.HasValue && r.StatusCode >= 200 && r.StatusCode < 300);
-                summary.SuccessRate = logs.Any() ? (double)successCount / logs.Count * 100 : 0;
-
+                // Group by status
                 var statusGroups = logs
                     .Where(r => r.StatusCode.HasValue)
                     .GroupBy(r => r.StatusCode!.Value)
@@ -374,11 +360,30 @@ namespace ConduitLLM.Configuration.Services
                     summary.RequestsByStatus[status.StatusCode] = status.Count;
                 }
 
+                // Group by day and model for daily stats
+                var dailyStats = logs
+                    .GroupBy(r => new { Date = r.Timestamp.Date, Model = r.ModelName })
+                    .Select(g => new DTOs.DailyUsageStatsDto
+                    {
+                        Date = g.Key.Date,
+                        ModelId = g.Key.Model,
+                        RequestCount = g.Count(),
+                        InputTokens = g.Sum(r => r.InputTokens),
+                        OutputTokens = g.Sum(r => r.OutputTokens),
+                        Cost = g.Sum(r => r.Cost)
+                    })
+                    .OrderBy(s => s.Date)
+                    .ThenBy(s => s.ModelId)
+                    .ToList();
+
+                summary.DailyStats = dailyStats;
+
                 return summary;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting logs summary");
+                _logger.LogError(ex, "Error getting logs summary for period {StartDate} to {EndDate}", 
+                    startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 throw;
             }
         }
@@ -397,7 +402,7 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting distinct models");
+                _logger.LogError(ex, "Error retrieving distinct model names from request logs");
                 throw;
             }
         }

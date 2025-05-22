@@ -1,221 +1,348 @@
 @page "/configuration/provider/edit/{id?}"
 @using System.Text.Json
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Interfaces
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.DTOs
+@using ProviderCredentialModel = ConduitLLM.Configuration.Entities.ProviderCredential
+@using ProviderCredentialDto = ConduitLLM.Configuration.DTOs.ProviderCredentialDto
+@using CreateProviderCredentialDto = ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto
+@using UpdateProviderCredentialDto = ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
-@inject ProviderStatusService ProviderStatusService
 @inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
 @rendermode InteractiveServer
 
-<h3 class="mb-4">@(Id.HasValue ? "Edit Provider" : "Add Provider")</h3>
+<PageTitle>@(Id.HasValue ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
 
-@if (isLoading)
-{
-    <div class="d-flex justify-content-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="provider-edit-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-@(Id.HasValue ? "edit" : "plus-circle") me-3"></i>
+                            @(Id.HasValue ? "Edit Provider Configuration" : "Add New Provider")
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            @(Id.HasValue ? "Update your provider settings and API credentials" : "Configure a new LLM provider to use with Conduit")
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-}
-else if (provider == null)
-{
-    <div class="alert alert-danger">Provider not found or error loading.</div>
-}
-else
-{
-    <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="ProviderForm"> 
-        <DataAnnotationsValidator />
-        @* Keep ValidationSummary for other potential errors *@
-        <ValidationSummary />
 
-        @* Display general errors above the form *@
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mb-4">@errorMessage</div>
-        }
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (provider == null)
+    {
+        <div class="alert alert-danger border-0 shadow-sm">
+            <i class="fa fa-exclamation-circle me-2"></i>
+            Provider not found or error loading.
+        </div>
+    }
+    else
+    {
+        <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="ProviderForm"> 
+            <DataAnnotationsValidator />
+            @* Keep ValidationSummary for other potential errors *@
+            <ValidationSummary />
 
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <div class="card p-4 mb-4">
-                    <div class="mb-4">
-                        <label for="providerName" class="form-label">Provider Name</label>
-                        <select id="providerName" class="form-select" 
-                                @bind="provider.ProviderName" 
-                                disabled="@Id.HasValue">
-                            <option value="">-- Select Provider --</option>
-                            @foreach (var name in _supportedProviders)
+            @* Display general errors above the form *@
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger border-0 shadow-sm mb-4">
+                    <i class="fa fa-exclamation-circle me-2"></i>
+                    @errorMessage
+                </div>
+            }
+
+            <div class="row">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-light border-0">
+                            <h5 class="mb-0">
+                                <i class="fa fa-cog me-2 text-primary"></i>Provider Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <label for="providerName" class="form-label fw-semibold">
+                                    <i class="fa fa-server me-2"></i>Provider Name
+                                </label>
+                                <select id="providerName" class="form-select shadow-sm" 
+                                        @bind="provider.ProviderName" 
+                                        disabled="@Id.HasValue">
+                                    <option value="">-- Select Provider --</option>
+                                    @foreach (var name in _supportedProviders)
+                                    {
+                                        <option value="@name">@name</option>
+                                    }
+                                </select>
+                                <ValidationMessage For="@(() => provider.ProviderName)" />
+                                @if (Id.HasValue)
+                                {
+                                    <small class="text-muted mt-1">
+                                        <i class="fa fa-info-circle me-1"></i>
+                                        Provider name cannot be changed after creation
+                                    </small>
+                                }
+                            </div>
+
+                            @* Conditionally hide ApiBase for OpenRouter *@
+                            @if (provider.ProviderName != "OpenRouter")
                             {
-                                <option value="@name">@name</option>
+                                <div class="mb-4">
+                                    <label for="apiBase" class="form-label fw-semibold">
+                                        <i class="fa fa-link me-2"></i>API Base URL
+                                        @if (provider.ProviderName == "OpenAI Compatible")
+                                        {
+                                            <span class="text-danger">*</span>
+                                        }
+                                    </label>
+                                    <input type="text" class="form-control shadow-sm" id="apiBase" 
+                                           @bind="provider.ApiBase" 
+                                           placeholder="https://api.example.com" />
+                                    <small class="text-muted mt-1">
+                                        @if (provider.ProviderName == "OpenAI Compatible")
+                                        {
+                                            <i class="fa fa-info-circle me-1"></i>
+                                            <text>Required - Enter the base URL of your OpenAI-compatible API endpoint</text>
+                                        }
+                                        else
+                                        {
+                                            <text>Optional - leave empty to use the default endpoint</text>
+                                        }
+                                    </small>
+                                    <ValidationMessage For="@(() => provider.ApiBase)" />
+                                </div>
                             }
-                        </select>
-                        <ValidationMessage For="@(() => provider.ProviderName)" />
-                    </div>
-                    
-                    @if (Id.HasValue)
-                    {
-                        <small class="text-secondary mb-4">Provider name cannot be changed after creation.</small>
-                    }
 
-                    @* Conditionally hide BaseUrl for OpenRouter *@
-                    @if (provider.ProviderName != "OpenRouter")
+                            <div class="mb-4">
+                                <label for="apiKey" class="form-label fw-semibold">
+                                    <i class="fa fa-key me-2"></i>API Key
+                                </label>
+                                <input type="password" class="form-control shadow-sm" id="apiKey" 
+                                       @bind="provider.ApiKey" 
+                                       placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")" />
+                                <small class="text-muted mt-1">
+                                    <i class="fa fa-shield-alt me-1"></i>
+                                    Existing keys are not displayed for security. Leave empty to keep the current key.
+                                </small>
+                                <ValidationMessage For="@(() => provider.ApiKey)" />
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(provider.ProviderName) && 
+                                  (ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
+                                   ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
+                            {
+                                <div class="alert alert-info border-0 shadow-sm">
+                                    <h6 class="alert-heading mb-3">
+                                        <i class="fa fa-info-circle me-2"></i>@provider.ProviderName Resources
+                                    </h6>
+                                    <div class="d-flex flex-column gap-2">
+                                        @if (ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
+                                        {
+                                            <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-outline-info">
+                                                <i class="fa fa-external-link-alt me-2"></i>
+                                                Get API Key
+                                            </a>
+                                        }
+                                        @if (ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
+                                        {
+                                            <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-outline-info">
+                                                <i class="fa fa-book me-2"></i>
+                                                View Documentation
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    @if (!string.IsNullOrEmpty(provider.ProviderName) && !string.IsNullOrEmpty(provider.ApiKey))
                     {
-                        <div class="mb-4">
-                            <label for="baseUrl" class="form-label">API Base URL (Optional, leave empty for default)</label>
-                            <input type="text" class="form-control" id="baseUrl" 
-                                   @bind="provider.BaseUrl" 
-                                   placeholder="https://api.example.com" />
-                            <ValidationMessage For="@(() => provider.BaseUrl)" />
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-light border-0">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-plug me-2 text-success"></i>Connection Test
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                @if (showConnectionStatus)
+                                {
+                                    <div class="alert @(connectionStatus?.IsOnline ?? false ? "alert-success" : "alert-danger") border-0 shadow-sm mb-3">
+                                        @if (connectionStatus?.IsOnline ?? false)
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-check-circle me-3 fa-2x"></i>
+                                                <div>
+                                                    <h6 class="mb-1">Connected Successfully!</h6>
+                                                    <p class="mb-0">@connectionStatusMessage</p>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-exclamation-circle me-3 fa-2x"></i>
+                                                <div>
+                                                    <h6 class="mb-1">Connection Failed</h6>
+                                                    <p class="mb-0">@connectionStatusMessage</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    
+                                    <small class="text-muted d-block mb-3">
+                                        <i class="fa fa-clock me-1"></i>
+                                        Last tested: @(connectionStatus != null ? connectionStatus.LastCheckedUtc.ToLocalTime().ToString("g") : "")
+                                    </small>
+                                }
+                                
+                                <button 
+                                    type="button"
+                                    class="btn btn-primary shadow-sm w-100"
+                                    @onclick="TestConnection" 
+                                    disabled="@isTestingConnection">
+                                    @if (isTestingConnection)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Testing Connection...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa fa-bolt me-2"></i>
+                                        <span>Test Connection</span>
+                                    }
+                                </button>
+                                
+                                <small class="text-muted d-block mt-2 text-center">
+                                    Verifies your API key and connection settings
+                                </small>
+                            </div>
                         </div>
                     }
-
-                    <div class="mb-4">
-                        <label for="apiVersion" class="form-label">API Version (Optional)</label>
-                        <input type="text" class="form-control" id="apiVersion" 
-                               @bind="provider.ApiVersion" 
-                               placeholder="v1" />
-                        <ValidationMessage For="@(() => provider.ApiVersion)" />
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="apiKey" class="form-label">API Key</label>
-                        <input type="password" class="form-control" id="apiKey" 
-                               @bind="provider.ApiKey" 
-                               placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")" />
-                        <div class="form-text">Existing keys are not displayed for security reasons. Leave empty to keep the current key.</div>
-                        <ValidationMessage For="@(() => provider.ApiKey)" />
-                    </div>
-                
-                    @if (!string.IsNullOrEmpty(provider.ProviderName) && 
-                          (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null || 
-                           ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null))
+                    else if (!string.IsNullOrEmpty(provider.ProviderName))
                     {
-                        <div class="p-4 mb-4 bg-light">
-                            <h6 class="mb-3">@provider.ProviderName Resources</h6>
-                            <div class="d-flex flex-column">
-                                @if (ProviderApiInfo.GetApiKeyUrl(provider.ProviderName) != null)
-                                {
-                                    <a href="@ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center mb-2">
-                                        <i class="fa fa-key me-2"></i>
-                                        Get API Key
-                                    </a>
-                                }
-                                @if (ProviderApiInfo.GetDocumentationUrl(provider.ProviderName) != null)
-                                {
-                                    <a href="@ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" target="_blank" class="d-flex align-items-center">
-                                        <i class="fa fa-book me-2"></i>
-                                        View Documentation
-                                    </a>
-                                }
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-light border-0">
+                                <h5 class="mb-0">
+                                    <i class="fa fa-plug me-2 text-muted"></i>Connection Test
+                                </h5>
+                            </div>
+                            <div class="card-body text-center py-5">
+                                <i class="fa fa-key fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Enter an API key to test the connection</p>
                             </div>
                         </div>
                     }
                 </div>
             </div>
 
-            <div class="col-12 col-md-6">
-                @if (!string.IsNullOrEmpty(provider.ProviderName) && !string.IsNullOrEmpty(provider.ApiKey))
-                {
-                    <div class="card p-4 mb-4">
-                        <h6 class="mb-4">Connection Test</h6>
-                        
-                        @if (showConnectionStatus)
-                        {
-                            <div class="alert @(connectionStatus?.IsOnline ?? false ? "alert-success" : "alert-danger") mb-3">
-                                @if (connectionStatus?.IsOnline ?? false)
-                                {
-                                    <p class="fw-bold"><i class="fa fa-check-circle me-2"></i>Connected successfully!</p>
-                                }
-                                else
-                                {
-                                    <div>
-                                        <p class="fw-bold"><i class="fa fa-exclamation-circle me-2"></i>Connection failed</p>
-                                        <p class="mt-2">@connectionStatusMessage</p>
-                                    </div>
-                                }
-                            </div>
-                            
-                            <small class="text-secondary mb-4 d-block">
-                                Last tested: @(connectionStatus != null ? connectionStatus.LastCheckedUtc.ToLocalTime().ToString("g") : "")
-                            </small>
-                        }
-                        
+            <!-- Action Buttons -->
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
                         <button 
                             type="button"
-                            class="btn btn-outline-primary mb-2"
-                            @onclick="TestConnection" 
-                            disabled="@isTestingConnection">
-                            @if (isTestingConnection)
+                            class="btn btn-outline-secondary shadow-sm"
+                            @onclick="Cancel" 
+                            disabled="@isSaving">
+                            <i class="fa fa-arrow-left me-2"></i>
+                            Back to Configuration
+                        </button>
+                        
+                        <button 
+                            type="submit" 
+                            class="btn btn-primary btn-lg shadow-sm px-5"
+                            disabled="@isSaving">
+                            @if (isSaving)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                <span>Testing...</span>
+                                <span>Saving...</span>
                             }
                             else
                             {
-                                <i class="fa fa-bolt me-2"></i>
-                                <span>Test Connection</span>
+                                <i class="fa fa-save me-2"></i>
+                                <span>@(Id.HasValue ? "Update Provider" : "Create Provider")</span>
                             }
                         </button>
-                        
-                        <small class="text-secondary">
-                            Verifies your API key and connection settings
-                        </small>
                     </div>
-                }
+                </div>
             </div>
-        </div>
+        </EditForm>
+    }
+</div>
 
-        <div class="d-flex gap-2 mt-4">
-            <button 
-                type="submit" 
-                class="btn btn-primary"
-                disabled="@isSaving">
-                @if (isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    <span>Saving...</span>
-                }
-                else
-                {
-                    <i class="fa fa-save me-2"></i>
-                    <span>Save Provider</span>
-                }
-            </button>
-            
-            <button 
-                type="button"
-                class="btn btn-outline-secondary"
-                @onclick="Cancel" 
-                disabled="@isSaving">
-                Cancel
-            </button>
-            
-            <button 
-                type="button"
-                class="btn btn-outline-primary"
-                @onclick="TestConnection" 
-                disabled="@(isTestingConnection || isSaving)">
-                @if (isTestingConnection)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    <span>Testing...</span>
-                }
-                else
-                {
-                    <i class="fa fa-bolt me-2"></i>
-                    <span>Test Connection</span>
-                }
-            </button>
-        </div>
-    </EditForm>
-}
+<style>
+    .provider-edit-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .alert-info {
+        background-color: rgba(102, 126, 234, 0.1);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        color: #5a5fc8;
+    }
+    
+    .btn-outline-info {
+        color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .btn-outline-info:hover {
+        background-color: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>
 
 @code {
     [Parameter]
@@ -233,7 +360,7 @@ else
         }
     }
 
-    private ConduitLLM.Configuration.Entities.ProviderCredential provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; // Use correct entity type
+    private ProviderCredentialDto provider = new ProviderCredentialDto { ProviderName = "" };
     private string? errorMessage;
     private bool isLoading = true;
     private bool isSaving = false;
@@ -243,7 +370,7 @@ else
     private bool showConnectionStatus = false;
     private string? originalApiKey;
     private EditContext editContext = null!;
-    private readonly string[] _supportedProviders = { "OpenAI", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
+    private readonly string[] _supportedProviders = { "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Gemini", "Fireworks", "OpenRouter", "Cerebras", "AWS Bedrock", "SageMaker", "VertexAI", "HuggingFace", "Groq", "Mistral" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,14 +383,13 @@ else
             
             try
             {
-                // Use Config context for ProviderCredentials
-                using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                // Use ProviderCredentialService to get provider details
+                var existingProvider = await ProviderCredentialService.GetByIdAsync(Id.Value);
                 
                 if (existingProvider != null)
                 {
-                    // Directly use the loaded entity from Config context
-                    provider = existingProvider; 
+                    // Use the DTO directly
+                    provider = existingProvider;
                     
                     // Keep track of the original API key existence
                     if (!string.IsNullOrEmpty(existingProvider.ApiKey))
@@ -290,8 +416,8 @@ else
         }
         else
         {
-            // Initialize a new Configuration entity for adding
-            provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; 
+            // Initialize a new DTO for adding
+            provider = new ProviderCredentialDto { ProviderName = "" }; 
             isLoading = false;
         }
         
@@ -304,85 +430,72 @@ else
         errorMessage = null;
         StateHasChanged();
         
-            try 
+        try 
+        {
+            // Validate API Base URL for OpenAI Compatible providers
+            if (provider.ProviderName == "OpenAI Compatible" && string.IsNullOrWhiteSpace(provider.ApiBase))
             {
-                // Use Config context for ProviderCredentials
-                await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-                
-                if (Id.HasValue) // Edit
+                errorMessage = "API Base URL is required for OpenAI Compatible providers.";
+                isSaving = false;
+                StateHasChanged();
+                return;
+            }
+            if (Id.HasValue) // Edit
+            {
+                // Create a DTO for update
+                var updateDto = new UpdateProviderCredentialDto
                 {
-                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                    Id = Id.Value,
+                    ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
+                    IsEnabled = true
+                };
                 
-                if (existingProvider != null)
+                // Only update API key if provided (not empty)
+                if (!string.IsNullOrWhiteSpace(provider.ApiKey))
                 {
-                    // Update the entity with form values
-                    existingProvider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
-                    existingProvider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
-                    // Name doesn't exist
-                    
-                    // Only update API key if provided (not empty)
-                    if (!string.IsNullOrWhiteSpace(provider.ApiKey))
-                    {
-                        existingProvider.ApiKey = provider.ApiKey;
-                    }
-                    // The logic for handling existing API key needs adjustment as we're now using the Config context entity
-                    // If provider.ApiKey is blank, we want to keep the existing key from the database.
-                    // If originalApiKey was null (meaning no key existed before), and provider.ApiKey is blank, set it to null.
-                    else if (string.IsNullOrWhiteSpace(provider.ApiKey)) 
-                    {
-                        if (originalApiKey != null) // A key existed before, keep it
-                        {
-                            // Re-fetch the existing key from the database to avoid overwriting it with null
-                            var freshProvider = await dbContext.ProviderCredentials.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id.Value);
-                            existingProvider.ApiKey = freshProvider?.ApiKey;
-                        }
-                        else // No original key, and input is blank, so set to null
-                        {
-                            existingProvider.ApiKey = null;
-                        }
-                    }
-                    // If provider.ApiKey has a value, it was already assigned above.
-
-                    // Removed incorrect null assignment here
-
-                    dbContext.ProviderCredentials.Update(existingProvider); 
+                    updateDto.ApiKey = provider.ApiKey;
                 }
-                else
+                // If originalApiKey was null (meaning no key existed before), and provider.ApiKey is blank, set it to null.
+                else if (string.IsNullOrWhiteSpace(provider.ApiKey) && originalApiKey == null)
                 {
-                     // Handle case where provider was deleted between load and save
-                     Console.WriteLine("Error: Provider not found during update.");
-                     errorMessage = "Error: Provider not found during update.";
-                     StateHasChanged();
-                     return;
+                    updateDto.ApiKey = "[REMOVE]"; // Special value to remove the key
+                }
+                // Otherwise, don't include the API key in the update (keep existing)
+                
+                // Update via ProviderCredentialService
+                var updateResult = await ProviderCredentialService.UpdateAsync(Id.Value, updateDto);
+                
+                if (updateResult == null)
+                {
+                    throw new Exception($"Failed to update provider {provider.ProviderName}");
                 }
             }
             else // Add
             {
-                 // The 'provider' object is already the correct type (ConduitLLM.Configuration.Entities.ProviderCredential)
-                 // Ensure optional fields are null if empty/whitespace
-                 provider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
-                 provider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
-                 provider.ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey;
-                 // Name doesn't exist
-                 // Set default values for non-nullable properties if needed (assuming they are not set by default in the entity)
-                 provider.IsEnabled = true; 
-                 provider.CreatedAt = DateTime.UtcNow;
-                 provider.UpdatedAt = DateTime.UtcNow;
-
-                await dbContext.ProviderCredentials.AddAsync(provider); // Add the provider object directly
+                // Create a DTO for creation
+                var createDto = new CreateProviderCredentialDto
+                {
+                    ProviderName = provider.ProviderName,
+                    ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
+                    ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey,
+                    IsEnabled = true
+                };
+                
+                // Create via ProviderCredentialService
+                var createResult = await ProviderCredentialService.CreateAsync(createDto);
+                
+                if (createResult == null)
+                {
+                    throw new Exception($"Failed to create provider {provider.ProviderName}");
+                }
             }
-            
-            await dbContext.SaveChangesAsync();
             
             // Notify the Conduit HTTP proxy about configuration changes
             try
             {
-                // Get the proxy base URL from global settings (using Config context)
-                await using var configContext = await DbContextFactory.CreateDbContextAsync(); 
-                var proxyUrlSetting = await configContext.GlobalSettings
-                    .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
-                
-                string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
+                // Get the proxy base URL from global settings via service
+                var proxyUrlSetting = await GlobalSettingService.GetSettingAsync("ProxyBaseUrl");
+                string proxyUrl = proxyUrlSetting ?? "http://localhost:5000";
                 
                 bool notificationSuccess = await ConfigNotifier.NotifyConfigurationChangedAsync(proxyUrl);
                 if (!notificationSuccess)
@@ -399,16 +512,11 @@ else
             
             NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
         }
-        catch (DbUpdateException dbEx)
-        {
-             // Handle potential database errors (like unique constraint violation if check failed)
-             Console.WriteLine($"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}");
-             errorMessage = $"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}";
-        }
         catch (Exception ex)
         {
-             Console.WriteLine($"Error saving provider: {ex.Message}");
-             errorMessage = $"Error saving provider: {ex.Message}";
+            Console.WriteLine($"Error saving provider: {ex.Message}");
+            errorMessage = $"Error saving provider: {ex.Message}";
+            _logger.LogError(ex, "Error saving provider configuration");
         }
         finally
         {
@@ -439,26 +547,31 @@ else
 
         try
         {
-            // Use the correct properties for testing
-            var testProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+            // Test the connection using the ProviderCredentialService
+            var testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            if (testResult != null && testResult.Success)
             {
-                ProviderName = provider.ProviderName,
-                ApiKey = provider.ApiKey,
-                BaseUrl = provider.BaseUrl, // Use BaseUrl
-                ApiVersion = provider.ApiVersion
-                // Name doesn't exist
-            };
-            // Assuming ProviderConnectionTester can handle the Configuration entity type
-            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
-            showConnectionStatus = true;
-            if (connectionStatus.Status == ProviderStatus.StatusType.Online)
-            {
+                connectionStatus = new ProviderStatus
+                {
+                    Status = ProviderStatus.StatusType.Online,
+                    StatusMessage = testResult.Message,
+                    LastCheckedUtc = testResult.Timestamp,
+                    IsOnline = true
+                };
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
             }
             else
             {
+                connectionStatus = new ProviderStatus
+                {
+                    Status = ProviderStatus.StatusType.Offline,
+                    StatusMessage = testResult?.ErrorDetails ?? "Connection test failed",
+                    LastCheckedUtc = testResult?.Timestamp ?? DateTime.UtcNow,
+                    IsOnline = false
+                };
                 connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
             }
+            showConnectionStatus = true;
         }
         finally
         {
@@ -477,6 +590,7 @@ else
         return providerName switch
         {
             "OpenAI" => "Provides access to GPT models from OpenAI.",
+            "OpenAI Compatible" => "Provides access to any service with an OpenAI-compatible API.",
             "Anthropic" => "Provides access to Claude models from Anthropic.",
             "Cohere" => "Provides access to language models from Cohere.",
             "Gemini" => "Provides access to Gemini models from Google.",

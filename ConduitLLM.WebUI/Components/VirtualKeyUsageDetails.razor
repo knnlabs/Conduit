@@ -1,10 +1,11 @@
 @using ConduitLLM.Configuration.DTOs.VirtualKey
-@using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
-@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.WebUI.Interfaces
 @using System.Globalization
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<VirtualKeyUsageDetails> Logger
+@inject IJSRuntime JSRuntime
 
 <div class="card shadow-sm mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -41,7 +42,7 @@
         {
             <h6 class="mb-3">Usage Over Time</h6>
             <div style="position: relative; height:200px; width:100%" class="mb-4">
-                <canvas id="usageChart"></canvas>
+                <canvas id="usageChart-@keyId"></canvas>
             </div>
 
             <div class="row g-2 mb-4">
@@ -145,15 +146,10 @@
         
         try
         {
-            using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
-            
-            var logs = await context.RequestLogs
-                .Where(r => r.VirtualKeyId == keyId)
-                .OrderByDescending(r => r.Timestamp)
-                .Take(100) // Limit to recent requests
-                .ToListAsync();
+            // Get request logs for this virtual key from Admin API
+            var logs = await AdminApiClient.GetRequestLogsAsync(virtualKeyId: keyId, pageSize: 100);
                 
-            usageData = logs.Select(log => new RequestLogViewModel
+            usageData = logs?.Items?.Select(log => new RequestLogViewModel
             {
                 Id = log.Id,
                 VirtualKeyId = log.VirtualKeyId,
@@ -165,7 +161,7 @@
                 ResponseTimeMs = log.ResponseTimeMs,
                 Timestamp = log.Timestamp,
                 UserId = log.UserId
-            }).ToList();
+            })?.ToList() ?? new List<RequestLogViewModel>();
             
             totalRequests = usageData.Count;
             totalCost = usageData.Sum(d => d.Cost);
@@ -211,8 +207,8 @@
             var costs = dailyData.Select(d => (double)d.Cost).ToArray();
             var requests = dailyData.Select(d => d.Requests).ToArray();
             
-            // Call the chart initialization method
-            await Task.Run(() => InitChart(dates, costs, requests));
+            // Call the chart initialization method with JSInterop
+            await InitChart(dates, costs, requests);
         }
         catch (Exception ex)
         {
@@ -220,10 +216,17 @@
         }
     }
     
-    private void InitChart(string[] labels, double[] costData, int[] requestData)
+    private async Task InitChart(string[] labels, double[] costData, int[] requestData)
     {
-        // This is a placeholder - you'd need to implement this with JSInterop
-        // to actually render a Chart.js chart
+        try
+        {
+            var chartId = $"usageChart-{keyId}";
+            await JSRuntime.InvokeVoidAsync("createUsageChart", chartId, labels, costData, requestData);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing chart via JavaScript");
+        }
     }
     
     private void ShowAllActivity()

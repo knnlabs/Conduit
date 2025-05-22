@@ -51,18 +51,18 @@ namespace ConduitLLM.WebUI.Extensions
             services.AddScoped<ILLMClientFactory, DefaultLLMClientFactory>();
 
             // Register router configuration repository
-            // Use the database-backed repository
-            services.AddScoped<IRouterConfigRepository, DbRouterConfigRepository>();
+            // WebUI always uses Admin API - no direct database access
+            
+            // Register router service via AdminApiClient
+            services.AddScoped<IRouterService>(sp => 
+            {
+                var adminApiClient = sp.GetRequiredService<IAdminApiClient>();
+                return (adminApiClient as IRouterService) 
+                    ?? throw new InvalidOperationException("AdminApiClient must implement IRouterService");
+            });
 
-            // Register RouterOptionsService
-            services.AddScoped<RouterOptionsService>();
-
-            // Register router service for management
-            // Since our WebUI RouterService implements IRouterService (not ILLMRouterService),
-            // we register it under that interface
-            services.AddScoped<IRouterService, RouterService>();
-
-            // Register the model health check service
+            // Register the model health check service 
+            // (it uses IOptionsMonitor<RouterOptions> instead of RouterOptionsService)
             services.AddHostedService<ModelHealthCheckService>();
 
             if (routerOptions.Enabled)

@@ -1,0 +1,18 @@
+@page "/test-interactive"
+
+<h3>Interactive Test Page</h3>
+
+<p>Current count: @currentCount</p>
+<p>Current time: @DateTime.Now.ToString("HH:mm:ss.fff")</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+        Console.WriteLine($"Button clicked! Count is now: {currentCount}");
+    }
+}

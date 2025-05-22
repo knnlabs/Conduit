@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using ConduitLLM.Configuration;
 using ConduitLLM.WebUI;
+using ConduitLLM.WebUI.Extensions;
 using Microsoft.AspNetCore.Authentication; 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
@@ -25,19 +25,15 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.WebUI.Authorization;
 using ConduitLLM.WebUI.Components;
-using ConduitLLM.WebUI.Data;
-using ConduitLLM.WebUI.Extensions;
+// Data directory has been removed
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.Providers.Extensions;
 using ConduitLLM.Providers.Configuration;
-using ConduitLLM.Configuration.Repositories;
-
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.StaticWebAssets;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Configuration.Data;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
     Args = args,
@@ -47,30 +43,8 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
 builder.Configuration.Sources.Clear();
 builder.Configuration.AddEnvironmentVariables();
 
-// Database configuration
-var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
-if (dbProvider == "sqlite")
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
-    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
-}
-else if (dbProvider == "postgres")
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-    builder.Services.AddDbContext<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
-}
-else
-{
-    throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
-}
-
-// Add database initialization services
-builder.Services.AddDatabaseInitialization();
+// Entity Framework and direct database access have been removed, WebUI now only uses the Admin API
+Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
@@ -124,19 +98,14 @@ builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IInsecureModeProvider>
 // Add HttpContextAccessor - required for authentication in Razor components
 builder.Services.AddHttpContextAccessor();
 
-// Register HttpClient for calling the API proxy
-// Default client for general use - REMOVED incorrect default registration with hardcoded base address
-// builder.Services.AddHttpClient(); 
+// Helper method for API base URL
+static string GetApiBaseUrl() => Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
+    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? "http://api:8080" : "http://localhost:5000");
 
-// Named client specifically for calling the Conduit HTTP API
-builder.Services.AddHttpClient("ApiClient", client =>
-{
-    // Read the base URL from environment variable, fallback to "http://api:8080" for container env
-    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
-                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
-                     "http://api:8080" : "http://localhost:5000");
-    client.BaseAddress = new Uri(apiBaseUrl);
-    Console.WriteLine($"[Conduit WebUI] Configuring ApiClient with BaseAddress: {apiBaseUrl}");
+// Register HttpClient for calling the API proxy
+builder.Services.AddHttpClient("ApiClient", client => {
+    client.BaseAddress = new Uri(GetApiBaseUrl());
+    Console.WriteLine($"[Conduit WebUI] Configuring ApiClient with BaseAddress: {client.BaseAddress}");
 });
 
 // Register Cache Service
@@ -152,125 +121,73 @@ builder.Services.Configure<RouterOptions>(
 // Register Router services using the extension method
 builder.Services.AddRouterServices(builder.Configuration);
 
-// Register HTTP retry configuration services
-builder.Services.AddOptions<RetryOptions>()
-    .Bind(builder.Configuration.GetSection(RetryOptions.SectionName))
-    .ValidateDataAnnotations();
-builder.Services.AddScoped<HttpRetryConfigurationService>();
+// Register HTTP configuration services
+builder.Services.AddOptions<RetryOptions>().Bind(builder.Configuration.GetSection(RetryOptions.SectionName)).ValidateDataAnnotations();
+builder.Services.AddOptions<TimeoutOptions>().Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName)).ValidateDataAnnotations();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
-
-// Register HTTP timeout configuration services
-builder.Services.AddOptions<TimeoutOptions>()
-    .Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName))
-    .ValidateDataAnnotations();
-builder.Services.AddScoped<HttpTimeoutConfigurationService>();
 builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
 
-// Register HttpClient with retry policies for LLM providers
-builder.Services.AddLLMProviderHttpClients();
-
-// Register Services
-builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderStatusService>();
+// LLM Provider clients are registered in the HTTP API layer, not here
+// WebUI communicates with providers through ConduitApiClient -> HTTP API -> Conduit -> Provider Clients
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ConfigurationChangeNotifier>();
-builder.Services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, ConduitLLM.WebUI.Services.DatabaseSettingsStartupFilter>();
-builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 
-// Model costs tracking service
-builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
-builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
-
-// Repository pattern is now fully integrated and always enabled
-// No need for separate configuration options
-
-// Repository pattern configuration is now integrated directly in the repositories themselves
-// No need for separate monitoring service
-
-// Repository pattern is fully integrated, no need for separate monitoring or logging services
-
-// Register repositories and repository-based services
-builder.Services.AddRepositoryServices();
-
-// Repository pattern is now fully integrated
-Console.WriteLine($"[Conduit WebUI] Using repository pattern for environment: {builder.Environment.EnvironmentName}");
-
-// Register non-repository pattern services
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
-
-// Register database backup service
-builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IDatabaseBackupService, ConduitLLM.WebUI.Services.DatabaseBackupService>();
-
-// Adapter for Core interfaces
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.WebUI.Services.RepositoryVirtualKeyService>();
-
-// Register controllers
+// Register controllers and routing
 builder.Services.AddControllers();
+builder.Services.AddRouting(options => options.ConstraintMap.Add("controller", typeof(string)));
 Console.WriteLine("[Conduit WebUI] Registering controllers");
 
-// Configure routing options
-builder.Services.AddRouting(options => {
-    options.ConstraintMap.Add("controller", typeof(string));
-});
-
-// Register remaining services
+// Register core services
 builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
-
-// Register Version Check Service
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
-builder.Services.AddHttpClient("GithubApi", client => {
-    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-Version-Check");
-});
-
-// Register Cache Metrics Service
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
-
-// Register Redis Cache Metrics Service (only when Redis is configured)
-if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.ToLowerInvariant() == "redis")
-{
-    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRedisCacheMetricsService, ConduitLLM.WebUI.Services.RedisCacheMetricsService>();
-}
-
-// Register Cost Calculation Service
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
-
-// Add Conduit related services
 builder.Services.AddSingleton<ConduitLLM.Core.ConduitRegistry>();
+builder.Services.AddHttpClient("GithubApi", client => client.DefaultRequestHeaders.Add("User-Agent", "Conduit-Version-Check"));
 
-// Add provider models service for dropdown UI
+
+// Conditional Redis service registration
+if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.ToLowerInvariant() == "redis")
+    builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IRedisCacheMetricsService, ConduitLLM.WebUI.Services.RedisCacheMetricsService>();
+
+// Provider and admin services
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 
-// Configure HTTP client for API access
-builder.Services.AddHttpClient("ConduitAPI", client => {
-    // Read the base URL from environment variable, fallback to "http://api:8080" for container env
-    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
-                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ?
-                     "http://api:8080" : "http://localhost:5000");
-    client.BaseAddress = new Uri(apiBaseUrl);
-    Console.WriteLine($"[Conduit WebUI] Configuring ConduitAPI client with BaseAddress: {apiBaseUrl}");
-});
-
-// Register the Conduit API client
+// Register Conduit API clients
+builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()));
 builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
-    // Same API Base URL as the default named client
-    var apiBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
-                    (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ?
-                     "http://api:8080" : "http://localhost:5000");
-    client.BaseAddress = new Uri(apiBaseUrl);
-    Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {apiBaseUrl}");
+    client.BaseAddress = new Uri(GetApiBaseUrl());
+    Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {client.BaseAddress}");
 });
 
-// Register the Admin API client
+// Register Admin API client and compatibility services
 builder.Services.AddAdminApiClient(builder.Configuration);
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.ProviderStatusService>();
 
-// Register Admin API service adapters
-builder.Services.AddAdminApiAdapters(builder.Configuration);
+// Register global setting repository adapter for CacheStatusService
+builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IGlobalSettingRepository, ConduitLLM.WebUI.Services.AdminApiGlobalSettingRepositoryAdapter>();
 
-// Add Virtual Key maintenance background service
+// Register cache status service (required by CachingSettings page)
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.ICacheStatusService, ConduitLLM.WebUI.Services.CacheStatusService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IAdminApiHealthService, ConduitLLM.WebUI.Services.AdminApiHealthService>();
+
+// Background services
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
-
-// Add Provider Health Monitoring services
-builder.Services.AddProviderHealthMonitoring(builder.Configuration);
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ProviderHealthMonitorService>();
+
+// Add SignalR services explicitly
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.MaximumReceiveMessageSize = 512 * 1024; // 512 KB
+});
+
+// Add antiforgery services
+builder.Services.AddAntiforgery();
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -281,50 +198,12 @@ builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
 
-// Log database configuration ONCE, avoid duplicate logger declarations
-var dbLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DbConnection");
-var connMgr = new ConduitLLM.Core.Data.ConnectionStringManager();
-connMgr.GetProviderAndConnectionString(msg => dbLogger.LogInformation(msg));
-
-// Initialize the database FIRST - before any services try to use it
+// Log usage mode
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Initializing database...");
-
-    try
-    {
-        // Initialize the database with our new DatabaseInitializer
-        var success = await scope.ServiceProvider.InitializeDatabaseAsync(maxRetries: 20, retryDelayMs: 3000);
-
-        if (success)
-        {
-            logger.LogInformation("Database initialized successfully");
-
-            // Ensure specific critical tables exist
-            await scope.ServiceProvider.EnsureTablesExistAsync(
-                "GlobalSettings",
-                "VirtualKeys",
-                "ModelCosts",
-                "RequestLogs",
-                "VirtualKeySpendHistory",
-                "ProviderHealthRecords",
-                "IpFilters"
-            );
-        }
-        else
-        {
-            logger.LogWarning("Database initialization completed with warnings. Some functionality may be limited.");
-        }
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error during database initialization. Starting application anyway, but functionality may be limited.");
-    }
+    logger.LogInformation("Using Admin API mode. All services are using provider implementations.");
 }
-
-// Print master key for debugging purposes
-var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
 
 // Initialize Master Key using InitialSetupService
 using (var scope = app.Services.CreateScope())
@@ -349,59 +228,34 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine($"Master key hash from database: {storedHash ?? "NOT FOUND"}");
 }
 
-// Initialize Router with configuration
+// Initialize services
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
     try
     {
-        // Check if router is enabled
+        // Initialize Router if enabled
         var routerOptions = new RouterOptions();
         app.Configuration.GetSection(RouterOptions.SectionName).Bind(routerOptions);
-
         if (routerOptions.Enabled)
         {
-            var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("Initializing LLM Router...");
-            
-            // Get the required services
             var routerService = services.GetRequiredService<IRouterService>();
-            
-            try
-            {
-                // Initialize the router with the current configuration
-                await routerService.InitializeRouterAsync();
-                logger.LogInformation("LLM Router initialized successfully");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error initializing LLM Router: {Message}", ex.Message);
-            }
+            await routerService.InitializeRouterAsync();
+            logger.LogInformation("LLM Router initialized successfully");
         }
         
         // Initialize VersionCheckService
-        try
-        {
-            var versionCheckService = services.GetRequiredService<ConduitLLM.WebUI.Services.VersionCheckService>();
-            versionCheckService.Initialize();
-            
-            // Get logger specifically for this section
-            var versionLogger = services.GetRequiredService<ILogger<Program>>();
-            versionLogger.LogInformation("Version check service initialized successfully");
-            
-            // Perform an initial version check
-            await versionCheckService.CheckForNewVersionAsync(forceCheck: true);
-        }
-        catch (Exception ex)
-        {
-            var versionLogger = services.GetRequiredService<ILogger<Program>>();
-            versionLogger.LogError(ex, "Error initializing version check service: {Message}", ex.Message);
-        }
+        var versionCheckService = services.GetRequiredService<ConduitLLM.WebUI.Services.VersionCheckService>();
+        versionCheckService.Initialize();
+        logger.LogInformation("Version check service initialized successfully");
+        await versionCheckService.CheckForNewVersionAsync(forceCheck: true);
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during initialization.");
+        logger.LogError(ex, "Error during service initialization: {Message}", ex.Message);
     }
 }
 
@@ -447,31 +301,30 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-// Ensure static files are served properly for development
-app.UseStaticFiles();
+// Ensure static files are served properly
 app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // app.UseHttpsRedirection(); // Removed as HTTPS is handled by external proxy (e.g., Railway)
 
-app.UseAntiforgery();
+app.UseRouting();
 
-app.MapStaticAssets();
+app.UseAntiforgery();
 
 // Add authentication middleware before authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add IP Filtering, Virtual Key Authentication, and LLM Request Tracking middleware
-app.UseIpFiltering();
-app.UseVirtualKeyAuthentication();
-app.UseLlmRequestTracking();
+// Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
+// Map controllers first
+app.MapControllers();
+
+// Then map Blazor components with explicit render mode
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Ensure controllers are mapped for our API endpoints
-app.MapControllers();
-Console.WriteLine("[Conduit WebUI] Controllers registered");
+Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered");
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)

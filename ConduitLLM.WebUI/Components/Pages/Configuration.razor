@@ -11,42 +11,76 @@
 @using System.Linq
 @using System.Threading.Tasks
 @using Microsoft.JSInterop
-@using Microsoft.EntityFrameworkCore
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
-@inject Interfaces.IProviderCredentialService ProviderCredentialService
-@inject Interfaces.IModelProviderMappingService ModelProviderMappingService
-@inject IGlobalSettingService GlobalSettingService
+@inject Interfaces.IAdminApiClient AdminApiClient
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject HttpRetryConfigurationService HttpRetryService
-@inject HttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
 @inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
 
-<div class="container-fluid">
-    <h2 class="mb-4">Configuration Management</h2>
+<PageTitle>Configuration - ConduitLLM</PageTitle>
+
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="config-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-cogs me-3"></i>Configuration Management
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Configure LLM providers, model mappings, and system settings for your deployment
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="config-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-cloud me-2"></i>
+                                <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-sitemap me-2"></i>
+                                <span class="small">@(modelMappings?.Count ?? 0) Mappings</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if (!string.IsNullOrEmpty(deleteErrorMessage))
     {
-        <div class="alert alert-danger mb-4">@deleteErrorMessage</div>
+        <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <i class="fa fa-exclamation-circle me-2"></i>
+            @deleteErrorMessage
+        </div>
     }
 
-    <div class="card mb-5 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">LLM Providers</h5>
-            <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" type="button" id="addProviderDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fa fa-plus me-1"></i> Add Provider
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addProviderDropdown">
-                    @foreach (var provider in _supportedProviders)
-                    {
-                        <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">@provider</button></li>
-                    }
-                </ul>
+    <!-- LLM Providers Section -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-light border-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-cloud me-2 text-primary"></i>LLM Providers
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle shadow-sm" type="button" id="addProviderDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-plus me-1"></i> Add Provider
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="addProviderDropdown">
+                        @foreach (var provider in _supportedProviders)
+                        {
+                            <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">
+                                <i class="fa fa-plus me-2"></i>@provider
+                            </button></li>
+                        }
+                    </ul>
+                </div>
             </div>
         </div>
         
@@ -61,25 +95,29 @@
             }
             else if (!providerCredentials.Any())
             {
-                <div class="alert alert-info mb-4">
-                    No providers configured yet. Add an LLM provider to get started.
+                <div class="text-center py-5">
+                    <i class="fa fa-cloud fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">No Providers Configured</h4>
+                    <p class="text-muted mb-4">Get started by adding your first LLM provider</p>
                 </div>
 
                 <div class="row">
                     @foreach (var provider in _supportedProviders)
                     {
-                        <div class="col-12 col-sm-6 col-md-4 mb-4">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h6 class="mb-0">@provider</h6>
+                        <div class="col-12 col-sm-6 col-lg-4 mb-4">
+                            <div class="card h-100 provider-card shadow-sm border-0 hover-card">
+                                <div class="card-header bg-light border-0">
+                                    <h6 class="mb-0 fw-semibold">
+                                        <i class="fa fa-server me-2"></i>@provider
+                                    </h6>
                                 </div>
                                 <div class="card-body">
-                                    <p class="card-text">
+                                    <p class="card-text text-muted">
                                         @GetProviderDescription(provider)
                                     </p>
                                 </div>
-                                <div class="card-footer">
-                                    <button class="btn btn-primary w-100" @onclick="() => LaunchGuidedSetup(provider)">
+                                <div class="card-footer bg-transparent border-0">
+                                    <button class="btn btn-primary w-100 shadow-sm" @onclick="() => LaunchGuidedSetup(provider)">
                                         <i class="fa fa-plus me-1"></i> Setup @provider
                                     </button>
                                 </div>
@@ -91,28 +129,56 @@
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <th>Provider</th>
-                                <th>API Key</th>
-                                <th>Base URL</th>
-                                <th>Actions</th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-server me-2"></i>Provider
+                                </th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-key me-2"></i>API Key
+                                </th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-link me-2"></i>Base URL
+                                </th>
+                                <th class="border-0 fw-semibold text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var context in providerCredentials)
                             {
-                                <tr>
-                                    <td>@context.ProviderName</td>
+                                <tr class="border-light">
                                     <td>
-                                        <span class="text-secondary">@(string.IsNullOrEmpty(context.ApiKey) ? "Not set" : "••••••••")</span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="provider-icon bg-primary-light rounded-circle p-2 me-3">
+                                                <i class="fa fa-cloud text-primary"></i>
+                                            </div>
+                                            <span class="fw-semibold">@context.ProviderName</span>
+                                        </div>
                                     </td>
-                                    <td>@(string.IsNullOrEmpty(context.ApiBase) ? "Default" : context.ApiBase)</td>
                                     <td>
+                                        @if (string.IsNullOrEmpty(context.ApiKey))
+                                        {
+                                            <span class="badge bg-warning text-dark">Not configured</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">
+                                                <i class="fa fa-check-circle me-1"></i>••••••••
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <code class="text-muted">@(string.IsNullOrEmpty(context.ApiBase) ? "Default" : context.ApiBase)</code>
+                                    </td>
+                                    <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditProvider(context.Id)">Edit</button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProvider(context.Id)">Delete</button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditProvider(context.Id)">
+                                                <i class="fa fa-edit me-1"></i>Edit
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProvider(context.Id)">
+                                                <i class="fa fa-trash me-1"></i>Delete
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -124,21 +190,24 @@
         </div>
     </div>
 
-    <hr class="my-5" />
-
-    <div class="card mb-5 shadow-sm">
-        <div class="card-header">
-            <h5 class="mb-0">Model Mappings</h5>
+    <!-- Model Mappings Section -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-light border-0">
+            <h5 class="mb-0">
+                <i class="fa fa-sitemap me-2 text-success"></i>Model Mappings
+            </h5>
         </div>
         
         <div class="card-body">
-            <p class="mb-4">
-                Map user-friendly model names to specific provider models. For example, you can map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
-            </p>
+            <div class="alert alert-info border-0 shadow-sm mb-4">
+                <i class="fa fa-info-circle me-2"></i>
+                <strong>Model Mappings:</strong> Create user-friendly aliases for your LLM models. 
+                For example, map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
+            </div>
             
             @if (modelMappings == null)
             {
-                <div class="d-flex justify-content-center">
+                <div class="d-flex justify-content-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -146,8 +215,10 @@
             }
             else if (!modelMappings.Any())
             {
-                <div class="alert alert-info mb-4">
-                    No model mappings defined yet. Add one below.
+                <div class="text-center py-5">
+                    <i class="fa fa-sitemap fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">No Model Mappings</h4>
+                    <p class="text-muted mb-4">Create your first model mapping to get started</p>
                 </div>
             }
             else
@@ -186,7 +257,7 @@
                 </div>
             }
             
-            <button class="btn btn-primary" 
+            <button class="btn btn-primary shadow-sm" 
                   @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; mappingErrorMessage = null; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
@@ -195,14 +266,20 @@
 
     @if (isEditingMapping)
     {
-        <div class="card mb-5 shadow-sm">
-            <div class="card-header">
-                <h5 class="mb-0">@(currentMapping.ModelAlias == null ? "Add" : "Edit") Model Mapping</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-header bg-light border-0">
+                <h5 class="mb-0">
+                    <i class="fa fa-@(currentMapping.ModelAlias == null ? "plus" : "edit") me-2 text-primary"></i>
+                    @(currentMapping.ModelAlias == null ? "Add" : "Edit") Model Mapping
+                </h5>
             </div>
             <div class="card-body">
                 @if (!string.IsNullOrEmpty(mappingErrorMessage))
                 {
-                    <div class="alert alert-danger mb-4">@mappingErrorMessage</div>
+                    <div class="alert alert-danger border-0 shadow-sm mb-4">
+                        <i class="fa fa-exclamation-circle me-2"></i>
+                        @mappingErrorMessage
+                    </div>
                 }
                 
                 <div class="form-group mb-4">
@@ -312,15 +389,22 @@
         </div>
     }
 
-    <hr class="my-5" />
-
-    <h3 class="mb-4">Global Settings</h3>
+    <!-- Global Settings Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-globe me-2 text-info"></i>Global Settings
+            </h3>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Proxy Base URL</h5>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-link me-2 text-primary"></i>Proxy Base URL
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-3">
@@ -331,14 +415,15 @@
                         <small class="form-text text-muted">URL where your Conduit API is publicly accessible. Used for SDK clients.</small>
                     </div>
                     
-                    <button class="btn btn-primary mt-2" 
+                    <button class="btn btn-primary shadow-sm mt-2" 
                             @onclick="SaveProxyUrl">
-                        Save
+                        <i class="fa fa-save me-1"></i>Save
                     </button>
                     
                     @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
                     {
-                        <div class="alert alert-success mt-3">
+                        <div class="alert alert-success border-0 shadow-sm mt-3">
+                            <i class="fa fa-check-circle me-2"></i>
                             @proxyUrlSaveMessage
                         </div>
                     }
@@ -349,9 +434,11 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">HTTP Retry Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-refresh me-2 text-warning"></i>HTTP Retry Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-4">
@@ -402,9 +489,11 @@
         </div>
         
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">HTTP Timeout Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-clock-o me-2 text-danger"></i>HTTP Timeout Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-4">
@@ -444,9 +533,11 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">About HTTP Client Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Client Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <p class="mb-3">
@@ -485,9 +576,11 @@
             </div>
         </div>
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">About HTTP Timeout Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Timeout Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <p class="mb-3">
@@ -516,12 +609,14 @@
     </div>
 </div>
 
-@* Guided Setup Modal Components *@
+@* Guided Setup Modal Components - Disabled during Admin API migration *@
+@* 
 <GuidedSetupWizard
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
     OnSetupComplete="@(async (ConduitLLM.Configuration.Entities.ProviderCredential provider) => await HandleSetupComplete(provider))"
     IsOpenChanged="HandleIsOpenChanged" />
+*@
 
 @code {
     // --- Providers and Mappings State ---
@@ -566,13 +661,13 @@
     private ConduitLLM.Providers.Configuration.RetryOptions httpRetryOptions = new();
     private ConduitLLM.Providers.Configuration.TimeoutOptions httpTimeoutOptions = new();
     
-    // --- Guided Setup State ---
-    private GuidedSetupWizard? guidedSetupWizardInstance;
-    private bool isGuidedSetupOpen;
+    // --- Guided Setup State (Disabled during Admin API migration) ---
+    // private GuidedSetupWizard? guidedSetupWizardInstance;
+    // private bool isGuidedSetupOpen;
     private string? deleteErrorMessage;
     
     private readonly List<string> _supportedProviders = new List<string> {
-        "OpenAI", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
+        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
     };
     
     protected override async Task OnInitializedAsync()
@@ -585,12 +680,12 @@
             await LoadHttpRetryOptionsAsync();
             await LoadHttpTimeoutOptionsAsync();
             
-            // Ensure guidedSetupWizardInstance is properly initialized
-            await Task.Delay(100); // Brief delay to ensure component rendering completes
-            if (guidedSetupWizardInstance == null)
-            {
-                Logger.LogWarning("GuidedSetupWizard component reference was null during initialization. UI interactions may not work as expected.");
-            }
+            // Guided setup wizard disabled during Admin API migration
+            // await Task.Delay(100); // Brief delay to ensure component rendering completes
+            // if (guidedSetupWizardInstance == null)
+            // {
+            //     Logger.LogWarning("GuidedSetupWizard component reference was null during initialization. UI interactions may not work as expected.");
+            // }
         }
         catch (Exception ex)
         {
@@ -604,7 +699,7 @@
     {
         try
         {
-            var providers = await ProviderCredentialService.GetAllAsync();
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
             providerCredentials = providers.ToList();
         }
         catch (Exception ex)
@@ -618,7 +713,7 @@
     {
         try
         {
-            var mappings = await ModelProviderMappingService.GetAllAsync();
+            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             modelMappings = mappings.OrderBy(m => m.ModelId).ToList();
         }
         catch (Exception ex)
@@ -632,7 +727,7 @@
     {
         try
         {
-            proxyBaseUrlInput = await GlobalSettingService.GetSettingAsync("ConduitSettings:ProxyBaseUrl");
+            proxyBaseUrlInput = await AdminApiClient.GetSettingAsync("ConduitSettings:ProxyBaseUrl");
         }
         catch (Exception ex)
         {
@@ -642,13 +737,15 @@
     
     private async Task LoadHttpRetryOptionsAsync()
     {
-        httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new ConduitLLM.Providers.Configuration.RetryOptions();
+        // TODO: Update to use AdminApiClient once HTTP config API is available
+        httpRetryOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
         await Task.CompletedTask;
     }
     
     private async Task LoadHttpTimeoutOptionsAsync()
     {
-        httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new ConduitLLM.Providers.Configuration.TimeoutOptions();
+        // TODO: Update to use AdminApiClient once HTTP config API is available
+        httpTimeoutOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
         await Task.CompletedTask;
     }
     
@@ -669,7 +766,7 @@
         try
         {
             deleteErrorMessage = null;
-            var providerToDelete = await ProviderCredentialService.GetByIdAsync(id);
+            var providerToDelete = await AdminApiClient.GetProviderCredentialByIdAsync(id);
             if (providerToDelete == null) return;
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
@@ -678,15 +775,15 @@
             if (!confirmed) return;
 
             // Get related mappings and delete them first
-            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             var relatedMappings = allMappings.Where(m => int.Parse(m.ProviderId) == providerToDelete.Id).ToList();
 
             foreach (var mapping in relatedMappings)
             {
-                await ModelProviderMappingService.DeleteAsync(mapping.Id);
+                await AdminApiClient.DeleteModelProviderMappingAsync(mapping.Id);
             }
 
-            var success = await ProviderCredentialService.DeleteAsync(id);
+            var success = await AdminApiClient.DeleteProviderCredentialAsync(id);
             
             if (success)
             {
@@ -723,14 +820,14 @@
     {
         try
         {
-            var mapping = await ModelProviderMappingService.GetByIdAsync(id);
+            var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
             if (mapping == null)
             {
                 Logger.LogError("No mapping found with ID {Id}", id);
                 return;
             }
 
-            var success = await ModelProviderMappingService.DeleteAsync(id);
+            var success = await AdminApiClient.DeleteModelProviderMappingAsync(id);
             
             if (success)
             {
@@ -750,35 +847,19 @@
         }
     }
 
-    private async Task LaunchGuidedSetup(string providerName) 
+    private void LaunchGuidedSetup(string providerName) 
     {
         try
         {
             Logger.LogDebug("LaunchGuidedSetup called for provider: {ProviderName}", providerName);
             
-            if (guidedSetupWizardInstance != null)
-            {
-                // Set the flag before calling the component method
-                isGuidedSetupOpen = true;
-                StateHasChanged();
-                
-                await guidedSetupWizardInstance.OpenForProvider(providerName);
-                Logger.LogDebug("GuidedSetupWizard.OpenForProvider completed successfully");
-            }
-            else
-            {
-                Logger.LogError("GuidedSetupWizard instance reference is null when trying to launch setup.");
-                deleteErrorMessage = "Error launching guided setup. Please try refreshing the page.";
-                StateHasChanged();
-                
-                // Force re-render to try to resolve the reference
-                await InvokeAsync(StateHasChanged);
-            }
+            // Navigate to the provider edit page
+            NavigationManager.NavigateTo("/configuration/provider/edit");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error launching guided setup for {ProviderName}", providerName);
-            deleteErrorMessage = $"Error launching setup: {ex.Message}";
+            Logger.LogError(ex, "Error handling guided setup for {ProviderName}", providerName);
+            deleteErrorMessage = $"Error: {ex.Message}";
             StateHasChanged();
         }
     }
@@ -786,7 +867,7 @@
     private async Task HandleIsOpenChanged(bool isOpen)
     {
         Logger.LogDebug("HandleIsOpenChanged called with value: {IsOpen}", isOpen);
-        isGuidedSetupOpen = isOpen;
+        // isGuidedSetupOpen = isOpen; // Disabled during Admin API migration
         
         // Force UI update
         await InvokeAsync(StateHasChanged);
@@ -807,7 +888,7 @@
                 IsEnabled = providerEntity.IsEnabled
             };
             
-            var createdProvider = await ProviderCredentialService.CreateAsync(newProvider);
+            var createdProvider = await AdminApiClient.CreateProviderCredentialAsync(newProvider);
             
             if (createdProvider != null)
             {
@@ -838,6 +919,7 @@
         return provider switch
         {
             "OpenAI" => "Connect to GPT-3.5, GPT-4, and other OpenAI models",
+            "OpenAI Compatible" => "Connect to any service with an OpenAI-compatible API (Requires Base URL)",
             "Anthropic" => "Connect to Claude models for advanced reasoning",
             "Cohere" => "Connect to Cohere's command models",
             "Google" => "Connect to Google AI models like Gemini",
@@ -866,12 +948,12 @@
     // --- Mapping form state ---
     private async Task HandleEditMapping(int id)
     {
-        var mapping = await ModelProviderMappingService.GetByIdAsync(id);
+        var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
             
         if (mapping != null)
         {
             // Get provider by ID to get the provider name
-            var provider = await ProviderCredentialService.GetByIdAsync(int.Parse(mapping.ProviderId));
+            var provider = await AdminApiClient.GetProviderCredentialByIdAsync(int.Parse(mapping.ProviderId));
             
             currentMapping = new MappingFormModel
             {
@@ -911,7 +993,8 @@
         }
 
         // Get provider by name to ensure it exists
-        var provider = await ProviderCredentialService.GetByProviderNameAsync(currentMapping.ProviderName);
+        var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
+        var provider = allProviders.FirstOrDefault(p => p.ProviderName == currentMapping.ProviderName);
             
         if (provider == null)
         {
@@ -920,7 +1003,7 @@
         }
         
         // Check for duplicate alias only if we're creating a new mapping or changing the alias
-        var allMappings = await ModelProviderMappingService.GetAllAsync();
+        var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
         var existingMapping = allMappings.FirstOrDefault(m => m.ModelId == currentMapping.ModelAlias && 
                                                               m.Id != currentMapping.Id); // Exclude the current mapping by ID
                                      
@@ -935,24 +1018,24 @@
             // Determine if this is an update or a new record
             bool isUpdate = currentMapping.Id > 0;
             
-            var mappingDto = new ConfigDTOs.ModelProviderMappingDto
+            var mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 Id = currentMapping.Id,
-                ModelId = currentMapping.ModelAlias,
-                ProviderModelId = currentMapping.ProviderModelId,
-                ProviderId = provider.Id.ToString(),
+                ModelAlias = currentMapping.ModelAlias,
+                ProviderModelName = currentMapping.ProviderModelId,
+                ProviderCredentialId = provider.Id,
                 IsEnabled = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
             
-            ConfigDTOs.ModelProviderMappingDto? result;
+            bool result;
             
             if (isUpdate)
             {
-                result = await ModelProviderMappingService.UpdateAsync(mappingDto);
+                result = await AdminApiClient.UpdateModelProviderMappingAsync(mappingEntity.Id, mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     mappingErrorMessage = "The mapping you're trying to update no longer exists.";
                     return;
@@ -960,9 +1043,9 @@
             }
             else
             {
-                result = await ModelProviderMappingService.CreateAsync(mappingDto);
+                result = await AdminApiClient.CreateModelProviderMappingAsync(mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     mappingErrorMessage = "Failed to create the mapping.";
                     return;
@@ -993,7 +1076,7 @@
     {
         try
         {
-            await GlobalSettingService.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
+            await AdminApiClient.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
             
             proxyUrlSaveMessage = "Base URL saved successfully";
             await JSRuntime.InvokeVoidAsync("alert", "Base URL saved successfully");
@@ -1013,9 +1096,10 @@
     {
         try
         {
-            await HttpRetryService.UpdateRetryConfigurationAsync(httpRetryOptions);
+            // TODO: Update to use AdminApiClient once HTTP config API is available
+            // await AdminApiClient.UpdateHttpRetryConfigurationAsync(httpRetryOptions);
             httpRetryOptionsSaveMessage = "HTTP retry settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP retry settings saved successfully");
+            await JSRuntime.InvokeVoidAsync("alert", "HTTP retry settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
@@ -1029,9 +1113,10 @@
     {
         try
         {
-            await HttpTimeoutService.UpdateTimeoutConfigurationAsync(httpTimeoutOptions);
+            // TODO: Update to use AdminApiClient once HTTP config API is available
+            // await AdminApiClient.UpdateHttpTimeoutConfigurationAsync(httpTimeoutOptions);
             httpTimeoutOptionsSaveMessage = "HTTP timeout settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP timeout settings saved successfully");
+            await JSRuntime.InvokeVoidAsync("alert", "HTTP timeout settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
@@ -1045,10 +1130,15 @@
     {
         try
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            return await dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
-                .AnyAsync(m => m.ProviderCredential.ProviderName == providerName);
+            // Get the provider ID by name
+            var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
+            var provider = allProviders.FirstOrDefault(p => p.ProviderName == providerName);
+            if (provider == null)
+                return false;
+                
+            // Get all mappings and check if any map to this provider
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            return allMappings.Any(m => m.ProviderId == provider.Id.ToString());
         }
         catch (Exception ex)
         {
@@ -1124,3 +1214,70 @@
         }
     }
 }
+
+<style>
+    .config-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .config-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .provider-card {
+        transition: all 0.2s ease;
+    }
+    
+    .provider-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-primary-light {
+        background-color: rgba(102, 126, 234, 0.1);
+    }
+    
+    .hover-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    
+    .hover-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>

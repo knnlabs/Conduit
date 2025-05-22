@@ -47,7 +47,8 @@ public class IpFilterMiddleware
     {
         try
         {
-            var settings = await ipFilterService.GetIpFilterSettingsAsync();
+            // Try to get the IP filter settings, with fallback for API connection issues
+            var settings = await GetIpFilterSettingsWithFallbackAsync(ipFilterService);
             
             // Skip filtering if it's disabled in settings
             if (!settings.IsEnabled)
@@ -92,8 +93,8 @@ public class IpFilterMiddleware
                 return;
             }
             
-            // Check if the IP is allowed
-            bool isAllowed = await ipFilterService.IsIpAllowedAsync(clientIp);
+            // Check if the IP is allowed, with fallback handling for API connection issues
+            bool isAllowed = await CheckIpWithFallbackAsync(ipFilterService, clientIp, settings.DefaultAllow);
             if (isAllowed)
             {
                 _logger.LogDebug("IP {ClientIp} is allowed access", clientIp);
@@ -112,6 +113,66 @@ public class IpFilterMiddleware
             // In case of error, continue to the next middleware
             // This ensures that IP filtering doesn't break the application if there's an issue
             await _next(context);
+        }
+    }
+    
+    /// <summary>
+    /// Gets IP filter settings with fallback in case of Admin API connection issues
+    /// </summary>
+    /// <param name="ipFilterService">The IP filter service instance</param>
+    /// <returns>IP filter settings</returns>
+    private async Task<Configuration.DTOs.IpFilter.IpFilterSettingsDto> GetIpFilterSettingsWithFallbackAsync(IIpFilterService ipFilterService)
+    {
+        try
+        {
+            // Try to get settings from the Admin API
+            var settings = await ipFilterService.GetIpFilterSettingsAsync();
+            
+            // This conversion is no longer needed since the IpFilterService now returns the DTO directly
+            
+            return settings;
+        }
+        catch (Exception ex)
+        {
+            // Log the error
+            _logger.LogError(ex, "Failed to retrieve IP filter settings from Admin API. Using permissive defaults.");
+            
+            // Return permissive default settings to avoid blocking legitimate access
+            return new Configuration.DTOs.IpFilter.IpFilterSettingsDto
+            {
+                IsEnabled = false, // Disable filtering when there's an error (most permissive)
+                DefaultAllow = true, // Allow by default (permissive fallback)
+                BypassForAdminUi = true, // Allow admin UI access
+                ExcludedEndpoints = new List<string> { "/login", "/logout", "/health", "/_blazor", "/css", "/js", "/images" },
+                FilterMode = "permissive", // Permissive mode
+                WhitelistFilters = new List<Configuration.DTOs.IpFilter.IpFilterDto>(), // Empty list
+                BlacklistFilters = new List<Configuration.DTOs.IpFilter.IpFilterDto>() // Empty list
+            };
+        }
+    }
+    
+    /// <summary>
+    /// Checks if an IP is allowed with fallback handling in case of Admin API connection issues
+    /// </summary>
+    /// <param name="ipFilterService">The IP filter service instance</param>
+    /// <param name="clientIp">The client IP address to check</param>
+    /// <param name="defaultAllow">Default allow setting from IP filter settings</param>
+    /// <returns>True if the IP is allowed, false otherwise</returns>
+    private async Task<bool> CheckIpWithFallbackAsync(IIpFilterService ipFilterService, string clientIp, bool defaultAllow)
+    {
+        try
+        {
+            // Try to check the IP against the Admin API
+            return await ipFilterService.IsIpAllowedAsync(clientIp);
+        }
+        catch (Exception ex)
+        {
+            // Log the error
+            _logger.LogError(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}", 
+                clientIp, defaultAllow);
+            
+            // Fall back to the default allow setting
+            return defaultAllow;
         }
     }
     

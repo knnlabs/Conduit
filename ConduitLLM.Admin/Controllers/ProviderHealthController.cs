@@ -5,10 +5,68 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ConduitLLM.Admin.Controllers
 {
+    /// <summary>
+    /// Contains models for provider health status data.
+    /// </summary>
+    public static class Models
+    {
+        /// <summary>
+        /// Represents the current status of a provider
+        /// </summary>
+        public class ProviderStatus
+        {
+            /// <summary>
+            /// The status type
+            /// </summary>
+            public StatusType Status { get; set; }
+            
+            /// <summary>
+            /// A descriptive message about the status
+            /// </summary>
+            public string? StatusMessage { get; set; }
+            
+            /// <summary>
+            /// The response time in milliseconds
+            /// </summary>
+            public double ResponseTimeMs { get; set; }
+            
+            /// <summary>
+            /// When the status was last checked
+            /// </summary>
+            public DateTime LastCheckedUtc { get; set; }
+            
+            /// <summary>
+            /// Error category if the provider is offline
+            /// </summary>
+            public string? ErrorCategory { get; set; }
+            
+            /// <summary>
+            /// Status types for providers
+            /// </summary>
+            public enum StatusType
+            {
+                /// <summary>
+                /// Provider is online and responsive
+                /// </summary>
+                Online,
+                
+                /// <summary>
+                /// Provider is offline or unresponsive
+                /// </summary>
+                Offline,
+                
+                /// <summary>
+                /// Provider status is unknown
+                /// </summary>
+                Unknown
+            }
+        }
+    }
     /// <summary>
     /// Controller for managing provider health monitoring
     /// </summary>
@@ -350,6 +408,112 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error purging old health records");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Gets all provider health records
+        /// </summary>
+        /// <param name="providerName">Optional provider name to filter records</param>
+        /// <returns>List of health records</returns>
+        [HttpGet("records")]
+        [ProducesResponseType(typeof(IEnumerable<ProviderHealthRecordDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetHealthRecords([FromQuery] string? providerName = null)
+        {
+            try
+            {
+                IEnumerable<ProviderHealthRecordDto> records;
+                
+                if (string.IsNullOrEmpty(providerName))
+                {
+                    records = await _providerHealthService.GetAllRecordsAsync();
+                }
+                else
+                {
+                    var history = await _providerHealthService.GetStatusHistoryAsync(providerName, 24 * 30, 1000); // 30 days, 1000 records max
+                    records = history;
+                }
+                
+                return Ok(records);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving provider health records");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+        
+        /// <summary>
+        /// Gets provider status for all providers that have been checked
+        /// </summary>
+        /// <returns>Dictionary of provider names to their status</returns>
+        [HttpGet("status")]
+        [ProducesResponseType(typeof(Dictionary<string, Models.ProviderStatus>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProviderStatus()
+        {
+            try
+            {
+                var statuses = await _providerHealthService.GetAllLatestStatusesAsync();
+                
+                // Convert to a dictionary of provider name to status model
+                var result = statuses.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => new Models.ProviderStatus
+                    {
+                        Status = kvp.Value.IsOnline ? Models.ProviderStatus.StatusType.Online : Models.ProviderStatus.StatusType.Offline,
+                        StatusMessage = kvp.Value.StatusMessage ?? (kvp.Value.IsOnline ? "Online" : "Offline"),
+                        ResponseTimeMs = kvp.Value.ResponseTimeMs,
+                        LastCheckedUtc = kvp.Value.TimestampUtc,
+                        ErrorCategory = kvp.Value.ErrorCategory
+                    }
+                );
+                
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving provider status");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+        
+        /// <summary>
+        /// Gets provider status for a specific provider
+        /// </summary>
+        /// <param name="providerName">The name of the provider</param>
+        /// <returns>The provider status</returns>
+        [HttpGet("status/{providerName}")]
+        [ProducesResponseType(typeof(Models.ProviderStatus), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetProviderStatus(string providerName)
+        {
+            try
+            {
+                var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerName);
+                
+                if (statusRecord == null)
+                {
+                    return NotFound($"No status found for provider '{providerName}'");
+                }
+                
+                var status = new Models.ProviderStatus
+                {
+                    Status = statusRecord.IsOnline ? Models.ProviderStatus.StatusType.Online : Models.ProviderStatus.StatusType.Offline,
+                    StatusMessage = statusRecord.StatusMessage ?? (statusRecord.IsOnline ? "Online" : "Offline"),
+                    ResponseTimeMs = statusRecord.ResponseTimeMs,
+                    LastCheckedUtc = statusRecord.TimestampUtc,
+                    ErrorCategory = statusRecord.ErrorCategory
+                };
+                
+                return Ok(status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving status for provider '{ProviderName}'", providerName);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

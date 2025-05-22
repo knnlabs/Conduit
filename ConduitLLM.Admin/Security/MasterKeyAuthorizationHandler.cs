@@ -35,29 +35,50 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
         AuthorizationHandlerContext context,
         MasterKeyRequirement requirement)
     {
-        if (context.Resource is HttpContext httpContext)
+        try
         {
-            // Get the configured master key
-            string? masterKey = _configuration[MASTER_KEY_CONFIG_KEY];
-            
-            if (string.IsNullOrEmpty(masterKey))
+            if (context.Resource is HttpContext httpContext)
             {
-                _logger.LogWarning("Master key is not configured");
-                return Task.CompletedTask;
-            }
-
-            // Get the key from request header
-            if (httpContext.Request.Headers.TryGetValue(MASTER_KEY_HEADER, out var providedKey))
-            {
-                // Check if the provided key matches the master key
-                if (providedKey.ToString() == masterKey)
+                // Get the configured master key
+                string? masterKey = _configuration[MASTER_KEY_CONFIG_KEY];
+                
+                if (string.IsNullOrEmpty(masterKey))
                 {
-                    context.Succeed(requirement);
+                    _logger.LogWarning("Master key is not configured");
                     return Task.CompletedTask;
                 }
-            }
 
-            _logger.LogWarning("Invalid master key provided for {Path}", httpContext.Request.Path);
+                // Check for X-API-Key header first (preferred)
+                if (httpContext.Request.Headers.TryGetValue(MASTER_KEY_HEADER, out var providedKey))
+                {
+                    // Check if the provided key matches the master key
+                    if (providedKey.ToString() == masterKey)
+                    {
+                        context.Succeed(requirement);
+                        return Task.CompletedTask;
+                    }
+                }
+                
+                // Fallback: Check for X-Master-Key header for backward compatibility
+                if (httpContext.Request.Headers.TryGetValue("X-Master-Key", out var legacyKey))
+                {
+                    if (legacyKey.ToString() == masterKey)
+                    {
+                        context.Succeed(requirement);
+                        return Task.CompletedTask;
+                    }
+                }
+
+                _logger.LogWarning("Invalid master key provided for {Path}", httpContext.Request.Path);
+            }
+            else
+            {
+                _logger.LogWarning("No HttpContext available for MasterKeyAuthorization");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in MasterKeyAuthorizationHandler");
         }
 
         return Task.CompletedTask;

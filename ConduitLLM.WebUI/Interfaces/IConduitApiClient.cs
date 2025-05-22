@@ -25,6 +25,16 @@ public interface IConduitApiClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates a streaming chat completion request to the API.
+    /// </summary>
+    /// <param name="request">The chat completion request.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An async enumerable of chat completion chunks.</returns>
+    IAsyncEnumerable<ChatCompletionChunk> CreateStreamingChatCompletionAsync(
+        ChatCompletionRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates an embedding request to the API.
     /// </summary>
     /// <param name="request">The embedding request.</param>

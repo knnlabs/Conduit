@@ -1,256 +1,594 @@
 @page "/virtualkeys/dashboard"
-@using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Models
 @using VirtualKeyDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto
 @using ConduitLLM.Configuration.Constants
-@using ConduitLLM.Core.Interfaces
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs
-@using Microsoft.EntityFrameworkCore
 @using System.Globalization
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
-@inject ConduitLLM.WebUI.Interfaces.IRequestLogService RequestLogService
+@inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeysDashboard> Logger
 @rendermode InteractiveServer
 
-<h3 class="mb-4">Virtual Keys Dashboard</h3>
+<PageTitle>Virtual Keys Dashboard - ConduitLLM</PageTitle>
 
-<p class="mb-4">
-    Monitor your virtual key usage, spending patterns, and budget allocation across all your keys.
-</p>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="vkd-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-chart-bar me-3"></i>Virtual Keys Dashboard
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Monitor usage patterns, spending analytics, and budget allocation across all your virtual keys
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="vkd-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-key me-2"></i>
+                                <span class="small">@totalKeys Total Keys</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-dollar-sign me-2"></i>
+                                <span class="small">$@totalSpend.ToString("N2") Total Spend</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger mb-4" role="alert">@errorMessage</div>
 }
 
-@if (isLoading)
-{
-    <div class="d-flex flex-column align-items-center p-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-4">Loading dashboard data...</p>
-    </div>
-}
-else
-{
-    <div class="row">
-        <div class="col-12 col-sm-6 col-md-3 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body p-4 d-flex flex-column align-items-center">
-                    <h3>@totalKeys</h3>
-                    <p class="text-secondary">Total Keys</p>
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="vkd-loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
+            <p class="mt-3 text-muted fw-medium">Loading dashboard data...</p>
         </div>
-        <div class="col-12 col-sm-6 col-md-3 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body p-4 d-flex flex-column align-items-center">
-                    <h3>@activeKeys</h3>
-                    <p class="text-secondary">Active Keys</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-3 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body p-4 d-flex flex-column align-items-center">
-                    <h3>$@totalSpend.ToString("N2")</h3>
-                    <p class="text-secondary">Total Spend</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-3 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body p-4 d-flex flex-column align-items-center">
-                    <h3>@totalRequests</h3>
-                    <p class="text-secondary">Total Requests</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12 col-lg-8 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center p-3">
-                    <h6 class="mb-0">Spending by Key</h6>
-                    <div>
-                        <label for="timeRange" class="form-label visually-hidden">Time Range</label>
-                        <select id="timeRange" class="form-select form-select-sm" style="min-width: 150px;" @bind="timeRange">
-                            <option value="7">Last 7 Days</option>
-                            <option value="30">Last 30 Days</option>
-                            <option value="90">Last 90 Days</option>
-                            <option value="365">Last Year</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <div style="position: relative; height:300px; width:100%">
-                        <!-- This div will be used for the chart -->
-                        <canvas id="spendingChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-body p-4">
-                    <h6 class="mb-4">Keys Approaching Budget Limits</h6>
-                    
-                    @if (highUsageKeys.Count == 0)
-                    {
-                        <div class="d-flex flex-column align-items-center p-4">
-                            <i class="fa fa-check-circle text-success fa-2x"></i>
-                            <p class="mt-2">No keys approaching budget limits</p>
+    }
+    else
+    {
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-12 col-sm-6 col-lg-3 mb-4">
+                <div class="card vkd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="vkd-stat-icon mb-3">
+                            <i class="fa fa-key text-primary fa-2x"></i>
                         </div>
-                    }
-                    else
-                    {
-                        <ul class="list-group list-group-flush">
-                            @foreach (var key in highUsageKeys)
-                            {
-                                <li class="list-group-item p-2">
-                                    <a href="@($"/virtualkeys/edit/{key.Id}")" class="text-decoration-none">
-                                        <div style="width: 100%;">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="fw-medium">@key.KeyName</span>
-                                                <small>@GetBudgetUsagePercentage(key)%</small>
+                        <h3 class="vkd-stat-number text-dark mb-2">@totalKeys</h3>
+                        <p class="vkd-stat-label text-muted mb-0">Total Keys</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-4">
+                <div class="card vkd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="vkd-stat-icon mb-3">
+                            <i class="fa fa-check-circle text-success fa-2x"></i>
+                        </div>
+                        <h3 class="vkd-stat-number text-dark mb-2">@activeKeys</h3>
+                        <p class="vkd-stat-label text-muted mb-0">Active Keys</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-4">
+                <div class="card vkd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="vkd-stat-icon mb-3">
+                            <i class="fa fa-dollar-sign text-warning fa-2x"></i>
+                        </div>
+                        <h3 class="vkd-stat-number text-dark mb-2">$@totalSpend.ToString("N2")</h3>
+                        <p class="vkd-stat-label text-muted mb-0">Total Spend</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3 mb-4">
+                <div class="card vkd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="vkd-stat-icon mb-3">
+                            <i class="fa fa-activity text-info fa-2x"></i>
+                        </div>
+                        <h3 class="vkd-stat-number text-dark mb-2">@totalRequests</h3>
+                        <p class="vkd-stat-label text-muted mb-0">Total Requests</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Analytics -->
+        <div class="row">
+            <div class="col-12 col-lg-8 mb-4">
+                <div class="card vkd-chart-card border-0 shadow-lg rounded-4">
+                    <div class="card-header vkd-card-header border-0 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-dark">
+                            <i class="fa fa-chart-line me-2 text-primary"></i>Spending Analytics
+                        </h5>
+                        <div>
+                            <label for="timeRange" class="form-label visually-hidden">Time Range</label>
+                            <select id="timeRange" class="form-select vkd-time-select" @bind="timeRange">
+                                <option value="7">Last 7 Days</option>
+                                <option value="30">Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                                <option value="365">Last Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="vkd-chart-container">
+                            <canvas id="spendingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4 mb-4">
+                <div class="card vkd-budget-card border-0 shadow-lg rounded-4">
+                    <div class="card-header vkd-card-header border-0">
+                        <h5 class="mb-0 fw-bold text-dark">
+                            <i class="fa fa-exclamation-triangle me-2 text-warning"></i>Budget Alerts
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        @if (highUsageKeys.Count == 0)
+                        {
+                            <div class="vkd-empty-budget text-center py-4">
+                                <div class="vkd-empty-icon mb-3">
+                                    <i class="fa fa-check-circle text-success fa-3x opacity-75"></i>
+                                </div>
+                                <h6 class="text-dark mb-2">All Clear!</h6>
+                                <p class="text-muted small mb-0">No keys approaching budget limits</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="vkd-budget-list">
+                                @foreach (var key in highUsageKeys)
+                                {
+                                    <div class="vkd-budget-item mb-3">
+                                        <a href="@($"/virtualkeys/edit/{key.Id}")" class="text-decoration-none">
+                                            <div class="vkd-budget-content p-3 rounded-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="fw-medium text-dark">@key.KeyName</span>
+                                                    <span class="badge vkd-budget-badge">@GetBudgetUsagePercentage(key)%</span>
+                                                </div>
+                                                <div class="progress vkd-budget-progress mb-2">
+                                                    <div class="progress-bar @GetBudgetProgressColorClass(key)" 
+                                                         role="progressbar" 
+                                                         style="width: @GetBudgetUsagePercentage(key)%" 
+                                                         aria-valuenow="@GetBudgetUsagePercentage(key)" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100"></div>
+                                                </div>
+                                                <div class="d-flex justify-content-between">
+                                                    <small class="text-muted">
+                                                        <i class="fa fa-dollar-sign me-1"></i>$@key.CurrentSpend.ToString("N2")
+                                                    </small>
+                                                    <small class="text-muted">
+                                                        Limit: $@key.MaxBudget?.ToString("N2")
+                                                    </small>
+                                                </div>
                                             </div>
-                                            <div class="progress my-1" style="height: 4px;">
-                                                <div class="progress-bar @GetBudgetProgressColorClass(key)" 
-                                                     role="progressbar" 
-                                                     style="width: @GetBudgetUsagePercentage(key)%" 
-                                                     aria-valuenow="@GetBudgetUsagePercentage(key)" 
-                                                     aria-valuemin="0" 
-                                                     aria-valuemax="100"></div>
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Overview Table -->
+        <div class="card vkd-table-card border-0 shadow-lg rounded-4 mt-4">
+            <div class="card-header vkd-card-header border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="fa fa-table me-2 text-primary"></i>Key Usage Overview
+                </h5>
+                <button type="button" class="btn vkd-btn-outline-primary" @onclick="RefreshData">
+                    <i class="fa fa-sync-alt me-2"></i>Refresh
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table vkd-table align-middle">
+                    <thead class="vkd-table-header">
+                        <tr>
+                            <th class="border-0 fw-bold">Key Name</th>
+                            <th class="border-0 fw-bold">Status</th>
+                            <th class="border-0 fw-bold">Budget</th>
+                            <th class="border-0 fw-bold">Requests</th>
+                            <th class="border-0 fw-bold">Avg Response</th>
+                            <th class="border-0 fw-bold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in virtualKeys.OrderByDescending(k => k.CurrentSpend))
+                        {
+                            <tr class="vkd-table-row" @onclick="() => SelectKey(item.Id)">
+                                <td class="border-0" data-label="Key Name">
+                                    <div class="vkd-key-name">
+                                        <strong class="text-dark">@item.KeyName</strong>
+                                    </div>
+                                </td>
+                                <td class="border-0" data-label="Status">
+                                    @if (item.IsEnabled)
+                                    {
+                                        <span class="badge vkd-badge-success">
+                                            <i class="fa fa-check me-1"></i>Active
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge vkd-badge-danger">
+                                            <i class="fa fa-times me-1"></i>Disabled
+                                        </span>
+                                    }
+                                    @if (item.ExpiresAt.HasValue && item.ExpiresAt.Value < DateTime.UtcNow)
+                                    {
+                                        <span class="badge vkd-badge-secondary ms-1">
+                                            <i class="fa fa-clock me-1"></i>Expired
+                                        </span>
+                                    }
+                                </td>
+                                <td class="border-0" data-label="Budget">
+                                    @if (item.MaxBudget.HasValue)
+                                    {
+                                        <div class="vkd-budget-display">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <small class="fw-medium text-dark">$@item.CurrentSpend.ToString("N2")</small>
+                                                <small class="text-muted">$@item.MaxBudget.Value.ToString("N2")</small>
                                             </div>
-                                            <small class="text-secondary">
-                                                $@key.CurrentSpend.ToString("N2") of $@key.MaxBudget?.ToString("N2")
+                                            <div class="progress vkd-progress">
+                                                <div class="progress-bar @GetBudgetProgressColorClass(item)" 
+                                                    role="progressbar" 
+                                                    style="width: @GetBudgetUsagePercentage(item)%" 
+                                                    aria-valuenow="@GetBudgetUsagePercentage(item)" 
+                                                    aria-valuemin="0" 
+                                                    aria-valuemax="100"></div>
+                                            </div>
+                                            <small class="text-muted">@(item.BudgetDuration ?? "Total")</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            <i class="fa fa-infinity me-1"></i>No limit
+                                        </span>
+                                    }
+                                </td>
+                                <td class="border-0" data-label="Requests">
+                                    @{
+                                        var keySummary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
+                                    }
+                                    @if (keySummary != null)
+                                    {
+                                        <div class="vkd-requests-display">
+                                            <div class="fw-medium text-dark">@(keySummary.TotalRequests)</div>
+                                            <small class="text-muted">
+                                                <i class="fa fa-clock me-1"></i>@(keySummary.RecentRequests) last 24h
                                             </small>
                                         </div>
-                                    </a>
-                                </li>
-                            }
-                        </ul>
-                    }
-                </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No data</span>
+                                    }
+                                </td>
+                                <td class="border-0" data-label="Avg Response">
+                                    @{
+                                        var summary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
+                                    }
+                                    @if (summary != null && summary.TotalRequests > 0)
+                                    {
+                                        <span class="vkd-response-time text-info fw-medium">
+                                            <i class="fa fa-tachometer-alt me-1"></i>@summary.AverageResponseTime.ToString("N0")ms
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="border-0" data-label="Actions">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn vkd-btn-outline-primary" @onclick="@((MouseEventArgs e) => { NavigateToEdit(item.Id); return Task.CompletedTask; })" title="Edit Key">
+                                            <i class="fa fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn vkd-btn-outline-info" @onclick="@((MouseEventArgs e) => { ViewDetails(item.Id); return Task.CompletedTask; })" title="View Details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
 
-    <div class="card shadow-sm mt-4">
-        <div class="card-header d-flex justify-content-between align-items-center p-3">
-            <h6 class="mb-0">Key Usage Overview</h6>
-            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
-                <i class="fa fa-refresh me-1"></i>
-                Refresh
-            </button>
-        </div>
-        
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Key Name</th>
-                        <th>Status</th>
-                        <th>Budget</th>
-                        <th>Requests</th>
-                        <th>Avg Response</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in virtualKeys.OrderByDescending(k => k.CurrentSpend))
-                    {
-                        <tr style="cursor: pointer" @onclick="() => SelectKey(item.Id)">
-                            <td data-label="Key Name">@item.KeyName</td>
-                            <td data-label="Status">
-                                @if (item.IsEnabled)
-                                {
-                                    <span class="badge bg-success">Active</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Disabled</span>
-                                }
-                                @if (item.ExpiresAt.HasValue && item.ExpiresAt.Value < DateTime.UtcNow)
-                                {
-                                    <span class="badge bg-secondary ms-1">Expired</span>
-                                }
-                            </td>
-                            <td data-label="Budget">
-                                @if (item.MaxBudget.HasValue)
-                                {
-                                    <div>
-                                        <div class="d-flex justify-content-between">
-                                            <small>$@item.CurrentSpend.ToString("N2")</small>
-                                            <small>$@item.MaxBudget.Value.ToString("N2")</small>
-                                        </div>
-                                        <div class="progress my-1" style="height: 4px;">
-                                            <div class="progress-bar @GetBudgetProgressColorClass(item)" 
-                                                role="progressbar" 
-                                                style="width: @GetBudgetUsagePercentage(item)%" 
-                                                aria-valuenow="@GetBudgetUsagePercentage(item)" 
-                                                aria-valuemin="0" 
-                                                aria-valuemax="100"></div>
-                                        </div>
-                                        <small class="text-secondary">@(item.BudgetDuration ?? "Total")</small>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <span>No limit</span>
-                                }
-                            </td>
-                            <td data-label="Requests">
-                                @{
-                                    var keySummary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
-                                }
-                                @if (keySummary != null)
-                                {
-                                    <div>
-                                        <div>@(keySummary.TotalRequests)</div>
-                                        <small class="text-secondary">@(keySummary.RecentRequests) in last 24h</small>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <span>No data</span>
-                                }
-                            </td>
-                            <td data-label="Avg Response">
-                                @{
-                                    var summary = keySummaries.FirstOrDefault(k => k.VirtualKeyId == item.Id);
-                                }
-                                @if (summary != null && summary.TotalRequests > 0)
-                                {
-                                    <span>@summary.AverageResponseTime.ToString("N0")ms</span>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                            <td data-label="Actions">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="@((MouseEventArgs e) => { NavigateToEdit(item.Id); return Task.CompletedTask; })">Edit</button>
-                                    <button type="button" class="btn btn-sm btn-outline-info" @onclick="@((MouseEventArgs e) => { ViewDetails(item.Id); return Task.CompletedTask; })">Details</button>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    @if (selectedKeyId > 0)
-    {
-        <VirtualKeyUsageDetails KeyId="@selectedKeyId" />
+        @if (selectedKeyId > 0)
+        {
+            <VirtualKeyUsageDetails KeyId="@selectedKeyId" />
+        }
     }
-}
+</div>
+
+<!-- Custom CSS Styling -->
+<style>
+    .vkd-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+
+    .vkd-stats .stat-item {
+        display: inline-block;
+        margin-right: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .vkd-stat-card {
+        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    }
+
+    .vkd-stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .vkd-stat-icon {
+        transition: all 0.3s ease;
+    }
+
+    .vkd-stat-card:hover .vkd-stat-icon {
+        transform: scale(1.1);
+    }
+
+    .vkd-stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .vkd-stat-label {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.875rem;
+    }
+
+    .vkd-chart-card,
+    .vkd-budget-card,
+    .vkd-table-card {
+        transition: all 0.3s ease;
+    }
+
+    .vkd-chart-card:hover,
+    .vkd-budget-card:hover,
+    .vkd-table-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .vkd-card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 1.5rem;
+    }
+
+    .vkd-chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    .vkd-time-select {
+        border-radius: 0.75rem;
+        border: 2px solid #e8f4fd;
+        padding: 0.5rem 1rem;
+        min-width: 150px;
+        transition: all 0.3s ease;
+    }
+
+    .vkd-time-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .vkd-empty-budget {
+        padding: 2rem 1rem;
+    }
+
+    .vkd-empty-icon i {
+        animation: gentle-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-pulse {
+        0%, 100% { opacity: 0.75; }
+        50% { opacity: 1; }
+    }
+
+    .vkd-budget-item {
+        transition: all 0.3s ease;
+    }
+
+    .vkd-budget-content {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border: 1px solid #e8f4fd;
+        transition: all 0.3s ease;
+    }
+
+    .vkd-budget-content:hover {
+        background: linear-gradient(135deg, #e8f4fd 0%, #dbeafe 100%);
+        border-color: #667eea;
+        transform: translateX(5px);
+    }
+
+    .vkd-budget-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vkd-budget-progress {
+        height: 6px;
+        border-radius: 0.5rem;
+        background-color: #f1f5f9;
+        overflow: hidden;
+    }
+
+    .vkd-budget-progress .progress-bar {
+        border-radius: 0.5rem;
+        transition: width 0.6s ease;
+    }
+
+    .vkd-table-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+    }
+
+    .vkd-table-header th {
+        color: #4a5568;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .vkd-table-row {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+    }
+
+    .vkd-table-row:hover {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        transform: translateX(2px);
+    }
+
+    .vkd-table-row td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    .vkd-badge-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vkd-badge-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vkd-badge-secondary {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vkd-progress {
+        height: 6px;
+        border-radius: 0.5rem;
+        background-color: #f1f5f9;
+        overflow: hidden;
+    }
+
+    .vkd-progress .progress-bar {
+        border-radius: 0.5rem;
+        transition: width 0.6s ease;
+    }
+
+    .vkd-btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .vkd-btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .vkd-btn-outline-info {
+        border: 2px solid #06b6d4;
+        color: #06b6d4;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .vkd-btn-outline-info:hover {
+        background: #06b6d4;
+        border-color: #06b6d4;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .vkd-loading-spinner {
+        display: inline-block;
+        animation: gentle-bounce 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @@media (max-width: 768px) {
+        .vkd-header {
+            text-align: center;
+        }
+
+        .vkd-stats {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .vkd-stat-number {
+            font-size: 1.5rem;
+        }
+
+        .vkd-table {
+            font-size: 0.875rem;
+        }
+    }
+</style>
 
 @code {
     private bool isLoading = true;
@@ -291,13 +629,28 @@ else
             // Find keys approaching their budget limit
             highUsageKeys = virtualKeys
                 .Where(k => k.MaxBudget.HasValue && 
+                           k.MaxBudget.Value > 0 &&
                            k.IsEnabled && 
                            (k.CurrentSpend / k.MaxBudget.Value) >= VirtualKeyConstants.BudgetWarningThresholds.Low / 100m)
                 .OrderByDescending(k => k.CurrentSpend / k.MaxBudget!.Value)
                 .ToList();
                 
             // Load usage summaries for all keys
-            keySummaries = await RequestLogService.GetAllKeysUsageSummaryAsync() ?? new List<KeyAggregateSummary>();
+            var usageStats = await AdminApiClient.GetVirtualKeyUsageStatisticsAsync();
+            keySummaries = usageStats?.Select(s => new KeyAggregateSummary
+            {
+                VirtualKeyId = s.VirtualKeyId,
+                KeyName = s.VirtualKeyName,
+                TotalRequests = s.TotalRequests,
+                TotalCost = s.TotalCost,
+                TotalInputTokens = s.TotalInputTokens,
+                TotalOutputTokens = s.TotalOutputTokens,
+                AverageResponseTime = s.AverageResponseTimeMs,
+                RecentRequests = s.LastDayRequests,
+                CurrentSpend = s.Cost,
+                LastUsed = s.LastUsedAt,
+                IsActive = true // Default to active
+            }).ToList() ?? new List<KeyAggregateSummary>();
             totalRequests = keySummaries?.Sum(k => k.TotalRequests) ?? 0;
         }
         catch (Exception ex)
@@ -340,7 +693,7 @@ else
 
     private string GetBudgetProgressColorClass(VirtualKeyDto key)
     {
-        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value <= 0)
             return "bg-secondary";
             
         var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;
@@ -357,7 +710,7 @@ else
     
     private int GetBudgetUsagePercentage(VirtualKeyDto key)
     {
-        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value <= 0)
             return 0;
             
         var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;

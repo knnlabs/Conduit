@@ -248,7 +248,13 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             int keyId = 1;
-
+            
+            // Setup GetByIdAsync to return a virtual key
+            _mockVirtualKeyRepository
+                .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VirtualKey { Id = keyId, KeyName = "Test Key" });
+                
+            // Setup DeleteAsync to return true
             _mockVirtualKeyRepository
                 .Setup(r => r.DeleteAsync(keyId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);

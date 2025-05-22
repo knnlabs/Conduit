@@ -162,6 +162,11 @@ public class LLMClientFactory : ILLMClientFactory
                 var openRouterLogger = _loggerFactory.CreateLogger<OpenRouterClient>();
                 return new OpenRouterClient(credentials, modelId, openRouterLogger, _httpClientFactory);
             
+            case "openai-compatible":
+            case "openaicompatible":
+                var openAiCompatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
+                return new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory);
+            
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");
         }

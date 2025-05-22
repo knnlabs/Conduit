@@ -1,10 +1,12 @@
-@using ConduitLLM.WebUI.Data
 @using ConduitLLM.WebUI.Services
-@using Microsoft.EntityFrameworkCore
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Models
 @using Microsoft.Extensions.Logging 
 @using System.Text.Json
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
-@inject ProviderStatusService ProviderStatusService
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.DTOs
+@inject IAdminApiClient AdminApiClient
+@inject IProviderStatusService ProviderStatusService
 @inject NavigationManager NavigationManager
 @inject ILogger<GuidedSetupWizard> Logger
 
@@ -459,9 +461,7 @@
             }
 
             // Check if this provider already exists before invoking the callback
-            using var dbContext = await ConfigDbContextFactory.CreateDbContextAsync(); 
-            var existingProvider = await dbContext.ProviderCredentials
-                .FirstOrDefaultAsync(p => p.ProviderName == providerModel!.ProviderName);
+            var existingProvider = await AdminApiClient.GetProviderCredentialByNameAsync(providerModel!.ProviderName);
 
             if (existingProvider != null)
             {

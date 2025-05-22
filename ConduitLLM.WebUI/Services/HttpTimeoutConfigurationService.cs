@@ -1,144 +1,119 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using ConduitLLM.Providers.Configuration;
-using ConduitLLM.WebUI.Data;
-using Microsoft.EntityFrameworkCore;
+using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 
-namespace ConduitLLM.WebUI.Services;
-
-/// <summary>
-/// Service for configuring HTTP request timeout settings
-/// </summary>
-public class HttpTimeoutConfigurationService
+namespace ConduitLLM.WebUI.Services
 {
-    // Inject the factory for the CORRECT DbContext that manages GlobalSettings
-    private readonly IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> _configContextFactory; 
-    private readonly ILogger<HttpTimeoutConfigurationService> _logger;
-    private readonly IOptionsMonitor<TimeoutOptions> _options;
-
     /// <summary>
-    /// Creates a new instance of the HttpTimeoutConfigurationService
+    /// Service that retrieves HTTP timeout configuration from the Admin API.
     /// </summary>
-    /// <param name="dbContextFactory">Factory for creating database contexts</param>
-    /// <param name="logger">Logger for logging information</param>
-    /// <param name="options">Current timeout options</param>
-    // Update constructor signature
-    public HttpTimeoutConfigurationService(
-        IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> configContextFactory, 
-        ILogger<HttpTimeoutConfigurationService> logger,
-        IOptionsMonitor<TimeoutOptions> options)
+    public class HttpTimeoutConfigurationService : IHttpTimeoutConfigurationService
     {
-        _configContextFactory = configContextFactory ?? throw new ArgumentNullException(nameof(configContextFactory)); // Assign the correct factory
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
+        private readonly IAdminApiClient _adminApiClient;
+        private readonly ILogger<HttpTimeoutConfigurationService> _logger;
+        private TimeoutOptions _currentTimeoutOptions;
 
-    /// <summary>
-    /// Gets the current timeout configuration
-    /// </summary>
-    /// <returns>The current timeout configuration</returns>
-    public TimeoutOptions GetTimeoutConfiguration()
-    {
-        return _options.CurrentValue;
-    }
-
-    /// <summary>
-    /// Updates the timeout configuration settings in the database
-    /// </summary>
-    /// <param name="timeoutOptions">The new timeout options to apply</param>
-    /// <returns>A task representing the asynchronous operation</returns>
-    public async Task UpdateTimeoutConfigurationAsync(TimeoutOptions timeoutOptions)
-    {
-        if (timeoutOptions == null)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="HttpTimeoutConfigurationService"/> class.
+        /// </summary>
+        /// <param name="adminApiClient">The Admin API client.</param>
+        /// <param name="logger">The logger.</param>
+        public HttpTimeoutConfigurationService(
+            IAdminApiClient adminApiClient,
+            ILogger<HttpTimeoutConfigurationService> logger)
         {
-            throw new ArgumentNullException(nameof(timeoutOptions));
+            _adminApiClient = adminApiClient;
+            _logger = logger;
+            _currentTimeoutOptions = new TimeoutOptions(); // Initialize with defaults
         }
 
-        try
+        /// <inheritdoc />
+        public async Task<bool> InitializeAsync()
         {
-            // Use the correct context factory
-            using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
+            _logger.LogInformation("Initializing HTTP timeout configuration from Admin API");
             
-            // Update timeout seconds
-            await UpdateSettingAsync(dbContext, "HttpTimeout:TimeoutSeconds", timeoutOptions.TimeoutSeconds.ToString());
-            
-            // Update enable logging
-            await UpdateSettingAsync(dbContext, "HttpTimeout:EnableTimeoutLogging", timeoutOptions.EnableTimeoutLogging.ToString());
-
-            await dbContext.SaveChangesAsync();
-
-            _logger.LogInformation("HTTP timeout settings updated: TimeoutSeconds={TimeoutSeconds}, EnableLogging={EnableLogging}",
-                timeoutOptions.TimeoutSeconds, timeoutOptions.EnableTimeoutLogging);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating HTTP timeout settings in database");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Loads HTTP timeout settings from the database and updates the application configuration.
-    /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task LoadSettingsFromDatabaseAsync()
-    {
-        try
-        {
-            // Use the correct context factory
-            using var dbContext = await _configContextFactory.CreateDbContextAsync(); 
-            
-            // Get all timeout-related settings
-            var settings = await dbContext.GlobalSettings
-                .Where(s => s.Key.StartsWith("HttpTimeout:"))
-                .ToListAsync();
-
-            var currentOptions = _options.CurrentValue;
-            
-            // Try to parse TimeoutSeconds
-            var timeoutSecondsSetting = settings.FirstOrDefault(s => s.Key == "HttpTimeout:TimeoutSeconds");
-            if (timeoutSecondsSetting != null && int.TryParse(timeoutSecondsSetting.Value, out int timeoutSeconds))
+            try
             {
-                currentOptions.TimeoutSeconds = timeoutSeconds;
+                var result = await _adminApiClient.InitializeHttpTimeoutConfigurationAsync();
+                
+                if (result)
+                {
+                    _logger.LogInformation("HTTP timeout configuration initialized successfully");
+                    await LoadSettingsFromDatabaseAsync();
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to initialize HTTP timeout configuration");
+                }
+                
+                return result;
             }
-            
-            // Try to parse EnableTimeoutLogging
-            var enableLoggingSetting = settings.FirstOrDefault(s => s.Key == "HttpTimeout:EnableTimeoutLogging");
-            if (enableLoggingSetting != null && bool.TryParse(enableLoggingSetting.Value, out bool enableLogging))
+            catch (System.Exception ex)
             {
-                currentOptions.EnableTimeoutLogging = enableLogging;
+                _logger.LogError(ex, "Error initializing HTTP timeout configuration");
+                return false;
             }
-
-            _logger.LogInformation("HTTP timeout settings loaded from database: TimeoutSeconds={TimeoutSeconds}s, EnableLogging={EnableLogging}", 
-                currentOptions.TimeoutSeconds, 
-                currentOptions.EnableTimeoutLogging);
         }
-        catch (Exception ex)
+
+        /// <inheritdoc />
+        public async Task UpdateTimeoutConfigurationAsync(TimeoutOptions timeoutOptions)
         {
-            _logger.LogError(ex, "Error loading HTTP timeout settings from database");
+            _logger.LogInformation("Updating HTTP timeout configuration");
+            
+            try
+            {
+                // Save to global settings via admin API
+                await _adminApiClient.SetSettingAsync("HttpTimeout:TimeoutSeconds", timeoutOptions.TimeoutSeconds.ToString());
+                await _adminApiClient.SetSettingAsync("HttpTimeout:EnableTimeoutLogging", timeoutOptions.EnableTimeoutLogging.ToString());
+                
+                // Update the current options
+                _currentTimeoutOptions = timeoutOptions;
+                
+                _logger.LogInformation("HTTP timeout configuration updated successfully");
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error updating HTTP timeout configuration");
+                throw;
+            }
         }
-    }
-
-    // Update DbContext type in parameter
-    private async Task UpdateSettingAsync(ConduitLLM.Configuration.ConfigurationDbContext dbContext, string key, string value) 
-    {
-        var setting = await dbContext.GlobalSettings.FirstOrDefaultAsync(s => s.Key == key);
         
-        if (setting == null)
+        /// <inheritdoc />
+        public async Task LoadSettingsFromDatabaseAsync()
         {
-            // Create new setting if it doesn't exist
-            // Use the correct GlobalSetting entity type
-            setting = new ConduitLLM.Configuration.Entities.GlobalSetting { Key = key, Value = value }; 
-            dbContext.GlobalSettings.Add(setting);
+            _logger.LogInformation("Loading HTTP timeout settings from database");
+            
+            try
+            {
+                var timeoutSeconds = await _adminApiClient.GetSettingAsync("HttpTimeout:TimeoutSeconds");
+                var enableTimeoutLogging = await _adminApiClient.GetSettingAsync("HttpTimeout:EnableTimeoutLogging");
+                
+                var options = new TimeoutOptions();
+                
+                if (!string.IsNullOrEmpty(timeoutSeconds) && int.TryParse(timeoutSeconds, out var timeoutValue))
+                {
+                    options.TimeoutSeconds = timeoutValue;
+                }
+                
+                if (!string.IsNullOrEmpty(enableTimeoutLogging) && bool.TryParse(enableTimeoutLogging, out var enableLoggingValue))
+                {
+                    options.EnableTimeoutLogging = enableLoggingValue;
+                }
+                
+                _currentTimeoutOptions = options;
+                _logger.LogInformation("HTTP timeout settings loaded from database");
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error loading HTTP timeout settings from database");
+            }
         }
-        else
+        
+        /// <inheritdoc />
+        public TimeoutOptions GetTimeoutConfiguration()
         {
-            // Update existing setting
-            setting.Value = value;
-            dbContext.GlobalSettings.Update(setting);
+            return _currentTimeoutOptions;
         }
     }
 }

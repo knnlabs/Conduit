@@ -1,11 +1,11 @@
 @page "/about"
 @using System.Reflection
 @using ConduitLLM.Core
-@using Microsoft.EntityFrameworkCore
 @using ConduitLLM.Configuration
 @using ConduitLLM.WebUI.Services
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.Interfaces
 @inject VersionCheckService VersionCheckService
+@rendermode InteractiveServer
 
 <PageTitle>About ConduitLLM</PageTitle>
 
