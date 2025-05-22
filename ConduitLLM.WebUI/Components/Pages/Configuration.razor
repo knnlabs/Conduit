@@ -667,7 +667,7 @@
     private string? deleteErrorMessage;
     
     private readonly List<string> _supportedProviders = new List<string> {
-        "OpenAI", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
+        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
     };
     
     protected override async Task OnInitializedAsync()
@@ -847,16 +847,11 @@
         }
     }
 
-    private async Task LaunchGuidedSetup(string providerName) 
+    private void LaunchGuidedSetup(string providerName) 
     {
         try
         {
             Logger.LogDebug("LaunchGuidedSetup called for provider: {ProviderName}", providerName);
-            
-            // Show manual setup message since guided setup requires direct DB access
-            await JSRuntime.InvokeVoidAsync("alert", 
-                $"Guided setup for {providerName} is currently unavailable because direct database access is disabled. " +
-                "Please use the Admin API to create provider credentials.");
             
             // Navigate to the provider edit page
             NavigationManager.NavigateTo("/configuration/provider/edit");
@@ -924,6 +919,7 @@
         return provider switch
         {
             "OpenAI" => "Connect to GPT-3.5, GPT-4, and other OpenAI models",
+            "OpenAI Compatible" => "Connect to any service with an OpenAI-compatible API (Requires Base URL)",
             "Anthropic" => "Connect to Claude models for advanced reasoning",
             "Cohere" => "Connect to Cohere's command models",
             "Google" => "Connect to Google AI models like Gemini",
