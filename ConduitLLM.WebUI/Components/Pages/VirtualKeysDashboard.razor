@@ -5,10 +5,9 @@
 @using ConduitLLM.Configuration.Constants
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs
-@using Microsoft.EntityFrameworkCore
 @using System.Globalization
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
-@inject ConduitLLM.WebUI.Interfaces.IRequestLogService RequestLogService
+@inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeysDashboard> Logger
 @rendermode InteractiveServer
@@ -296,7 +295,21 @@ else
                 .ToList();
                 
             // Load usage summaries for all keys
-            keySummaries = await RequestLogService.GetAllKeysUsageSummaryAsync() ?? new List<KeyAggregateSummary>();
+            var usageStats = await AdminApiClient.GetVirtualKeyUsageStatisticsAsync();
+            keySummaries = usageStats?.Select(s => new KeyAggregateSummary
+            {
+                VirtualKeyId = s.VirtualKeyId,
+                KeyName = s.VirtualKeyName,
+                TotalRequests = s.TotalRequests,
+                TotalCost = s.TotalCost,
+                TotalInputTokens = s.TotalInputTokens,
+                TotalOutputTokens = s.TotalOutputTokens,
+                AverageResponseTime = s.AverageResponseTimeMs,
+                RecentRequests = s.LastDayRequests,
+                CurrentSpend = s.Cost,
+                LastUsed = s.LastUsedAt,
+                IsActive = true // Default to active
+            }).ToList() ?? new List<KeyAggregateSummary>();
             totalRequests = keySummaries?.Sum(k => k.TotalRequests) ?? 0;
         }
         catch (Exception ex)

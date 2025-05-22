@@ -64,7 +64,7 @@ public class VirtualKeyMaintenanceService : BackgroundService
             // Create a new scope for operations
             using var scope = _serviceProvider.CreateScope();
             
-            // Use IVirtualKeyService adapter
+            // Use IVirtualKeyService interface
             var virtualKeyService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<NotificationService>();
 

@@ -3,9 +3,6 @@
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
-@inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
-@inject ConduitLLM.WebUI.Interfaces.IModelProviderMappingService ModelMappingService
-@inject IAdminApiCacheService CacheService
 @inject IAdminApiClient AdminApiClient
 
 <div class="container-fluid mt-4">
@@ -191,11 +188,6 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <ConduitLLM.WebUI.Components.Shared.AdminApiCacheMetrics />
-        </div>
-    </div>
 
 </div>
 
@@ -334,12 +326,12 @@
         try
         {
             // Get provider info
-            var providers = await ProviderCredentialService.GetAllAsync();
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
             ProviderCount = providers.Count();
             Providers = providers.Select(p => p.ProviderName).ToList();
 
             // Get model mappings
-            var modelMappings = await ModelMappingService.GetAllAsync();
+            var modelMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             ModelCount = modelMappings.Count();
             Models = modelMappings.Select(m => $"{m.ModelId} → {m.ProviderId}/{m.ProviderModelId}").ToList();
         }

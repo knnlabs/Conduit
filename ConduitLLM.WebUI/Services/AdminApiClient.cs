@@ -19,8 +19,16 @@ namespace ConduitLLM.WebUI.Services
     /// <summary>
     /// Client for interacting with the Admin API endpoints.
     /// </summary>
-    public partial class AdminApiClient : IAdminApiClient
+    public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService
     {
+        // This method from IAdminApiClient is implemented in AdminApiClient.VirtualKeys.cs
+        // using the name GetVirtualKeyValidationResultAsync to avoid method name collision
+        // with IVirtualKeyService.ValidateVirtualKeyAsync
+        public async Task<VirtualKeyValidationResult?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
+        {
+            return await GetVirtualKeyValidationResultAsync(key, requestedModel);
+        }
+
         private readonly HttpClient _httpClient;
         private readonly ILogger<AdminApiClient> _logger;
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -402,6 +410,16 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/providerhealth/configurations/{Uri.EscapeDataString(providerName)}", config);
                 response.EnsureSuccessStatusCode();
+                
+                // Admin API returns 204 No Content for successful updates, not a ProviderHealthConfigurationDto
+                // So we need to fetch the updated record separately
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    // Fetch the updated provider health configuration to return it
+                    return await GetProviderHealthConfigurationByNameAsync(providerName);
+                }
+                
+                // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ProviderHealthConfigurationDto>(_jsonOptions);
             }
             catch (Exception ex)
@@ -535,6 +553,16 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/modelcosts/{id}", modelCost);
                 response.EnsureSuccessStatusCode();
+                
+                // Admin API returns 204 No Content for successful updates, not a ModelCostDto
+                // So we need to fetch the updated record separately
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    // Fetch the updated model cost to return it
+                    return await GetModelCostByIdAsync(id);
+                }
+                
+                // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ModelCostDto>(_jsonOptions);
             }
             catch (Exception ex)
@@ -767,6 +795,16 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/providercredentials/{id}", credential);
                 response.EnsureSuccessStatusCode();
+                
+                // Admin API returns 204 No Content for successful updates, not a ProviderCredentialDto
+                // So we need to fetch the updated record separately
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    // Fetch the updated provider credential to return it
+                    return await GetProviderCredentialByIdAsync(id);
+                }
+                
+                // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ProviderCredentialDto>(_jsonOptions);
             }
             catch (Exception ex)
@@ -977,6 +1015,16 @@ namespace ConduitLLM.WebUI.Services
                 // Use singular "ipfilter" to match the controller's route
                 var response = await _httpClient.PutAsJsonAsync($"api/ipfilter/{id}", ipFilter);
                 response.EnsureSuccessStatusCode();
+                
+                // Admin API returns 204 No Content for successful updates, not an IpFilterDto
+                // So we need to fetch the updated record separately
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    // Fetch the updated IP filter to return it
+                    return await GetIpFilterByIdAsync(id);
+                }
+                
+                // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<IpFilterDto>(_jsonOptions);
             }
             catch (Exception ex)
@@ -1426,6 +1474,102 @@ namespace ConduitLLM.WebUI.Services
 
         #endregion
 
+        #region IRouterService implementation
+
+        /// <summary>
+        /// Gets the current router instance
+        /// </summary>
+        /// <returns>The router instance or null if not configured</returns>
+        public ConduitLLM.Core.Interfaces.ILLMRouter? GetRouter()
+        {
+            // WebUI doesn't manage router instances directly - this is handled by the Admin API
+            return null;
+        }
+
+        /// <summary>
+        /// Gets all model deployments configured in the router
+        /// </summary>
+        /// <returns>List of model deployments</returns>
+        public async Task<List<ConduitLLM.Core.Models.Routing.ModelDeployment>> GetModelDeploymentsAsync()
+        {
+            return await GetAllModelDeploymentsAsync();
+        }
+
+        /// <summary>
+        /// Gets fallback configurations as a dictionary (IRouterService format)
+        /// </summary>
+        /// <returns>Dictionary of fallback configurations</returns>
+        public async Task<Dictionary<string, List<string>>> GetFallbackConfigurationsAsync()
+        {
+            var fallbacks = await GetAllFallbackConfigurationsAsync();
+            var result = new Dictionary<string, List<string>>();
+            
+            foreach (var fallback in fallbacks)
+            {
+                if (!string.IsNullOrEmpty(fallback.PrimaryModelDeploymentId))
+                {
+                    result[fallback.PrimaryModelDeploymentId] = fallback.FallbackModelDeploymentIds ?? new List<string>();
+                }
+            }
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Sets a fallback configuration (IRouterService format)
+        /// </summary>
+        /// <param name="primaryModel">The primary model name</param>
+        /// <param name="fallbackModels">List of fallback model names</param>
+        /// <returns>True if successful, false otherwise</returns>
+        public async Task<bool> SetFallbackConfigurationAsync(string primaryModel, List<string> fallbackModels)
+        {
+            var fallbackConfig = new ConduitLLM.Core.Models.Routing.FallbackConfiguration
+            {
+                PrimaryModelDeploymentId = primaryModel,
+                FallbackModelDeploymentIds = fallbackModels
+            };
+            
+            return await SetFallbackConfigurationAsync(fallbackConfig);
+        }
+
+        /// <summary>
+        /// Initializes the router from configuration
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation</returns>
+        public async Task InitializeRouterAsync()
+        {
+            // Router initialization is handled by the Admin API
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Gets the current router status including configuration and enabled state
+        /// </summary>
+        /// <returns>A RouterStatus object containing the configuration and enabled state</returns>  
+        public async Task<ConduitLLM.WebUI.Interfaces.RouterStatus> GetRouterStatusAsync()
+        {
+            try
+            {
+                var config = await GetRouterConfigAsync();
+                return new ConduitLLM.WebUI.Interfaces.RouterStatus
+                {
+                    Config = config,
+                    IsEnabled = config != null && config.FallbacksEnabled
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting router status from Admin API");
+                return new ConduitLLM.WebUI.Interfaces.RouterStatus
+                {
+                    Config = null,
+                    IsEnabled = false
+                };
+            }
+        }
+
+        #endregion
+
         #region Database Backup
 
         /// <inheritdoc />
@@ -1477,6 +1621,19 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error retrieving system information from Admin API");
                 return new { Error = "Failed to retrieve system information" };
             }
+        }
+
+        #endregion
+
+        #region Explicit Interface Implementations
+
+        /// <summary>
+        /// Explicit implementation for IRouterService.GetRouterConfigAsync to handle non-nullable return type
+        /// </summary>
+        async Task<ConduitLLM.Core.Models.Routing.RouterConfig> ConduitLLM.WebUI.Interfaces.IRouterService.GetRouterConfigAsync()
+        {
+            var result = await GetRouterConfigAsync();
+            return result ?? new ConduitLLM.Core.Models.Routing.RouterConfig();
         }
 
         #endregion

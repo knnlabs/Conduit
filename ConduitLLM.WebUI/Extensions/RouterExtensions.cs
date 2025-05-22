@@ -51,14 +51,15 @@ namespace ConduitLLM.WebUI.Extensions
             services.AddScoped<ILLMClientFactory, DefaultLLMClientFactory>();
 
             // Register router configuration repository
-            // Check if using Admin API before registering the DB router config repository
-            var useAdminApiStr = configuration["CONDUIT_USE_ADMIN_API"];
-            bool useAdminApi = string.IsNullOrEmpty(useAdminApiStr) || useAdminApiStr.ToLowerInvariant() != "false";
+            // WebUI always uses Admin API - no direct database access
             
-            // RouterOptionsService has been removed in favor of using the Admin API
-
-            // Register router service provider for management
-            services.AddScoped<IRouterService, Services.Providers.RouterServiceProvider>();
+            // Register router service via AdminApiClient
+            services.AddScoped<IRouterService>(sp => 
+            {
+                var adminApiClient = sp.GetRequiredService<IAdminApiClient>();
+                return (adminApiClient as IRouterService) 
+                    ?? throw new InvalidOperationException("AdminApiClient must implement IRouterService");
+            });
 
             // Register the model health check service 
             // (it uses IOptionsMonitor<RouterOptions> instead of RouterOptionsService)

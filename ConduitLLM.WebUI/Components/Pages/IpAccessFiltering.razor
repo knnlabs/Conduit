@@ -8,7 +8,7 @@
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Components.Shared
 @attribute [Authorize]
-@inject IIpFilterService IpFilterService
+@inject IAdminApiClient AdminApiClient
 @inject NotificationService NotificationService
 @inject ILogger<IpAccessFiltering> Logger
 @inject IJSRuntime JSRuntime
@@ -43,7 +43,7 @@
                                     EnabledDescription="IP filtering is active. Only allowed IP addresses can access the API."
                                     DisabledDescription="IP filtering is disabled. All IP addresses can access the API."
                                     IsEnabled="_settings.IsEnabled"
-                                    IsEnabledChanged="(value) => _settings.IsEnabled = value"
+                                    IsEnabledChanged="OnIpFilteringToggleChanged"
                                     EnabledButtonText="Disable"
                                     DisabledButtonText="Enable"
                                     EnabledBackgroundColor="#d4edda"
@@ -396,7 +396,7 @@
             StateHasChanged();
             
             // Load settings
-            _settings = await IpFilterService.GetIpFilterSettingsAsync();
+            _settings = await AdminApiClient.GetIpFilterSettingsAsync();
             
             // Convert excluded endpoints list to text
             _excludedEndpointsText = string.Join(Environment.NewLine, _settings.ExcludedEndpoints);
@@ -421,7 +421,7 @@
     {
         try
         {
-            var filters = await IpFilterService.GetAllFiltersAsync();
+            var filters = await AdminApiClient.GetAllIpFiltersAsync();
             _filters = filters.OrderBy(f => f.FilterType == IpFilterConstants.WHITELIST ? 0 : 1)
                              .ThenBy(f => f.IpAddressOrCidr)
                              .ToList();
@@ -433,6 +433,47 @@
         }
     }
     
+    private async Task OnIpFilteringToggleChanged(bool newValue)
+    {
+        try
+        {
+            // Update the IP filtering enabled status
+            _settings.IsEnabled = newValue;
+            
+            // Save the settings immediately
+            var success = await AdminApiClient.UpdateIpFilterSettingsAsync(_settings);
+            
+            if (success)
+            {
+                Logger.LogInformation("IP filtering enabled state changed to: {IsEnabled}", newValue);
+                NotificationService.AddNotification(NotificationType.Success, 
+                    $"IP filtering {(newValue ? "enabled" : "disabled")} successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to update IP filtering enabled state");
+                // Revert the setting if save failed
+                _settings.IsEnabled = !newValue;
+                NotificationService.AddNotification(NotificationType.Error, 
+                    "Failed to update IP filtering status");
+            }
+            
+            // Update UI to reflect the current state
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Log error and revert the UI state
+            Logger.LogError(ex, "Failed to toggle IP filtering state");
+            
+            // Revert the setting if an exception occurred
+            _settings.IsEnabled = !newValue;
+            NotificationService.AddNotification(NotificationType.Error, 
+                "Error updating IP filtering status", ex.Message);
+            StateHasChanged();
+        }
+    }
+
     private async Task SaveSettingsAsync()
     {
         try
@@ -444,7 +485,8 @@
                 .Where(e => !string.IsNullOrEmpty(e))
                 .ToList();
             
-            var (success, errorMessage) = await IpFilterService.UpdateIpFilterSettingsAsync(_settings);
+            var success = await AdminApiClient.UpdateIpFilterSettingsAsync(_settings);
+            var errorMessage = success ? null : "Failed to update IP filter settings";
             
             if (success)
             {
@@ -573,14 +615,16 @@
             if (_editingFilter is UpdateIpFilterDto updateFilterDto)
             {
                 // Update existing filter
-                (success, errorMessage) = await IpFilterService.UpdateFilterAsync(updateFilterDto);
+                var updateResult = await AdminApiClient.UpdateIpFilterAsync(updateFilterDto.Id, updateFilterDto);
+                success = updateResult != null;
+                errorMessage = success ? null : "Failed to update IP filter";
             }
             else if (_editingFilter is CreateIpFilterDto createFilterDto2)
             {
                 // Create new filter
-                var result = await IpFilterService.CreateFilterAsync(createFilterDto2);
-                success = result.Success;
-                errorMessage = result.ErrorMessage;
+                var result = await AdminApiClient.CreateIpFilterAsync(createFilterDto2);
+                success = result != null;
+                errorMessage = success ? null : "Failed to create IP filter";
             }
             else
             {
@@ -621,7 +665,8 @@
         
         try
         {
-            var (success, errorMessage) = await IpFilterService.DeleteFilterAsync(_filterToDelete.Id);
+            var success = await AdminApiClient.DeleteIpFilterAsync(_filterToDelete.Id);
+            var errorMessage = success ? null : "Failed to delete IP filter";
             
             if (success)
             {

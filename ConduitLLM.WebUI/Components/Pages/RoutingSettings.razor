@@ -7,8 +7,7 @@
 @using ConduitLLM.WebUI.Components.Shared
 @using Microsoft.Extensions.Logging
 @inject IRouterService RouterService
-@inject IModelProviderMappingService ModelProviderMappingService
-@inject IProviderCredentialService ProviderCredentialService
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<RoutingSettings> Logger
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -563,22 +562,30 @@ else
     {
         try
         {
-            StateHasChanged();
-            
-            // Create a router status update
-            var status = new RouterStatus
-            {
-                Config = _config,
-                IsEnabled = newState
-            };
-            
-            // Update the router status
+            // Update the router enabled state by modifying the configuration
+            _config.FallbacksEnabled = newState;
             _isEnabled = newState;
             
-            // If enabling, initialize the router to ensure it's properly set up
-            if (_isEnabled)
+            // Save the updated configuration
+            var success = await RouterService.UpdateRouterConfigAsync(_config);
+            
+            if (success)
             {
-                await RouterService.InitializeRouterAsync();
+                // If enabling, initialize the router to ensure it's properly set up
+                if (_isEnabled)
+                {
+                    await RouterService.InitializeRouterAsync();
+                }
+                
+                Logger.LogInformation("Router enabled state changed to: {IsEnabled}", newState);
+            }
+            else
+            {
+                Logger.LogWarning("Failed to update router enabled state");
+                // Revert the state if save failed
+                _config.FallbacksEnabled = !newState;
+                _isEnabled = !newState;
+                await ShowMessage("Failed to update router status", true);
             }
             
             // Update UI to reflect the current state
@@ -586,9 +593,12 @@ else
         }
         catch (Exception ex)
         {
-            // Log error but don't show popup
+            // Log error and show message
             Logger.LogError(ex, "Failed to toggle router state");
+            await ShowMessage("Failed to toggle router state: " + ex.Message, true);
+            
             // Revert the UI if an exception occurred
+            _config.FallbacksEnabled = !newState;
             _isEnabled = !newState;
             StateHasChanged();
         }
@@ -928,11 +938,11 @@ else
         try
         {
             // Load providers from AdminApiClient
-            var providers = await ProviderCredentialService.GetAllAsync();
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
             _availableProviders = providers.ToList();
             
             // Load model mappings from AdminApiClient
-            var mappings = await ModelProviderMappingService.GetAllAsync();
+            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             _availableModelMappings = mappings.ToList();
         }
         catch (Exception ex)

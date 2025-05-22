@@ -6,11 +6,11 @@
 @using Microsoft.JSInterop 
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
+@inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 
 @inject ILogger<VirtualKeys> Logger
-@rendermode InteractiveServer
+@* @rendermode InteractiveServer *@
 
 <div class="container container-xxl">
     <h3 class="mb-2">Virtual Keys Management</h3>
@@ -182,7 +182,7 @@
         try
         {
             errorMessage = null;
-            virtualKeys = await VirtualKeyService.ListVirtualKeysAsync();
+            virtualKeys = (await AdminApiClient.GetAllVirtualKeysAsync()).ToList();
         }
         catch (Exception ex)
         {
@@ -212,7 +212,7 @@
                 
             if (!confirmed) return;
 
-            var success = await VirtualKeyService.DeleteVirtualKeyAsync(id);
+            var success = await AdminApiClient.DeleteVirtualKeyAsync(id);
             if (success)
             {
                 await LoadDataAsync();
@@ -243,7 +243,7 @@
                 
             if (!confirmed) return;
 
-            var success = await VirtualKeyService.ResetSpendAsync(id);
+            var success = await AdminApiClient.ResetVirtualKeySpendAsync(id);
             if (success)
             {
                 await LoadDataAsync();

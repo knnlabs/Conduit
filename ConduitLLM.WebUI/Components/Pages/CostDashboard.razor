@@ -8,11 +8,10 @@
 @using ConduitLLM.WebUI.Extensions
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@inject ICostDashboardService CostDashboardService
-@rendermode InteractiveServer
+@inject IAdminApiClient AdminApiClient
+@* @rendermode InteractiveServer *@
 @implements IAsyncDisposable
 
 <div class="container container-xxl">
@@ -352,10 +351,12 @@
         try
         {
             // Load virtual keys
-            virtualKeys = await CostDashboardService.GetVirtualKeysAsync();
+            var vkList = await AdminApiClient.GetAllVirtualKeysAsync();
+            virtualKeys = vkList.ToList();
             
-            // Load model list
-            models = await CostDashboardService.GetAvailableModelsAsync();
+            // Load model list - get distinct models from Admin API
+            var distinctModels = await AdminApiClient.GetDistinctModelsAsync();
+            models = distinctModels.ToList();
         }
         catch (Exception ex)
         {
@@ -372,7 +373,7 @@
         try
         {
             // Load dashboard data
-            dashboardData = await CostDashboardService.GetDashboardDataAsync(
+            dashboardData = await AdminApiClient.GetCostDashboardAsync(
                 startDate, 
                 endDate, 
                 selectedVirtualKeyId == "all" ? null : !string.IsNullOrEmpty(selectedVirtualKeyId) ? int.Parse(selectedVirtualKeyId) : null,
@@ -497,7 +498,7 @@
             sb.AppendLine("Date,Model,VirtualKey,Requests,Cost");
             
             // Get detailed cost data for the current filter
-            var detailedData = await CostDashboardService.GetDetailedCostDataAsync(
+            var detailedData = await AdminApiClient.GetDetailedCostDataAsync(
                 startDate, 
                 endDate, 
                 selectedVirtualKeyId == "all" ? null : !string.IsNullOrEmpty(selectedVirtualKeyId) ? int.Parse(selectedVirtualKeyId) : null,
@@ -505,9 +506,12 @@
             );
             
             // Add data rows
-            foreach (var item in detailedData)
+            if (detailedData != null)
             {
-                sb.AppendLine($"{DateTime.Now:yyyy-MM-dd},{item.Name},{"-"},{1},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                foreach (var item in detailedData)
+                {
+                    sb.AppendLine($"{DateTime.Now:yyyy-MM-dd},{item.Name},{"-"},{1},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                }
             }
             
             // Create file name with current date

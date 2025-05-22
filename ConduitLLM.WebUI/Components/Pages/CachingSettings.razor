@@ -618,8 +618,29 @@
     // Handle the toggle changed event directly from the component
     private async Task OnToggleChanged(bool newValue)
     {
-        _isEnabled = newValue;
-        await SaveConfiguration();
+        try
+        {
+            // Update the cache enabled status and save it
+            await CacheStatusService.SetCacheEnabledAsync(newValue);
+            
+            _isEnabled = newValue;
+            Logger.LogInformation("Cache enabled state changed to: {IsEnabled}", newValue);
+            
+            // Refresh the statistics to reflect the change
+            await LoadCacheStatisticsAsync();
+            
+            // Update UI to reflect the current state
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Log error and revert the UI state
+            Logger.LogError(ex, "Failed to toggle cache state");
+            
+            // Revert the UI if an exception occurred
+            _isEnabled = !newValue;
+            StateHasChanged();
+        }
     }
     
     private async Task TestRedisConnection()

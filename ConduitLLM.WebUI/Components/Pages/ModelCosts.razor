@@ -4,7 +4,7 @@
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Extensions
 @using Microsoft.Extensions.Logging
-@inject ConduitLLM.WebUI.Interfaces.IModelCostService ModelCostService
+@inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<ModelCosts> Logger
 @rendermode InteractiveServer
@@ -233,7 +233,7 @@
 
         try
         {
-            modelCosts = await ModelCostService.GetAllModelCostsAsync();
+            modelCosts = await AdminApiClient.GetAllModelCostsAsync();
         }
         catch (Exception ex)
         {
@@ -342,13 +342,14 @@
                     ModelIdPattern = editingModelCost.ModelIdPattern,
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
-                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost
+                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage
                 };
                 
                 // Use extension method to set Description
                 createDto.SetDescription(editingModelCost.Description ?? string.Empty);
                 
-                await ModelCostService.CreateModelCostAsync(createDto);
+                await AdminApiClient.CreateModelCostAsync(createDto);
                 await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
             }
             else
@@ -360,13 +361,14 @@
                     ModelIdPattern = editingModelCost.ModelIdPattern,
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
-                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost
+                    EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage
                 };
                 
                 // Use extension method to set Description
                 updateDto.SetDescription(editingModelCost.Description ?? string.Empty);
                 
-                var result = await ModelCostService.UpdateModelCostAsync(editingModelCost.Id, updateDto);
+                var result = await AdminApiClient.UpdateModelCostAsync(editingModelCost.Id, updateDto);
                 if (result != null)
                 {
                     await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
@@ -400,16 +402,9 @@
         
         try
         {
-            // The admin API doesn't have a DeleteModelCostAsync method yet
-            // Temporarily using a workaround
-            var nullModelCost = new ConfigDTO.UpdateModelCostDto
-            {
-                ModelIdPattern = "", // Empty model pattern is invalid which should cause deletion
-                InputTokenCost = 0,
-                OutputTokenCost = 0
-            };
-            var result = await ModelCostService.UpdateModelCostAsync(deletingModelCost.Id, nullModelCost);
-            if (result != null)
+            // Use the proper DeleteModelCostAsync method from AdminApiClient
+            var success = await AdminApiClient.DeleteModelCostAsync(deletingModelCost.Id);
+            if (success)
             {
                 await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
             }

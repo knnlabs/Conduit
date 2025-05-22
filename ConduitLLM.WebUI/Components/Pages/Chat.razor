@@ -7,11 +7,8 @@
 @using ConduitLLM.WebUI.Components.Shared
 @using System.Text.Json
 @using System.Text.Json.Serialization
-@using System.Text
-@using System.Net.Http
-@using System.Net.Http.Headers
-@inject ConduitLLM.WebUI.Interfaces.IModelProviderMappingService ModelProviderMappingService
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
+@inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -269,7 +266,6 @@
     private bool _streamResponse = true;
     private bool isLoading = false;
     private string errorMessage = "";
-    private string _proxyBaseUrl = "";
     private List<Message> chatHistory = new();
     private string? streamedResponse = null;
     private bool _autoScroll = true;
@@ -279,7 +275,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadProxyUrlAsync();
         await LoadModelMappingsAsync();
         // No need to call StateHasChanged here, Blazor handles it after OnInitializedAsync
     }
@@ -288,9 +283,18 @@
     {
         try
         {
-            // Use ModelProviderMappingService from Admin API
-            var mappings = await ModelProviderMappingService.GetAllAsync();
+            // Use AdminApiClient directly
+            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             modelMappings = mappings.ToList();
+            
+            // Select the first model by default if no model is selected
+            if (string.IsNullOrEmpty(selectedModelAlias) && modelMappings.Any())
+            {
+                selectedModelAlias = modelMappings.First().ModelId;
+                Console.WriteLine($"[Chat Component] Auto-selected first model: {selectedModelAlias}");
+            }
+            
+            Console.WriteLine($"[Chat Component] Loaded {modelMappings.Count} model mappings");
         }
         catch (Exception ex)
         {
@@ -300,36 +304,15 @@
         }
     }
 
-    private async Task LoadProxyUrlAsync()
-    {
-        try 
-        {
-            await Task.Run(() => {
-                // Read the base URL from environment variable, fallback to localhost or docker container
-                _proxyBaseUrl = Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
-                               (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? 
-                                "http://api:8080" : "http://localhost:5000");
-                
-                Console.WriteLine($"[Chat Component] Using API base URL: {_proxyBaseUrl}");
-            });
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error loading proxy URL: {ex.Message}");
-            errorMessage = $"Error loading proxy URL: {ex.Message}";
-            _proxyBaseUrl = "";
-        }
-        finally
-        {
-            StateHasChanged();
-        }
-    }
 
     private async Task SendRequest()
     {
+        Console.WriteLine($"[Chat Component] SendRequest called. Model: '{selectedModelAlias}', Message: '{userMessage}'");
+        
         if (string.IsNullOrWhiteSpace(userMessage) || string.IsNullOrWhiteSpace(selectedModelAlias))
         {
             errorMessage = "Please select a model and enter a user message.";
+            Console.WriteLine($"[Chat Component] Validation failed. Model empty: {string.IsNullOrWhiteSpace(selectedModelAlias)}, Message empty: {string.IsNullOrWhiteSpace(userMessage)}");
             return;
         }
 
@@ -351,17 +334,13 @@
             messages.Add(userChatMessage);
             
             // Reset user message input
-            var temp = userMessage;
             userMessage = "";
-            
-            // Convert messages to array for request
-            var messagesArray = messages.ToArray();
             
             // Create request payload
             var chatRequest = new ChatCompletionRequest
             {
                 Model = selectedModelAlias,
-                Messages = messagesArray.ToList(), // Convert array to list
+                Messages = messages,
                 Temperature = temperature, 
                 TopP = topP, 
                 Stop = !string.IsNullOrEmpty(stopSequences) ? 
@@ -369,65 +348,17 @@
                 Stream = _streamResponse
             };
 
-            var httpClient = new HttpClient();
-            var requestUri = $"{_proxyBaseUrl}/v1/chat/completions";
-            
-            // Add API key if provided
-            if (!string.IsNullOrEmpty(apiKey))
-            {
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new AuthenticationHeaderValue("Bearer", apiKey);
-            }
-            
-            // Convert to JSON
-            var jsonRequest = JsonSerializer.Serialize(chatRequest, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
-            
-            var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-            
             if (_streamResponse)
             {
-                // Handle streaming response
+                // Handle streaming response using server-side service
                 streamedResponse = ""; // Reset the streamed response
-                var response = await httpClient.PostAsync(requestUri, content);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    ProcessErrorResponse(response.StatusCode, errorContent);
-                    return;
-                }
-                
-                using var stream = await response.Content.ReadAsStreamAsync();
-                using var reader = new StreamReader(stream);
                 
                 // Add assistant message to chat history
                 chatHistory.Add(new Message { Role = "assistant", Content = "" });
                 
-                // Read the SSE stream
-                while (!reader.EndOfStream)
+                await foreach (var chunk in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
                 {
-                    var line = await reader.ReadLineAsync();
-                    if (string.IsNullOrEmpty(line) || !line.StartsWith("data: "))
-                        continue;
-                        
-                    var jsonData = line.Substring(6); // Remove "data: " prefix
-                    
-                    if (jsonData == "[DONE]")
-                        break;
-                        
-                    try
-                    {
-                        var streamResponse = JsonSerializer.Deserialize<ChatCompletionChunk>(jsonData);
-                        ProcessStreamResponse(streamResponse);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine($"Error parsing stream response: {ex}");
-                    }
+                    ProcessStreamResponse(chunk);
                 }
                 
                 // Final message is complete
@@ -443,42 +374,22 @@
             }
             else
             {
-                // Handle non-streaming response
-                var response = await httpClient.PostAsync(requestUri, content);
-                var responseContent = await response.Content.ReadAsStringAsync();
+                // Handle non-streaming response using server-side service
+                var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest);
                 
-                if (!response.IsSuccessStatusCode)
+                if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
                 {
-                    ProcessErrorResponse(response.StatusCode, responseContent);
+                    var assistantMessage = chatResponse.Choices[0].Message;
+                    chatHistory.Add(new Message
+                    {
+                        Role = assistantMessage.Role,
+                        Content = assistantMessage.Content
+                    });
+                }
+                else
+                {
+                    errorMessage = "No response content received.";
                     return;
-                }
-
-                try
-                {
-                    var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(
-                        responseContent, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                    );
-                    
-                    if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
-                    {
-                        var assistantMessage = chatResponse.Choices[0].Message;
-                        chatHistory.Add(new Message
-                        {
-                            Role = assistantMessage.Role,
-                            Content = assistantMessage.Content
-                        });
-                    }
-                    else
-                    {
-                        errorMessage = "No response content received.";
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    errorMessage = $"Error parsing response: {ex.Message}";
-                    Console.Error.WriteLine(ex.ToString());
                 }
             }
         }
@@ -520,33 +431,6 @@
         }
     }
     
-    private void ProcessErrorResponse(System.Net.HttpStatusCode statusCode, string content)
-    {
-        try
-        {
-            var errorJson = JsonSerializer.Deserialize<JsonElement>(content);
-            
-            if (errorJson.TryGetProperty("error", out var errorProp))
-            {
-                if (errorProp.TryGetProperty("message", out var messageProp))
-                {
-                    errorMessage = messageProp.GetString() ?? "Unknown error";
-                }
-                else
-                {
-                    errorMessage = errorProp.ToString();
-                }
-            }
-            else
-            {
-                errorMessage = $"API Error: {statusCode}";
-            }
-        }
-        catch
-        {
-            errorMessage = $"API Error: {statusCode}";
-        }
-    }
     
     private string[]? ParseStopSequences(string input)
     {

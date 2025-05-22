@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
-    /// Models for provider health status
+    /// Contains models for provider health status data.
     /// </summary>
-    namespace Models
+    public static class Models
     {
         /// <summary>
         /// Represents the current status of a provider

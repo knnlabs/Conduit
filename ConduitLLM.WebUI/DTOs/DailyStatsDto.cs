@@ -1,40 +1,21 @@
 using System;
+using ConfigDto = ConduitLLM.Configuration.Services.Dtos;
 
 namespace ConduitLLM.WebUI.DTOs
 {
     /// <summary>
-    /// Daily statistics data for the logs summary
+    /// Type alias for the DailyStatsDto from ConduitLLM.Configuration.Services.Dtos
+    /// This exists to maintain backward compatibility while consolidating duplicate definitions.
     /// </summary>
-    public class DailyStatsDto
+    public class DailyStatsDto : ConfigDto.DailyStatsDto
     {
         /// <summary>
-        /// Date for the statistics
+        /// Average response time in milliseconds (compatibility property)
         /// </summary>
-        public DateTime Date { get; set; }
-
-        /// <summary>
-        /// Number of requests on this date
-        /// </summary>
-        public int RequestCount { get; set; }
-
-        /// <summary>
-        /// Cost for this date
-        /// </summary>
-        public decimal Cost { get; set; }
-
-        /// <summary>
-        /// Input tokens for this date
-        /// </summary>
-        public int InputTokens { get; set; }
-
-        /// <summary>
-        /// Output tokens for this date
-        /// </summary>
-        public int OutputTokens { get; set; }
-
-        /// <summary>
-        /// Average response time in milliseconds
-        /// </summary>
-        public double AverageResponseTimeMs { get; set; }
+        public double AverageResponseTimeMs
+        {
+            get => AverageResponseTime;
+            set => AverageResponseTime = value;
+        }
     }
 }

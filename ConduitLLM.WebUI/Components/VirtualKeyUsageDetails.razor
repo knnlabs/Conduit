@@ -2,9 +2,8 @@
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Interfaces
-@using Microsoft.EntityFrameworkCore
 @using System.Globalization
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> ConfigDbContextFactory
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<VirtualKeyUsageDetails> Logger
 
 <div class="card shadow-sm mb-4">
@@ -146,15 +145,10 @@
         
         try
         {
-            using var context = await ConfigDbContextFactory.CreateDbContextAsync(); 
-            
-            var logs = await context.RequestLogs
-                .Where(r => r.VirtualKeyId == keyId)
-                .OrderByDescending(r => r.Timestamp)
-                .Take(100) // Limit to recent requests
-                .ToListAsync();
+            // Get request logs for this virtual key from Admin API
+            var logs = await AdminApiClient.GetRequestLogsAsync(virtualKeyId: keyId, pageSize: 100);
                 
-            usageData = logs.Select(log => new RequestLogViewModel
+            usageData = logs?.Items?.Select(log => new RequestLogViewModel
             {
                 Id = log.Id,
                 VirtualKeyId = log.VirtualKeyId,
@@ -166,7 +160,7 @@
                 ResponseTimeMs = log.ResponseTimeMs,
                 Timestamp = log.Timestamp,
                 UserId = log.UserId
-            }).ToList();
+            })?.ToList() ?? new List<RequestLogViewModel>();
             
             totalRequests = usageData.Count;
             totalCost = usageData.Sum(d => d.Cost);

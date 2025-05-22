@@ -4,14 +4,14 @@
 @using ConduitLLM.Configuration.Repositories
 @using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.Interfaces
 @attribute [Authorize]
 @inject IProviderHealthRepository ProviderHealthRepository
 @inject IOptions<ProviderHealthOptions> ProviderHealthOptionsSnapshot
 @inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<ProviderHealthConfig> Logger
 @inject IJSRuntime JSRuntime
 @inject NotificationService NotificationService
@@ -310,8 +310,7 @@
             _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
             
             // Also check for any providers without configurations and create default ones
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var allProviders = await dbContext.ProviderCredentials.ToListAsync();
+            var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
             
             foreach (var provider in allProviders)
             {
@@ -322,7 +321,7 @@
             }
             
             // Refresh again to get the newly created configurations
-            if (allProviders.Count > _providerConfigs.Count)
+            if (allProviders.Count() > _providerConfigs.Count)
             {
                 _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
             }

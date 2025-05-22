@@ -148,7 +148,6 @@ namespace ConduitLLM.WebUI.Services
             {
                 BaseUrl = _options.BaseUrl,
                 UseAdminApi = _options.UseAdminApi,
-                DisableDirectDbAccess = Environment.GetEnvironmentVariable("CONDUIT_DISABLE_DIRECT_DB_ACCESS") == "true",
                 LastChecked = _lastChecked,
                 IsHealthy = _isHealthy,
                 LastErrorMessage = _lastErrorMessage
@@ -171,10 +170,6 @@ namespace ConduitLLM.WebUI.Services
         /// </summary>
         public bool UseAdminApi { get; set; }
 
-        /// <summary>
-        /// Gets or sets whether direct database access is disabled
-        /// </summary>
-        public bool DisableDirectDbAccess { get; set; }
 
         /// <summary>
         /// Gets or sets when the health was last checked

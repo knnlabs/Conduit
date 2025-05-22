@@ -1,13 +1,11 @@
 @page "/virtualkeys/edit/{id?}"
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Components
-@using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
 @using ConduitLLM.Configuration.DTOs.VirtualKey
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.Interfaces
+@inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeyEdit> Logger
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
@@ -454,26 +452,19 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Load model mappings from Admin API
+            var modelMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             
-            // Load model mappings from the consolidated context
-            var query = dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential);
-            
-            // Log the SQL query for troubleshooting
-            var queryString = query.ToQueryString();
-            Logger.LogInformation("Models query: {Query}", queryString);
-            
-            availableModels = await query
+            availableModels = modelMappings
                 .Select(m => new ModelMappingViewModel
                 {
-                    ModelAlias = m.ModelAlias,
-                    ProviderName = m.ProviderCredential.ProviderName,
-                    ProviderModelId = m.ProviderModelName
+                    ModelAlias = m.ModelId,
+                    ProviderName = m.ProviderId,
+                    ProviderModelId = m.ProviderModelId
                 })
-                .ToListAsync();
+                .ToList();
             
-            Logger.LogInformation("Loaded {Count} models from database", availableModels.Count);
+            Logger.LogInformation("Loaded {Count} models from Admin API", availableModels.Count);
             
             if (Id.HasValue && !string.IsNullOrEmpty(request?.AllowedModels))
             {
@@ -484,7 +475,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading available models");
-            errorMessage = "Failed to load model mappings. Please check database configuration.";
+            errorMessage = "Failed to load model mappings. Please check Admin API connection.";
             
             // Initialize to empty list instead of null to avoid spinner
             availableModels = new List<ModelMappingViewModel>();

@@ -132,10 +132,30 @@ builder.Services.AddScoped<ModelListService>();
 // Register Conduit service
 builder.Services.AddScoped<Conduit>();
 
+// Add CORS support for WebUI requests
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5001",  // WebUI access
+                "http://webui:8080",      // Docker internal
+                "http://localhost:8080",  // Alternative local access
+                "http://127.0.0.1:5001"   // Alternative localhost format
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();  // Enable credentials for auth headers
+    });
+});
+
 // Add Controller support
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// Enable CORS
+app.UseCors();
 
 // Add a health check endpoint
 // Add controllers to the app

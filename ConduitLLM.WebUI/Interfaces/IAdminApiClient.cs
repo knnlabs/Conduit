@@ -587,8 +587,8 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Gets a global setting by key
         /// </summary>
         /// <param name="key">The key of the setting to retrieve</param>
-        /// <returns>The setting value as a string</returns>
-        Task<string> GetSettingAsync(string key);
+        /// <returns>The setting value as a string, or null if not found</returns>
+        Task<string?> GetSettingAsync(string key);
 
         /// <summary>
         /// Sets a global setting value

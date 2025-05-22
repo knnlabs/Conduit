@@ -3,24 +3,28 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.WebUI.Services.Providers;
+using ConduitLLM.WebUI.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
 namespace ConduitLLM.Tests.WebUI.Providers
 {
-    public class VirtualKeyServiceProviderTests
+    public class AdminApiClientVirtualKeyTests
     {
         private readonly Mock<IAdminApiClient> _adminApiClientMock;
-        private readonly Mock<ILogger<VirtualKeyServiceProvider>> _loggerMock;
-        private readonly VirtualKeyServiceProvider _provider;
+        private readonly Mock<ILogger<AdminApiClient>> _loggerMock;
+        private readonly IVirtualKeyService _virtualKeyService;
 
-        public VirtualKeyServiceProviderTests()
+        public AdminApiClientVirtualKeyTests()
         {
+            // Create a mock that implements both interfaces
             _adminApiClientMock = new Mock<IAdminApiClient>();
-            _loggerMock = new Mock<ILogger<VirtualKeyServiceProvider>>();
-            _provider = new VirtualKeyServiceProvider(_adminApiClientMock.Object, _loggerMock.Object);
+            Mock<IVirtualKeyService> mockService = _adminApiClientMock.As<IVirtualKeyService>();
+            _loggerMock = new Mock<ILogger<AdminApiClient>>();
+            
+            // Use the mock as the service
+            _virtualKeyService = mockService.Object;
         }
 
         [Fact]
@@ -37,7 +41,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(expectedKeys);
 
             // Act
-            var result = await _provider.ListVirtualKeysAsync();
+            var result = await _virtualKeyService.ListVirtualKeysAsync();
 
             // Assert
             Assert.Equal(expectedKeys.Count, result.Count);
@@ -65,7 +69,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(expectedKey);
 
             // Act
-            var result = await _provider.GetVirtualKeyInfoAsync(1);
+            var result = await _virtualKeyService.GetVirtualKeyInfoAsync(1);
 
             // Assert
             Assert.NotNull(result);
@@ -106,7 +110,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(expectedResponse);
 
             // Act
-            var result = await _provider.GenerateVirtualKeyAsync(createDto);
+            var result = await _virtualKeyService.GenerateVirtualKeyAsync(createDto);
 
             // Assert
             Assert.NotNull(result);
@@ -131,7 +135,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _provider.UpdateVirtualKeyAsync(1, updateDto);
+            var result = await _virtualKeyService.UpdateVirtualKeyAsync(1, updateDto);
 
             // Assert
             Assert.True(result);
@@ -146,7 +150,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _provider.DeleteVirtualKeyAsync(1);
+            var result = await _virtualKeyService.DeleteVirtualKeyAsync(1);
 
             // Assert
             Assert.True(result);
@@ -161,7 +165,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _provider.ResetSpendAsync(1);
+            var result = await _virtualKeyService.ResetSpendAsync(1);
 
             // Assert 
             Assert.True(result);
@@ -177,7 +181,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _provider.UpdateSpendAsync(1, cost);
+            var result = await _virtualKeyService.UpdateSpendAsync(1, cost);
 
             // Assert
             Assert.True(result);
@@ -210,7 +214,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(validationInfo);
 
             // Act
-            var result = await _provider.ValidateVirtualKeyAsync(key, requestedModel);
+            var result = await _virtualKeyService.ValidateVirtualKeyAsync(key, requestedModel);
 
             // Assert
             Assert.NotNull(result);
@@ -237,7 +241,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(validationInfo);
 
             // Act
-            var result = await _provider.GetVirtualKeyInfoForValidationAsync(1);
+            var result = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(1);
 
             // Assert
             Assert.NotNull(result);
@@ -261,7 +265,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .ReturnsAsync(budgetCheckResult);
 
             // Act
-            var result = await _provider.ResetBudgetIfExpiredAsync(1);
+            var result = await _virtualKeyService.ResetBudgetIfExpiredAsync(1);
 
             // Assert
             Assert.True(result);
@@ -276,7 +280,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _provider.PerformMaintenanceAsync();
+            await _virtualKeyService.PerformMaintenanceAsync();
 
             // Assert
             _adminApiClientMock.Verify(c => c.PerformVirtualKeyMaintenanceAsync(), Times.Once);

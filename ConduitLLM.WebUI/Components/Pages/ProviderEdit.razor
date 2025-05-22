@@ -1,12 +1,17 @@
 @page "/configuration/provider/edit/{id?}"
 @using System.Text.Json
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Interfaces
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.DTOs
+@using ProviderCredentialModel = ConduitLLM.Configuration.Entities.ProviderCredential
+@using ProviderCredentialDto = ConduitLLM.Configuration.DTOs.ProviderCredentialDto
+@using CreateProviderCredentialDto = ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto
+@using UpdateProviderCredentialDto = ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto
+@inject IAdminApiClient AdminApiClient
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
@@ -256,14 +261,20 @@ else
             
             try
             {
-                // Use Config context for ProviderCredentials
-                using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                // Use AdminApiClient to get provider details
+                var existingProvider = await AdminApiClient.GetProviderCredentialByIdAsync(Id.Value);
                 
                 if (existingProvider != null)
                 {
-                    // Directly use the loaded entity from Config context
-                    provider = existingProvider; 
+                    // Convert DTO to Entity
+                    provider = new ProviderCredentialModel
+                    {
+                        Id = existingProvider.Id,
+                        ProviderName = existingProvider.ProviderName,
+                        BaseUrl = existingProvider.ApiBase, // Map ApiBase from DTO to BaseUrl in Entity
+                        ApiKey = existingProvider.ApiKey, // API Key is masked in the DTO
+                        IsEnabled = existingProvider.IsEnabled
+                    };
                     
                     // Keep track of the original API key existence
                     if (!string.IsNullOrEmpty(existingProvider.ApiKey))
@@ -304,85 +315,75 @@ else
         errorMessage = null;
         StateHasChanged();
         
-            try 
+        try 
+        {
+            if (Id.HasValue) // Edit
             {
-                // Use Config context for ProviderCredentials
-                await using var dbContext = await DbContextFactory.CreateDbContextAsync(); 
-                
-                if (Id.HasValue) // Edit
+                // Create a DTO for update
+                var updateDto = new UpdateProviderCredentialDto
                 {
-                var existingProvider = await dbContext.ProviderCredentials.FindAsync(Id.Value);
+                    Id = Id.Value,
+                    ApiBase = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl,
+                    IsEnabled = true,
+                    // Map ApiVersion from Entity to appropriate DTO field if needed
+                    AdditionalConfig = !string.IsNullOrWhiteSpace(provider.ApiVersion) ? 
+                        $"{{\"ApiVersion\": \"{provider.ApiVersion}\"}}" : null
+                };
                 
-                if (existingProvider != null)
+                // Only update API key if provided (not empty)
+                if (!string.IsNullOrWhiteSpace(provider.ApiKey))
                 {
-                    // Update the entity with form values
-                    existingProvider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
-                    existingProvider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
-                    // Name doesn't exist
-                    
-                    // Only update API key if provided (not empty)
-                    if (!string.IsNullOrWhiteSpace(provider.ApiKey))
-                    {
-                        existingProvider.ApiKey = provider.ApiKey;
-                    }
-                    // The logic for handling existing API key needs adjustment as we're now using the Config context entity
-                    // If provider.ApiKey is blank, we want to keep the existing key from the database.
-                    // If originalApiKey was null (meaning no key existed before), and provider.ApiKey is blank, set it to null.
-                    else if (string.IsNullOrWhiteSpace(provider.ApiKey)) 
-                    {
-                        if (originalApiKey != null) // A key existed before, keep it
-                        {
-                            // Re-fetch the existing key from the database to avoid overwriting it with null
-                            var freshProvider = await dbContext.ProviderCredentials.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id.Value);
-                            existingProvider.ApiKey = freshProvider?.ApiKey;
-                        }
-                        else // No original key, and input is blank, so set to null
-                        {
-                            existingProvider.ApiKey = null;
-                        }
-                    }
-                    // If provider.ApiKey has a value, it was already assigned above.
-
-                    // Removed incorrect null assignment here
-
-                    dbContext.ProviderCredentials.Update(existingProvider); 
+                    updateDto.ApiKey = provider.ApiKey;
                 }
-                else
+                // If originalApiKey was null (meaning no key existed before), and provider.ApiKey is blank, set it to null.
+                else if (string.IsNullOrWhiteSpace(provider.ApiKey) && originalApiKey == null)
                 {
-                     // Handle case where provider was deleted between load and save
-                     Console.WriteLine("Error: Provider not found during update.");
-                     errorMessage = "Error: Provider not found during update.";
-                     StateHasChanged();
-                     return;
+                    updateDto.ApiKey = "[REMOVE]"; // Special value to remove the key
+                }
+                // Otherwise, don't include the API key in the update (keep existing)
+                
+                // Update via API Client
+                var updateResult = await AdminApiClient.UpdateProviderCredentialAsync(Id.Value, updateDto);
+                
+                if (updateResult == null)
+                {
+                    throw new Exception($"Failed to update provider {provider.ProviderName}");
                 }
             }
             else // Add
             {
-                 // The 'provider' object is already the correct type (ConduitLLM.Configuration.Entities.ProviderCredential)
-                 // Ensure optional fields are null if empty/whitespace
-                 provider.BaseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl; // Use BaseUrl
-                 provider.ApiVersion = string.IsNullOrWhiteSpace(provider.ApiVersion) ? null : provider.ApiVersion;
-                 provider.ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey;
-                 // Name doesn't exist
-                 // Set default values for non-nullable properties if needed (assuming they are not set by default in the entity)
-                 provider.IsEnabled = true; 
-                 provider.CreatedAt = DateTime.UtcNow;
-                 provider.UpdatedAt = DateTime.UtcNow;
-
-                await dbContext.ProviderCredentials.AddAsync(provider); // Add the provider object directly
+                // Create a DTO for creation
+                var createDto = new CreateProviderCredentialDto
+                {
+                    ProviderName = provider.ProviderName,
+                    ApiBase = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl,
+                    ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey,
+                    IsEnabled = true
+                };
+                
+                // Map ApiVersion to appropriate DTO fields based on provider
+                if (!string.IsNullOrWhiteSpace(provider.ApiVersion))
+                {
+                    // For clarity, you might need more specific mapping depending on provider
+                    // This is a simple starting point
+                    createDto.AdditionalConfig = $"{{\"ApiVersion\": \"{provider.ApiVersion}\"}}";
+                }
+                
+                // Create via API Client
+                var createResult = await AdminApiClient.CreateProviderCredentialAsync(createDto);
+                
+                if (createResult == null)
+                {
+                    throw new Exception($"Failed to create provider {provider.ProviderName}");
+                }
             }
-            
-            await dbContext.SaveChangesAsync();
             
             // Notify the Conduit HTTP proxy about configuration changes
             try
             {
-                // Get the proxy base URL from global settings (using Config context)
-                await using var configContext = await DbContextFactory.CreateDbContextAsync(); 
-                var proxyUrlSetting = await configContext.GlobalSettings
-                    .FirstOrDefaultAsync(s => s.Key == "ProxyBaseUrl");
-                
-                string proxyUrl = proxyUrlSetting?.Value ?? "http://localhost:5000";
+                // Get the proxy base URL from global settings via service
+                var proxyUrlSetting = await GlobalSettingService.GetSettingAsync("ProxyBaseUrl");
+                string proxyUrl = proxyUrlSetting ?? "http://localhost:5000";
                 
                 bool notificationSuccess = await ConfigNotifier.NotifyConfigurationChangedAsync(proxyUrl);
                 if (!notificationSuccess)
@@ -399,16 +400,11 @@ else
             
             NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
         }
-        catch (DbUpdateException dbEx)
-        {
-             // Handle potential database errors (like unique constraint violation if check failed)
-             Console.WriteLine($"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}");
-             errorMessage = $"Database error saving provider: {dbEx.InnerException?.Message ?? dbEx.Message}";
-        }
         catch (Exception ex)
         {
-             Console.WriteLine($"Error saving provider: {ex.Message}");
-             errorMessage = $"Error saving provider: {ex.Message}";
+            Console.WriteLine($"Error saving provider: {ex.Message}");
+            errorMessage = $"Error saving provider: {ex.Message}";
+            _logger.LogError(ex, "Error saving provider configuration");
         }
         finally
         {
@@ -439,17 +435,43 @@ else
 
         try
         {
-            // Use the correct properties for testing
-            var testProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+            // Test the connection using the Admin API directly
+            try {
+                var testResult = await AdminApiClient.TestProviderConnectionAsync(provider.ProviderName);
+                if (testResult != null && testResult.Success)
+                {
+                    connectionStatus = new ProviderStatus
+                    {
+                        Status = ProviderStatus.StatusType.Online,
+                        StatusMessage = testResult.Message,
+                        LastCheckedUtc = testResult.Timestamp,
+                        IsOnline = true
+                    };
+                }
+                else
+                {
+                    connectionStatus = new ProviderStatus
+                    {
+                        Status = ProviderStatus.StatusType.Offline,
+                        StatusMessage = testResult?.ErrorDetails ?? "Connection test failed",
+                        LastCheckedUtc = testResult?.Timestamp ?? DateTime.UtcNow,
+                        IsOnline = false
+                    };
+                }
+            }
+            catch (Exception)
             {
-                ProviderName = provider.ProviderName,
-                ApiKey = provider.ApiKey,
-                BaseUrl = provider.BaseUrl, // Use BaseUrl
-                ApiVersion = provider.ApiVersion
-                // Name doesn't exist
-            };
-            // Assuming ProviderConnectionTester can handle the Configuration entity type
-            connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
+                // Fallback to local test when API call fails
+                var testProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+                {
+                    ProviderName = provider.ProviderName,
+                    ApiKey = provider.ApiKey,
+                    BaseUrl = provider.BaseUrl,
+                    ApiVersion = provider.ApiVersion
+                };
+                // Use local provider status service as fallback
+                connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
+            }
             showConnectionStatus = true;
             if (connectionStatus.Status == ProviderStatus.StatusType.Online)
             {

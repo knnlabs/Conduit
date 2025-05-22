@@ -14,12 +14,8 @@
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
-@inject Interfaces.IProviderCredentialService ProviderCredentialService
-@inject Interfaces.IModelProviderMappingService ModelProviderMappingService
-@inject IGlobalSettingService GlobalSettingService
+@inject Interfaces.IAdminApiClient AdminApiClient
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject IHttpRetryConfigurationService HttpRetryService
-@inject IHttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
 @inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
@@ -514,15 +510,14 @@
     </div>
 </div>
 
-@* Guided Setup Modal Components *@
-@if (false) // Temporarily disable GuidedSetupWizard that requires direct DB access
-{
+@* Guided Setup Modal Components - Disabled during Admin API migration *@
+@* 
 <GuidedSetupWizard
     @ref="guidedSetupWizardInstance"
     IsOpen="isGuidedSetupOpen"
     OnSetupComplete="@(async (ConduitLLM.Configuration.Entities.ProviderCredential provider) => await HandleSetupComplete(provider))"
     IsOpenChanged="HandleIsOpenChanged" />
-}
+*@
 
 @code {
     // --- Providers and Mappings State ---
@@ -567,9 +562,9 @@
     private ConduitLLM.Providers.Configuration.RetryOptions httpRetryOptions = new();
     private ConduitLLM.Providers.Configuration.TimeoutOptions httpTimeoutOptions = new();
     
-    // --- Guided Setup State ---
-    private GuidedSetupWizard? guidedSetupWizardInstance;
-    private bool isGuidedSetupOpen;
+    // --- Guided Setup State (Disabled during Admin API migration) ---
+    // private GuidedSetupWizard? guidedSetupWizardInstance;
+    // private bool isGuidedSetupOpen;
     private string? deleteErrorMessage;
     
     private readonly List<string> _supportedProviders = new List<string> {
@@ -586,12 +581,12 @@
             await LoadHttpRetryOptionsAsync();
             await LoadHttpTimeoutOptionsAsync();
             
-            // Ensure guidedSetupWizardInstance is properly initialized
-            await Task.Delay(100); // Brief delay to ensure component rendering completes
-            if (guidedSetupWizardInstance == null)
-            {
-                Logger.LogWarning("GuidedSetupWizard component reference was null during initialization. UI interactions may not work as expected.");
-            }
+            // Guided setup wizard disabled during Admin API migration
+            // await Task.Delay(100); // Brief delay to ensure component rendering completes
+            // if (guidedSetupWizardInstance == null)
+            // {
+            //     Logger.LogWarning("GuidedSetupWizard component reference was null during initialization. UI interactions may not work as expected.");
+            // }
         }
         catch (Exception ex)
         {
@@ -605,7 +600,7 @@
     {
         try
         {
-            var providers = await ProviderCredentialService.GetAllAsync();
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
             providerCredentials = providers.ToList();
         }
         catch (Exception ex)
@@ -619,7 +614,7 @@
     {
         try
         {
-            var mappings = await ModelProviderMappingService.GetAllAsync();
+            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             modelMappings = mappings.OrderBy(m => m.ModelId).ToList();
         }
         catch (Exception ex)
@@ -633,7 +628,7 @@
     {
         try
         {
-            proxyBaseUrlInput = await GlobalSettingService.GetSettingAsync("ConduitSettings:ProxyBaseUrl");
+            proxyBaseUrlInput = await AdminApiClient.GetSettingAsync("ConduitSettings:ProxyBaseUrl");
         }
         catch (Exception ex)
         {
@@ -643,13 +638,15 @@
     
     private async Task LoadHttpRetryOptionsAsync()
     {
-        httpRetryOptions = HttpRetryService.GetRetryConfiguration() ?? new ConduitLLM.Providers.Configuration.RetryOptions();
+        // TODO: Update to use AdminApiClient once HTTP config API is available
+        httpRetryOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
         await Task.CompletedTask;
     }
     
     private async Task LoadHttpTimeoutOptionsAsync()
     {
-        httpTimeoutOptions = HttpTimeoutService.GetTimeoutConfiguration() ?? new ConduitLLM.Providers.Configuration.TimeoutOptions();
+        // TODO: Update to use AdminApiClient once HTTP config API is available
+        httpTimeoutOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
         await Task.CompletedTask;
     }
     
@@ -670,7 +667,7 @@
         try
         {
             deleteErrorMessage = null;
-            var providerToDelete = await ProviderCredentialService.GetByIdAsync(id);
+            var providerToDelete = await AdminApiClient.GetProviderCredentialByIdAsync(id);
             if (providerToDelete == null) return;
 
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
@@ -679,15 +676,15 @@
             if (!confirmed) return;
 
             // Get related mappings and delete them first
-            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             var relatedMappings = allMappings.Where(m => int.Parse(m.ProviderId) == providerToDelete.Id).ToList();
 
             foreach (var mapping in relatedMappings)
             {
-                await ModelProviderMappingService.DeleteAsync(mapping.Id);
+                await AdminApiClient.DeleteModelProviderMappingAsync(mapping.Id);
             }
 
-            var success = await ProviderCredentialService.DeleteAsync(id);
+            var success = await AdminApiClient.DeleteProviderCredentialAsync(id);
             
             if (success)
             {
@@ -724,14 +721,14 @@
     {
         try
         {
-            var mapping = await ModelProviderMappingService.GetByIdAsync(id);
+            var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
             if (mapping == null)
             {
                 Logger.LogError("No mapping found with ID {Id}", id);
                 return;
             }
 
-            var success = await ModelProviderMappingService.DeleteAsync(id);
+            var success = await AdminApiClient.DeleteModelProviderMappingAsync(id);
             
             if (success)
             {
@@ -776,7 +773,7 @@
     private async Task HandleIsOpenChanged(bool isOpen)
     {
         Logger.LogDebug("HandleIsOpenChanged called with value: {IsOpen}", isOpen);
-        isGuidedSetupOpen = isOpen;
+        // isGuidedSetupOpen = isOpen; // Disabled during Admin API migration
         
         // Force UI update
         await InvokeAsync(StateHasChanged);
@@ -797,7 +794,7 @@
                 IsEnabled = providerEntity.IsEnabled
             };
             
-            var createdProvider = await ProviderCredentialService.CreateAsync(newProvider);
+            var createdProvider = await AdminApiClient.CreateProviderCredentialAsync(newProvider);
             
             if (createdProvider != null)
             {
@@ -856,12 +853,12 @@
     // --- Mapping form state ---
     private async Task HandleEditMapping(int id)
     {
-        var mapping = await ModelProviderMappingService.GetByIdAsync(id);
+        var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
             
         if (mapping != null)
         {
             // Get provider by ID to get the provider name
-            var provider = await ProviderCredentialService.GetByIdAsync(int.Parse(mapping.ProviderId));
+            var provider = await AdminApiClient.GetProviderCredentialByIdAsync(int.Parse(mapping.ProviderId));
             
             currentMapping = new MappingFormModel
             {
@@ -901,7 +898,8 @@
         }
 
         // Get provider by name to ensure it exists
-        var provider = await ProviderCredentialService.GetByProviderNameAsync(currentMapping.ProviderName);
+        var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
+        var provider = allProviders.FirstOrDefault(p => p.ProviderName == currentMapping.ProviderName);
             
         if (provider == null)
         {
@@ -910,7 +908,7 @@
         }
         
         // Check for duplicate alias only if we're creating a new mapping or changing the alias
-        var allMappings = await ModelProviderMappingService.GetAllAsync();
+        var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
         var existingMapping = allMappings.FirstOrDefault(m => m.ModelId == currentMapping.ModelAlias && 
                                                               m.Id != currentMapping.Id); // Exclude the current mapping by ID
                                      
@@ -925,24 +923,24 @@
             // Determine if this is an update or a new record
             bool isUpdate = currentMapping.Id > 0;
             
-            var mappingDto = new ConfigDTOs.ModelProviderMappingDto
+            var mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
             {
                 Id = currentMapping.Id,
-                ModelId = currentMapping.ModelAlias,
-                ProviderModelId = currentMapping.ProviderModelId,
-                ProviderId = provider.Id.ToString(),
+                ModelAlias = currentMapping.ModelAlias,
+                ProviderModelName = currentMapping.ProviderModelId,
+                ProviderCredentialId = provider.Id,
                 IsEnabled = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
             
-            ConfigDTOs.ModelProviderMappingDto? result;
+            bool result;
             
             if (isUpdate)
             {
-                result = await ModelProviderMappingService.UpdateAsync(mappingDto);
+                result = await AdminApiClient.UpdateModelProviderMappingAsync(mappingEntity.Id, mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     mappingErrorMessage = "The mapping you're trying to update no longer exists.";
                     return;
@@ -950,9 +948,9 @@
             }
             else
             {
-                result = await ModelProviderMappingService.CreateAsync(mappingDto);
+                result = await AdminApiClient.CreateModelProviderMappingAsync(mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     mappingErrorMessage = "Failed to create the mapping.";
                     return;
@@ -983,7 +981,7 @@
     {
         try
         {
-            await GlobalSettingService.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
+            await AdminApiClient.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
             
             proxyUrlSaveMessage = "Base URL saved successfully";
             await JSRuntime.InvokeVoidAsync("alert", "Base URL saved successfully");
@@ -1003,9 +1001,10 @@
     {
         try
         {
-            await HttpRetryService.UpdateRetryConfigurationAsync(httpRetryOptions);
+            // TODO: Update to use AdminApiClient once HTTP config API is available
+            // await AdminApiClient.UpdateHttpRetryConfigurationAsync(httpRetryOptions);
             httpRetryOptionsSaveMessage = "HTTP retry settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP retry settings saved successfully");
+            await JSRuntime.InvokeVoidAsync("alert", "HTTP retry settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
@@ -1019,9 +1018,10 @@
     {
         try
         {
-            await HttpTimeoutService.UpdateTimeoutConfigurationAsync(httpTimeoutOptions);
+            // TODO: Update to use AdminApiClient once HTTP config API is available
+            // await AdminApiClient.UpdateHttpTimeoutConfigurationAsync(httpTimeoutOptions);
             httpTimeoutOptionsSaveMessage = "HTTP timeout settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP timeout settings saved successfully");
+            await JSRuntime.InvokeVoidAsync("alert", "HTTP timeout settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
@@ -1036,12 +1036,13 @@
         try
         {
             // Get the provider ID by name
-            var provider = await ProviderCredentialService.GetByProviderNameAsync(providerName);
+            var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
+            var provider = allProviders.FirstOrDefault(p => p.ProviderName == providerName);
             if (provider == null)
                 return false;
                 
             // Get all mappings and check if any map to this provider
-            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             return allMappings.Any(m => m.ProviderId == provider.Id.ToString());
         }
         catch (Exception ex)

@@ -75,8 +75,8 @@ namespace ConduitLLM.Tests.WebUI
             using var httpClient = new HttpClient(_handlerMock.Object);
             var apiClient = new AdminApiClient(httpClient, optionsMock.Object, _loggerMock.Object);
 
-            // Assert
-            var headerExists = httpClient.DefaultRequestHeaders.TryGetValues("X-Master-Key", out var values);
+            // Assert - Use X-API-Key header (as expected by AdminAuthenticationMiddleware) instead of X-Master-Key
+            var headerExists = httpClient.DefaultRequestHeaders.TryGetValues("X-API-Key", out var values);
             Assert.True(headerExists);
             Assert.NotNull(values);
             Assert.Equal("custom-master-key", values!.First());
@@ -140,8 +140,8 @@ namespace ConduitLLM.Tests.WebUI
             using var httpClient = new HttpClient(_handlerMock.Object);
             var apiClient = new AdminApiClient(httpClient, optionsMock.Object, _loggerMock.Object);
 
-            // Assert
-            var headerExists = httpClient.DefaultRequestHeaders.TryGetValues("X-Master-Key", out _);
+            // Assert - Check X-API-Key header instead of X-Master-Key
+            var headerExists = httpClient.DefaultRequestHeaders.TryGetValues("X-API-Key", out _);
             Assert.False(headerExists);
         }
 

@@ -43,6 +43,7 @@ namespace ConduitLLM.Tests.WebUI
                 BaseAddress = new Uri(_options.BaseUrl)
             };
 
+            // Create the API client with the correct parameter order
             _apiClient = new AdminApiClient(_httpClient, _optionsMock.Object, _loggerMock.Object);
 
             _jsonOptions = new JsonSerializerOptions
@@ -295,8 +296,8 @@ namespace ConduitLLM.Tests.WebUI
 
             // Assert
             Assert.NotNull(capturedRequest);
-            Assert.True(capturedRequest.Headers.Contains("X-Master-Key"));
-            var headerValues = capturedRequest.Headers.GetValues("X-Master-Key").ToList();
+            Assert.True(capturedRequest.Headers.Contains("X-API-Key"));
+            var headerValues = capturedRequest.Headers.GetValues("X-API-Key").ToList();
             Assert.Equal("test-master-key", headerValues.First());
         }
 
@@ -351,7 +352,7 @@ namespace ConduitLLM.Tests.WebUI
             // Assert
             Assert.NotNull(capturedRequest);
             Assert.Equal(HttpMethod.Get, capturedRequest.Method);
-            Assert.Equal(new Uri("http://localhost:5000/api/globalsettings/system%2Fconfig%20path"), capturedRequest.RequestUri);
+            Assert.Equal(new Uri("http://localhost:5000/api/globalsettings/by-key/system%2Fconfig%20path"), capturedRequest.RequestUri);
         }
     }
 }

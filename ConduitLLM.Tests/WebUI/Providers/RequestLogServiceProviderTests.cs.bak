@@ -8,28 +8,24 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Services.Providers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
 namespace ConduitLLM.Tests.WebUI.Providers
 {
-    public class AdminRequestLogTests
+    public class RequestLogServiceProviderTests
     {
-        private readonly Mock<IAdminApiClient> _mockAdminApiClient;
-        private readonly Mock<ILogger<AdminApiClient>> _loggerMock;
-        private readonly IRequestLogService _service;
+        private readonly Mock<IAdminApiClient> _adminApiClientMock;
+        private readonly Mock<ILogger<RequestLogServiceProvider>> _loggerMock;
+        private readonly RequestLogServiceProvider _provider;
 
-        public AdminRequestLogTests()
+        public RequestLogServiceProviderTests()
         {
-            // Create a mock that implements both interfaces
-            _mockAdminApiClient = new Mock<IAdminApiClient>();
-            Mock<IRequestLogService> mockService = _mockAdminApiClient.As<IRequestLogService>();
-            _loggerMock = new Mock<ILogger<AdminApiClient>>();
-            
-            // Use the mock as the service
-            _service = mockService.Object;
+            _adminApiClientMock = new Mock<IAdminApiClient>();
+            _loggerMock = new Mock<ILogger<RequestLogServiceProvider>>();
+            _provider = new RequestLogServiceProvider(_adminApiClientMock.Object, _loggerMock.Object);
         }
 
         [Fact]
@@ -65,11 +61,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 Timestamp = DateTime.UtcNow
             };
 
-            _mockAdminApiClient.Setup(c => c.CreateRequestLogAsync(It.IsAny<RequestLogDto>()))
+            _adminApiClientMock.Setup(c => c.CreateRequestLogAsync(It.IsAny<RequestLogDto>()))
                 .ReturnsAsync(requestLogDto);
 
             // Act
-            var result = await _service.CreateRequestLogAsync(
+            var result = await _provider.CreateRequestLogAsync(
                 virtualKeyId,
                 modelName,
                 requestType,
@@ -97,7 +93,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Equal(requestPath, result.RequestPath);
             Assert.Equal(statusCode, result.StatusCode);
             
-            _mockAdminApiClient.Verify(c => c.CreateRequestLogAsync(It.Is<RequestLogDto>(dto =>
+            _adminApiClientMock.Verify(c => c.CreateRequestLogAsync(It.Is<RequestLogDto>(dto =>
                 dto.VirtualKeyId == virtualKeyId &&
                 dto.ModelName == modelName &&
                 dto.RequestType == requestType &&
@@ -142,11 +138,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 }
             };
 
-            _mockAdminApiClient.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(null))
+            _adminApiClientMock.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(null))
                 .ReturnsAsync(keyUsageStats);
 
             // Act
-            var result = await _service.GetAllKeysUsageSummaryAsync();
+            var result = await _provider.GetAllKeysUsageSummaryAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -170,7 +166,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Equal(1250, result[1].TotalOutputTokens);
             Assert.Equal(keyUsageStats[1].LastUsedAt, result[1].LastUsed);
             
-            _mockAdminApiClient.Verify(c => c.GetVirtualKeyUsageStatisticsAsync(null), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetVirtualKeyUsageStatisticsAsync(null), Times.Once);
         }
 
         [Fact]
@@ -203,11 +199,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 }
             };
 
-            _mockAdminApiClient.Setup(c => c.GetDailyUsageStatsAsync(startDate, endDate, virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetDailyUsageStatsAsync(startDate, endDate, virtualKeyId))
                 .ReturnsAsync(dailyStats);
 
             // Act
-            var result = await _service.GetDailyUsageStatsAsync(virtualKeyId, startDate, endDate);
+            var result = await _provider.GetDailyUsageStatsAsync(virtualKeyId, startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
@@ -229,7 +225,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Equal(2500, result[1].InputTokens);
             Assert.Equal(1250, result[1].OutputTokens);
             
-            _mockAdminApiClient.Verify(c => c.GetDailyUsageStatsAsync(startDate, endDate, virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetDailyUsageStatsAsync(startDate, endDate, virtualKeyId), Times.Once);
         }
 
         [Fact]
@@ -238,11 +234,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
             // Arrange
             var models = new List<string> { "gpt-4", "gpt-3.5-turbo", "gemini-pro" };
 
-            _mockAdminApiClient.Setup(c => c.GetDistinctModelsAsync())
+            _adminApiClientMock.Setup(c => c.GetDistinctModelsAsync())
                 .ReturnsAsync(models);
 
             // Act
-            var result = await _service.GetDistinctModelsAsync();
+            var result = await _provider.GetDistinctModelsAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -251,7 +247,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Contains("gpt-3.5-turbo", result);
             Assert.Contains("gemini-pro", result);
             
-            _mockAdminApiClient.Verify(c => c.GetDistinctModelsAsync(), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetDistinctModelsAsync(), Times.Once);
         }
 
         [Fact]
@@ -312,23 +308,23 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 AverageResponseTimeMs = 980
             };
 
-            _mockAdminApiClient.Setup(c => c.GetVirtualKeyByIdAsync(virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetVirtualKeyByIdAsync(virtualKeyId))
                 .ReturnsAsync(virtualKey);
                 
-            _mockAdminApiClient.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(virtualKeyId))
                 .ReturnsAsync(keyUsageStats);
                 
-            _mockAdminApiClient.Setup(c => c.GetLogsSummaryAsync(7, virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetLogsSummaryAsync(7, virtualKeyId))
                 .ReturnsAsync(logsSummary7Days);
                 
-            _mockAdminApiClient.Setup(c => c.GetLogsSummaryAsync(1, virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetLogsSummaryAsync(1, virtualKeyId))
                 .ReturnsAsync(logsSummary1Day);
                 
-            _mockAdminApiClient.Setup(c => c.GetLogsSummaryAsync(30, virtualKeyId))
+            _adminApiClientMock.Setup(c => c.GetLogsSummaryAsync(30, virtualKeyId))
                 .ReturnsAsync(logsSummary30Days);
 
             // Act
-            var result = await _service.GetKeyUsageSummaryAsync(virtualKeyId);
+            var result = await _provider.GetKeyUsageSummaryAsync(virtualKeyId);
 
             // Assert
             Assert.NotNull(result);
@@ -345,11 +341,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Equal(50, result.RequestsLast7Days);
             Assert.Equal(150, result.RequestsLast30Days);
             
-            _mockAdminApiClient.Verify(c => c.GetVirtualKeyByIdAsync(virtualKeyId), Times.Once);
-            _mockAdminApiClient.Verify(c => c.GetVirtualKeyUsageStatisticsAsync(virtualKeyId), Times.Once);
-            _mockAdminApiClient.Verify(c => c.GetLogsSummaryAsync(7, virtualKeyId), Times.Once);
-            _mockAdminApiClient.Verify(c => c.GetLogsSummaryAsync(1, virtualKeyId), Times.Once);
-            _mockAdminApiClient.Verify(c => c.GetLogsSummaryAsync(30, virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetVirtualKeyByIdAsync(virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetVirtualKeyUsageStatisticsAsync(virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetLogsSummaryAsync(7, virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetLogsSummaryAsync(1, virtualKeyId), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetLogsSummaryAsync(30, virtualKeyId), Times.Once);
         }
 
         [Fact]
@@ -416,11 +412,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 PageSize = pageSize
             };
 
-            _mockAdminApiClient.Setup(c => c.GetRequestLogsAsync(page, pageSize, virtualKeyId, null, null, null))
+            _adminApiClientMock.Setup(c => c.GetRequestLogsAsync(page, pageSize, virtualKeyId, null, null, null))
                 .ReturnsAsync(pagedResult);
 
             // Act
-            var (result, totalCount) = await _service.GetRequestLogsForKeyAsync(virtualKeyId, page, pageSize);
+            var (result, totalCount) = await _provider.GetRequestLogsForKeyAsync(virtualKeyId, page, pageSize);
 
             // Assert
             Assert.NotNull(result);
@@ -439,7 +435,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.Equal("gpt-3.5-turbo", result[1].ModelName);
             Assert.Equal(logs[1].Timestamp, result[1].Timestamp);
             
-            _mockAdminApiClient.Verify(c => c.GetRequestLogsAsync(page, pageSize, virtualKeyId, null, null, null), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetRequestLogsAsync(page, pageSize, virtualKeyId, null, null, null), Times.Once);
         }
 
         [Fact]
@@ -498,12 +494,12 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 PageSize = pageSize
             };
 
-            _mockAdminApiClient.Setup(c => c.GetRequestLogsAsync(
+            _adminApiClientMock.Setup(c => c.GetRequestLogsAsync(
                     pageNumber, pageSize, virtualKeyId, modelFilter, startDate, endDate))
                 .ReturnsAsync(pagedResult);
 
             // Act
-            var (result, totalCount) = await _service.SearchLogsAsync(
+            var (result, totalCount) = await _provider.SearchLogsAsync(
                 virtualKeyId, modelFilter, startDate, endDate, statusCode, pageNumber, pageSize);
 
             // Assert
@@ -515,7 +511,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             Assert.All(result, log => Assert.Equal("gpt-4", log.ModelName));
             Assert.All(result, log => Assert.Equal(200, log.StatusCode));
             
-            _mockAdminApiClient.Verify(c => c.GetRequestLogsAsync(
+            _adminApiClientMock.Verify(c => c.GetRequestLogsAsync(
                 pageNumber, pageSize, virtualKeyId, modelFilter, startDate, endDate), Times.Once);
         }
 
@@ -565,11 +561,11 @@ namespace ConduitLLM.Tests.WebUI.Providers
                 }
             };
 
-            _mockAdminApiClient.Setup(c => c.GetLogsSummaryAsync(days))
+            _adminApiClientMock.Setup(c => c.GetLogsSummaryAsync(days))
                 .ReturnsAsync(configSummary);
 
             // Act
-            var result = await _service.GetLogsSummaryAsync(startDate, endDate);
+            var result = await _provider.GetLogsSummaryAsync(startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
@@ -596,7 +592,7 @@ namespace ConduitLLM.Tests.WebUI.Providers
             // Verify top model
             Assert.Equal("gpt-4", result.TopModel);
             
-            _mockAdminApiClient.Verify(c => c.GetLogsSummaryAsync(days), Times.Once);
+            _adminApiClientMock.Verify(c => c.GetLogsSummaryAsync(days), Times.Once);
         }
     }
 }
