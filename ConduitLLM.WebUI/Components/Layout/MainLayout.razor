@@ -38,9 +38,6 @@
             <div class="app-bar-container">
                 <!-- Left Side -->
                 <div class="app-bar-left">
-                    <button type="button" class="app-bar-toggle" @onclick="@(() => DrawerToggle())" @onclick:preventDefault="true" @onclick:stopPropagation="true" title="@(_drawerOpen ? "Close menu" : "Open menu")">
-                        <i class="fa fa-bars"></i>
-                    </button>
                     <div class="app-bar-brand">
                         <div class="app-bar-logo">
                             <i class="fa fa-bolt"></i>
@@ -91,19 +88,13 @@
             </div>
         </header>
         
-        <!-- Side Navigation Drawer -->
-        <div class="drawer @(_drawerOpen ? "drawer-open" : "drawer-closed")">
+        <!-- Side Navigation -->
+        <div class="sidebar">
             <NavMenu />
         </div>
         
-        <!-- Mobile backdrop -->
-        @if (_drawerOpen)
-        {
-            <div class="mobile-backdrop" @onclick="DrawerToggle"></div>
-        }
-        
         <!-- Main Content Area -->
-        <main class="main-content @(_drawerOpen ? "drawer-open" : "drawer-closed")">
+        <main class="main-content">
             <div class="main-content-inner">
                 <ConduitLLM.WebUI.Components.Shared.DeprecationWarning />
                 @Body
@@ -297,37 +288,6 @@
         gap: 1rem;
     }
 
-    .app-bar-toggle {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-        padding: 0.75rem;
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 44px;
-        height: 44px;
-        z-index: 1100;
-        pointer-events: auto !important;
-        position: relative;
-    }
-
-    .app-bar-toggle:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: scale(1.05);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .app-bar-toggle:active {
-        transform: scale(0.95);
-    }
-
-    .app-bar-toggle i {
-        font-size: 1.125rem;
-    }
 
     .app-bar-brand {
         display: flex;
@@ -458,8 +418,8 @@
         font-size: 1.125rem;
     }
 
-    /* Side Drawer */
-    .drawer {
+    /* Sidebar */
+    .sidebar {
         width: 280px;
         position: fixed;
         top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
@@ -470,24 +430,14 @@
         z-index: 900;
         overflow-y: auto;
         overflow-x: hidden;
-        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         border-right: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .drawer.drawer-closed {
-        transform: translateX(-100%) !important;
-    }
-
-    .drawer.drawer-open {
-        transform: translateX(0) !important;
     }
 
     /* Main Content */
     .main-content {
-        margin-left: 0;
+        margin-left: 280px;
         padding-top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
         min-height: 100vh;
-        transition: margin-left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
         position: relative;
     }
@@ -497,30 +447,6 @@
         min-height: calc(100vh - @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px"));
     }
 
-    /* Desktop: When drawer is open */
-    @@media screen and (min-width: 769px) {
-        .main-content.drawer-open {
-            margin-left: 280px;
-        }
-    }
-
-    /* When drawer is closed */
-    .main-content.drawer-closed {
-        margin-left: 0;
-    }
-
-    /* Mobile backdrop */
-    .mobile-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 850;
-        backdrop-filter: blur(5px);
-        display: none;
-    }
 
     /* Mobile Responsive */
     @@media screen and (max-width: 768px) {
@@ -557,23 +483,12 @@
             display: none;
         }
 
-        .main-content,
-        .main-content.drawer-open,
-        .main-content.drawer-closed {
+        .sidebar {
+            display: none;
+        }
+
+        .main-content {
             margin-left: 0;
-        }
-
-        .drawer {
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-            width: 280px;
-        }
-
-        .drawer-open {
-            transform: translateX(0);
-        }
-
-        .mobile-backdrop {
-            display: block;
         }
     }
 
@@ -585,36 +500,14 @@
         .app-bar-external-link {
             padding: 0.5rem;
         }
-
-        .app-bar-toggle {
-            min-width: 36px;
-            height: 36px;
-            padding: 0.5rem;
-        }
     }
 
-    /* Animation Keyframes */
-    @@keyframes gentle-slide-in {
-        from {
-            transform: translateX(-100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
-    .drawer-open {
-        animation: gentle-slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
 
 
     /* High contrast improvements */
     @@media (prefers-reduced-motion: reduce) {
-        .drawer,
+        .sidebar,
         .main-content,
-        .app-bar-toggle,
         .app-bar-user,
         .app-bar-external-link {
             transition: none;
@@ -623,23 +516,12 @@
 </style>
 
 @code {
-    private bool _drawerOpen = true;
-    private int _clickCount = 0;
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             try
             {
-                // Check if we're on mobile and auto-close drawer
-                var isMobile = await JSRuntime.InvokeAsync<bool>("eval", "window.innerWidth <= 768");
-                if (isMobile)
-                {
-                    _drawerOpen = false;
-                    StateHasChanged();
-                }
-                
                 // Test if JS interop is working
                 await JSRuntime.InvokeVoidAsync("console.log", "Blazor MainLayout initialized successfully");
             }
@@ -649,13 +531,4 @@
             }
         }
     }
-
-    private void DrawerToggle()
-    {
-        _clickCount++;
-        _drawerOpen = !_drawerOpen;
-        Console.WriteLine($"Drawer toggled: {_drawerOpen}, Click count: {_clickCount}");
-        StateHasChanged();
-    }
-    
 }
