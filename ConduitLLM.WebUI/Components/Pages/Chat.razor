@@ -13,223 +13,372 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
+<PageTitle>Chat Playground - ConduitLLM</PageTitle>
+
 <div class="container container-xxl mt-4">
-    <h4 class="mb-4">Chat Playground</h4>
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="chat-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-comments me-3"></i>Chat Playground
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Test your LLM integrations with real-time conversations across multiple providers
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="chat-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-robot me-2"></i>
+                                <span class="small">@modelMappings.Count Models Available</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if (modelMappings == null || !modelMappings.Any())
     {
-        <div class="alert alert-warning">
-            No models configured. Please add models in the <a href="/configuration">Configuration</a> page.
+        <div class="alert alert-warning shadow-sm border-0">
+            <div class="d-flex align-items-center">
+                <i class="fa fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <h6 class="alert-heading mb-1">No Models Configured</h6>
+                    <p class="mb-0">Please add models in the <a href="/configuration" class="alert-link">Configuration</a> page to start chatting.</p>
+                </div>
+            </div>
         </div>
     }
     else
     {
         <div class="row">
-            <div class="col-12 col-md-8">
-                <div class="card p-4 mb-4">
-                    <div class="form-group mb-4">
-                        <label for="systemPrompt">System Prompt (Optional)</label>
-                        <textarea id="systemPrompt" 
-                                  class="form-control" 
-                                  rows="3" 
-                                  @bind="systemPrompt"></textarea>
-                        <div class="form-text">
-                            Instructions that define the AI's behavior for the entire conversation (e.g., 'You are a helpful assistant', 'Respond as a SQL expert')
+            <div class="col-12 col-lg-8">
+                <!-- Chat Interface Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-light border-0">
+                        <h5 class="mb-0">
+                            <i class="fa fa-keyboard me-2"></i>Conversation
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- System Prompt -->
+                        <div class="form-group mb-4">
+                            <label for="systemPrompt" class="form-label fw-semibold">
+                                <i class="fa fa-cog me-2"></i>System Prompt (Optional)
+                            </label>
+                            <textarea id="systemPrompt" 
+                                      class="form-control" 
+                                      rows="3" 
+                                      placeholder="e.g., 'You are a helpful assistant', 'Respond as a SQL expert'"
+                                      @bind="systemPrompt"></textarea>
+                            <div class="form-text">
+                                Instructions that define the AI's behavior for the entire conversation
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="form-group mb-4">
-                        <label for="userMessage">User Message</label>
-                        <textarea id="userMessage" 
-                                  class="form-control" 
-                                  rows="5" 
-                                  placeholder="Enter your message here..." 
-                                  @bind="userMessage"></textarea>
-                    </div>
-                    
-                    <div class="d-flex mb-4">
-                        <button type="button" 
-                                class="btn btn-primary me-2" 
-                                @onclick="SendRequest" 
-                                disabled="@isLoading">
-                            @if (isLoading)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                <span>Sending...</span>
-                            }
-                            else
-                            {
-                                <i class="fa fa-paper-plane me-2"></i>
-                                <span>Send Request</span>
-                            }
-                        </button>
                         
-                        <button type="button" 
-                                class="btn btn-outline-secondary" 
-                                @onclick="ClearChat" 
-                                disabled="@isLoading">
-                            <i class="fa fa-trash me-2"></i>
-                            Clear
-                        </button>
-                    </div>
-                    
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger mt-4">
-                            @errorMessage
+                        <!-- User Message -->
+                        <div class="form-group mb-4">
+                            <label for="userMessage" class="form-label fw-semibold">
+                                <i class="fa fa-user me-2"></i>Your Message
+                            </label>
+                            <textarea id="userMessage" 
+                                      class="form-control" 
+                                      rows="4" 
+                                      placeholder="Type your message here..." 
+                                      @bind="userMessage"></textarea>
                         </div>
-                    }
-                    
-                    <!-- Chat History Display -->
-                    <div class="card bg-light mt-4 p-4" style="max-height: 500px; overflow-y: auto;">
-                        @if (!chatHistory.Any() && !isLoading)
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mb-4">
+                            <button type="button" 
+                                    class="btn btn-primary btn-lg" 
+                                    @onclick="SendRequest" 
+                                    disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Sending...</span>
+                                }
+                                else
+                                {
+                                    <i class="fa fa-paper-plane me-2"></i>
+                                    <span>Send Message</span>
+                                }
+                            </button>
+                            
+                            <button type="button" 
+                                    class="btn btn-outline-danger" 
+                                    @onclick="ClearChat" 
+                                    disabled="@isLoading">
+                                <i class="fa fa-trash me-2"></i>
+                                Clear Chat
+                            </button>
+                        </div>
+                        
+                        <!-- Error Display -->
+                        @if (!string.IsNullOrEmpty(errorMessage))
                         {
-                            <p class="text-muted text-center">
-                                Chat history will appear here.
-                            </p>
-                        }
-                        @foreach (var message in chatHistory)
-                        {
-                            <div class="card mb-3 p-3 @GetMessageClass(message.Role)">
-                                <h6 class="text-capitalize mb-2">
-                                    @message.Role
-                                </h6>
-                                <hr class="my-1" />
-                                @RenderMessageContent(message.Content ?? string.Empty)
-                            </div>
-                        }
-                        @if (isLoading && _streamResponse)
-                        {
-                            <div class="card mb-3 p-3 assistant-message">
-                                <h6 class="text-capitalize mb-2">
-                                    Assistant
-                                </h6>
-                                <hr class="my-1" />
-                                <div class="spinner-border spinner-border-sm" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </div>
-                        }
-                        @if (isLoading && !_streamResponse)
-                        {
-                            <div class="card mb-3 p-3 assistant-message">
-                                <h6 class="text-capitalize mb-2">
-                                    Assistant
-                                </h6>
-                                <hr class="my-1" />
-                                <p class="text-muted">
-                                    Waiting for response... 
-                                    <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
-                                </p>
+                            <div class="alert alert-danger border-0 shadow-sm">
+                                <i class="fa fa-exclamation-circle me-2"></i>
+                                @errorMessage
                             </div>
                         }
                     </div>
                 </div>
+
+                <!-- Chat History Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fa fa-history me-2"></i>Chat History
+                            </h5>
+                            <span class="badge bg-secondary">@chatHistory.Count messages</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chat-container" style="max-height: 500px; overflow-y: auto;">
+                            @if (!chatHistory.Any() && !isLoading)
+                            {
+                                <div class="text-center py-5">
+                                    <i class="fa fa-comments fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Start a conversation by sending your first message above.</p>
+                                </div>
+                            }
+                            @foreach (var message in chatHistory)
+                            {
+                                <div class="message-bubble @GetMessageClass(message.Role) mb-3">
+                                    <div class="message-header">
+                                        <div class="d-flex align-items-center">
+                                            @if (message.Role == "user")
+                                            {
+                                                <i class="fa fa-user-circle me-2"></i>
+                                            }
+                                            else if (message.Role == "assistant")
+                                            {
+                                                <i class="fa fa-robot me-2"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa fa-cog me-2"></i>
+                                            }
+                                            <span class="fw-semibold text-capitalize">@message.Role</span>
+                                        </div>
+                                    </div>
+                                    <div class="message-content">
+                                        @RenderMessageContent(message.Content ?? string.Empty)
+                                    </div>
+                                </div>
+                            }
+                            @if (isLoading && _streamResponse)
+                            {
+                                <div class="message-bubble assistant-message mb-3">
+                                    <div class="message-header">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-robot me-2"></i>
+                                            <span class="fw-semibold">Assistant</span>
+                                        </div>
+                                    </div>
+                                    <div class="message-content">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <span class="text-muted">Typing...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            @if (isLoading && !_streamResponse)
+                            {
+                                <div class="message-bubble assistant-message mb-3">
+                                    <div class="message-header">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-robot me-2"></i>
+                                            <span class="fw-semibold">Assistant</span>
+                                        </div>
+                                    </div>
+                                    <div class="message-content">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                            <span class="text-muted">Thinking...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div class="col-12 col-md-4">
-                <div class="card p-4">
-                    <h6 class="mb-4">Parameters</h6>
-                    
-                    <div class="form-group mb-4">
-                        <label for="modelSelect">Model</label>
-                        <select id="modelSelect" 
-                                class="form-select" 
-                                @bind="selectedModelAlias">
-                            @foreach (var mapping in modelMappings)
-                            {
-                                <option value="@mapping.ModelId">@mapping.ModelId</option>
-                            }
-                        </select>
+            <div class="col-12 col-lg-4">
+                <!-- Model Settings Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-light border-0">
+                        <h6 class="mb-0">
+                            <i class="fa fa-sliders-h me-2"></i>Model Settings
+                        </h6>
                     </div>
-                    
-                    <div class="form-group mb-4">
-                        <label for="apiKey">API Key (Optional)</label>
-                        <input type="text" 
-                               id="apiKey" 
-                               class="form-control" 
-                               @bind="apiKey" />
-                        <div class="form-text">Overrides key from configuration for this request.</div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label for="modelSelect" class="form-label fw-semibold">
+                                <i class="fa fa-robot me-2"></i>Model
+                            </label>
+                            <select id="modelSelect" 
+                                    class="form-select" 
+                                    @bind="selectedModelAlias">
+                                @foreach (var mapping in modelMappings)
+                                {
+                                    <option value="@mapping.ModelId">@mapping.ModelId</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="apiKey" class="form-label fw-semibold">
+                                <i class="fa fa-key me-2"></i>API Key (Optional)
+                            </label>
+                            <input type="password" 
+                                   id="apiKey" 
+                                   class="form-control" 
+                                   placeholder="Override default key"
+                                   @bind="apiKey" />
+                            <div class="form-text">Overrides the configured key for testing</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="streamResponse" 
-                               @bind="_streamResponse" />
-                        <label class="form-check-label" for="streamResponse">Stream Response</label>
-                        <div class="form-text">Stream the response word-by-word, like ChatGPT.</div>
+                </div>
+
+                <!-- Response Settings Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-light border-0">
+                        <h6 class="mb-0">
+                            <i class="fa fa-cogs me-2"></i>Response Settings
+                        </h6>
                     </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="showRawMessage" 
-                               @bind="_showRawMessage" />
-                        <label class="form-check-label" for="showRawMessage">Show Raw Message</label>
+                    <div class="card-body">
+                        <!-- Temperature -->
+                        <div class="mb-3">
+                            <label for="temperatureSlider" class="form-label fw-semibold">
+                                <i class="fa fa-thermometer-half me-2"></i>Temperature: 
+                                <span class="badge bg-primary">@temperature.ToString("F2")</span>
+                            </label>
+                            <input type="range" 
+                                   class="form-range" 
+                                   id="temperatureSlider" 
+                                   min="0" max="1" step="0.01" 
+                                   @bind-value="temperature" 
+                                   @bind-value:event="oninput" />
+                            <div class="form-text">Controls randomness (0 = deterministic, 1 = creative)</div>
+                        </div>
+                        
+                        <!-- Top P -->
+                        <div class="mb-3">
+                            <label for="topPSlider" class="form-label fw-semibold">
+                                <i class="fa fa-filter me-2"></i>Top P: 
+                                <span class="badge bg-success">@topP.ToString("F2")</span>
+                            </label>
+                            <input type="range" 
+                                   class="form-range" 
+                                   id="topPSlider" 
+                                   min="0" max="1" step="0.01" 
+                                   @bind-value="topP" 
+                                   @bind-value:event="oninput" />
+                            <div class="form-text">Nucleus sampling (lower = more focused)</div>
+                        </div>
+                        
+                        <!-- Stop Sequences -->
+                        <div class="form-group mb-3">
+                            <label for="stopSequences" class="form-label fw-semibold">
+                                <i class="fa fa-stop-circle me-2"></i>Stop Sequences
+                            </label>
+                            <input type="text" 
+                                   id="stopSequences" 
+                                   class="form-control" 
+                                   placeholder="e.g., \n, END, STOP"
+                                   @bind="stopSequences" />
+                            <div class="form-text">Comma-separated sequences to stop generation</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="appendFunctionResult" 
-                               @bind="_appendFunctionResult" />
-                        <label class="form-check-label" for="appendFunctionResult">Append Function Result</label>
-                        <div class="form-text">Append the result of successful function calls to the chat history.</div>
+                </div>
+
+                <!-- Advanced Options Card -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-light border-0">
+                        <h6 class="mb-0">
+                            <i class="fa fa-wrench me-2"></i>Options
+                        </h6>
                     </div>
-                    
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="executeFunctions" 
-                               @bind="_executeFunctions" />
-                        <label class="form-check-label" for="executeFunctions">Execute Functions</label>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="streamResponse" 
+                                   @bind="_streamResponse" />
+                            <label class="form-check-label fw-semibold" for="streamResponse">
+                                <i class="fa fa-stream me-2"></i>Stream Response
+                            </label>
+                            <div class="form-text">Real-time streaming like ChatGPT</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="showRawMessage" 
+                                   @bind="_showRawMessage" />
+                            <label class="form-check-label fw-semibold" for="showRawMessage">
+                                <i class="fa fa-code me-2"></i>Show Raw Message
+                            </label>
+                            <div class="form-text">Display raw JSON response data</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="autoScroll" 
+                                   @bind="_autoScroll" />
+                            <label class="form-check-label fw-semibold" for="autoScroll">
+                                <i class="fa fa-arrows-alt-v me-2"></i>Auto Scroll
+                            </label>
+                            <div class="form-text">Auto-scroll to newest messages</div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="temperatureSlider" class="form-label">Temperature: @temperature</label>
-                        <input type="range" 
-                               class="form-range" 
-                               id="temperatureSlider" 
-                               min="0" max="1" step="0.01" 
-                               @bind-value="temperature" 
-                               @bind-value:event="oninput" />
+                </div>
+
+                <!-- Function Options Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <h6 class="mb-0">
+                            <i class="fa fa-function me-2"></i>Function Calling
+                        </h6>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="topPSlider" class="form-label">Top P: @topP</label>
-                        <input type="range" 
-                               class="form-range" 
-                               id="topPSlider" 
-                               min="0" max="1" step="0.01" 
-                               @bind-value="topP" 
-                               @bind-value:event="oninput" />
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="executeFunctions" 
+                                   @bind="_executeFunctions" />
+                            <label class="form-check-label fw-semibold" for="executeFunctions">
+                                <i class="fa fa-play me-2"></i>Execute Functions
+                            </label>
+                            <div class="form-text">Allow function/tool execution</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="appendFunctionResult" 
+                                   @bind="_appendFunctionResult" />
+                            <label class="form-check-label fw-semibold" for="appendFunctionResult">
+                                <i class="fa fa-plus me-2"></i>Append Results
+                            </label>
+                            <div class="form-text">Add function results to chat history</div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group mb-4">
-                        <label for="stopSequences">Stop Sequences (Optional)</label>
-                        <input type="text" 
-                               id="stopSequences" 
-                               class="form-control" 
-                               @bind="stopSequences" />
-                        <div class="form-text">Comma-separated list of sequences to stop generation.</div>
-                    </div>
-                    
-                    <div class="form-check form-switch mb-4">
-                        <input class="form-check-input" 
-                               type="checkbox" 
-                               id="autoScroll" 
-                               @bind="_autoScroll" />
-                        <label class="form-check-label" for="autoScroll">Auto Scroll</label>
-                        <div class="form-text">Automatically scroll to the bottom when new messages arrive.</div>
-                    </div>
-                    
-                    <button type="button" 
-                            class="btn btn-danger mt-2" 
-                            @onclick="ClearChat">
-                        <i class="fa fa-trash me-2"></i>
-                        Clear Chat
-                    </button>
                 </div>
             </div>
         </div>
@@ -237,19 +386,98 @@
 </div>
 
 <style>
+    .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .chat-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .message-bubble {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+    
+    .message-bubble:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .message-header {
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        margin-bottom: 0.75rem;
+    }
+    
+    .message-content {
+        color: #333;
+    }
+    
     .user-message {
-        background-color: #e3f2fd;
+        background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
         border-left: 4px solid #2196f3;
     }
     
     .assistant-message {
-        background-color: #f3e5f5;
+        background: linear-gradient(135deg, #f3e5f5 0%, #faf0ff 100%);
         border-left: 4px solid #9c27b0;
     }
     
     .system-message {
-        background-color: #e8f5e9;
+        background: linear-gradient(135deg, #e8f5e8 0%, #f0fff0 100%);
         border-left: 4px solid #4caf50;
+    }
+    
+    .chat-container {
+        border-radius: 10px;
+        background: #fafafa;
+        padding: 1rem;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .form-range::-webkit-slider-thumb {
+        background: #667eea;
+        border: none;
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    }
+    
+    .form-range::-moz-range-thumb {
+        background: #667eea;
+        border: none;
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
 </style>
 

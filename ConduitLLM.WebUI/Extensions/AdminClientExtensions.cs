@@ -55,6 +55,7 @@ namespace ConduitLLM.WebUI.Extensions
             // Register HTTP client for AdminApiClient as both concrete type and interface
             services.AddHttpClient<AdminApiClient>();
             services.AddScoped<IAdminApiClient>(sp => sp.GetRequiredService<AdminApiClient>());
+            services.AddScoped<IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());
 
             return services;
         }

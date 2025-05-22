@@ -13,7 +13,7 @@ public class CreateVirtualKeyRequestDto
 
     public string? AllowedModels { get; set; } // Comma-separated
 
-    [Range(0.01, 1000000, ErrorMessage = "Max budget must be between 0.01 and 1,000,000, if specified.")]
+    [Range(0, 1000000, ErrorMessage = "Max budget must be between 0 and 1,000,000. Set to 0 for no budget limit.")]
     public decimal? MaxBudget { get; set; }
 
     [MaxLength(20)]

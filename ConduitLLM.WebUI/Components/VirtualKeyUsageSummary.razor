@@ -1,7 +1,8 @@
 @using ConduitLLM.Configuration.DTOs.VirtualKey
 @using Microsoft.Extensions.Logging
 @using System.Globalization
-@inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
+@using ConduitLLM.WebUI.Interfaces
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<VirtualKeyUsageSummary> Logger
 
 <div class="card mb-4 shadow-sm">
@@ -151,11 +152,11 @@
         try
         {
             errorMessage = null;
-            var keys = await VirtualKeyService.ListVirtualKeysAsync();
+            var keys = await AdminApiClient.GetAllVirtualKeysAsync();
             
             keyStats = new VirtualKeyStats
             {
-                TotalKeys = keys.Count,
+                TotalKeys = keys.Count(),
                 ActiveKeys = keys.Count(k => k.IsEnabled && (!k.ExpiresAt.HasValue || k.ExpiresAt > DateTime.UtcNow)),
                 TotalSpending = keys.Sum(k => k.CurrentSpend),
                 HighUsageKeys = keys

@@ -11,11 +11,9 @@
 @using ProviderCredentialDto = ConduitLLM.Configuration.DTOs.ProviderCredentialDto
 @using CreateProviderCredentialDto = ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto
 @using UpdateProviderCredentialDto = ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto
-@inject IAdminApiClient AdminApiClient
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
-@inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
 @inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
 @rendermode InteractiveServer
@@ -69,25 +67,17 @@ else
                         <small class="text-secondary mb-4">Provider name cannot be changed after creation.</small>
                     }
 
-                    @* Conditionally hide BaseUrl for OpenRouter *@
+                    @* Conditionally hide ApiBase for OpenRouter *@
                     @if (provider.ProviderName != "OpenRouter")
                     {
                         <div class="mb-4">
-                            <label for="baseUrl" class="form-label">API Base URL (Optional, leave empty for default)</label>
-                            <input type="text" class="form-control" id="baseUrl" 
-                                   @bind="provider.BaseUrl" 
+                            <label for="apiBase" class="form-label">API Base URL (Optional, leave empty for default)</label>
+                            <input type="text" class="form-control" id="apiBase" 
+                                   @bind="provider.ApiBase" 
                                    placeholder="https://api.example.com" />
-                            <ValidationMessage For="@(() => provider.BaseUrl)" />
+                            <ValidationMessage For="@(() => provider.ApiBase)" />
                         </div>
                     }
-
-                    <div class="mb-4">
-                        <label for="apiVersion" class="form-label">API Version (Optional)</label>
-                        <input type="text" class="form-control" id="apiVersion" 
-                               @bind="provider.ApiVersion" 
-                               placeholder="v1" />
-                        <ValidationMessage For="@(() => provider.ApiVersion)" />
-                    </div>
 
                     <div class="mb-4">
                         <label for="apiKey" class="form-label">API Key</label>
@@ -238,7 +228,7 @@ else
         }
     }
 
-    private ConduitLLM.Configuration.Entities.ProviderCredential provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; // Use correct entity type
+    private ProviderCredentialDto provider = new ProviderCredentialDto { ProviderName = "" };
     private string? errorMessage;
     private bool isLoading = true;
     private bool isSaving = false;
@@ -261,20 +251,13 @@ else
             
             try
             {
-                // Use AdminApiClient to get provider details
-                var existingProvider = await AdminApiClient.GetProviderCredentialByIdAsync(Id.Value);
+                // Use ProviderCredentialService to get provider details
+                var existingProvider = await ProviderCredentialService.GetByIdAsync(Id.Value);
                 
                 if (existingProvider != null)
                 {
-                    // Convert DTO to Entity
-                    provider = new ProviderCredentialModel
-                    {
-                        Id = existingProvider.Id,
-                        ProviderName = existingProvider.ProviderName,
-                        BaseUrl = existingProvider.ApiBase, // Map ApiBase from DTO to BaseUrl in Entity
-                        ApiKey = existingProvider.ApiKey, // API Key is masked in the DTO
-                        IsEnabled = existingProvider.IsEnabled
-                    };
+                    // Use the DTO directly
+                    provider = existingProvider;
                     
                     // Keep track of the original API key existence
                     if (!string.IsNullOrEmpty(existingProvider.ApiKey))
@@ -301,8 +284,8 @@ else
         }
         else
         {
-            // Initialize a new Configuration entity for adding
-            provider = new ConduitLLM.Configuration.Entities.ProviderCredential { ProviderName = "" }; 
+            // Initialize a new DTO for adding
+            provider = new ProviderCredentialDto { ProviderName = "" }; 
             isLoading = false;
         }
         
@@ -323,11 +306,8 @@ else
                 var updateDto = new UpdateProviderCredentialDto
                 {
                     Id = Id.Value,
-                    ApiBase = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl,
-                    IsEnabled = true,
-                    // Map ApiVersion from Entity to appropriate DTO field if needed
-                    AdditionalConfig = !string.IsNullOrWhiteSpace(provider.ApiVersion) ? 
-                        $"{{\"ApiVersion\": \"{provider.ApiVersion}\"}}" : null
+                    ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
+                    IsEnabled = true
                 };
                 
                 // Only update API key if provided (not empty)
@@ -342,8 +322,8 @@ else
                 }
                 // Otherwise, don't include the API key in the update (keep existing)
                 
-                // Update via API Client
-                var updateResult = await AdminApiClient.UpdateProviderCredentialAsync(Id.Value, updateDto);
+                // Update via ProviderCredentialService
+                var updateResult = await ProviderCredentialService.UpdateAsync(Id.Value, updateDto);
                 
                 if (updateResult == null)
                 {
@@ -356,21 +336,13 @@ else
                 var createDto = new CreateProviderCredentialDto
                 {
                     ProviderName = provider.ProviderName,
-                    ApiBase = string.IsNullOrWhiteSpace(provider.BaseUrl) ? null : provider.BaseUrl,
+                    ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
                     ApiKey = string.IsNullOrWhiteSpace(provider.ApiKey) ? null : provider.ApiKey,
                     IsEnabled = true
                 };
                 
-                // Map ApiVersion to appropriate DTO fields based on provider
-                if (!string.IsNullOrWhiteSpace(provider.ApiVersion))
-                {
-                    // For clarity, you might need more specific mapping depending on provider
-                    // This is a simple starting point
-                    createDto.AdditionalConfig = $"{{\"ApiVersion\": \"{provider.ApiVersion}\"}}";
-                }
-                
-                // Create via API Client
-                var createResult = await AdminApiClient.CreateProviderCredentialAsync(createDto);
+                // Create via ProviderCredentialService
+                var createResult = await ProviderCredentialService.CreateAsync(createDto);
                 
                 if (createResult == null)
                 {
@@ -435,52 +407,31 @@ else
 
         try
         {
-            // Test the connection using the Admin API directly
-            try {
-                var testResult = await AdminApiClient.TestProviderConnectionAsync(provider.ProviderName);
-                if (testResult != null && testResult.Success)
-                {
-                    connectionStatus = new ProviderStatus
-                    {
-                        Status = ProviderStatus.StatusType.Online,
-                        StatusMessage = testResult.Message,
-                        LastCheckedUtc = testResult.Timestamp,
-                        IsOnline = true
-                    };
-                }
-                else
-                {
-                    connectionStatus = new ProviderStatus
-                    {
-                        Status = ProviderStatus.StatusType.Offline,
-                        StatusMessage = testResult?.ErrorDetails ?? "Connection test failed",
-                        LastCheckedUtc = testResult?.Timestamp ?? DateTime.UtcNow,
-                        IsOnline = false
-                    };
-                }
-            }
-            catch (Exception)
+            // Test the connection using the ProviderCredentialService
+            var testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            if (testResult != null && testResult.Success)
             {
-                // Fallback to local test when API call fails
-                var testProvider = new ConduitLLM.Configuration.Entities.ProviderCredential 
+                connectionStatus = new ProviderStatus
                 {
-                    ProviderName = provider.ProviderName,
-                    ApiKey = provider.ApiKey,
-                    BaseUrl = provider.BaseUrl,
-                    ApiVersion = provider.ApiVersion
+                    Status = ProviderStatus.StatusType.Online,
+                    StatusMessage = testResult.Message,
+                    LastCheckedUtc = testResult.Timestamp,
+                    IsOnline = true
                 };
-                // Use local provider status service as fallback
-                connectionStatus = await ProviderConnectionTester.TestConnectionAsync(ProviderStatusService, testProvider);
-            }
-            showConnectionStatus = true;
-            if (connectionStatus.Status == ProviderStatus.StatusType.Online)
-            {
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
             }
             else
             {
+                connectionStatus = new ProviderStatus
+                {
+                    Status = ProviderStatus.StatusType.Offline,
+                    StatusMessage = testResult?.ErrorDetails ?? "Connection test failed",
+                    LastCheckedUtc = testResult?.Timestamp ?? DateTime.UtcNow,
+                    IsOnline = false
+                };
                 connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
             }
+            showConnectionStatus = true;
         }
         finally
         {

@@ -9,93 +9,176 @@
 @inject ILogger<ModelCosts> Logger
 @rendermode InteractiveServer
 
-<PageTitle>Model Cost Management</PageTitle>
+<PageTitle>Model Cost Management - ConduitLLM</PageTitle>
 
-<h2 class="mb-4">Model Cost Management</h2>
-
-<div class="alert alert-info mb-4">
-    <div>
-        <p>Model costs are used to calculate usage spending for virtual keys and enforce budgets.</p>
-        <p>The <strong>ModelIdPattern</strong> supports wildcards (e.g., "openai/gpt-4*" or "*-embedding*") for matching multiple models with a single cost entry.</p>
-    </div>
-</div>
-
-<div class="card mb-4 shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Model Costs</h5>
-        <div class="btn-toolbar">
-            <button class="btn btn-outline-primary btn-sm me-2" @onclick="RefreshModelCosts">
-                <i class="fa fa-refresh me-1"></i> Refresh
-            </button>
-            <button class="btn btn-outline-primary btn-sm me-2" @onclick="ClearCache">
-                <i class="fa fa-broom me-1"></i> Clear Cache
-            </button>
-            <button class="btn btn-primary btn-sm" @onclick="() => ShowAddEditModal()">
-                <i class="fa fa-plus me-1"></i> Add New Model Cost
-            </button>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="mc-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-calculator me-3"></i>Model Cost Management
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Configure pricing for AI models, set cost calculations, and manage budget enforcement
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="mc-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-cogs me-2"></i>
+                                <span class="small">@(modelCosts?.Count() ?? 0) Models</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-dollar-sign me-2"></i>
+                                <span class="small">Cost Management</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="card-body">
-        @if (isLoading)
-        {
-            <div class="d-flex flex-column align-items-center py-4">
-                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Loading...</span>
+
+    <!-- Info Card -->
+    <div class="card mc-info-card border-0 shadow-sm bg-light mb-4">
+        <div class="card-body p-4">
+            <div class="row align-items-start">
+                <div class="col-md-1 text-center">
+                    <i class="fa fa-info-circle fa-2x text-primary"></i>
                 </div>
-                <p class="mt-4">Loading model costs...</p>
+                <div class="col-md-11">
+                    <h6 class="fw-bold text-primary mb-2">Model Cost Configuration</h6>
+                    <p class="mb-2">Model costs are used to calculate usage spending for virtual keys and enforce budgets.</p>
+                    <p class="mb-0">
+                        <strong>Pattern Matching:</strong> Use wildcards like <code>"openai/gpt-4*"</code> or <code>"*-embedding*"</code> 
+                        to match multiple models with a single cost entry.
+                    </p>
+                </div>
             </div>
-        }
-        else if (modelCosts == null || !modelCosts.Any())
-        {
-            <div class="alert alert-info my-2">
-                No model costs defined yet. Click 'Add New Model Cost' to create one.
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive mt-4">
-                <table class="table table-hover table-striped">
-                    <thead>
-                        <tr>
-                            <th>Model ID Pattern</th>
-                            <th>Input Token Cost ($)</th>
-                            <th>Output Token Cost ($)</th>
-                            <th>Embedding Token Cost ($)</th>
-                            <th>Image Cost ($)</th>
-                            <th>Created</th>
-                            <th>Updated</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var cost in modelCosts.OrderBy(c => c.ModelIdPattern))
-                        {
-                            <tr>
-                                <td>@cost.ModelIdPattern</td>
-                                <td>@FormatCost(cost.InputTokenCost)</td>
-                                <td>@FormatCost(cost.OutputTokenCost)</td>
-                                <td>@FormatCost(cost.EmbeddingTokenCost)</td>
-                                <td>@FormatCost(cost.ImageCostPerImage)</td>
-                                <td><small>@cost.CreatedAt.ToString("g")</small></td>
-                                <td><small>@cost.UpdatedAt.ToString("g")</small></td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" @onclick="() => ShowAddEditModal(cost)" title="Edit">
-                                            <i class="fa fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)" title="Delete">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+        </div>
     </div>
-</div>
+
+    <!-- Main Content Card -->
+    <div class="card mc-table-card border-0 shadow-lg rounded-4 mb-4">
+        <div class="card-header mc-card-header border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-table me-2 text-primary"></i>Model Cost Registry
+            </h5>
+            <div class="mc-toolbar d-flex gap-2">
+                <button class="btn mc-btn-outline-secondary" @onclick="RefreshModelCosts">
+                    <i class="fa fa-sync-alt me-2"></i>Refresh
+                </button>
+                <button class="btn mc-btn-outline-info" @onclick="ClearCache">
+                    <i class="fa fa-broom me-2"></i>Clear Cache
+                </button>
+                <button class="btn mc-btn-primary" @onclick="() => ShowAddEditModal()">
+                    <i class="fa fa-plus me-2"></i>Add Model Cost
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="mc-loading-spinner">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-muted fw-medium">Loading model costs...</p>
+                </div>
+            }
+            else if (modelCosts == null || !modelCosts.Any())
+            {
+                <div class="mc-empty-state text-center py-5">
+                    <div class="mc-empty-icon mb-4">
+                        <i class="fa fa-calculator fa-4x text-primary opacity-50"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-3">No Model Costs Configured</h4>
+                    <p class="text-muted mb-4 lead">
+                        Get started by adding cost configurations for your AI models to enable budget tracking.
+                    </p>
+                    <button class="btn mc-btn-primary btn-lg" @onclick="() => ShowAddEditModal()">
+                        <i class="fa fa-plus me-2"></i>Add Your First Model Cost
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table mc-table align-middle mb-0">
+                        <thead class="mc-table-header">
+                            <tr>
+                                <th class="border-0 fw-bold">Model Pattern</th>
+                                <th class="border-0 fw-bold">Input Cost</th>
+                                <th class="border-0 fw-bold">Output Cost</th>
+                                <th class="border-0 fw-bold">Embedding Cost</th>
+                                <th class="border-0 fw-bold">Image Cost</th>
+                                <th class="border-0 fw-bold">Created</th>
+                                <th class="border-0 fw-bold">Updated</th>
+                                <th class="border-0 fw-bold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cost in modelCosts.OrderBy(c => c.ModelIdPattern))
+                            {
+                                <tr class="mc-table-row">
+                                    <td class="border-0">
+                                        <div class="mc-model-pattern">
+                                            <code class="mc-pattern-code">@cost.ModelIdPattern</code>
+                                        </div>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="mc-cost-display text-success fw-medium">
+                                            @FormatCost(cost.InputTokenCost)
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="mc-cost-display text-warning fw-medium">
+                                            @FormatCost(cost.OutputTokenCost)
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="mc-cost-display text-info fw-medium">
+                                            @FormatCost(cost.EmbeddingTokenCost)
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="mc-cost-display text-purple fw-medium">
+                                            @FormatCost(cost.ImageCostPerImage)
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <small class="text-muted">
+                                            <i class="fa fa-calendar me-1"></i>@cost.CreatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </td>
+                                    <td class="border-0">
+                                        <small class="text-muted">
+                                            <i class="fa fa-edit me-1"></i>@cost.UpdatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </td>
+                                    <td class="border-0">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn mc-btn-outline-primary" @onclick="() => ShowAddEditModal(cost)" title="Edit Model Cost">
+                                                <i class="fa fa-edit"></i>
+                                            </button>
+                                            <button class="btn mc-btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)" title="Delete Model Cost">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 
 <div class="modal @(showAddEditModal ? "show" : "")" style="display: @(showAddEditModal ? "block" : "none")">
     <div class="modal-dialog modal-lg">
@@ -197,6 +280,211 @@
         </div>
     </div>
 </div>
+</div>
+
+<!-- Custom CSS Styling -->
+<style>
+    .mc-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+
+    .mc-stats .stat-item {
+        display: inline-block;
+        margin-right: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .mc-info-card {
+        transition: all 0.3s ease;
+    }
+
+    .mc-info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .mc-table-card {
+        transition: all 0.3s ease;
+    }
+
+    .mc-table-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .mc-card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 1.5rem;
+    }
+
+    .mc-toolbar .btn {
+        border-radius: 0.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .mc-btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .mc-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .mc-btn-outline-secondary {
+        border: 2px solid #6b7280;
+        color: #6b7280;
+        background: transparent;
+    }
+
+    .mc-btn-outline-secondary:hover {
+        background: #6b7280;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .mc-btn-outline-info {
+        border: 2px solid #06b6d4;
+        color: #06b6d4;
+        background: transparent;
+    }
+
+    .mc-btn-outline-info:hover {
+        background: #06b6d4;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .mc-btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+    }
+
+    .mc-btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .mc-btn-outline-danger {
+        border: 2px solid #ef4444;
+        color: #ef4444;
+    }
+
+    .mc-btn-outline-danger:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .mc-loading-spinner {
+        display: inline-block;
+        animation: gentle-bounce 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    .mc-empty-state {
+        padding: 3rem 2rem;
+    }
+
+    .mc-empty-icon i {
+        animation: gentle-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.8; }
+    }
+
+    .mc-table-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+    }
+
+    .mc-table-header th {
+        color: #4a5568;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .mc-table-row {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .mc-table-row:hover {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        transform: translateX(2px);
+    }
+
+    .mc-table-row td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    .mc-pattern-code {
+        background: #f8f9fa;
+        color: #667eea;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e8f4fd;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .mc-cost-display {
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+
+    .text-purple {
+        color: #8b5cf6 !important;
+    }
+
+    @@media (max-width: 768px) {
+        .mc-header {
+            text-align: center;
+        }
+
+        .mc-stats {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .mc-toolbar {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+
+        .mc-toolbar .btn {
+            width: 100%;
+        }
+
+        .mc-table {
+            font-size: 0.875rem;
+        }
+
+        .mc-table-row td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
 
 @code {
     private IEnumerable<ConfigDTO.ModelCostDto>? modelCosts;

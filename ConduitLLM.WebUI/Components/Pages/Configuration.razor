@@ -20,27 +20,67 @@
 @inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
 
-<div class="container-fluid">
-    <h2 class="mb-4">Configuration Management</h2>
+<PageTitle>Configuration - ConduitLLM</PageTitle>
+
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="config-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-cogs me-3"></i>Configuration Management
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Configure LLM providers, model mappings, and system settings for your deployment
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="config-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-cloud me-2"></i>
+                                <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-sitemap me-2"></i>
+                                <span class="small">@(modelMappings?.Count ?? 0) Mappings</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if (!string.IsNullOrEmpty(deleteErrorMessage))
     {
-        <div class="alert alert-danger mb-4">@deleteErrorMessage</div>
+        <div class="alert alert-danger border-0 shadow-sm mb-4">
+            <i class="fa fa-exclamation-circle me-2"></i>
+            @deleteErrorMessage
+        </div>
     }
 
-    <div class="card mb-5 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">LLM Providers</h5>
-            <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" type="button" id="addProviderDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fa fa-plus me-1"></i> Add Provider
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addProviderDropdown">
-                    @foreach (var provider in _supportedProviders)
-                    {
-                        <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">@provider</button></li>
-                    }
-                </ul>
+    <!-- LLM Providers Section -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-light border-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-cloud me-2 text-primary"></i>LLM Providers
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle shadow-sm" type="button" id="addProviderDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa fa-plus me-1"></i> Add Provider
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="addProviderDropdown">
+                        @foreach (var provider in _supportedProviders)
+                        {
+                            <li><button class="dropdown-item" @onclick="() => LaunchGuidedSetup(provider)">
+                                <i class="fa fa-plus me-2"></i>@provider
+                            </button></li>
+                        }
+                    </ul>
+                </div>
             </div>
         </div>
         
@@ -55,25 +95,29 @@
             }
             else if (!providerCredentials.Any())
             {
-                <div class="alert alert-info mb-4">
-                    No providers configured yet. Add an LLM provider to get started.
+                <div class="text-center py-5">
+                    <i class="fa fa-cloud fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">No Providers Configured</h4>
+                    <p class="text-muted mb-4">Get started by adding your first LLM provider</p>
                 </div>
 
                 <div class="row">
                     @foreach (var provider in _supportedProviders)
                     {
-                        <div class="col-12 col-sm-6 col-md-4 mb-4">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h6 class="mb-0">@provider</h6>
+                        <div class="col-12 col-sm-6 col-lg-4 mb-4">
+                            <div class="card h-100 provider-card shadow-sm border-0 hover-card">
+                                <div class="card-header bg-light border-0">
+                                    <h6 class="mb-0 fw-semibold">
+                                        <i class="fa fa-server me-2"></i>@provider
+                                    </h6>
                                 </div>
                                 <div class="card-body">
-                                    <p class="card-text">
+                                    <p class="card-text text-muted">
                                         @GetProviderDescription(provider)
                                     </p>
                                 </div>
-                                <div class="card-footer">
-                                    <button class="btn btn-primary w-100" @onclick="() => LaunchGuidedSetup(provider)">
+                                <div class="card-footer bg-transparent border-0">
+                                    <button class="btn btn-primary w-100 shadow-sm" @onclick="() => LaunchGuidedSetup(provider)">
                                         <i class="fa fa-plus me-1"></i> Setup @provider
                                     </button>
                                 </div>
@@ -85,28 +129,56 @@
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <th>Provider</th>
-                                <th>API Key</th>
-                                <th>Base URL</th>
-                                <th>Actions</th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-server me-2"></i>Provider
+                                </th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-key me-2"></i>API Key
+                                </th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-link me-2"></i>Base URL
+                                </th>
+                                <th class="border-0 fw-semibold text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var context in providerCredentials)
                             {
-                                <tr>
-                                    <td>@context.ProviderName</td>
+                                <tr class="border-light">
                                     <td>
-                                        <span class="text-secondary">@(string.IsNullOrEmpty(context.ApiKey) ? "Not set" : "••••••••")</span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="provider-icon bg-primary-light rounded-circle p-2 me-3">
+                                                <i class="fa fa-cloud text-primary"></i>
+                                            </div>
+                                            <span class="fw-semibold">@context.ProviderName</span>
+                                        </div>
                                     </td>
-                                    <td>@(string.IsNullOrEmpty(context.ApiBase) ? "Default" : context.ApiBase)</td>
                                     <td>
+                                        @if (string.IsNullOrEmpty(context.ApiKey))
+                                        {
+                                            <span class="badge bg-warning text-dark">Not configured</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">
+                                                <i class="fa fa-check-circle me-1"></i>••••••••
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <code class="text-muted">@(string.IsNullOrEmpty(context.ApiBase) ? "Default" : context.ApiBase)</code>
+                                    </td>
+                                    <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditProvider(context.Id)">Edit</button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProvider(context.Id)">Delete</button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditProvider(context.Id)">
+                                                <i class="fa fa-edit me-1"></i>Edit
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProvider(context.Id)">
+                                                <i class="fa fa-trash me-1"></i>Delete
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -118,21 +190,24 @@
         </div>
     </div>
 
-    <hr class="my-5" />
-
-    <div class="card mb-5 shadow-sm">
-        <div class="card-header">
-            <h5 class="mb-0">Model Mappings</h5>
+    <!-- Model Mappings Section -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-light border-0">
+            <h5 class="mb-0">
+                <i class="fa fa-sitemap me-2 text-success"></i>Model Mappings
+            </h5>
         </div>
         
         <div class="card-body">
-            <p class="mb-4">
-                Map user-friendly model names to specific provider models. For example, you can map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
-            </p>
+            <div class="alert alert-info border-0 shadow-sm mb-4">
+                <i class="fa fa-info-circle me-2"></i>
+                <strong>Model Mappings:</strong> Create user-friendly aliases for your LLM models. 
+                For example, map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
+            </div>
             
             @if (modelMappings == null)
             {
-                <div class="d-flex justify-content-center">
+                <div class="d-flex justify-content-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -140,8 +215,10 @@
             }
             else if (!modelMappings.Any())
             {
-                <div class="alert alert-info mb-4">
-                    No model mappings defined yet. Add one below.
+                <div class="text-center py-5">
+                    <i class="fa fa-sitemap fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">No Model Mappings</h4>
+                    <p class="text-muted mb-4">Create your first model mapping to get started</p>
                 </div>
             }
             else
@@ -180,7 +257,7 @@
                 </div>
             }
             
-            <button class="btn btn-primary" 
+            <button class="btn btn-primary shadow-sm" 
                   @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; mappingErrorMessage = null; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
@@ -189,14 +266,20 @@
 
     @if (isEditingMapping)
     {
-        <div class="card mb-5 shadow-sm">
-            <div class="card-header">
-                <h5 class="mb-0">@(currentMapping.ModelAlias == null ? "Add" : "Edit") Model Mapping</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-header bg-light border-0">
+                <h5 class="mb-0">
+                    <i class="fa fa-@(currentMapping.ModelAlias == null ? "plus" : "edit") me-2 text-primary"></i>
+                    @(currentMapping.ModelAlias == null ? "Add" : "Edit") Model Mapping
+                </h5>
             </div>
             <div class="card-body">
                 @if (!string.IsNullOrEmpty(mappingErrorMessage))
                 {
-                    <div class="alert alert-danger mb-4">@mappingErrorMessage</div>
+                    <div class="alert alert-danger border-0 shadow-sm mb-4">
+                        <i class="fa fa-exclamation-circle me-2"></i>
+                        @mappingErrorMessage
+                    </div>
                 }
                 
                 <div class="form-group mb-4">
@@ -306,15 +389,22 @@
         </div>
     }
 
-    <hr class="my-5" />
-
-    <h3 class="mb-4">Global Settings</h3>
+    <!-- Global Settings Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-globe me-2 text-info"></i>Global Settings
+            </h3>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Proxy Base URL</h5>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-link me-2 text-primary"></i>Proxy Base URL
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-3">
@@ -325,14 +415,15 @@
                         <small class="form-text text-muted">URL where your Conduit API is publicly accessible. Used for SDK clients.</small>
                     </div>
                     
-                    <button class="btn btn-primary mt-2" 
+                    <button class="btn btn-primary shadow-sm mt-2" 
                             @onclick="SaveProxyUrl">
-                        Save
+                        <i class="fa fa-save me-1"></i>Save
                     </button>
                     
                     @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
                     {
-                        <div class="alert alert-success mt-3">
+                        <div class="alert alert-success border-0 shadow-sm mt-3">
+                            <i class="fa fa-check-circle me-2"></i>
                             @proxyUrlSaveMessage
                         </div>
                     }
@@ -343,9 +434,11 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">HTTP Retry Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-refresh me-2 text-warning"></i>HTTP Retry Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-4">
@@ -396,9 +489,11 @@
         </div>
         
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">HTTP Timeout Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-clock-o me-2 text-danger"></i>HTTP Timeout Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="form-group mb-4">
@@ -438,9 +533,11 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">About HTTP Client Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Client Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <p class="mb-3">
@@ -479,9 +576,11 @@
             </div>
         </div>
         <div class="col-12 col-md-6">
-            <div class="card mb-5 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">About HTTP Timeout Settings</h5>
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Timeout Settings
+                    </h5>
                 </div>
                 <div class="card-body">
                     <p class="mb-3">
@@ -1119,3 +1218,70 @@
         }
     }
 }
+
+<style>
+    .config-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .config-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .provider-card {
+        transition: all 0.2s ease;
+    }
+    
+    .provider-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-primary-light {
+        background-color: rgba(102, 126, 234, 0.1);
+    }
+    
+    .hover-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    
+    .hover-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>

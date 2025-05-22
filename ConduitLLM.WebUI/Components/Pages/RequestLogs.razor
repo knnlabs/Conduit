@@ -1,69 +1,485 @@
 @page "/request-logs"
 @using ConduitLLM.WebUI.DTOs
+@using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.DTOs.VirtualKey
 @using System.Globalization
 @using System.Text
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
 @using ConduitLLM.WebUI.Components.Shared
+@using ConduitLLM.WebUI.Interfaces
 @attribute [Authorize]
+@inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
+@inject ILogger<RequestLogs> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Request Logs - ConduitLLM</PageTitle>
 
-<h2 class="mb-4">Request Logs</h2>
-
-<div class="card mb-4 shadow-sm">
-    <div class="card-body p-4">
-        <h5 class="mb-3">Filters</h5>
-        <div class="row">
-            <div class="col-12 col-md-3">
-                <div class="form-group mb-2">
-                    <label for="virtualKey">Virtual Key</label>
-                    <select class="form-select" id="virtualKey" @bind="selectedVirtualKeyId">
-                        <option value="">All Keys</option>
-                    </select>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="rl-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-list-alt me-3"></i>Request Logs
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Monitor API requests, track performance metrics, and analyze usage patterns across virtual keys
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="rl-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-server me-2"></i>
+                                <span class="small">@(logs?.Count ?? 0) Entries</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-clock me-2"></i>
+                                <span class="small">Page @currentPage of @totalPages</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="form-group mb-2">
-                    <label for="model">Model</label>
-                    <select class="form-select" id="model" @bind="selectedModel">
-                        <option value="">All Models</option>
-                    </select>
-                </div>
-            </div>
-            <div class="col-12 col-md-2">
-                <div class="form-group mb-2">
-                    <label for="dateRange">Date Range</label>
-                    <select class="form-select" id="dateRange" @bind="selectedDateRange">
-                        <option value="24h">Last 24 Hours</option>
-                        <option value="7d">Last 7 Days</option>
-                        <option value="30d">Last 30 Days</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
-                </div>
-            </div>
-            <div class="col-12 col-md-2">
-                <div class="form-group mb-2">
-                    <label for="statusCode">Status Code</label>
-                    <select class="form-select" id="statusCode" @bind="selectedStatusCode">
-                        <option value="">All</option>
-                        <option value="200">200 (Success)</option>
-                        <option value="400">400 (Bad Request)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="col-12 mt-3 d-flex justify-content-end">
-                <button type="button" class="btn btn-primary me-2" @onclick="ApplyFilters">Apply Filters</button>
-                <button type="button" class="btn btn-outline-secondary" @onclick="ClearFilters">Clear Filters</button>
             </div>
         </div>
     </div>
+
+    <!-- Filters Section -->
+    <div class="card rl-filter-card border-0 shadow-lg rounded-4 mb-4">
+        <div class="card-header rl-card-header border-0">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-filter me-2 text-primary"></i>Log Filters
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-12 col-lg-3">
+                    <div class="rl-form-group">
+                        <label for="virtualKey" class="rl-form-label">
+                            <i class="fa fa-key me-1"></i>Virtual Key
+                        </label>
+                        <select class="form-select rl-form-select" id="virtualKey" @bind="selectedVirtualKeyId">
+                            <option value="">All Keys</option>
+                            @foreach (var key in virtualKeys)
+                            {
+                                <option value="@key.Id">@key.KeyName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <div class="rl-form-group">
+                        <label for="model" class="rl-form-label">
+                            <i class="fa fa-robot me-1"></i>Model
+                        </label>
+                        <select class="form-select rl-form-select" id="model" @bind="selectedModel">
+                            <option value="">All Models</option>
+                            @foreach (var model in availableModels)
+                            {
+                                <option value="@model">@model</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <div class="rl-form-group">
+                        <label for="dateRange" class="rl-form-label">
+                            <i class="fa fa-calendar me-1"></i>Date Range
+                        </label>
+                        <select class="form-select rl-form-select" id="dateRange" @bind="selectedDateRange">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-3">
+                    <div class="rl-form-group">
+                        <label for="statusCode" class="rl-form-label">
+                            <i class="fa fa-info-circle me-1"></i>Status Code
+                        </label>
+                        <select class="form-select rl-form-select" id="statusCode" @bind="selectedStatusCode">
+                            <option value="">All</option>
+                            <option value="200">200 (Success)</option>
+                            <option value="400">400 (Bad Request)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-end mt-4">
+                <button type="button" class="btn rl-btn-outline-secondary me-3" @onclick="ClearFilters">
+                    <i class="fa fa-times me-2"></i>Clear Filters
+                </button>
+                <button type="button" class="btn rl-btn-primary" @onclick="ApplyFilters">
+                    <i class="fa fa-search me-2"></i>Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="rl-loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <p class="mt-3 text-muted fw-medium">Loading request logs...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger border-0 rounded-3">
+            <i class="fa fa-exclamation-triangle me-2"></i>@errorMessage
+        </div>
+    }
+    else if (logs?.Any() == true)
+    {
+        <div class="card rl-table-card border-0 shadow-lg rounded-4">
+            <div class="card-header rl-card-header border-0">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="fa fa-table me-2 text-primary"></i>Request Log Entries
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table rl-table align-middle mb-0">
+                        <thead class="rl-table-header">
+                            <tr>
+                                <th class="border-0 fw-bold">Timestamp</th>
+                                <th class="border-0 fw-bold">Virtual Key</th>
+                                <th class="border-0 fw-bold">Model</th>
+                                <th class="border-0 fw-bold">Status</th>
+                                <th class="border-0 fw-bold">Input Tokens</th>
+                                <th class="border-0 fw-bold">Output Tokens</th>
+                                <th class="border-0 fw-bold">Cost</th>
+                                <th class="border-0 fw-bold">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in logs)
+                            {
+                                <tr class="rl-table-row">
+                                    <td class="border-0">
+                                        <div class="rl-timestamp">
+                                            <strong>@log.Timestamp.ToString("MMM dd, yyyy")</strong>
+                                            <br><small class="text-muted">@log.Timestamp.ToString("HH:mm:ss")</small>
+                                        </div>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-virtual-key text-primary fw-medium">
+                                            <i class="fa fa-key me-1"></i>
+                                            @(virtualKeys.FirstOrDefault(v => v.Id == log.VirtualKeyId)?.KeyName ?? "Unknown")
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-model text-info fw-medium">
+                                            <i class="fa fa-robot me-1"></i>@log.ModelId
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="badge rl-status-badge @(log.StatusCode == 200 ? "rl-status-success" : "rl-status-error")">
+                                            <i class="fa @(log.StatusCode == 200 ? "fa-check" : "fa-times") me-1"></i>
+                                            @log.StatusCode
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-tokens text-success fw-medium">
+                                            <i class="fa fa-arrow-right me-1"></i>@log.InputTokens.ToString("N0")
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-tokens text-warning fw-medium">
+                                            <i class="fa fa-arrow-left me-1"></i>@log.OutputTokens.ToString("N0")
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-cost text-success fw-medium">
+                                            <i class="fa fa-dollar-sign me-1"></i>@log.Cost.ToString("F4")
+                                        </span>
+                                    </td>
+                                    <td class="border-0">
+                                        <span class="rl-duration text-info fw-medium">
+                                            <i class="fa fa-clock me-1"></i>@log.ResponseTimeMs ms
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                
+                @if (totalPages > 1)
+                {
+                    <div class="rl-pagination-container p-4 border-top">
+                        <nav aria-label="Request logs pagination">
+                            <ul class="pagination rl-pagination justify-content-center mb-0">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link rl-page-link" @onclick="() => ChangePage(currentPage - 1)" disabled="@(currentPage == 1)">
+                                        <i class="fa fa-chevron-left me-1"></i>Previous
+                                    </button>
+                                </li>
+                                
+                                @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                                {
+                                    <li class="page-item @(i == currentPage ? "active" : "")">
+                                        <button class="page-link rl-page-link @(i == currentPage ? "rl-page-active" : "")" @onclick="() => ChangePage(i)">@i</button>
+                                    </li>
+                                }
+                                
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link rl-page-link" @onclick="() => ChangePage(currentPage + 1)" disabled="@(currentPage == totalPages)">
+                                        Next<i class="fa fa-chevron-right ms-1"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="rl-empty-state text-center py-5">
+            <div class="rl-empty-icon mb-4">
+                <i class="fa fa-list-alt fa-4x text-primary opacity-50"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-3">No Request Logs Found</h4>
+            <p class="text-muted mb-4 lead">
+                No logs match your current filters. Try adjusting your search criteria or date range.
+            </p>
+            <button class="btn rl-btn-primary" @onclick="ClearFilters">
+                <i class="fa fa-refresh me-2"></i>Clear Filters
+            </button>
+        </div>
+    }
 </div>
 
-<p class="text-muted">No logs found. Please try adjusting your filters.</p>
+<!-- Custom CSS Styling -->
+<style>
+    .rl-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+
+    .rl-stats .stat-item {
+        display: inline-block;
+        margin-right: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .rl-filter-card,
+    .rl-table-card {
+        transition: all 0.3s ease;
+    }
+
+    .rl-filter-card:hover,
+    .rl-table-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .rl-card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 1.5rem;
+    }
+
+    .rl-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .rl-form-label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .rl-form-select {
+        border-radius: 0.75rem;
+        border: 2px solid #e8f4fd;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+    }
+
+    .rl-form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .rl-btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .rl-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .rl-btn-outline-secondary {
+        border: 2px solid #6b7280;
+        color: #6b7280;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .rl-btn-outline-secondary:hover {
+        background: #6b7280;
+        border-color: #6b7280;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .rl-loading-spinner {
+        display: inline-block;
+        animation: gentle-bounce 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    .rl-empty-state {
+        padding: 3rem 2rem;
+    }
+
+    .rl-empty-icon i {
+        animation: gentle-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.8; }
+    }
+
+    .rl-table-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+    }
+
+    .rl-table-header th {
+        color: #4a5568;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .rl-table-row {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .rl-table-row:hover {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        transform: translateX(2px);
+    }
+
+    .rl-table-row td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    .rl-timestamp {
+        font-family: 'Courier New', monospace;
+    }
+
+    .rl-status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .rl-status-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .rl-status-error {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .rl-pagination-container {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border-top: 1px solid #e8f4fd !important;
+    }
+
+    .rl-pagination .page-link {
+        border: 2px solid #e8f4fd;
+        color: #4a5568;
+        margin: 0 0.25rem;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .rl-pagination .page-link:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .rl-pagination .page-item.active .page-link,
+    .rl-page-active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border-color: #667eea !important;
+        color: white !important;
+    }
+
+    .rl-pagination .page-item.disabled .page-link {
+        background: #f8f9fa;
+        border-color: #dee2e6;
+        color: #6c757d;
+    }
+
+    @@media (max-width: 768px) {
+        .rl-header {
+            text-align: center;
+        }
+
+        .rl-stats {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .rl-table {
+            font-size: 0.875rem;
+        }
+
+        .rl-form-select {
+            font-size: 1rem;
+        }
+
+        .rl-table-row td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
 
 @code {
     private string? selectedVirtualKeyId;
@@ -71,18 +487,128 @@
     private string? selectedStatusCode;
     private string selectedDateRange = "24h";
     
-    private Task ApplyFilters()
+    private List<ConduitLLM.Configuration.DTOs.RequestLogDto> logs = new();
+    private List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto> virtualKeys = new();
+    private List<string> availableModels = new();
+    
+    private bool isLoading = false;
+    private string? errorMessage;
+    
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    
+    protected override async Task OnInitializedAsync()
     {
-        // Placeholder for filter application
-        return Task.CompletedTask;
+        await LoadInitialData();
+        await LoadLogs();
+    }
+    
+    private async Task LoadInitialData()
+    {
+        try
+        {
+            // Load virtual keys for dropdown
+            var virtualKeysResult = await AdminApiClient.GetAllVirtualKeysAsync();
+            virtualKeys = virtualKeysResult.ToList();
+            
+            // Load available models for dropdown
+            var modelsResult = await AdminApiClient.GetDistinctModelsAsync();
+            availableModels = modelsResult.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading initial data for request logs");
+            errorMessage = "Error loading filter data. Please refresh the page.";
+        }
+    }
+    
+    private async Task LoadLogs()
+    {
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged();
+        
+        try
+        {
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+            
+            // Calculate date range
+            switch (selectedDateRange)
+            {
+                case "24h":
+                    startDate = DateTime.UtcNow.AddDays(-1);
+                    break;
+                case "7d":
+                    startDate = DateTime.UtcNow.AddDays(-7);
+                    break;
+                case "30d":
+                    startDate = DateTime.UtcNow.AddDays(-30);
+                    break;
+            }
+            
+            int? virtualKeyId = null;
+            if (!string.IsNullOrEmpty(selectedVirtualKeyId) && int.TryParse(selectedVirtualKeyId, out var keyId))
+            {
+                virtualKeyId = keyId;
+            }
+            
+            var result = await AdminApiClient.GetRequestLogsAsync(
+                page: currentPage,
+                pageSize: pageSize,
+                virtualKeyId: virtualKeyId,
+                modelId: selectedModel,
+                startDate: startDate,
+                endDate: endDate
+            );
+            
+            if (result != null)
+            {
+                logs = result.Items.ToList();
+                totalPages = (int)Math.Ceiling((double)result.TotalCount / pageSize);
+            }
+            else
+            {
+                logs = new List<ConduitLLM.Configuration.DTOs.RequestLogDto>();
+                totalPages = 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading request logs");
+            errorMessage = "Error loading request logs. Please try again.";
+            logs = new List<ConduitLLM.Configuration.DTOs.RequestLogDto>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task ApplyFilters()
+    {
+        currentPage = 1; // Reset to first page when filtering
+        await LoadLogs();
     }
 
-    private Task ClearFilters()
+    private async Task ClearFilters()
     {
         selectedVirtualKeyId = null;
         selectedModel = null;
         selectedStatusCode = null;
         selectedDateRange = "24h";
-        return Task.CompletedTask;
+        currentPage = 1;
+        await LoadLogs();
+    }
+    
+    private async Task ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            await LoadLogs();
+        }
     }
 }

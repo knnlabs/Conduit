@@ -14,10 +14,38 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<PageTitle>IP Access Filtering - Conduit LLM</PageTitle>
+<PageTitle>IP Access Filtering - ConduitLLM</PageTitle>
 
-<div class="container">
-    <h1 class="mb-4">IP Access Filtering</h1>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="ip-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-shield me-3"></i>IP Access Filtering
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Control access to your API endpoints with IP-based filtering rules
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="ip-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-toggle-on me-2"></i>
+                                <span class="small">@(_settings.IsEnabled ? "Enabled" : "Disabled")</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-list me-2"></i>
+                                <span class="small">@_filters.Count Rules</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     @if (_loading)
     {
@@ -33,9 +61,11 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- Global Settings Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Global Settings</h3>
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <h3 class="mb-0">
+                            <i class="fa fa-cogs me-2 text-primary"></i>Global Settings
+                        </h3>
                     </div>
                     <div class="card-body">
                         <!-- IP Filtering Toggle -->
@@ -98,8 +128,8 @@
                             </div>
                             
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <button class="btn btn-primary" @onclick="SaveSettingsAsync">
-                                    <i class="bi bi-save"></i> Save Settings
+                                <button class="btn btn-primary shadow-sm" @onclick="SaveSettingsAsync">
+                                    <i class="fa fa-save me-1"></i> Save Settings
                                 </button>
                             </div>
                         </div>
@@ -111,28 +141,32 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- IP Rules Card -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3>IP Filter Rules</h3>
-                        <div>
-                            <button class="btn btn-outline-secondary me-2" @onclick="RefreshFiltersAsync">
-                                <i class="bi bi-arrow-clockwise"></i> Refresh
-                            </button>
-                            <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
-                                <i class="bi bi-plus-circle"></i> Add New Filter
-                            </button>
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">
+                                <i class="fa fa-list me-2 text-success"></i>IP Filter Rules
+                            </h3>
+                            <div>
+                                <button class="btn btn-outline-secondary me-2 shadow-sm" @onclick="RefreshFiltersAsync">
+                                    <i class="fa fa-refresh me-1"></i> Refresh
+                                </button>
+                                <button class="btn btn-primary shadow-sm" @onclick="() => ShowFilterModal(null)">
+                                    <i class="fa fa-plus me-1"></i> Add New Filter
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
                         @if (!_filters.Any())
                         {
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle"></i> No IP filter rules have been created yet.
-                                <div class="mt-2">
-                                    <button class="btn btn-sm btn-primary" @onclick="() => ShowFilterModal(null)">
-                                        Add your first filter rule
-                                    </button>
-                                </div>
+                            <div class="text-center py-5">
+                                <i class="fa fa-shield fa-4x text-muted mb-4"></i>
+                                <h4 class="text-muted mb-3">No IP Filter Rules</h4>
+                                <p class="text-muted mb-4">Create your first IP filter rule to control access</p>
+                                <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
+                                    <i class="fa fa-plus me-1"></i> Add Your First Filter Rule
+                                </button>
                             </div>
                         }
                         else
@@ -202,9 +236,11 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- Information Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>About IP Filtering</h3>
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <h3 class="mb-0">
+                            <i class="fa fa-info-circle me-2 text-info"></i>About IP Filtering
+                        </h3>
                     </div>
                     <div class="card-body">
                         <h5>How IP Filtering Works</h5>
@@ -693,3 +729,65 @@
         }
     }
 }
+
+<style>
+    .ip-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .ip-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        font-weight: 600;
+    }
+    
+    .modal-dialog {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+</style>

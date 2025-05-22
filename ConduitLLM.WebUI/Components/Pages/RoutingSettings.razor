@@ -37,13 +37,38 @@
     }
 </style>
 
-<PageTitle>Routing Settings</PageTitle>
+<PageTitle>Routing Settings - ConduitLLM</PageTitle>
 
-<h2 class="mb-4">
-    <i class="fa fa-random me-2"></i>
-    Routing Settings
-</h2>
-<hr class="mb-4" />
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="routing-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-random me-3"></i>Routing Settings
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Configure intelligent routing strategies and model deployment settings
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="routing-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-server me-2"></i>
+                                <span class="small">@_config.ModelDeployments.Count Deployments</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-shield me-2"></i>
+                                <span class="small">@(_config.FallbackConfigurations?.Count ?? 0) Fallbacks</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 @if (!_isInitialized)
 {
@@ -67,9 +92,11 @@ else
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <h5 class="mb-0">Router Configuration</h5>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-cogs me-2 text-primary"></i>Router Configuration
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-4">
@@ -100,9 +127,11 @@ else
         </div>
         
         <div class="col-12 col-md-6">
-            <div class="card mb-4 shadow-sm h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Routing Strategies Explained</h5>
+            <div class="card shadow-sm border-0 mb-4 h-100">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-info-circle me-2 text-info"></i>Routing Strategies Explained
+                    </h5>
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
@@ -129,24 +158,33 @@ else
     
     <div class="row mb-4">
         <div class="col-12 d-flex justify-content-end">
-            <button class="btn btn-primary" @onclick="async () => await SaveConfigurationAsync()">
+            <button class="btn btn-primary shadow-sm" @onclick="async () => await SaveConfigurationAsync()">
                 <i class="fa fa-save me-1"></i> Save Configuration
             </button>
         </div>
     </div>
 
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Model Deployments</h5>
-            <button class="btn btn-primary btn-sm" @onclick="AddNewDeploymentAsync">
-                <i class="fa fa-plus me-1"></i> Add Deployment
-            </button>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-light border-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-server me-2 text-success"></i>Model Deployments
+                </h5>
+                <button class="btn btn-primary btn-sm shadow-sm" @onclick="AddNewDeploymentAsync">
+                    <i class="fa fa-plus me-1"></i> Add Deployment
+                </button>
+            </div>
         </div>
         <div class="card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <div class="alert alert-warning border my-2">
-                    No model deployments configured. Add deployments to enable routing between models.
+                <div class="text-center py-5">
+                    <i class="fa fa-server fa-4x text-muted mb-4"></i>
+                    <h4 class="text-muted mb-3">No Model Deployments</h4>
+                    <p class="text-muted mb-4">Add deployments to enable routing between models</p>
+                    <button class="btn btn-primary" @onclick="AddNewDeploymentAsync">
+                        <i class="fa fa-plus me-1"></i> Add Your First Deployment
+                    </button>
                 </div>
             }
             else
@@ -200,21 +238,24 @@ else
         </div>
     </div>
     
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header">
-            <h5 class="mb-0">Fallback Configurations</h5>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-light border-0">
+            <h5 class="mb-0">
+                <i class="fa fa-shield me-2 text-warning"></i>Fallback Configurations
+            </h5>
         </div>
         <div class="card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <div class="alert alert-warning border my-2">
+                <div class="alert alert-warning border-0 shadow-sm">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
                     You need to add model deployments before configuring fallbacks.
                 </div>
             }
             else
             {
                 <div class="mb-3">
-                    <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                    <button class="btn btn-outline-primary shadow-sm" @onclick="AddFallbackConfigAsync">
                         <i class="fa fa-plus me-1"></i> Add Fallback Configuration
                     </button>
                 </div>
@@ -270,8 +311,13 @@ else
                 }
                 else
                 {
-                    <div class="alert alert-info border my-2">
-                        No fallback configurations defined. Fallbacks determine which models to use when a preferred model is unavailable.
+                    <div class="text-center py-4">
+                        <i class="fa fa-shield fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted mb-2">No Fallback Configurations</h5>
+                        <p class="text-muted mb-3">Fallbacks determine which models to use when a preferred model is unavailable.</p>
+                        <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                            <i class="fa fa-plus me-1"></i> Add Fallback Configuration
+                        </button>
                     </div>
                 }
             }
@@ -952,3 +998,56 @@ else
         }
     }
 }
+
+<style>
+    .routing-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .routing-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        font-weight: 600;
+    }
+    
+    .modal-dialog {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+    }
+</style>
+</div>

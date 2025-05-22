@@ -12,10 +12,20 @@
 @if (InsecureModeProvider.IsInsecureMode)
 {
     <div class="warning-banner">
-        <div class="alert alert-warning py-2">
-            <div class="d-flex justify-content-center align-items-center text-error">
-                <i class="fa fa-shield-alt mr-2"></i>
-                <strong>Warning:</strong>&nbsp;Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+        <div class="insecure-mode-alert">
+            <div class="insecure-mode-content">
+                <div class="insecure-mode-icon">
+                    <i class="fa fa-exclamation-triangle"></i>
+                </div>
+                <div class="insecure-mode-text">
+                    <div class="insecure-mode-title">
+                        <strong>Security Warning</strong>
+                    </div>
+                    <div class="insecure-mode-message">
+                        Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+                    </div>
+                </div>
+                <div class="insecure-mode-pulse"></div>
             </div>
         </div>
     </div>
@@ -23,40 +33,78 @@
 
 <div class="d-flex flex-column" style="min-height: 100vh;">    
     <div class="layout flex-grow-1">
-        <header class="app-bar appbar">
+        <!-- Modern Top Navigation Bar -->
+        <header class="app-bar">
             <div class="app-bar-container">
-                <button class="btn btn-icon" @onclick="DrawerToggle">
-                    <i class="fa fa-bars"></i>
-                </button>
-                <h6 class="app-title ml-3">Conduit</h6>
-                <div class="spacer"></div>
-                <NotificationDisplay />
-                <ConduitLLM.WebUI.Components.Shared.AdminApiHealthStatus />
-                <CascadingAuthenticationState>
-                    <AuthorizeView>
-                        <Authorized>
-                            <div class="text-success me-3">
-                                <i class="fa fa-user-check"></i>
-                                Admin
-                            </div>
-                            <a href="/logout" class="btn btn-icon">
-                                <i class="fa fa-sign-out-alt text-error"></i>
-                            </a>
-                        </Authorized>
-                    </AuthorizeView>
-                </CascadingAuthenticationState>
-                <a href="https://github.com/knnlabs/Conduit" target="_blank" class="btn btn-icon">
-                    <i class="fab fa-github"></i>
-                </a>
+                <!-- Left Side -->
+                <div class="app-bar-left">
+                    <button class="app-bar-toggle" @onclick="DrawerToggle">
+                        <i class="fa fa-bars"></i>
+                    </button>
+                    <div class="app-bar-brand">
+                        <div class="app-bar-logo">
+                            <i class="fa fa-bolt"></i>
+                        </div>
+                        <div class="app-bar-title-group">
+                            <h6 class="app-bar-title">ConduitLLM</h6>
+                            <span class="app-bar-subtitle">Admin Dashboard</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side -->
+                <div class="app-bar-right">
+                    <!-- Notifications -->
+                    <div class="app-bar-item">
+                        <NotificationDisplay />
+                    </div>
+                    
+                    <!-- System Health -->
+                    <div class="app-bar-item">
+                        <ConduitLLM.WebUI.Components.Shared.AdminApiHealthStatus />
+                    </div>
+                    
+                    <!-- User Section -->
+                    <CascadingAuthenticationState>
+                        <AuthorizeView>
+                            <Authorized>
+                                <div class="app-bar-user">
+                                    <div class="app-bar-user-info">
+                                        <i class="fa fa-user-shield text-success"></i>
+                                        <span class="app-bar-user-text">Admin</span>
+                                    </div>
+                                    <a href="/logout" class="app-bar-user-action" title="Sign Out">
+                                        <i class="fa fa-sign-out-alt"></i>
+                                    </a>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                    </CascadingAuthenticationState>
+                    
+                    <!-- GitHub Link -->
+                    <div class="app-bar-item">
+                        <a href="https://github.com/knnlabs/Conduit" target="_blank" class="app-bar-external-link" title="View on GitHub">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
             </div>
         </header>
         
+        <!-- Side Navigation Drawer -->
         <div class="drawer @(_drawerOpen ? "drawer-open" : "drawer-closed")">
             <NavMenu />
         </div>
         
-        <main class="main-content">
-            <div class="container container-xxl mt-4">
+        <!-- Mobile backdrop -->
+        @if (_drawerOpen)
+        {
+            <div class="mobile-backdrop" @onclick="() => _drawerOpen = false"></div>
+        }
+        
+        <!-- Main Content Area -->
+        <main class="main-content @(_drawerOpen ? "drawer-open" : "drawer-closed")">
+            <div class="main-content-inner">
                 <ConduitLLM.WebUI.Components.Shared.DeprecationWarning />
                 @Body
             </div>
@@ -64,7 +112,16 @@
     </div>
 </div>
 
+<!-- Modern Layout Styling -->
 <style>
+    /* Global Layout */
+    .layout {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    /* Modern Insecure Mode Banner */
     .warning-banner {
         width: 100%;
         z-index: 1300;
@@ -72,95 +129,510 @@
         top: 0;
         left: 0;
         right: 0;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     }
-    
-    /* Push down app bar when banner is shown */
-    .appbar {
-        top: @(InsecureModeProvider.IsInsecureMode ? "36px" : "0") !important;
+
+    .insecure-mode-alert {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        border-bottom: 2px solid rgba(245, 158, 11, 0.3);
+        position: relative;
+        overflow: hidden;
     }
-    
-    /* Layout styles */
-    .layout {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .app-bar {
-        background-color: #1976d2;
-        color: white;
-        height: 64px;
+
+    .insecure-mode-content {
         display: flex;
         align-items: center;
-        padding: 0 16px;
+        justify-content: center;
+        padding: 0.875rem 1.5rem;
+        gap: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .insecure-mode-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        animation: gentle-pulse-warning 2s ease-in-out infinite;
+    }
+
+    .insecure-mode-icon i {
+        color: white;
+        font-size: 1.125rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .insecure-mode-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        text-align: center;
+    }
+
+    .insecure-mode-title {
+        color: white;
+        font-size: 1rem;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .insecure-mode-message {
+        color: rgba(255, 255, 255, 0.95);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        line-height: 1.4;
+    }
+
+    .insecure-mode-pulse {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        animation: warning-shimmer 3s ease-in-out infinite;
+    }
+
+    /* Warning Banner Animations */
+    @@keyframes gentle-pulse-warning {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        50% { 
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+        }
+    }
+
+    @@keyframes warning-shimmer {
+        0% {
+            left: -100%;
+        }
+        100% {
+            left: 100%;
+        }
+    }
+
+    /* Mobile responsiveness for warning banner */
+    @@media screen and (max-width: 768px) {
+        .insecure-mode-content {
+            padding: 0.75rem 1rem;
+            gap: 0.75rem;
+        }
+
+        .insecure-mode-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        .insecure-mode-icon i {
+            font-size: 1rem;
+        }
+
+        .insecure-mode-title {
+            font-size: 0.875rem;
+        }
+
+        .insecure-mode-message {
+            font-size: 0.8125rem;
+        }
+    }
+
+    @@media screen and (max-width: 480px) {
+        .insecure-mode-content {
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.75rem;
+        }
+
+        .insecure-mode-text {
+            gap: 0.125rem;
+        }
+
+        .insecure-mode-message {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Modern App Bar */
+    .app-bar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        position: fixed;
+        top: @(InsecureModeProvider.IsInsecureMode ? "56px" : "0");
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .app-bar-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 1.5rem;
+        max-width: 100%;
+    }
+
+    /* Left Side */
+    .app-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .app-bar-toggle {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        padding: 0.75rem;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        height: 44px;
+    }
+
+    .app-bar-toggle:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .app-bar-toggle:active {
+        transform: scale(0.95);
+    }
+
+    .app-bar-toggle i {
+        font-size: 1.125rem;
+    }
+
+    .app-bar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .app-bar-logo {
+        width: 44px;
+        height: 44px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .app-bar-logo i {
+        color: white;
+        font-size: 1.25rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .app-bar-title-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .app-bar-title {
+        margin: 0;
+        font-size: 1.375rem;
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        line-height: 1.2;
+    }
+
+    .app-bar-subtitle {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: -2px;
+    }
+
+    /* Right Side */
+    .app-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .app-bar-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .app-bar-user {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .app-bar-user:hover {
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .app-bar-user-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .app-bar-user-text {
+        color: white;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .app-bar-user-action {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        padding: 0.25rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .app-bar-user-action:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.1);
+    }
+
+    .app-bar-external-link {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        padding: 0.75rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .app-bar-external-link:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .app-bar-external-link i {
+        font-size: 1.125rem;
+    }
+
+    /* Side Drawer */
+    .drawer {
+        width: 280px;
+        position: fixed;
+        top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
+        bottom: 0;
+        left: 0;
+        background: white;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        z-index: 900;
+        overflow-y: auto;
+        overflow-x: hidden;
+        transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .drawer-closed {
+        transform: translateX(-100%);
+    }
+
+    .drawer-open {
+        transform: translateX(0);
+    }
+
+    /* Main Content */
+    .main-content {
+        margin-left: 0;
+        padding-top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
+        min-height: 100vh;
+        transition: margin-left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        position: relative;
+    }
+
+    .main-content-inner {
+        padding: 1.5rem;
+        min-height: calc(100vh - @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px"));
+    }
+
+    /* When drawer is open on desktop */
+    .main-content.drawer-open {
+        margin-left: 280px;
+    }
+
+    /* When drawer is closed */
+    .main-content.drawer-closed {
+        margin-left: 0;
+    }
+
+    /* Mobile backdrop */
+    .mobile-backdrop {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .app-bar-container {
-        display: flex;
-        align-items: center;
-        width: 100%;
-    }
-    
-    .app-title {
-        margin: 0;
-        font-size: 1.25rem;
-    }
-    
-    .spacer {
-        flex-grow: 1;
-    }
-    
-    .drawer {
-        width: 250px;
-        position: fixed;
-        top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px");
         bottom: 0;
-        left: 0;
-        background-color: white;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        z-index: 900;
-        overflow-y: auto;
-        transition: transform 0.3s ease;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 850;
+        backdrop-filter: blur(5px);
+        display: none;
     }
-    
-    .drawer-closed {
-        transform: translateX(-100%);
-    }
-    
-    .drawer-open {
-        transform: translateX(0);
-    }
-    
-    .main-content {
-        margin-left: 250px;
-        padding-top: @(InsecureModeProvider.IsInsecureMode ? "100px" : "64px");
-        min-height: 100vh;
-        transition: margin-left 0.3s ease;
-    }
-    
-    /* When drawer is closed */
-    .drawer-closed + .main-content {
-        margin-left: 0;
-    }
-    
+
+    /* Mobile Responsive */
     @@media screen and (max-width: 768px) {
-        .main-content {
+        .app-bar-container {
+            padding: 0 1rem;
+        }
+
+        .app-bar-brand {
+            gap: 0.5rem;
+        }
+
+        .app-bar-logo {
+            width: 36px;
+            height: 36px;
+        }
+
+        .app-bar-title {
+            font-size: 1.125rem;
+        }
+
+        .app-bar-subtitle {
+            font-size: 0.625rem;
+        }
+
+        .app-bar-right {
+            gap: 0.5rem;
+        }
+
+        .app-bar-user {
+            padding: 0.375rem 0.75rem;
+        }
+
+        .app-bar-user-text {
+            display: none;
+        }
+
+        .main-content,
+        .main-content.drawer-open,
+        .main-content.drawer-closed {
             margin-left: 0;
         }
-        
+
         .drawer {
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            width: 280px;
+        }
+
+        .drawer-open {
+            transform: translateX(0);
+        }
+
+        .mobile-backdrop {
+            display: block;
+        }
+    }
+
+    @@media screen and (max-width: 480px) {
+        .app-bar-brand .app-bar-subtitle {
+            display: none;
+        }
+
+        .app-bar-external-link {
+            padding: 0.5rem;
+        }
+
+        .app-bar-toggle {
+            min-width: 36px;
+            height: 36px;
+            padding: 0.5rem;
+        }
+    }
+
+    /* Animation Keyframes */
+    @@keyframes gentle-slide-in {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .drawer-open {
+        animation: gentle-slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+
+    /* High contrast improvements */
+    @@media (prefers-reduced-motion: reduce) {
+        .drawer,
+        .main-content,
+        .app-bar-toggle,
+        .app-bar-user,
+        .app-bar-external-link {
+            transition: none;
         }
     }
 </style>
 
 @code {
     private bool _drawerOpen = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Check if we're on mobile and auto-close drawer
+            var isMobile = await JSRuntime.InvokeAsync<bool>("eval", "window.innerWidth <= 768");
+            if (isMobile)
+            {
+                _drawerOpen = false;
+                StateHasChanged();
+            }
+        }
+    }
 
     private void DrawerToggle()
     {

@@ -19,7 +19,7 @@ namespace ConduitLLM.WebUI.Services
     /// <summary>
     /// Client for interacting with the Admin API endpoints.
     /// </summary>
-    public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService
+    public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService, ConduitLLM.WebUI.Interfaces.IProviderCredentialService
     {
         // This method from IAdminApiClient is implemented in AdminApiClient.VirtualKeys.cs
         // using the name GetVirtualKeyValidationResultAsync to avoid method name collision
@@ -1634,6 +1634,80 @@ namespace ConduitLLM.WebUI.Services
         {
             var result = await GetRouterConfigAsync();
             return result ?? new ConduitLLM.Core.Models.Routing.RouterConfig();
+        }
+
+        #endregion
+
+        #region IProviderCredentialService Implementation
+
+        /// <summary>
+        /// Gets all provider credentials.
+        /// </summary>
+        /// <returns>Collection of provider credentials.</returns>
+        async Task<IEnumerable<ProviderCredentialDto>> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.GetAllAsync()
+        {
+            return await GetAllProviderCredentialsAsync();
+        }
+
+        /// <summary>
+        /// Gets a provider credential by ID.
+        /// </summary>
+        /// <param name="id">The ID of the provider credential to retrieve.</param>
+        /// <returns>The provider credential, or null if not found.</returns>
+        async Task<ProviderCredentialDto?> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.GetByIdAsync(int id)
+        {
+            return await GetProviderCredentialByIdAsync(id);
+        }
+
+        /// <summary>
+        /// Gets a provider credential by provider name.
+        /// </summary>
+        /// <param name="providerName">The name of the provider.</param>
+        /// <returns>The provider credential, or null if not found.</returns>
+        async Task<ProviderCredentialDto?> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.GetByProviderNameAsync(string providerName)
+        {
+            return await GetProviderCredentialByNameAsync(providerName);
+        }
+
+        /// <summary>
+        /// Creates a new provider credential.
+        /// </summary>
+        /// <param name="credential">The provider credential to create.</param>
+        /// <returns>The created provider credential.</returns>
+        async Task<ProviderCredentialDto?> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.CreateAsync(CreateProviderCredentialDto credential)
+        {
+            return await CreateProviderCredentialAsync(credential);
+        }
+
+        /// <summary>
+        /// Updates a provider credential.
+        /// </summary>
+        /// <param name="id">The ID of the provider credential to update.</param>
+        /// <param name="credential">The updated provider credential.</param>
+        /// <returns>The updated provider credential, or null if the update failed.</returns>
+        async Task<ProviderCredentialDto?> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.UpdateAsync(int id, UpdateProviderCredentialDto credential)
+        {
+            return await UpdateProviderCredentialAsync(id, credential);
+        }
+
+        /// <summary>
+        /// Deletes a provider credential.
+        /// </summary>
+        /// <param name="id">The ID of the provider credential to delete.</param>
+        /// <returns>True if the deletion was successful, false otherwise.</returns>
+        async Task<bool> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.DeleteAsync(int id)
+        {
+            return await DeleteProviderCredentialAsync(id);
+        }
+
+        /// <summary>
+        /// Tests a provider connection.
+        /// </summary>
+        /// <param name="providerName">The name of the provider.</param>
+        /// <returns>A result indicating whether the connection was successful.</returns>
+        async Task<ProviderConnectionTestResultDto?> ConduitLLM.WebUI.Interfaces.IProviderCredentialService.TestConnectionAsync(string providerName)
+        {
+            return await TestProviderConnectionAsync(providerName);
         }
 
         #endregion

@@ -12,27 +12,54 @@
 @inject ILogger<CachingSettings> Logger
 @implements IDisposable
 
-<PageTitle>Cache Settings</PageTitle>
+<PageTitle>Cache Settings - ConduitLLM</PageTitle>
 
-<h4 class="heading-4 mb-4">
-    <i class="fa fa-database me-2"></i>
-    Cache Settings
-</h4>
-<hr class="mb-4" />
-
-<div class="grid">
-    <div class="col-12 col-md-8">
-        <ToggleCard
-            IsEnabled="@_isEnabled"
-            IsEnabledChanged="@OnToggleChanged"
-            Title="Cache"
-            EnabledDescription="Cache is currently active and handling requests"
-            DisabledDescription="Cache is currently inactive" />
-            
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="heading-6">Cache Configuration</h6>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="cache-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-database me-3"></i>Cache Settings
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Configure response caching to reduce costs and improve performance
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="cache-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-check-circle me-2"></i>
+                                <span class="small">@(_cacheStats.IsEnabled ? "Enabled" : "Disabled")</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-server me-2"></i>
+                                <span class="small">@_cacheStats.CacheType Cache</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-lg-8">
+            <ToggleCard
+                IsEnabled="@_isEnabled"
+                IsEnabledChanged="@OnToggleChanged"
+                Title="Cache"
+                EnabledDescription="Cache is currently active and handling requests"
+                DisabledDescription="Cache is currently inactive" />
+                
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h6 class="mb-0">
+                        <i class="fa fa-cogs me-2 text-primary"></i>Cache Configuration
+                    </h6>
+                </div>
             <div class="card-body">
 
                 <div class="row mb-4">
@@ -69,19 +96,25 @@
 
                 @if (_cacheType == "Redis")
                 {
-                    <div class="card card-outlined mb-4">
-                        <div class="card-header">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-light border-0">
                             <div class="d-flex justify-content-between align-items-center">
-                                <h6 class="heading-6 mb-0">Redis Settings</h6>
+                                <h6 class="mb-0">
+                                    <i class="fa fa-server me-2 text-danger"></i>Redis Settings
+                                </h6>
                                 @if (_redisConnectionTested)
                                 {
                                     @if (_redisConnectionSuccess)
                                     {
-                                        <span class="badge bg-success">Connected</span>
+                                        <span class="badge bg-success">
+                                            <i class="fa fa-check-circle me-1"></i>Connected
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger">Connection Failed</span>
+                                        <span class="badge bg-danger">
+                                            <i class="fa fa-times-circle me-1"></i>Connection Failed
+                                        </span>
                                     }
                                 }
                             </div>
@@ -125,9 +158,11 @@
                             
                             @if (_cacheStats.RedisConnection != null)
                             {
-                                <div class="card card-outlined mb-3">
-                                    <div class="card-header bg-light">
-                                        <h6 class="heading-6">Redis Connection Details</h6>
+                                <div class="card border-0 shadow-sm mb-3">
+                                    <div class="card-header bg-light border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fa fa-info-circle me-2 text-info"></i>Redis Connection Details
+                                        </h6>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
@@ -146,9 +181,11 @@
                             
                             @if (_cacheStats.RedisMemory != null)
                             {
-                                <div class="card card-outlined">
-                                    <div class="card-header bg-light">
-                                        <h6 class="heading-6">Redis Memory Usage</h6>
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-light border-0">
+                                        <h6 class="mb-0">
+                                            <i class="fa fa-memory me-2 text-warning"></i>Redis Memory Usage
+                                        </h6>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
@@ -231,7 +268,7 @@
                             <div class="accordion-body">
                                 @foreach (var rule in _modelRules)
                                 {
-                                    <div class="card card-outlined mb-2">
+                                    <div class="card border-0 shadow-sm mb-2">
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 col-md-5">
@@ -281,13 +318,13 @@
 
                 <div class="row">
                     <div class="col-6 d-flex">
-                        <button type="button" class="btn btn-primary" 
+                        <button type="button" class="btn btn-primary shadow-sm" 
                                 @onclick="SaveConfiguration" disabled="@(!_isInitialized)">
                             <i class="fa fa-save me-2"></i> Save Changes
                         </button>
                     </div>
                     <div class="col-6 d-flex justify-content-end">
-                        <button type="button" class="btn btn-danger" 
+                        <button type="button" class="btn btn-danger shadow-sm" 
                                 @onclick="ClearCache" disabled="@(!_isEnabled)">
                             <i class="fa fa-trash me-2"></i> Clear Cache
                         </button>
@@ -297,10 +334,12 @@
         </div>
     </div>
 
-    <div class="col-12 col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="heading-6">Cache Statistics</h6>
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light border-0">
+                <h6 class="mb-0">
+                    <i class="fa fa-chart-bar me-2 text-success"></i>Cache Statistics
+                </h6>
             </div>
             <div class="card-body">
                 @if (_isLoading)
@@ -367,15 +406,18 @@
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="heading-6">Model-Specific Statistics</h6>
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light border-0">
+                <h6 class="mb-0">
+                    <i class="fa fa-sitemap me-2 text-info"></i>Model-Specific Statistics
+                </h6>
             </div>
             <div class="card-body">
                 @if (_modelStats.Count == 0)
                 {
-                    <div class="alert alert-info my-2">
-                        No model-specific statistics available.
+                    <div class="text-center py-4">
+                        <i class="fa fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No model-specific statistics available.</p>
                     </div>
                 }
                 else
@@ -762,3 +804,63 @@
         public double AvgResponseTime { get; set; }
     }
 }
+
+<style>
+    .cache-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .cache-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        font-weight: 600;
+    }
+    
+    .accordion-button {
+        background-color: #f8f9fa;
+        border: none;
+        box-shadow: none;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: #e7f1ff;
+        color: #0d6efd;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+    }
+</style>
+</div>
