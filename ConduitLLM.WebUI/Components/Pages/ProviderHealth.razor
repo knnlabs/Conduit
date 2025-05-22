@@ -113,7 +113,19 @@
                         <h3>Uptime</h3>
                     </div>
                     <div class="card-body">
-                        <div id="uptimeChart" style="height: 300px;"></div>
+                        @if (_uptime.Any())
+                        {
+                            <canvas id="uptimeChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
+                                    <p class="mt-2">No uptime data available for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -123,7 +135,19 @@
                         <h3>Response Time</h3>
                     </div>
                     <div class="card-body">
-                        <div id="responseTimeChart" style="height: 300px;"></div>
+                        @if (_responseTimes.Any())
+                        {
+                            <canvas id="responseTimeChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
+                                    <p class="mt-2">No response time data available for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -136,7 +160,19 @@
                         <h3>Errors by Provider</h3>
                     </div>
                     <div class="card-body">
-                        <div id="errorCountChart" style="height: 300px;"></div>
+                        @if (_errorCounts.Any())
+                        {
+                            <canvas id="errorCountChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
+                                    <p class="mt-2">No errors recorded for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -146,7 +182,19 @@
                         <h3>Error Categories</h3>
                     </div>
                     <div class="card-body">
-                        <div id="errorCategoryChart" style="height: 300px;"></div>
+                        @if (_errorCategories.Any())
+                        {
+                            <canvas id="errorCategoryChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
+                                    <p class="mt-2">No error categories to display</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -254,7 +302,7 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!_loading && _uptime.Any())
         {
             await RenderChartsAsync();
         }
@@ -297,6 +345,16 @@
         {
             _loading = false;
             StateHasChanged();
+            
+            // Render charts after state has changed
+            if (_uptime.Any())
+            {
+                await InvokeAsync(async () =>
+                {
+                    await Task.Delay(100); // Small delay to ensure DOM is updated
+                    await RenderChartsAsync();
+                });
+            }
         }
     }
     
@@ -379,25 +437,37 @@
         try
         {
             // Uptime chart
-            var uptimeLabels = _uptime.Keys.ToArray();
-            var uptimeData = _uptime.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "uptimeChart", uptimeLabels, uptimeData, "Uptime %", "Provider", "Uptime (%)", "horizontal");
+            if (_uptime.Any())
+            {
+                var uptimeLabels = _uptime.Keys.ToArray();
+                var uptimeData = _uptime.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "uptimeChart", uptimeLabels, uptimeData, "Uptime %", "Provider", "Uptime (%)", "horizontal");
+            }
             
             // Response time chart
-            var responseTimeLabels = _responseTimes.Keys.ToArray();
-            var responseTimeData = _responseTimes.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "responseTimeChart", responseTimeLabels, responseTimeData, "Average Response Time (ms)", "Provider", "Response Time (ms)", "horizontal");
+            if (_responseTimes.Any())
+            {
+                var responseTimeLabels = _responseTimes.Keys.ToArray();
+                var responseTimeData = _responseTimes.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "responseTimeChart", responseTimeLabels, responseTimeData, "Average Response Time (ms)", "Provider", "Response Time (ms)", "horizontal");
+            }
             
             // Error count chart
-            var errorCountLabels = _errorCounts.Keys.ToArray();
-            var errorCountData = _errorCounts.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "errorCountChart", errorCountLabels, errorCountData, "Error Count", "Provider", "Errors", "horizontal");
+            if (_errorCounts.Any())
+            {
+                var errorCountLabels = _errorCounts.Keys.ToArray();
+                var errorCountData = _errorCounts.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "errorCountChart", errorCountLabels, errorCountData, "Error Count", "Provider", "Errors", "horizontal");
+            }
             
             // Error category chart
-            await RenderErrorCategoryChartAsync();
+            if (_errorCategories.Any())
+            {
+                await RenderErrorCategoryChartAsync();
+            }
         }
         catch (Exception ex)
         {

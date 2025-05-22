@@ -164,6 +164,8 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
 builder.Services.AddAdminApiClient(builder.Configuration);
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IGlobalSettingService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.ProviderStatusService>();
 
 // Register global setting repository adapter for CacheStatusService
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IGlobalSettingRepository, ConduitLLM.WebUI.Services.AdminApiGlobalSettingRepositoryAdapter>();
@@ -175,6 +177,16 @@ builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IAdminApiHealthService
 // Background services
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.VirtualKeyMaintenanceService>();
 builder.Services.AddHostedService<ConduitLLM.WebUI.Services.ProviderHealthMonitorService>();
+
+// Add SignalR services explicitly
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.MaximumReceiveMessageSize = 512 * 1024; // 512 KB
+});
+
+// Add antiforgery services
+builder.Services.AddAntiforgery();
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -288,15 +300,15 @@ else
     app.UseDeveloperExceptionPage();
 }
 
-// Ensure static files are served properly for development
-app.UseStaticFiles();
+// Ensure static files are served properly
 app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // app.UseHttpsRedirection(); // Removed as HTTPS is handled by external proxy (e.g., Railway)
 
-app.UseAntiforgery();
+app.UseRouting();
 
-app.MapStaticAssets();
+app.UseAntiforgery();
 
 // Add authentication middleware before authorization
 app.UseAuthentication();
@@ -304,12 +316,14 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
+// Map controllers first
+app.MapControllers();
+
+// Then map Blazor components with explicit render mode
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Ensure controllers are mapped for our API endpoints
-app.MapControllers();
-Console.WriteLine("[Conduit WebUI] Controllers registered");
+Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered");
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)

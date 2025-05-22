@@ -18,8 +18,39 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.GetAsync("api/providerhealth/status");
                 response.EnsureSuccessStatusCode();
                 
-                var result = await response.Content.ReadFromJsonAsync<Dictionary<string, ProviderStatus>>(_jsonOptions);
-                return result ?? new Dictionary<string, ProviderStatus>();
+                // The API returns a different model structure, so we need to manually map it
+                var json = await response.Content.ReadAsStringAsync();
+                var jsonDocument = JsonDocument.Parse(json);
+                var result = new Dictionary<string, ProviderStatus>();
+                
+                foreach (var property in jsonDocument.RootElement.EnumerateObject())
+                {
+                    var providerName = property.Name;
+                    var statusObj = property.Value;
+                    
+                    // Map the API response to our ProviderStatus model
+                    var status = new ProviderStatus
+                    {
+                        Status = statusObj.GetProperty("status").GetInt32() switch
+                        {
+                            0 => ProviderStatus.StatusType.Online,
+                            1 => ProviderStatus.StatusType.Offline,
+                            _ => ProviderStatus.StatusType.Unknown
+                        },
+                        StatusMessage = statusObj.TryGetProperty("statusMessage", out var msg) && msg.ValueKind != JsonValueKind.Null 
+                            ? msg.GetString() ?? "Unknown" 
+                            : "Unknown",
+                        ResponseTimeMs = statusObj.TryGetProperty("responseTimeMs", out var rt) ? rt.GetDouble() : 0,
+                        LastCheckedUtc = statusObj.TryGetProperty("lastCheckedUtc", out var lc) ? lc.GetDateTime() : DateTime.UtcNow,
+                        ErrorCategory = statusObj.TryGetProperty("errorCategory", out var ec) && ec.ValueKind != JsonValueKind.Null 
+                            ? ec.GetString() 
+                            : null
+                    };
+                    
+                    result[providerName] = status;
+                }
+                
+                return result;
             }
             catch (Exception ex)
             {
@@ -42,8 +73,30 @@ namespace ConduitLLM.WebUI.Services
                 
                 response.EnsureSuccessStatusCode();
                 
-                var result = await response.Content.ReadFromJsonAsync<ProviderStatus>(_jsonOptions);
-                return result ?? new ProviderStatus { Status = ProviderStatus.StatusType.Unknown, StatusMessage = "Unknown error" };
+                // The API returns a different model structure, so we need to manually map it
+                var json = await response.Content.ReadAsStringAsync();
+                var statusObj = JsonDocument.Parse(json).RootElement;
+                
+                // Map the API response to our ProviderStatus model
+                var status = new ProviderStatus
+                {
+                    Status = statusObj.GetProperty("status").GetInt32() switch
+                    {
+                        0 => ProviderStatus.StatusType.Online,
+                        1 => ProviderStatus.StatusType.Offline,
+                        _ => ProviderStatus.StatusType.Unknown
+                    },
+                    StatusMessage = statusObj.TryGetProperty("statusMessage", out var msg) && msg.ValueKind != JsonValueKind.Null 
+                        ? msg.GetString() ?? "Unknown" 
+                        : "Unknown",
+                    ResponseTimeMs = statusObj.TryGetProperty("responseTimeMs", out var rt) ? rt.GetDouble() : 0,
+                    LastCheckedUtc = statusObj.TryGetProperty("lastCheckedUtc", out var lc) ? lc.GetDateTime() : DateTime.UtcNow,
+                    ErrorCategory = statusObj.TryGetProperty("errorCategory", out var ec) && ec.ValueKind != JsonValueKind.Null 
+                        ? ec.GetString() 
+                        : null
+                };
+                
+                return status;
             }
             catch (Exception ex)
             {

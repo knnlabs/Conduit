@@ -258,6 +258,13 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <returns>A collection of provider health summaries.</returns>
         Task<IEnumerable<ProviderHealthSummaryDto>> GetProviderHealthSummaryAsync();
 
+        /// <summary>
+        /// Purges old provider health records.
+        /// </summary>
+        /// <param name="olderThan">Date threshold - records older than this will be purged</param>
+        /// <returns>Number of records purged</returns>
+        Task<int> PurgeOldProviderHealthRecordsAsync(DateTime olderThan);
+
         #endregion
 
         #region Model Costs

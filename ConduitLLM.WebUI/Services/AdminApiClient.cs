@@ -195,7 +195,7 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                string url = "api/virtualkeys/usage";
+                string url = "api/costs/virtualkeys";
                 if (virtualKeyId.HasValue)
                 {
                     url += $"?virtualKeyId={virtualKeyId.Value}";
@@ -1610,7 +1610,7 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/system/info");
+                var response = await _httpClient.GetAsync("api/systeminfo/info");
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<object>(_jsonOptions);

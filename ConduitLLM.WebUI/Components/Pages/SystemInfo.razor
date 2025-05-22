@@ -4,6 +4,7 @@
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
 @inject IAdminApiClient AdminApiClient
+@inject ILogger<SystemInfo> Logger
 
 <div class="container-fluid mt-4">
     <h3 class="mb-4">System Information</h3>
@@ -14,12 +15,21 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Database Information</h5>
-                    <button class="btn btn-sm btn-primary" @onclick="RefreshDatabaseInfo" aria-label="Refresh database information">
-                        <i class="fa fa-refresh"></i>
+                    <button class="btn btn-sm btn-primary" @onclick="RefreshDatabaseInfo" @onclick:preventDefault="true" aria-label="Refresh database information">
+                        @if (IsLoadingDatabase)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="ms-1">Refreshing...</span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-sync-alt"></i>
+                            <span class="ms-1">Refresh</span>
+                        }
                     </button>
                 </div>
                 <div class="card-body">
-                    @if (IsLoading)
+                    @if (IsLoading || IsLoadingDatabase)
                     {
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-primary" role="status">
@@ -106,11 +116,18 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">LLM Configuration</h5>
                     <button class="btn btn-sm btn-primary" @onclick="RefreshLlmInfo" aria-label="Refresh LLM information">
-                        <i class="fa fa-refresh"></i>
+                        @if (IsLoadingLlm)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-sync-alt"></i>
+                        }
                     </button>
                 </div>
                 <div class="card-body">
-                    @if (IsLoading)
+                    @if (IsLoading || IsLoadingLlm)
                     {
                         <div class="d-flex justify-content-center">
                             <div class="spinner-border text-primary" role="status">
@@ -193,6 +210,8 @@
 
 @code {
     private bool IsLoading = true;
+    private bool IsLoadingDatabase = false;
+    private bool IsLoadingLlm = false;
     private string DatabaseProvider = "Unknown";
     private string ConnectionStringMasked = "";
     private string DatabaseLocation = "";
@@ -223,8 +242,14 @@
 
     private async Task RefreshDatabaseInfo()
     {
+        Logger.LogInformation("RefreshDatabaseInfo method called");
+        Console.WriteLine("RefreshDatabaseInfo method called - Console");
         try
         {
+            IsLoadingDatabase = true;
+            StateHasChanged();
+            Logger.LogInformation("Starting database refresh...");
+            
             // Get system information from Admin API
             var systemInfo = await AdminApiClient.GetSystemInfoAsync();
             
@@ -317,14 +342,21 @@
             RequestCount = 0;
             SettingsCount = 0;
         }
-
-        StateHasChanged();
+        finally
+        {
+            IsLoadingDatabase = false;
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshLlmInfo()
     {
+        Logger.LogInformation("Refreshing LLM information");
         try
         {
+            IsLoadingLlm = true;
+            StateHasChanged();
+            
             // Get provider info
             var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
             ProviderCount = providers.Count();
@@ -341,8 +373,11 @@
             ProviderCount = 0;
             ModelCount = 0;
         }
-
-        StateHasChanged();
+        finally
+        {
+            IsLoadingLlm = false;
+            StateHasChanged();
+        }
     }
 
     private string FormatFileSize(long bytes)

@@ -271,3 +271,15 @@ function renderStackedBarChart(canvasId, chartDataJson, title, xAxisLabel, yAxis
     }
   });
 }
+
+/**
+ * Destroys all active chart instances
+ */
+function destroyCharts() {
+  Object.keys(chartInstances).forEach(canvasId => {
+    if (chartInstances[canvasId]) {
+      chartInstances[canvasId].destroy();
+      delete chartInstances[canvasId];
+    }
+  });
+}

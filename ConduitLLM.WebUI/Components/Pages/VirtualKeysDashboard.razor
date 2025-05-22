@@ -629,6 +629,7 @@
             // Find keys approaching their budget limit
             highUsageKeys = virtualKeys
                 .Where(k => k.MaxBudget.HasValue && 
+                           k.MaxBudget.Value > 0 &&
                            k.IsEnabled && 
                            (k.CurrentSpend / k.MaxBudget.Value) >= VirtualKeyConstants.BudgetWarningThresholds.Low / 100m)
                 .OrderByDescending(k => k.CurrentSpend / k.MaxBudget!.Value)
@@ -692,7 +693,7 @@
 
     private string GetBudgetProgressColorClass(VirtualKeyDto key)
     {
-        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value <= 0)
             return "bg-secondary";
             
         var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;
@@ -709,7 +710,7 @@
     
     private int GetBudgetUsagePercentage(VirtualKeyDto key)
     {
-        if (!key.MaxBudget.HasValue || key.MaxBudget.Value == 0)
+        if (!key.MaxBudget.HasValue || key.MaxBudget.Value <= 0)
             return 0;
             
         var percentage = (key.CurrentSpend / key.MaxBudget.Value) * 100;

@@ -38,7 +38,7 @@
             <div class="app-bar-container">
                 <!-- Left Side -->
                 <div class="app-bar-left">
-                    <button class="app-bar-toggle" @onclick="DrawerToggle">
+                    <button type="button" class="app-bar-toggle" @onclick="@(() => DrawerToggle())" @onclick:preventDefault="true" @onclick:stopPropagation="true" title="@(_drawerOpen ? "Close menu" : "Open menu")">
                         <i class="fa fa-bars"></i>
                     </button>
                     <div class="app-bar-brand">
@@ -99,7 +99,7 @@
         <!-- Mobile backdrop -->
         @if (_drawerOpen)
         {
-            <div class="mobile-backdrop" @onclick="() => _drawerOpen = false"></div>
+            <div class="mobile-backdrop" @onclick="DrawerToggle"></div>
         }
         
         <!-- Main Content Area -->
@@ -310,6 +310,9 @@
         justify-content: center;
         min-width: 44px;
         height: 44px;
+        z-index: 1100;
+        pointer-events: auto !important;
+        position: relative;
     }
 
     .app-bar-toggle:hover {
@@ -471,12 +474,12 @@
         border-right: 1px solid rgba(0, 0, 0, 0.08);
     }
 
-    .drawer-closed {
-        transform: translateX(-100%);
+    .drawer.drawer-closed {
+        transform: translateX(-100%) !important;
     }
 
-    .drawer-open {
-        transform: translateX(0);
+    .drawer.drawer-open {
+        transform: translateX(0) !important;
     }
 
     /* Main Content */
@@ -494,9 +497,11 @@
         min-height: calc(100vh - @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px"));
     }
 
-    /* When drawer is open on desktop */
-    .main-content.drawer-open {
-        margin-left: 280px;
+    /* Desktop: When drawer is open */
+    @@media screen and (min-width: 769px) {
+        .main-content.drawer-open {
+            margin-left: 280px;
+        }
     }
 
     /* When drawer is closed */
@@ -619,23 +624,38 @@
 
 @code {
     private bool _drawerOpen = true;
+    private int _clickCount = 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Check if we're on mobile and auto-close drawer
-            var isMobile = await JSRuntime.InvokeAsync<bool>("eval", "window.innerWidth <= 768");
-            if (isMobile)
+            try
             {
-                _drawerOpen = false;
-                StateHasChanged();
+                // Check if we're on mobile and auto-close drawer
+                var isMobile = await JSRuntime.InvokeAsync<bool>("eval", "window.innerWidth <= 768");
+                if (isMobile)
+                {
+                    _drawerOpen = false;
+                    StateHasChanged();
+                }
+                
+                // Test if JS interop is working
+                await JSRuntime.InvokeVoidAsync("console.log", "Blazor MainLayout initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"JS Interop error: {ex.Message}");
             }
         }
     }
 
     private void DrawerToggle()
     {
+        _clickCount++;
         _drawerOpen = !_drawerOpen;
+        Console.WriteLine($"Drawer toggled: {_drawerOpen}, Click count: {_clickCount}");
+        StateHasChanged();
     }
+    
 }

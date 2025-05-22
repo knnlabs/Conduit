@@ -1,27 +1,6 @@
 @using Microsoft.AspNetCore.Components.Routing
 
 <div class="nav-menu">
-    <!-- Brand Section -->
-    <div class="nav-brand">
-        <div class="nav-brand-content">
-            <div class="nav-brand-icon">
-                <i class="fa fa-bolt"></i>
-            </div>
-            <div class="nav-brand-text">
-                <h6 class="nav-brand-title">ConduitLLM</h6>
-                <span class="nav-brand-subtitle">Admin Portal</span>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Quick Stats -->
-    <div class="nav-stats">
-        <div class="nav-stat-item">
-            <i class="fa fa-tachometer-alt"></i>
-            <span>Dashboard</span>
-        </div>
-    </div>
-    
     <!-- Main Navigation -->
     <div class="nav-sections">
         <!-- Dashboard -->
@@ -35,12 +14,12 @@
         
         <!-- Core Section -->
         <div class="nav-group">
-            <div class="nav-group-header @(coreExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref coreExpanded)">
+            <div class="nav-group-header @(coreExpanded ? "expanded" : "")" @onclick="ToggleCoreSection">
                 <div class="nav-group-header-content">
                     <i class="fa fa-puzzle-piece"></i>
                     <span>Core Features</span>
                 </div>
-                <i class="fa @(coreExpanded ? "fa-chevron-down" : "fa-chevron-right") nav-chevron"></i>
+                <i class="fa fa-chevron-right nav-chevron"></i>
             </div>
             
             <div class="nav-group-content @(coreExpanded ? "show" : "")">
@@ -56,12 +35,12 @@
         
         <!-- Configuration Section -->
         <div class="nav-group">
-            <div class="nav-group-header @(configExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref configExpanded)">
+            <div class="nav-group-header @(configExpanded ? "expanded" : "")" @onclick="ToggleConfigSection">
                 <div class="nav-group-header-content">
                     <i class="fa fa-cogs"></i>
                     <span>Configuration</span>
                 </div>
-                <i class="fa @(configExpanded ? "fa-chevron-down" : "fa-chevron-right") nav-chevron"></i>
+                <i class="fa fa-chevron-right nav-chevron"></i>
             </div>
             
             <div class="nav-group-content @(configExpanded ? "show" : "")">
@@ -98,12 +77,12 @@
         
         <!-- Keys & Costs Section -->
         <div class="nav-group">
-            <div class="nav-group-header @(keysExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref keysExpanded)">
+            <div class="nav-group-header @(keysExpanded ? "expanded" : "")" @onclick="ToggleKeysSection">
                 <div class="nav-group-header-content">
                     <i class="fa fa-key"></i>
                     <span>Keys & Analytics</span>
                 </div>
-                <i class="fa @(keysExpanded ? "fa-chevron-down" : "fa-chevron-right") nav-chevron"></i>
+                <i class="fa fa-chevron-right nav-chevron"></i>
             </div>
             
             <div class="nav-group-content @(keysExpanded ? "show" : "")">
@@ -147,12 +126,12 @@
         
         <!-- System Section -->
         <div class="nav-group">
-            <div class="nav-group-header @(systemExpanded ? "expanded" : "")" @onclick="() => ToggleSection(ref systemExpanded)">
+            <div class="nav-group-header @(systemExpanded ? "expanded" : "")" @onclick="ToggleSystemSection">
                 <div class="nav-group-header-content">
                     <i class="fa fa-server"></i>
                     <span>System Health</span>
                 </div>
-                <i class="fa @(systemExpanded ? "fa-chevron-down" : "fa-chevron-right") nav-chevron"></i>
+                <i class="fa fa-chevron-right nav-chevron"></i>
             </div>
             
             <div class="nav-group-content @(systemExpanded ? "show" : "")">
@@ -194,76 +173,6 @@
         background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
         position: relative;
         overflow: hidden;
-    }
-
-    /* Brand Section */
-    .nav-brand {
-        padding: 1.5rem 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-    }
-
-    .nav-brand-content {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .nav-brand-icon {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .nav-brand-icon i {
-        color: white;
-        font-size: 1.5rem;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .nav-brand-title {
-        color: white;
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .nav-brand-subtitle {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    /* Quick Stats */
-    .nav-stats {
-        padding: 1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .nav-stat-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.5rem 0.75rem;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    .nav-stat-item i {
-        color: rgba(255, 255, 255, 0.7);
     }
 
     /* Navigation Sections */
@@ -387,6 +296,9 @@
         transition: all 0.3s ease;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        position: relative;
+        z-index: 10;
+        pointer-events: auto !important;
     }
 
     .nav-group-header-content {
@@ -429,7 +341,7 @@
     }
 
     .nav-group-header.expanded .nav-chevron {
-        transform: rotate(180deg);
+        transform: rotate(90deg);
     }
 
     .nav-group-content {
@@ -493,19 +405,6 @@
 
     /* Mobile Optimizations */
     @@media (max-width: 768px) {
-        .nav-brand-content {
-            gap: 0.75rem;
-        }
-
-        .nav-brand-icon {
-            width: 40px;
-            height: 40px;
-        }
-
-        .nav-brand-title {
-            font-size: 1.125rem;
-        }
-
         .nav-link {
             margin: 0 0.5rem 0.25rem;
             padding: 0.625rem 0.75rem;
@@ -522,19 +421,6 @@
         }
     }
 
-    /* Animation Keyframes */
-    @@keyframes gentle-glow {
-        0%, 100% { 
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); 
-        }
-        50% { 
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2); 
-        }
-    }
-
-    .nav-brand-icon {
-        animation: gentle-glow 3s ease-in-out infinite;
-    }
 </style>
 
 @code {
@@ -543,8 +429,28 @@
     private bool keysExpanded = true;
     private bool systemExpanded = true;
     
-    private void ToggleSection(ref bool expanded)
+    private void ToggleCoreSection()
     {
-        expanded = !expanded;
+        coreExpanded = !coreExpanded;
+        Console.WriteLine($"Core section toggled: {coreExpanded}");
+        StateHasChanged();
+    }
+    
+    private void ToggleConfigSection()
+    {
+        configExpanded = !configExpanded;
+        StateHasChanged();
+    }
+    
+    private void ToggleKeysSection()
+    {
+        keysExpanded = !keysExpanded;
+        StateHasChanged();
+    }
+    
+    private void ToggleSystemSection()
+    {
+        systemExpanded = !systemExpanded;
+        StateHasChanged();
     }
 }

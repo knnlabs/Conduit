@@ -1,5 +1,5 @@
 @page "/model-costs"
-@using ConfigDTO = ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Extensions
@@ -487,17 +487,17 @@
 </style>
 
 @code {
-    private IEnumerable<ConfigDTO.ModelCostDto>? modelCosts;
+    private IEnumerable<ModelCostDto>? modelCosts;
     private bool isLoading = true;
     private bool isSaving = false;
     
     // Add/Edit modal variables
     private bool showAddEditModal = false;
-    private ConfigDTO.ModelCostDto editingModelCost = new();
+    private ModelCostDto editingModelCost = new();
     
     // Delete confirmation modal variables
     private bool showDeleteConfirmation = false;
-    private ConfigDTO.ModelCostDto? deletingModelCost;
+    private ModelCostDto? deletingModelCost;
     
     // Cost display as per 1000 tokens for better UX
     private decimal inputTokenCostPerThousand;
@@ -553,12 +553,12 @@
         }
     }
 
-    private void ShowAddEditModal(ConfigDTO.ModelCostDto? modelCost = null)
+    private void ShowAddEditModal(ModelCostDto? modelCost = null)
     {
         if (modelCost != null)
         {
             // Editing existing cost
-            editingModelCost = new ConfigDTO.ModelCostDto
+            editingModelCost = new ModelCostDto
             {
                 Id = modelCost.Id,
                 ModelIdPattern = modelCost.ModelIdPattern,
@@ -580,7 +580,7 @@
         else
         {
             // Adding new cost
-            editingModelCost = new ConfigDTO.ModelCostDto
+            editingModelCost = new ModelCostDto
             {
                 ModelIdPattern = "",
                 InputTokenCost = 0,
@@ -595,7 +595,7 @@
         showAddEditModal = true;
     }
 
-    private void ShowDeleteConfirmation(ConfigDTO.ModelCostDto modelCost)
+    private void ShowDeleteConfirmation(ModelCostDto modelCost)
     {
         deletingModelCost = modelCost;
         showDeleteConfirmation = true;
@@ -625,7 +625,7 @@
             if (editingModelCost.Id == 0)
             {
                 // Creating new cost
-                var createDto = new ConfigDTO.CreateModelCostDto
+                var createDto = new CreateModelCostDto
                 {
                     ModelIdPattern = editingModelCost.ModelIdPattern,
                     InputTokenCost = editingModelCost.InputTokenCost,
@@ -643,7 +643,7 @@
             else
             {
                 // Updating existing cost
-                var updateDto = new ConfigDTO.UpdateModelCostDto
+                var updateDto = new UpdateModelCostDto
                 {
                     Id = editingModelCost.Id,
                     ModelIdPattern = editingModelCost.ModelIdPattern,
