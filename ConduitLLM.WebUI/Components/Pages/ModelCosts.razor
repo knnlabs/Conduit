@@ -13,34 +13,20 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="mc-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-calculator me-3"></i>Model Cost Management
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Configure pricing for AI models, set cost calculations, and manage budget enforcement
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="mc-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-cogs me-2"></i>
-                                <span class="small">@(modelCosts?.Count() ?? 0) Models</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-dollar-sign me-2"></i>
-                                <span class="small">Cost Management</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Model Cost Management" 
+                Description="Configure pricing for AI models, set cost calculations, and manage budget enforcement"
+                Icon="fa-calculator">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-cogs me-2"></i>
+                <span class="small">@(modelCosts?.Count() ?? 0) Models</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-dollar-sign me-2"></i>
+                <span class="small">Cost Management</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
     <!-- Info Card -->
     <div class="card mc-info-card border-0 shadow-sm bg-light mb-4">
@@ -68,13 +54,13 @@
                 <i class="fa fa-table me-2 text-primary"></i>Model Cost Registry
             </h5>
             <div class="mc-toolbar d-flex gap-2">
-                <button class="btn mc-btn-outline-secondary" @onclick="RefreshModelCosts">
+                <button class="btn btn-outline-secondary" @onclick="RefreshModelCosts">
                     <i class="fa fa-sync-alt me-2"></i>Refresh
                 </button>
-                <button class="btn mc-btn-outline-info" @onclick="ClearCache">
+                <button class="btn btn-outline-info" @onclick="ClearCache">
                     <i class="fa fa-broom me-2"></i>Clear Cache
                 </button>
-                <button class="btn mc-btn-primary" @onclick="() => ShowAddEditModal()">
+                <button class="btn btn-primary" @onclick="() => ShowAddEditModal()">
                     <i class="fa fa-plus me-2"></i>Add Model Cost
                 </button>
             </div>
@@ -82,29 +68,19 @@
         <div class="card-body p-0">
             @if (isLoading)
             {
-                <div class="text-center py-5">
-                    <div class="mc-loading-spinner">
-                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                    <p class="mt-4 text-muted fw-medium">Loading model costs...</p>
-                </div>
+                <LoadingSpinner Message="Loading model costs..." />
             }
             else if (modelCosts == null || !modelCosts.Any())
             {
-                <div class="mc-empty-state text-center py-5">
-                    <div class="mc-empty-icon mb-4">
-                        <i class="fa fa-calculator fa-4x text-primary opacity-50"></i>
-                    </div>
-                    <h4 class="fw-bold text-dark mb-3">No Model Costs Configured</h4>
-                    <p class="text-muted mb-4 lead">
-                        Get started by adding cost configurations for your AI models to enable budget tracking.
-                    </p>
-                    <button class="btn mc-btn-primary btn-lg" @onclick="() => ShowAddEditModal()">
-                        <i class="fa fa-plus me-2"></i>Add Your First Model Cost
-                    </button>
-                </div>
+                <EmptyState Title="No Model Costs Configured"
+                            Description="Get started by adding cost configurations for your AI models to enable budget tracking."
+                            Icon="fa-calculator">
+                    <ActionTemplate>
+                        <button class="btn btn-primary btn-lg" @onclick="() => ShowAddEditModal()">
+                            <i class="fa fa-plus me-2"></i>Add Your First Model Cost
+                        </button>
+                    </ActionTemplate>
+                </EmptyState>
             }
             else
             {
@@ -163,10 +139,10 @@
                                     </td>
                                     <td class="border-0">
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn mc-btn-outline-primary" @onclick="() => ShowAddEditModal(cost)" title="Edit Model Cost">
+                                            <button class="btn btn-outline-primary" @onclick="() => ShowAddEditModal(cost)" title="Edit Model Cost">
                                                 <i class="fa fa-edit"></i>
                                             </button>
-                                            <button class="btn mc-btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)" title="Delete Model Cost">
+                                            <button class="btn btn-outline-danger" @onclick="() => ShowDeleteConfirmation(cost)" title="Delete Model Cost">
                                                 <i class="fa fa-trash"></i>
                                             </button>
                                         </div>
@@ -284,18 +260,7 @@
 
 <!-- Custom CSS Styling -->
 <style>
-    .mc-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem !important;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-
-    .mc-stats .stat-item {
-        display: inline-block;
-        margin-right: 1rem;
-        padding: 0.25rem 0;
-    }
-
+    /* Keep only styles specific to this page that aren't covered by components */
     .mc-info-card {
         transition: all 0.3s ease;
     }
@@ -323,90 +288,6 @@
         border-radius: 0.5rem;
         font-weight: 600;
         transition: all 0.3s ease;
-    }
-
-    .mc-btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .mc-btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    }
-
-    .mc-btn-outline-secondary {
-        border: 2px solid #6b7280;
-        color: #6b7280;
-        background: transparent;
-    }
-
-    .mc-btn-outline-secondary:hover {
-        background: #6b7280;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .mc-btn-outline-info {
-        border: 2px solid #06b6d4;
-        color: #06b6d4;
-        background: transparent;
-    }
-
-    .mc-btn-outline-info:hover {
-        background: #06b6d4;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .mc-btn-outline-primary {
-        border: 2px solid #667eea;
-        color: #667eea;
-    }
-
-    .mc-btn-outline-primary:hover {
-        background: #667eea;
-        border-color: #667eea;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .mc-btn-outline-danger {
-        border: 2px solid #ef4444;
-        color: #ef4444;
-    }
-
-    .mc-btn-outline-danger:hover {
-        background: #ef4444;
-        border-color: #ef4444;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .mc-loading-spinner {
-        display: inline-block;
-        animation: gentle-bounce 1.5s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
-    }
-
-    .mc-empty-state {
-        padding: 3rem 2rem;
-    }
-
-    .mc-empty-icon i {
-        animation: gentle-pulse 2s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-pulse {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 0.8; }
     }
 
     .mc-table-header {
@@ -458,15 +339,6 @@
     }
 
     @@media (max-width: 768px) {
-        .mc-header {
-            text-align: center;
-        }
-
-        .mc-stats {
-            text-align: center;
-            margin-top: 1rem;
-        }
-
         .mc-toolbar {
             flex-direction: column;
             gap: 0.5rem !important;

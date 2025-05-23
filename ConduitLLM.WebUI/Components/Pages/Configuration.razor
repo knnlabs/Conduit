@@ -24,34 +24,20 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="config-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-cogs me-3"></i>Configuration Management
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Configure LLM providers, model mappings, and system settings for your deployment
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="config-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-cloud me-2"></i>
-                                <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-sitemap me-2"></i>
-                                <span class="small">@(modelMappings?.Count ?? 0) Mappings</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Configuration Management" 
+                Description="Configure LLM providers, model mappings, and system settings for your deployment"
+                Icon="fa-cogs">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-cloud me-2"></i>
+                <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-sitemap me-2"></i>
+                <span class="small">@(modelMappings?.Count ?? 0) Mappings</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
     @if (!string.IsNullOrEmpty(deleteErrorMessage))
     {
@@ -87,19 +73,14 @@
         <div class="card-body">
             @if (providerCredentials == null)
             {
-                <div class="d-flex justify-content-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+                <LoadingSpinner Message="Loading providers..." />
             }
             else if (!providerCredentials.Any())
             {
-                <div class="text-center py-5">
-                    <i class="fa fa-cloud fa-4x text-muted mb-4"></i>
-                    <h4 class="text-muted mb-3">No Providers Configured</h4>
-                    <p class="text-muted mb-4">Get started by adding your first LLM provider</p>
-                </div>
+                <EmptyState Title="No Providers Configured"
+                            Description="Get started by adding your first LLM provider"
+                            Icon="fa-cloud"
+                            IconOpacity="opacity-50" />
 
                 <div class="row">
                     @foreach (var provider in _supportedProviders)
@@ -207,19 +188,14 @@
             
             @if (modelMappings == null)
             {
-                <div class="d-flex justify-content-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+                <LoadingSpinner Message="Loading model mappings..." />
             }
             else if (!modelMappings.Any())
             {
-                <div class="text-center py-5">
-                    <i class="fa fa-sitemap fa-4x text-muted mb-4"></i>
-                    <h4 class="text-muted mb-3">No Model Mappings</h4>
-                    <p class="text-muted mb-4">Create your first model mapping to get started</p>
-                </div>
+                <EmptyState Title="No Model Mappings"
+                            Description="Create your first model mapping to get started"
+                            Icon="fa-sitemap"
+                            IconOpacity="opacity-50" />
             }
             else
             {
@@ -1216,11 +1192,7 @@
 }
 
 <style>
-    .config-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    
+    /* Keep only styles specific to this page that aren't covered by components */
     .config-stats .stat-item {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 20px;
@@ -1258,26 +1230,7 @@
         box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
     }
     
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    .card {
-        transition: all 0.2s ease;
-    }
-    
     .table th {
         background-color: #f8f9fa;
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
 </style>

@@ -41,45 +41,24 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="routing-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-random me-3"></i>Routing Settings
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Configure intelligent routing strategies and model deployment settings
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="routing-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-server me-2"></i>
-                                <span class="small">@_config.ModelDeployments.Count Deployments</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-shield me-2"></i>
-                                <span class="small">@(_config.FallbackConfigurations?.Count ?? 0) Fallbacks</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Routing Settings" 
+                Description="Configure intelligent routing strategies and model deployment settings"
+                Icon="fa-random">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-server me-2"></i>
+                <span class="small">@_config.ModelDeployments.Count Deployments</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-shield me-2"></i>
+                <span class="small">@(_config.FallbackConfigurations?.Count ?? 0) Fallbacks</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
 @if (!_isInitialized)
 {
-    <div class="row">
-        <div class="col-12 d-flex flex-column align-items-center py-4">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-4">Loading routing settings...</p>
-        </div>
-    </div>
+    <LoadingSpinner Message="Loading routing settings..." />
 }
 else
 {
@@ -178,14 +157,15 @@ else
         <div class="card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <div class="text-center py-5">
-                    <i class="fa fa-server fa-4x text-muted mb-4"></i>
-                    <h4 class="text-muted mb-3">No Model Deployments</h4>
-                    <p class="text-muted mb-4">Add deployments to enable routing between models</p>
-                    <button class="btn btn-primary" @onclick="AddNewDeploymentAsync">
-                        <i class="fa fa-plus me-1"></i> Add Your First Deployment
-                    </button>
-                </div>
+                <EmptyState Title="No Model Deployments"
+                            Description="Add deployments to enable routing between models"
+                            Icon="fa-server">
+                    <ActionTemplate>
+                        <button class="btn btn-primary" @onclick="AddNewDeploymentAsync">
+                            <i class="fa fa-plus me-1"></i> Add Your First Deployment
+                        </button>
+                    </ActionTemplate>
+                </EmptyState>
             }
             else
             {
@@ -209,15 +189,12 @@ else
                                     <td>@deployment.ProviderName</td>
                                     <td>@deployment.Weight</td>
                                     <td>
-                                        <span class="badge bg-@(_isEnabled ? "success" : "secondary") rounded-pill">
-                                            @(deployment.HealthCheckEnabled ? "Enabled" : "Disabled")
-                                        </span>
+                                        <StatusBadge Status="@(deployment.HealthCheckEnabled ? "Enabled" : "Disabled")"
+                                                     StatusType="@(deployment.HealthCheckEnabled && _isEnabled ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Secondary)" />
                                     </td>
                                     <td>
-                                        <span class="badge bg-@(_isEnabled ? "success" : "secondary") rounded-pill">
-                                            @(deployment.IsHealthy && deployment.IsEnabled ? "Healthy" : 
-                                            !deployment.IsEnabled ? "Disabled" : "Unhealthy")
-                                        </span>
+                                        <StatusBadge Status="@(deployment.IsHealthy && deployment.IsEnabled ? "Healthy" : !deployment.IsEnabled ? "Disabled" : "Unhealthy")"
+                                                     StatusType="@(deployment.IsHealthy && deployment.IsEnabled && _isEnabled ? StatusBadge.StatusType.Success : !deployment.IsEnabled ? StatusBadge.StatusType.Secondary : StatusBadge.StatusType.Error)" />
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
@@ -311,14 +288,15 @@ else
                 }
                 else
                 {
-                    <div class="text-center py-4">
-                        <i class="fa fa-shield fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted mb-2">No Fallback Configurations</h5>
-                        <p class="text-muted mb-3">Fallbacks determine which models to use when a preferred model is unavailable.</p>
-                        <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
-                            <i class="fa fa-plus me-1"></i> Add Fallback Configuration
-                        </button>
-                    </div>
+                    <EmptyState Title="No Fallback Configurations"
+                                Description="Fallbacks determine which models to use when a preferred model is unavailable."
+                                Icon="fa-shield">
+                        <ActionTemplate>
+                            <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                                <i class="fa fa-plus me-1"></i> Add Fallback Configuration
+                            </button>
+                        </ActionTemplate>
+                    </EmptyState>
                 }
             }
         </div>
@@ -1000,39 +978,13 @@ else
 }
 
 <style>
-    .routing-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    
-    .routing-stats .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-    }
-    
+    /* Page-specific styles not covered by components */
     .card {
         transition: all 0.2s ease;
     }
     
     .card:hover {
         transform: translateY(-1px);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
     
     .table th {

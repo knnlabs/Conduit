@@ -1,0 +1,106 @@
+@* StatusBadge.razor - Display status with consistent styling *@
+<span class="badge @GetBadgeClass()">
+    <i class="fa @GetIcon() me-1"></i>@GetDisplayText()
+</span>
+
+@code {
+    /// <summary>
+    /// Gets or sets the status text to display.
+    /// </summary>
+    [Parameter] public string Status { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the explicit status type.
+    /// </summary>
+    [Parameter] public StatusType Type { get; set; } = StatusType.Auto;
+
+    /// <summary>
+    /// Gets or sets custom display text (overrides Status).
+    /// </summary>
+    [Parameter] public string? CustomText { get; set; }
+
+    /// <summary>
+    /// Gets or sets custom icon class (overrides auto-detected icon).
+    /// </summary>
+    [Parameter] public string? CustomIcon { get; set; }
+
+    /// <summary>
+    /// Gets or sets custom CSS class (overrides auto-detected class).
+    /// </summary>
+    [Parameter] public string? CustomClass { get; set; }
+
+    /// <summary>
+    /// Defines the available status types.
+    /// </summary>
+    public enum StatusType
+    {
+        /// <summary>Auto-detect based on status text.</summary>
+        Auto,
+        /// <summary>Success/positive status.</summary>
+        Success,
+        /// <summary>Error/negative status.</summary>
+        Error,
+        /// <summary>Warning status.</summary>
+        Warning,
+        /// <summary>Informational status.</summary>
+        Info,
+        /// <summary>Secondary/neutral status.</summary>
+        Secondary,
+        /// <summary>Custom status.</summary>
+        Custom
+    }
+
+    private string GetBadgeClass()
+    {
+        if (!string.IsNullOrEmpty(CustomClass))
+            return CustomClass;
+
+        return Type switch
+        {
+            StatusType.Success => "badge-success",
+            StatusType.Error => "badge-danger",
+            StatusType.Warning => "badge-warning",
+            StatusType.Info => "badge-info",
+            StatusType.Secondary => "badge-secondary",
+            StatusType.Custom => "badge-primary",
+            StatusType.Auto => Status.ToLower() switch
+            {
+                "active" or "enabled" or "online" or "200" => "badge-success",
+                "disabled" or "offline" or "error" => "badge-danger",
+                "expired" or "unknown" => "badge-secondary",
+                _ when int.TryParse(Status, out var code) => code < 400 ? "badge-success" : "badge-danger",
+                _ => "badge-secondary"
+            },
+            _ => "badge-primary"
+        };
+    }
+
+    private string GetIcon()
+    {
+        if (!string.IsNullOrEmpty(CustomIcon))
+            return CustomIcon;
+
+        return Type switch
+        {
+            StatusType.Success => "fa-check-circle",
+            StatusType.Error => "fa-times-circle",
+            StatusType.Warning => "fa-exclamation-triangle",
+            StatusType.Info => "fa-info-circle",
+            StatusType.Secondary => "fa-circle",
+            StatusType.Auto => Status.ToLower() switch
+            {
+                "active" or "enabled" or "online" => "fa-check-circle",
+                "disabled" or "offline" or "error" => "fa-times-circle",
+                "expired" => "fa-clock",
+                "unknown" => "fa-question-circle",
+                _ => "fa-circle"
+            },
+            _ => "fa-circle"
+        };
+    }
+
+    private string GetDisplayText()
+    {
+        return CustomText ?? Status;
+    }
+}

@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization; // Required for JsonNamingPolicy
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data; // Added for database initialization
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Interfaces;
@@ -160,7 +161,45 @@ builder.Services.AddCors(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Add database initialization services
+builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
+
 var app = builder.Build();
+
+// Initialize database if configured
+if (shouldApplyMigrations || useEnsureCreated)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
+        var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        try
+        {
+            initLogger.LogInformation("Starting database initialization...");
+            var success = await dbInitializer.InitializeDatabaseAsync();
+            
+            if (success)
+            {
+                initLogger.LogInformation("Database initialization completed successfully");
+            }
+            else
+            {
+                initLogger.LogError("Database initialization failed");
+                if (!useEnsureCreated)
+                {
+                    // If not using EnsureCreated, fail hard on migration errors
+                    throw new InvalidOperationException("Database initialization failed");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            initLogger.LogError(ex, "Error during database initialization");
+            throw;
+        }
+    }
+}
 
 // Enable CORS
 app.UseCors();

@@ -16,34 +16,20 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="vk-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-key me-3"></i>Virtual Keys Management
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Create and manage secure API keys with controlled permissions and spending limits
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="vk-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-key me-2"></i>
-                                <span class="small">@(virtualKeys?.Count ?? 0) Keys</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-check-circle me-2"></i>
-                                <span class="small">@(virtualKeys?.Count(k => k.IsEnabled) ?? 0) Active</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Virtual Keys Management" 
+                Description="Create and manage secure API keys with controlled permissions and spending limits"
+                Icon="fa-key">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-key me-2"></i>
+                <span class="small">@(virtualKeys?.Count ?? 0) Keys</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-check-circle me-2"></i>
+                <span class="small">@(virtualKeys?.Count(k => k.IsEnabled) ?? 0) Active</span>
+            </div>
+        </Statistics>
+    </PageHeader>
     
     @if (!string.IsNullOrEmpty(errorMessage))
     {
@@ -56,85 +42,76 @@
             <h5 class="mb-0 fw-bold text-dark">
                 <i class="fa fa-list me-2 text-primary"></i>Virtual Keys
             </h5>
-            <a href="/virtualkeys/edit" class="btn vk-btn-primary">
+            <a href="/virtualkeys/edit" class="btn btn-primary">
                 <i class="fa fa-plus me-2"></i>Add Key
             </a>
         </div>
         <div class="card-body p-4">
             @if (virtualKeys == null)
             {
-                <div class="text-center py-5">
-                    <div class="vk-loading-spinner">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                    <p class="mt-3 text-muted fw-medium">Loading virtual keys...</p>
-                </div>
+                <LoadingSpinner Message="Loading virtual keys..." />
             }
             else if (!virtualKeys.Any())
             {
-                <div class="vk-empty-state text-center py-5">
-                    <div class="vk-empty-icon mb-4">
-                        <i class="fa fa-key fa-4x text-primary opacity-75"></i>
-                    </div>
-                    <h4 class="fw-bold text-dark mb-3">No Virtual Keys Found</h4>
-                    <p class="text-muted mb-4 lead">
-                        Get started by creating your first virtual key to manage API access and spending limits.
-                    </p>
-                    
-                    <div class="vk-info-card card border-0 shadow-sm bg-light mb-4">
-                        <div class="card-header bg-gradient-light border-0">
-                            <h6 class="mb-0 fw-bold text-primary">
-                                <i class="fa fa-lightbulb me-2"></i>About Virtual Keys
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="vk-feature d-flex align-items-start">
-                                        <i class="fa fa-shield-alt text-success me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Secure API Access</strong>
-                                            <p class="small text-muted mb-0">Grant third-party applications access without sharing provider credentials</p>
+                <EmptyState Title="No Virtual Keys Found"
+                            Description="Get started by creating your first virtual key to manage API access and spending limits."
+                            Icon="fa-key"
+                            IconOpacity="opacity-75">
+                    <ActionTemplate>
+                        <a href="/virtualkeys/edit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-plus me-2"></i>Create Your First Key
+                        </a>
+                    </ActionTemplate>
+                    <AdditionalContent>
+                        <div class="vk-info-card card border-0 shadow-sm bg-light mb-4">
+                            <div class="card-header bg-gradient-light border-0">
+                                <h6 class="mb-0 fw-bold text-primary">
+                                    <i class="fa fa-lightbulb me-2"></i>About Virtual Keys
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="vk-feature d-flex align-items-start">
+                                            <i class="fa fa-shield-alt text-success me-3 mt-1"></i>
+                                            <div>
+                                                <strong>Secure API Access</strong>
+                                                <p class="small text-muted mb-0">Grant third-party applications access without sharing provider credentials</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="vk-feature d-flex align-items-start">
-                                        <i class="fa fa-dollar-sign text-warning me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Cost Control</strong>
-                                            <p class="small text-muted mb-0">Set spending limits to manage and control API usage costs</p>
+                                    <div class="col-md-6">
+                                        <div class="vk-feature d-flex align-items-start">
+                                            <i class="fa fa-dollar-sign text-warning me-3 mt-1"></i>
+                                            <div>
+                                                <strong>Cost Control</strong>
+                                                <p class="small text-muted mb-0">Set spending limits to manage and control API usage costs</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="vk-feature d-flex align-items-start">
-                                        <i class="fa fa-filter text-info me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Model Restrictions</strong>
-                                            <p class="small text-muted mb-0">Restrict access to specific AI models and capabilities</p>
+                                    <div class="col-md-6">
+                                        <div class="vk-feature d-flex align-items-start">
+                                            <i class="fa fa-filter text-info me-3 mt-1"></i>
+                                            <div>
+                                                <strong>Model Restrictions</strong>
+                                                <p class="small text-muted mb-0">Restrict access to specific AI models and capabilities</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="vk-feature d-flex align-items-start">
-                                        <i class="fa fa-clock text-danger me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Expiration Control</strong>
-                                            <p class="small text-muted mb-0">Set expiration dates for temporary or time-limited access</p>
+                                    <div class="col-md-6">
+                                        <div class="vk-feature d-flex align-items-start">
+                                            <i class="fa fa-clock text-danger me-3 mt-1"></i>
+                                            <div>
+                                                <strong>Expiration Control</strong>
+                                                <p class="small text-muted mb-0">Set expiration dates for temporary or time-limited access</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <a href="/virtualkeys/edit" class="btn vk-btn-primary btn-lg">
-                        <i class="fa fa-plus me-2"></i>Create Your First Key
-                    </a>
-                </div>
+                    </AdditionalContent>
+                </EmptyState>
             }
             else
             {
@@ -273,18 +250,7 @@
 
 <!-- Custom CSS Styling -->
 <style>
-    .vk-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem !important;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-
-    .vk-stats .stat-item {
-        display: inline-block;
-        margin-right: 1rem;
-        padding: 0.25rem 0;
-    }
-
+    /* Keep only styles specific to this page that aren't covered by components */
     .vk-card {
         border-radius: 1rem !important;
         overflow: hidden;
@@ -299,77 +265,6 @@
     .vk-card-header {
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
         padding: 1.5rem;
-    }
-
-    .vk-btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 0.75rem;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .vk-btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    }
-
-    .vk-btn-outline-primary {
-        border: 2px solid #667eea;
-        color: #667eea;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .vk-btn-outline-primary:hover {
-        background: #667eea;
-        border-color: #667eea;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .vk-btn-outline-warning {
-        border: 2px solid #f59e0b;
-        color: #f59e0b;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .vk-btn-outline-warning:hover {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .vk-btn-outline-danger {
-        border: 2px solid #ef4444;
-        color: #ef4444;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .vk-btn-outline-danger:hover {
-        background: #ef4444;
-        border-color: #ef4444;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .vk-empty-state {
-        padding: 3rem 2rem;
-    }
-
-    .vk-empty-icon i {
-        animation: gentle-pulse 2s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-pulse {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 0.8; }
     }
 
     .vk-info-card {
@@ -415,33 +310,6 @@
         vertical-align: middle;
     }
 
-    .vk-badge-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .vk-badge-danger {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .vk-badge-secondary {
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
     .vk-progress {
         height: 8px;
         border-radius: 0.5rem;
@@ -458,30 +326,11 @@
         min-width: 120px;
     }
 
-    .vk-loading-spinner {
-        display: inline-block;
-        animation: gentle-bounce 1.5s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
-    }
-
     .bg-gradient-light {
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
     }
 
     @@media (max-width: 768px) {
-        .vk-header {
-            text-align: center;
-        }
-
-        .vk-stats {
-            text-align: center;
-            margin-top: 1rem;
-        }
-
         .vk-table {
             font-size: 0.875rem;
         }

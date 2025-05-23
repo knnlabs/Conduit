@@ -18,43 +18,24 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="ip-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-shield me-3"></i>IP Access Filtering
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Control access to your API endpoints with IP-based filtering rules
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="ip-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-toggle-on me-2"></i>
-                                <span class="small">@(_settings.IsEnabled ? "Enabled" : "Disabled")</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-list me-2"></i>
-                                <span class="small">@_filters.Count Rules</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="IP Access Filtering" 
+                Description="Control access to your API endpoints with IP-based filtering rules"
+                Icon="fa-shield">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-toggle-on me-2"></i>
+                <span class="small">@(_settings.IsEnabled ? "Enabled" : "Disabled")</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-list me-2"></i>
+                <span class="small">@_filters.Count Rules</span>
+            </div>
+        </Statistics>
+    </PageHeader>
     
     @if (_loading)
     {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading IP filtering data...</p>
-        </div>
+        <LoadingSpinner Message="Loading IP filtering data..." />
     }
     else
     {
@@ -160,14 +141,15 @@
                     <div class="card-body">
                         @if (!_filters.Any())
                         {
-                            <div class="text-center py-5">
-                                <i class="fa fa-shield fa-4x text-muted mb-4"></i>
-                                <h4 class="text-muted mb-3">No IP Filter Rules</h4>
-                                <p class="text-muted mb-4">Create your first IP filter rule to control access</p>
-                                <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
-                                    <i class="fa fa-plus me-1"></i> Add Your First Filter Rule
-                                </button>
-                            </div>
+                            <EmptyState Title="No IP Filter Rules"
+                                        Description="Create your first IP filter rule to control access"
+                                        Icon="fa-shield">
+                                <ActionTemplate>
+                                    <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
+                                        <i class="fa fa-plus me-1"></i> Add Your First Filter Rule
+                                    </button>
+                                </ActionTemplate>
+                            </EmptyState>
                         }
                         else
                         {
@@ -188,26 +170,14 @@
                                         {
                                             <tr>
                                                 <td>
-                                                    @if (filter.FilterType == IpFilterConstants.WHITELIST)
-                                                    {
-                                                        <span class="badge bg-success">Whitelist</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-danger">Blacklist</span>
-                                                    }
+                                                    <StatusBadge Status="@(filter.FilterType == IpFilterConstants.WHITELIST ? "Whitelist" : "Blacklist")"
+                                                                 StatusType="@(filter.FilterType == IpFilterConstants.WHITELIST ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Error)" />
                                                 </td>
                                                 <td><code>@filter.IpAddressOrCidr</code></td>
                                                 <td>@(string.IsNullOrEmpty(filter.Description) ? "-" : filter.Description)</td>
                                                 <td>
-                                                    @if (filter.IsEnabled)
-                                                    {
-                                                        <span class="badge bg-success">Active</span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="badge bg-secondary">Disabled</span>
-                                                    }
+                                                    <StatusBadge Status="@(filter.IsEnabled ? "Active" : "Disabled")"
+                                                                 StatusType="@(filter.IsEnabled ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Secondary)" />
                                                 </td>
                                                 <td>@filter.CreatedAt.ToLocalTime().ToString("g")</td>
                                                 <td>
@@ -731,39 +701,13 @@
 }
 
 <style>
-    .ip-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    
-    .ip-stats .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-    }
-    
+    /* Page-specific styles not covered by components */
     .card {
         transition: all 0.2s ease;
     }
     
     .card:hover {
         transform: translateY(-1px);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
     
     .table th {
@@ -779,11 +723,6 @@
     .modal-content {
         border-radius: 15px;
         border: none;
-    }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
     }
     
     .form-check-input:checked {

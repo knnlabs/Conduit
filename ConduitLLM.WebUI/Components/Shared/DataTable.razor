@@ -1,0 +1,93 @@
+@* DataTable.razor - Generic table component with responsive design *@
+@typeparam TItem
+
+<div class="table-responsive">
+    @if (Items?.Any() == true)
+    {
+        <table class="table table-hover align-middle @TableClass">
+            <thead class="@HeaderClass">
+                <tr>
+                    @HeaderTemplate
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Items)
+                {
+                    <tr class="@RowClass">
+                        @RowTemplate(item)
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (ShowEmptyState)
+    {
+        @if (EmptyTemplate != null)
+        {
+            @EmptyTemplate
+        }
+        else
+        {
+            <EmptyState Title="@EmptyTitle" 
+                       Description="@EmptyDescription" 
+                       Icon="@EmptyIcon" />
+        }
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the collection of items to display in the table.
+    /// </summary>
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+
+    /// <summary>
+    /// Gets or sets the template for the table header.
+    /// </summary>
+    [Parameter] public RenderFragment HeaderTemplate { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the template for each table row.
+    /// </summary>
+    [Parameter] public RenderFragment<TItem> RowTemplate { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the custom empty state template.
+    /// </summary>
+    [Parameter] public RenderFragment? EmptyTemplate { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to show empty state when no items.
+    /// </summary>
+    [Parameter] public bool ShowEmptyState { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets additional CSS classes for the table element.
+    /// </summary>
+    [Parameter] public string TableClass { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets additional CSS classes for the table header.
+    /// </summary>
+    [Parameter] public string HeaderClass { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets additional CSS classes for table rows.
+    /// </summary>
+    [Parameter] public string RowClass { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the empty state title.
+    /// </summary>
+    [Parameter] public string EmptyTitle { get; set; } = "No data available";
+
+    /// <summary>
+    /// Gets or sets the empty state description.
+    /// </summary>
+    [Parameter] public string EmptyDescription { get; set; } = "No items to display.";
+
+    /// <summary>
+    /// Gets or sets the empty state icon.
+    /// </summary>
+    [Parameter] public string EmptyIcon { get; set; } = "fa-inbox";
+}

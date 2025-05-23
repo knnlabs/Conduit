@@ -987,3 +987,132 @@ main {
     from { bottom: 30px; opacity: 1; }
     to { bottom: 0; opacity: 0; }
 }
+
+/* ===== High Priority Component Styles ===== */
+
+/* PageHeader Component */
+.page-header {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.page-header-stats .stat-item {
+    font-size: 0.875rem;
+    opacity: 0.95;
+}
+
+.page-header-stats .stat-item i {
+    opacity: 0.8;
+}
+
+/* DataTable Component */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-hover tbody tr {
+    transition: background-color 0.15s ease-in-out;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* LoadingSpinner Component */
+.loading-spinner {
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* EmptyState Component */
+.empty-state {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.empty-icon {
+    transition: transform 0.3s ease;
+}
+
+.empty-state:hover .empty-icon {
+    transform: scale(1.05);
+}
+
+.empty-state-actions {
+    margin-top: 1rem;
+}
+
+/* StatusBadge Component */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25em 0.6em;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.badge i {
+    font-size: 0.7rem;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Responsive adjustments for components */
+@media (max-width: 768px) {
+    .page-header {
+        text-align: center;
+    }
+    
+    .page-header-stats {
+        margin-top: 1rem;
+        text-align: center !important;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+    
+    .table-responsive table {
+        font-size: 0.875rem;
+    }
+}

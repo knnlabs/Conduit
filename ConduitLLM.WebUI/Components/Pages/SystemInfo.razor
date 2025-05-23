@@ -3,11 +3,17 @@
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Components.Shared
 @inject IAdminApiClient AdminApiClient
 @inject ILogger<SystemInfo> Logger
+@rendermode InteractiveServer
+
+<PageTitle>System Information - ConduitLLM</PageTitle>
 
 <div class="container-fluid mt-4">
-    <h3 class="mb-4">System Information</h3>
+    <PageHeader Title="System Information" 
+                Description="Monitor database status, LLM configuration, and system health"
+                Icon="fa-info-circle" />
 
     <div class="row">
         <!-- Database Information Card -->
@@ -31,11 +37,7 @@
                 <div class="card-body">
                     @if (IsLoading || IsLoadingDatabase)
                     {
-                        <div class="d-flex justify-content-center">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
+                        <LoadingSpinner Message="Loading database information..." />
                     }
                     else
                     {
@@ -129,11 +131,7 @@
                 <div class="card-body">
                     @if (IsLoading || IsLoadingLlm)
                     {
-                        <div class="d-flex justify-content-center">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
+                        <LoadingSpinner Message="Loading LLM configuration..." />
                     }
                     else
                     {
@@ -172,9 +170,9 @@
                         }
                         else
                         {
-                            <div class="alert alert-info mb-4">
-                                No providers configured yet.
-                            </div>
+                            <EmptyState Title="No providers configured yet"
+                                        Description="Set up provider credentials to start using AI models"
+                                        Icon="fa-cogs" />
                         }
 
                         @if (Models.Any())
@@ -195,9 +193,9 @@
                         }
                         else
                         {
-                            <div class="alert alert-info">
-                                No model mappings configured yet.
-                            </div>
+                            <EmptyState Title="No model mappings configured yet"
+                                        Description="Configure model mappings to route requests to providers"
+                                        Icon="fa-sitemap" />
                         }
                     }
                 </div>
