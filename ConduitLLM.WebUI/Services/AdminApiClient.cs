@@ -18,6 +18,15 @@ namespace ConduitLLM.WebUI.Services
 {
     /// <summary>
     /// Client for interacting with the Admin API endpoints.
+    /// This class is organized into regions by functional area.
+    /// Some functionality is also split into partial classes:
+    /// - AdminApiClient.VirtualKeys.cs - Additional virtual key operations
+    /// - AdminApiClient.RequestLogs.cs - Request logging operations
+    /// - AdminApiClient.ProviderStatus.cs - Provider status operations
+    /// - AdminApiClient.ModelProviderMapping.cs - Model mapping operations
+    /// - AdminApiClient.IpFilters.cs - IP filter operations
+    /// - AdminApiClient.HttpConfig.cs - HTTP configuration operations
+    /// - AdminApiClient.CostDashboard.cs - Cost dashboard operations
     /// </summary>
     public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService, ConduitLLM.WebUI.Interfaces.IProviderCredentialService
     {
