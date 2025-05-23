@@ -43,7 +43,9 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IModelDeploymentRepository, ModelDeploymentRepository>();
             services.AddScoped<IFallbackConfigurationRepository, FallbackConfigurationRepository>();
             services.AddScoped<IFallbackModelMappingRepository, FallbackModelMappingRepository>();
-            
+            services.AddScoped<IProviderHealthRepository, ProviderHealthRepository>();
+            services.AddScoped<IIpFilterRepository, IpFilterRepository>();
+
             return services;
         }
         
@@ -112,6 +114,19 @@ namespace ConduitLLM.Configuration.Extensions
                 // For simplicity in the synchronous service provider context, we'll block on the async result here
                 return factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
             });
+            
+            return services;
+        }
+        
+        /// <summary>
+        /// Adds database initialization services to the service collection
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddDatabaseInitialization(this IServiceCollection services)
+        {
+            // Register the database initializer
+            services.AddScoped<DatabaseInitializer>();
             
             return services;
         }

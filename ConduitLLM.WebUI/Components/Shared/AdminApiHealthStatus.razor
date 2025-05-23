@@ -1,0 +1,164 @@
+@using Microsoft.AspNetCore.Components
+@using ConduitLLM.WebUI.Interfaces
+@using System.Threading
+@implements IDisposable
+
+@inject IAdminApiHealthService HealthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<div class="admin-api-status">
+    @if (HealthService.IsHealthy)
+    {
+        <span class="status-indicator healthy" title="Admin API is healthy">
+            <i class="bi bi-check-circle-fill"></i>
+        </span>
+    }
+    else
+    {
+        <span class="status-indicator @(ShowDetails ? "unhealthy-active" : "unhealthy")" @onclick="ToggleDetails" title="Admin API health issues">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </span>
+    }
+
+    @if (ShowDetails)
+    {
+        <div class="admin-api-details">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Admin API Health Status</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="ToggleDetails"></button>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Status:</strong>
+                        @if (HealthService.IsHealthy)
+                        {
+                            <span class="badge bg-success">Healthy</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Unhealthy</span>
+                        }
+                    </p>
+                    
+                    @if (!HealthService.IsHealthy && !string.IsNullOrEmpty(HealthService.LastErrorMessage))
+                    {
+                        <p><strong>Error:</strong> @HealthService.LastErrorMessage</p>
+                    }
+                    
+                    <p><strong>Last Checked:</strong> @(HealthService.LastChecked == DateTime.MinValue ? "Never" : HealthService.LastChecked.ToString("yyyy-MM-dd HH:mm:ss"))</p>
+                    
+                    @{
+                        var details = HealthService.GetConnectionDetails();
+                    }
+
+                    <h6 class="mt-3">Configuration</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Admin API Base URL</th>
+                                <td>@details.BaseUrl</td>
+                            </tr>
+                            <tr>
+                                <th>Admin API Mode</th>
+                                <td>@(details.UseAdminApi ? "Enabled" : "Disabled (Legacy)")</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-3">
+                        <button @onclick="CheckHealthNow" class="btn btn-primary">
+                            <i class="bi bi-arrow-repeat"></i> Check Now
+                        </button>
+                        
+                        <a href="@GetTroubleshootingUrl()" target="_blank" class="btn btn-outline-secondary">
+                            <i class="bi bi-question-circle"></i> Troubleshooting
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool ShowDetails { get; set; } = false;
+    private Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        // Start a timer to periodically check health
+        _refreshTimer = new Timer(async _ =>
+        {
+            await HealthService.CheckHealthAsync();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+
+    private async Task CheckHealthNow()
+    {
+        await HealthService.CheckHealthAsync(force: true);
+        StateHasChanged();
+    }
+
+    private string GetTroubleshootingUrl()
+    {
+        return "/docs/admin-api-migration-guide.md";
+    }
+}
+
+<style>
+    .admin-api-status {
+        position: relative;
+    }
+
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    .healthy {
+        color: #198754; /* Bootstrap success color */
+    }
+
+    .unhealthy {
+        color: #dc3545; /* Bootstrap danger color */
+        animation: pulse 2s infinite;
+    }
+    
+    .unhealthy-active {
+        color: #dc3545; /* Bootstrap danger color */
+    }
+
+    @@keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .admin-api-details {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 1000;
+        width: 350px;
+        margin-top: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>

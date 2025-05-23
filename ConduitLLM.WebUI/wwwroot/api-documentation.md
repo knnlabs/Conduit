@@ -20,7 +20,7 @@ To authenticate your requests, include one of the following:
 
 3. **Query Parameter** (Not recommended for production use due to security concerns)
    ```
-   https://your-conduit-instance.com/api/v1/chat/completions?api_key=condt_your_virtual_key_here
+   https://your-conduit-instance.com/v1/chat/completions?api_key=condt_your_virtual_key_here
    ```
 
 ### Virtual Key Management
@@ -42,7 +42,7 @@ Virtual keys are managed through the ConduitLLM web interface under the "Virtual
 Generate chat completions from an LLM provider.
 
 ```
-POST /api/v1/chat/completions
+POST /v1/chat/completions
 ```
 
 #### Example Request
@@ -70,7 +70,7 @@ POST /api/v1/chat/completions
 Generate text completions from an LLM provider.
 
 ```
-POST /api/v1/completions
+POST /v1/completions
 ```
 
 ### Embeddings
@@ -78,7 +78,7 @@ POST /api/v1/completions
 Generate embeddings for provided text.
 
 ```
-POST /api/v1/embeddings
+POST /v1/embeddings
 ```
 
 #### Example Request
@@ -95,7 +95,7 @@ POST /api/v1/embeddings
 List available models.
 
 ```
-GET /api/v1/models
+GET /v1/models
 ```
 
 ### Virtual Key Management
@@ -103,7 +103,7 @@ GET /api/v1/models
 ConduitLLM provides a robust set of endpoints to manage virtual keys programmatically.
 
 ```
-BASE URL: /api/v1/virtualkeys
+BASE URL: /v1/virtualkeys
 ```
 
 #### Create a Virtual Key
@@ -111,7 +111,7 @@ BASE URL: /api/v1/virtualkeys
 Create a new virtual key with customized permissions and limits.
 
 ```
-POST /api/v1/virtualkeys
+POST /v1/virtualkeys
 ```
 
 **Authentication Required:** Master Key (`X-Master-Key` header)
@@ -159,7 +159,7 @@ POST /api/v1/virtualkeys
 Retrieve a list of all virtual keys.
 
 ```
-GET /api/v1/virtualkeys
+GET /v1/virtualkeys
 ```
 
 #### Get a Specific Virtual Key
@@ -167,7 +167,7 @@ GET /api/v1/virtualkeys
 Retrieve details for a specific virtual key.
 
 ```
-GET /api/v1/virtualkeys/{id}
+GET /v1/virtualkeys/{id}
 ```
 
 #### Update a Virtual Key
@@ -175,7 +175,7 @@ GET /api/v1/virtualkeys/{id}
 Update an existing virtual key's properties.
 
 ```
-PUT /api/v1/virtualkeys/{id}
+PUT /v1/virtualkeys/{id}
 ```
 
 **Authentication Required:** Master Key (`X-Master-Key` header)
@@ -188,7 +188,7 @@ Same format as the create endpoint, but fields are optional.
 Permanently delete a virtual key.
 
 ```
-DELETE /api/v1/virtualkeys/{id}
+DELETE /v1/virtualkeys/{id}
 ```
 
 **Authentication Required:** Master Key (`X-Master-Key` header)
@@ -198,7 +198,7 @@ DELETE /api/v1/virtualkeys/{id}
 Reset the spend counters for a virtual key.
 
 ```
-POST /api/v1/virtualkeys/{id}/reset-spend
+POST /v1/virtualkeys/{id}/reset-spend
 ```
 
 **Authentication Required:** Master Key (`X-Master-Key` header)
@@ -218,7 +218,7 @@ POST /api/v1/virtualkeys/{id}/reset-spend
 ConduitLLM tracks detailed information about API usage through the request logging system.
 
 ```
-BASE URL: /api/v1/requestlogs
+BASE URL: /v1/requestlogs
 ```
 
 #### List Request Logs
@@ -226,7 +226,7 @@ BASE URL: /api/v1/requestlogs
 Retrieve a list of request logs, optionally filtered by virtual key.
 
 ```
-GET /api/v1/requestlogs
+GET /v1/requestlogs
 ```
 
 **Query Parameters:**
@@ -245,7 +245,7 @@ GET /api/v1/requestlogs
       "id": "1234abcd-5678-efgh-9012-ijklmnopqrst",
       "virtualKeyId": "5678efgh-9012-ijkl-mnop-qrstuvwxyz12",
       "timestamp": "2025-04-13T15:30:45Z",
-      "endpoint": "/api/v1/chat/completions",
+      "endpoint": "/v1/chat/completions",
       "model": "gpt-4",
       "inputTokens": 150,
       "outputTokens": 420,
@@ -266,7 +266,7 @@ GET /api/v1/requestlogs
 Retrieve detailed information about a specific request log.
 
 ```
-GET /api/v1/requestlogs/{id}
+GET /v1/requestlogs/{id}
 ```
 
 ### Notifications
@@ -274,7 +274,7 @@ GET /api/v1/requestlogs/{id}
 ConduitLLM can send notifications for important events related to virtual keys.
 
 ```
-BASE URL: /api/v1/notifications
+BASE URL: /v1/notifications
 ```
 
 #### List Notifications
@@ -282,7 +282,7 @@ BASE URL: /api/v1/notifications
 Retrieve a list of notifications.
 
 ```
-GET /api/v1/notifications
+GET /v1/notifications
 ```
 
 **Query Parameters:**
@@ -316,7 +316,7 @@ GET /api/v1/notifications
 Mark a notification as read.
 
 ```
-PUT /api/v1/notifications/{id}/read
+PUT /v1/notifications/{id}/read
 ```
 
 ## Error Responses

@@ -4,11 +4,36 @@
 
 ConduitLLM WebUI is a .NET Blazor application that provides a comprehensive web interface for configuring and managing all aspects of the ConduitLLM system. This interface allows administrators to configure providers, manage model mappings, monitor usage, and test LLM interactions—all without writing any code.
 
+The WebUI communicates with the ConduitLLM Admin API service to perform administrative operations such as managing configurations, virtual keys, and monitoring usage. This architecture provides a clean separation of concerns, improved security, and better scalability.
+
+## Architecture
+
+The WebUI follows a client-server architecture where:
+
+1. **Client**: The Blazor WebUI that runs in the browser
+2. **Server**: The WebUI server that hosts the Blazor application
+3. **Admin API**: A separate service that provides administrative endpoints
+
+### Communication Flow
+
+The WebUI communicates with the Admin API using an `AdminApiClient` service which implements the following pattern:
+
+1. WebUI components call service interfaces (e.g., `IVirtualKeyService`)
+2. Service adapters implement these interfaces and handle:
+   - Converting between DTOs
+   - Making HTTP requests to the Admin API
+   - Handling errors and translating responses
+   - Providing backward compatibility
+
+This architecture allows the WebUI to operate without direct database access, improving security and enabling distributed deployments.
+
 ## Accessing the WebUI
 
 ### Default Configuration
 
-- **URL**: `http://localhost:5000` (default)
+- **WebUI URL**: `http://localhost:5000` (default)
+- **Admin API URL**: `http://localhost:5001` (default)
+- **LLM API URL**: `http://localhost:5002` (default)
 - **Authentication**: Based on configured security options
 
 ### First-Time Setup
@@ -306,6 +331,42 @@ The WebUI can be configured with different authentication methods:
 - **Current:** Master key authentication for admin access
 
 > Only master key authentication is currently available. Additional authentication methods are planned and tracked in [issue #17](https://github.com/knnlabs/Conduit/issues/17).
+
+## Deployment Options
+
+ConduitLLM supports multiple deployment configurations thanks to its microservices architecture:
+
+### Single-Host Deployment
+
+All services run on a single machine:
+- WebUI service
+- Admin API service
+- LLM API service
+- Database (SQLite or other)
+
+This is the simplest deployment and works well for development or small-scale usage.
+
+### Distributed Deployment
+
+Services can be distributed across multiple machines:
+1. **Frontend Tier**: WebUI service
+2. **Backend Tier**: Admin API and LLM API services
+3. **Data Tier**: Database server
+
+This approach is recommended for production use and provides:
+- Better scalability
+- Improved security (database not accessible from frontend)
+- Higher availability
+- Load balancing capability
+
+### Docker Deployment
+
+The recommended approach is using Docker Compose or Kubernetes to orchestrate the services:
+- Each service runs in its own container
+- Shared database container or external database service
+- Redis container for optional caching
+
+See the [Getting Started Guide](Getting-Started.md) for Docker Compose examples.
 
 ### Authorization
 

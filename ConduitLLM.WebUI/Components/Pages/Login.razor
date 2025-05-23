@@ -7,12 +7,15 @@
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @using ConduitLLM.WebUI.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager NavigationManager
 @inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject ILogger<Login> Logger
 @inject IInsecureModeProvider InsecureModeProvider
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Login - ConduitLLM</PageTitle>
 
@@ -103,6 +106,35 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Check if user is already authenticated
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            NavigationManager.NavigateTo(returnUrl ?? "/");
+            return;
+        }
+
+        // Check for auto-login
+        var autoLoginSetting = await GlobalSettingService.GetSettingAsync("AutoLogin");
+        Logger.LogInformation("Login page checking auto-login setting: {AutoLoginSetting}", autoLoginSetting);
+        if (bool.TryParse(autoLoginSetting, out bool autoLogin))
+        {
+            // Set the checkbox state based on saved setting
+            rememberMe = autoLogin;
+            
+            if (autoLogin)
+            {
+                // Check if master key is available in environment
+                string? autoLoginMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
+                if (!string.IsNullOrEmpty(autoLoginMasterKey))
+                {
+                    // Auto-login with the environment master key
+                    await PerformAutoLogin(autoLoginMasterKey);
+                    return;
+                }
+            }
+        }
+
         // Get the return URL from query parameters
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var url))
@@ -148,5 +180,55 @@ else
         }
         
         await base.OnInitializedAsync();
+    }
+    
+    private async Task PerformAutoLogin(string masterKey)
+    {
+        Logger.LogInformation("Performing auto-login");
+        
+        // Generate antiforgery token for the form submission
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext != null)
+        {
+            var tokens = Antiforgery.GetAndStoreTokens(httpContext);
+            
+            // Use JavaScript to submit the form
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/account/login';
+                
+                const masterKeyInput = document.createElement('input');
+                masterKeyInput.type = 'hidden';
+                masterKeyInput.name = 'masterKey';
+                masterKeyInput.value = '" + masterKey.Replace("'", "\\'") + @"';
+                form.appendChild(masterKeyInput);
+                
+                const rememberMeInput = document.createElement('input');
+                rememberMeInput.type = 'hidden';
+                rememberMeInput.name = 'rememberMe';
+                rememberMeInput.value = 'true';
+                form.appendChild(rememberMeInput);
+                
+                const returnUrlInput = document.createElement('input');
+                returnUrlInput.type = 'hidden';
+                returnUrlInput.name = 'returnUrl';
+                returnUrlInput.value = '" + (returnUrl ?? "/").Replace("'", "\\'") + @"';
+                form.appendChild(returnUrlInput);
+                
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '" + tokens.FormFieldName + @"';
+                tokenInput.value = '" + tokens.RequestToken + @"';
+                form.appendChild(tokenInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            ");
+        }
+        else
+        {
+            Logger.LogError("HttpContext is null, cannot perform auto-login");
+        }
     }
 }

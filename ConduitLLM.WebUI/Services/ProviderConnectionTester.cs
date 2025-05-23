@@ -4,8 +4,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.Data;
-using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.Extensions;
+using ConduitLLM.WebUI.Models;
+using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -23,7 +24,7 @@ namespace ConduitLLM.WebUI.Services
         /// <param name="cancellationToken">Optional cancellation token</param>
         /// <returns>The provider status</returns>
         public static async Task<ProviderStatus> TestConnectionAsync(
-            ProviderStatusService providerStatusService,
+            IProviderStatusService providerStatusService,
             ProviderCredential credentials,
             int timeoutSeconds = 10,
             CancellationToken cancellationToken = default)
@@ -32,7 +33,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 return new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = "API key is required",
                     LastCheckedUtc = DateTime.UtcNow,
                     ErrorCategory = "Configuration"
@@ -41,7 +42,20 @@ namespace ConduitLLM.WebUI.Services
 
             try
             {
-                return await providerStatusService.CheckProviderStatusAsync(credentials, timeoutSeconds, cancellationToken);
+                // Convert ProviderCredential to ProviderCredentialDto and call the service
+                var credentialsDto = credentials.ToDto();
+                if (credentialsDto == null)
+                {
+                    return new ProviderStatus
+                    {
+                        Status = ProviderStatus.StatusType.Offline,
+                        StatusMessage = "Failed to convert provider credentials",
+                        LastCheckedUtc = DateTime.UtcNow,
+                        ErrorCategory = "Configuration"
+                    };
+                }
+                
+                return await providerStatusService.CheckProviderStatusAsync(credentialsDto, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -78,7 +92,7 @@ namespace ConduitLLM.WebUI.Services
                 
                 return new ProviderStatus
                 {
-                    IsOnline = false,
+                    Status = ProviderStatus.StatusType.Offline,
                     StatusMessage = $"Error: {errorMsg}",
                     LastCheckedUtc = DateTime.UtcNow,
                     ErrorCategory = errorCategory,

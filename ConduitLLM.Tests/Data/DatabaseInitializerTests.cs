@@ -1,139 +1,105 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using ConduitLLM.Core.Data;
-using ConduitLLM.Core.Data.Interfaces;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace ConduitLLM.Tests.Data
 {
     public class DatabaseInitializerTests
     {
-        private readonly Mock<IDbContextFactory<TestDbContext>> _mockContextFactory;
-        private readonly Mock<IConnectionStringManager> _mockConnectionStringManager;
-        private readonly Mock<ILogger<DatabaseInitializer<TestDbContext>>> _mockLogger;
-        private readonly Mock<TestDbContext> _mockDbContext;
-        private readonly Mock<DatabaseFacade> _mockDatabase;
+        private readonly Mock<ILogger<DatabaseInitializer>> _loggerMock;
+        private readonly Mock<IDbContextFactory<ConfigurationDbContext>> _dbContextFactoryMock;
+        private readonly Mock<ConfigurationDbContext> _dbContextMock;
+        private readonly Mock<DatabaseFacade> _databaseFacadeMock;
 
         public DatabaseInitializerTests()
         {
-            _mockContextFactory = new Mock<IDbContextFactory<TestDbContext>>();
-            _mockConnectionStringManager = new Mock<IConnectionStringManager>();
-            _mockLogger = new Mock<ILogger<DatabaseInitializer<TestDbContext>>>();
-            _mockDbContext = new Mock<TestDbContext>();
-            _mockDatabase = new Mock<DatabaseFacade>(_mockDbContext.Object);
+            _loggerMock = new Mock<ILogger<DatabaseInitializer>>();
+            _dbContextFactoryMock = new Mock<IDbContextFactory<ConfigurationDbContext>>();
+            _dbContextMock = new Mock<ConfigurationDbContext>(new DbContextOptions<ConfigurationDbContext>());
+            _databaseFacadeMock = new Mock<DatabaseFacade>(_dbContextMock.Object);
 
-            _mockDbContext.Setup(m => m.Database).Returns(_mockDatabase.Object);
-            _mockContextFactory.Setup(m => m.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(_mockDbContext.Object);
+            // Set up the Database property
+            _dbContextMock.Setup(c => c.Database).Returns(_databaseFacadeMock.Object);
+
+            // Set up the provider name
+            _databaseFacadeMock.Setup(d => d.ProviderName).Returns("Microsoft.EntityFrameworkCore.Sqlite");
+
+            // Set up the CreateDbContext method
+            _dbContextFactoryMock.Setup(f => f.CreateDbContext()).Returns(_dbContextMock.Object);
+            _dbContextFactoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_dbContextMock.Object);
         }
 
         [Fact]
-        public async Task EnsureDatabaseAsync_WhenEnsureCreatedIsTrue_CallsEnsureCreated()
+        public void Constructor_InitializesWithCorrectProvider()
         {
-            // Arrange
-            _mockDatabase.Setup(m => m.EnsureCreatedAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            var initializer = new DatabaseInitializer<TestDbContext>(
-                _mockContextFactory.Object,
-                _mockConnectionStringManager.Object,
-                _mockLogger.Object);
-
-            // Act
-            await initializer.EnsureDatabaseAsync(true);
+            // Arrange & Act
+            var initializer = new DatabaseInitializer(_dbContextFactoryMock.Object, _loggerMock.Object);
 
             // Assert
-            _mockDatabase.Verify(m => m.EnsureCreatedAsync(It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal("sqlite", initializer.GetDatabaseProviderType());
         }
 
         [Fact]
-        public async Task EnsureDatabaseAsync_WhenEnsureCreatedIsFalse_CallsCanConnect()
+        public async Task InitializeDatabaseAsync_ReturnsTrue_WhenDatabaseConnects()
         {
             // Arrange
-            _mockDatabase.Setup(m => m.CanConnectAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            _databaseFacadeMock.Setup(d => d.CanConnectAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _databaseFacadeMock.Setup(d => d.EnsureCreatedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            // We can't mock extension methods directly, so we'll skip this verification
 
-            var initializer = new DatabaseInitializer<TestDbContext>(
-                _mockContextFactory.Object,
-                _mockConnectionStringManager.Object,
-                _mockLogger.Object);
+            var initializer = new DatabaseInitializer(_dbContextFactoryMock.Object, _loggerMock.Object);
 
             // Act
-            await initializer.EnsureDatabaseAsync(false);
-
-            // Assert
-            _mockDatabase.Verify(m => m.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
-            _mockDatabase.Verify(m => m.EnsureCreatedAsync(It.IsAny<CancellationToken>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task VerifyConnectionAsync_CallsCanConnect()
-        {
-            // Arrange
-            _mockDatabase.Setup(m => m.CanConnectAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            var initializer = new DatabaseInitializer<TestDbContext>(
-                _mockContextFactory.Object,
-                _mockConnectionStringManager.Object,
-                _mockLogger.Object);
-
-            // Act
-            var result = await initializer.VerifyConnectionAsync();
+            var result = await initializer.InitializeDatabaseAsync();
 
             // Assert
             Assert.True(result);
-            _mockDatabase.Verify(m => m.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _databaseFacadeMock.Verify(d => d.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
+            _databaseFacadeMock.Verify(d => d.EnsureCreatedAsync(It.IsAny<CancellationToken>()), Times.Once);
+            // We can't verify extension methods directly
         }
 
         [Fact]
-        public async Task VerifyConnectionAsync_WhenExceptionThrown_ReturnsFalse()
+        public async Task InitializeDatabaseAsync_ReturnsFalse_WhenDatabaseCannotConnect()
         {
             // Arrange
-            _mockDatabase.Setup(m => m.CanConnectAsync(It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new Exception("Test exception"));
+            _databaseFacadeMock.Setup(d => d.CanConnectAsync(It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-            var initializer = new DatabaseInitializer<TestDbContext>(
-                _mockContextFactory.Object,
-                _mockConnectionStringManager.Object,
-                _mockLogger.Object);
+            var initializer = new DatabaseInitializer(_dbContextFactoryMock.Object, _loggerMock.Object);
 
             // Act
-            var result = await initializer.VerifyConnectionAsync();
+            var result = await initializer.InitializeDatabaseAsync(maxRetries: 1, retryDelayMs: 10);
 
             // Assert
             Assert.False(result);
+            _databaseFacadeMock.Verify(d => d.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task MigrateAsync_CallsMigrate()
+        public async Task InitializeDatabaseAsync_Succeeds_WithEnsureCreated()
         {
-            // Skip this test for now since we can't mock MigrateAsync extension method directly
-            await Task.CompletedTask;
-        }
+            // Arrange
+            _databaseFacadeMock.Setup(d => d.CanConnectAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _databaseFacadeMock.Setup(d => d.EnsureCreatedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            // We can't mock extension methods directly, so we'll skip this verification
 
-        [Fact]
-        public async Task MigrateAsync_WhenExceptionThrown_PropagatesException()
-        {
-            // Skip this test for now since we can't mock MigrateAsync extension method directly
-            await Task.CompletedTask;
-        }
+            var initializer = new DatabaseInitializer(_dbContextFactoryMock.Object, _loggerMock.Object);
 
-        // Test DbContext class for testing
-        public abstract class TestDbContext : DbContext
-        {
-            protected TestDbContext()
-            {
-            }
+            // Act
+            var result = await initializer.InitializeDatabaseAsync();
 
-            protected TestDbContext(DbContextOptions options) : base(options)
-            {
-            }
+            // Assert
+            Assert.True(result);
+            // We can't verify extension methods directly
         }
     }
 }

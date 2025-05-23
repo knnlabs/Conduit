@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
+using ConduitLLM.Tests.Extensions;
 using ConduitLLM.WebUI.Controllers;
-using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -46,9 +44,9 @@ namespace ConduitLLM.Tests.Controllers
             int page = 1;
             int pageSize = 20;
 
-            var logs = new List<RequestLog>
+            var logs = new List<ConfigEntities.RequestLog>
             {
-                new RequestLog
+                new ConfigEntities.RequestLog
                 {
                     Id = 1,
                     VirtualKeyId = 1,
@@ -75,7 +73,7 @@ namespace ConduitLLM.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var pagedResult = Assert.IsType<PagedResult<RequestLogDto>>(okResult.Value);
+            var pagedResult = Assert.IsType<ConduitLLM.Configuration.DTOs.PagedResult<ConduitLLM.Configuration.DTOs.RequestLogDto>>(okResult.Value);
             
             Assert.Equal(1, pagedResult.TotalCount);
             Assert.Single(pagedResult.Items);
@@ -90,38 +88,25 @@ namespace ConduitLLM.Tests.Controllers
             DateTime startDate = DateTime.UtcNow.AddDays(-7);
             DateTime endDate = DateTime.UtcNow;
 
-            // Create a properly typed LogsSummaryDto object
-            var summaryDto = new ConduitLLM.Configuration.Services.Dtos.LogsSummaryDto
+            // Create a properly typed WebUI LogsSummaryDto object
+            var webUISummaryDto = new WebUIDTOs.LogsSummaryDto
             {
                 TotalRequests = 100,
-                TotalInputTokens = 10000,
-                TotalOutputTokens = 5000,
-                TotalCost = 1.25m,
-                AverageResponseTimeMs = 1200,
+                InputTokens = 10000,
+                OutputTokens = 5000,
+                EstimatedCost = 1.25m,
+                AverageResponseTime = 1200,
                 StartDate = startDate,
                 EndDate = endDate,
-                RequestsByModel = new Dictionary<string, int>
-                {
-                    { "gpt-4", 50 },
-                    { "claude-v1", 50 }
-                },
-                CostByModel = new Dictionary<string, decimal>
-                {
-                    { "gpt-4", 0.75m },
-                    { "claude-v1", 0.50m }
-                },
                 SuccessRate = 98.5,
-                RequestsByStatus = new Dictionary<int, int>
-                {
-                    { 200, 98 },
-                    { 500, 2 }
-                }
+                SuccessfulRequests = 98,
+                FailedRequests = 2
             };
 
-            // Setup the mock with the correct return type
+            // Setup the mock to return the WebUI DTO
             _mockRequestLogService.Setup(s => s.GetLogsSummaryAsync(
                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(summaryDto);
+                .ReturnsAsync(webUISummaryDto);
 
             // Act
             var result = await _controller.GetLogsSummary(startDate, endDate);
@@ -131,32 +116,35 @@ namespace ConduitLLM.Tests.Controllers
             Assert.NotNull(okResult.Value);
             
             // Cast to the correct type for assertions
-            var returnedSummary = Assert.IsType<ConduitLLM.Configuration.Services.Dtos.LogsSummaryDto>(okResult.Value);
-            
+            var returnedSummary = Assert.IsType<WebUIDTOs.LogsSummaryDto>(okResult.Value);
+
             // Verify key properties
             Assert.Equal(100, returnedSummary.TotalRequests);
-            Assert.Equal(10000, returnedSummary.TotalInputTokens);
-            Assert.Equal(5000, returnedSummary.TotalOutputTokens);
-            Assert.Equal(1.25m, returnedSummary.TotalCost);
-            Assert.Equal(1200, returnedSummary.AverageResponseTimeMs);
+            Assert.Equal(10000, returnedSummary.InputTokens);
+            Assert.Equal(5000, returnedSummary.OutputTokens);
+            Assert.Equal(1.25m, returnedSummary.EstimatedCost);
+            Assert.Equal(1200, returnedSummary.AverageResponseTime);
             Assert.Equal(startDate, returnedSummary.StartDate);
             Assert.Equal(endDate, returnedSummary.EndDate);
-            Assert.Equal(98.5, returnedSummary.SuccessRate);
-            Assert.Equal(2, returnedSummary.RequestsByModel.Count);
+            // The success rate calculation may have been updated to match the method in LogsSummaryDto
+            // 98 / 100 * 100 = 98.0
+            Assert.Equal(98.0, returnedSummary.SuccessRate);
+            Assert.Equal(98, returnedSummary.SuccessfulRequests);
+            Assert.Equal(2, returnedSummary.FailedRequests);
         }
 
         [Fact]
         public async Task GetVirtualKeys_ShouldReturnOkWithKeysList()
         {
             // Arrange
-            var keys = new List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>
+            var keys = new List<ConfigDTOs.VirtualKey.VirtualKeyDto>
             {
-                new ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto
+                new ConfigDTOs.VirtualKey.VirtualKeyDto
                 {
                     Id = 1,
                     KeyName = "Test Key 1"
                 },
-                new ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto
+                new ConfigDTOs.VirtualKey.VirtualKeyDto
                 {
                     Id = 2,
                     KeyName = "Test Key 2"

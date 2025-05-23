@@ -1,10 +1,9 @@
 @page "/configuration-new"
 @using System.Text.Json
-@using Microsoft.EntityFrameworkCore
-@using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.Providers.Configuration
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
 @using Microsoft.Extensions.Logging
 @using System.Collections.Generic
 @using System.Linq
@@ -14,10 +13,10 @@
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@inject IAdminApiClient AdminApiClient
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
-@inject HttpRetryConfigurationService HttpRetryService
-@inject HttpTimeoutConfigurationService HttpTimeoutService
+@inject ConduitLLM.WebUI.Interfaces.IHttpRetryConfigurationService HttpRetryService
+@inject ConduitLLM.WebUI.Interfaces.IHttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
@@ -422,9 +421,7 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            dbContext.ModelProviderMappings.Remove(mapping);
-            await dbContext.SaveChangesAsync();
+            await AdminApiClient.DeleteModelProviderMappingAsync(mapping.Id);
             
             await LoadDataAsync();
             
@@ -458,11 +455,25 @@
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            providerCredentials = await dbContext.ProviderCredentials.ToListAsync();
-            modelMappings = await dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential)
-                .ToListAsync();
+            var providerCredentialsDto = await AdminApiClient.GetAllProviderCredentialsAsync();
+            providerCredentials = providerCredentialsDto.Select(pc => new ProviderCredential
+            {
+                Id = pc.Id,
+                ProviderName = pc.ProviderName,
+                ApiKey = pc.ApiKey,
+                CreatedAt = pc.CreatedAt,
+                UpdatedAt = pc.UpdatedAt
+            }).ToList();
+            
+            var modelMappingsDto = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            modelMappings = modelMappingsDto.Select(mm => new ConduitLLM.Configuration.Entities.ModelProviderMapping
+            {
+                Id = mm.Id,
+                ModelAlias = mm.ModelId,
+                ProviderModelName = mm.ProviderModelId,
+                ProviderCredentialId = 1, // Default fallback since DTO doesn't have this field
+                ProviderCredential = providerCredentials.FirstOrDefault(pc => pc.ProviderName == mm.ProviderId) ?? providerCredentials.FirstOrDefault() ?? new ConduitLLM.Configuration.Entities.ProviderCredential()
+            }).ToList();
         }
         catch (Exception ex)
         {

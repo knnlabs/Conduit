@@ -2,12 +2,22 @@
 
 This document provides comprehensive information about all environment variables used by ConduitLLM. Environment variables are particularly important when deploying the application in containerized environments like Docker.
 
+ConduitLLM consists of three main services:
+1. **WebUI** - The web interface for managing the system
+2. **Admin API** - Administrative API for configuration and monitoring
+3. **LLM API** - API for handling LLM requests
+
+Each service has its own set of environment variables for configuration.
+
 ## Table of Contents
 
 - [Core Application Variables](#core-application-variables)
 - [Cache Configuration](#cache-configuration)
 - [Security Configuration](#security-configuration)
 - [Database](#database)
+- [WebUI Configuration](#webui-configuration)
+- [Admin API Configuration](#admin-api-configuration)
+- [LLM API Configuration](#llm-api-configuration)
 - [Docker Configuration Examples](#docker-configuration-examples)
 
 ## Core Application Variables
@@ -43,6 +53,8 @@ ConduitLLM provides environment variables for configuring security-related aspec
 
 ## Database
 
+These variables are used by the Admin API service for database configuration:
+
 | Variable | Description | Example Value |
 |----------|-------------|--------------|
 | `DB_PROVIDER` | Database provider: `sqlite` or `postgres` | `sqlite` |
@@ -53,67 +65,198 @@ ConduitLLM provides environment variables for configuring security-related aspec
 - For SQLite, set `CONDUIT_SQLITE_PATH`.
 - For PostgreSQL, set `CONDUIT_POSTGRES_CONNECTION_STRING`.
 
+> **Note**: With the microservices architecture, only the Admin API service needs direct database access. The WebUI and LLM API services communicate with the Admin API instead of accessing the database directly.
+
+## WebUI Configuration
+
+The following environment variables are specific to the WebUI service:
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | The base URL of the Admin API service. |
+| `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
+| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in future releases). |
+| `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
+| `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
+| `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
+
+## Admin API Configuration
+
+The following environment variables are specific to the Admin API service:
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for securing the Admin API endpoints. |
+| `CONDUIT_ADMIN_API_PORT` | Integer | 5001 | The port on which the Admin API service listens. |
+| `CONDUIT_ADMIN_LOG_LEVEL` | String | `Information` | The logging level for the Admin API service (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`). |
+
+## LLM API Configuration
+
+The following environment variables are specific to the LLM API service:
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | The base URL of the Admin API service. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
+| `CONDUIT_LLM_API_PORT` | Integer | 5002 | The port on which the LLM API service listens. |
+| `CONDUIT_LLM_LOG_LEVEL` | String | `Information` | The logging level for the LLM API service. |
+
 ## Docker Configuration Examples
 
-Below is an example of setting environment variables in a docker-compose.yml file:
+Below is an example of setting environment variables in a docker-compose.yml file with all three services:
 
 ```yaml
-# docker-compose.yml example
+# docker-compose.yml example with all three services
 version: '3'
 services:
-  conduitllm:
-    image: conduitllm
+  # WebUI service - Frontend UI at port 5000
+  webui:
+    image: conduitllm-webui
+    container_name: conduit-webui
     environment:
-      # Core settings
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_URLS=http://+:5000
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
-      - CONDUIT_API_BASE_URL=https://your-public-conduit-url.com
+      - CONDUIT_ADMIN_API_URL=http://admin:5001
+      - CONDUIT_LLM_API_URL=http://api:5002
+      - CONDUIT_USE_ADMIN_API=true
+      - CONDUIT_ADMIN_TIMEOUT_SECONDS=30
+      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+      - CONDUIT_CORS_ORIGINS=*
+    ports:
+      - "5000:5000"
+    depends_on:
+      - admin
+      - api
+
+  # Admin API service - Admin API and database access at port 5001
+  admin:
+    image: conduitllm-admin
+    container_name: conduit-admin
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5001
+      - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+      - CONDUIT_CORS_ORIGINS=*
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
       - CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
-      # Security settings
-      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
-      - CONDUIT_CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
       # Database settings (SQLite example)
       - DB_PROVIDER=sqlite
       - CONDUIT_SQLITE_PATH=/data/conduit.db
       # Database settings (PostgreSQL example)
       # - DB_PROVIDER=postgres
-      # - CONDUIT_POSTGRES_CONNECTION_STRING=Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret
+      # - CONDUIT_POSTGRES_CONNECTION_STRING=Host=postgres:5432;Database=conduitllm;Username=postgres;Password=secret
     ports:
-      - "80:80"
+      - "5001:5001"
     volumes:
-      - ./data:/app/data
+      - ./data:/data
+    # If using PostgreSQL, uncomment:
+    # depends_on:
+    #   - postgres
+
+  # LLM API service - LLM endpoints at port 5002
+  api:
+    image: conduitllm-api
+    container_name: conduit-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5002
+      - CONDUIT_MASTER_KEY=your_secure_master_key_here
+      - CONDUIT_ADMIN_API_URL=http://admin:5001
+      - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+      - CONDUIT_CORS_ORIGINS=*
+    ports:
+      - "5002:5002"
+    depends_on:
+      - admin
+
+  # Optional Redis service for caching
+  redis:
+    image: redis:alpine
+    container_name: conduit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # Optional PostgreSQL service for database (if using postgres)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: conduit-postgres
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=secret
+  #     - POSTGRES_DB=conduitllm
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  redis-data:
+  # postgres-data:
 ```
 
-Or in a Dockerfile:
+For individual Dockerfiles, here's an example for each service:
 
+### WebUI Dockerfile
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --from=build /app/webui/publish .
 
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:80
-ENV CONDUIT_API_BASE_URL=""
+ENV ASPNETCORE_URLS=http://+:5000
 ENV CONDUIT_MASTER_KEY=""
-ENV CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
-ENV CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
-ENV CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
+ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
+ENV CONDUIT_LLM_API_URL=http://localhost:5002
+ENV CONDUIT_USE_ADMIN_API=true
+ENV CONDUIT_ADMIN_TIMEOUT_SECONDS=30
 ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
-# Database (SQLite)
+
+EXPOSE 5000
+ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
+```
+
+### Admin API Dockerfile
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /app
+COPY --from=build /app/admin/publish .
+
+# Set environment variables
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:5001
+ENV CONDUIT_MASTER_KEY=""
+ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
 ENV DB_PROVIDER=sqlite
 ENV CONDUIT_SQLITE_PATH=/data/conduit.db
-# Database (PostgreSQL)
-# ENV DB_PROVIDER=postgres
-# ENV CONDUIT_POSTGRES_CONNECTION_STRING=Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret
 
-EXPOSE 80
+EXPOSE 5001
 VOLUME /data
-ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
+ENTRYPOINT ["dotnet", "ConduitLLM.Admin.dll"]
+```
+
+### LLM API Dockerfile
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /app
+COPY --from=build /app/http/publish .
+
+# Set environment variables
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:5002
+ENV CONDUIT_MASTER_KEY=""
+ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
+ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+
+EXPOSE 5002
+ENTRYPOINT ["dotnet", "ConduitLLM.Http.dll"]
 ```
 
 ## Configuration Priority

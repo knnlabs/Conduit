@@ -1,13 +1,11 @@
 @page "/virtualkeys/edit/{id?}"
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Components
-@using ConduitLLM.Configuration
-@using ConduitLLM.Configuration.Entities
 @using ConduitLLM.Configuration.DTOs.VirtualKey
-@inject IDbContextFactory<ConfigurationDbContext> DbContextFactory
+@using ConduitLLM.WebUI.Interfaces
+@inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeyEdit> Logger
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
@@ -15,344 +13,814 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<style>
-    .form-section {
-        margin-bottom: 2rem;
-    }
-    .model-list {
-        max-height: 250px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-    .badge {
-        font-size: 0.85em;
-    }
-    .model-provider-group {
-        background-color: #f8f9fa;
-        padding: 0.5rem;
-        font-weight: 500;
-    }
-</style>
+<PageTitle>@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key") - ConduitLLM</PageTitle>
 
-<h3 class="mb-4">@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")</h3>
-
-@if (isLoading)
-{
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-}
-else if (request == null && Id.HasValue)
-{
-    <div class="alert alert-danger" role="alert">Virtual key not found or error loading.</div>
-}
-else if (showCreatedKey)
-{
-    <div class="alert alert-success mb-4" role="alert">
-        <h5 class="mb-2">Virtual Key Created Successfully!</h5>
-        <p>Your new virtual key has been created. Please save this key as it will only be shown once:</p>
-        <div class="d-flex align-items-center mt-3 mb-3">
-            <input type="text" readonly value="@createdKey" class="form-control flex-grow-1 me-2" id="newKeyInput" />
-            <button class="btn btn-sm btn-secondary" @onclick="async () => await CopyKeyToClipboard()"><i class="fa fa-copy"></i></button>
-        </div>
-        <p>This key can be used to authenticate API requests. For security reasons, we only show this key once and store a secure hash.</p>
-    </div>
-    
-    <div class="alert alert-warning mb-4" role="alert">
-        <div class="d-flex">
-            <i class="fa fa-exclamation-triangle me-2"></i>
-            <span>Make sure to securely store this key. You won't be able to retrieve it again.</span>
-        </div>
-    </div>
-    
-    <div class="mt-4">
-        <button type="button" class="btn btn-primary" @onclick="ReturnToList">Return to Virtual Keys List</button>
-    </div>
-}
-else
-{
-    <EditForm Model="@request" OnValidSubmit="HandleValidSubmit" FormName="VirtualKeyForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mb-4" role="alert">@errorMessage</div>
-        }
-
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm p-4 mb-4">
-                    <h6 class="mb-3">Key Details</h6>
-                    
-                    <div class="mb-4">
-                        <label for="keyName" class="form-label">Key Name</label>
-                        <input type="text" class="form-control" id="keyName" @bind="request!.KeyName" />
-                        <div class="form-text">A friendly name to identify this key</div>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="vke-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa @(Id.HasValue ? "fa-edit" : "fa-plus") me-3"></i>@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key")
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            @(Id.HasValue ? "Modify your virtual key settings and permissions" : "Create a secure virtual key with custom permissions and spending limits")
+                        </p>
                     </div>
-
-                    <div class="mb-4">
-                        <div class="d-flex align-center mb-2">
-                            <span class="me-2">Allowed Models (Optional):</span>
-                            <span title="Select specific models this key can access. Leave empty to allow all models. More restrictive keys are more secure.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
-                            @if (availableModels != null && availableModels.Count > 0)
+                    <div class="col-md-4 text-md-end">
+                        <div class="vke-stats">
+                            @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
                             {
-                                <span class="badge bg-primary ms-2">@selectedModels.Count selected</span>
-                            }
-                        </div>
-                        
-                        <div class="d-flex mb-2">
-                            <input type="text" class="form-control flex-grow-1 me-2" placeholder="Search models..." @bind="modelSearchText" @bind:event="oninput" />
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="SelectAllModels">
-                                <i class="fa fa-check-square-o small me-1"></i>
-                                Select All
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="ClearModelSelection">
-                                <i class="fa fa-times small me-1"></i>
-                                Clear All
-                            </button>
-                        </div>
-                        
-                        <div class="border p-0" style="height: 250px; overflow-y: auto;">
-                            @if (availableModels == null)
-                            {
-                                <div class="spinner-border text-primary m-3" role="status">
-                                    <span class="visually-hidden">Loading...</span>
+                                <div class="stat-item">
+                                    <i class="fa fa-dollar-sign me-2"></i>
+                                    <span class="small">$@(currentSpend.ToString("F2")) / $@(request.MaxBudget?.ToString("F2"))</span>
                                 </div>
                             }
-                            else if (availableModels.Count == 0)
-                            {
-                                <p class="p-3 text-secondary">No models available. Please add model mappings to the database.</p>
-                            }
-                            else
-                            {
-                                var filteredModels = FilterModels();
-                                var groupedModels = filteredModels
-                                    .GroupBy(m => m.ProviderName)
-                                    .OrderBy(g => g.Key)
-                                    .ToList();
-                                
-                                if (groupedModels.Count == 0)
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-shield-alt me-2"></i>
+                                <span class="small">@(selectedModels.Count > 0 ? $"{selectedModels.Count} Models" : "All Models")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="vke-loading text-center py-5">
+            <div class="vke-loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            <p class="mt-3 text-muted fw-medium">Loading virtual key data...</p>
+        </div>
+    }
+    else if (request == null && Id.HasValue)
+    {
+        <div class="vke-error-state text-center py-5">
+            <div class="vke-error-icon mb-4">
+                <i class="fa fa-exclamation-triangle fa-4x text-warning opacity-75"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-3">Virtual Key Not Found</h4>
+            <p class="text-muted mb-4 lead">
+                The requested virtual key could not be found or an error occurred while loading it.
+            </p>
+            <button type="button" class="btn vke-btn-primary" @onclick="ReturnToList">
+                <i class="fa fa-arrow-left me-2"></i>Return to Virtual Keys
+            </button>
+        </div>
+    }
+    else if (showCreatedKey)
+    {
+        <div class="vke-success-state">
+            <div class="card vke-success-card shadow-lg border-0 rounded-4">
+                <div class="card-header vke-success-header border-0">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="vke-success-icon">
+                                <i class="fa fa-check-circle fa-3x text-success"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h4 class="mb-1 fw-bold text-dark">Virtual Key Created Successfully!</h4>
+                            <p class="mb-0 text-muted">Your new virtual key is ready to use</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-success border-0 mb-4">
+                        <h6 class="mb-3 fw-bold">
+                            <i class="fa fa-key me-2"></i>Your New Virtual Key
+                        </h6>
+                        <p class="mb-3">Please save this key as it will only be shown once:</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="text" readonly value="@createdKey" class="form-control vke-key-input" id="newKeyInput" />
+                            <button class="btn vke-btn-copy" @onclick="async () => await CopyKeyToClipboard()" title="Copy to clipboard">
+                                <i class="fa fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning border-0 mb-4">
+                        <div class="d-flex align-items-start">
+                            <i class="fa fa-exclamation-triangle text-warning me-3 mt-1"></i>
+                            <div>
+                                <h6 class="mb-2 fw-bold">Important Security Notice</h6>
+                                <p class="mb-0">Make sure to securely store this key. You won't be able to retrieve it again. This key can be used to authenticate API requests.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="button" class="btn vke-btn-primary btn-lg" @onclick="ReturnToList">
+                            <i class="fa fa-arrow-left me-2"></i>Return to Virtual Keys List
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="@request" OnValidSubmit="HandleValidSubmit" FormName="VirtualKeyForm">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger vke-alert border-0 rounded-4 mb-4" role="alert">
+                    <div class="d-flex align-items-start">
+                        <i class="fa fa-exclamation-circle text-danger me-3 mt-1"></i>
+                        <div>
+                            <h6 class="mb-1 fw-bold">Error</h6>
+                            <p class="mb-0">@errorMessage</p>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="row g-4">
+                <!-- Left Column -->
+                <div class="col-12 col-xl-6">
+                    <!-- Key Details Card -->
+                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
+                        <div class="card-header vke-card-header border-0">
+                            <h5 class="mb-0 fw-bold text-dark">
+                                <i class="fa fa-id-card me-2 text-primary"></i>Key Details
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-4">
+                                <label for="keyName" class="form-label fw-semibold">Key Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control vke-input" id="keyName" @bind="request!.KeyName" placeholder="Enter a descriptive name for your key" />
+                                <div class="form-text">A friendly name to identify this key in your dashboard</div>
+                                <ValidationMessage For="() => request!.KeyName" class="text-danger small" />
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-semibold">Description</label>
+                                <textarea class="form-control vke-textarea" id="description" rows="3" @bind="description" placeholder="Describe what this key is used for"></textarea>
+                                <div class="form-text">Optional description of what this key is used for</div>
+                            </div>
+                            
+                            <div class="mb-0">
+                                <label class="form-label fw-semibold">Expiration Date</label>
+                                <div class="input-group">
+                                    <span class="input-group-text vke-input-group-text">
+                                        <i class="fa fa-calendar"></i>
+                                    </span>
+                                    <input type="date" class="form-control vke-input" id="expirationDate" @bind="request!.ExpiresAt" @bind:format="yyyy-MM-dd" />
+                                </div>
+                                <div class="form-text">Leave empty for a key that never expires</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Model Permissions Card -->
+                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
+                        <div class="card-header vke-card-header border-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold text-dark">
+                                    <i class="fa fa-cogs me-2 text-primary"></i>Model Permissions
+                                </h5>
+                                @if (availableModels != null && availableModels.Count > 0)
                                 {
-                                    <p class="p-3 text-secondary">No models match your search.</p>
+                                    <span class="badge vke-badge-primary">@selectedModels.Count selected</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="alert alert-info vke-info-alert border-0 mb-4">
+                                <div class="d-flex align-items-start">
+                                    <i class="fa fa-info-circle text-info me-3 mt-1"></i>
+                                    <div>
+                                        <p class="mb-0">Select specific models this key can access. Leave empty to allow all models. More restrictive keys are more secure.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex gap-2 mb-3">
+                                <input type="text" class="form-control vke-search-input flex-grow-1" placeholder="Search models..." @bind="modelSearchText" @bind:event="oninput" />
+                                <button type="button" class="btn vke-btn-outline-primary" @onclick="SelectAllModels" title="Select All">
+                                    <i class="fa fa-check-square"></i>
+                                </button>
+                                <button type="button" class="btn vke-btn-outline-danger" @onclick="ClearModelSelection" title="Clear Selection">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="vke-model-list">
+                                @if (availableModels == null)
+                                {
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted small">Loading models...</p>
+                                    </div>
+                                }
+                                else if (availableModels.Count == 0)
+                                {
+                                    <div class="vke-empty-models text-center py-4">
+                                        <i class="fa fa-cogs fa-2x text-muted opacity-50 mb-3"></i>
+                                        <p class="text-muted">No models available. Please add model mappings first.</p>
+                                    </div>
                                 }
                                 else
                                 {
-                                    @foreach (var group in groupedModels)
+                                    var filteredModels = FilterModels();
+                                    var groupedModels = filteredModels
+                                        .GroupBy(m => m.ProviderName)
+                                        .OrderBy(g => g.Key)
+                                        .ToList();
+                                    
+                                    if (groupedModels.Count == 0)
                                     {
-                                        <div>
-                                            <div class="p-2 d-flex justify-content-between bg-light fw-medium">
-                                                <span>@group.Key</span>
-                                                <span class="badge bg-secondary">
-                                                    @group.Count() model@(group.Count() != 1 ? "s" : "")
-                                                </span>
-                                            </div>
-                                            <div class="p-2">
-                                                @foreach (var model in group.OrderBy(m => m.ModelAlias))
-                                                {
-                                                    <div class="form-check py-1">
-                                                        <input class="form-check-input" type="checkbox" 
-                                                               checked="@selectedModels.Contains(model.ModelAlias)"
-                                                               @onchange="@(e => ToggleModelSelection(model.ModelAlias, (bool)e.Value!))" 
-                                                               id="model_@model.ModelAlias.Replace(".", "_")" />
-                                                        <label class="form-check-label" for="model_@model.ModelAlias.Replace(".", "_")">
-                                                            @model.ModelAlias
-                                                        </label>
-                                                    </div>
-                                                }
-                                            </div>
+                                        <div class="vke-empty-search text-center py-4">
+                                            <i class="fa fa-search fa-2x text-muted opacity-50 mb-3"></i>
+                                            <p class="text-muted">No models match your search.</p>
                                         </div>
                                     }
+                                    else
+                                    {
+                                        @foreach (var group in groupedModels)
+                                        {
+                                            <div class="vke-provider-group mb-3">
+                                                <div class="vke-provider-header d-flex justify-content-between align-items-center">
+                                                    <span class="fw-semibold text-dark">@group.Key</span>
+                                                    <span class="badge vke-badge-secondary">
+                                                        @group.Count() model@(group.Count() != 1 ? "s" : "")
+                                                    </span>
+                                                </div>
+                                                <div class="vke-provider-models">
+                                                    @foreach (var model in group.OrderBy(m => m.ModelAlias))
+                                                    {
+                                                        <div class="vke-model-item">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input vke-check-input" type="checkbox" 
+                                                                       checked="@selectedModels.Contains(model.ModelAlias)"
+                                                                       @onchange="@(e => ToggleModelSelection(model.ModelAlias, (bool)e.Value!))" 
+                                                                       id="model_@model.ModelAlias.Replace(".", "_")" />
+                                                                <label class="form-check-label vke-check-label" for="model_@model.ModelAlias.Replace(".", "_")">
+                                                                    @model.ModelAlias
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    }
                                 }
-                            }
-                        </div>
-                        <div class="form-text mt-1">
-                            Specify which models this key can access, or leave empty to allow all models.
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card shadow-sm p-4 mb-4">
-                    <h6 class="mb-3">Rate Limits</h6>
-                    
-                    <div class="alert alert-info mb-4" role="alert">
-                        Rate limits help prevent abuse and manage API load. Set to 0 for no limit.
-                    </div>
-                    
-                    <div class="mb-4">
-                        <div class="d-flex align-center mb-2">
-                            <span>Requests Per Minute (RPM):</span>
-                            <span class="ms-2" title="Maximum number of requests allowed per minute for this key. Set to 0 for no limit.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
+                <!-- Right Column -->
+                <div class="col-12 col-xl-6">
+                    <!-- Budget Settings Card -->
+                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
+                        <div class="card-header vke-card-header border-0">
+                            <h5 class="mb-0 fw-bold text-dark">
+                                <i class="fa fa-dollar-sign me-2 text-primary"></i>Budget Settings
+                            </h5>
                         </div>
-                        <input type="number" class="form-control" @bind="request!.RateLimitRpm" min="0" />
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex align-center mb-2">
-                            <span>Requests Per Day (RPD):</span>
-                            <span class="ms-2" title="Maximum number of requests allowed per day for this key. Set to 0 for no limit.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
+                        <div class="card-body p-4">
+                            <div class="alert alert-info vke-info-alert border-0 mb-4">
+                                <div class="d-flex align-items-start">
+                                    <i class="fa fa-info-circle text-info me-3 mt-1"></i>
+                                    <div>
+                                        <p class="mb-0">Set a budget limit for this key to control costs. The budget can reset on a schedule you define.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Max Budget (USD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text vke-input-group-text">$</span>
+                                    <input type="number" class="form-control vke-input" @bind="request!.MaxBudget" min="0" step="0.01" placeholder="0.00" />
+                                </div>
+                                <div class="form-text">Set to 0 for no budget limit</div>
+                                <ValidationMessage For="() => request!.MaxBudget" class="text-danger small" />
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Budget Reset Schedule</label>
+                                <select class="form-select vke-select" @bind="request!.BudgetDuration">
+                                    <option value="">Never (Fixed Budget)</option>
+                                    <option value="Daily">Daily</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
+                                <div class="form-text">How often the budget should reset</div>
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(request!.BudgetDuration))
+                            {
+                                <div class="mb-4">
+                                    <label for="budgetStartDate" class="form-label fw-semibold">Budget Start Date</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text vke-input-group-text">
+                                            <i class="fa fa-calendar"></i>
+                                        </span>
+                                        <input type="date" class="form-control vke-input" id="budgetStartDate" @bind="budgetStartDate" @bind:format="yyyy-MM-dd" />
+                                    </div>
+                                    <div class="form-text">The date from which budget cycles are calculated</div>
+                                </div>
+                            }
+                            
+                            @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
+                            {
+                                <div class="vke-budget-display">
+                                    <h6 class="fw-semibold mb-3">Current Budget Usage</h6>
+                                    <div class="d-flex align-items-center mb-2">
+                                        @{
+                                            var percentage = (int)(request.MaxBudget > 0 
+                                                ? Math.Min(100, (currentSpend / request.MaxBudget.Value) * 100) 
+                                                : 0);
+                                            var progressClass = percentage < 60 
+                                                ? "vke-progress-success" 
+                                                : (percentage < 85 ? "vke-progress-warning" : "vke-progress-danger");
+                                        }
+                                        <div class="progress vke-progress flex-grow-1 me-3">
+                                            <div class="progress-bar @progressClass" role="progressbar" style="width: @percentage%" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="vke-progress-text">@percentage%</span>
+                                        <button type="button" class="btn vke-btn-reset ms-2" @onclick="ResetCurrentSpend" title="Reset spend to zero">
+                                            <i class="fa fa-refresh"></i>
+                                        </button>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted small">
+                                        <span>$@(currentSpend.ToString("F6"))</span>
+                                        <span>of $@(request.MaxBudget?.ToString("F6"))</span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(request!.BudgetDuration) && budgetStartDate.HasValue)
+                                    {
+                                        <div class="mt-3 p-2 vke-next-reset rounded">
+                                            <small class="text-muted">
+                                                <i class="fa fa-calendar me-1"></i>
+                                                Next reset: @(GetNextBudgetResetDate(request.BudgetDuration, budgetStartDate))
+                                            </small>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
-                        <input type="number" class="form-control" @bind="request!.RateLimitRpd" min="0" />
+                    </div>
+
+                    <!-- Rate Limits Card -->
+                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
+                        <div class="card-header vke-card-header border-0">
+                            <h5 class="mb-0 fw-bold text-dark">
+                                <i class="fa fa-tachometer-alt me-2 text-primary"></i>Rate Limits
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="alert alert-info vke-info-alert border-0 mb-4">
+                                <div class="d-flex align-items-start">
+                                    <i class="fa fa-info-circle text-info me-3 mt-1"></i>
+                                    <div>
+                                        <p class="mb-0">Rate limits help prevent abuse and manage API load. Set to 0 for no limit.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Requests Per Minute (RPM)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text vke-input-group-text">
+                                        <i class="fa fa-clock"></i>
+                                    </span>
+                                    <input type="number" class="form-control vke-input" @bind="request!.RateLimitRpm" min="0" placeholder="0" />
+                                </div>
+                                <div class="form-text">Maximum requests allowed per minute (0 = no limit)</div>
+                            </div>
+                            
+                            <div class="mb-0">
+                                <label class="form-label fw-semibold">Requests Per Day (RPD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text vke-input-group-text">
+                                        <i class="fa fa-calendar-day"></i>
+                                    </span>
+                                    <input type="number" class="form-control vke-input" @bind="request!.RateLimitRpd" min="0" placeholder="0" />
+                                </div>
+                                <div class="form-text">Maximum requests allowed per day (0 = no limit)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm p-4 mb-4">
-                    <h6 class="mb-3">Budget Settings</h6>
-                    
-                    <div class="alert alert-info mb-4" role="alert">
-                        Set a budget limit for this key to control costs. The budget can reset on a schedule you define.
-                    </div>
-                    
-                    <div class="mb-4">
-                        <div class="d-flex align-center mb-2">
-                            <span>Max Budget ($):</span>
-                            <span class="ms-2" title="Maximum amount in USD this key can spend. Set to 0 for no budget limit.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
-                        </div>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" @bind="request!.MaxBudget" min="0" step="0.01" placeholder="Enter budget amount" />
-                        </div>
-                        <div class="form-text">Set to 0 for no budget limit</div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <div class="d-flex align-center mb-2">
-                            <span>Budget Reset Schedule:</span>
-                            <span class="ms-2" title="How often the budget should reset. Select 'Never' if you want a fixed budget without reset.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
-                        </div>
-                        <select class="form-select mb-2" @bind="request!.BudgetDuration">
-                            <option value="">Never (Fixed Budget)</option>
-                            <option value="Daily">Daily</option>
-                            <option value="Weekly">Weekly</option>
-                            <option value="Monthly">Monthly</option>
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="Yearly">Yearly</option>
-                        </select>
-                    </div>
-                    
-                    @if (!string.IsNullOrEmpty(request!.BudgetDuration))
+            <!-- Action Buttons -->
+            <div class="vke-actions d-flex gap-3 mt-4 pt-4 border-top">
+                <button type="submit" class="btn vke-btn-primary" disabled="@isSaving">
+                    @if (isSaving)
                     {
-                        <div class="mb-4">
-                            <label for="budgetStartDate" class="form-label">Budget Start Date</label>
-                            <input type="date" class="form-control" id="budgetStartDate" @bind="budgetStartDate" @bind:format="yyyy-MM-dd" />
-                            <div class="form-text">The date from which budget cycles are calculated</div>
-                        </div>
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Saving...</span>
                     }
-                    
-                    @if (Id.HasValue && request?.MaxBudget.HasValue == true && request.MaxBudget > 0)
+                    else
                     {
-                        <div class="mb-3">
-                            <p class="mb-2">Current Budget Usage:</p>
-                            <div class="d-flex align-items-center mb-2">
-                                @{
-                                    var percentage = (int)(request.MaxBudget > 0 
-                                        ? Math.Min(100, (currentSpend / request.MaxBudget.Value) * 100) 
-                                        : 0);
-                                    var progressClass = percentage < 60 
-                                        ? "bg-success" 
-                                        : (percentage < 85 ? "bg-warning" : "bg-danger");
-                                }
-                                <div class="progress flex-grow-1 me-2" style="height: 10px;">
-                                    <div class="progress-bar @progressClass" role="progressbar" style="width: @percentage%" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">
-                                        <span class="visually-hidden">@percentage%</span>
-                                    </div>
-                                </div>
-                                <small class="text-secondary">@percentage%</small>
-                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="ResetCurrentSpend">
-                                    <i class="fa fa-refresh"></i>
-                                </button>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <small class="text-secondary">$@(currentSpend.ToString("0.000000"))</small>
-                                <small class="text-secondary">of $@(request.MaxBudget?.ToString("0.000000"))</small>
-                            </div>
-                            @if (!string.IsNullOrEmpty(request!.BudgetDuration) && budgetStartDate.HasValue)
-                            {
-                                <div class="mt-2 d-flex align-items-center text-secondary small">
-                                    <i class="fa fa-calendar me-1"></i>
-                                    Next reset: @(GetNextBudgetResetDate(request.BudgetDuration, budgetStartDate))
-                                </div>
-                            }
-                        </div>
+                        <i class="fa fa-@(Id.HasValue ? "save" : "plus") me-2"></i>
+                        <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
                     }
-                </div>
-                
-                <div class="card shadow-sm p-4 mb-4">
-                    <h6 class="mb-3">Limits</h6>
-                    
-                    <div class="mb-4">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="setMaxSpend" @bind="_setMaxSpend" />
-                            <label class="form-check-label" for="setMaxSpend">Set Max Spend</label>
-                        </div>
-                        @if (_setMaxSpend)
-                        {
-                            <div class="mt-2">
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" @bind="request!.MaxBudget" min="0" step="0.01" />
-                                </div>
-                                <div class="form-text">Set to 0 for no budget limit</div>
-                            </div>
-                        }
-                    </div>
-                </div>
-                
-                <div class="card shadow-sm p-4 mb-4">
-                    <h6 class="mb-3">Key Details</h6>
-                    
-                    <div class="mb-4">
-                        <label for="description" class="form-label">Description (Optional)</label>
-                        <textarea class="form-control" id="description" rows="3" @bind="description"></textarea>
-                        <div class="form-text">A description of what this key is used for</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <span>Expiration Date (Optional):</span>
-                            <span class="ms-2" title="Date when this key will expire. Leave empty for a non-expiring key.">
-                                <i class="fa fa-info-circle small"></i>
-                            </span>
-                        </div>
-                        <input type="date" class="form-control" id="expirationDate" @bind="request!.ExpiresAt" @bind:format="yyyy-MM-dd" />
-                        <div class="form-text">Leave empty for a key that never expires</div>
-                    </div>
-                </div>
+                </button>
+                <button type="button" class="btn vke-btn-secondary" @onclick="Cancel">
+                    <i class="fa fa-times me-2"></i>Cancel
+                </button>
             </div>
-        </div>
-        
-        <div class="d-flex gap-2 mt-4">
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @if (isSaving)
-                {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    <span>Saving...</span>
-                }
-                else
-                {
-                    <i class="fa fa-@(Id.HasValue ? "save" : "plus") me-1"></i>
-                    <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
-                }
-            </button>
-            <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">
-                Cancel
-            </button>
-        </div>
-    </EditForm>
-}
+        </EditForm>
+    }
+</div>
+
+<!-- Custom CSS Styling -->
+<style>
+    .vke-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+
+    .vke-stats .stat-item {
+        display: inline-block;
+        margin-right: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .vke-card {
+        border-radius: 1rem !important;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .vke-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .vke-card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .vke-success-card {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .vke-success-header {
+        background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+        padding: 2rem 1.5rem 1.5rem;
+    }
+
+    .vke-success-icon {
+        animation: gentle-bounce 2s ease-in-out infinite;
+    }
+
+    .vke-key-input {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .vke-input, .vke-textarea, .vke-select {
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        background: #fff;
+    }
+
+    .vke-input:focus, .vke-textarea:focus, .vke-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        outline: none;
+    }
+
+    .vke-search-input {
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .vke-search-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        outline: none;
+    }
+
+    .vke-input-group-text {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: 0.75rem 0 0 0.75rem;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .vke-input-group .vke-input {
+        border-left: none;
+        border-radius: 0 0.75rem 0.75rem 0;
+    }
+
+    .vke-input-group .vke-input:focus {
+        border-left: none;
+    }
+
+    .vke-model-list {
+        height: 350px;
+        overflow-y: auto;
+        border: 2px solid #e9ecef;
+        border-radius: 0.75rem;
+        background: #fff;
+    }
+
+    .vke-provider-group {
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .vke-provider-group:last-child {
+        border-bottom: none;
+    }
+
+    .vke-provider-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 0.875rem;
+    }
+
+    .vke-provider-models {
+        padding: 0.5rem 1rem;
+    }
+
+    .vke-model-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    .vke-model-item:last-child {
+        border-bottom: none;
+    }
+
+    .vke-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+
+    .vke-check-label {
+        font-weight: 500;
+        color: #374151;
+        cursor: pointer;
+    }
+
+    .vke-budget-display {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .vke-progress {
+        height: 12px;
+        border-radius: 0.75rem;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+
+    .vke-progress-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 0.75rem;
+    }
+
+    .vke-progress-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border-radius: 0.75rem;
+    }
+
+    .vke-progress-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-radius: 0.75rem;
+    }
+
+    .vke-progress-text {
+        font-weight: 600;
+        color: #374151;
+        min-width: 40px;
+        text-align: right;
+    }
+
+    .vke-next-reset {
+        background: rgba(102, 126, 234, 0.1);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .vke-btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+
+    .vke-btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        color: white;
+    }
+
+    .vke-btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .vke-btn-secondary {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #dee2e6;
+        border-radius: 0.75rem;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        color: #6c757d;
+    }
+
+    .vke-btn-secondary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-color: #adb5bd;
+        color: #495057;
+        background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    }
+
+    .vke-btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .vke-btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .vke-btn-outline-danger {
+        border: 2px solid #ef4444;
+        color: #ef4444;
+        border-radius: 0.75rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .vke-btn-outline-danger:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .vke-btn-copy {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .vke-btn-copy:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+
+    .vke-btn-reset {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    .vke-btn-reset:hover {
+        transform: translateY(-1px);
+        color: white;
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    }
+
+    .vke-badge-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.4rem 0.8rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .vke-badge-secondary {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .vke-alert {
+        border-radius: 0.75rem !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .vke-info-alert {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe !important;
+    }
+
+    .vke-loading {
+        padding: 3rem 2rem;
+    }
+
+    .vke-loading-spinner {
+        display: inline-block;
+        animation: gentle-bounce 1.5s ease-in-out infinite;
+    }
+
+    .vke-error-icon, .vke-empty-icon {
+        animation: gentle-pulse 2s ease-in-out infinite;
+    }
+
+    .vke-actions {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin: 2rem -1rem 0;
+    }
+
+    @@keyframes gentle-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @@keyframes gentle-pulse {
+        0%, 100% { opacity: 0.75; }
+        50% { opacity: 1; }
+    }
+
+    @@media (max-width: 768px) {
+        .vke-header {
+            text-align: center;
+        }
+
+        .vke-stats {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .vke-actions {
+            flex-direction: column;
+            gap: 1rem !important;
+        }
+
+        .vke-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .vke-model-list {
+            height: 250px;
+        }
+
+        .vke-card-header h5 {
+            font-size: 1rem;
+        }
+    }
+</style>
 
 @code {
     [Parameter]
@@ -370,7 +838,6 @@ else
     private string createdKey = "";
     private string? description; // Field to hold description since UpdateVirtualKeyRequestDto doesn't have it
     private DateTime? budgetStartDate; // Field to hold budget start date
-    private bool _setMaxSpend = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -454,26 +921,19 @@ else
     {
         try
         {
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            // Load model mappings from Admin API
+            var modelMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             
-            // Load model mappings from the consolidated context
-            var query = dbContext.ModelProviderMappings
-                .Include(m => m.ProviderCredential);
-            
-            // Log the SQL query for troubleshooting
-            var queryString = query.ToQueryString();
-            Logger.LogInformation("Models query: {Query}", queryString);
-            
-            availableModels = await query
+            availableModels = modelMappings
                 .Select(m => new ModelMappingViewModel
                 {
-                    ModelAlias = m.ModelAlias,
-                    ProviderName = m.ProviderCredential.ProviderName,
-                    ProviderModelId = m.ProviderModelName
+                    ModelAlias = m.ModelId,
+                    ProviderName = m.ProviderId,
+                    ProviderModelId = m.ProviderModelId
                 })
-                .ToListAsync();
+                .ToList();
             
-            Logger.LogInformation("Loaded {Count} models from database", availableModels.Count);
+            Logger.LogInformation("Loaded {Count} models from Admin API", availableModels.Count);
             
             if (Id.HasValue && !string.IsNullOrEmpty(request?.AllowedModels))
             {
@@ -484,7 +944,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading available models");
-            errorMessage = "Failed to load model mappings. Please check database configuration.";
+            errorMessage = "Failed to load model mappings. Please check Admin API connection.";
             
             // Initialize to empty list instead of null to avoid spinner
             availableModels = new List<ModelMappingViewModel>();
@@ -705,23 +1165,20 @@ else
                             now.Month == 12 ? 1 : now.Month + 1)));
                 break;
             case "quarterly":
-                // Calculate the current quarter
+                // Calculate the current quarter and find the next reset
                 int currentQuarter = (now.Month - 1) / 3;
-                // Calculate the next quarter's first month
                 int nextQuarterMonth = (currentQuarter + 1) * 3 + 1;
-                int nextQuarterYear = now.Year;
                 if (nextQuarterMonth > 12)
                 {
-                    nextQuarterMonth -= 12;
-                    nextQuarterYear += 1;
+                    nextQuarterMonth = 1;
+                    nextReset = new DateTime(now.Year + 1, nextQuarterMonth, Math.Min(start.Day, DateTime.DaysInMonth(now.Year + 1, nextQuarterMonth)));
                 }
-                nextReset = new DateTime(
-                    nextQuarterYear,
-                    nextQuarterMonth,
-                    Math.Min(start.Day, DateTime.DaysInMonth(nextQuarterYear, nextQuarterMonth)));
+                else
+                {
+                    nextReset = new DateTime(now.Year, nextQuarterMonth, Math.Min(start.Day, DateTime.DaysInMonth(now.Year, nextQuarterMonth)));
+                }
                 break;
             case "yearly":
-                // Calculate next yearly reset
                 if (now.Month < start.Month || (now.Month == start.Month && now.Day < start.Day))
                     nextReset = new DateTime(now.Year, start.Month, Math.Min(start.Day, DateTime.DaysInMonth(now.Year, start.Month)));
                 else
@@ -731,6 +1188,6 @@ else
                 return "N/A";
         }
 
-        return nextReset.ToString("yyyy-MM-dd");
+        return nextReset.ToString("MMM dd, yyyy");
     }
 }

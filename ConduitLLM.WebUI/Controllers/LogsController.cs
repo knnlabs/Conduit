@@ -1,5 +1,5 @@
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.DTOs;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -118,7 +118,7 @@ namespace ConduitLLM.WebUI.Controllers
                 {
                     Items = logDtos,
                     TotalCount = result.TotalCount,
-                    PageNumber = page,
+                    CurrentPage = page,
                     PageSize = pageSize,
                     TotalPages = (int)Math.Ceiling(result.TotalCount / (double)pageSize)
                 });

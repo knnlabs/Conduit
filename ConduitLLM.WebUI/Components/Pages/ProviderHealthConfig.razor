@@ -1,16 +1,16 @@
 @page "/provider-health/config"
-@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.Configuration.Options
-@using ConduitLLM.Configuration.Repositories
 @using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.Interfaces
 @attribute [Authorize]
-@inject IProviderHealthRepository ProviderHealthRepository
-@inject IOptions<ProviderHealthOptions> ProviderHealthOptions
-@inject IDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext> DbContextFactory
+@rendermode InteractiveServer
+@inject IOptions<ProviderHealthOptions> ProviderHealthOptionsSnapshot
+@inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
+@inject IAdminApiClient AdminApiClient
 @inject ILogger<ProviderHealthConfig> Logger
 @inject IJSRuntime JSRuntime
 @inject NotificationService NotificationService
@@ -268,8 +268,8 @@
     private bool _showCustomEndpointModal = false;
     private bool _showPurgeAllModal = false;
     private ProviderHealthOptions _globalSettings = new();
-    private List<ProviderHealthConfiguration> _providerConfigs = new();
-    private ProviderHealthConfiguration? _selectedConfig;
+    private List<ProviderHealthConfigurationDto> _providerConfigs = new();
+    private ProviderHealthConfigurationDto? _selectedConfig;
     
     protected override async Task OnInitializedAsync()
     {
@@ -282,10 +282,11 @@
         {
             _loading = true;
             StateHasChanged();
-            
-            // Load global settings
-            _globalSettings = ProviderHealthOptions.Value;
-            
+
+            // Load global settings from database if they exist, otherwise use the default settings
+            var dbOptions = await GlobalSettingService.GetProviderHealthOptionsAsync();
+            _globalSettings = dbOptions ?? ProviderHealthOptionsSnapshot.Value;
+
             // Load provider configurations
             await RefreshProviderConfigsAsync();
         }
@@ -305,24 +306,33 @@
     {
         try
         {
-            _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
+            _providerConfigs = (await AdminApiClient.GetAllProviderHealthConfigurationsAsync()).ToList();
             
             // Also check for any providers without configurations and create default ones
-            using var dbContext = await DbContextFactory.CreateDbContextAsync();
-            var allProviders = await dbContext.ProviderCredentials.ToListAsync();
+            var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
             
             foreach (var provider in allProviders)
             {
                 if (!_providerConfigs.Any(c => c.ProviderName == provider.ProviderName))
                 {
-                    await ProviderHealthRepository.EnsureConfigurationExistsAsync(provider.ProviderName);
+                    // Create a default configuration for this provider
+                    var newConfig = new CreateProviderHealthConfigurationDto
+                    {
+                        ProviderName = provider.ProviderName,
+                        MonitoringEnabled = false,
+                        CheckIntervalMinutes = _globalSettings.DefaultCheckIntervalMinutes,
+                        TimeoutSeconds = _globalSettings.DefaultTimeoutSeconds,
+                        ConsecutiveFailuresThreshold = 3,
+                        NotificationsEnabled = false
+                    };
+                    await AdminApiClient.CreateProviderHealthConfigurationAsync(newConfig);
                 }
             }
             
             // Refresh again to get the newly created configurations
-            if (allProviders.Count > _providerConfigs.Count)
+            if (allProviders.Count() > _providerConfigs.Count)
             {
-                _providerConfigs = await ProviderHealthRepository.GetAllConfigurationsAsync();
+                _providerConfigs = (await AdminApiClient.GetAllProviderHealthConfigurationsAsync()).ToList();
             }
         }
         catch (Exception ex)
@@ -336,10 +346,11 @@
     {
         try
         {
-            // In a real-world application, you would save these to a configuration store
-            // For now, we'll just show a notification
+            // Save the global settings to the database
+            await GlobalSettingService.SaveProviderHealthOptionsAsync(_globalSettings);
+
+            // Show success notification
             NotificationService.AddNotification(WebUI.Models.NotificationType.Success, "Global settings saved successfully");
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -348,11 +359,22 @@
         }
     }
     
-    private async Task SaveProviderConfigAsync(ProviderHealthConfiguration config)
+    private async Task SaveProviderConfigAsync(ProviderHealthConfigurationDto config)
     {
         try
         {
-            await ProviderHealthRepository.SaveConfigurationAsync(config);
+            var updateDto = new UpdateProviderHealthConfigurationDto
+            {
+                Id = config.Id,
+                MonitoringEnabled = config.MonitoringEnabled,
+                CheckIntervalMinutes = config.CheckIntervalMinutes,
+                TimeoutSeconds = config.TimeoutSeconds,
+                ConsecutiveFailuresThreshold = config.ConsecutiveFailuresThreshold,
+                NotificationsEnabled = config.NotificationsEnabled,
+                CustomEndpointUrl = config.CustomEndpointUrl
+            };
+            
+            await AdminApiClient.UpdateProviderHealthConfigurationAsync(config.ProviderName, updateDto);
             NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Configuration for {config.ProviderName} saved successfully");
         }
         catch (Exception ex)
@@ -362,7 +384,7 @@
         }
     }
     
-    private void ShowCustomEndpointModal(ProviderHealthConfiguration config)
+    private void ShowCustomEndpointModal(ProviderHealthConfigurationDto config)
     {
         _selectedConfig = config;
         _showCustomEndpointModal = true;
@@ -392,8 +414,8 @@
             // Calculate the date based on the retention period
             var olderThan = DateTime.UtcNow.AddDays(-_globalSettings.DetailedRecordRetentionDays);
             
-            // Purge old records
-            var purgedCount = await ProviderHealthRepository.PurgeOldRecordsAsync(olderThan);
+            // Purge old records via Admin API
+            var purgedCount = await AdminApiClient.PurgeOldProviderHealthRecordsAsync(olderThan);
             
             NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged {purgedCount} old records successfully");
         }
@@ -409,7 +431,7 @@
         try
         {
             // Purge all records by using a future date
-            var purgedCount = await ProviderHealthRepository.PurgeOldRecordsAsync(DateTime.UtcNow.AddYears(100));
+            var purgedCount = await AdminApiClient.PurgeOldProviderHealthRecordsAsync(DateTime.UtcNow.AddYears(100));
             
             _showPurgeAllModal = false;
             NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged all {purgedCount} records successfully");

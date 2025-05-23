@@ -2,10 +2,12 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Http.Middleware;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 using Moq;
 
@@ -22,9 +24,11 @@ namespace ConduitLLM.Tests.Middleware
             var mockRequestLogService = new Mock<IRequestLogService>();
             var mockNextMiddleware = new RequestDelegate(_ => Task.CompletedTask);
             
+            var logger = new Mock<ILogger<LlmRequestTrackingMiddleware>>();
             var middleware = new LlmRequestTrackingMiddleware(
                 mockNextMiddleware,
-                mockRequestLogService.Object);
+                mockRequestLogService.Object,
+                logger.Object);
                 
             var context = new DefaultHttpContext();
             context.Request.Path = "/api/chat";

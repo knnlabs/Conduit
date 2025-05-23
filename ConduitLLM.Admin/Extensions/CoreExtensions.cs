@@ -1,0 +1,51 @@
+using ConduitLLM.Core.Data;
+using ConduitLLM.Core.Data.Extensions;
+using ConduitLLM.Core.Extensions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace ConduitLLM.Admin.Extensions
+{
+    /// <summary>
+    /// Extension methods for configuring Core services in the Admin API
+    /// </summary>
+    public static class CoreExtensions
+    {
+        /// <summary>
+        /// Adds the Core services to the DI container
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <param name="configuration">The application configuration</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Add database services - use DbContext type directly
+            services.AddDatabaseServices<Microsoft.EntityFrameworkCore.DbContext>();
+            
+            // Register DbContext Factory (using connection string from environment variables)
+            var connectionStringManager = new ConnectionStringManager();
+            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
+            
+            if (dbProvider == "sqlite")
+            {
+                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+                    options.UseSqlite(dbConnectionString));
+            }
+            else if (dbProvider == "postgres")
+            {
+                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+                    options.UseNpgsql(dbConnectionString));
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
+            }
+            
+            // Add context management services
+            services.AddConduitContextManagement(configuration);
+            
+            return services;
+        }
+    }
+}

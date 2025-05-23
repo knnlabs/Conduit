@@ -54,14 +54,18 @@ ConduitLLM follows a modular architecture with distinct components handling spec
 
 ```mermaid
 flowchart LR
-    Client["WebUI / Client App"]
+    WebUI["ConduitLLM.WebUI(Admin Dashboard)"]
+    AdminAPI["ConduitLLM.Admin(Admin API)"]
     Http["ConduitLLM.Http(API Gateway)"]
     Core["ConduitLLM.Core(Orchestration)"]
     Providers["ConduitLLM.Providers(Provider Logic)"]
-    Config["ConduitLLM.Configuration(Settings)"]
+    Config["ConduitLLM.Configuration(Entities & DTOs)"]
     LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
     
-    Client --> Http
+    WebUI -->|Admin API Client| AdminAPI
+    AdminAPI --> Config
+    
+    Client["Client App"] --> Http
     Http --> Core
     Core --> Providers
     Providers --> LLM
@@ -78,23 +82,56 @@ flowchart LR
 - **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
 - **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
 - **ConduitLLM.Configuration**: Configuration management across various sources
+- **ConduitLLM.Admin**: Administrative API for configuration management
 
-### Docker Images: WebUI and Http Separation
+### Admin API Client
 
-As of April 2025, ConduitLLM is split into two separate Docker images:
+The Admin API client provides a way for the WebUI to interact with the Admin API service without direct project references. This breaks the circular dependency between the projects and improves the architecture.
 
-- **WebUI Image**: Contains the Blazor-based administrative dashboard (`ConduitLLM.WebUI`).
-- **Http Image**: Contains the OpenAI-compatible REST API gateway (`ConduitLLM.Http`).
+To configure the Admin API client in your deployment:
+
+```yaml
+# Docker Compose environment variables
+environment:
+  CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
+  CONDUIT_MASTER_KEY: your_master_key       # Master key for authentication
+  CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
+  CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
+```
+
+> **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025. See [Migration Guide](docs/admin-api-migration-guide.md) for details.
+
+The WebUI includes a built-in health check indicator that monitors the connection to the Admin API:
+
+- A green checkmark indicates the Admin API is healthy
+- A red warning icon indicates connection issues
+- Click the icon to view detailed status and troubleshooting options
+
+Key features:
+- **Decoupled Architecture**: WebUI and Admin projects are fully decoupled
+- **Flexible Deployment**: Services can be deployed separately in distributed environments
+- **Clean API Contracts**: API contracts explicitly defined through interfaces and DTOs
+- **Configuration Control**: Toggle between direct DB access and API access with a simple flag
+
+### Docker Images: Component Separation
+
+As of May 2025, ConduitLLM is distributed as three separate Docker images:
+
+- **WebUI Image**: The Blazor-based admin dashboard (`ConduitLLM.WebUI`)
+- **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
+- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Http`)
 
 Each service is built, tagged, and published as an independent container:
 
 - `ghcr.io/knnlabs/conduit-webui:latest` (WebUI)
+- `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
 - `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
 
-#### Why this change?
-- **Separation of concerns**: Web UI and API gateway can be scaled, deployed, and maintained independently.
-- **Improved security**: You can isolate the WebUI from the API gateway if desired.
-- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage.
+#### Why this architecture?
+- **Separation of concerns**: Each component can be scaled, deployed, and maintained independently
+- **Improved security**: You can isolate components and apply different security policies
+- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage
+- **Enhanced reliability**: Components can be updated independently without affecting others
 
 #### How to use the new images
 
@@ -109,21 +146,43 @@ services:
     ports:
       - "5001:8080"
     environment:
-      # ... WebUI environment variables
+      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      CONDUIT_MASTER_KEY: your_secure_master_key
+      CONDUIT_USE_ADMIN_API: "true"
+      CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
+    depends_on:
+      - admin
+
+  admin:
+    image: ghcr.io/knnlabs/conduit-admin:latest
+    ports:
+      - "5002:8080"
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      CONDUIT_MASTER_KEY: your_secure_master_key
+    depends_on:
+      - postgres
 
   http:
     image: ghcr.io/knnlabs/conduit-http:latest
     ports:
       - "5000:8080"
     environment:
-      # ... API Gateway environment variables
-```
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+    depends_on:
+      - postgres
 
-Or run separately:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: conduit
+      POSTGRES_PASSWORD: conduitpass
+      POSTGRES_DB: conduitdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
-```bash
-docker run -d --name conduit-webui -p 5001:8080 ghcr.io/knnlabs/conduit-webui:latest
-docker run -d --name conduit-http -p 5000:8080 ghcr.io/knnlabs/conduit-http:latest
+volumes:
+  pgdata:
 ```
 
 > **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
@@ -233,6 +292,9 @@ See the `docs/` directory for detailed documentation:
 
 - [API Reference](docs/API-Reference.md)
 - [Architecture Overview](docs/Architecture-Overview.md)
+  - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
+  - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
+  - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
 - [Budget Management](docs/Budget-Management.md)
 - [Cache Configuration](docs/Cache-Configuration.md)
 - [Configuration Guide](docs/Configuration-Guide.md)
@@ -244,6 +306,9 @@ See the `docs/` directory for detailed documentation:
 - [Provider Integration](docs/Provider-Integration.md)
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
+- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
+- [Admin API Implementation Status](docs/ADMIN-API-MIGRATION-STATUS.md)
+- [Legacy Mode Deprecation Timeline](docs/LEGACY-MODE-DEPRECATION-TIMELINE.md)
 
 ## Contributing
 

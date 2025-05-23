@@ -1,0 +1,793 @@
+@page "/ip-access-filtering"
+@using ConduitLLM.Configuration.Constants
+@using ConduitLLM.Configuration.DTOs.IpFilter
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Logging
+@using ConduitLLM.WebUI.Components.Shared
+@attribute [Authorize]
+@inject IAdminApiClient AdminApiClient
+@inject NotificationService NotificationService
+@inject ILogger<IpAccessFiltering> Logger
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>IP Access Filtering - ConduitLLM</PageTitle>
+
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="ip-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-shield me-3"></i>IP Access Filtering
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Control access to your API endpoints with IP-based filtering rules
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="ip-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-toggle-on me-2"></i>
+                                <span class="small">@(_settings.IsEnabled ? "Enabled" : "Disabled")</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-list me-2"></i>
+                                <span class="small">@_filters.Count Rules</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    @if (_loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading IP filtering data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-12">
+                <!-- Global Settings Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <h3 class="mb-0">
+                            <i class="fa fa-cogs me-2 text-primary"></i>Global Settings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- IP Filtering Toggle -->
+                        <ToggleCard Title="IP Filtering"
+                                    EnabledDescription="IP filtering is active. Only allowed IP addresses can access the API."
+                                    DisabledDescription="IP filtering is disabled. All IP addresses can access the API."
+                                    IsEnabled="_settings.IsEnabled"
+                                    IsEnabledChanged="OnIpFilteringToggleChanged"
+                                    EnabledButtonText="Disable"
+                                    DisabledButtonText="Enable"
+                                    EnabledBackgroundColor="#d4edda"
+                                    DisabledBackgroundColor="#fff3cd" />
+
+                        <div class="mt-4">
+                            <div class="row mb-3">
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <div class="form-check form-switch ps-0">
+                                            <label class="form-check-label mb-2" for="defaultAllowSwitch">
+                                                <strong>Default Allow</strong>
+                                            </label>
+                                            <div class="d-flex align-items-center">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" id="defaultAllowSwitch"
+                                                     @bind="_settings.DefaultAllow">
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            When enabled, IP addresses that don't match any rule are allowed.
+                                            When disabled, IP addresses that don't match any rule are blocked.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <div class="form-check form-switch ps-0">
+                                            <label class="form-check-label mb-2" for="bypassAdminUiSwitch">
+                                                <strong>Bypass for Admin UI</strong>
+                                            </label>
+                                            <div class="d-flex align-items-center">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" id="bypassAdminUiSwitch"
+                                                     @bind="_settings.BypassForAdminUi">
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            When enabled, IP filtering rules are not applied to the admin UI.
+                                            This allows administrators to access the UI even if their IP is blocked from API access.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="excludedEndpoints"><strong>Excluded Endpoints</strong></label>
+                                <textarea class="form-control" id="excludedEndpoints" rows="3"
+                                          @bind="_excludedEndpointsText"></textarea>
+                                <small class="form-text text-muted">
+                                    List of endpoints excluded from IP filtering, one per line (e.g., /v1/health).
+                                </small>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button class="btn btn-primary shadow-sm" @onclick="SaveSettingsAsync">
+                                    <i class="fa fa-save me-1"></i> Save Settings
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <!-- IP Rules Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">
+                                <i class="fa fa-list me-2 text-success"></i>IP Filter Rules
+                            </h3>
+                            <div>
+                                <button class="btn btn-outline-secondary me-2 shadow-sm" @onclick="RefreshFiltersAsync">
+                                    <i class="fa fa-refresh me-1"></i> Refresh
+                                </button>
+                                <button class="btn btn-primary shadow-sm" @onclick="() => ShowFilterModal(null)">
+                                    <i class="fa fa-plus me-1"></i> Add New Filter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (!_filters.Any())
+                        {
+                            <div class="text-center py-5">
+                                <i class="fa fa-shield fa-4x text-muted mb-4"></i>
+                                <h4 class="text-muted mb-3">No IP Filter Rules</h4>
+                                <p class="text-muted mb-4">Create your first IP filter rule to control access</p>
+                                <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
+                                    <i class="fa fa-plus me-1"></i> Add Your First Filter Rule
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>IP Address/CIDR</th>
+                                            <th>Description</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var filter in _filters)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @if (filter.FilterType == IpFilterConstants.WHITELIST)
+                                                    {
+                                                        <span class="badge bg-success">Whitelist</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">Blacklist</span>
+                                                    }
+                                                </td>
+                                                <td><code>@filter.IpAddressOrCidr</code></td>
+                                                <td>@(string.IsNullOrEmpty(filter.Description) ? "-" : filter.Description)</td>
+                                                <td>
+                                                    @if (filter.IsEnabled)
+                                                    {
+                                                        <span class="badge bg-success">Active</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Disabled</span>
+                                                    }
+                                                </td>
+                                                <td>@filter.CreatedAt.ToLocalTime().ToString("g")</td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                @onclick="() => ShowFilterModal(filter)">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                @onclick="() => ShowDeleteConfirmation(filter)">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <!-- Information Card -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <h3 class="mb-0">
+                            <i class="fa fa-info-circle me-2 text-info"></i>About IP Filtering
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <h5>How IP Filtering Works</h5>
+                        <p>
+                            IP filtering allows you to control which IP addresses can access your Conduit API endpoints.
+                            You can create both whitelist and blacklist rules to manage access.
+                        </p>
+                        
+                        <h5>Rule Resolution Logic</h5>
+                        <ol>
+                            <li>If a client IP matches any <strong>whitelist</strong> rule, access is <strong>allowed</strong></li>
+                            <li>If a client IP matches any <strong>blacklist</strong> rule, access is <strong>denied</strong></li>
+                            <li>If you have any whitelist rules and the IP doesn't match any, access is <strong>denied</strong></li>
+                            <li>If you have no whitelist rules and the IP doesn't match any blacklist rule, the Default Allow setting is used</li>
+                        </ol>
+                        
+                        <h5>Supported Formats</h5>
+                        <ul>
+                            <li>Individual IPv4 addresses (e.g., <code>192.168.1.1</code>)</li>
+                            <li>IPv4 CIDR subnet notations (e.g., <code>192.168.1.0/24</code>)</li>
+                            <li>Individual IPv6 addresses (e.g., <code>2001:db8::1</code>)</li>
+                            <li>IPv6 CIDR subnet notations (e.g., <code>2001:db8::/32</code>)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    <!-- Add/Edit IP Filter Modal -->
+    <div class="modal fade @(_showFilterModal ? "show d-block" : "d-none")" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingFilter is UpdateIpFilterDto ? "Edit" : "Add") IP Filter</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_editingFilter != null)
+                    {
+                        <div class="mb-3">
+                            <label for="filterType" class="form-label">Filter Type</label>
+                            @if (_editingFilter is CreateIpFilterDto createDto)
+                            {
+                                <select class="form-select" id="filterType" @bind="createDto.FilterType">
+                                    <option value="@IpFilterConstants.WHITELIST">Whitelist (Allow)</option>
+                                    <option value="@IpFilterConstants.BLACKLIST">Blacklist (Block)</option>
+                                </select>
+                            }
+                            else if (_editingFilter is UpdateIpFilterDto updateDto)
+                            {
+                                <select class="form-select" id="filterType" @bind="updateDto.FilterType">
+                                    <option value="@IpFilterConstants.WHITELIST">Whitelist (Allow)</option>
+                                    <option value="@IpFilterConstants.BLACKLIST">Blacklist (Block)</option>
+                                </select>
+                            }
+                            <small class="form-text text-muted">
+                                Whitelist allows access only to specified IPs.
+                                Blacklist blocks access to specified IPs.
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ipAddressOrCidr" class="form-label">IP Address or CIDR Subnet</label>
+                            @if (_editingFilter is CreateIpFilterDto createDto1)
+                            {
+                                <input type="text" class="form-control" id="ipAddressOrCidr"
+                                       @bind="createDto1.IpAddressOrCidr"
+                                       placeholder="e.g., 192.168.1.1 or 192.168.1.0/24" />
+                            }
+                            else if (_editingFilter is UpdateIpFilterDto updateDto1)
+                            {
+                                <input type="text" class="form-control" id="ipAddressOrCidr"
+                                       @bind="updateDto1.IpAddressOrCidr"
+                                       placeholder="e.g., 192.168.1.1 or 192.168.1.0/24" />
+                            }
+                            <small class="form-text text-muted">
+                                Enter a single IP address or a CIDR subnet notation.
+                            </small>
+                            @if (!string.IsNullOrEmpty(_validationError))
+                            {
+                                <div class="text-danger mt-1">@_validationError</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description (Optional)</label>
+                            @if (_editingFilter is CreateIpFilterDto createDto2)
+                            {
+                                <input type="text" class="form-control" id="description"
+                                       @bind="createDto2.Description"
+                                       placeholder="e.g., Office network" />
+                            }
+                            else if (_editingFilter is UpdateIpFilterDto updateDto2)
+                            {
+                                <input type="text" class="form-control" id="description"
+                                       @bind="updateDto2.Description"
+                                       placeholder="e.g., Office network" />
+                            }
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <label class="form-check-label" for="isEnabled">Enabled</label>
+                            @if (_editingFilter is CreateIpFilterDto createDto3)
+                            {
+                                <input type="checkbox" class="form-check-input" id="isEnabled"
+                                       @bind="createDto3.IsEnabled" />
+                            }
+                            else if (_editingFilter is UpdateIpFilterDto updateDto3)
+                            {
+                                <input type="checkbox" class="form-check-input" id="isEnabled"
+                                       @bind="updateDto3.IsEnabled" />
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveFilterAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade @(_showDeleteModal ? "show d-block" : "d-none")" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_filterToDelete != null)
+                    {
+                        <p>
+                            Are you sure you want to delete the following IP filter rule?
+                        </p>
+                        <div class="alert alert-warning">
+                            <strong>Type:</strong> @(_filterToDelete.FilterType == IpFilterConstants.WHITELIST ? "Whitelist" : "Blacklist")<br />
+                            <strong>IP/CIDR:</strong> @_filterToDelete.IpAddressOrCidr<br />
+                            @if (!string.IsNullOrEmpty(_filterToDelete.Description))
+                            {
+                                <strong>Description:</strong> @_filterToDelete.Description<br />
+                            }
+                        </div>
+                        <p class="text-danger">
+                            This action cannot be undone.
+                        </p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteFilterAsync">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Backdrop -->
+    @if (_showFilterModal || _showDeleteModal)
+    {
+        <div class="modal-backdrop fade show"></div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _showFilterModal = false;
+    private bool _showDeleteModal = false;
+    private string? _validationError;
+    private string _excludedEndpointsText = string.Empty;
+
+    private ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto _settings = new();
+    private List<IpFilterDto> _filters = new();
+    private IpFilterDto? _filterToDelete;
+    private object? _editingFilter; // Will store either CreateIpFilterDto or UpdateIpFilterDto
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+    
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _loading = true;
+            StateHasChanged();
+            
+            // Load settings
+            _settings = await AdminApiClient.GetIpFilterSettingsAsync();
+            
+            // Convert excluded endpoints list to text
+            _excludedEndpointsText = string.Join(Environment.NewLine, _settings.ExcludedEndpoints);
+            
+            // Load filters
+            await RefreshFiltersAsync();
+            
+            _loading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading IP filtering data");
+            NotificationService.AddNotification(NotificationType.Error, "Error loading IP filtering data", ex.Message);
+            
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task RefreshFiltersAsync()
+    {
+        try
+        {
+            var filters = await AdminApiClient.GetAllIpFiltersAsync();
+            _filters = filters.OrderBy(f => f.FilterType == IpFilterConstants.WHITELIST ? 0 : 1)
+                             .ThenBy(f => f.IpAddressOrCidr)
+                             .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing IP filters");
+            NotificationService.AddNotification(NotificationType.Error, "Error refreshing IP filters", ex.Message);
+        }
+    }
+    
+    private async Task OnIpFilteringToggleChanged(bool newValue)
+    {
+        try
+        {
+            // Update the IP filtering enabled status
+            _settings.IsEnabled = newValue;
+            
+            // Save the settings immediately
+            var success = await AdminApiClient.UpdateIpFilterSettingsAsync(_settings);
+            
+            if (success)
+            {
+                Logger.LogInformation("IP filtering enabled state changed to: {IsEnabled}", newValue);
+                NotificationService.AddNotification(NotificationType.Success, 
+                    $"IP filtering {(newValue ? "enabled" : "disabled")} successfully");
+            }
+            else
+            {
+                Logger.LogWarning("Failed to update IP filtering enabled state");
+                // Revert the setting if save failed
+                _settings.IsEnabled = !newValue;
+                NotificationService.AddNotification(NotificationType.Error, 
+                    "Failed to update IP filtering status");
+            }
+            
+            // Update UI to reflect the current state
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Log error and revert the UI state
+            Logger.LogError(ex, "Failed to toggle IP filtering state");
+            
+            // Revert the setting if an exception occurred
+            _settings.IsEnabled = !newValue;
+            NotificationService.AddNotification(NotificationType.Error, 
+                "Error updating IP filtering status", ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        try
+        {
+            // Parse excluded endpoints from text
+            _settings.ExcludedEndpoints = _excludedEndpointsText
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(e => e.Trim())
+                .Where(e => !string.IsNullOrEmpty(e))
+                .ToList();
+            
+            var success = await AdminApiClient.UpdateIpFilterSettingsAsync(_settings);
+            var errorMessage = success ? null : "Failed to update IP filter settings";
+            
+            if (success)
+            {
+                NotificationService.AddNotification(NotificationType.Success, 
+                    "IP filtering settings saved successfully");
+            }
+            else
+            {
+                NotificationService.AddNotification(NotificationType.Error, 
+                    "Error saving IP filtering settings", errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving IP filtering settings");
+            NotificationService.AddNotification(NotificationType.Error, 
+                "Error saving IP filtering settings", ex.Message);
+        }
+    }
+    
+    private void ShowFilterModal(IpFilterDto? filter)
+    {
+        _validationError = null;
+
+        if (filter == null)
+        {
+            // Creating a new filter
+            _editingFilter = new CreateIpFilterDto
+            {
+                FilterType = IpFilterConstants.BLACKLIST,
+                IpAddressOrCidr = string.Empty,
+                Description = string.Empty,
+                IsEnabled = true
+            };
+        }
+        else
+        {
+            // Editing an existing filter (use UpdateIpFilterDto)
+            _editingFilter = new UpdateIpFilterDto
+            {
+                Id = filter.Id,
+                FilterType = filter.FilterType,
+                IpAddressOrCidr = filter.IpAddressOrCidr,
+                Description = filter.Description,
+                IsEnabled = filter.IsEnabled
+            };
+        }
+
+        // Show the modal
+        _showFilterModal = true;
+        StateHasChanged();
+    }
+    
+    private void ShowDeleteConfirmation(IpFilterDto filter)
+    {
+        _filterToDelete = filter;
+        _showDeleteModal = true;
+        StateHasChanged();
+    }
+    
+    private void CloseModals()
+    {
+        _showFilterModal = false;
+        _showDeleteModal = false;
+        _editingFilter = null;
+        _filterToDelete = null;
+        _validationError = null;
+        StateHasChanged();
+    }
+    
+    private async Task SaveFilterAsync()
+    {
+        if (_editingFilter == null)
+        {
+            CloseModals();
+            return;
+        }
+        
+        // Extract the IP address or CIDR for validation
+        string ipAddressOrCidr = "";
+
+        if (_editingFilter is CreateIpFilterDto createFilterDto)
+        {
+            ipAddressOrCidr = createFilterDto.IpAddressOrCidr;
+        }
+        else if (_editingFilter is UpdateIpFilterDto updateFilterDto)
+        {
+            ipAddressOrCidr = updateFilterDto.IpAddressOrCidr;
+        }
+
+        // Validate IP or CIDR format
+        if (string.IsNullOrWhiteSpace(ipAddressOrCidr))
+        {
+            _validationError = "IP address or CIDR subnet cannot be empty.";
+            StateHasChanged();
+            return;
+        }
+
+        if (!ipAddressOrCidr.Contains('/'))
+        {
+            // Single IP address validation
+            if (!IpAddressValidator.IsValidIpAddress(ipAddressOrCidr))
+            {
+                _validationError = "Invalid IP address format.";
+                StateHasChanged();
+                return;
+            }
+        }
+        else
+        {
+            // CIDR notation validation
+            if (!IpAddressValidator.IsValidCidr(ipAddressOrCidr))
+            {
+                _validationError = "Invalid CIDR subnet notation.";
+                StateHasChanged();
+                return;
+            }
+        }
+        
+        try
+        {
+            bool success;
+            string? errorMessage = null;
+            
+            // Determine if this is a new filter or an update
+            if (_editingFilter is UpdateIpFilterDto updateFilterDto)
+            {
+                // Update existing filter
+                var updateResult = await AdminApiClient.UpdateIpFilterAsync(updateFilterDto.Id, updateFilterDto);
+                success = updateResult != null;
+                errorMessage = success ? null : "Failed to update IP filter";
+            }
+            else if (_editingFilter is CreateIpFilterDto createFilterDto2)
+            {
+                // Create new filter
+                var result = await AdminApiClient.CreateIpFilterAsync(createFilterDto2);
+                success = result != null;
+                errorMessage = success ? null : "Failed to create IP filter";
+            }
+            else
+            {
+                success = false;
+                errorMessage = "Invalid filter type";
+            }
+            
+            if (success)
+            {
+                NotificationService.AddNotification(NotificationType.Success, 
+                    "IP filter saved successfully");
+                    
+                // Close modal and refresh filters
+                CloseModals();
+                await RefreshFiltersAsync();
+            }
+            else
+            {
+                _validationError = errorMessage ?? "An error occurred while saving the IP filter.";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving IP filter");
+            _validationError = $"An error occurred: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+    
+    private async Task DeleteFilterAsync()
+    {
+        if (_filterToDelete == null || _filterToDelete.Id <= 0)
+        {
+            CloseModals();
+            return;
+        }
+        
+        try
+        {
+            var success = await AdminApiClient.DeleteIpFilterAsync(_filterToDelete.Id);
+            var errorMessage = success ? null : "Failed to delete IP filter";
+            
+            if (success)
+            {
+                NotificationService.AddNotification(NotificationType.Success, 
+                    "IP filter deleted successfully");
+                    
+                // Close modal and refresh filters
+                CloseModals();
+                await RefreshFiltersAsync();
+            }
+            else
+            {
+                NotificationService.AddNotification(NotificationType.Error, 
+                    "Error deleting IP filter", errorMessage);
+                CloseModals();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting IP filter with ID {Id}", _filterToDelete.Id);
+            NotificationService.AddNotification(NotificationType.Error,
+                "Error deleting IP filter", ex.Message);
+            CloseModals();
+        }
+    }
+}
+
+<style>
+    .ip-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .ip-stats .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .card {
+        transition: all 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+        font-weight: 600;
+    }
+    
+    .modal-dialog {
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+</style>

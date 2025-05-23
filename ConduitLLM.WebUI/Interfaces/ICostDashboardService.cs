@@ -1,5 +1,3 @@
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -19,7 +17,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
         /// <returns>Cost dashboard data</returns>
-        Task<CostDashboardDto> GetDashboardDataAsync(
+        Task<ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto> GetDashboardDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,
@@ -29,7 +27,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Gets a list of available virtual keys
         /// </summary>
         /// <returns>List of virtual keys</returns>
-        Task<List<VirtualKey>> GetVirtualKeysAsync();
+        Task<List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync();
         
         /// <summary>
         /// Gets a list of available models
@@ -45,7 +43,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKeyId">Optional virtual key ID to filter by</param>
         /// <param name="modelName">Optional model name to filter by</param>
         /// <returns>Detailed cost data</returns>
-        Task<List<DetailedCostDataDto>> GetDetailedCostDataAsync(
+        Task<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>> GetDetailedCostDataAsync(
             DateTime? startDate,
             DateTime? endDate,
             int? virtualKeyId = null,

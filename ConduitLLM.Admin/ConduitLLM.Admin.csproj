@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.13" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
+    <!-- WebUI reference removed, now using API client -->
+  </ItemGroup>
+
+  <!--
+  DEPENDENCY ISSUE RESOLVED:
+  The circular dependency between ConduitLLM.Admin and ConduitLLM.WebUI has been resolved.
+  The resolution followed these steps:
+  1. Shared DTOs moved to ConduitLLM.Configuration
+  2. Services implemented in Admin without depending on WebUI implementations
+  3. ConduitLLM.WebUI updated to use the Admin API client
+
+  The WebUI reference has been removed and the Admin project now stands independent,
+  while WebUI consumes Admin APIs through the IAdminApiClient implementation.
+  -->
+
+</Project>

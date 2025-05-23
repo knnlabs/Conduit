@@ -1,32 +1,67 @@
 @page "/cost-dashboard"
 @using System.Globalization
 @using System.Text
-@using ConduitLLM.WebUI.DTOs
+@using ConfigDTO = ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.Configuration.Entities
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Extensions
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@inject ICostDashboardService CostDashboardService
+@inject IAdminApiClient AdminApiClient
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
-<div class="container container-xxl">
-    <h3 class="text-h3 mb-4">Cost Dashboard</h3>
+<PageTitle>Cost Dashboard - ConduitLLM</PageTitle>
 
-    <div class="card mb-6">
-        <div class="card-header">
-            <h5 class="text-h5 m-0">Filters</h5>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="cd-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-chart-pie me-3"></i>Cost Dashboard
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Analyze spending patterns, track costs by model and virtual key, and monitor usage trends
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="cd-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-dollar-sign me-2"></i>
+                                <span class="small">@(dashboardData?.TotalCost.ToString("C2") ?? "$0.00") Total</span>
+                            </div>
+                            <div class="stat-item mt-2">
+                                <i class="fa fa-activity me-2"></i>
+                                <span class="small">@(dashboardData?.TotalRequests().ToString("N0") ?? "0") Requests</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="form-group mb-3">
-                        <label for="dateRange">Date Range</label>
-                        <select id="dateRange" class="form-select" @bind="selectedDateRange">
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card cd-filter-card border-0 shadow-lg rounded-4 mb-4">
+        <div class="card-header cd-card-header border-0">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-filter me-2 text-primary"></i>Filters & Controls
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="cd-form-group">
+                        <label for="dateRange" class="cd-form-label">
+                            <i class="fa fa-calendar me-1"></i>Date Range
+                        </label>
+                        <select id="dateRange" class="form-select cd-form-select" @bind="selectedDateRange">
                             <option value="7d">Last 7 Days</option>
                             <option value="30d">Last 30 Days</option>
                             <option value="90d">Last 90 Days</option>
@@ -37,42 +72,50 @@
                 
                 @if (selectedDateRange == @"custom")
                 {
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <div class="form-group mb-3">
-                            <label for="startDate">Start Date</label>
-                            <input type="date" id="startDate" class="form-control" 
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="cd-form-group">
+                            <label for="startDate" class="cd-form-label">
+                                <i class="fa fa-calendar-alt me-1"></i>Start Date
+                            </label>
+                            <input type="date" id="startDate" class="form-control cd-form-control" 
                                 @bind="startDate" @bind:format="yyyy-MM-dd" placeholder="Select start date" />
                         </div>
                     </div>
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <div class="form-group mb-3">
-                            <label for="endDate">End Date</label>
-                            <input type="date" id="endDate" class="form-control" 
+                    <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="cd-form-group">
+                            <label for="endDate" class="cd-form-label">
+                                <i class="fa fa-calendar-alt me-1"></i>End Date
+                            </label>
+                            <input type="date" id="endDate" class="form-control cd-form-control" 
                                 @bind="endDate" @bind:format="yyyy-MM-dd" placeholder="Select end date" />
                         </div>
                     </div>
                 }
                 
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="form-group mb-3">
-                        <label for="virtualKey">Virtual Key</label>
-                        <select id="virtualKey" class="form-select" @bind="selectedVirtualKeyId">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="cd-form-group">
+                        <label for="virtualKey" class="cd-form-label">
+                            <i class="fa fa-key me-1"></i>Virtual Key
+                        </label>
+                        <select id="virtualKey" class="form-select cd-form-select" @bind="selectedVirtualKeyId">
                             <option value="all">All Keys</option>
                             @if (virtualKeys != null)
                             {
                                 @foreach (var key in virtualKeys)
                                 {
-                                    <option value="@key.Id.ToString()">@key.KeyName</option>
+                                    <option value="@key.Id.ToString()">@key.Name</option>
                                 }
                             }
                         </select>
                     </div>
                 </div>
                 
-                <div class="col-12 col-sm-6 col-md-3">
-                    <div class="form-group mb-3">
-                        <label for="model">Model</label>
-                        <select id="model" class="form-select" @bind="selectedModel">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="cd-form-group">
+                        <label for="model" class="cd-form-label">
+                            <i class="fa fa-robot me-1"></i>Model
+                        </label>
+                        <select id="model" class="form-select cd-form-select" @bind="selectedModel">
                             <option value="all">All Models</option>
                             @if (models != null)
                             {
@@ -86,12 +129,12 @@
                 </div>
             </div>
             
-            <div class="d-flex justify-content-end">
-                <button class="btn btn-outlined btn-secondary me-2" @onclick="ClearFilters">
-                    Clear Filters
+            <div class="d-flex justify-content-end mt-4">
+                <button class="btn cd-btn-outline-secondary me-3" @onclick="ClearFilters">
+                    <i class="fa fa-times me-2"></i>Clear Filters
                 </button>
-                <button class="btn btn-primary" @onclick="ApplyFilters">
-                    Apply Filters
+                <button class="btn cd-btn-primary" @onclick="ApplyFilters">
+                    <i class="fa fa-search me-2"></i>Apply Filters
                 </button>
             </div>
         </div>
@@ -99,66 +142,75 @@
 
     @if (isLoading)
     {
-        <div class="d-flex flex-column align-items-center my-6">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <div class="text-center py-5">
+            <div class="cd-loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
             </div>
-            <p class="text-center mt-2">Loading cost data...</p>
+            <p class="mt-3 text-muted fw-medium">Loading cost data...</p>
         </div>
     }
     else if (dashboardData == null)
     {
-        <div class="alert alert-info my-4">
-            <p>No cost data found for the selected filters.</p>
+        <div class="cd-empty-state text-center py-5">
+            <div class="cd-empty-icon mb-4">
+                <i class="fa fa-chart-pie fa-4x text-primary opacity-50"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-3">No Cost Data Available</h4>
+            <p class="text-muted mb-4 lead">
+                No cost data found for the selected filters. Try adjusting your date range or filters.
+            </p>
+            <button class="btn cd-btn-primary" @onclick="ClearFilters">
+                <i class="fa fa-refresh me-2"></i>Reset Filters
+            </button>
         </div>
     }
     else
     {
-        <div class="row">
-            <div class="col-12 col-md-4">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="text-h6 m-0">Total Cost</h6>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="text-h3 text-primary">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-12 col-lg-4 mb-4">
+                <div class="card cd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="cd-stat-icon mb-3">
+                            <i class="fa fa-dollar-sign text-success fa-2x"></i>
+                        </div>
+                        <h3 class="cd-stat-number text-dark mb-2">
                             $@dashboardData.TotalCost.ToString("F2")
                         </h3>
-                        <p class="text-body2 text-secondary mt-2">
-                            For the selected period
-                        </p>
+                        <p class="cd-stat-label text-muted mb-0">Total Cost</p>
+                        <small class="text-muted">For the selected period</small>
                     </div>
                 </div>
             </div>
             
-            <div class="col-12 col-md-4">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="text-h6 m-0">Total Requests</h6>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="text-h3 text-secondary">
-                            @dashboardData.TotalRequests.ToString("N0")
+            <div class="col-12 col-lg-4 mb-4">
+                <div class="card cd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="cd-stat-icon mb-3">
+                            <i class="fa fa-activity text-info fa-2x"></i>
+                        </div>
+                        <h3 class="cd-stat-number text-dark mb-2">
+                            @dashboardData.TotalRequests().ToString("N0")
                         </h3>
-                        <p class="text-body2 text-secondary mt-2">
-                            Successful API calls
-                        </p>
+                        <p class="cd-stat-label text-muted mb-0">Total Requests</p>
+                        <small class="text-muted">Successful API calls</small>
                     </div>
                 </div>
             </div>
             
-            <div class="col-12 col-md-4">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="text-h6 m-0">Avg. Cost/Request</h6>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="text-h3 text-warning">
-                            $@((dashboardData.TotalRequests > 0 ? dashboardData.TotalCost / dashboardData.TotalRequests : 0).ToString("F4"))
+            <div class="col-12 col-lg-4 mb-4">
+                <div class="card cd-stat-card border-0 shadow-lg rounded-4 h-100">
+                    <div class="card-body p-4 text-center">
+                        <div class="cd-stat-icon mb-3">
+                            <i class="fa fa-calculator text-warning fa-2x"></i>
+                        </div>
+                        <h3 class="cd-stat-number text-dark mb-2">
+                            $@((dashboardData.TotalRequests() > 0 ? dashboardData.TotalCost / dashboardData.TotalRequests() : 0).ToString("F4"))
                         </h3>
-                        <p class="text-body2 text-secondary mt-2">
-                            Average cost per API call
-                        </p>
+                        <p class="cd-stat-label text-muted mb-0">Avg. Cost/Request</p>
+                        <small class="text-muted">Average cost per API call</small>
                     </div>
                 </div>
             </div>
@@ -175,7 +227,7 @@
                         </button>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostTrends == null || !dashboardData.CostTrends.Any())
+                        @if (dashboardData.CostTrends() == null || !dashboardData.CostTrends().Any())
                         {
                             <div class="alert alert-info">
                                 No trend data available for the selected period.
@@ -199,7 +251,7 @@
                         <h6 class="text-h6 m-0">Cost by Model</h6>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostByModel == null || !dashboardData.CostByModel.Any())
+                        @if (dashboardData.CostByModel() == null || !dashboardData.CostByModel().Any())
                         {
                             <div class="alert alert-info">
                                 No model data available for the selected period.
@@ -218,13 +270,13 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in dashboardData.CostByModel.OrderByDescending(m => m.Cost))
+                                        @foreach (var item in dashboardData.CostByModel().OrderByDescending(kvp => kvp.Value))
                                         {
                                             <tr>
-                                                <td>@item.Model</td>
-                                                <td>@item.Requests.ToString("N0")</td>
-                                                <td>$@item.Cost.ToString("F2")</td>
-                                                <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
+                                                <td>@item.Key</td>
+                                                <td>0</td>
+                                                <td>$@item.Value.ToString("F2")</td>
+                                                <td>@((dashboardData.TotalCost > 0 ? item.Value / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                             </tr>
                                         }
                                     </tbody>
@@ -241,7 +293,7 @@
                         <h6 class="text-h6 m-0">Model Usage</h6>
                     </div>
                     <div class="card-body">
-                        @if (dashboardData.CostByModel == null || !dashboardData.CostByModel.Any())
+                        @if (dashboardData.CostByModel() == null || !dashboardData.CostByModel().Any())
                         {
                             <div class="alert alert-info">
                                 No model data available for the selected period.
@@ -258,7 +310,7 @@
             </div>
         </div>
 
-        @if (dashboardData.CostByVirtualKey != null && dashboardData.CostByVirtualKey.Any())
+        @if (dashboardData.CostByVirtualKey() != null && dashboardData.CostByVirtualKey().Any())
         {
             <div class="card mb-6">
                 <div class="card-header">
@@ -276,13 +328,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in dashboardData.CostByVirtualKey.OrderByDescending(k => k.Cost))
+                                @foreach (var item in dashboardData.CostByVirtualKey().OrderByDescending(k => k.Value.Cost))
                                 {
                                     <tr>
-                                        <td>@item.KeyName</td>
-                                        <td>@item.Requests.ToString("N0")</td>
-                                        <td>$@item.Cost.ToString("F2")</td>
-                                        <td>@((dashboardData.TotalCost > 0 ? item.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
+                                        <td>@item.Value.Name</td>
+                                        <td>0</td>
+                                        <td>$@item.Value.Cost.ToString("F2")</td>
+                                        <td>@((dashboardData.TotalCost > 0 ? item.Value.Cost / dashboardData.TotalCost * 100 : 0).ToString("F1"))%</td>
                                     </tr>
                                 }
                             </tbody>
@@ -294,6 +346,206 @@
     }
 </div>
 
+<!-- Custom CSS Styling -->
+<style>
+    .cd-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    }
+
+    .cd-stats .stat-item {
+        display: inline-block;
+        margin-right: 1rem;
+        padding: 0.25rem 0;
+    }
+
+    .cd-filter-card,
+    .cd-stat-card,
+    .cd-chart-card,
+    .cd-table-card {
+        transition: all 0.3s ease;
+    }
+
+    .cd-filter-card:hover,
+    .cd-stat-card:hover,
+    .cd-chart-card:hover,
+    .cd-table-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .cd-card-header {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        padding: 1.5rem;
+    }
+
+    .cd-stat-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    }
+
+    .cd-stat-icon {
+        transition: all 0.3s ease;
+    }
+
+    .cd-stat-card:hover .cd-stat-icon {
+        transform: scale(1.1);
+    }
+
+    .cd-stat-number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .cd-stat-label {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.875rem;
+    }
+
+    .cd-form-group {
+        margin-bottom: 1rem;
+    }
+
+    .cd-form-label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .cd-form-select,
+    .cd-form-control {
+        border-radius: 0.75rem;
+        border: 2px solid #e8f4fd;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+    }
+
+    .cd-form-select:focus,
+    .cd-form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .cd-btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .cd-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+
+    .cd-btn-outline-secondary {
+        border: 2px solid #6b7280;
+        color: #6b7280;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .cd-btn-outline-secondary:hover {
+        background: #6b7280;
+        border-color: #6b7280;
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .cd-empty-state {
+        padding: 3rem 2rem;
+    }
+
+    .cd-empty-icon i {
+        animation: gentle-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.8; }
+    }
+
+    .cd-loading-spinner {
+        display: inline-block;
+        animation: gentle-bounce 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes gentle-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    .cd-chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        border-radius: 1rem;
+    }
+
+    .cd-table th {
+        color: #4a5568;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        padding: 1rem 0.75rem;
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        border: none;
+    }
+
+    .cd-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .cd-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .cd-table tbody tr:hover {
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+        transform: translateX(2px);
+    }
+
+    @@media (max-width: 768px) {
+        .cd-header {
+            text-align: center;
+        }
+
+        .cd-stats {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .cd-stat-number {
+            font-size: 1.5rem;
+        }
+
+        .cd-form-select,
+        .cd-form-control {
+            font-size: 1rem;
+        }
+    }
+</style>
+
 @code {
     // Filter state
     private string selectedDateRange = "30d";
@@ -304,8 +556,8 @@
     private string selectedModel = "all";
     
     // Data state
-    private CostDashboardDto? dashboardData;
-    private List<VirtualKey>? virtualKeys;
+    private ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto? dashboardData;
+    private List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>? virtualKeys;
     private List<string>? models;
     private bool isLoading = false;
     
@@ -332,13 +584,13 @@
         // Only render charts if we have data and after the DOM elements are ready
         if (dashboardData != null && !isLoading)
         {
-            if (dashboardData.CostTrends != null && dashboardData.CostTrends.Any())
+            if (dashboardData.CostTrends() != null && dashboardData.CostTrends().Any())
             {
                 await JSRuntime.InvokeVoidAsync("renderLineChart", "costTrendChart", 
                     costTrendLabels, costTrendData);
             }
             
-            if (dashboardData.CostByModel != null && dashboardData.CostByModel.Any())
+            if (dashboardData.CostByModel() != null && dashboardData.CostByModel().Any())
             {
                 await JSRuntime.InvokeVoidAsync("renderPieChart", "modelUsageChart", 
                     modelUsageLabels, modelUsageData);
@@ -351,10 +603,12 @@
         try
         {
             // Load virtual keys
-            virtualKeys = await CostDashboardService.GetVirtualKeysAsync();
+            var vkList = await AdminApiClient.GetAllVirtualKeysAsync();
+            virtualKeys = vkList.ToList();
             
-            // Load model list
-            models = await CostDashboardService.GetAvailableModelsAsync();
+            // Load model list - get distinct models from Admin API
+            var distinctModels = await AdminApiClient.GetDistinctModelsAsync();
+            models = distinctModels.ToList();
         }
         catch (Exception ex)
         {
@@ -371,7 +625,7 @@
         try
         {
             // Load dashboard data
-            dashboardData = await CostDashboardService.GetDashboardDataAsync(
+            dashboardData = await AdminApiClient.GetCostDashboardAsync(
                 startDate, 
                 endDate, 
                 selectedVirtualKeyId == "all" ? null : !string.IsNullOrEmpty(selectedVirtualKeyId) ? int.Parse(selectedVirtualKeyId) : null,
@@ -400,18 +654,21 @@
         if (dashboardData == null) return;
         
         // Prepare model usage pie chart data
-        if (dashboardData.CostByModel != null && dashboardData.CostByModel.Any())
+        if (dashboardData.CostByModel() != null && dashboardData.CostByModel().Any())
         {
-            var orderedModels = dashboardData.CostByModel.OrderByDescending(m => m.Cost).ToList();
+            var orderedModels = dashboardData.CostByModel()
+                .Select(kvp => new { ModelName = kvp.Key, Cost = kvp.Value })
+                .OrderByDescending(m => m.Cost)
+                .ToList();
             modelUsageData = orderedModels.Select(m => (double)m.Cost).ToArray();
-            modelUsageLabels = orderedModels.Select(m => m.Model).ToArray();
+            modelUsageLabels = orderedModels.Select(m => m.ModelName).ToArray();
         }
         
         // Prepare cost trend line chart data
-        if (dashboardData.CostTrends != null && dashboardData.CostTrends.Any())
+        if (dashboardData.CostTrends() != null && dashboardData.CostTrends().Any())
         {
-            costTrendLabels = dashboardData.CostTrends.Select(c => c.Date.ToString("MM/dd")).ToArray();
-            costTrendData = dashboardData.CostTrends.Select(c => (double)c.Cost).ToArray();
+            costTrendLabels = dashboardData.CostTrends().Select(c => c.Date.ToString("MM/dd")).ToArray();
+            costTrendData = dashboardData.CostTrends().Select(c => (double)c.Cost).ToArray();
         }
     }
 
@@ -493,7 +750,7 @@
             sb.AppendLine("Date,Model,VirtualKey,Requests,Cost");
             
             // Get detailed cost data for the current filter
-            var detailedData = await CostDashboardService.GetDetailedCostDataAsync(
+            var detailedData = await AdminApiClient.GetDetailedCostDataAsync(
                 startDate, 
                 endDate, 
                 selectedVirtualKeyId == "all" ? null : !string.IsNullOrEmpty(selectedVirtualKeyId) ? int.Parse(selectedVirtualKeyId) : null,
@@ -501,9 +758,12 @@
             );
             
             // Add data rows
-            foreach (var item in detailedData)
+            if (detailedData != null)
             {
-                sb.AppendLine($"{item.Date:yyyy-MM-dd},{item.Model},{item.KeyName},{item.Requests},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                foreach (var item in detailedData)
+                {
+                    sb.AppendLine($"{DateTime.Now:yyyy-MM-dd},{item.Name},{"-"},{1},{item.Cost.ToString(CultureInfo.InvariantCulture)}");
+                }
             }
             
             // Create file name with current date

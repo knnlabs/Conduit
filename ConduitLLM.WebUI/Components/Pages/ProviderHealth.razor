@@ -2,18 +2,19 @@
 @using System.Text.Json
 @using System.Text
 @using ConduitLLM.Configuration.Entities
-@using ConduitLLM.Configuration.Repositories
+@using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Models
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject IProviderHealthRepository ProviderHealthRepository
-@inject ProviderStatusService ProviderStatusService
+@inject ConduitLLM.WebUI.Interfaces.IProviderHealthService ProviderHealthService
+@inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
 @inject IJSRuntime JSRuntime
 @inject ILogger<ProviderHealth> Logger
 @inject NotificationService NotificationService
+@rendermode InteractiveServer
 
 <PageTitle>Provider Health Dashboard</PageTitle>
 
@@ -63,11 +64,11 @@
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <h5 class="mb-0">@status.Key</h5>
-                                    @if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Online)
+                                    @if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Online)
                                     {
                                         <span class="badge bg-success">Online</span>
                                     }
-                                    else if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline)
+                                    else if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline)
                                     {
                                         <span class="badge bg-danger">Offline</span>
                                     }
@@ -86,7 +87,7 @@
                                     <div class="mb-2">
                                         <strong>Last Checked:</strong> @status.Value.LastCheckedUtc.ToLocalTime()
                                     </div>
-                                    @if (status.Value.Status == ConduitLLM.WebUI.Services.ProviderStatus.StatusType.Offline && !string.IsNullOrEmpty(status.Value.ErrorCategory))
+                                    @if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline && !string.IsNullOrEmpty(status.Value.ErrorCategory))
                                     {
                                         <div class="mb-2">
                                             <strong>Error Category:</strong> @status.Value.ErrorCategory
@@ -112,7 +113,19 @@
                         <h3>Uptime</h3>
                     </div>
                     <div class="card-body">
-                        <div id="uptimeChart" style="height: 300px;"></div>
+                        @if (_uptime.Any())
+                        {
+                            <canvas id="uptimeChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
+                                    <p class="mt-2">No uptime data available for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -122,7 +135,19 @@
                         <h3>Response Time</h3>
                     </div>
                     <div class="card-body">
-                        <div id="responseTimeChart" style="height: 300px;"></div>
+                        @if (_responseTimes.Any())
+                        {
+                            <canvas id="responseTimeChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
+                                    <p class="mt-2">No response time data available for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -135,7 +160,19 @@
                         <h3>Errors by Provider</h3>
                     </div>
                     <div class="card-body">
-                        <div id="errorCountChart" style="height: 300px;"></div>
+                        @if (_errorCounts.Any())
+                        {
+                            <canvas id="errorCountChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
+                                    <p class="mt-2">No errors recorded for the selected time period</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -145,7 +182,19 @@
                         <h3>Error Categories</h3>
                     </div>
                     <div class="card-body">
-                        <div id="errorCategoryChart" style="height: 300px;"></div>
+                        @if (_errorCategories.Any())
+                        {
+                            <canvas id="errorCategoryChart" style="height: 300px;"></canvas>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                                <div>
+                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
+                                    <p class="mt-2">No error categories to display</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -253,7 +302,7 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!_loading && _uptime.Any())
         {
             await RenderChartsAsync();
         }
@@ -272,11 +321,20 @@
             // Refresh latest status
             _latestStatuses = await ProviderStatusService.CheckAllProvidersStatusAsync();
             
-            // Refresh analytics data
-            _uptime = await ProviderHealthRepository.GetProviderUptimeAsync(since);
-            _responseTimes = await ProviderHealthRepository.GetAverageResponseTimesAsync(since);
-            _errorCounts = await ProviderHealthRepository.GetErrorCountByProviderAsync(since);
-            _errorCategories = await ProviderHealthRepository.GetErrorCategoriesByProviderAsync(since);
+            // Get health records to calculate analytics
+            var healthRecords = await ProviderHealthService.GetHealthRecordsAsync();
+            
+            // Calculate uptime percentages
+            _uptime = CalculateUptimePercentages(healthRecords, since);
+            
+            // Calculate average response times
+            _responseTimes = CalculateAverageResponseTimes(healthRecords, since);
+            
+            // Calculate error counts
+            _errorCounts = CalculateErrorCounts(healthRecords, since);
+            
+            // Calculate error categories
+            _errorCategories = CalculateErrorCategories(healthRecords, since);
         }
         catch (Exception ex)
         {
@@ -287,6 +345,16 @@
         {
             _loading = false;
             StateHasChanged();
+            
+            // Render charts after state has changed
+            if (_uptime.Any())
+            {
+                await InvokeAsync(async () =>
+                {
+                    await Task.Delay(100); // Small delay to ensure DOM is updated
+                    await RenderChartsAsync();
+                });
+            }
         }
     }
     
@@ -307,30 +375,99 @@
         };
     }
     
+    // Calculate uptime percentages from health records
+    private Dictionary<string, double> CalculateUptimePercentages(IEnumerable<ProviderHealthRecordDto> records, DateTime since)
+    {
+        return records
+            .Where(r => r.TimestampUtc >= since)
+            .GroupBy(r => r.ProviderName)
+            .ToDictionary(
+                g => g.Key,
+                g => 
+                {
+                    int total = g.Count();
+                    int online = g.Count(r => r.IsOnline);
+                    return total > 0 ? (double)online / total * 100 : 0;
+                }
+            );
+    }
+    
+    // Calculate average response times from health records
+    private Dictionary<string, double> CalculateAverageResponseTimes(IEnumerable<ProviderHealthRecordDto> records, DateTime since)
+    {
+        return records
+            .Where(r => r.TimestampUtc >= since && r.ResponseTimeMs > 0)
+            .GroupBy(r => r.ProviderName)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Average(r => r.ResponseTimeMs)
+            );
+    }
+    
+    // Calculate error counts from health records
+    private Dictionary<string, int> CalculateErrorCounts(IEnumerable<ProviderHealthRecordDto> records, DateTime since)
+    {
+        return records
+            .Where(r => r.TimestampUtc >= since && !r.IsOnline)
+            .GroupBy(r => r.ProviderName)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Count()
+            );
+    }
+    
+    // Calculate error categories from health records
+    private Dictionary<string, Dictionary<string, int>> CalculateErrorCategories(IEnumerable<ProviderHealthRecordDto> records, DateTime since)
+    {
+        return records
+            .Where(r => r.TimestampUtc >= since && !r.IsOnline && !string.IsNullOrEmpty(r.ErrorCategory))
+            .GroupBy(r => r.ProviderName)
+            .ToDictionary(
+                g => g.Key,
+                g => g.GroupBy(r => r.ErrorCategory ?? "Unknown")
+                    .ToDictionary(
+                        c => c.Key,
+                        c => c.Count()
+                    )
+            );
+    }
+    
     private async Task RenderChartsAsync()
     {
         try
         {
             // Uptime chart
-            var uptimeLabels = _uptime.Keys.ToArray();
-            var uptimeData = _uptime.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "uptimeChart", uptimeLabels, uptimeData, "Uptime %", "Provider", "Uptime (%)", "horizontal");
+            if (_uptime.Any())
+            {
+                var uptimeLabels = _uptime.Keys.ToArray();
+                var uptimeData = _uptime.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "uptimeChart", uptimeLabels, uptimeData, "Uptime %", "Provider", "Uptime (%)", "horizontal");
+            }
             
             // Response time chart
-            var responseTimeLabels = _responseTimes.Keys.ToArray();
-            var responseTimeData = _responseTimes.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "responseTimeChart", responseTimeLabels, responseTimeData, "Average Response Time (ms)", "Provider", "Response Time (ms)", "horizontal");
+            if (_responseTimes.Any())
+            {
+                var responseTimeLabels = _responseTimes.Keys.ToArray();
+                var responseTimeData = _responseTimes.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "responseTimeChart", responseTimeLabels, responseTimeData, "Average Response Time (ms)", "Provider", "Response Time (ms)", "horizontal");
+            }
             
             // Error count chart
-            var errorCountLabels = _errorCounts.Keys.ToArray();
-            var errorCountData = _errorCounts.Values.ToArray();
-            
-            await JSRuntime.InvokeVoidAsync("renderBarChart", "errorCountChart", errorCountLabels, errorCountData, "Error Count", "Provider", "Errors", "horizontal");
+            if (_errorCounts.Any())
+            {
+                var errorCountLabels = _errorCounts.Keys.ToArray();
+                var errorCountData = _errorCounts.Values.ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderBarChart", "errorCountChart", errorCountLabels, errorCountData, "Error Count", "Provider", "Errors", "horizontal");
+            }
             
             // Error category chart
-            await RenderErrorCategoryChartAsync();
+            if (_errorCategories.Any())
+            {
+                await RenderErrorCategoryChartAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -415,8 +552,27 @@
             StateHasChanged();
             
             // Get provider history
+            var healthRecords = await ProviderHealthService.GetHealthRecordsAsync(providerName);
+            
+            // Filter by date range and limit to 100 records
             DateTime since = GetSinceDate();
-            _providerHistory = await ProviderHealthRepository.GetStatusHistoryAsync(providerName, since, 100);
+            _providerHistory = healthRecords
+                .Where(r => r.TimestampUtc >= since)
+                .OrderByDescending(r => r.TimestampUtc)
+                .Take(100)
+                .Select(dto => new ProviderHealthRecord {
+                    Id = dto.Id,
+                    ProviderName = dto.ProviderName,
+                    IsOnline = dto.IsOnline,
+                    Status = (ProviderHealthRecord.StatusType)dto.Status,
+                    StatusMessage = dto.StatusMessage,
+                    ErrorCategory = dto.ErrorCategory,
+                    ErrorDetails = dto.ErrorDetails,
+                    ResponseTimeMs = dto.ResponseTimeMs,
+                    EndpointUrl = dto.EndpointUrl,
+                    TimestampUtc = dto.TimestampUtc
+                })
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -440,7 +596,26 @@
     {
         try
         {
-            var history = await ProviderHealthRepository.GetStatusHistoryAsync(providerName, GetSinceDate(), 10000);
+            var healthRecords = await ProviderHealthService.GetHealthRecordsAsync(providerName);
+            
+            // Filter by date range and limit to 10000 records
+            var history = healthRecords
+                .Where(r => r.TimestampUtc >= GetSinceDate())
+                .OrderByDescending(r => r.TimestampUtc)
+                .Take(10000)
+                .Select(dto => new ProviderHealthRecord {
+                    Id = dto.Id,
+                    ProviderName = dto.ProviderName,
+                    IsOnline = dto.IsOnline,
+                    Status = (ProviderHealthRecord.StatusType)dto.Status,
+                    StatusMessage = dto.StatusMessage,
+                    ErrorCategory = dto.ErrorCategory,
+                    ErrorDetails = dto.ErrorDetails,
+                    ResponseTimeMs = dto.ResponseTimeMs,
+                    EndpointUrl = dto.EndpointUrl,
+                    TimestampUtc = dto.TimestampUtc
+                })
+                .ToList();
             
             // Convert to CSV
             var csv = new StringBuilder();

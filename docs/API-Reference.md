@@ -1,21 +1,29 @@
 # API Reference
 
-Welcome to the ConduitLLM API! If you’ve used OpenAI’s API before, you’ll feel right at home—ConduitLLM is fully OpenAI-compatible. You can leverage your existing knowledge, client libraries, and integrations with minimal or no changes. This reference will guide you through the endpoints and features, so you can get started quickly and confidently.
+ConduitLLM provides two distinct APIs:
 
-## Authentication
+1. **LLM API**: OpenAI-compatible API for LLM interactions
+2. **Admin API**: Management API for configuration and monitoring
 
-All API endpoints require authentication using a **Virtual Key**. Pass your key in the HTTP header:
+## LLM API
+
+The LLM API is fully OpenAI-compatible. If you've used OpenAI's API before, you'll feel right at home. You can leverage your existing knowledge, client libraries, and integrations with minimal or no changes.
+
+### Authentication
+
+LLM API endpoints require authentication using a **Virtual Key**. Pass your key in the HTTP header:
 
 ```
 Authorization: Bearer condt_yourvirtualkey
 ```
 
-## Base URLs
+### Base URLs
 
-- **Default**: `http://localhost:5000/v1` (API)
-- **WebUI**: `http://localhost:5001` (Admin Dashboard)
+- **LLM API**: `http://localhost:5002/v1` (OpenAI-compatible API)
+- **Admin API**: `http://localhost:5001/api` (Management API)
+- **WebUI**: `http://localhost:5000` (Admin Dashboard)
 
-## Endpoint Overview
+### LLM API Endpoints
 
 - [Chat Completions](#chat-completions)
 - [Model Listing](#list-models)
@@ -199,6 +207,71 @@ Generates images from a prompt (if supported by the model/provider).
 
 ---
 
+## Admin API
+
+The Admin API provides endpoints for administrative operations like managing virtual keys, configuring providers, and monitoring usage. This API is used primarily by the WebUI but can also be used directly for automation or integration purposes.
+
+### Authentication
+
+Admin API endpoints require authentication using the master key:
+
+```
+Authorization: Bearer your_master_key_here
+```
+
+### Admin API Endpoints
+
+Below are the main categories of Admin API endpoints:
+
+#### Virtual Keys Management
+
+```
+GET    /api/virtualkeys            - List all virtual keys
+POST   /api/virtualkeys            - Create a new virtual key
+GET    /api/virtualkeys/{id}       - Get a specific virtual key
+PUT    /api/virtualkeys/{id}       - Update a virtual key
+DELETE /api/virtualkeys/{id}       - Delete a virtual key
+```
+
+#### Provider Configuration
+
+```
+GET    /api/providers               - List all providers
+POST   /api/providers               - Add a new provider
+GET    /api/providers/{id}          - Get a specific provider
+PUT    /api/providers/{id}          - Update a provider
+DELETE /api/providers/{id}          - Delete a provider
+POST   /api/providers/test          - Test provider connectivity
+```
+
+#### Model Mappings
+
+```
+GET    /api/mappings               - List all model mappings
+POST   /api/mappings               - Create a new model mapping
+PUT    /api/mappings/{id}          - Update a model mapping
+DELETE /api/mappings/{id}          - Delete a model mapping
+```
+
+#### Usage and Monitoring
+
+```
+GET    /api/logs                   - Get request logs
+GET    /api/cost-dashboard         - Get cost dashboard data
+GET    /api/provider-health        - Get provider health status
+```
+
+#### System Configuration
+
+```
+GET    /api/settings               - Get global settings
+PUT    /api/settings               - Update global settings
+GET    /api/system-info            - Get system information
+POST   /api/database/backup        - Create database backup
+```
+
+---
+
 ## Environment Variables for Database Location
 
 ### SQLite Database Path
@@ -225,7 +298,7 @@ volumes:
 ### Other Providers
 - For PostgreSQL, use `DB_CONNECTION_STRING` as before.
 
-See the Configuration Guide for more details on environment variable usage.
+See the [Environment Variables](Environment-Variables.md) documentation for more details on environment variable usage.
 
 ---
 
@@ -254,7 +327,8 @@ Error response format:
 
 ## Notes
 
-- **Model Aliases**: Use model aliases as configured in your admin panel or `appsettings.json`.
+- **Model Aliases**: Use model aliases as configured in your admin panel or through the Admin API.
 - **Multimodal Vision**: For models supporting vision/multimodal, pass image URLs or multimodal objects (see example above) in `messages.content`. The property type is `object?` and supports both plain strings and objects.
 - **Streaming**: Set `"stream": true` for streaming responses.
 - **API Compatibility**: ConduitLLM aims for API compatibility with OpenAI clients and SDKs.
+- **Service Architecture**: The LLM API communicates with the Admin API to retrieve configurations and record usage statistics.

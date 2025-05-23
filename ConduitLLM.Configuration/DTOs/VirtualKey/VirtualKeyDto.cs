@@ -89,4 +89,49 @@ public class VirtualKeyDto
     /// Optional rate limit in requests per day.
     /// </summary>
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's purpose
+    /// </summary>
+    public string? Description { get; set; }
+
+    #region Compatibility Properties
+
+    /// <summary>
+    /// Compatibility property for Name - maps to KeyName
+    /// </summary>
+    public string Name
+    {
+        get => KeyName;
+        set => KeyName = value;
+    }
+
+    /// <summary>
+    /// Compatibility property for IsActive - maps to IsEnabled
+    /// </summary>
+    public bool IsActive
+    {
+        get => IsEnabled;
+        set => IsEnabled = value;
+    }
+
+    /// <summary>
+    /// Compatibility property for UsageLimit - maps to MaxBudget
+    /// </summary>
+    public decimal? UsageLimit
+    {
+        get => MaxBudget;
+        set => MaxBudget = value;
+    }
+
+    /// <summary>
+    /// Compatibility property for RateLimit - maps to RateLimitRpm
+    /// </summary>
+    public int? RateLimit
+    {
+        get => RateLimitRpm;
+        set => RateLimitRpm = value;
+    }
+
+    #endregion
 }

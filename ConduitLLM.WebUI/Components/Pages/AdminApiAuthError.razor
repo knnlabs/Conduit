@@ -1,0 +1,68 @@
+@page "/error/admin-api-auth"
+
+<PageTitle>Admin API Authentication Error</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">
+                        <i class="fa fa-lock me-2"></i>
+                        Admin API Authentication Error
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fa fa-key fa-4x text-danger mb-3"></i>
+                        <h4>Authentication Failed</h4>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <p>The WebUI cannot authenticate with the Admin API service. This is most likely due to a misconfigured master key.</p>
+                    </div>
+
+                    <h5 class="mt-4">How to Fix:</h5>
+                    <ol class="mt-3">
+                        <li class="mb-2">Ensure that both the WebUI and Admin API services are using the <strong>same</strong> master key.</li>
+                        <li class="mb-2">Check the following environment variables:
+                            <ul>
+                                <li><code>CONDUIT_MASTER_KEY</code> - Should be the same in both services</li>
+                            </ul>
+                        </li>
+                        <li class="mb-2">If you've recently changed the master key, make sure it's updated in <strong>all</strong> services.</li>
+                        <li class="mb-2">Restart both services after updating the master key to ensure the changes take effect.</li>
+                        <li class="mb-2">Check logs for both WebUI and Admin API services for any authentication-related error messages.</li>
+                    </ol>
+
+                    <div class="mt-4 p-3 bg-light border rounded">
+                        <h6>Master Key Configuration Example:</h6>
+                        <p>In your <code>docker-compose.yml</code> or environment variables:</p>
+                        <pre><code>CONDUIT_MASTER_KEY=your-secure-master-key</code></pre>
+                        <p class="small text-muted mt-2">This key must be identical in both WebUI and Admin API services.</p>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-primary" @onclick="RefreshPage">
+                            <i class="fa fa-refresh me-2"></i> Try Again
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fa fa-home me-2"></i> Return to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void RefreshPage()
+    {
+        // Force refresh the current page
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+}

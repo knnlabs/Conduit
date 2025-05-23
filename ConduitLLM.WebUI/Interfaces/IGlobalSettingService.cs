@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Options;
 
 namespace ConduitLLM.WebUI.Interfaces;
 
@@ -27,7 +28,7 @@ public interface IGlobalSettingService
     /// This method is the primary way to retrieve generic application settings.
     /// </remarks>
     Task<string?> GetSettingAsync(string key);
-    
+
     /// <summary>
     /// Sets the value of a setting.
     /// </summary>
@@ -39,7 +40,7 @@ public interface IGlobalSettingService
     /// If it does exist, its value will be updated.
     /// </remarks>
     Task SetSettingAsync(string key, string value);
-    
+
     /// <summary>
     /// Retrieves the hash of the master key.
     /// </summary>
@@ -49,7 +50,7 @@ public interface IGlobalSettingService
     /// against the hash of the user-provided master key, not against the raw key itself.
     /// </remarks>
     Task<string?> GetMasterKeyHashAsync();
-    
+
     /// <summary>
     /// Retrieves the algorithm used to hash the master key.
     /// </summary>
@@ -60,7 +61,7 @@ public interface IGlobalSettingService
     /// the provided key for comparison.
     /// </remarks>
     Task<string?> GetMasterKeyHashAlgorithmAsync();
-    
+
     /// <summary>
     /// Sets the master key, storing it as a hash.
     /// </summary>
@@ -71,4 +72,17 @@ public interface IGlobalSettingService
     /// and stores the hash in the database. The raw key is never persisted.
     /// </remarks>
     Task SetMasterKeyAsync(string masterKey);
+
+    /// <summary>
+    /// Gets the provider health options from the database
+    /// </summary>
+    /// <returns>The provider health options, or null if not found</returns>
+    Task<ProviderHealthOptions?> GetProviderHealthOptionsAsync();
+
+    /// <summary>
+    /// Saves the provider health options to the database
+    /// </summary>
+    /// <param name="options">The options to save</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task SaveProviderHealthOptionsAsync(ProviderHealthOptions options);
 }

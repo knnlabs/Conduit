@@ -1,14 +1,9 @@
 using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.DTOs;
-using ConduitLLM.WebUI.Services;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Data;
-using ConduitLLM.Tests.TestHelpers;
-
+using ConduitLLM.WebUI.Services.Adapters;
+using ConduitLLM.Tests.Extensions;
+using ConduitLLM.Tests.WebUI.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.EntityFrameworkCore;
 
 using Moq;
 using System;
@@ -17,15 +12,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
+// Use type aliases to avoid ambiguity
+using DailyUsageStatsDto = ConduitLLM.Configuration.DTOs.DailyUsageStatsDto;
+using CostsDashboardDto = ConduitLLM.Configuration.DTOs.Costs.CostDashboardDto;
+using CostsDetailedCostDataDto = ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto;
+
 namespace ConduitLLM.Tests.RepositoryServices
 {
     public class CostDashboardServiceTests
     {
-        private readonly ILogger<CostDashboardService> _logger;
+        private readonly Mock<IAdminApiClient> _mockAdminApiClient;
+        private readonly Mock<ILogger<CostDashboardServiceAdapter>> _mockLogger;
+        private readonly CostDashboardServiceAdapter _service;
 
         public CostDashboardServiceTests()
         {
-            _logger = NullLogger<CostDashboardService>.Instance;
+            _mockAdminApiClient = new Mock<IAdminApiClient>();
+            _mockLogger = new Mock<ILogger<CostDashboardServiceAdapter>>();
+            _service = new CostDashboardServiceAdapter(_mockAdminApiClient.Object, _mockLogger.Object);
         }
 
         [Fact]
@@ -34,108 +38,121 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-
-            // Create test data with virtual keys first, then reference them in logs
-            var virtualKeys = new List<VirtualKey>
-            {
-                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
-                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
-            };
             
-            var logs = new List<RequestLog>
+            // Mock cost dashboard data
+            var mockDashboardData = new CostsDashboardDto
             {
-                new RequestLog
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalCost = 0.045m,
+                TimeFrame = "custom",
+                TopModelsBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 1,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5, 12, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "gpt-4",
+                        Cost = 0.025m,
+                        Percentage = 55.6m
+                    },
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "claude-v1",
+                        Cost = 0.02m,
+                        Percentage = 44.4m
+                    }
                 },
-                new RequestLog
+                TopVirtualKeysBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 2,
-                    VirtualKeyId = 102,
-                    ModelName = "claude-v1",
-                    InputTokens = 200,
-                    OutputTokens = 100,
-                    Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 10, 14, 0, 0, DateTimeKind.Utc)
-                },
-                new RequestLog
-                {
-                    Id = 3,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 150,
-                    OutputTokens = 75,
-                    Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "Test Key 1",
+                        Cost = 0.025m,
+                        Percentage = 55.6m
+                    },
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "Test Key 2",
+                        Cost = 0.02m,
+                        Percentage = 44.4m
+                    }
                 }
             };
-
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
+            // Mock daily usage stats for cost trends
+            var usageStats = new List<DailyUsageStatsDto>
             {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    virtualKeys: virtualKeys,
-                    requestLogs: logs);
-            }
+                new DailyUsageStatsDto
+                {
+                    Date = new DateTime(2025, 1, 5, 12, 0, 0, DateTimeKind.Utc),
+                    ModelName = "gpt-4",
+                    RequestCount = 1,
+                    InputTokens = 100,
+                    OutputTokens = 50,
+                    TotalCost = 0.01m
+                },
+                new DailyUsageStatsDto
+                {
+                    Date = new DateTime(2025, 1, 10, 14, 0, 0, DateTimeKind.Utc),
+                    ModelName = "claude-v1",
+                    RequestCount = 1,
+                    InputTokens = 200,
+                    OutputTokens = 100,
+                    TotalCost = 0.02m
+                },
+                new DailyUsageStatsDto
+                {
+                    Date = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc),
+                    ModelName = "gpt-4",
+                    RequestCount = 1,
+                    InputTokens = 150,
+                    OutputTokens = 75,
+                    TotalCost = 0.015m
+                }
+            };
             
-            // Create service with real factory
-            var service = new CostDashboardService(factory, _logger);
-
+            // Setup mocks
+            _mockAdminApiClient.Setup(api => api.GetCostDashboardAsync(
+                startDate, endDate, null, null))
+                .ReturnsAsync(mockDashboardData);
+                
+            // Setup daily usage statistics
+            // We need to convert our Configuration.DTOs.DailyUsageStatsDto to WebUI.DTOs.DailyUsageStatsDto
+            var webUIDailyUsageStats = usageStats.Select(dto => new ConduitLLM.WebUI.DTOs.DailyUsageStatsDto
+            {
+                Date = dto.Date,
+                ModelName = dto.ModelName,
+                RequestCount = dto.RequestCount,
+                InputTokens = dto.InputTokens,
+                OutputTokens = dto.OutputTokens,
+                Cost = dto.TotalCost
+            }).ToList();
+            
+            _mockAdminApiClient.Setup(api => api.GetDailyUsageStatsAsync(
+                startDate, endDate, null))
+                .ReturnsAsync(webUIDailyUsageStats);
+            
             // Act
-            var result = await service.GetDashboardDataAsync(startDate, endDate);
+            var result = await _service.GetDashboardDataAsync(startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(startDate, result.StartDate);
             Assert.Equal(endDate, result.EndDate);
-            Assert.Equal(3, result.TotalRequests);
             Assert.Equal(0.045m, result.TotalCost);
-            Assert.Equal(450, result.TotalInputTokens);
-            Assert.Equal(225, result.TotalOutputTokens);
-
-            // Check cost trends - should have entries for each day in range
-            Assert.Equal(31, result.CostTrends.Count); // 31 days in January
             
-            // Verify days with data
-            var jan5Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc).Date);
-            Assert.NotNull(jan5Data);
-            Assert.Equal(0.01m, jan5Data.Cost);
-            Assert.Equal(1, jan5Data.Requests);
-
-            var jan10Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc).Date);
-            Assert.NotNull(jan10Data);
-            Assert.Equal(0.02m, jan10Data.Cost);
-            Assert.Equal(1, jan10Data.Requests);
-
-            // Verify days with zero data have been filled in
-            var jan2Data = result.CostTrends.FirstOrDefault(d => d.Date.Date == new DateTime(2025, 1, 2, 0, 0, 0, DateTimeKind.Utc).Date);
-            Assert.NotNull(jan2Data);
-            Assert.Equal(0m, jan2Data.Cost);
-            Assert.Equal(0, jan2Data.Requests);
-
-            // Check model data
-            Assert.Equal(2, result.CostByModel.Count);
-            var gpt4Data = result.CostByModel.FirstOrDefault(m => m.Model == "gpt-4");
+            // Verify model data
+            Assert.Equal(2, result.TopModelsBySpend.Count);
+            var gpt4Data = result.TopModelsBySpend.FirstOrDefault(m => m.Name == "gpt-4");
             Assert.NotNull(gpt4Data);
             Assert.Equal(0.025m, gpt4Data.Cost);
-            Assert.Equal(2, gpt4Data.Requests);
-
-            // Check virtual key data
-            Assert.Equal(2, result.CostByVirtualKey.Count);
-            var key1Data = result.CostByVirtualKey.FirstOrDefault(k => k.KeyId == 101);
+            Assert.Equal(55.6m, gpt4Data.Percentage);
+            
+            // Verify virtual key data
+            Assert.Equal(2, result.TopVirtualKeysBySpend.Count);
+            var key1Data = result.TopVirtualKeysBySpend.FirstOrDefault(k => k.Name == "Test Key 1");
             Assert.NotNull(key1Data);
-            Assert.Equal("Test Key 1", key1Data.KeyName);
             Assert.Equal(0.025m, key1Data.Cost);
-            Assert.Equal(2, key1Data.Requests);
+            Assert.Equal(55.6m, key1Data.Percentage);
         }
 
         [Fact]
@@ -145,81 +162,92 @@ namespace ConduitLLM.Tests.RepositoryServices
             var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             int virtualKeyId = 101;
-
-            // Create test data with virtual keys first
-            var virtualKeys = new List<VirtualKey>
-            {
-                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
-                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
-            };
             
-            var logs = new List<RequestLog>
+            // Mock cost dashboard data for a specific virtual key
+            var mockDashboardData = new CostsDashboardDto
             {
-                new RequestLog
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalCost = 0.025m,
+                TimeFrame = "custom",
+                TopModelsBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 1,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "gpt-4",
+                        Cost = 0.025m,
+                        Percentage = 100m
+                    }
                 },
-                new RequestLog
+                TopVirtualKeysBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 2,
-                    VirtualKeyId = 102,
-                    ModelName = "claude-v1",
-                    InputTokens = 200,
-                    OutputTokens = 100,
-                    Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc)
-                },
-                new RequestLog
-                {
-                    Id = 3,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 150,
-                    OutputTokens = 75,
-                    Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "Test Key 1",
+                        Cost = 0.025m,
+                        Percentage = 100m
+                    }
                 }
             };
-
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
+            // Setup mocks with proper parameter matching
+            _mockAdminApiClient.Setup(api => api.GetCostDashboardAsync(
+                It.Is<DateTime?>(d => d == startDate),
+                It.Is<DateTime?>(d => d == endDate),
+                It.Is<int?>(id => id == virtualKeyId),
+                It.IsAny<string>()))
+                .ReturnsAsync(mockDashboardData);
+            
+            // Setup virtual key statistics
+            var virtualKeyStats = new List<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>
             {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    virtualKeys: virtualKeys,
-                    requestLogs: logs);
-            }
+                new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
+                {
+                    VirtualKeyId = virtualKeyId,
+                    KeyName = "Test Key 1",
+                    Cost = 0.025m,
+                    RequestCount = 1
+                }
+            };
             
-            // Create service with real factory
-            var service = new CostDashboardService(factory, _logger);
-
+            _mockAdminApiClient.Setup(api => api.GetVirtualKeyUsageStatisticsAsync(
+                It.Is<int?>(id => id == virtualKeyId)))
+                .ReturnsAsync(virtualKeyStats);
+                
+            // Also need to setup daily usage stats for this VK ID
+            var dailyStats = new List<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>
+            {
+                new ConduitLLM.WebUI.DTOs.DailyUsageStatsDto
+                {
+                    Date = startDate.AddDays(5),
+                    ModelName = "gpt-4",
+                    RequestCount = 1,
+                    InputTokens = 100,
+                    OutputTokens = 50,
+                    Cost = 0.025m
+                }
+            };
+            
+            _mockAdminApiClient.Setup(api => api.GetDailyUsageStatsAsync(
+                It.Is<DateTime>(d => d == startDate),
+                It.Is<DateTime>(d => d == endDate),
+                It.Is<int?>(id => id == virtualKeyId)))
+                .ReturnsAsync(dailyStats);
+            
             // Act
-            var result = await service.GetDashboardDataAsync(startDate, endDate, virtualKeyId);
+            var result = await _service.GetDashboardDataAsync(startDate, endDate, virtualKeyId);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(2, result.TotalRequests); // Only logs with virtualKeyId = 101
             Assert.Equal(0.025m, result.TotalCost);
-            Assert.Equal(250, result.TotalInputTokens);
-            Assert.Equal(125, result.TotalOutputTokens);
-
-            // Check cost by model
-            Assert.Single(result.CostByModel);
-            Assert.Equal("gpt-4", result.CostByModel[0].Model);
-            Assert.Equal(2, result.CostByModel[0].Requests);
-
-            // Check virtual key data
-            Assert.Single(result.CostByVirtualKey);
-            Assert.Equal(101, result.CostByVirtualKey[0].KeyId);
-            Assert.Equal("Test Key 1", result.CostByVirtualKey[0].KeyName);
+            
+            // Check model data - should only include one model
+            Assert.Single(result.TopModelsBySpend);
+            Assert.Equal("gpt-4", result.TopModelsBySpend[0].Name);
+            
+            // Check virtual key data - should only include one key
+            Assert.Single(result.TopVirtualKeysBySpend);
+            Assert.Equal("Test Key 1", result.TopVirtualKeysBySpend[0].Name);
         }
 
         [Fact]
@@ -229,109 +257,97 @@ namespace ConduitLLM.Tests.RepositoryServices
             var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
             string modelName = "gpt-4";
-
-            // Create test data with virtual keys first
-            var virtualKeys = new List<VirtualKey>
-            {
-                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
-                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
-            };
             
-            var logs = new List<RequestLog>
+            // Mock cost dashboard data filtered by model
+            var mockDashboardData = new CostsDashboardDto
             {
-                new RequestLog
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalCost = 0.025m,
+                TimeFrame = "custom",
+                TopModelsBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 1,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "gpt-4",
+                        Cost = 0.025m,
+                        Percentage = 100m
+                    }
                 },
-                new RequestLog
+                TopVirtualKeysBySpend = new List<CostsDetailedCostDataDto>
                 {
-                    Id = 2,
-                    VirtualKeyId = 102,
-                    ModelName = "claude-v1",
-                    InputTokens = 200,
-                    OutputTokens = 100,
-                    Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc)
-                },
-                new RequestLog
-                {
-                    Id = 3,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 150,
-                    OutputTokens = 75,
-                    Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc)
+                    new CostsDetailedCostDataDto
+                    {
+                        Name = "Test Key 1",
+                        Cost = 0.025m,
+                        Percentage = 100m
+                    }
                 }
             };
-
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
+            // Setup mocks with proper parameter matching
+            _mockAdminApiClient.Setup(api => api.GetCostDashboardAsync(
+                It.Is<DateTime?>(d => d == startDate),
+                It.Is<DateTime?>(d => d == endDate),
+                It.IsAny<int?>(),
+                It.Is<string?>(m => m == modelName)))
+                .ReturnsAsync(mockDashboardData);
+            
+            // Setup virtual key statistics
+            var virtualKeyStats = new List<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>
             {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    virtualKeys: virtualKeys,
-                    requestLogs: logs);
-            }
+                new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
+                {
+                    VirtualKeyId = 1,
+                    KeyName = "Test Key 1",
+                    Cost = 0.025m,
+                    RequestCount = 1
+                }
+            };
             
-            // Create service with real factory
-            var service = new CostDashboardService(factory, _logger);
-
+            _mockAdminApiClient.Setup(api => api.GetVirtualKeyUsageStatisticsAsync(null))
+                .ReturnsAsync(virtualKeyStats);
+            
+            // Setup WebUI DailyUsageStats data
+            var webUIDailyUsageStats = new List<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>
+            {
+                new ConduitLLM.WebUI.DTOs.DailyUsageStatsDto
+                {
+                    Date = startDate.AddDays(5),
+                    ModelName = modelName,
+                    RequestCount = 1,
+                    InputTokens = 100,
+                    OutputTokens = 50,
+                    Cost = 0.025m
+                }
+            };
+            
+            _mockAdminApiClient.Setup(api => api.GetDailyUsageStatsAsync(startDate, endDate, null))
+                .ReturnsAsync(webUIDailyUsageStats);
+                
             // Act
-            var result = await service.GetDashboardDataAsync(startDate, endDate, null, modelName);
+            var result = await _service.GetDashboardDataAsync(startDate, endDate, null, modelName);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(2, result.TotalRequests); // Only logs with modelName = "gpt-4"
             Assert.Equal(0.025m, result.TotalCost);
-            Assert.Equal(250, result.TotalInputTokens);
-            Assert.Equal(125, result.TotalOutputTokens);
-
-            // Check cost by model
-            Assert.Single(result.CostByModel);
-            Assert.Equal("gpt-4", result.CostByModel[0].Model);
-            Assert.Equal(2, result.CostByModel[0].Requests);
-
-            // Check virtual key data
-            Assert.Single(result.CostByVirtualKey);
-            Assert.Equal(101, result.CostByVirtualKey[0].KeyId);
-            Assert.Equal("Test Key 1", result.CostByVirtualKey[0].KeyName);
+            
+            // Check model data - should only include one model
+            Assert.Single(result.TopModelsBySpend);
+            Assert.Equal("gpt-4", result.TopModelsBySpend[0].Name);
         }
 
         [Fact]
         public async Task GetAvailableModelsAsync_ShouldReturnDistinctModels()
         {
             // Arrange
-            var logs = new List<RequestLog>
-            {
-                new RequestLog { ModelName = "gpt-4" },
-                new RequestLog { ModelName = "claude-v1" },
-                new RequestLog { ModelName = "gpt-4" },
-                new RequestLog { ModelName = "gemini-pro" }
-            };
-
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
+            var models = new List<string> { "gpt-4", "claude-v1", "gemini-pro" };
             
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
-            {
-                await DbContextTestHelper.SeedDatabaseAsync(context, requestLogs: logs);
-            }
+            _mockAdminApiClient.Setup(api => api.GetDistinctModelsAsync())
+                .ReturnsAsync(models);
             
-            // Create service with real factory
-            var service = new CostDashboardService(factory, _logger);
-
             // Act
-            var result = await service.GetAvailableModelsAsync();
+            var result = await _service.GetAvailableModelsAsync();
 
             // Assert
             Assert.NotNull(result);
@@ -347,86 +363,54 @@ namespace ConduitLLM.Tests.RepositoryServices
             // Arrange
             var startDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDate = new DateTime(2025, 1, 31, 23, 59, 59, DateTimeKind.Utc);
-
-            // Create test data with virtual keys first
-            var virtualKeys = new List<VirtualKey>
-            {
-                new VirtualKey { Id = 101, KeyName = "Test Key 1" },
-                new VirtualKey { Id = 102, KeyName = "Test Key 2" }
-            };
             
-            var logs = new List<RequestLog>
+            // Mock detailed cost data
+            var detailedCostData = new List<CostsDetailedCostDataDto>
             {
-                new RequestLog
+                new CostsDetailedCostDataDto
                 {
-                    Id = 1,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    Cost = 0.01m,
-                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
+                    Name = "gpt-4",
+                    Cost = 0.025m,
+                    Percentage = 55.6m
                 },
-                new RequestLog
+                new CostsDetailedCostDataDto
                 {
-                    Id = 2,
-                    VirtualKeyId = 102,
-                    ModelName = "claude-v1",
-                    InputTokens = 200,
-                    OutputTokens = 100,
+                    Name = "claude-v1",
                     Cost = 0.02m,
-                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
-                },
-                new RequestLog
-                {
-                    Id = 3,
-                    VirtualKeyId = 101,
-                    ModelName = "gpt-4",
-                    InputTokens = 150,
-                    OutputTokens = 75,
-                    Cost = 0.015m,
-                    Timestamp = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc)
+                    Percentage = 44.4m
                 }
             };
-
-            // Create in-memory database context factory
-            var factory = DbContextTestHelper.CreateInMemoryDbContextFactory();
             
-            // Seed the database with test data
-            using (var context = await factory.CreateDbContextAsync())
+            // Convert from Config DTOs to WebUI DTOs for the Setup
+            var webUIDetailedCostData = detailedCostData.Select(d => new ConduitLLM.WebUI.DTOs.DetailedCostDataDto
             {
-                await DbContextTestHelper.SeedDatabaseAsync(context, 
-                    virtualKeys: virtualKeys,
-                    requestLogs: logs);
-            }
+                Name = d.Name,
+                Cost = d.Cost,
+                Percentage = d.Percentage
+            }).ToList();
             
-            // Create service with real factory
-            var service = new CostDashboardService(factory, _logger);
-
+            // Use ReturnsAsync for proper async mock behavior
+            _mockAdminApiClient.Setup(api => api.GetDetailedCostDataAsync(
+                startDate, endDate, null, null))
+                .ReturnsAsync(webUIDetailedCostData);
+            
             // Act
-            var result = await service.GetDetailedCostDataAsync(startDate, endDate);
+            var result = await _service.GetDetailedCostDataAsync(startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(2, result.Count); // 2 groups: (2025-01-05, gpt-4, 101) and (2025-01-05, claude-v1, 102)
-
-            // Check gpt-4 group
-            var gpt4Group = result.FirstOrDefault(d => d.Model == "gpt-4" && d.KeyName == "Test Key 1");
-            Assert.NotNull(gpt4Group);
-            Assert.Equal(new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc), gpt4Group.Date);
-            Assert.Equal(2, gpt4Group.Requests);
-            Assert.Equal(250, gpt4Group.InputTokens);
-            Assert.Equal(125, gpt4Group.OutputTokens);
-            Assert.Equal(0.025m, gpt4Group.Cost);
-
-            // Check claude-v1 group
-            var claudeGroup = result.FirstOrDefault(d => d.Model == "claude-v1" && d.KeyName == "Test Key 2");
-            Assert.NotNull(claudeGroup);
-            Assert.Equal(new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc), claudeGroup.Date);
-            Assert.Equal(1, claudeGroup.Requests);
-            Assert.Equal(200, claudeGroup.InputTokens);
-            Assert.Equal(100, claudeGroup.OutputTokens);
-            Assert.Equal(0.02m, claudeGroup.Cost);
+            Assert.Equal(2, result.Count);
+            
+            // Check result contains expected data
+            var gpt4Data = result.FirstOrDefault(d => d.Name == "gpt-4");
+            Assert.NotNull(gpt4Data);
+            Assert.Equal(0.025m, gpt4Data.Cost);
+            Assert.Equal(55.6m, gpt4Data.Percentage);
+            
+            var claudeData = result.FirstOrDefault(d => d.Name == "claude-v1");
+            Assert.NotNull(claudeData);
+            Assert.Equal(0.02m, claudeData.Cost);
+            Assert.Equal(44.4m, claudeData.Percentage);
         }
     }
 }

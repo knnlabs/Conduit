@@ -9,7 +9,8 @@ ConduitLLM can be configured through:
 1. **Environment Variables**: System-wide configuration
 2. **Configuration Files**: Application-specific settings
 3. **WebUI**: Interactive configuration through the web interface
-4. **API**: Programmatic configuration through REST endpoints
+4. **Admin API**: Programmatic configuration through administrative endpoints
+5. **LLM API**: Programmatic access to the LLM functionality
 
 ## Database Configuration
 

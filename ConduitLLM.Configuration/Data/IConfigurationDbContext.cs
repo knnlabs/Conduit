@@ -85,6 +85,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<ProviderHealthConfiguration> ProviderHealthConfigurations { get; }
 
         /// <summary>
+        /// Database set for IP filters
+        /// </summary>
+        DbSet<IpFilterEntity> IpFilters { get; }
+
+        /// <summary>
         /// Flag indicating if this is a test environment
         /// </summary>
         bool IsTestEnvironment { get; set; }

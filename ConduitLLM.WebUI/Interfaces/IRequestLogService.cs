@@ -4,8 +4,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services.Dtos;
 using ConduitLLM.WebUI.DTOs;
+using WebUIDTOs = ConduitLLM.WebUI.DTOs;
+using ConfigServiceDTOs = ConduitLLM.Configuration.Services.Dtos;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -78,7 +79,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <summary>
         /// Gets a summary of logs for the specified date range
         /// </summary>
-        Task<LogsSummaryDto> GetLogsSummaryAsync(
+        Task<WebUIDTOs.LogsSummaryDto> GetLogsSummaryAsync(
             DateTime startDate,
             DateTime endDate,
             CancellationToken cancellationToken = default);
