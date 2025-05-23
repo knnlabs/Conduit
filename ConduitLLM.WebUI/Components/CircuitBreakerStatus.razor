@@ -1,0 +1,90 @@
+@using Microsoft.Extensions.Diagnostics.HealthChecks
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<CircuitBreakerStatus> Logger
+@implements IDisposable
+
+<div class="circuit-breaker-status">
+    @if (_isCircuitBreakerOpen)
+    {
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <div>
+                <strong>Admin API Connection Issue</strong>
+                <p class="mb-0 small">The connection to the Admin API is temporarily unavailable. Some features may not work properly.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isCircuitBreakerOpen = false;
+    private Timer? _timer;
+    private readonly SemaphoreSlim _checkLock = new(1, 1);
+
+    protected override void OnInitialized()
+    {
+        // Check circuit breaker status every 10 seconds
+        _timer = new Timer(async _ => await CheckCircuitBreakerStatus(), null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    }
+
+    private async Task CheckCircuitBreakerStatus()
+    {
+        if (!await _checkLock.WaitAsync(0))
+        {
+            // Skip if a check is already in progress
+            return;
+        }
+
+        try
+        {
+            using var httpClient = HttpClientFactory.CreateClient();
+            var response = await httpClient.GetAsync("/health");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var healthReport = System.Text.Json.JsonSerializer.Deserialize<HealthReportDto>(content);
+                
+                var adminApiCheck = healthReport?.Checks?.FirstOrDefault(c => c.Name == "admin_api");
+                var wasOpen = _isCircuitBreakerOpen;
+                _isCircuitBreakerOpen = adminApiCheck?.Status == "Unhealthy" && 
+                                      adminApiCheck.Data?.ContainsKey("circuitBreakerState") == true;
+                
+                if (wasOpen != _isCircuitBreakerOpen)
+                {
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking circuit breaker status");
+        }
+        finally
+        {
+            _checkLock.Release();
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _checkLock?.Dispose();
+    }
+
+    private class HealthReportDto
+    {
+        public string Status { get; set; } = string.Empty;
+        public List<HealthCheckDto> Checks { get; set; } = new();
+        public double TotalDuration { get; set; }
+    }
+
+    private class HealthCheckDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public double Duration { get; set; }
+        public Dictionary<string, object>? Data { get; set; }
+    }
+}

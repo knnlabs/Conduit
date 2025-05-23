@@ -1,4 +1,4 @@
-using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;

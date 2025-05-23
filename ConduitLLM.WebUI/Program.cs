@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Options;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Caching;
@@ -153,12 +154,15 @@ if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.
 // Provider and admin services
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 
-// Register Conduit API clients
-builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()));
+// Register Conduit API clients with resilience policies
+builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()))
+    .AddAdminApiResiliencePolicies();
+
 builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
     client.BaseAddress = new Uri(GetApiBaseUrl());
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {client.BaseAddress}");
-});
+})
+.AddAdminApiResiliencePolicies();
 
 // Register Admin API client and compatibility services
 builder.Services.AddAdminApiClient(builder.Configuration);
@@ -188,6 +192,11 @@ builder.Services.AddSignalR(options =>
 
 // Add antiforgery services
 builder.Services.AddAntiforgery();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical" })
+    .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"), tags: new[] { "self" });
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -309,6 +318,9 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Add resilience logging middleware
+app.UseMiddleware<ConduitLLM.WebUI.Middleware.ResilienceLoggingMiddleware>();
+
 app.UseAntiforgery();
 
 // Add authentication middleware before authorization
@@ -316,6 +328,35 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
+
+// Map health checks
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds
+        });
+        await context.Response.WriteAsync(result);
+    }
+});
+
+// Map specific health check for critical components only
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("critical")
+});
 
 // Map controllers first
 app.MapControllers();

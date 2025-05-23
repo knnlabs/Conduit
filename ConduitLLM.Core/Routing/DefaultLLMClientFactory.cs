@@ -6,9 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -383,7 +381,7 @@ namespace ConduitLLM.Core.Routing
         /// The provider name identifies which LLM service implementation should be used.
         /// This is used to look up the appropriate factory function and credentials.
         /// </remarks>
-        public static string GetProviderName(ConduitLLM.Configuration.ModelProviderMapping mapping)
+        public static string GetProviderName(ModelProviderMapping mapping)
         {
             // Get the provider name from the mapping
             return mapping.ProviderName;
@@ -400,7 +398,7 @@ namespace ConduitLLM.Core.Routing
         /// This method ensures we get the correct property even if the naming convention
         /// changes in the mapping object.
         /// </remarks>
-        public static string GetProviderModelName(ConduitLLM.Configuration.ModelProviderMapping mapping)
+        public static string GetProviderModelName(ModelProviderMapping mapping)
         {
             // Use the ProviderModelId property (not ProviderModelName)
             return mapping.ProviderModelId;

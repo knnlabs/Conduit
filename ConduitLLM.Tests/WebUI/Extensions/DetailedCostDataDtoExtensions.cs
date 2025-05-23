@@ -11,19 +11,13 @@ namespace ConduitLLM.Tests.WebUI.Extensions
         /// Creates a legacy-style DetailedCostDataDto for tests
         /// </summary>
         /// <returns>A new DetailedCostDataDto for tests</returns>
-        public static ConduitLLM.Configuration.DTOs.DetailedCostDataDto CreateLegacyDetailedCostDataDto()
+        public static ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto CreateLegacyDetailedCostDataDto()
         {
-            return new ConduitLLM.Configuration.DTOs.DetailedCostDataDto
+            return new ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto
             {
-                Date = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc),
-                Model = "gpt-4",
-                VirtualKeyId = 101,
-                KeyName = "Test Key 1",
-                Requests = 2,
-                InputTokens = 250,
-                OutputTokens = 125,
+                Name = "gpt-4",
                 Cost = 0.025m,
-                Success = true
+                Percentage = 10.0m
             };
         }
 
