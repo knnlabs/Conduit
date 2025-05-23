@@ -205,7 +205,7 @@ namespace ConduitLLM.Providers
                     new Choice
                     {
                         Index = 0,
-                        Message = new Message
+                        Message = new ConduitLLM.Core.Models.Message
                         {
                             Role = bedrockResponse.Role ?? "assistant",
                             Content = bedrockResponse.Content.FirstOrDefault()?.Text ?? string.Empty
