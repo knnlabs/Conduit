@@ -8,8 +8,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Configuration;
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
