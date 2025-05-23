@@ -16,34 +16,20 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="cache-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-database me-3"></i>Cache Settings
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Configure response caching to reduce costs and improve performance
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="cache-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-check-circle me-2"></i>
-                                <span class="small">@(_cacheStats.IsEnabled ? "Enabled" : "Disabled")</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-server me-2"></i>
-                                <span class="small">@_cacheStats.CacheType Cache</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Cache Settings" 
+                Description="Configure response caching to reduce costs and improve performance"
+                Icon="fa-database">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-check-circle me-2"></i>
+                <span class="small">@(_cacheStats.IsEnabled ? "Enabled" : "Disabled")</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-server me-2"></i>
+                <span class="small">@_cacheStats.CacheType Cache</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
     <div class="row">
         <div class="col-12 col-lg-8">
@@ -106,15 +92,11 @@
                                 {
                                     @if (_redisConnectionSuccess)
                                     {
-                                        <span class="badge bg-success">
-                                            <i class="fa fa-check-circle me-1"></i>Connected
-                                        </span>
+                                        <StatusBadge Status="Connected" StatusType="StatusBadge.StatusType.Success" />
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger">
-                                            <i class="fa fa-times-circle me-1"></i>Connection Failed
-                                        </span>
+                                        <StatusBadge Status="Connection Failed" StatusType="StatusBadge.StatusType.Error" />
                                     }
                                 }
                             </div>
@@ -344,20 +326,15 @@
             <div class="card-body">
                 @if (_isLoading)
                 {
-                    <div class="d-flex justify-content-center my-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
+                    <LoadingSpinner Message="Loading cache statistics..." />
                 }
                 else
                 {
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Status:</span>
-                            <span class="badge @(_cacheStats.IsEnabled ? "bg-success" : "bg-secondary")">
-                                @(_cacheStats.IsEnabled ? "Enabled" : "Disabled")
-                            </span>
+                            <StatusBadge Status="@(_cacheStats.IsEnabled ? "Enabled" : "Disabled")"
+                                         StatusType="@(_cacheStats.IsEnabled ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Secondary)" />
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Type:</span>
@@ -415,10 +392,9 @@
             <div class="card-body">
                 @if (_modelStats.Count == 0)
                 {
-                    <div class="text-center py-4">
-                        <i class="fa fa-chart-bar fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No model-specific statistics available.</p>
-                    </div>
+                    <EmptyState Title="No model-specific statistics available"
+                                Description="Statistics will appear once models start using the cache"
+                                Icon="fa-chart-bar" />
                 }
                 else
                 {
@@ -806,39 +782,13 @@
 }
 
 <style>
-    .cache-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    
-    .cache-stats .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-    }
-    
+    /* Page-specific styles not covered by components */
     .card {
         transition: all 0.2s ease;
     }
     
     .card:hover {
         transform: translateY(-1px);
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
     
     .table th {
@@ -856,11 +806,6 @@
     .accordion-button:not(.collapsed) {
         background-color: #e7f1ff;
         color: #0d6efd;
-    }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.65rem;
     }
 </style>
 </div>

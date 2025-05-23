@@ -18,22 +18,32 @@
 
 <PageTitle>Provider Health Dashboard</PageTitle>
 
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Provider Health Dashboard</h1>
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <PageHeader Title="Provider Health Dashboard" 
+                Description="Monitor the health status and performance metrics of your LLM providers"
+                Icon="fa-heartbeat">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-circle-check me-2"></i>
+                <span class="small">@(_latestStatuses?.Count(s => s.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Online) ?? 0) Online</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-circle-xmark me-2"></i>
+                <span class="small">@(_latestStatuses?.Count(s => s.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline) ?? 0) Offline</span>
+            </div>
+        </Statistics>
+    </PageHeader>
+    
+    <div class="d-flex justify-content-end mb-3">
         <a href="/provider-health/config" class="btn btn-outline-primary">
-            <i class="bi bi-gear"></i> Configuration
+            <i class="fa fa-gear me-2"></i>Configuration
         </a>
     </div>
     
     @if (_loading)
     {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading provider health data...</p>
-        </div>
+        <LoadingSpinner Message="Loading provider health data..." />
     }
     else
     {
@@ -64,18 +74,7 @@
                             <div class="card h-100">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <h5 class="mb-0">@status.Key</h5>
-                                    @if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Online)
-                                    {
-                                        <span class="badge bg-success">Online</span>
-                                    }
-                                    else if (status.Value.Status == ConduitLLM.WebUI.Models.ProviderStatus.StatusType.Offline)
-                                    {
-                                        <span class="badge bg-danger">Offline</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Unknown</span>
-                                    }
+                                    <StatusBadge Status="@(status.Value.Status.ToString())" />
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-2">
@@ -119,12 +118,10 @@
                         }
                         else
                         {
-                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-                                <div>
-                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
-                                    <p class="mt-2">No uptime data available for the selected time period</p>
-                                </div>
-                            </div>
+                            <EmptyState Title="No Uptime Data"
+                                        Description="No uptime data available for the selected time period"
+                                        Icon="fa-info-circle"
+                                        IconOpacity="opacity-50" />
                         }
                     </div>
                 </div>
@@ -141,12 +138,10 @@
                         }
                         else
                         {
-                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-                                <div>
-                                    <i class="bi bi-info-circle" style="font-size: 3rem;"></i>
-                                    <p class="mt-2">No response time data available for the selected time period</p>
-                                </div>
-                            </div>
+                            <EmptyState Title="No Response Time Data"
+                                        Description="No response time data available for the selected time period"
+                                        Icon="fa-info-circle"
+                                        IconOpacity="opacity-50" />
                         }
                     </div>
                 </div>
@@ -166,12 +161,10 @@
                         }
                         else
                         {
-                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-                                <div>
-                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
-                                    <p class="mt-2">No errors recorded for the selected time period</p>
-                                </div>
-                            </div>
+                            <EmptyState Title="No Errors"
+                                        Description="No errors recorded for the selected time period"
+                                        Icon="fa-check-circle"
+                                        IconOpacity="opacity-75" />
                         }
                     </div>
                 </div>
@@ -188,12 +181,10 @@
                         }
                         else
                         {
-                            <div class="text-center text-muted" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-                                <div>
-                                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #28a745;"></i>
-                                    <p class="mt-2">No error categories to display</p>
-                                </div>
-                            </div>
+                            <EmptyState Title="No Error Categories"
+                                        Description="No error categories to display"
+                                        Icon="fa-check-circle"
+                                        IconOpacity="opacity-75" />
                         }
                     </div>
                 </div>
@@ -211,12 +202,7 @@
                     <div class="modal-body">
                         @if (_loadingDetails)
                         {
-                            <div class="text-center">
-                                <div class="spinner-border" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <p class="mt-2">Loading provider details...</p>
-                            </div>
+                            <LoadingSpinner Message="Loading provider details..." />
                         }
                         else if (_providerHistory.Count == 0)
                         {
@@ -243,10 +229,7 @@
                                             <tr>
                                                 <td>@record.TimestampUtc.ToLocalTime()</td>
                                                 <td>
-                                                    @if (record.Status == ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType.Online)
-                                                    {
-                                                        <span class="badge bg-success">Online</span>
-                                                    }
+                                                    <StatusBadge Status="@(record.Status.ToString())" />
                                                     else if (record.Status == ConduitLLM.Configuration.Entities.ProviderHealthRecord.StatusType.Offline)
                                                     {
                                                         <span class="badge bg-danger">Offline</span>

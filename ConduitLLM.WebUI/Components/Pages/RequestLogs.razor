@@ -19,34 +19,20 @@
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="rl-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-list-alt me-3"></i>Request Logs
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Monitor API requests, track performance metrics, and analyze usage patterns across virtual keys
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="rl-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-server me-2"></i>
-                                <span class="small">@(logs?.Count ?? 0) Entries</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-clock me-2"></i>
-                                <span class="small">Page @currentPage of @totalPages</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Request Logs" 
+                Description="Monitor API requests, track performance metrics, and analyze usage patterns across virtual keys"
+                Icon="fa-list-alt">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-server me-2"></i>
+                <span class="small">@(logs?.Count ?? 0) Entries</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-clock me-2"></i>
+                <span class="small">Page @currentPage of @totalPages</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
     <!-- Filters Section -->
     <div class="card rl-filter-card border-0 shadow-lg rounded-4 mb-4">
@@ -113,10 +99,10 @@
             </div>
             
             <div class="d-flex justify-content-end mt-4">
-                <button type="button" class="btn rl-btn-outline-secondary me-3" @onclick="ClearFilters">
+                <button type="button" class="btn btn-outline-secondary me-3" @onclick="ClearFilters">
                     <i class="fa fa-times me-2"></i>Clear Filters
                 </button>
-                <button type="button" class="btn rl-btn-primary" @onclick="ApplyFilters">
+                <button type="button" class="btn btn-primary" @onclick="ApplyFilters">
                     <i class="fa fa-search me-2"></i>Apply Filters
                 </button>
             </div>
@@ -125,14 +111,7 @@
 
     @if (isLoading)
     {
-        <div class="text-center py-5">
-            <div class="rl-loading-spinner">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-            <p class="mt-3 text-muted fw-medium">Loading request logs...</p>
-        </div>
+        <LoadingSpinner Message="Loading request logs..." />
     }
     else if (!string.IsNullOrEmpty(errorMessage))
     {
@@ -185,10 +164,7 @@
                                         </span>
                                     </td>
                                     <td class="border-0">
-                                        <span class="badge rl-status-badge @(log.StatusCode == 200 ? "rl-status-success" : "rl-status-error")">
-                                            <i class="fa @(log.StatusCode == 200 ? "fa-check" : "fa-times") me-1"></i>
-                                            @log.StatusCode
-                                        </span>
+                                        <StatusBadge Status="@log.StatusCode.ToString()" />
                                     </td>
                                     <td class="border-0">
                                         <span class="rl-tokens text-success fw-medium">
@@ -248,35 +224,21 @@
     }
     else
     {
-        <div class="rl-empty-state text-center py-5">
-            <div class="rl-empty-icon mb-4">
-                <i class="fa fa-list-alt fa-4x text-primary opacity-50"></i>
-            </div>
-            <h4 class="fw-bold text-dark mb-3">No Request Logs Found</h4>
-            <p class="text-muted mb-4 lead">
-                No logs match your current filters. Try adjusting your search criteria or date range.
-            </p>
-            <button class="btn rl-btn-primary" @onclick="ClearFilters">
-                <i class="fa fa-refresh me-2"></i>Clear Filters
-            </button>
-        </div>
+        <EmptyState Title="No Request Logs Found"
+                    Description="No logs match your current filters. Try adjusting your search criteria or date range."
+                    Icon="fa-list-alt">
+            <ActionTemplate>
+                <button class="btn btn-primary" @onclick="ClearFilters">
+                    <i class="fa fa-refresh me-2"></i>Clear Filters
+                </button>
+            </ActionTemplate>
+        </EmptyState>
     }
 </div>
 
 <!-- Custom CSS Styling -->
 <style>
-    .rl-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem !important;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-
-    .rl-stats .stat-item {
-        display: inline-block;
-        margin-right: 1rem;
-        padding: 0.25rem 0;
-    }
-
+    /* Keep only styles specific to this page that aren't covered by components */
     .rl-filter-card,
     .rl-table-card {
         transition: all 0.3s ease;
@@ -317,62 +279,6 @@
         box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
     }
 
-    .rl-btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 0.75rem;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .rl-btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    }
-
-    .rl-btn-outline-secondary {
-        border: 2px solid #6b7280;
-        color: #6b7280;
-        border-radius: 0.75rem;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        background: transparent;
-    }
-
-    .rl-btn-outline-secondary:hover {
-        background: #6b7280;
-        border-color: #6b7280;
-        color: white;
-        transform: translateY(-1px);
-    }
-
-    .rl-loading-spinner {
-        display: inline-block;
-        animation: gentle-bounce 1.5s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
-    }
-
-    .rl-empty-state {
-        padding: 3rem 2rem;
-    }
-
-    .rl-empty-icon i {
-        animation: gentle-pulse 2s ease-in-out infinite;
-    }
-
-    @@keyframes gentle-pulse {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 0.8; }
-    }
-
     .rl-table-header {
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
     }
@@ -403,23 +309,6 @@
 
     .rl-timestamp {
         font-family: 'Courier New', monospace;
-    }
-
-    .rl-status-badge {
-        padding: 0.4rem 0.8rem;
-        border-radius: 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-
-    .rl-status-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-    }
-
-    .rl-status-error {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
     }
 
     .rl-pagination-container {
@@ -458,15 +347,6 @@
     }
 
     @@media (max-width: 768px) {
-        .rl-header {
-            text-align: center;
-        }
-
-        .rl-stats {
-            text-align: center;
-            margin-top: 1rem;
-        }
-
         .rl-table {
             font-size: 0.875rem;
         }
