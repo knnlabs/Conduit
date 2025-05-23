@@ -1,4 +1,4 @@
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.DTOs.Costs;
 using ConduitLLM.WebUI.DTOs;
 
 namespace ConduitLLM.Tests.Extensions
@@ -9,15 +9,15 @@ namespace ConduitLLM.Tests.Extensions
     public static class VirtualKeyCostDataDtoExtensions
     {
         /// <summary>
-        /// Converts a Configuration.DTOs.VirtualKeyCostDataDto to a WebUI.DTOs.VirtualKeyCostDataDto
+        /// Converts a Configuration.DTOs.Costs.VirtualKeyCostDataDto to a WebUI.DTOs.VirtualKeyCostDataDto
         /// </summary>
-        public static ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto ToWebUIVirtualKeyCostDataDto(this ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto source)
+        public static ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto ToWebUIVirtualKeyCostDataDto(this ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto source)
         {
             return new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
             {
                 VirtualKeyId = source.VirtualKeyId,
-                VirtualKeyName = source.VirtualKeyName,
-                Cost = source.TotalCost,
+                VirtualKeyName = source.KeyName,
+                Cost = source.Cost,
                 RequestCount = source.RequestCount,
                 InputTokens = 0, // These fields don't exist in the source DTO
                 OutputTokens = 0

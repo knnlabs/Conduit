@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Adapters;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
@@ -124,7 +125,14 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderCreden
 
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
+builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
+
+// Register cache service based on configuration
+builder.Services.AddSingleton<ConduitLLM.Configuration.Services.ICacheService, ConduitLLM.Configuration.Services.CacheService>();
+
+// Register Configuration adapters (moved from Core)
+builder.Services.AddConfigurationAdapters();
 
 // Register provider model list service
 builder.Services.AddScoped<ModelListService>();

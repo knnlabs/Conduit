@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 

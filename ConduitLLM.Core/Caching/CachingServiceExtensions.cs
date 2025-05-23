@@ -1,7 +1,7 @@
 using System;
 
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.DependencyInjection;
