@@ -227,7 +227,7 @@ namespace ConduitLLM.WebUI.Services
                 }
                 
                 // Fallback: try deserialization as Configuration DTOs (base namespace)
-                var baseDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.VirtualKeyCostDataDto>>(_jsonOptions);
+                var baseDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto>>(_jsonOptions);
                 
                 if (baseDtos != null)
                 {

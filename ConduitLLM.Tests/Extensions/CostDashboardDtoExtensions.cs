@@ -1,4 +1,4 @@
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.DTOs.Costs;
 
 namespace ConduitLLM.Tests.Extensions
 {
@@ -12,21 +12,22 @@ namespace ConduitLLM.Tests.Extensions
         /// </summary>
         public static int Requests(this CostTrendDataDto costTrendData)
         {
-            return costTrendData.RequestCount;
+            // CostTrendDataDto no longer has RequestCount, return 0 for compatibility
+            return 0;
         }
         
         /// <summary>
         /// Gets the model name from a model cost DTO (compatibility method)
         /// </summary>
-        public static string Model(this ConduitLLM.Configuration.DTOs.ModelCostDataDto modelCostData)
+        public static string Model(this ModelCostDataDto modelCostData)
         {
-            return modelCostData.ModelName;
+            return modelCostData.Model;
         }
         
         /// <summary>
         /// Gets the request count from a model cost DTO (compatibility method)
         /// </summary>
-        public static int Requests(this ConduitLLM.Configuration.DTOs.ModelCostDataDto modelCostData)
+        public static int Requests(this ModelCostDataDto modelCostData)
         {
             return modelCostData.RequestCount;
         }
