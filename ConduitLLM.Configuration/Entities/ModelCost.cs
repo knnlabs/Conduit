@@ -102,4 +102,50 @@ public class ModelCost
     /// </summary>
     [NotMapped]
     public int Priority { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per minute for audio transcription (speech-to-text), if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing each minute of audio input.
+    /// Nullable because not all models support audio transcription.
+    /// Stored with moderate precision (decimal 18,4) for audio processing costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? AudioCostPerMinute { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per 1000 characters for text-to-speech synthesis, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for synthesizing speech from each 1000 characters of text.
+    /// Nullable because not all models support text-to-speech.
+    /// Stored with moderate precision (decimal 18,4) for TTS costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? AudioCostPerKCharacters { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per minute for real-time audio input, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for processing each minute of real-time audio input.
+    /// Used for conversational AI and real-time voice interactions.
+    /// Nullable because not all models support real-time audio.
+    /// Stored with moderate precision (decimal 18,4) for audio streaming costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? AudioInputCostPerMinute { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per minute for real-time audio output, if applicable.
+    /// </summary>
+    /// <remarks>
+    /// This represents the cost in USD for generating each minute of real-time audio output.
+    /// Used for conversational AI and real-time voice interactions.
+    /// Nullable because not all models support real-time audio.
+    /// Stored with moderate precision (decimal 18,4) for audio streaming costs.
+    /// </remarks>
+    [Column(TypeName = "decimal(18, 4)")]
+    public decimal? AudioOutputCostPerMinute { get; set; }
 }

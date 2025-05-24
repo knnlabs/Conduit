@@ -17,6 +17,212 @@ namespace ConduitLLM.Configuration.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AdditionalFactors")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CostPerUnit")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("CostUnit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("MinimumCharge")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EffectiveFrom", "EffectiveTo");
+
+                    b.HasIndex("Provider", "OperationType", "Model", "IsActive");
+
+                    b.ToTable("AudioCosts");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomSettings")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultRealtimeModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultTTSModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultTTSVoice")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultTranscriptionModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProviderCredentialId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RealtimeEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RealtimeEndpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RoutingPriority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("TextToSpeechEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("TranscriptionEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderCredentialId")
+                        .IsUnique();
+
+                    b.ToTable("AudioProviderConfigs");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioUsageLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CharacterCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(10, 6)");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("InputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("OutputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VirtualKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Voice")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("VirtualKey");
+
+                    b.HasIndex("Provider", "OperationType");
+
+                    b.ToTable("AudioUsageLogs");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -51,7 +257,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("FallbackConfigurations", (string)null);
+                    b.ToTable("FallbackConfigurations");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackModelMappingEntity", b =>
@@ -87,7 +293,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("FallbackConfigurationId", "Order")
                         .IsUnique();
 
-                    b.ToTable("FallbackModelMappings", (string)null);
+                    b.ToTable("FallbackModelMappings");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.GlobalSetting", b =>
@@ -121,7 +327,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("GlobalSettings", (string)null);
+                    b.ToTable("GlobalSettings");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.IpFilterEntity", b =>
@@ -164,7 +370,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("FilterType", "IpAddressOrCidr");
 
-                    b.ToTable("IpFilters", (string)null);
+                    b.ToTable("IpFilters");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
@@ -200,7 +406,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ModelIdPattern");
 
-                    b.ToTable("ModelCosts", (string)null);
+                    b.ToTable("ModelCosts");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
@@ -274,7 +480,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("RouterConfigId");
 
-                    b.ToTable("ModelDeployments", (string)null);
+                    b.ToTable("ModelDeployments");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelProviderMapping", b =>
@@ -315,7 +521,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ModelAlias", "ProviderCredentialId")
                         .IsUnique();
 
-                    b.ToTable("ModelProviderMappings", (string)null);
+                    b.ToTable("ModelProviderMappings");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.Notification", b =>
@@ -348,7 +554,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderCredential", b =>
@@ -385,7 +591,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderName")
                         .IsUnique();
 
-                    b.ToTable("ProviderCredentials", (string)null);
+                    b.ToTable("ProviderCredentials");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthConfiguration", b =>
@@ -425,7 +631,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("ProviderName")
                         .IsUnique();
 
-                    b.ToTable("ProviderHealthConfigurations", (string)null);
+                    b.ToTable("ProviderHealthConfigurations");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ProviderHealthRecord", b =>
@@ -473,7 +679,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("ProviderName", "TimestampUtc");
 
-                    b.ToTable("ProviderHealthRecords", (string)null);
+                    b.ToTable("ProviderHealthRecords");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RequestLog", b =>
@@ -529,7 +735,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("RequestLogs", (string)null);
+                    b.ToTable("RequestLogs");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.RouterConfigEntity", b =>
@@ -575,7 +781,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("LastUpdated");
 
-                    b.ToTable("RouterConfigEntity", (string)null);
+                    b.ToTable("RouterConfigEntity");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKey", b =>
@@ -645,7 +851,7 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("KeyHash")
                         .IsUnique();
 
-                    b.ToTable("VirtualKeys", (string)null);
+                    b.ToTable("VirtualKeys");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.VirtualKeySpendHistory", b =>
@@ -670,7 +876,18 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.ToTable("VirtualKeySpendHistory", (string)null);
+                    b.ToTable("VirtualKeySpendHistory");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.ProviderCredential", "ProviderCredential")
+                        .WithOne()
+                        .HasForeignKey("ConduitLLM.Configuration.Entities.AudioProviderConfig", "ProviderCredentialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProviderCredential");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.FallbackConfigurationEntity", b =>

@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ConduitLLM.Admin;
 
@@ -80,6 +81,10 @@ public class Program
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);
 
+        // Add health checks
+        builder.Services.AddHealthChecks()
+            .AddAudioProviderHealthChecks("audio");
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline
@@ -97,6 +102,14 @@ public class Program
         app.UseAuthorization();
 
         app.MapControllers();
+        
+        // Map health checks
+        app.MapHealthChecks("/health/ready");
+        app.MapHealthChecks("/health/live");
+        app.MapHealthChecks("/health/audio", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("audio")
+        });
 
         app.Run();
     }

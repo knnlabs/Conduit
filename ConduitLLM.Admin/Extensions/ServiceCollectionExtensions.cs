@@ -40,6 +40,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
         services.AddScoped<IAdminModelCostService, AdminModelCostService>();
         services.AddScoped<IAdminProviderCredentialService, AdminProviderCredentialService>();
+        
+        // Register audio-related services
+        services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
+        services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
+        services.AddScoped<IAdminAudioUsageService, AdminAudioUsageService>();
 
         // Configure CORS for the Admin API
         services.AddCors(options =>

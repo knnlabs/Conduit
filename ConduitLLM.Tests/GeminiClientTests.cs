@@ -294,7 +294,7 @@ public class GeminiClientTests
         yield return JsonSerializer.Serialize(new TestHelpers.Mocks.GeminiGenerateContentResponse { Candidates = new List<TestHelpers.Mocks.GeminiCandidate> { new TestHelpers.Mocks.GeminiCandidate { Index = 0, FinishReason = "STOP" } } }); // Final chunk with finish reason
     }
 
-    [Fact(Skip = "Test has issues with response handling")]
+    [Fact(Skip = "Flaky test - stream parsing issue")]
     public async Task StreamChatCompletionAsync_Success()
     {
         // Arrange

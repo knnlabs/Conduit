@@ -110,6 +110,21 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<IpFilterEntity> IpFilters { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for audio provider configurations
+        /// </summary>
+        public virtual DbSet<AudioProviderConfig> AudioProviderConfigs { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for audio costs
+        /// </summary>
+        public virtual DbSet<AudioCost> AudioCosts { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for audio usage logs
+        /// </summary>
+        public virtual DbSet<AudioUsageLog> AudioUsageLogs { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -244,6 +259,36 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.FilterType, e.IpAddressOrCidr });
                 // Create an index for IsEnabled to quickly filter active rules
                 entity.HasIndex(e => e.IsEnabled);
+            });
+
+            // Configure AudioProviderConfig entity
+            modelBuilder.Entity<AudioProviderConfig>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ProviderCredentialId);
+                
+                entity.HasOne(e => e.ProviderCredential)
+                      .WithOne()
+                      .HasForeignKey<AudioProviderConfig>(e => e.ProviderCredentialId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure AudioCost entity
+            modelBuilder.Entity<AudioCost>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.Provider, e.OperationType, e.Model, e.IsActive });
+                entity.HasIndex(e => new { e.EffectiveFrom, e.EffectiveTo });
+            });
+
+            // Configure AudioUsageLog entity
+            modelBuilder.Entity<AudioUsageLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.VirtualKey);
+                entity.HasIndex(e => e.Timestamp);
+                entity.HasIndex(e => new { e.Provider, e.OperationType });
+                entity.HasIndex(e => e.SessionId);
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

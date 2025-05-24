@@ -5,6 +5,7 @@ using System.Text.Json.Serialization; // Required for JsonNamingPolicy
 using ConduitLLM.Configuration;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Core.Models;
@@ -18,6 +19,7 @@ using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.Extensions.Options; // Added for IOptions
 using Microsoft.AspNetCore.RateLimiting;
 using ConduitLLM.Http.Security;
+using ConduitLLM.Http.Controllers; // Added for RealtimeController
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
@@ -140,6 +142,27 @@ builder.Services.AddScoped<ModelListService>();
 // Register Conduit service
 builder.Services.AddScoped<Conduit>();
 
+// Register Audio services
+builder.Services.AddConduitAudioServices();
+
+// Register Real-time Audio services
+builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionManager>();
+builder.Services.AddSingleton<IRealtimeMessageTranslatorFactory, RealtimeMessageTranslatorFactory>();
+builder.Services.AddScoped<IRealtimeProxyService, RealtimeProxyService>();
+builder.Services.AddScoped<IRealtimeUsageTracker, RealtimeUsageTracker>();
+builder.Services.AddHostedService<RealtimeConnectionManager>(provider => 
+    provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ?? 
+    throw new InvalidOperationException("RealtimeConnectionManager not registered properly"));
+
+// Register Real-time Message Translators
+builder.Services.AddSingleton<ConduitLLM.Providers.Translators.OpenAIRealtimeTranslatorV2>();
+builder.Services.AddSingleton<ConduitLLM.Providers.Translators.UltravoxRealtimeTranslator>();
+builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtimeTranslator>();
+
+// Register Audio routing
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
+
 // Add CORS support for WebUI requests
 builder.Services.AddCors(options =>
 {
@@ -164,6 +187,12 @@ var app = builder.Build();
 
 // Enable CORS
 app.UseCors();
+
+// Enable WebSockets for real-time communication
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(120)
+});
 
 // Add a health check endpoint
 // Add controllers to the app
@@ -463,3 +492,6 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
         }
     }
 }
+
+// Make Program class accessible for testing
+public partial class Program { }
