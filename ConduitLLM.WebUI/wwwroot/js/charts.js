@@ -10,8 +10,11 @@ const chartInstances = {};
  * @param {string} canvasId - The ID of the canvas element
  * @param {string[]} labels - The labels for the chart
  * @param {number[]} data - The data points for the chart
+ * @param {number[]} data2 - Optional second dataset
+ * @param {string} label1 - Label for first dataset
+ * @param {string} label2 - Label for second dataset
  */
-function renderLineChart(canvasId, labels, data) {
+function renderLineChart(canvasId, labels, data, data2, label1, label2) {
   // Destroy previous chart instance if exists
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy();
@@ -25,19 +28,35 @@ function renderLineChart(canvasId, labels, data) {
   
   const ctx = canvas.getContext('2d');
   
+  const datasets = [{
+    label: label1 || 'Cost ($)',
+    data: data,
+    borderColor: '#3498db',
+    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+    borderWidth: 2,
+    tension: 0.2,
+    fill: true,
+    yAxisID: 'y'
+  }];
+  
+  if (data2) {
+    datasets.push({
+      label: label2 || 'Count',
+      data: data2,
+      borderColor: '#2ecc71',
+      backgroundColor: 'rgba(46, 204, 113, 0.1)',
+      borderWidth: 2,
+      tension: 0.2,
+      fill: true,
+      yAxisID: 'y1'
+    });
+  }
+  
   chartInstances[canvasId] = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{
-        label: 'Cost ($)',
-        data: data,
-        borderColor: '#3498db',
-        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-        borderWidth: 2,
-        tension: 0.2,
-        fill: true
-      }]
+      datasets: datasets
     },
     options: {
       responsive: true,
@@ -59,13 +78,25 @@ function renderLineChart(canvasId, labels, data) {
       },
       scales: {
         y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
           beginAtZero: true,
           ticks: {
             callback: function(value) {
               return '$' + value.toFixed(2);
             }
           }
-        }
+        },
+        y1: data2 ? {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          beginAtZero: true,
+          grid: {
+            drawOnChartArea: false
+          }
+        } : undefined
       }
     }
   });
@@ -76,9 +107,10 @@ function renderLineChart(canvasId, labels, data) {
  * @param {string} canvasId - The ID of the canvas element
  * @param {string[]} labels - The labels for the chart
  * @param {number[]} data - The data points for the chart
+ * @param {string} title - The title for the chart
  * @param {string[]} colors - The colors for each segment
  */
-function renderPieChart(canvasId, labels, data, colors) {
+function renderPieChart(canvasId, labels, data, title, colors) {
   // Destroy previous chart instance if exists
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy();
@@ -113,6 +145,10 @@ function renderPieChart(canvasId, labels, data, colors) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
+        title: {
+          display: !!title,
+          text: title || ''
+        },
         legend: {
           position: 'right',
           labels: {

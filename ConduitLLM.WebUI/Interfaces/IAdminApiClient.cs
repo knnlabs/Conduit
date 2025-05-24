@@ -727,7 +727,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKey">Filter by virtual key (optional)</param>
         /// <param name="provider">Filter by provider (optional)</param>
         /// <returns>Usage summary</returns>
-        Task<ConduitLLM.WebUI.Services.AudioUsageSummaryDto> GetAudioUsageSummaryAsync(
+        Task<ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto> GetAudioUsageSummaryAsync(
             DateTime startDate,
             DateTime endDate,
             string? virtualKey = null,

@@ -64,6 +64,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional priority value for this model cost entry (for backward compatibility)
         /// </summary>
         public int Priority { get; set; }
+
+        /// <summary>
+        /// Cost per minute for audio transcription (speech-to-text) in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per 1000 characters for text-to-speech synthesis in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerKCharacters { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio input in USD, if applicable
+        /// </summary>
+        public decimal? AudioInputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio output in USD, if applicable
+        /// </summary>
+        public decimal? AudioOutputCostPerMinute { get; set; }
     }
 
     /// <summary>
@@ -102,6 +122,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per image for image generation requests in USD, if applicable
         /// </summary>
         public decimal? ImageCostPerImage { get; set; }
+
+        /// <summary>
+        /// Cost per minute for audio transcription (speech-to-text) in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per 1000 characters for text-to-speech synthesis in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerKCharacters { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio input in USD, if applicable
+        /// </summary>
+        public decimal? AudioInputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio output in USD, if applicable
+        /// </summary>
+        public decimal? AudioOutputCostPerMinute { get; set; }
     }
 
     /// <summary>
@@ -145,6 +185,26 @@ namespace ConduitLLM.Configuration.DTOs
         /// Cost per image for image generation requests in USD, if applicable
         /// </summary>
         public decimal? ImageCostPerImage { get; set; }
+
+        /// <summary>
+        /// Cost per minute for audio transcription (speech-to-text) in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per 1000 characters for text-to-speech synthesis in USD, if applicable
+        /// </summary>
+        public decimal? AudioCostPerKCharacters { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio input in USD, if applicable
+        /// </summary>
+        public decimal? AudioInputCostPerMinute { get; set; }
+
+        /// <summary>
+        /// Cost per minute for real-time audio output in USD, if applicable
+        /// </summary>
+        public decimal? AudioOutputCostPerMinute { get; set; }
     }
 
     /// <summary>

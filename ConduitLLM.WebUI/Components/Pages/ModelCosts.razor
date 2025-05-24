@@ -115,9 +115,9 @@
                                 <th class="border-0 fw-bold">Model Pattern</th>
                                 <th class="border-0 fw-bold">Input Cost</th>
                                 <th class="border-0 fw-bold">Output Cost</th>
-                                <th class="border-0 fw-bold">Embedding Cost</th>
-                                <th class="border-0 fw-bold">Image Cost</th>
-                                <th class="border-0 fw-bold">Created</th>
+                                <th class="border-0 fw-bold">Embedding</th>
+                                <th class="border-0 fw-bold">Image</th>
+                                <th class="border-0 fw-bold">Audio</th>
                                 <th class="border-0 fw-bold">Updated</th>
                                 <th class="border-0 fw-bold">Actions</th>
                             </tr>
@@ -152,9 +152,49 @@
                                         </span>
                                     </td>
                                     <td class="border-0">
-                                        <small class="text-muted">
-                                            <i class="fa fa-calendar me-1"></i>@cost.CreatedAt.ToString("MMM dd, yyyy")
-                                        </small>
+                                        @if (cost.AudioCostPerMinute.HasValue || cost.AudioCostPerKCharacters.HasValue || 
+                                             cost.AudioInputCostPerMinute.HasValue || cost.AudioOutputCostPerMinute.HasValue)
+                                        {
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                    <i class="fa fa-headphones me-1"></i>Audio
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    @if (cost.AudioCostPerMinute.HasValue)
+                                                    {
+                                                        <li class="dropdown-item-text">
+                                                            <small class="text-muted">Transcription:</small><br/>
+                                                            <strong>@FormatAudioCost(cost.AudioCostPerMinute.Value)/min</strong>
+                                                        </li>
+                                                    }
+                                                    @if (cost.AudioCostPerKCharacters.HasValue)
+                                                    {
+                                                        <li class="dropdown-item-text">
+                                                            <small class="text-muted">TTS:</small><br/>
+                                                            <strong>@FormatAudioCost(cost.AudioCostPerKCharacters.Value)/1K chars</strong>
+                                                        </li>
+                                                    }
+                                                    @if (cost.AudioInputCostPerMinute.HasValue || cost.AudioOutputCostPerMinute.HasValue)
+                                                    {
+                                                        <li class="dropdown-item-text">
+                                                            <small class="text-muted">Real-time:</small><br/>
+                                                            @if (cost.AudioInputCostPerMinute.HasValue)
+                                                            {
+                                                                <strong>In: @FormatAudioCost(cost.AudioInputCostPerMinute.Value)/min</strong><br/>
+                                                            }
+                                                            @if (cost.AudioOutputCostPerMinute.HasValue)
+                                                            {
+                                                                <strong>Out: @FormatAudioCost(cost.AudioOutputCostPerMinute.Value)/min</strong>
+                                                            }
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
                                     </td>
                                     <td class="border-0">
                                         <small class="text-muted">
@@ -231,6 +271,58 @@
                             <input type="number" class="form-control" id="imageCost" @bind="editingModelCost.ImageCostPerImage" min="0" step="0.01" />
                         </div>
                         <div class="form-text">Cost in USD per generated image (leave empty if not applicable)</div>
+                    </div>
+                    
+                    <!-- Audio Costs Section -->
+                    <hr class="my-4" />
+                    <h6 class="mb-3">
+                        <i class="fa fa-headphones me-2 text-info"></i>Audio Costs (Optional)
+                    </h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="audioCostPerMinute" class="form-label">Transcription Cost ($ per minute)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="audioCostPerMinute" @bind="editingModelCost.AudioCostPerMinute" min="0" step="0.001" />
+                                </div>
+                                <div class="form-text">Cost for speech-to-text transcription per minute</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="audioCostPerKCharacters" class="form-label">TTS Cost ($ per 1K characters)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="audioCostPerKCharacters" @bind="editingModelCost.AudioCostPerKCharacters" min="0" step="0.001" />
+                                </div>
+                                <div class="form-text">Cost for text-to-speech per 1,000 characters</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="audioInputCostPerMinute" class="form-label">Real-time Input Cost ($ per minute)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="audioInputCostPerMinute" @bind="editingModelCost.AudioInputCostPerMinute" min="0" step="0.001" />
+                                </div>
+                                <div class="form-text">Cost for real-time audio input per minute</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="audioOutputCostPerMinute" class="form-label">Real-time Output Cost ($ per minute)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="audioOutputCostPerMinute" @bind="editingModelCost.AudioOutputCostPerMinute" min="0" step="0.001" />
+                                </div>
+                                <div class="form-text">Cost for real-time audio output per minute</div>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -735,6 +827,25 @@
         else
         {
             return $"${perThousand:F2}/1K";
+        }
+    }
+    
+    private string FormatAudioCost(decimal cost)
+    {
+        if (cost == 0) return "—";
+        
+        // Format with appropriate number of decimal places
+        if (cost < 0.01m)
+        {
+            return $"${cost:F4}";
+        }
+        else if (cost < 0.1m)
+        {
+            return $"${cost:F3}";
+        }
+        else
+        {
+            return $"${cost:F2}";
         }
     }
 }

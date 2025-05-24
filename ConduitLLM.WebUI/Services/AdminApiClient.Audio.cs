@@ -387,7 +387,7 @@ namespace ConduitLLM.WebUI.Services
         /// <param name="virtualKey">Filter by virtual key (optional)</param>
         /// <param name="provider">Filter by provider (optional)</param>
         /// <returns>Usage summary</returns>
-        public async Task<AudioUsageSummaryDto> GetAudioUsageSummaryAsync(
+        public async Task<ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto> GetAudioUsageSummaryAsync(
             DateTime startDate,
             DateTime endDate,
             string? virtualKey = null,
@@ -401,9 +401,9 @@ namespace ConduitLLM.WebUI.Services
                 if (!string.IsNullOrEmpty(provider))
                     query += $"&provider={provider}";
 
-                var response = await _httpClient.GetFromJsonAsync<AudioUsageSummaryDto>(
+                var response = await _httpClient.GetFromJsonAsync<ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto>(
                     $"api/admin/audio/usage/summary{query}");
-                return response ?? new AudioUsageSummaryDto();
+                return response ?? new ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto();
             }
             catch (Exception ex)
             {
@@ -523,83 +523,6 @@ namespace ConduitLLM.WebUI.Services
         public string? ErrorDetails { get; set; }
     }
 
-    /// <summary>
-    /// Summary of audio usage statistics.
-    /// </summary>
-    public class AudioUsageSummaryDto
-    {
-        /// <summary>
-        /// Gets or sets the total number of requests.
-        /// </summary>
-        public int TotalRequests { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total duration in minutes for transcription.
-        /// </summary>
-        public decimal TotalTranscriptionMinutes { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total characters for TTS.
-        /// </summary>
-        public int TotalTtsCharacters { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total cost.
-        /// </summary>
-        public decimal TotalCost { get; set; }
-
-        /// <summary>
-        /// Gets or sets usage breakdown by provider.
-        /// </summary>
-        public Dictionary<string, ProviderUsageStats> ProviderBreakdown { get; set; } = new();
-
-        /// <summary>
-        /// Gets or sets usage breakdown by operation type.
-        /// </summary>
-        public Dictionary<string, OperationUsageStats> OperationBreakdown { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Usage statistics for a provider.
-    /// </summary>
-    public class ProviderUsageStats
-    {
-        /// <summary>
-        /// Gets or sets the request count.
-        /// </summary>
-        public int RequestCount { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total cost.
-        /// </summary>
-        public decimal TotalCost { get; set; }
-
-        /// <summary>
-        /// Gets or sets the average response time.
-        /// </summary>
-        public double AverageResponseTimeMs { get; set; }
-    }
-
-    /// <summary>
-    /// Usage statistics for an operation type.
-    /// </summary>
-    public class OperationUsageStats
-    {
-        /// <summary>
-        /// Gets or sets the request count.
-        /// </summary>
-        public int RequestCount { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total units (minutes for transcription, characters for TTS).
-        /// </summary>
-        public decimal TotalUnits { get; set; }
-
-        /// <summary>
-        /// Gets or sets the total cost.
-        /// </summary>
-        public decimal TotalCost { get; set; }
-    }
 
     /// <summary>
     /// Metrics for real-time sessions.

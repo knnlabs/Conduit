@@ -1,0 +1,512 @@
+@page "/audio-usage"
+@using System.Text.Json
+@using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.DTOs.Audio
+@using ConduitLLM.WebUI.Services
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
+@inject IJSRuntime JSRuntime
+@inject ILogger<AudioUsage> Logger
+@inject NotificationService NotificationService
+@rendermode InteractiveServer
+
+<PageTitle>Audio Usage Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-bar-chart-line me-2"></i>Audio Usage Dashboard</h1>
+        <button class="btn btn-primary" @onclick="RefreshDataAsync">
+            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading audio usage data...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Date Range Filter -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" @bind="_startDate" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" @bind="_endDate" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Virtual Key</label>
+                        <input type="text" class="form-control" @bind="_filterVirtualKey" placeholder="All keys" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Provider</label>
+                        <select class="form-select" @bind="_filterProvider">
+                            <option value="">All providers</option>
+                            @foreach (var provider in _availableProviders)
+                            {
+                                <option value="@provider">@provider</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" @onclick="ApplyFiltersAsync">
+                            <i class="bi bi-funnel me-2"></i>Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Requests</h5>
+                        <h2 class="text-primary">@_usageSummary.TotalOperations.ToString("N0")</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Transcription Minutes</h5>
+                        <h2 class="text-info">@((_usageSummary.TotalDurationSeconds / 60).ToString("N1"))</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">TTS Characters</h5>
+                        <h2 class="text-success">@_usageSummary.TotalCharacters.ToString("N0")</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Cost</h5>
+                        <h2 class="text-warning">$@_usageSummary.TotalCost.ToString("N2")</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Usage by Provider</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="providerChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Usage by Operation Type</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="operationChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Usage Trend -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Daily Usage Trend</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" style="height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Provider Breakdown Table -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Provider Performance Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Requests</th>
+                                <th>Total Cost</th>
+                                <th>Avg Response Time</th>
+                                <th>Success Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var provider in _usageSummary.ProviderBreakdown)
+                            {
+                                <tr>
+                                    <td>@provider.Provider</td>
+                                    <td>@provider.Count.ToString("N0")</td>
+                                    <td>$@provider.TotalCost.ToString("N2")</td>
+                                    <td>N/A</td>
+                                    <td>
+                                        <span class="badge bg-@(GetSuccessRateBadgeClass(provider.SuccessRate))">
+                                            @provider.SuccessRate.ToString("N0")%
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Usage Logs -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Audio Usage Logs</h5>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="DownloadLogsAsync">
+                        <i class="bi bi-download me-2"></i>Export CSV
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Virtual Key</th>
+                                <th>Provider</th>
+                                <th>Operation</th>
+                                <th>Model</th>
+                                <th>Duration/Characters</th>
+                                <th>Cost</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in _usageLogs.Items)
+                            {
+                                <tr>
+                                    <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td><code>@log.VirtualKey</code></td>
+                                    <td>@log.Provider</td>
+                                    <td>
+                                        <span class="badge bg-@(GetOperationBadgeClass(log.OperationType))">
+                                            @log.OperationType
+                                        </span>
+                                    </td>
+                                    <td>@(log.Model ?? "N/A")</td>
+                                    <td>
+                                        @if (log.OperationType == "transcription" && log.DurationSeconds.HasValue)
+                                        {
+                                            @($"{(log.DurationSeconds.Value / 60):N1} min")
+                                        }
+                                        else if (log.CharacterCount.HasValue)
+                                        {
+                                            @($"{log.CharacterCount.Value:N0} chars")
+                                        }
+                                        else
+                                        {
+                                            @("N/A")
+                                        }
+                                    </td>
+                                    <td>$@log.Cost.ToString("N4")</td>
+                                    <td>
+                                        @if (log.StatusCode == 200)
+                                        {
+                                            <span class="badge bg-success">Success</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Failed</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (_usageLogs.TotalPages > 1)
+                {
+                    <nav aria-label="Usage logs pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(_currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" @onclick="() => LoadPageAsync(_currentPage - 1)" href="javascript:void(0)">Previous</a>
+                            </li>
+                            @for (int i = Math.Max(1, _currentPage - 2); i <= Math.Min(_usageLogs.TotalPages, _currentPage + 2); i++)
+                            {
+                                int pageNumber = i;
+                                <li class="page-item @(pageNumber == _currentPage ? "active" : "")">
+                                    <a class="page-link" @onclick="() => LoadPageAsync(pageNumber)" href="javascript:void(0)">@pageNumber</a>
+                                </li>
+                            }
+                            <li class="page-item @(_currentPage == _usageLogs.TotalPages ? "disabled" : "")">
+                                <a class="page-link" @onclick="() => LoadPageAsync(_currentPage + 1)" href="javascript:void(0)">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private DateTime _startDate = DateTime.Now.AddDays(-7);
+    private DateTime _endDate = DateTime.Now;
+    private string? _filterVirtualKey = null;
+    private string? _filterProvider = null;
+    private List<string> _availableProviders = new();
+    
+    private AudioUsageSummaryDto _usageSummary = new();
+    private PagedResult<AudioUsageDto> _usageLogs = new();
+    private Dictionary<DateTime, DailyUsageData> _dailyUsage = new();
+    
+    private int _currentPage = 1;
+    private const int PageSize = 20;
+
+    private class DailyUsageData
+    {
+        public int RequestCount { get; set; }
+        public decimal TotalCost { get; set; }
+        public decimal TranscriptionMinutes { get; set; }
+        public int TtsCharacters { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_loading && _usageSummary.ProviderBreakdown.Any())
+        {
+            await RenderChartsAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _loading = true;
+            StateHasChanged();
+
+            // Load available providers
+            var audioProviders = await AdminApiClient.GetAudioProvidersAsync();
+            _availableProviders = audioProviders.Select(p => p.ProviderName).Where(p => !string.IsNullOrEmpty(p)).Distinct().ToList();
+
+            // Load usage summary
+            _usageSummary = await AdminApiClient.GetAudioUsageSummaryAsync(
+                _startDate, 
+                _endDate, 
+                _filterVirtualKey, 
+                _filterProvider);
+
+            // Load usage logs
+            _usageLogs = await AdminApiClient.GetAudioUsageLogsAsync(
+                _currentPage,
+                PageSize,
+                _filterVirtualKey,
+                _filterProvider,
+                null,
+                _startDate,
+                _endDate);
+
+            // Calculate daily usage data for trend chart
+            await CalculateDailyUsageAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading audio usage data");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, 
+                "Error loading audio usage data: " + ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CalculateDailyUsageAsync()
+    {
+        _dailyUsage.Clear();
+        
+        // Get all logs for the date range (up to 1000)
+        var allLogs = await AdminApiClient.GetAudioUsageLogsAsync(
+            1, 1000, _filterVirtualKey, _filterProvider, null, _startDate, _endDate);
+        
+        foreach (var log in allLogs.Items)
+        {
+            var date = log.Timestamp.Date;
+            if (!_dailyUsage.ContainsKey(date))
+            {
+                _dailyUsage[date] = new DailyUsageData();
+            }
+            
+            _dailyUsage[date].RequestCount++;
+            _dailyUsage[date].TotalCost += log.Cost;
+            
+            if (log.OperationType == "transcription")
+            {
+                _dailyUsage[date].TranscriptionMinutes += (decimal)((log.DurationSeconds ?? 0) / 60);
+            }
+            else if (log.OperationType == "tts")
+            {
+                _dailyUsage[date].TtsCharacters += log.CharacterCount ?? 0;
+            }
+        }
+    }
+
+    private async Task RefreshDataAsync()
+    {
+        await LoadDataAsync();
+        await RenderChartsAsync();
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        _currentPage = 1;
+        await LoadDataAsync();
+        await RenderChartsAsync();
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        if (page < 1 || page > _usageLogs.TotalPages) return;
+        
+        _currentPage = page;
+        _usageLogs = await AdminApiClient.GetAudioUsageLogsAsync(
+            _currentPage,
+            PageSize,
+            _filterVirtualKey,
+            _filterProvider,
+            null,
+            _startDate,
+            _endDate);
+        
+        StateHasChanged();
+    }
+
+    private async Task RenderChartsAsync()
+    {
+        try
+        {
+            // Provider usage chart
+            if (_usageSummary.ProviderBreakdown.Any())
+            {
+                var providerLabels = _usageSummary.ProviderBreakdown.Select(p => p.Provider).ToArray();
+                var providerData = _usageSummary.ProviderBreakdown
+                    .Select(p => p.Count)
+                    .ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderPieChart", 
+                    "providerChart", providerLabels, providerData, "Provider Usage");
+            }
+
+            // Operation type chart
+            if (_usageSummary.OperationBreakdown.Any())
+            {
+                var operationLabels = _usageSummary.OperationBreakdown.Select(o => o.OperationType).ToArray();
+                var operationData = _usageSummary.OperationBreakdown
+                    .Select(o => o.Count)
+                    .ToArray();
+                
+                await JSRuntime.InvokeVoidAsync("renderPieChart", 
+                    "operationChart", operationLabels, operationData, "Operation Types");
+            }
+
+            // Daily trend chart
+            if (_dailyUsage.Any())
+            {
+                var sortedDays = _dailyUsage.OrderBy(d => d.Key).ToList();
+                var labels = sortedDays.Select(d => d.Key.ToString("MMM dd")).ToArray();
+                var costData = sortedDays.Select(d => d.Value.TotalCost).ToArray();
+                var requestData = sortedDays.Select(d => d.Value.RequestCount).ToArray();
+
+                await JSRuntime.InvokeVoidAsync("renderLineChart", 
+                    "trendChart", labels, costData, requestData, "Daily Cost", "Request Count");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error rendering charts");
+        }
+    }
+
+    private async Task DownloadLogsAsync()
+    {
+        try
+        {
+            // Get all logs for export (up to 10000)
+            var allLogs = await AdminApiClient.GetAudioUsageLogsAsync(
+                1, 10000, _filterVirtualKey, _filterProvider, null, _startDate, _endDate);
+            
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Timestamp,VirtualKey,Provider,Operation,Model,Duration/Characters,Cost,Status");
+            
+            foreach (var log in allLogs.Items)
+            {
+                var units = log.OperationType == "transcription" && log.DurationSeconds.HasValue
+                    ? $"{(log.DurationSeconds.Value / 60):N1} min" 
+                    : log.CharacterCount.HasValue 
+                        ? $"{log.CharacterCount.Value:N0} chars"
+                        : "N/A";
+                
+                csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.VirtualKey},{log.Provider}," +
+                    $"{log.OperationType},{log.Model ?? "N/A"},{units},{log.Cost:N4},{(log.StatusCode == 200 ? "Success" : "Failed")}");
+            }
+            
+            await JSRuntime.InvokeVoidAsync("downloadFile", 
+                $"audio_usage_{_startDate:yyyyMMdd}_{_endDate:yyyyMMdd}.csv", 
+                "text/csv", 
+                csv.ToString());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading usage logs");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, 
+                "Error downloading logs: " + ex.Message);
+        }
+    }
+
+    private string GetOperationBadgeClass(string operationType) => operationType switch
+    {
+        "transcription" => "info",
+        "tts" => "success",
+        "realtime" => "warning",
+        _ => "secondary"
+    };
+
+    private string GetSuccessRateBadgeClass(double rate) => rate switch
+    {
+        >= 99 => "success",
+        >= 95 => "primary",
+        >= 90 => "warning",
+        _ => "danger"
+    };
+}
