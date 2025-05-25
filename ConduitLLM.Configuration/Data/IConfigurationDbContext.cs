@@ -90,6 +90,21 @@ namespace ConduitLLM.Configuration.Data
         DbSet<IpFilterEntity> IpFilters { get; }
 
         /// <summary>
+        /// Database set for audio provider configurations
+        /// </summary>
+        DbSet<AudioProviderConfig> AudioProviderConfigs { get; }
+
+        /// <summary>
+        /// Database set for audio costs
+        /// </summary>
+        DbSet<AudioCost> AudioCosts { get; }
+
+        /// <summary>
+        /// Database set for audio usage logs
+        /// </summary>
+        DbSet<AudioUsageLog> AudioUsageLogs { get; }
+
+        /// <summary>
         /// Flag indicating if this is a test environment
         /// </summary>
         bool IsTestEnvironment { get; set; }

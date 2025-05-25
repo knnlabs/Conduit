@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Providers.InternalModels
 {
@@ -46,5 +48,25 @@ namespace ConduitLLM.Providers.InternalModels
         /// Gets or sets a value indicating whether the model supports JSON mode.
         /// </summary>
         public bool JsonMode { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the model supports audio transcription.
+        /// </summary>
+        public bool AudioTranscription { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the model supports text-to-speech.
+        /// </summary>
+        public bool TextToSpeech { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the model supports real-time audio.
+        /// </summary>
+        public bool RealtimeAudio { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of supported audio operations.
+        /// </summary>
+        public List<AudioOperation>? SupportedAudioOperations { get; set; }
     }
 }

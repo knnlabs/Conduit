@@ -5,12 +5,14 @@
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Models
+@using AudioDTOs = ConduitLLM.Configuration.DTOs.Audio
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ConduitLLM.WebUI.Interfaces.IProviderHealthService ProviderHealthService
 @inject ConduitLLM.WebUI.Interfaces.IProviderStatusService ProviderStatusService
+@inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<ProviderHealth> Logger
 @inject NotificationService NotificationService
@@ -191,6 +193,147 @@
             </div>
         </div>
         
+        <!-- Audio Provider Health Section -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <h2>Audio Provider Health</h2>
+                @if (_audioProviders == null || !_audioProviders.Any())
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No audio providers configured. Configure audio capabilities in the <a href="/configuration">Configuration</a> page.
+                    </div>
+                }
+                else
+                {
+                    <div class="row">
+                        @foreach (var audioProvider in _audioProviders)
+                        {
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">
+                                            <i class="bi bi-headphones me-2"></i>@audioProvider.ProviderName
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Transcription Health -->
+                                        @if (audioProvider.TranscriptionEnabled)
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="d-flex justify-content-between align-items-center">
+                                                    <span><i class="bi bi-mic me-2"></i>Transcription</span>
+                                                    @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_transcription"))
+                                                    {
+                                                        var status = _audioHealthStatus[$"{audioProvider.Id}_transcription"];
+                                                        <span class="badge bg-@(status.IsHealthy ? "success" : "danger")">
+                                                            @(status.IsHealthy ? "Healthy" : "Unhealthy")
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                    }
+                                                </h6>
+                                                @if (!string.IsNullOrEmpty(audioProvider.DefaultTranscriptionModel))
+                                                {
+                                                    <small class="text-muted">Model: @audioProvider.DefaultTranscriptionModel</small>
+                                                }
+                                                @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_transcription"))
+                                                {
+                                                    var status = _audioHealthStatus[$"{audioProvider.Id}_transcription"];
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">Response: @status.ResponseTimeMs ms</small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        
+                                        <!-- TTS Health -->
+                                        @if (audioProvider.TextToSpeechEnabled)
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="d-flex justify-content-between align-items-center">
+                                                    <span><i class="bi bi-volume-up me-2"></i>Text-to-Speech</span>
+                                                    @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_tts"))
+                                                    {
+                                                        var status = _audioHealthStatus[$"{audioProvider.Id}_tts"];
+                                                        <span class="badge bg-@(status.IsHealthy ? "success" : "danger")">
+                                                            @(status.IsHealthy ? "Healthy" : "Unhealthy")
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                    }
+                                                </h6>
+                                                @if (!string.IsNullOrEmpty(audioProvider.DefaultTTSModel))
+                                                {
+                                                    <small class="text-muted">Model: @audioProvider.DefaultTTSModel</small><br/>
+                                                }
+                                                @if (!string.IsNullOrEmpty(audioProvider.DefaultTTSVoice))
+                                                {
+                                                    <small class="text-muted">Voice: @audioProvider.DefaultTTSVoice</small>
+                                                }
+                                                @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_tts"))
+                                                {
+                                                    var status = _audioHealthStatus[$"{audioProvider.Id}_tts"];
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">Response: @status.ResponseTimeMs ms</small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        
+                                        <!-- Real-time Audio Health -->
+                                        @if (audioProvider.RealtimeEnabled)
+                                        {
+                                            <div class="mb-3">
+                                                <h6 class="d-flex justify-content-between align-items-center">
+                                                    <span><i class="bi bi-broadcast me-2"></i>Real-time Audio</span>
+                                                    @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_realtime"))
+                                                    {
+                                                        var status = _audioHealthStatus[$"{audioProvider.Id}_realtime"];
+                                                        <span class="badge bg-@(status.IsHealthy ? "success" : "danger")">
+                                                            @(status.IsHealthy ? "Healthy" : "Unhealthy")
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                    }
+                                                </h6>
+                                                @if (!string.IsNullOrEmpty(audioProvider.RealtimeEndpoint))
+                                                {
+                                                    <small class="text-muted d-block text-truncate" title="@audioProvider.RealtimeEndpoint">
+                                                        <i class="bi bi-link-45deg"></i>@audioProvider.RealtimeEndpoint
+                                                    </small>
+                                                }
+                                                @if (_audioHealthStatus.ContainsKey($"{audioProvider.Id}_realtime"))
+                                                {
+                                                    var status = _audioHealthStatus[$"{audioProvider.Id}_realtime"];
+                                                    <div class="mt-1">
+                                                        <small class="text-muted">
+                                                            @(status.IsHealthy ? "WebSocket Connected" : status.ErrorMessage)
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn btn-sm btn-outline-info w-100" @onclick="() => TestAudioProviderAsync(audioProvider)">
+                                            <i class="bi bi-play-circle me-2"></i>Test Audio Services
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+        
         <!-- Provider Details Modal -->
         <div class="modal fade @_modalCssClass" id="providerDetailsModal" tabindex="-1" aria-labelledby="providerDetailsModalLabel" aria-hidden="@(!_showModal)">
             <div class="modal-dialog modal-lg">
@@ -278,9 +421,22 @@
     private Dictionary<string, int> _errorCounts = new();
     private Dictionary<string, Dictionary<string, int>> _errorCategories = new();
     
+    // Audio provider properties
+    private List<AudioDTOs.AudioProviderConfigDto> _audioProviders = new();
+    private Dictionary<string, AudioHealthStatus> _audioHealthStatus = new();
+    
+    private class AudioHealthStatus
+    {
+        public bool IsHealthy { get; set; }
+        public double ResponseTimeMs { get; set; }
+        public string? ErrorMessage { get; set; }
+        public DateTime LastChecked { get; set; }
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
+        await LoadAudioProvidersAsync();
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -627,6 +783,149 @@
         {
             Logger.LogError(ex, "Error downloading provider history for {ProviderName}", providerName);
             NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error downloading history for {providerName}: {ex.Message}");
+        }
+    }
+    
+    // Audio provider methods
+    private async Task LoadAudioProvidersAsync()
+    {
+        try
+        {
+            _audioProviders = await AdminApiClient.GetAudioProvidersAsync() ?? new List<AudioDTOs.AudioProviderConfigDto>();
+            
+            // Initialize health status for each provider's capabilities
+            foreach (var provider in _audioProviders)
+            {
+                if (provider.TranscriptionEnabled)
+                {
+                    _audioHealthStatus[$"{provider.Id}_transcription"] = new AudioHealthStatus
+                    {
+                        IsHealthy = true,
+                        ResponseTimeMs = 0,
+                        LastChecked = DateTime.UtcNow
+                    };
+                }
+                
+                if (provider.TextToSpeechEnabled)
+                {
+                    _audioHealthStatus[$"{provider.Id}_tts"] = new AudioHealthStatus
+                    {
+                        IsHealthy = true,
+                        ResponseTimeMs = 0,
+                        LastChecked = DateTime.UtcNow
+                    };
+                }
+                
+                if (provider.RealtimeEnabled)
+                {
+                    _audioHealthStatus[$"{provider.Id}_realtime"] = new AudioHealthStatus
+                    {
+                        IsHealthy = true,
+                        ResponseTimeMs = 0,
+                        LastChecked = DateTime.UtcNow
+                    };
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading audio providers");
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading audio providers: " + ex.Message);
+        }
+    }
+    
+    private async Task TestAudioProviderAsync(AudioDTOs.AudioProviderConfigDto provider)
+    {
+        try
+        {
+            // Test transcription
+            if (provider.TranscriptionEnabled)
+            {
+                var startTime = DateTime.UtcNow;
+                var result = await AdminApiClient.TestAudioProviderAsync(provider.Id, "transcription");
+                var endTime = DateTime.UtcNow;
+                
+                _audioHealthStatus[$"{provider.Id}_transcription"] = new AudioHealthStatus
+                {
+                    IsHealthy = result.Success,
+                    ResponseTimeMs = (endTime - startTime).TotalMilliseconds,
+                    ErrorMessage = result.ErrorDetails,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            // Test TTS
+            if (provider.TextToSpeechEnabled)
+            {
+                var startTime = DateTime.UtcNow;
+                var result = await AdminApiClient.TestAudioProviderAsync(provider.Id, "tts");
+                var endTime = DateTime.UtcNow;
+                
+                _audioHealthStatus[$"{provider.Id}_tts"] = new AudioHealthStatus
+                {
+                    IsHealthy = result.Success,
+                    ResponseTimeMs = (endTime - startTime).TotalMilliseconds,
+                    ErrorMessage = result.ErrorDetails,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            // Test real-time
+            if (provider.RealtimeEnabled)
+            {
+                var startTime = DateTime.UtcNow;
+                var result = await AdminApiClient.TestAudioProviderAsync(provider.Id, "realtime");
+                var endTime = DateTime.UtcNow;
+                
+                _audioHealthStatus[$"{provider.Id}_realtime"] = new AudioHealthStatus
+                {
+                    IsHealthy = result.Success,
+                    ResponseTimeMs = (endTime - startTime).TotalMilliseconds,
+                    ErrorMessage = result.ErrorDetails,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            StateHasChanged();
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Audio provider '{provider.ProviderName}' tested successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error testing audio provider {ProviderId}", provider.Id);
+            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error testing audio provider: {ex.Message}");
+            
+            // Mark all capabilities as unhealthy
+            if (provider.TranscriptionEnabled)
+            {
+                _audioHealthStatus[$"{provider.Id}_transcription"] = new AudioHealthStatus
+                {
+                    IsHealthy = false,
+                    ErrorMessage = ex.Message,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            if (provider.TextToSpeechEnabled)
+            {
+                _audioHealthStatus[$"{provider.Id}_tts"] = new AudioHealthStatus
+                {
+                    IsHealthy = false,
+                    ErrorMessage = ex.Message,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            if (provider.RealtimeEnabled)
+            {
+                _audioHealthStatus[$"{provider.Id}_realtime"] = new AudioHealthStatus
+                {
+                    IsHealthy = false,
+                    ErrorMessage = ex.Message,
+                    LastChecked = DateTime.UtcNow
+                };
+            }
+            
+            StateHasChanged();
         }
     }
 }

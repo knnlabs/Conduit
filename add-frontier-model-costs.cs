@@ -174,7 +174,64 @@ namespace ConduitLLM.Tools
                     outputCostPer1KTokens: 0.00m,
                     imageCostPerImage: 0.02m);  // Standard quality, 1024x1024
                 
-                _logger.LogInformation("Successfully seeded frontier model costs");
+                // OpenAI - Audio Models (Whisper)
+                await AddModelCostAsync(
+                    modelIdPattern: "openai/whisper-1",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioCostPerMinute: 0.006m);  // $0.006 per minute
+                
+                // OpenAI - Text-to-Speech Models
+                await AddModelCostAsync(
+                    modelIdPattern: "openai/tts-1",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioCostPerKCharacters: 0.015m);  // $0.015 per 1K characters
+                    
+                await AddModelCostAsync(
+                    modelIdPattern: "openai/tts-1-hd",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioCostPerKCharacters: 0.030m);  // $0.030 per 1K characters
+                
+                // OpenAI - Realtime API
+                await AddModelCostAsync(
+                    modelIdPattern: "openai/gpt-4o-realtime-preview-2024-12-17",
+                    inputCostPer1KTokens: 5.00m,     // Text input
+                    outputCostPer1KTokens: 20.00m,   // Text output
+                    audioInputCostPerMinute: 0.10m,  // $0.10 per minute of audio input
+                    audioOutputCostPerMinute: 0.20m); // $0.20 per minute of audio output
+                
+                // ElevenLabs - Text-to-Speech Models
+                await AddModelCostAsync(
+                    modelIdPattern: "elevenlabs/eleven_multilingual_v2",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioCostPerKCharacters: 0.18m);  // $0.18 per 1K characters (Pro tier)
+                    
+                await AddModelCostAsync(
+                    modelIdPattern: "elevenlabs/eleven_turbo_v2_5",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioCostPerKCharacters: 0.09m);  // $0.09 per 1K characters (Pro tier)
+                
+                // ElevenLabs - Conversational AI
+                await AddModelCostAsync(
+                    modelIdPattern: "elevenlabs/eleven_conversational_v1",
+                    inputCostPer1KTokens: 0.00m,
+                    outputCostPer1KTokens: 0.00m,
+                    audioInputCostPerMinute: 0.15m,   // Estimated
+                    audioOutputCostPerMinute: 0.30m); // Estimated
+                
+                // Ultravox - Realtime API
+                await AddModelCostAsync(
+                    modelIdPattern: "ultravox/ultravox-v1",
+                    inputCostPer1KTokens: 3.00m,     // Text input
+                    outputCostPer1KTokens: 15.00m,   // Text output
+                    audioInputCostPerMinute: 0.08m,  // Estimated
+                    audioOutputCostPerMinute: 0.16m); // Estimated
+                
+                _logger.LogInformation("Successfully seeded frontier model costs including audio models");
             }
             catch (Exception ex)
             {
@@ -188,7 +245,11 @@ namespace ConduitLLM.Tools
             decimal inputCostPer1KTokens, 
             decimal outputCostPer1KTokens, 
             decimal? embeddingCostPer1KTokens = null, 
-            decimal? imageCostPerImage = null)
+            decimal? imageCostPerImage = null,
+            decimal? audioCostPerMinute = null,
+            decimal? audioCostPerKCharacters = null,
+            decimal? audioInputCostPerMinute = null,
+            decimal? audioOutputCostPerMinute = null)
         {
             try
             {
@@ -205,6 +266,10 @@ namespace ConduitLLM.Tools
                     existingCost.OutputTokenCost = outputCostPer1KTokens / 1000;
                     existingCost.EmbeddingTokenCost = embeddingCostPer1KTokens.HasValue ? embeddingCostPer1KTokens.Value / 1000 : null;
                     existingCost.ImageCostPerImage = imageCostPerImage;
+                    existingCost.AudioCostPerMinute = audioCostPerMinute;
+                    existingCost.AudioCostPerKCharacters = audioCostPerKCharacters;
+                    existingCost.AudioInputCostPerMinute = audioInputCostPerMinute;
+                    existingCost.AudioOutputCostPerMinute = audioOutputCostPerMinute;
                     
                     await _modelCostService.UpdateModelCostAsync(existingCost);
                 }
@@ -219,7 +284,11 @@ namespace ConduitLLM.Tools
                         InputTokenCost = inputCostPer1KTokens / 1000,      // Convert from per 1K tokens to per token
                         OutputTokenCost = outputCostPer1KTokens / 1000,     // Convert from per 1K tokens to per token
                         EmbeddingTokenCost = embeddingCostPer1KTokens.HasValue ? embeddingCostPer1KTokens.Value / 1000 : null,
-                        ImageCostPerImage = imageCostPerImage
+                        ImageCostPerImage = imageCostPerImage,
+                        AudioCostPerMinute = audioCostPerMinute,
+                        AudioCostPerKCharacters = audioCostPerKCharacters,
+                        AudioInputCostPerMinute = audioInputCostPerMinute,
+                        AudioOutputCostPerMinute = audioOutputCostPerMinute
                     };
                     
                     await _modelCostService.AddModelCostAsync(modelCost);

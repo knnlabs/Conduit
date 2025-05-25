@@ -18,7 +18,7 @@ namespace ConduitLLM.Core
     /// Main entry point for interacting with the ConduitLLM library.
     /// Orchestrates calls to different LLM providers based on configuration via an <see cref="ILLMClientFactory"/>.
     /// </summary>
-    public class Conduit
+    public class Conduit : IConduit
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILLMRouter? _router;
@@ -349,6 +349,16 @@ namespace ConduitLLM.Core
             // List of supported strategies
             return new[] { "simple", "random", "roundrobin", "leastused", "passthrough" }
                 .Contains(strategy.ToLowerInvariant());
+        }
+
+        /// <summary>
+        /// Gets an LLM client for the specified model.
+        /// </summary>
+        /// <param name="modelAlias">The model alias to get a client for.</param>
+        /// <returns>The LLM client for the specified model.</returns>
+        public ILLMClient GetClient(string modelAlias)
+        {
+            return _clientFactory.GetClient(modelAlias);
         }
 
         // Add other high-level methods as needed.

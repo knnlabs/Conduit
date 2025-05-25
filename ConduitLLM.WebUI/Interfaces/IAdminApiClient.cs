@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using System;
@@ -585,6 +586,178 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="providerName">The name of the provider to check</param>
         /// <returns>The provider status</returns>
         Task<ConduitLLM.WebUI.Models.ProviderStatus> CheckProviderStatusAsync(string providerName);
+
+        #endregion
+
+        #region Audio Configuration
+
+        /// <summary>
+        /// Gets all audio provider configurations.
+        /// </summary>
+        /// <returns>List of audio provider configurations</returns>
+        Task<List<AudioProviderConfigDto>> GetAudioProvidersAsync();
+
+        /// <summary>
+        /// Gets a specific audio provider configuration.
+        /// </summary>
+        /// <param name="id">The provider configuration ID</param>
+        /// <returns>The audio provider configuration</returns>
+        Task<AudioProviderConfigDto?> GetAudioProviderAsync(int id);
+
+        /// <summary>
+        /// Gets audio provider configurations by provider name.
+        /// </summary>
+        /// <param name="providerName">The provider name</param>
+        /// <returns>List of configurations for the provider</returns>
+        Task<List<AudioProviderConfigDto>> GetAudioProvidersByNameAsync(string providerName);
+
+        /// <summary>
+        /// Gets enabled providers for a specific audio operation.
+        /// </summary>
+        /// <param name="operationType">The operation type (transcription, tts, realtime)</param>
+        /// <returns>List of enabled providers</returns>
+        Task<List<AudioProviderConfigDto>> GetEnabledAudioProvidersAsync(string operationType);
+
+        /// <summary>
+        /// Creates a new audio provider configuration.
+        /// </summary>
+        /// <param name="providerConfig">The provider configuration to create</param>
+        /// <returns>The created provider configuration</returns>
+        Task<AudioProviderConfigDto> CreateAudioProviderAsync(AudioProviderConfigDto providerConfig);
+
+        /// <summary>
+        /// Updates an audio provider configuration.
+        /// </summary>
+        /// <param name="id">The provider configuration ID</param>
+        /// <param name="providerConfig">The updated configuration</param>
+        /// <returns>The updated provider configuration</returns>
+        Task<AudioProviderConfigDto?> UpdateAudioProviderAsync(int id, AudioProviderConfigDto providerConfig);
+
+        /// <summary>
+        /// Deletes an audio provider configuration.
+        /// </summary>
+        /// <param name="id">The provider configuration ID</param>
+        /// <returns>True if deleted successfully</returns>
+        Task<bool> DeleteAudioProviderAsync(int id);
+
+        /// <summary>
+        /// Tests audio provider connectivity.
+        /// </summary>
+        /// <param name="id">The provider configuration ID</param>
+        /// <param name="operationType">The operation type to test</param>
+        /// <returns>The test results</returns>
+        Task<ConduitLLM.WebUI.Services.AudioProviderTestResult> TestAudioProviderAsync(int id, string operationType = "transcription");
+
+        /// <summary>
+        /// Gets all audio cost configurations.
+        /// </summary>
+        /// <returns>List of audio cost configurations</returns>
+        Task<List<AudioCostDto>> GetAudioCostsAsync();
+
+        /// <summary>
+        /// Gets a specific audio cost configuration.
+        /// </summary>
+        /// <param name="id">The cost configuration ID</param>
+        /// <returns>The audio cost configuration</returns>
+        Task<AudioCostDto?> GetAudioCostAsync(int id);
+
+        /// <summary>
+        /// Gets audio costs by provider.
+        /// </summary>
+        /// <param name="provider">The provider name</param>
+        /// <returns>List of costs for the provider</returns>
+        Task<List<AudioCostDto>> GetAudioCostsByProviderAsync(string provider);
+
+        /// <summary>
+        /// Gets the current cost for a specific operation.
+        /// </summary>
+        /// <param name="provider">The provider name</param>
+        /// <param name="operationType">The operation type</param>
+        /// <param name="model">The model name (optional)</param>
+        /// <returns>The current cost</returns>
+        Task<AudioCostDto?> GetCurrentAudioCostAsync(string provider, string operationType, string? model = null);
+
+        /// <summary>
+        /// Creates a new audio cost configuration.
+        /// </summary>
+        /// <param name="cost">The cost configuration to create</param>
+        /// <returns>The created cost configuration</returns>
+        Task<AudioCostDto> CreateAudioCostAsync(AudioCostDto cost);
+
+        /// <summary>
+        /// Updates an audio cost configuration.
+        /// </summary>
+        /// <param name="id">The cost configuration ID</param>
+        /// <param name="cost">The updated configuration</param>
+        /// <returns>The updated cost configuration</returns>
+        Task<AudioCostDto?> UpdateAudioCostAsync(int id, AudioCostDto cost);
+
+        /// <summary>
+        /// Deletes an audio cost configuration.
+        /// </summary>
+        /// <param name="id">The cost configuration ID</param>
+        /// <returns>True if deleted successfully</returns>
+        Task<bool> DeleteAudioCostAsync(int id);
+
+        /// <summary>
+        /// Gets audio usage logs with pagination and filtering.
+        /// </summary>
+        /// <param name="pageNumber">Page number</param>
+        /// <param name="pageSize">Page size</param>
+        /// <param name="virtualKey">Filter by virtual key (optional)</param>
+        /// <param name="provider">Filter by provider (optional)</param>
+        /// <param name="operationType">Filter by operation type (optional)</param>
+        /// <param name="startDate">Start date filter (optional)</param>
+        /// <param name="endDate">End date filter (optional)</param>
+        /// <returns>Paginated usage logs</returns>
+        Task<PagedResult<AudioUsageDto>> GetAudioUsageLogsAsync(
+            int pageNumber = 1,
+            int pageSize = 50,
+            string? virtualKey = null,
+            string? provider = null,
+            string? operationType = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null);
+
+        /// <summary>
+        /// Gets audio usage summary statistics.
+        /// </summary>
+        /// <param name="startDate">Start date for the summary</param>
+        /// <param name="endDate">End date for the summary</param>
+        /// <param name="virtualKey">Filter by virtual key (optional)</param>
+        /// <param name="provider">Filter by provider (optional)</param>
+        /// <returns>Usage summary</returns>
+        Task<ConduitLLM.Configuration.DTOs.Audio.AudioUsageSummaryDto> GetAudioUsageSummaryAsync(
+            DateTime startDate,
+            DateTime endDate,
+            string? virtualKey = null,
+            string? provider = null);
+
+        /// <summary>
+        /// Gets real-time session metrics.
+        /// </summary>
+        /// <returns>Session metrics</returns>
+        Task<ConduitLLM.WebUI.Services.RealtimeSessionMetricsDto> GetRealtimeSessionMetricsAsync();
+
+        /// <summary>
+        /// Gets active real-time sessions.
+        /// </summary>
+        /// <returns>List of active sessions</returns>
+        Task<List<RealtimeSessionDto>> GetActiveRealtimeSessionsAsync();
+
+        /// <summary>
+        /// Gets details of a specific real-time session.
+        /// </summary>
+        /// <param name="sessionId">The session ID</param>
+        /// <returns>Session details</returns>
+        Task<RealtimeSessionDto?> GetRealtimeSessionDetailsAsync(string sessionId);
+
+        /// <summary>
+        /// Terminates an active real-time session.
+        /// </summary>
+        /// <param name="sessionId">The session ID</param>
+        /// <returns>True if terminated successfully</returns>
+        Task<bool> TerminateRealtimeSessionAsync(string sessionId);
 
         #endregion
 

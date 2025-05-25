@@ -167,6 +167,15 @@ public class LLMClientFactory : ILLMClientFactory
                 var openAiCompatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
                 return new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory);
             
+            case "ultravox":
+                var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
+                return new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory);
+            
+            case "elevenlabs":
+            case "eleven-labs":
+                var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
+                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory);
+            
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");
         }
