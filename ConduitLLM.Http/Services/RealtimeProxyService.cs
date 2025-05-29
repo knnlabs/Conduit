@@ -450,7 +450,7 @@ namespace ConduitLLM.Http.Services
                     "error" => ProxyConnectionState.Failed,
                     _ => ProxyConnectionState.Connecting
                 },
-                Provider = info.Provider,
+                Provider = info.Provider ?? string.Empty,
                 Model = info.Model,
                 ConnectedAt = info.ConnectedAt,
                 LastActivityAt = info.LastActivity,
