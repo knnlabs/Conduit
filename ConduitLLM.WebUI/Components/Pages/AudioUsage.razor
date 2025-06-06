@@ -317,7 +317,7 @@
 
             // Load available providers
             var audioProviders = await AdminApiClient.GetAudioProvidersAsync();
-            _availableProviders = audioProviders.Select(p => p.ProviderName).Where(p => !string.IsNullOrEmpty(p)).Distinct().ToList();
+            _availableProviders = audioProviders.Select(p => p.ProviderName).Where(p => !string.IsNullOrEmpty(p)).Select(p => p!).Distinct().ToList();
 
             // Load usage summary
             _usageSummary = await AdminApiClient.GetAudioUsageSummaryAsync(

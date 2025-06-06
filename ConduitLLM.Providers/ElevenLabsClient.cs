@@ -51,25 +51,25 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Sends a chat completion request to ElevenLabs.
         /// </summary>
-        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+        public override Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             // ElevenLabs is primarily a voice AI provider
-            throw new NotSupportedException("ElevenLabs does not support text-based chat completion. Use text-to-speech or real-time audio instead.");
+            return Task.FromException<ChatCompletionResponse>(
+                new NotSupportedException("ElevenLabs does not support text-based chat completion. Use text-to-speech or real-time audio instead."));
         }
 
         /// <summary>
         /// Streams chat completion responses from ElevenLabs.
         /// </summary>
-        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+        public override IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException("ElevenLabs does not support streaming text chat. Use text-to-speech or real-time audio instead.");
-            yield break;
         }
 
         /// <summary>
@@ -288,7 +288,7 @@ namespace ConduitLLM.Providers
                 {
                     ["voice_id"] = session.Config.Voice ?? "rachel",
                     ["language"] = "en",
-                    ["system_prompt"] = updates.SystemPrompt ?? session.Config.SystemPrompt
+                    ["system_prompt"] = updates.SystemPrompt ?? session.Config.SystemPrompt ?? string.Empty
                 }
             };
 
@@ -465,23 +465,25 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Creates image generation from ElevenLabs.
         /// </summary>
-        public override async Task<ImageGenerationResponse> CreateImageAsync(
+        public override Task<ImageGenerationResponse> CreateImageAsync(
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("ElevenLabs does not support image generation. Use text-to-speech or real-time audio instead.");
+            return Task.FromException<ImageGenerationResponse>(
+                new NotSupportedException("ElevenLabs does not support image generation. Use text-to-speech or real-time audio instead."));
         }
 
         /// <summary>
         /// Creates embeddings from ElevenLabs.
         /// </summary>
-        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("ElevenLabs does not support text embeddings. Use text-to-speech or real-time audio instead.");
+            return Task.FromException<EmbeddingResponse>(
+                new NotSupportedException("ElevenLabs does not support text embeddings. Use text-to-speech or real-time audio instead."));
         }
 
 

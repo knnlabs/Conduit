@@ -51,26 +51,26 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Sends a chat completion request to Ultravox.
         /// </summary>
-        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
+        public override Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             // Ultravox is primarily a real-time voice AI provider
             // For text chat, we can use their REST API if available
-            throw new NotSupportedException("Ultravox does not support text-based chat completion. Use real-time audio instead.");
+            return Task.FromException<ChatCompletionResponse>(
+                new NotSupportedException("Ultravox does not support text-based chat completion. Use real-time audio instead."));
         }
 
         /// <summary>
         /// Streams chat completion responses from Ultravox.
         /// </summary>
-        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+        public override IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException("Ultravox does not support streaming text chat. Use real-time audio instead.");
-            yield break;
         }
 
         /// <summary>
@@ -203,41 +203,45 @@ namespace ConduitLLM.Providers
         /// <summary>
         /// Creates an image from Ultravox.
         /// </summary>
-        public override async Task<ImageGenerationResponse> CreateImageAsync(
+        public override Task<ImageGenerationResponse> CreateImageAsync(
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("Ultravox does not support image generation. Use real-time audio instead.");
+            return Task.FromException<ImageGenerationResponse>(
+                new NotSupportedException("Ultravox does not support image generation. Use real-time audio instead."));
         }
 
         /// <summary>
         /// Creates embeddings from Ultravox.
         /// </summary>
-        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("Ultravox does not support text embeddings. Use real-time audio instead.");
+            return Task.FromException<EmbeddingResponse>(
+                new NotSupportedException("Ultravox does not support text embeddings. Use real-time audio instead."));
         }
 
         /// <summary>
         /// Updates the configuration of an active real-time session.
         /// </summary>
-        public async Task UpdateSessionAsync(
+        public Task UpdateSessionAsync(
             RealtimeSession session,
             RealtimeSessionUpdate updates,
             CancellationToken cancellationToken = default)
         {
             if (session is not UltravoxRealtimeSession ultravoxSession)
             {
-                throw new ArgumentException("Session must be created by UltravoxClient", nameof(session));
+                return Task.FromException(
+                    new ArgumentException("Session must be created by UltravoxClient", nameof(session)));
             }
 
             // Ultravox may support some session updates
             // For now, we'll throw not supported
-            throw new NotSupportedException("Ultravox does not currently support session updates.");
+            return Task.FromException(
+                new NotSupportedException("Ultravox does not currently support session updates."));
         }
 
         /// <summary>
