@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 
@@ -8,18 +10,33 @@ namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Default implementation of the audio capability detector.
+    /// Now uses IModelCapabilityService for database-driven capability detection.
     /// </summary>
     public class AudioCapabilityDetector : IAudioCapabilityDetector
     {
-        // Provider capability definitions
-        private readonly Dictionary<string, AudioProviderCapabilities> _providerCapabilities;
+        private readonly ILogger<AudioCapabilityDetector> _logger;
+        private readonly IModelCapabilityService? _capabilityService;
+        
+        // Fallback provider capability definitions for when service is not available
+        private readonly Dictionary<string, AudioProviderCapabilities> _fallbackCapabilities;
 
         /// <summary>
         /// Initializes a new instance of the AudioCapabilityDetector class.
         /// </summary>
-        public AudioCapabilityDetector()
+        /// <param name="logger">Logger for diagnostics</param>
+        /// <param name="capabilityService">Service for retrieving model capabilities from configuration</param>
+        public AudioCapabilityDetector(
+            ILogger<AudioCapabilityDetector> logger,
+            IModelCapabilityService? capabilityService = null)
         {
-            _providerCapabilities = InitializeProviderCapabilities();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityService = capabilityService;
+            _fallbackCapabilities = InitializeProviderCapabilities();
+            
+            if (capabilityService == null)
+            {
+                _logger.LogWarning("ModelCapabilityService not available, using fallback audio capabilities");
+            }
         }
 
         /// <summary>
@@ -27,7 +44,21 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsTranscription(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            // Use capability service if available and model is specified
+            if (_capabilityService != null && !string.IsNullOrWhiteSpace(model))
+            {
+                try
+                {
+                    return _capabilityService.SupportsAudioTranscriptionAsync(model).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking transcription capability for model {Model}", model);
+                }
+            }
+            
+            // Fallback to hardcoded capabilities
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return false;
 
             if (capabilities.Transcription == null)
@@ -48,7 +79,21 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsTextToSpeech(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            // Use capability service if available and model is specified
+            if (_capabilityService != null && !string.IsNullOrWhiteSpace(model))
+            {
+                try
+                {
+                    return _capabilityService.SupportsTextToSpeechAsync(model).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking TTS capability for model {Model}", model);
+                }
+            }
+            
+            // Fallback to hardcoded capabilities
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return false;
 
             if (capabilities.TextToSpeech == null)
@@ -69,7 +114,21 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsRealtime(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            // Use capability service if available and model is specified
+            if (_capabilityService != null && !string.IsNullOrWhiteSpace(model))
+            {
+                try
+                {
+                    return _capabilityService.SupportsRealtimeAudioAsync(model).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking realtime capability for model {Model}", model);
+                }
+            }
+            
+            // Fallback to hardcoded capabilities
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return false;
 
             return capabilities.Realtime != null;
@@ -80,7 +139,10 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsVoice(string provider, string voiceId)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            // TODO: When capability service supports per-model voice checking, use it here
+            
+            // Fallback to hardcoded capabilities
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return false;
 
             // Check TTS voices
@@ -107,7 +169,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioFormat[] GetSupportedFormats(string provider, AudioOperation operation)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return Array.Empty<AudioFormat>();
 
             return operation switch
@@ -128,7 +190,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetSupportedLanguages(string provider, AudioOperation operation)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
                 return Enumerable.Empty<string>();
 
             return operation switch
@@ -153,7 +215,7 @@ namespace ConduitLLM.Core.Services
                 return false;
             }
 
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            if (!_fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
             {
                 errorMessage = $"Unknown provider: {provider}";
                 return false;
@@ -169,7 +231,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetProvidersWithCapability(AudioCapability capability)
         {
-            return _providerCapabilities
+            return _fallbackCapabilities
                 .Where(kvp => HasCapability(kvp.Value, capability))
                 .Select(kvp => kvp.Key);
         }
@@ -179,7 +241,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioProviderCapabilities GetProviderCapabilities(string provider)
         {
-            return _providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities)
+            return _fallbackCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities)
                 ? capabilities
                 : new AudioProviderCapabilities { Provider = provider };
         }

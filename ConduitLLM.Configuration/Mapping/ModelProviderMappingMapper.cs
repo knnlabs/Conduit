@@ -26,7 +26,18 @@ namespace ConduitLLM.Configuration.Mapping
             {
                 ModelAlias = entity.ModelAlias,
                 ProviderName = entity.ProviderCredential?.ProviderName ?? string.Empty,
-                ProviderModelId = entity.ProviderModelName
+                ProviderModelId = entity.ProviderModelName,
+                DeploymentName = null, // DeploymentName is not stored in the entity currently
+                SupportsVision = entity.SupportsVision,
+                SupportsAudioTranscription = entity.SupportsAudioTranscription,
+                SupportsTextToSpeech = entity.SupportsTextToSpeech,
+                SupportsRealtimeAudio = entity.SupportsRealtimeAudio,
+                TokenizerType = entity.TokenizerType,
+                SupportedVoices = entity.SupportedVoices,
+                SupportedLanguages = entity.SupportedLanguages,
+                SupportedFormats = entity.SupportedFormats,
+                IsDefault = entity.IsDefault,
+                DefaultCapabilityType = entity.DefaultCapabilityType
             };
         }
 
@@ -49,6 +60,16 @@ namespace ConduitLLM.Configuration.Mapping
             
             entity.ModelAlias = dto.ModelAlias;
             entity.ProviderModelName = dto.ProviderModelId;
+            entity.SupportsVision = dto.SupportsVision;
+            entity.SupportsAudioTranscription = dto.SupportsAudioTranscription;
+            entity.SupportsTextToSpeech = dto.SupportsTextToSpeech;
+            entity.SupportsRealtimeAudio = dto.SupportsRealtimeAudio;
+            entity.TokenizerType = dto.TokenizerType;
+            entity.SupportedVoices = dto.SupportedVoices;
+            entity.SupportedLanguages = dto.SupportedLanguages;
+            entity.SupportedFormats = dto.SupportedFormats;
+            entity.IsDefault = dto.IsDefault;
+            entity.DefaultCapabilityType = dto.DefaultCapabilityType;
             // Note: ProviderCredentialId needs to be set separately
             
             return entity;

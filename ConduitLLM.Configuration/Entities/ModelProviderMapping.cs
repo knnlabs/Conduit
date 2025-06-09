@@ -69,8 +69,59 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Optional: Add properties for model-specific configurations if needed
-        // public int? MaxTokens { get; set; } 
-        // public double? TemperatureDefault { get; set; }
+        // Model Capability Properties
+
+        /// <summary>
+        /// Indicates whether this model supports vision/image inputs.
+        /// </summary>
+        public bool SupportsVision { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports audio transcription (Speech-to-Text).
+        /// </summary>
+        public bool SupportsAudioTranscription { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports text-to-speech generation.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports real-time audio streaming.
+        /// </summary>
+        public bool SupportsRealtimeAudio { get; set; } = false;
+
+        /// <summary>
+        /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
+        /// </summary>
+        [MaxLength(50)]
+        public string? TokenizerType { get; set; }
+
+        /// <summary>
+        /// JSON array of supported voices for TTS models (e.g., ["alloy", "echo", "nova"]).
+        /// </summary>
+        public string? SupportedVoices { get; set; }
+
+        /// <summary>
+        /// JSON array of supported languages (e.g., ["en", "es", "fr", "de"]).
+        /// </summary>
+        public string? SupportedLanguages { get; set; }
+
+        /// <summary>
+        /// JSON array of supported audio formats (e.g., ["mp3", "opus", "aac", "flac"]).
+        /// </summary>
+        public string? SupportedFormats { get; set; }
+
+        /// <summary>
+        /// Indicates whether this is the default model for its provider and capability type.
+        /// </summary>
+        public bool IsDefault { get; set; } = false;
+
+        /// <summary>
+        /// The capability type this model is default for (e.g., "chat", "transcription", "tts", "realtime").
+        /// Only relevant when IsDefault is true.
+        /// </summary>
+        [MaxLength(50)]
+        public string? DefaultCapabilityType { get; set; }
     }
 }
