@@ -20,7 +20,7 @@
 @inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>@(Id.HasValue ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
+<PageTitle>@(!string.IsNullOrEmpty(Id) ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
 
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
@@ -30,11 +30,11 @@
                 <div class="row align-items-center">
                     <div class="col">
                         <h1 class="h3 mb-2">
-                            <i class="fa fa-@(Id.HasValue ? "edit" : "plus-circle") me-3"></i>
-                            @(Id.HasValue ? "Edit Provider Configuration" : "Add New Provider")
+                            <i class="fa fa-@(!string.IsNullOrEmpty(Id) ? "edit" : "plus-circle") me-3"></i>
+                            @(!string.IsNullOrEmpty(Id) ? "Edit Provider Configuration" : "Add New Provider")
                         </h1>
                         <p class="mb-0 opacity-90">
-                            @(Id.HasValue ? "Update your provider settings and API credentials" : "Configure a new LLM provider to use with Conduit")
+                            @(!string.IsNullOrEmpty(Id) ? "Update your provider settings and API credentials" : "Configure a new LLM provider to use with Conduit")
                         </p>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                                 </label>
                                 <select id="providerName" class="form-select shadow-sm" 
                                         @bind="provider.ProviderName" 
-                                        disabled="@Id.HasValue">
+                                        disabled="@(!string.IsNullOrEmpty(Id))">
                                     <option value="">-- Select Provider --</option>
                                     @foreach (var name in _supportedProviders)
                                     {
@@ -89,7 +89,7 @@
                                     }
                                 </select>
                                 <ValidationMessage For="@(() => provider.ProviderName)" />
-                                @if (Id.HasValue)
+                                @if (!string.IsNullOrEmpty(Id))
                                 {
                                     <small class="text-muted mt-1">
                                         <i class="fa fa-info-circle me-1"></i>
@@ -281,7 +281,7 @@
                             else
                             {
                                 <i class="fa fa-save me-2"></i>
-                                <span>@(Id.HasValue ? "Update Provider" : "Create Provider")</span>
+                                <span>@(!string.IsNullOrEmpty(Id) ? "Update Provider" : "Create Provider")</span>
                             }
                         </button>
                     </div>
@@ -341,19 +341,7 @@
 
 @code {
     [Parameter]
-    public int? Id { get; set; }
-    
-    // This is needed to properly handle string route parameters
-    [SupplyParameterFromQuery(Name = "id")]
-    public string? IdParam
-    {
-        get => Id?.ToString();
-        set
-        {
-            if (int.TryParse(value, out var parsed))
-                Id = parsed;
-        }
-    }
+    public string? Id { get; set; }
 
     private ProviderCredentialDto provider = new ProviderCredentialDto { ProviderName = "" };
     private bool isLoading = true;
@@ -370,7 +358,7 @@
     {
         editContext = new EditContext(provider);
         
-        if (Id.HasValue)
+        if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var providerId))
         {
             isLoading = true;
             StateHasChanged();
@@ -378,7 +366,7 @@
             try
             {
                 // Use ProviderCredentialService to get provider details
-                var existingProvider = await ProviderCredentialService.GetByIdAsync(Id.Value);
+                var existingProvider = await ProviderCredentialService.GetByIdAsync(providerId);
                 
                 if (existingProvider != null)
                 {
@@ -433,12 +421,12 @@
                 StateHasChanged();
                 return;
             }
-            if (Id.HasValue) // Edit
+            if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var providerId)) // Edit
             {
                 // Create a DTO for update
                 var updateDto = new UpdateProviderCredentialDto
                 {
-                    Id = Id.Value,
+                    Id = providerId,
                     ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
                     IsEnabled = true
                 };
@@ -456,7 +444,7 @@
                 // Otherwise, don't include the API key in the update (keep existing)
                 
                 // Update via ProviderCredentialService
-                var updateResult = await ProviderCredentialService.UpdateAsync(Id.Value, updateDto);
+                var updateResult = await ProviderCredentialService.UpdateAsync(providerId, updateDto);
                 
                 if (updateResult == null)
                 {
@@ -544,7 +532,7 @@
         {
             // Test the connection using the appropriate method based on whether the provider is saved
             ProviderConnectionTestResultDto? testResult;
-            if (Id.HasValue)
+            if (!string.IsNullOrEmpty(Id))
             {
                 // For existing providers, use the ID-based test
                 testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);

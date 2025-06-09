@@ -37,7 +37,7 @@
 
         try
         {
-            using var httpClient = HttpClientFactory.CreateClient();
+            using var httpClient = HttpClientFactory.CreateClient("AdminApiClient");
             var response = await httpClient.GetAsync("/health");
             
             if (response.IsSuccessStatusCode)

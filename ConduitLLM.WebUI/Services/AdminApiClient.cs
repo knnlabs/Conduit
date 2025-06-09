@@ -670,8 +670,31 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
+                // Convert entity to DTO for the API
+                var dto = new ModelProviderMappingDto
+                {
+                    ModelId = mapping.ModelAlias,
+                    ProviderModelId = mapping.ProviderModelName,
+                    ProviderId = mapping.ProviderCredentialId.ToString(),
+                    IsEnabled = mapping.IsEnabled,
+                    Priority = 0, // Default priority
+                    CreatedAt = mapping.CreatedAt,
+                    UpdatedAt = mapping.UpdatedAt
+                };
+                
+                _logger.LogInformation("Creating model provider mapping: ModelId={ModelId}, ProviderId={ProviderId}, ProviderModelId={ProviderModelId}", 
+                    dto.ModelId, dto.ProviderId, dto.ProviderModelId);
+                
                 // Use "modelprovider" instead of "modelprovidermappings" to match controller name
-                var response = await _httpClient.PostAsJsonAsync("api/modelprovidermapping", mapping);
+                var response = await _httpClient.PostAsJsonAsync("api/modelprovidermapping", dto);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to create model provider mapping. Status: {StatusCode}, Error: {Error}", 
+                        response.StatusCode, errorContent);
+                }
+                
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -686,8 +709,21 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
+                // Convert entity to DTO for the API
+                var dto = new ModelProviderMappingDto
+                {
+                    Id = id,
+                    ModelId = mapping.ModelAlias,
+                    ProviderModelId = mapping.ProviderModelName,
+                    ProviderId = mapping.ProviderCredentialId.ToString(),
+                    IsEnabled = mapping.IsEnabled,
+                    Priority = 0, // Default priority
+                    CreatedAt = mapping.CreatedAt,
+                    UpdatedAt = mapping.UpdatedAt
+                };
+                
                 // Use "modelprovider" instead of "modelprovidermappings" to match controller name
-                var response = await _httpClient.PutAsJsonAsync($"api/modelprovidermapping/{id}", mapping);
+                var response = await _httpClient.PutAsJsonAsync($"api/modelprovidermapping/{id}", dto);
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
