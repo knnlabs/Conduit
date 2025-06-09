@@ -332,4 +332,34 @@ public class VirtualKeysController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
+
+    /// <summary>
+    /// Performs maintenance tasks on all virtual keys
+    /// </summary>
+    /// <remarks>
+    /// This endpoint performs the following maintenance tasks:
+    /// - Resets budgets for keys with expired budget periods (daily/monthly)
+    /// - Disables keys that have passed their expiration date
+    /// This is typically called by a background service.
+    /// </remarks>
+    /// <returns>No content if successful</returns>
+    [HttpPost("maintenance")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> PerformMaintenance()
+    {
+        try
+        {
+            await _virtualKeyService.PerformMaintenanceAsync();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error performing virtual key maintenance");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred during maintenance.");
+        }
+    }
 }

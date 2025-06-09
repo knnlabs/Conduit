@@ -556,5 +556,69 @@ namespace ConduitLLM.Admin.Services
             
             return false;
         }
+        
+        /// <inheritdoc />
+        public async Task PerformMaintenanceAsync()
+        {
+            _logger.LogInformation("Starting virtual key maintenance tasks");
+            
+            try
+            {
+                // Get all virtual keys
+                var allKeys = await _virtualKeyRepository.GetAllAsync();
+                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count);
+                
+                int budgetsReset = 0;
+                int keysDisabled = 0;
+                
+                foreach (var key in allKeys)
+                {
+                    try
+                    {
+                        // Check and reset budget if needed
+                        if (!string.IsNullOrEmpty(key.BudgetDuration) && 
+                            key.BudgetStartDate.HasValue &&
+                            !key.BudgetDuration.Equals(VirtualKeyConstants.BudgetPeriods.Total, StringComparison.OrdinalIgnoreCase))
+                        {
+                            var budgetResult = await CheckBudgetAsync(key.Id);
+                            if (budgetResult.WasReset)
+                            {
+                                budgetsReset++;
+                                _logger.LogInformation("Reset budget for virtual key {KeyId} ({KeyName})", 
+                                    key.Id, key.KeyName);
+                            }
+                        }
+                        
+                        // Check and disable expired keys
+                        if (key.IsEnabled && key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow)
+                        {
+                            key.IsEnabled = false;
+                            key.UpdatedAt = DateTime.UtcNow;
+                            
+                            var updated = await _virtualKeyRepository.UpdateAsync(key);
+                            if (updated)
+                            {
+                                keysDisabled++;
+                                _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})", 
+                                    key.Id, key.KeyName);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing maintenance for virtual key {KeyId}", key.Id);
+                        // Continue processing other keys even if one fails
+                    }
+                }
+                
+                _logger.LogInformation("Virtual key maintenance completed. Budgets reset: {BudgetsReset}, Keys disabled: {KeysDisabled}", 
+                    budgetsReset, keysDisabled);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during virtual key maintenance");
+                throw;
+            }
+        }
     }
 }
