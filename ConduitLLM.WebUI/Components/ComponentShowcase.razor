@@ -1,0 +1,264 @@
+@page "/component-showcase"
+@rendermode InteractiveServer
+
+<PageTitle>Component Showcase - ConduitLLM</PageTitle>
+
+<div class="container mt-4">
+    <h1>Blazor Component Showcase</h1>
+    <p>This page demonstrates the reusable Blazor components available in the WebUI.</p>
+
+    <!-- Card Component Example -->
+    <h2 class="mt-5">Card Component</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <Card Title="Basic Card" ShowShadow="true">
+                <BodyContent>
+                    <p>This is a basic card with a title and body content.</p>
+                </BodyContent>
+            </Card>
+        </div>
+        <div class="col-md-6">
+            <Card ShowShadow="true" Shadow="Card.ShadowSize.Small">
+                <HeaderContent>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Custom Header</h5>
+                        <button class="btn btn-sm btn-primary">Action</button>
+                    </div>
+                </HeaderContent>
+                <BodyContent>
+                    <p>Card with custom header content and footer.</p>
+                </BodyContent>
+                <FooterContent>
+                    <small class="text-muted">Card footer content</small>
+                </FooterContent>
+            </Card>
+        </div>
+    </div>
+
+    <!-- StatCard Component Example -->
+    <h2 class="mt-5">StatCard Component</h2>
+    <div class="row">
+        <div class="col-md-3">
+            <StatCard Value="125.50" 
+                      Label="Total Revenue" 
+                      IconClass="fa fa-dollar-sign" 
+                      Color="StatCard.StatCardColor.Success"
+                      IsCurrency="true" />
+        </div>
+        <div class="col-md-3">
+            <StatCard Value="42" 
+                      Label="Active Users" 
+                      IconClass="fa fa-users" 
+                      Color="StatCard.StatCardColor.Primary"
+                      ShowTrend="true"
+                      TrendValue="15.5m" />
+        </div>
+        <div class="col-md-3">
+            <StatCard Value="98.5" 
+                      Label="Uptime" 
+                      IconClass="fa fa-server" 
+                      Color="StatCard.StatCardColor.Info"
+                      SubText="Last 30 days" />
+        </div>
+        <div class="col-md-3">
+            <StatCard Value="3" 
+                      Label="Warnings" 
+                      IconClass="fa fa-exclamation-triangle" 
+                      Color="StatCard.StatCardColor.Warning" />
+        </div>
+    </div>
+
+    <!-- Modal Component Example -->
+    <h2 class="mt-5">Modal Component</h2>
+    <button class="btn btn-primary" @onclick="() => showModal = true">Show Modal</button>
+    <button class="btn btn-secondary ms-2" @onclick="() => showLargeModal = true">Show Large Modal</button>
+
+    <Modal @bind-IsVisible="showModal" Title="Example Modal">
+        <BodyContent>
+            <p>This is a modal dialog with customizable content.</p>
+            <p>Click the close button or backdrop to dismiss.</p>
+        </BodyContent>
+        <FooterContent>
+            <button class="btn btn-secondary" @onclick="() => showModal = false">Close</button>
+            <button class="btn btn-primary" @onclick="() => showModal = false">Save Changes</button>
+        </FooterContent>
+    </Modal>
+
+    <Modal @bind-IsVisible="showLargeModal" 
+           Title="Large Modal Example" 
+           Size="Modal.ModalSize.Large"
+           IsScrollable="true">
+        <BodyContent>
+            <h5>Form Example</h5>
+            <FormInput Label="Name" 
+                       @bind-Value="formName" 
+                       Placeholder="Enter your name"
+                       IsRequired="true" />
+            
+            <FormInputGroup TValue="decimal" Label="Price" 
+                            @bind-Value="formPrice" 
+                            Prefix="$" 
+                            InputType="number"
+                            Step="0.01"
+                            HelpText="Enter the product price" />
+            
+            <FormInputGroup TValue="int" Label="Quantity" 
+                         @bind-Value="formQuantity" 
+                         InputType="number"
+                         Min="1"
+                         Max="100"
+                         Suffix="units" />
+        </BodyContent>
+        <FooterContent>
+            <button class="btn btn-secondary" @onclick="() => showLargeModal = false">Cancel</button>
+            <LoadingButton Text="Submit" 
+                           LoadingText="Submitting..."
+                           IsLoading="isSubmitting"
+                           OnClick="HandleSubmit" />
+        </FooterContent>
+    </Modal>
+
+    <!-- ActionButtonGroup Component Example -->
+    <h2 class="mt-5">ActionButtonGroup Component</h2>
+    <Card Title="Data Table Example">
+        <BodyContent>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Item 1</td>
+                        <td><span class="badge bg-success">Active</span></td>
+                        <td>
+                            <ActionButtonGroup 
+                                Size="ActionButtonGroup.ButtonSize.Small"
+                                Actions="@(new List<ActionButtonGroup.ActionButton>
+                                {
+                                    ActionButtonGroup.ActionButton.View(EventCallback.Factory.Create(this, () => ShowAlert("View clicked"))),
+                                    ActionButtonGroup.ActionButton.Edit(EventCallback.Factory.Create(this, () => ShowAlert("Edit clicked"))),
+                                    ActionButtonGroup.ActionButton.Delete(EventCallback.Factory.Create(this, () => ShowAlert("Delete clicked")))
+                                })" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Item 2</td>
+                        <td><span class="badge bg-warning">Pending</span></td>
+                        <td>
+                            <ActionButtonGroup 
+                                Size="ActionButtonGroup.ButtonSize.Small"
+                                Actions="@(new List<ActionButtonGroup.ActionButton>
+                                {
+                                    ActionButtonGroup.ActionButton.Copy(EventCallback.Factory.Create(this, () => ShowAlert("Copy clicked"))),
+                                    new ActionButtonGroup.ActionButton 
+                                    { 
+                                        Title = "Archive", 
+                                        IconClass = "fa fa-archive", 
+                                        Color = "secondary",
+                                        OnClick = EventCallback.Factory.Create(this, () => ShowAlert("Archive clicked"))
+                                    }
+                                })" />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </BodyContent>
+    </Card>
+
+    <!-- FilterPanel Component Example -->
+    <h2 class="mt-5">FilterPanel Component</h2>
+    <FilterPanel Title="Search Filters" OnApply="HandleFilterApply" OnClear="HandleFilterClear">
+        <FilterContent>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Date Range</label>
+                <select class="form-select">
+                    <option>Last 7 days</option>
+                    <option>Last 30 days</option>
+                    <option>Last 90 days</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Status</label>
+                <select class="form-select">
+                    <option>All</option>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Category</label>
+                <input type="text" class="form-control" placeholder="Enter category" />
+            </div>
+        </FilterContent>
+    </FilterPanel>
+
+    <!-- CostDisplay Component Example -->
+    <h2 class="mt-5">CostDisplay Component</h2>
+    <Card Title="Cost Display Examples">
+        <BodyContent>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Input Token Cost</td>
+                        <td><CostDisplay Value="0.000015m" Color="success" /></td>
+                    </tr>
+                    <tr>
+                        <td>Output Token Cost</td>
+                        <td><CostDisplay Value="0.000075m" Color="warning" /></td>
+                    </tr>
+                    <tr>
+                        <td>No Cost Available</td>
+                        <td><CostDisplay Value="null" Color="info" /></td>
+                    </tr>
+                    <tr>
+                        <td>With Currency Symbol</td>
+                        <td><CostDisplay Value="25.50m" Color="primary" ShowCurrencySymbol="true" DecimalPlaces="2" /></td>
+                    </tr>
+                </tbody>
+            </table>
+        </BodyContent>
+    </Card>
+</div>
+
+@code {
+    private bool showModal = false;
+    private bool showLargeModal = false;
+    private bool isSubmitting = false;
+    private string formName = "";
+    private decimal formPrice = 0;
+    private int formQuantity = 1;
+
+    private void ShowAlert(string message)
+    {
+        // In a real app, this would show a toast or alert
+        Console.WriteLine($"Action: {message}");
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        await Task.Delay(2000); // Simulate async operation
+        isSubmitting = false;
+        showLargeModal = false;
+    }
+
+    private void HandleFilterApply()
+    {
+        ShowAlert("Filters applied");
+    }
+
+    private void HandleFilterClear()
+    {
+        ShowAlert("Filters cleared");
+    }
+}

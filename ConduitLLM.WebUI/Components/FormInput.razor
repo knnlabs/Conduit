@@ -1,0 +1,99 @@
+<div class="mb-3">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@inputId" class="form-label">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+    
+    <input type="@InputType" 
+           class="form-control @CssClass" 
+           id="@inputId"
+           value="@Value"
+           @onchange="HandleValueChanged"
+           placeholder="@Placeholder"
+           disabled="@IsDisabled"
+           readonly="@IsReadOnly"
+           required="@IsRequired" />
+    
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <div class="form-text">@HelpText</div>
+    }
+    
+    @if (!string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="invalid-feedback d-block">
+            @ValidationMessage
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the input value.
+    /// </summary>
+    [Parameter] public string? Value { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the callback when value changes.
+    /// </summary>
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the label text.
+    /// </summary>
+    [Parameter] public string? Label { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the placeholder text.
+    /// </summary>
+    [Parameter] public string? Placeholder { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the help text displayed below the input.
+    /// </summary>
+    [Parameter] public string? HelpText { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the validation error message.
+    /// </summary>
+    [Parameter] public string? ValidationMessage { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the input type.
+    /// </summary>
+    [Parameter] public string InputType { get; set; } = "text";
+    
+    /// <summary>
+    /// Gets or sets whether the input is required.
+    /// </summary>
+    [Parameter] public bool IsRequired { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the input is disabled.
+    /// </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the input is readonly.
+    /// </summary>
+    [Parameter] public bool IsReadOnly { get; set; }
+    
+    /// <summary>
+    /// Gets or sets additional CSS classes.
+    /// </summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    private string inputId = $"input-{Guid.NewGuid():N}";
+
+    private async Task HandleValueChanged(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
