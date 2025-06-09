@@ -28,19 +28,21 @@
    - Replaced `"gpt-4o-realtime-preview"` → `GetDefaultRealtimeModel()`
    - Added configuration helper methods with fallbacks
 
+2. **ElevenLabsClient** ✅ COMPLETE
+   - Updated constructor to accept ProviderDefaultModels
+   - Replaced `"eleven_monolingual_v1"` → `GetDefaultTextToSpeechModel()`
+   - Replaced `"eleven_conversational_v1"` → `GetDefaultRealtimeModel()`
+   - Added configuration helper methods with fallbacks
+   - Updated LLMClientFactory to pass configuration
+
 ## Remaining Work
 
 ### Phase 2: Provider Updates (Continued)
 
-1. **Update all provider constructors** (17 providers)
+1. **Update remaining provider constructors** (15 providers remaining)
    - Each needs to accept ProviderDefaultModels parameter
    - Pass it to base class constructor
-   - Currently only OpenAIClient is updated
-
-2. **ElevenLabsClient** 
-   - Replace `"eleven_monolingual_v1"` defaults
-   - Replace `"eleven_conversational_v1"` defaults
-   - Update constructor
+   - OpenAIClient and ElevenLabsClient are complete
 
 3. **VertexAIClient**
    - Move hardcoded model aliasing to configuration

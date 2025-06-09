@@ -177,7 +177,7 @@ public class LLMClientFactory : ILLMClientFactory
             case "elevenlabs":
             case "eleven-labs":
                 var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
-                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory);
+                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory, defaultModels);
             
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");

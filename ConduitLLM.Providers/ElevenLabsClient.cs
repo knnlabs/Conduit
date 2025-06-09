@@ -40,8 +40,9 @@ namespace ConduitLLM.Providers
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<ElevenLabsClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, "ElevenLabs")
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
+            : base(credentials, providerModelId, logger, httpClientFactory, "ElevenLabs", defaultModels)
         {
             var translatorLogger = logger as ILogger<ElevenLabsRealtimeTranslator> 
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<ElevenLabsRealtimeTranslator>();
@@ -92,7 +93,7 @@ namespace ConduitLLM.Providers
             
             // ElevenLabs uses voice IDs instead of voice names
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM"; // Default voice ID
-            var model = request.Model ?? "eleven_monolingual_v1";
+            var model = request.Model ?? GetDefaultTextToSpeechModel();
             
             var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}";
             
@@ -149,7 +150,7 @@ namespace ConduitLLM.Providers
             using var httpClient = CreateHttpClient(effectiveApiKey);
             
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM";
-            var model = request.Model ?? "eleven_monolingual_v1";
+            var model = request.Model ?? GetDefaultTextToSpeechModel();
             
             var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}/stream";
             
@@ -378,6 +379,12 @@ namespace ConduitLLM.Providers
 
                 await clientWebSocket.ConnectAsync(wsUri, cancellationToken);
 
+                // Ensure model is set to default if not provided
+                if (string.IsNullOrEmpty(config.Model))
+                {
+                    config.Model = GetDefaultRealtimeModel();
+                }
+
                 var session = new ElevenLabsRealtimeSession(
                     clientWebSocket,
                     _translator,
@@ -506,6 +513,52 @@ namespace ConduitLLM.Providers
             public string? Language { get; set; }
             public string? Gender { get; set; }
         }
+
+        #region Configuration Helpers
+
+        /// <summary>
+        /// Gets the default text-to-speech model from configuration or falls back to eleven_monolingual_v1.
+        /// </summary>
+        private string GetDefaultTextToSpeechModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Audio?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TextToSpeechModel;
+            
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+            
+            // Check global default
+            var globalDefault = DefaultModels?.Audio?.DefaultTextToSpeechModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+            
+            // Fallback to hardcoded default for backward compatibility
+            return "eleven_monolingual_v1";
+        }
+
+        /// <summary>
+        /// Gets the default realtime model from configuration or falls back to eleven_conversational_v1.
+        /// </summary>
+        private string GetDefaultRealtimeModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Realtime?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant());
+            
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+            
+            // Check global default
+            var globalDefault = DefaultModels?.Realtime?.DefaultRealtimeModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+            
+            // Fallback to hardcoded default for backward compatibility
+            return "eleven_conversational_v1";
+        }
+
+        #endregion
     }
 
     /// <summary>
@@ -545,7 +598,7 @@ namespace ConduitLLM.Providers
                 {
                     ["voice_id"] = config.Voice ?? "21m00Tcm4TlvDq8ikWAM",
                     ["language"] = config.Language ?? "en",
-                    ["model_id"] = config.Model ?? "eleven_conversational_v1",
+                    ["model_id"] = config.Model ?? "eleven_conversational_v1", // Model should be set in CreateSessionAsync
                     ["voice_settings"] = new Dictionary<string, object>
                     {
                         ["stability"] = 0.5,
