@@ -27,6 +27,7 @@ namespace ConduitLLM.Providers
         protected readonly ILogger Logger;
         protected readonly string ProviderName;
         protected readonly IHttpClientFactory? HttpClientFactory;
+        protected readonly ProviderDefaultModels? DefaultModels;
         
         protected static readonly JsonSerializerOptions DefaultJsonOptions = new()
         {
@@ -42,18 +43,21 @@ namespace ConduitLLM.Providers
         /// <param name="logger">The logger to use for logging.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances.</param>
         /// <param name="providerName">The name of this LLM provider.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         protected BaseLLMClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
-            string? providerName = null)
+            string? providerName = null,
+            ProviderDefaultModels? defaultModels = null)
         {
             Credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
             ProviderModelId = providerModelId ?? throw new ArgumentNullException(nameof(providerModelId));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             HttpClientFactory = httpClientFactory;
             ProviderName = providerName ?? GetType().Name.Replace("Client", string.Empty);
+            DefaultModels = defaultModels;
             
             ValidateCredentials();
         }

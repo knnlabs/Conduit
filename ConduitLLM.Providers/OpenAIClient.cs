@@ -77,6 +77,7 @@ namespace ConduitLLM.Providers
             string providerModelId, 
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory, 
+            ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
                 credentials,
@@ -84,7 +85,8 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 providerName ?? credentials.ProviderName ?? "openai",
-                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderName ?? "openai"))
+                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderName ?? "openai"),
+                defaultModels)
         {
             _isAzure = (providerName ?? credentials.ProviderName ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
             
@@ -232,8 +234,9 @@ namespace ConduitLLM.Providers
                 throw new NotSupportedException("URL-based audio transcription is not supported by OpenAI API. Please provide audio data directly.");
             }
             
-            // Add model
-            content.Add(new StringContent(request.Model ?? "whisper-1"), "model");
+            // Add model - use configuration or fallback to whisper-1
+            var defaultTranscriptionModel = GetDefaultTranscriptionModel();
+            content.Add(new StringContent(request.Model ?? defaultTranscriptionModel), "model");
             
             // Add optional parameters
             if (!string.IsNullOrWhiteSpace(request.Language))
@@ -271,7 +274,7 @@ namespace ConduitLLM.Providers
                     return new AudioTranscriptionResponse
                     {
                         Text = responseText,
-                        Model = request.Model ?? "whisper-1"
+                        Model = request.Model ?? GetDefaultTranscriptionModel()
                     };
                 }
                 
@@ -319,7 +322,7 @@ namespace ConduitLLM.Providers
 
             var openAIRequest = new OpenAIModels.TextToSpeechRequest
             {
-                Model = request.Model ?? "tts-1",
+                Model = request.Model ?? GetDefaultTextToSpeechModel(),
                 Input = request.Input,
                 Voice = request.Voice,
                 ResponseFormat = MapAudioFormat(request.ResponseFormat),
@@ -350,7 +353,7 @@ namespace ConduitLLM.Providers
                     AudioData = audioData,
                     Format = request.ResponseFormat?.ToString().ToLowerInvariant() ?? "mp3",
                     VoiceUsed = request.Voice,
-                    ModelUsed = request.Model ?? "tts-1",
+                    ModelUsed = request.Model ?? GetDefaultTextToSpeechModel(),
                     CharacterCount = request.Input.Length
                 };
             }, "CreateSpeech", cancellationToken);
@@ -602,7 +605,8 @@ namespace ConduitLLM.Providers
         {
             // OpenAI Realtime API uses WebSocket connection
             var wsUrl = BaseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
-            wsUrl = $"{wsUrl}/realtime?model={config.Model ?? "gpt-4o-realtime-preview"}";
+            var defaultRealtimeModel = GetDefaultRealtimeModel();
+            wsUrl = $"{wsUrl}/realtime?model={config.Model ?? defaultRealtimeModel}";
             
             var effectiveApiKey = apiKey ?? Credentials.ApiKey ?? throw new InvalidOperationException("API key is required");
             var session = new OpenAIRealtimeSession(wsUrl, effectiveApiKey, config, Logger);
@@ -812,6 +816,73 @@ namespace ConduitLLM.Providers
                 _logger.LogWarning("Received unexpected message type: {Type}", message.GetType().Name);
                 return null;
             }
+        }
+
+        #endregion
+
+        #region Configuration Helpers
+
+        /// <summary>
+        /// Gets the default transcription model from configuration or falls back to whisper-1.
+        /// </summary>
+        private string GetDefaultTranscriptionModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Audio?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TranscriptionModel;
+            
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+            
+            // Check global default
+            var globalDefault = DefaultModels?.Audio?.DefaultTranscriptionModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+            
+            // Fallback to hardcoded default for backward compatibility
+            return "whisper-1";
+        }
+
+        /// <summary>
+        /// Gets the default text-to-speech model from configuration or falls back to tts-1.
+        /// </summary>
+        private string GetDefaultTextToSpeechModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Audio?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TextToSpeechModel;
+            
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+            
+            // Check global default
+            var globalDefault = DefaultModels?.Audio?.DefaultTextToSpeechModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+            
+            // Fallback to hardcoded default for backward compatibility
+            return "tts-1";
+        }
+
+        /// <summary>
+        /// Gets the default realtime model from configuration or falls back to gpt-4o-realtime-preview.
+        /// </summary>
+        private string GetDefaultRealtimeModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Realtime?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant());
+            
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+            
+            // Check global default
+            var globalDefault = DefaultModels?.Realtime?.DefaultRealtimeModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+            
+            // Fallback to hardcoded default for backward compatibility
+            return "gpt-4o-realtime-preview";
         }
 
         #endregion

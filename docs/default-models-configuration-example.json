@@ -1,0 +1,48 @@
+{
+  "ConduitSettings": {
+    "DefaultModels": {
+      "Audio": {
+        "DefaultTranscriptionModel": "whisper-1",
+        "DefaultTextToSpeechModel": "tts-1",
+        "ProviderOverrides": {
+          "openai": {
+            "TranscriptionModel": "whisper-1",
+            "TextToSpeechModel": "tts-1-hd"
+          },
+          "elevenlabs": {
+            "TextToSpeechModel": "eleven_monolingual_v1"
+          }
+        }
+      },
+      "Realtime": {
+        "DefaultRealtimeModel": "gpt-4o-realtime-preview",
+        "ProviderOverrides": {
+          "openai": "gpt-4o-realtime-preview",
+          "elevenlabs": "conversational-v1",
+          "ultravox": "ultravox-v2"
+        }
+      },
+      "ProviderDefaults": {
+        "openai": {
+          "DefaultChatModel": "gpt-4o",
+          "DefaultEmbeddingModel": "text-embedding-3-small",
+          "DefaultImageModel": "dall-e-3"
+        },
+        "fireworks": {
+          "DefaultChatModel": "accounts/fireworks/models/llama-v3-8b-instruct",
+          "DefaultEmbeddingModel": "nomic-embed-text"
+        },
+        "vertexai": {
+          "DefaultChatModel": "gemini-1.5-pro",
+          "ModelAliases": {
+            "gemini-pro": "gemini-1.0-pro",
+            "gemini-pro-vision": "gemini-1.0-pro-vision",
+            "gemini-ultra": "gemini-1.0-ultra",
+            "gemini-1.5-pro": "gemini-1.5-pro-001",
+            "gemini-1.5-flash": "gemini-1.5-flash-001"
+          }
+        }
+      }
+    }
+  }
+}
