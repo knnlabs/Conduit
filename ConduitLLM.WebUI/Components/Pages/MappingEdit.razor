@@ -1,5 +1,5 @@
 @page "/configuration/mapping/edit"
-@page "/configuration/mapping/edit/{id:int}"
+@page "/configuration/mapping/edit/{id}"
 @using Microsoft.Extensions.Caching.Memory
 @using System.ComponentModel.DataAnnotations
 @using ConduitLLM.Configuration
@@ -13,7 +13,7 @@
 
 @inject Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IToastService ToastService
-@inject Interfaces.IModelProviderMappingService ModelProviderMappingService
+@inject Interfaces.IAdminApiClient AdminApiClient
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
 @inject ILogger<MappingEdit> _logger
@@ -23,7 +23,7 @@
 @inject ProviderModelsService ProviderModelsService
 @rendermode InteractiveServer
 
-<h3 class="mb-4">@(Id.HasValue ? "Edit Mapping" : "Add Mapping")</h3>
+<h3 class="mb-4">@(!string.IsNullOrEmpty(Id) ? "Edit Mapping" : "Add Mapping")</h3>
 
 @if (isLoadingPage)
 {
@@ -33,7 +33,7 @@
         </div>
     </div>
 }
-else if (Id.HasValue && dtoMapping == null)
+else if (!string.IsNullOrEmpty(Id) && dtoMapping == null)
 {
     <div class="alert alert-danger">Mapping not found or error loading.</div>
 }
@@ -180,7 +180,7 @@ else
 
 @code {
     [Parameter]
-    public int? Id { get; set; }
+    public string? Id { get; set; }
     
     private ConfigDTO.ModelProviderMappingDto dtoMapping = new() 
     { 
@@ -208,9 +208,9 @@ else
             var providers = await ProviderCredentialService.GetAllAsync();
             availableProviders = providers.ToList();
             
-            if (Id.HasValue) // Editing existing
+            if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var mappingId)) // Editing existing
             {
-                var entityMapping = await ModelProviderMappingService.GetByIdAsync(Id.Value);
+                var entityMapping = await AdminApiClient.GetModelProviderMappingByIdAsync(mappingId);
                 
                 if (entityMapping != null)
                 {
@@ -427,9 +427,9 @@ else
             }
             
             // Check if alias exists, excluding the current mapping if editing
-            var allMappings = await ModelProviderMappingService.GetAllAsync();
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             bool aliasExists = allMappings.Any(m => m.ModelId == dtoMapping.ModelId && 
-                         (Id == null || m.Id != Id.Value));
+                         (string.IsNullOrEmpty(Id) || (int.TryParse(Id, out var existingId) && m.Id != existingId)));
 
             if (aliasExists)
             {
@@ -445,14 +445,24 @@ else
             
             
             // Save the mapping
-            ConfigDTO.ModelProviderMappingDto? result;
+            bool result;
             
-            if (Id.HasValue) // Update
+            if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var updateId)) // Update
             {
-                dtoMapping.Id = Id.Value;
-                result = await ModelProviderMappingService.UpdateAsync(dtoMapping);
+                dtoMapping.Id = updateId;
+                // Convert DTO to entity for update
+                var mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                {
+                    Id = dtoMapping.Id,
+                    ModelAlias = dtoMapping.ModelId,
+                    ProviderModelName = dtoMapping.ProviderModelId,
+                    ProviderCredentialId = int.Parse(dtoMapping.ProviderId),
+                    IsEnabled = true,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                result = await AdminApiClient.UpdateModelProviderMappingAsync(dtoMapping.Id, mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     ToastService.ShowError("Error: Mapping not found during update.");
                     return;
@@ -460,9 +470,19 @@ else
             }
             else // Add
             {
-                result = await ModelProviderMappingService.CreateAsync(dtoMapping);
+                // Convert DTO to entity for creation
+                var mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                {
+                    ModelAlias = dtoMapping.ModelId,
+                    ProviderModelName = dtoMapping.ProviderModelId,
+                    ProviderCredentialId = int.Parse(dtoMapping.ProviderId),
+                    IsEnabled = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                result = await AdminApiClient.CreateModelProviderMappingAsync(mappingEntity);
                 
-                if (result == null)
+                if (!result)
                 {
                     ToastService.ShowError("Error: Failed to create mapping.");
                     return;
@@ -488,7 +508,7 @@ else
                 // We still proceed with navigation even if notification fails
             }
             
-            ToastService.ShowSuccess($"Mapping {(Id.HasValue ? "updated" : "created")} successfully!");
+            ToastService.ShowSuccess($"Mapping {(!string.IsNullOrEmpty(Id) ? "updated" : "created")} successfully!");
             NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
         }
         catch (Exception ex)

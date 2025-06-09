@@ -28,7 +28,7 @@
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
     <PageHeader Title="Configuration Management" 
-                Description="Configure LLM providers, model mappings, and system settings for your deployment"
+                Description="Configure LLM providers, audio capabilities, and system settings for your deployment"
                 Icon="fa-cogs">
         <Statistics>
             <div class="stat-item">
@@ -36,8 +36,8 @@
                 <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
             </div>
             <div class="stat-item mt-2">
-                <i class="fa fa-sitemap me-2"></i>
-                <span class="small">@(modelMappings?.Count ?? 0) Mappings</span>
+                <i class="fa fa-headphones me-2"></i>
+                <span class="small">@(audioProviders?.Count ?? 0) Audio Providers</span>
             </div>
         </Statistics>
     </PageHeader>
@@ -167,194 +167,6 @@
             }
         </div>
     </div>
-
-    <!-- Model Mappings Section -->
-    <div class="card shadow-sm border-0 mb-5">
-        <div class="card-header bg-light border-0">
-            <h5 class="mb-0">
-                <i class="fa fa-sitemap me-2 text-success"></i>Model Mappings
-            </h5>
-        </div>
-        
-        <div class="card-body">
-            <div class="alert alert-info border-0 shadow-sm mb-4">
-                <i class="fa fa-info-circle me-2"></i>
-                <strong>Model Mappings:</strong> Create user-friendly aliases for your LLM models. 
-                For example, map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
-            </div>
-            
-            @if (modelMappings == null)
-            {
-                <LoadingSpinner Message="Loading model mappings..." />
-            }
-            else if (!modelMappings.Any())
-            {
-                <EmptyState Title="No Model Mappings"
-                            Description="Create your first model mapping to get started"
-                            Icon="fa-sitemap"
-                            IconOpacity="opacity-50" />
-            }
-            else
-            {
-                <div class="table-responsive mb-4">
-                    <table class="table table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th>Model Alias</th>
-                                <th>Provider</th>
-                                <th>Provider Model</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var context in modelMappings)
-                            {
-                                <tr>
-                                    <td>@context.ModelId</td>
-                                    <td>@GetProviderNameById(context.ProviderId)</td>
-                                    <td>@context.ProviderModelId</td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => HandleEditMapping(context.Id)">
-                                                <i class="fa fa-edit me-1"></i> Edit
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteMapping(context.Id)">
-                                                <i class="fa fa-trash me-1"></i> Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            
-            <button class="btn btn-primary shadow-sm" 
-                  @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; }">
-                <i class="fa fa-plus me-1"></i> Add Model Mapping
-            </button>
-        </div>
-    </div>
-
-    @if (isEditingMapping)
-    {
-        <div class="card shadow-sm border-0 mb-5">
-            <div class="card-header bg-light border-0">
-                <h5 class="mb-0">
-                    <i class="fa fa-@(currentMapping.ModelAlias == null ? "plus" : "edit") me-2 text-primary"></i>
-                    @(currentMapping.ModelAlias == null ? "Add" : "Edit") Model Mapping
-                </h5>
-            </div>
-            <div class="card-body">
-                @* Error messages are now displayed via ToastService *@
-                
-                <div class="form-group mb-4">
-                    <label for="modelAlias">Model Alias</label>
-                    <input type="text" class="form-control" id="modelAlias" 
-                           @bind="currentMapping.ModelAlias" />
-                    <small class="form-text text-muted">The friendly name you'll use in your code (e.g., 'gpt4', 'claude-latest')</small>
-                </div>
-                
-                <div class="form-group mb-4">
-                    <label for="providerName">Provider</label>
-                    <select class="form-select" id="providerName" 
-                            value="@currentMapping.ProviderName"
-                            @onchange="@(async (ChangeEventArgs e) => { currentMapping.ProviderName = e.Value?.ToString() ?? ""; await LoadModelsForSelectedProvider(); })">
-                        <option value="">-- Select Provider --</option>
-                        @if (providerCredentials != null)
-                        {
-                            @foreach (var provider in providerCredentials.OrderBy(p => p.ProviderName))
-                            {
-                                <option value="@provider.ProviderName">@provider.ProviderName</option>
-                            }
-                        }
-                    </select>
-                </div>
-                
-                <div class="form-group mb-4">
-                    <label for="providerModelId">Provider Model ID</label>
-                    
-                    @if (isLoadingModels)
-                    {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            <span>Loading models...</span>
-                        </div>
-                    }
-                    else if (showModelTextbox || (!availableModels.Any() && !string.IsNullOrEmpty(currentMapping.ProviderName)))
-                    {
-                        <div>
-                            <input type="text" class="form-control" id="providerModelIdInput"
-                                   @bind="currentMapping.ProviderModelId"
-                                   placeholder="Enter model ID"
-                                   disabled="@string.IsNullOrEmpty(currentMapping.ProviderName)" />
-                            
-                            @if (!availableModels.Any() && !string.IsNullOrEmpty(currentMapping.ProviderName))
-                            {
-                                <small class="text-muted mt-1 d-block">
-                                    Could not retrieve model list. Please enter the model ID manually.
-                                </small>
-                            }
-                            
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                        @onclick="RefreshModelsList"
-                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
-                                    <i class="fa fa-refresh me-1"></i> Try loading models again
-                                </button>
-                                
-                                @if (showModelTextbox && availableModels.Any())
-                                {
-                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                            @onclick="ToggleModelInputMode">
-                                        <i class="fa fa-list me-1"></i> Show dropdown
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="input-group">
-                            <select class="form-select" id="providerModelId"
-                                    @bind="currentMapping.ProviderModelId"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
-                                @if (string.IsNullOrEmpty(currentMapping.ProviderName))
-                                {
-                                    <option value="">Select a provider first</option>
-                                }
-                                else
-                                {
-                                    <option value="">-- Select a model --</option>
-                                    @foreach (var model in availableModels.OrderBy(m => m))
-                                    {
-                                        <option value="@model">@model</option>
-                                    }
-                                }
-                            </select>
-                            <button class="btn btn-outline-secondary" type="button"
-                                    @onclick="RefreshModelsList"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
-                                <i class="fa fa-refresh"></i>
-                            </button>
-                            <button class="btn btn-outline-secondary" type="button"
-                                    @onclick="ToggleModelInputMode"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(currentMapping.ProviderName))">
-                                <i class="fa fa-pencil"></i>
-                            </button>
-                        </div>
-                        <small class="form-text text-muted">Select from available models or click <i class="fa fa-pencil"></i> to enter manually</small>
-                    }
-                </div>
-                
-                <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-outline-secondary me-2" @onclick="() => isEditingMapping = false">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveMapping">Save</button>
-                </div>
-            </div>
-        </div>
-    }
 
     <!-- Audio Providers Section -->
     <div class="card shadow-sm border-0 mb-5">
@@ -826,41 +638,17 @@
 *@
 
 @code {
-    // --- Providers and Mappings State ---
+    // --- Providers State ---
     private List<ConfigDTOs.ProviderCredentialDto> providerCredentials = new();
-    private List<ConfigDTOs.ModelProviderMappingDto> modelMappings = new();
     private List<ConfigDTOs.GlobalSettingDto> globalSettings = new();
     private List<AudioDTOs.AudioProviderConfigDto> audioProviders = new();
 
     // Provider form state
     private ConfigDTOs.ProviderCredentialDto currentProvider = new();
 
-    // Mapping form state
-    private bool isEditingMapping = false;
-    
     // Audio provider form state
     private bool isEditingAudioProvider = false;
     private AudioDTOs.AudioProviderConfigDto currentAudioProvider = new();
-    // Create a custom model for the form to include an ID field
-    private class MappingFormModel
-    {
-        public int Id { get; set; } = 0;
-        public string ModelAlias { get; set; } = "";
-        public string ProviderName { get; set; } = "";
-        public string ProviderModelId { get; set; } = "";
-    }
-    
-    private MappingFormModel currentMapping = new() 
-    { 
-        ModelAlias = "",
-        ProviderName = "",
-        ProviderModelId = "",
-        Id = 0
-    };
-    // Error message field removed - using ToastService instead
-    private List<string> availableModels = new();
-    private bool isLoadingModels = false;
-    private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
 
     // Settings state
     private ConfigDTOs.GlobalSettingDto currentSettings = new();
@@ -884,7 +672,6 @@
         try
         {
             await LoadProvidersAsync();
-            await LoadModelMappingsAsync();
             await LoadAudioProvidersAsync();
             await LoadProxyUrlAsync();
             await LoadHttpRetryOptionsAsync();
@@ -916,20 +703,6 @@
         {
             Logger.LogError(ex, "Error loading provider credentials");
             providerCredentials = new List<ConfigDTOs.ProviderCredentialDto>(); 
-        }
-    }
-    
-    private async Task LoadModelMappingsAsync()
-    {
-        try
-        {
-            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
-            modelMappings = mappings.OrderBy(m => m.ModelId).ToList();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading model mappings");
-            modelMappings = new List<ConfigDTOs.ModelProviderMappingDto>();
         }
     }
     
@@ -1010,7 +783,6 @@
             if (success)
             {
                 await LoadProvidersAsync(); 
-                await LoadModelMappingsAsync();
                 
                 ToastService.ShowSuccess($"Provider '{providerToDelete.ProviderName}' deleted successfully");
             }
@@ -1023,47 +795,6 @@
         {
             ToastService.ShowError($"Error deleting provider: {ex.Message}");
             Logger.LogError(ex, "Error deleting provider");
-        }
-    }
-
-    private void AddMapping()
-    {
-        NavigationManager.NavigateTo("/configuration/mapping/edit");
-    }
-
-    private void EditMapping(int id)
-    {
-        NavigationManager.NavigateTo($"/configuration/mapping/edit/{id}");
-    }
-
-    private async Task DeleteMapping(int id)
-    {
-        try
-        {
-            var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
-            if (mapping == null)
-            {
-                Logger.LogError("No mapping found with ID {Id}", id);
-                return;
-            }
-
-            var success = await AdminApiClient.DeleteModelProviderMappingAsync(id);
-            
-            if (success)
-            {
-                await LoadModelMappingsAsync();
-                ToastService.ShowSuccess("Model mapping deleted successfully");
-            }
-            else
-            {
-                Logger.LogError("Failed to delete mapping with ID {Id}", id);
-                ToastService.ShowError("Failed to delete mapping");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting mapping");
-            ToastService.ShowError($"Error deleting mapping: {ex.Message}");
         }
     }
 
@@ -1112,7 +843,6 @@
             if (createdProvider != null)
             {
                 await LoadProvidersAsync();
-                await LoadModelMappingsAsync();
                 
                 // The wizard should close itself via the IsOpenChanged event
                 // We don't need to set isGuidedSetupOpen = false here as it will be set in HandleIsOpenChanged
@@ -1162,129 +892,7 @@
         return provider?.ProviderName ?? "Unknown";
     }
 
-    // --- Mapping form state ---
-    private async Task HandleEditMapping(int id)
-    {
-        var mapping = await AdminApiClient.GetModelProviderMappingByIdAsync(id);
-            
-        if (mapping != null)
-        {
-            // Get provider by ID to get the provider name
-            var provider = await AdminApiClient.GetProviderCredentialByIdAsync(int.Parse(mapping.ProviderId));
-            
-            currentMapping = new MappingFormModel
-            {
-                Id = mapping.Id, // Store the ID to identify this record for updates
-                ModelAlias = mapping.ModelId,
-                ProviderName = provider?.ProviderName ?? "",
-                ProviderModelId = mapping.ProviderModelId
-            };
-            isEditingMapping = true;
-            
-            // Load models for the selected provider
-            await LoadModelsForSelectedProvider();
-        }
-    }
-
-    private async Task SaveMapping()
-    {
-        if (string.IsNullOrWhiteSpace(currentMapping.ModelAlias))
-        {
-            ToastService.ShowError("Model alias is required");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(currentMapping.ProviderName))
-        {
-            ToastService.ShowError("Provider is required");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(currentMapping.ProviderModelId))
-        {
-            ToastService.ShowError("Provider model is required");
-            return;
-        }
-
-        // Get provider by name to ensure it exists
-        var allProviders = await AdminApiClient.GetAllProviderCredentialsAsync();
-        var provider = allProviders.FirstOrDefault(p => p.ProviderName == currentMapping.ProviderName);
-            
-        if (provider == null)
-        {
-            ToastService.ShowError($"Provider {currentMapping.ProviderName} not found. Please add this provider first.");
-            return;
-        }
-        
-        // Check for duplicate alias only if we're creating a new mapping or changing the alias
-        var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
-        var existingMapping = allMappings.FirstOrDefault(m => m.ModelId == currentMapping.ModelAlias && 
-                                                              m.Id != currentMapping.Id); // Exclude the current mapping by ID
-                                     
-        if (existingMapping != null)
-        {
-            ToastService.ShowError($"A mapping with alias '{currentMapping.ModelAlias}' already exists");
-            return;
-        }
-
-        try
-        {
-            // Determine if this is an update or a new record
-            bool isUpdate = currentMapping.Id > 0;
-            
-            var mappingEntity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
-            {
-                Id = currentMapping.Id,
-                ModelAlias = currentMapping.ModelAlias,
-                ProviderModelName = currentMapping.ProviderModelId,
-                ProviderCredentialId = provider.Id,
-                IsEnabled = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            bool result;
-            
-            if (isUpdate)
-            {
-                result = await AdminApiClient.UpdateModelProviderMappingAsync(mappingEntity.Id, mappingEntity);
-                
-                if (!result)
-                {
-                    ToastService.ShowError("The mapping you're trying to update no longer exists.");
-                    return;
-                }
-            }
-            else
-            {
-                result = await AdminApiClient.CreateModelProviderMappingAsync(mappingEntity);
-                
-                if (!result)
-                {
-                    ToastService.ShowError("Failed to create the mapping.");
-                    return;
-                }
-            }
-            
-            isEditingMapping = false;
-            currentMapping = new MappingFormModel 
-            { 
-                ModelAlias = "",
-                ProviderName = "",
-                ProviderModelId = "",
-                Id = 0
-            };
-            await LoadModelMappingsAsync();
-            
-            ToastService.ShowSuccess("Model mapping saved successfully");
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error saving mapping: {ex.Message}");
-            Logger.LogError(ex, "Error saving mapping");
-        }
-    }
-
+    
     private async Task SaveProxyUrl()
     {
         try
@@ -1347,73 +955,6 @@
         {
             Logger.LogError(ex, "Error checking if provider has mappings");
             return false;
-        }
-    }
-    
-    private async Task LoadModelsForSelectedProvider()
-    {
-        if (string.IsNullOrEmpty(currentMapping.ProviderName))
-        {
-            availableModels.Clear();
-            return;
-        }
-
-        try
-        {
-            isLoadingModels = true;
-            StateHasChanged();
-            
-            availableModels = await ProviderModelsService.GetModelsAsync(currentMapping.ProviderName);
-            
-            // If the previously selected model is not in the list, clear it
-            if (!string.IsNullOrEmpty(currentMapping.ProviderModelId) && 
-                !availableModels.Contains(currentMapping.ProviderModelId))
-            {
-                currentMapping.ProviderModelId = "";
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading models for provider {ProviderName}", currentMapping.ProviderName);
-            availableModels.Clear();
-        }
-        finally
-        {
-            isLoadingModels = false;
-            StateHasChanged();
-        }
-    }
-    
-    private void ToggleModelInputMode()
-    {
-        // Toggle between dropdown and textbox
-        showModelTextbox = !showModelTextbox;
-    }
-    
-    private async Task RefreshModelsList()
-    {
-        if (string.IsNullOrEmpty(currentMapping.ProviderName))
-        {
-            return;
-        }
-        
-        try
-        {
-            isLoadingModels = true;
-            StateHasChanged();
-            
-            // Force refresh from API
-            availableModels = await ProviderModelsService.GetModelsAsync(currentMapping.ProviderName, true);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error refreshing models for provider {ProviderName}", currentMapping.ProviderName);
-            availableModels.Clear();
-        }
-        finally
-        {
-            isLoadingModels = false;
-            StateHasChanged();
         }
     }
     
