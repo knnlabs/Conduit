@@ -1,0 +1,132 @@
+<div class="btn-group @(Size == ButtonSize.Small ? "btn-group-sm" : "")">
+    @foreach (var action in Actions)
+    {
+        <button class="btn btn-outline-@action.Color" 
+                title="@action.Title" 
+                @onclick="() => OnActionClick(action)"
+                disabled="@(action.IsDisabled || IsDisabled)">
+            <i class="@action.IconClass"></i>
+            @if (!string.IsNullOrEmpty(action.Text))
+            {
+                <span class="ms-1">@action.Text</span>
+            }
+        </button>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the list of actions to display.
+    /// </summary>
+    [Parameter] public List<ActionButton> Actions { get; set; } = new();
+    
+    /// <summary>
+    /// Gets or sets the size of the button group.
+    /// </summary>
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Normal;
+    
+    /// <summary>
+    /// Gets or sets whether all buttons in the group are disabled.
+    /// </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>
+    /// Gets or sets additional content to render inside the button group.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnActionClick(ActionButton action)
+    {
+        if (action.OnClick.HasDelegate)
+        {
+            await action.OnClick.InvokeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Represents an action button configuration.
+    /// </summary>
+    public class ActionButton
+    {
+        /// <summary>
+        /// Gets or sets the button title (tooltip).
+        /// </summary>
+        public string Title { get; set; } = "";
+        
+        /// <summary>
+        /// Gets or sets the icon CSS class (e.g., "fa fa-edit").
+        /// </summary>
+        public string IconClass { get; set; } = "";
+        
+        /// <summary>
+        /// Gets or sets the optional button text.
+        /// </summary>
+        public string? Text { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the Bootstrap color variant (e.g., "primary", "danger").
+        /// </summary>
+        public string Color { get; set; } = "primary";
+        
+        /// <summary>
+        /// Gets or sets whether this specific button is disabled.
+        /// </summary>
+        public bool IsDisabled { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the click event callback.
+        /// </summary>
+        public EventCallback OnClick { get; set; }
+
+        /// <summary>
+        /// Creates a standard Edit action button.
+        /// </summary>
+        public static ActionButton Edit(EventCallback onClick) => new()
+        {
+            Title = "Edit",
+            IconClass = "fa fa-edit",
+            Color = "primary",
+            OnClick = onClick
+        };
+
+        /// <summary>
+        /// Creates a standard Delete action button.
+        /// </summary>
+        public static ActionButton Delete(EventCallback onClick) => new()
+        {
+            Title = "Delete",
+            IconClass = "fa fa-trash",
+            Color = "danger",
+            OnClick = onClick
+        };
+
+        /// <summary>
+        /// Creates a standard View action button.
+        /// </summary>
+        public static ActionButton View(EventCallback onClick) => new()
+        {
+            Title = "View",
+            IconClass = "fa fa-eye",
+            Color = "info",
+            OnClick = onClick
+        };
+
+        /// <summary>
+        /// Creates a standard Copy action button.
+        /// </summary>
+        public static ActionButton Copy(EventCallback onClick) => new()
+        {
+            Title = "Copy",
+            IconClass = "fa fa-copy",
+            Color = "secondary",
+            OnClick = onClick
+        };
+    }
+
+    public enum ButtonSize
+    {
+        Small,
+        Normal
+    }
+}
