@@ -125,6 +125,8 @@ builder.Services.AddRouterServices(builder.Configuration);
 // Register HTTP configuration services
 builder.Services.AddOptions<RetryOptions>().Bind(builder.Configuration.GetSection(RetryOptions.SectionName)).ValidateDataAnnotations();
 builder.Services.AddOptions<TimeoutOptions>().Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName)).ValidateDataAnnotations();
+builder.Services.AddSingleton<IHttpRetryConfigurationService, HttpRetryConfigurationService>();
+builder.Services.AddSingleton<IHttpTimeoutConfigurationService, HttpTimeoutConfigurationService>();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
 
