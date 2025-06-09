@@ -94,13 +94,16 @@ public class LLMClientFactory : ILLMClientFactory
         // Get normalized provider name
         string normalizedProviderName = providerName.ToLowerInvariant();
         
+        // Get default models configuration
+        var defaultModels = _settings.DefaultModels;
+        
         // Create clients using the new class hierarchy
         switch (normalizedProviderName)
         {
             // OpenAI-compatible clients
             case "openai":
                 var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                return new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory);
+                return new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory, defaultModels);
             
             case "azure":
                 var azureLogger = _loggerFactory.CreateLogger<AzureOpenAIClient>();

@@ -133,8 +133,9 @@ namespace ConduitLLM.Providers
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
-            string? baseUrl = null) 
-            : base(credentials, providerModelId, logger, httpClientFactory, providerName)
+            string? baseUrl = null,
+            ProviderDefaultModels? defaultModels = null) 
+            : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
             BaseUrl = baseUrl ?? "https://api.openai.com/v1";
         }
