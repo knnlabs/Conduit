@@ -42,13 +42,7 @@
         </Statistics>
     </PageHeader>
 
-    @if (!string.IsNullOrEmpty(deleteErrorMessage))
-    {
-        <div class="alert alert-danger border-0 shadow-sm mb-4">
-            <i class="fa fa-exclamation-circle me-2"></i>
-            @deleteErrorMessage
-        </div>
-    }
+    @* Delete error messages are now displayed via ToastService *@
 
     <!-- LLM Providers Section -->
     <div class="card shadow-sm border-0 mb-5">
@@ -253,13 +247,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                @if (!string.IsNullOrEmpty(mappingErrorMessage))
-                {
-                    <div class="alert alert-danger border-0 shadow-sm mb-4">
-                        <i class="fa fa-exclamation-circle me-2"></i>
-                        @mappingErrorMessage
-                    </div>
-                }
+                @* Error messages are now displayed via ToastService *@
                 
                 <div class="form-group mb-4">
                     <label for="modelAlias">Model Alias</label>
@@ -869,7 +857,7 @@
         ProviderModelId = "",
         Id = 0
     };
-    private string? mappingErrorMessage;
+    // Error message field removed - using ToastService instead
     private List<string> availableModels = new();
     private bool isLoadingModels = false;
     private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
@@ -885,7 +873,7 @@
     // --- Guided Setup State (Disabled during Admin API migration) ---
     // private GuidedSetupWizard? guidedSetupWizardInstance;
     // private bool isGuidedSetupOpen;
-    private string? deleteErrorMessage;
+    // Delete error message field removed - using ToastService instead
     
     private readonly List<string> _supportedProviders = new List<string> {
         "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
@@ -1311,7 +1299,7 @@
         }
     }
     
-    private async Task SaveHttpRetryOptions()
+    private Task SaveHttpRetryOptions()
     {
         try
         {
@@ -1323,9 +1311,10 @@
         {
             ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
+        return Task.CompletedTask;
     }
 
-    private async Task SaveHttpTimeoutOptions()
+    private Task SaveHttpTimeoutOptions()
     {
         try
         {
@@ -1337,6 +1326,7 @@
         {
             ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
+        return Task.CompletedTask;
     }
 
     private async Task<bool> CheckIfProviderHasMappings(string providerName)

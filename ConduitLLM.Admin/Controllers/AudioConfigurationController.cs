@@ -15,7 +15,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/audio")]
-    [Authorize(Policy = "MasterKeyAuth")]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class AudioConfigurationController : ControllerBase
     {
         private readonly IAdminAudioProviderService _providerService;

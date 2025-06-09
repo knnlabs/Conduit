@@ -505,7 +505,7 @@
         await LoadModelCostsAsync();
     }
 
-    private async Task ClearCache()
+    private Task ClearCache()
     {
         try
         {
@@ -517,6 +517,7 @@
             ToastService.ShowError($"Error clearing cache: {ex.Message}");
             Logger.LogError(ex, "Error clearing model cost cache");
         }
+        return Task.CompletedTask;
     }
 
     private void ShowAddEditModal(ModelCostDto? modelCost = null)

@@ -41,7 +41,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenRouter",
                 ApiKey = "valid-key",
-                ApiBase = null
+                ApiBase = string.Empty
             };
 
             var dbCredential = new ProviderCredential
@@ -49,7 +49,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenRouter",
                 ApiKey = "valid-key",
-                BaseUrl = null
+                BaseUrl = string.Empty
             };
 
             _mockProviderCredentialRepository
@@ -104,7 +104,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenRouter",
                 ApiKey = "invalid-key",
-                ApiBase = null
+                ApiBase = string.Empty
             };
 
             var dbCredential = new ProviderCredential
@@ -112,7 +112,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenRouter",
                 ApiKey = "invalid-key",
-                BaseUrl = null
+                BaseUrl = string.Empty
             };
 
             _mockProviderCredentialRepository
@@ -168,7 +168,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenAI",
                 ApiKey = "sk-test",
-                ApiBase = null
+                ApiBase = string.Empty
             };
 
             var dbCredential = new ProviderCredential
@@ -176,7 +176,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 Id = 1,
                 ProviderName = "OpenAI",
                 ApiKey = "sk-test",
-                BaseUrl = null
+                BaseUrl = string.Empty
             };
 
             _mockProviderCredentialRepository

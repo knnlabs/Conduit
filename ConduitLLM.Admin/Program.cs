@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Providers.Extensions;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -77,6 +78,9 @@ public class Program
         
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);
+        
+        // Add Provider services (needed for ILLMClientFactory)
+        builder.Services.AddProviderServices();
         
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);

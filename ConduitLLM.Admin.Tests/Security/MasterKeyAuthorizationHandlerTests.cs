@@ -129,7 +129,7 @@ namespace ConduitLLM.Admin.Tests.Security
             
             _mockConfiguration
                 .Setup(c => c[configKey])
-                .Returns((string)null);
+                .Returns((string?)null);
             
             _httpContext.Request.Headers["X-API-Key"] = "any-key";
 

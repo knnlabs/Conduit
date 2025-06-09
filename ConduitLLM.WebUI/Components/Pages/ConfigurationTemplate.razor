@@ -190,7 +190,7 @@
             }
             
             <button class="btn btn-primary" 
-                 @onclick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
+                 @onclick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
         </div>
@@ -352,7 +352,7 @@
 @code {
     // State management
     private ConduitLLM.Configuration.Entities.ModelProviderMapping? currentMapping;
-    private string? mappingErrorMessage;
+    // Removed unused mappingErrorMessage field - using ToastService instead
 
     // Provider management
     private List<ProviderCredential> providerCredentials = new();
