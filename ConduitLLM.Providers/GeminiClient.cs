@@ -43,19 +43,22 @@ namespace ConduitLLM.Providers
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
         /// <param name="apiVersion">The API version to use. Defaults to v1beta.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GeminiClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<GeminiClient> logger,
             IHttpClientFactory? httpClientFactory = null,
-            string? apiVersion = null) 
+            string? apiVersion = null,
+            ProviderDefaultModels? defaultModels = null) 
             : base(
                 credentials,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Gemini",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase)
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultApiBase : credentials.ApiBase,
+                defaultModels)
         {
             _apiVersion = apiVersion ?? DefaultApiVersion;
         }

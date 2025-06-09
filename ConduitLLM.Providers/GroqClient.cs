@@ -57,18 +57,21 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model ID to use.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GroqClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<GroqClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureGroqCredentials(credentials),
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "groq",
-                DetermineBaseUrl(credentials))
+                DetermineBaseUrl(credentials),
+                defaultModels)
         {
         }
 

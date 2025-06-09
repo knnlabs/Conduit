@@ -45,15 +45,17 @@ namespace ConduitLLM.Providers
         /// <param name="deploymentName">The Azure OpenAI deployment name to use (equivalent to model ID in other providers).</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
         /// <exception cref="ConfigurationException">Thrown when required Azure-specific configuration is missing.</exception>
         public AzureOpenAIClient(
             ProviderCredentials credentials,
             string deploymentName,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(credentials, deploymentName, logger, httpClientFactory, providerName: "azure",
-                  baseUrl: credentials.ApiBase?.TrimEnd('/'))
+                  baseUrl: credentials.ApiBase?.TrimEnd('/'), defaultModels)
         {
             // Deployment name is equivalent to provider model ID in Azure
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");

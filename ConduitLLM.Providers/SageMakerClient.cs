@@ -36,17 +36,20 @@ namespace ConduitLLM.Providers
         /// <param name="endpointName">The SageMaker endpoint name.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public SageMakerClient(
             ProviderCredentials credentials,
             string endpointName,
             ILogger<SageMakerClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                   EnsureSageMakerCredentials(credentials),
                   endpointName,
                   logger,
                   httpClientFactory,
-                  "sagemaker")
+                  "sagemaker",
+                  defaultModels)
         {
             _endpointName = endpointName ?? throw new ArgumentNullException(nameof(endpointName));
         }

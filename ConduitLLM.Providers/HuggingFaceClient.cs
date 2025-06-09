@@ -37,17 +37,20 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public HuggingFaceClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<HuggingFaceClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureHuggingFaceCredentials(credentials),
                 providerModelId,
                 logger,
                 httpClientFactory,
-                "huggingface")
+                "huggingface",
+                defaultModels)
         {
         }
 

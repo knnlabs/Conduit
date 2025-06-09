@@ -40,8 +40,9 @@ namespace ConduitLLM.Providers
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<UltravoxClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
-            : base(credentials, providerModelId, logger, httpClientFactory, "Ultravox")
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
+            : base(credentials, providerModelId, logger, httpClientFactory, "Ultravox", defaultModels)
         {
             var translatorLogger = logger as ILogger<UltravoxRealtimeTranslator> 
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<UltravoxRealtimeTranslator>();

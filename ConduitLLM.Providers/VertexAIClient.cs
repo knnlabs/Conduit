@@ -45,12 +45,14 @@ namespace ConduitLLM.Providers
         /// <param name="modelAlias">The model alias to use (e.g., gemini-1.5-pro).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
+        /// <param name="defaultModels">Optional default model configuration.</param>
         /// <param name="apiVersion">The API version to use. Defaults to v1.</param>
         public VertexAIClient(
             ProviderCredentials credentials,
             string modelAlias,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null,
             string? apiVersion = null)
             : base(
                 credentials,
@@ -58,7 +60,8 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "VertexAI",
-                null)
+                null, // baseUrl
+                defaultModels)
         {
             _apiVersion = apiVersion ?? (!string.IsNullOrWhiteSpace(credentials.ApiVersion) 
                 ? credentials.ApiVersion 
@@ -471,7 +474,17 @@ namespace ConduitLLM.Providers
         
         private (string ModelId, string ModelType) GetVertexAIModelInfo(string modelAlias)
         {
-            // Map model aliases to actual Vertex AI model IDs and types
+            // First check if there's a configured alias mapping
+            var providerDefaults = DefaultModels?.ProviderDefaults?.GetValueOrDefault("vertexai");
+            if (providerDefaults?.ModelAliases != null && 
+                providerDefaults.ModelAliases.TryGetValue(modelAlias.ToLowerInvariant(), out var mappedModel))
+            {
+                // Determine model type from the mapped model ID
+                var modelType = mappedModel.StartsWith("gemini", StringComparison.OrdinalIgnoreCase) ? "gemini" : "palm";
+                return (mappedModel, modelType);
+            }
+            
+            // Fallback to hardcoded mappings for backward compatibility
             return modelAlias.ToLowerInvariant() switch
             {
                 // Gemini models

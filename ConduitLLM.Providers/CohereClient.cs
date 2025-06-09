@@ -54,20 +54,23 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The specific Cohere model ID to use (e.g., command-r-plus).</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <exception cref="ArgumentNullException">Thrown when credentials, providerModelId, or logger is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing in the credentials.</exception>
         public CohereClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<CohereClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                   credentials,
                   providerModelId,
                   logger,
                   httpClientFactory,
                   "cohere",
-                  credentials.ApiBase ?? DefaultApiBase)
+                  credentials.ApiBase ?? DefaultApiBase,
+                  defaultModels)
         {
         }
 

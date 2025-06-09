@@ -80,17 +80,21 @@ namespace ConduitLLM.Providers
         /// <param name="modelId">The ID of the model to use for requests (e.g., "openai/gpt-4", "anthropic/claude-2").</param>
         /// <param name="logger">Logger instance for diagnostic output.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public OpenRouterClient(
             ProviderCredentials credentials,
             string modelId,
             ILogger<OpenRouterClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureOpenRouterCredentials(credentials),
                 modelId,
                 logger,
                 httpClientFactory,
-                "OpenRouter")
+                "OpenRouter",
+                null, // Let the base constructor determine the URL
+                defaultModels)
         {
         }
 
@@ -134,6 +138,23 @@ namespace ConduitLLM.Providers
         {
             // This is a minimal implementation - override with proper support if needed
             throw new NotSupportedException("Image generation is not supported in the OpenRouter client");
+        }
+
+        /// <summary>
+        /// Gets a fallback list of models for OpenRouter when the API is unavailable.
+        /// </summary>
+        /// <returns>A list of commonly available OpenRouter models.</returns>
+        protected override List<InternalModels.ExtendedModelInfo> GetFallbackModels()
+        {
+            return new List<InternalModels.ExtendedModelInfo>
+            {
+                InternalModels.ExtendedModelInfo.Create("anthropic/claude-3-opus", "openrouter", "Claude 3 Opus"),
+                InternalModels.ExtendedModelInfo.Create("anthropic/claude-3-sonnet", "openrouter", "Claude 3 Sonnet"),
+                InternalModels.ExtendedModelInfo.Create("openai/gpt-4-turbo", "openrouter", "GPT-4 Turbo"),
+                InternalModels.ExtendedModelInfo.Create("openai/gpt-3.5-turbo", "openrouter", "GPT-3.5 Turbo"),
+                InternalModels.ExtendedModelInfo.Create("google/gemini-pro", "openrouter", "Gemini Pro"),
+                InternalModels.ExtendedModelInfo.Create("meta-llama/llama-3-70b-instruct", "openrouter", "Llama 3 70B")
+            };
         }
 
         private static ProviderCredentials EnsureOpenRouterCredentials(ProviderCredentials credentials)
