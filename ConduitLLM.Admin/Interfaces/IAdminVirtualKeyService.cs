@@ -78,4 +78,14 @@ public interface IAdminVirtualKeyService
     /// <param name="id">The ID of the virtual key</param>
     /// <returns>Virtual key validation information or null if not found</returns>
     Task<VirtualKeyValidationInfoDto?> GetValidationInfoAsync(int id);
+    
+    /// <summary>
+    /// Performs maintenance tasks on all virtual keys
+    /// </summary>
+    /// <remarks>
+    /// This includes resetting budgets for keys with expired budget periods (daily/monthly)
+    /// and disabling keys that have passed their expiration date.
+    /// </remarks>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task PerformMaintenanceAsync();
 }
