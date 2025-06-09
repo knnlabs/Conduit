@@ -839,6 +839,9 @@ namespace ConduitLLM.Providers
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
             
+            // TODO: When ModelCapabilityService is available in providers, use:
+            // var defaultModel = await _capabilityService.GetDefaultModelAsync("openai", "transcription");
+            
             // Fallback to hardcoded default for backward compatibility
             return "whisper-1";
         }

@@ -25,6 +25,9 @@ namespace ConduitLLM.Core.Extensions
             services.Configure<ContextManagementOptions>(
                 configuration.GetSection("ConduitLLM:ContextManagement"));
 
+            // Register model capability service
+            services.TryAddScoped<IModelCapabilityService, ModelCapabilityService>();
+
             // Register token counter
             services.AddSingleton<ITokenCounter, TiktokenCounter>();
 
@@ -41,6 +44,12 @@ namespace ConduitLLM.Core.Extensions
         /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddConduitAudioServices(this IServiceCollection services)
         {
+            // Register model capability service if not already registered
+            services.TryAddScoped<IModelCapabilityService, ModelCapabilityService>();
+            
+            // Register audio capability detector
+            services.AddScoped<IAudioCapabilityDetector, AudioCapabilityDetector>();
+            
             // Register audio router
             services.AddScoped<IAudioRouter, DefaultAudioRouter>();
 

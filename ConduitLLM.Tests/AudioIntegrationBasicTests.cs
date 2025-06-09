@@ -2,6 +2,8 @@ using System.Text;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Services;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace ConduitLLM.Tests;
@@ -15,7 +17,8 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_SupportsOpenAITranscription()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var detector = new AudioCapabilityDetector(loggerMock.Object);
 
         // Act
         var supports = detector.SupportsTranscription("openai", "whisper-1");
@@ -28,7 +31,8 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_SupportsOpenAITextToSpeech()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var detector = new AudioCapabilityDetector(loggerMock.Object);
 
         // Act
         var supports = detector.SupportsTextToSpeech("openai", "tts-1");
@@ -41,7 +45,8 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_DoesNotSupportUnknownProvider()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var detector = new AudioCapabilityDetector(loggerMock.Object);
 
         // Act
         var supportsTranscription = detector.SupportsTranscription("unknown-provider");

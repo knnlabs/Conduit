@@ -43,15 +43,23 @@ namespace ConduitLLM.Core.Services
         private static readonly Dictionary<string, TikToken> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
+        private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TiktokenCounter"/> class.
         /// </summary>
         /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <param name="capabilityService">Service for retrieving model capabilities from configuration.</param>
         /// <exception cref="ArgumentNullException">Thrown when logger is null.</exception>
-        public TiktokenCounter(ILogger<TiktokenCounter> logger)
+        public TiktokenCounter(ILogger<TiktokenCounter> logger, IModelCapabilityService? capabilityService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityService = capabilityService;
+            
+            if (capabilityService == null)
+            {
+                _logger.LogWarning("ModelCapabilityService not available, using fallback tokenizer detection");
+            }
         }
 
         /// <inheritdoc />
@@ -211,25 +219,51 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                // Default to the most common encoding
-                string encodingName = "cl100k_base"; // Default for newer models (GPT-3.5, GPT-4)
+                string encodingName = "cl100k_base"; // Default for newer models
                 
-                // Lower case the model name for consistent matching
-                string lowerModelName = modelName.ToLowerInvariant();
+                // Try to get tokenizer type from capability service first
+                if (_capabilityService != null)
+                {
+                    try
+                    {
+                        var tokenizerType = _capabilityService.GetTokenizerTypeAsync(modelName).GetAwaiter().GetResult();
+                        if (!string.IsNullOrEmpty(tokenizerType))
+                        {
+                            encodingName = tokenizerType;
+                            _logger.LogDebug("Using tokenizer {TokenizerType} from capability service for model {Model}", tokenizerType, modelName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error getting tokenizer type from capability service for model {Model}", modelName);
+                    }
+                }
                 
-                // Map model names/families to their encodings
-                if (lowerModelName.Contains("gpt-3.5") || lowerModelName.Contains("gpt-4"))
+                // If capability service didn't provide tokenizer, fall back to pattern matching
+                if (_capabilityService == null || encodingName == "cl100k_base")
                 {
-                    encodingName = "cl100k_base";
+                    // Lower case the model name for consistent matching
+                    string lowerModelName = modelName.ToLowerInvariant();
+                    
+                    // Map model names/families to their encodings
+                    if (lowerModelName.Contains("gpt-3.5") || lowerModelName.Contains("gpt-4"))
+                    {
+                        encodingName = "cl100k_base";
+                    }
+                    else if (lowerModelName.Contains("davinci") || 
+                             lowerModelName.Contains("curie") || 
+                             lowerModelName.Contains("babbage") || 
+                             lowerModelName.Contains("ada"))
+                    {
+                        encodingName = "p50k_base";
+                    }
+                    else if (lowerModelName.Contains("claude"))
+                    {
+                        // Claude models use their own tokenizer, but we'll approximate with cl100k_base
+                        encodingName = "cl100k_base";
+                        _logger.LogDebug("Using cl100k_base approximation for Claude model {Model}", modelName);
+                    }
                 }
-                else if (lowerModelName.Contains("davinci") || 
-                         lowerModelName.Contains("curie") || 
-                         lowerModelName.Contains("babbage") || 
-                         lowerModelName.Contains("ada"))
-                {
-                    encodingName = "p50k_base";
-                }
-                // Add more mappings as needed for other model families
 
                 lock (_lock)
                 {
