@@ -40,18 +40,21 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public ReplicateClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 credentials,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Replicate",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase)
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase,
+                defaultModels)
         {
         }
         

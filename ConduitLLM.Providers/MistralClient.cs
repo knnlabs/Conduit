@@ -58,18 +58,21 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model ID to use.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public MistralClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<MistralClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureMistralCredentials(credentials),
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "mistral",
-                DetermineBaseUrl(credentials))
+                DetermineBaseUrl(credentials),
+                defaultModels)
         {
         }
 

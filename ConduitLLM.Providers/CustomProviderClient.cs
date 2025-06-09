@@ -66,14 +66,16 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="providerName">The name of this LLM provider.</param>
         /// <param name="baseUrl">The base URL for API requests.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         protected CustomProviderClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
-            string? baseUrl = null) 
-            : base(credentials, providerModelId, logger, httpClientFactory, providerName)
+            string? baseUrl = null,
+            ProviderDefaultModels? defaultModels = null) 
+            : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
             BaseUrl = !string.IsNullOrEmpty(baseUrl) 
                 ? baseUrl 

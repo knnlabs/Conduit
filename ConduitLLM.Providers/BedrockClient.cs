@@ -39,17 +39,20 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public BedrockClient(
             ProviderCredentials credentials, 
             string providerModelId, 
             ILogger<BedrockClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                   EnsureBedrockCredentials(credentials), 
                   providerModelId, 
                   logger, 
                   httpClientFactory, 
-                  "bedrock")
+                  "bedrock",
+                  defaultModels)
         {
             // Extract region from credentials.ApiBase or use default
             // ApiBase in this case is treated as the AWS region

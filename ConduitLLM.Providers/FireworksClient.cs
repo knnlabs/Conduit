@@ -37,18 +37,21 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model identifier to use (e.g., accounts/fireworks/models/llama-v3-8b-instruct).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public FireworksClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 credentials,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Fireworks",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultFireworksApiBase : credentials.ApiBase)
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultFireworksApiBase : credentials.ApiBase,
+                defaultModels)
         {
         }
         

@@ -107,77 +107,77 @@ public class LLMClientFactory : ILLMClientFactory
             
             case "azure":
                 var azureLogger = _loggerFactory.CreateLogger<AzureOpenAIClient>();
-                return new AzureOpenAIClient(credentials, modelId, azureLogger, _httpClientFactory);
+                return new AzureOpenAIClient(credentials, modelId, azureLogger, _httpClientFactory, defaultModels);
                 
             case "mistral":
             case "mistralai":
                 var mistralLogger = _loggerFactory.CreateLogger<MistralClient>();
-                return new MistralClient(credentials, modelId, mistralLogger, _httpClientFactory);
+                return new MistralClient(credentials, modelId, mistralLogger, _httpClientFactory, defaultModels);
             
             case "groq":
                 var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
-                return new GroqClient(credentials, modelId, groqLogger, _httpClientFactory);
+                return new GroqClient(credentials, modelId, groqLogger, _httpClientFactory, defaultModels);
                 
             // Custom provider clients
             case "anthropic":
                 var anthropicLogger = _loggerFactory.CreateLogger<AnthropicClient>();
-                return new AnthropicClient(credentials, modelId, anthropicLogger, _httpClientFactory);
+                return new AnthropicClient(credentials, modelId, anthropicLogger, _httpClientFactory, defaultModels);
                 
             case "cohere":
                 var cohereLogger = _loggerFactory.CreateLogger<CohereClient>();
-                return new CohereClient(credentials, modelId, cohereLogger, _httpClientFactory);
+                return new CohereClient(credentials, modelId, cohereLogger, _httpClientFactory, defaultModels);
                 
             case "google":
             case "gemini": // Alias
                 var geminiLogger = _loggerFactory.CreateLogger<GeminiClient>();
-                return new GeminiClient(credentials, modelId, geminiLogger, _httpClientFactory);
+                return new GeminiClient(credentials, modelId, geminiLogger, _httpClientFactory, null, defaultModels);
                 
             case "vertexai":
                 var vertexAiLogger = _loggerFactory.CreateLogger<VertexAIClient>();
-                return new VertexAIClient(credentials, modelId, vertexAiLogger, _httpClientFactory);
+                return new VertexAIClient(credentials, modelId, vertexAiLogger, _httpClientFactory, defaultModels);
                 
             case "ollama":
                 var ollamaLogger = _loggerFactory.CreateLogger<OllamaClient>();
-                return new OllamaClient(credentials, modelId, ollamaLogger, _httpClientFactory);
+                return new OllamaClient(credentials, modelId, ollamaLogger, _httpClientFactory, defaultModels);
                 
             case "replicate":
                 var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
-                return new ReplicateClient(credentials, modelId, replicateLogger, _httpClientFactory);
+                return new ReplicateClient(credentials, modelId, replicateLogger, _httpClientFactory, defaultModels);
                 
             case "fireworks":
             case "fireworksai":
                 var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
-                return new FireworksClient(credentials, modelId, fireworksLogger, _httpClientFactory);
+                return new FireworksClient(credentials, modelId, fireworksLogger, _httpClientFactory, defaultModels);
             
             case "bedrock":
                 var bedrockLogger = _loggerFactory.CreateLogger<BedrockClient>();
-                return new BedrockClient(credentials, modelId, bedrockLogger, _httpClientFactory);
+                return new BedrockClient(credentials, modelId, bedrockLogger, _httpClientFactory, defaultModels);
             
             case "huggingface":
                 var huggingFaceLogger = _loggerFactory.CreateLogger<HuggingFaceClient>();
-                return new HuggingFaceClient(credentials, modelId, huggingFaceLogger, _httpClientFactory);
+                return new HuggingFaceClient(credentials, modelId, huggingFaceLogger, _httpClientFactory, defaultModels);
             
             case "sagemaker":
                 var sageMakerLogger = _loggerFactory.CreateLogger<SageMakerClient>();
-                return new SageMakerClient(credentials, modelId, sageMakerLogger, _httpClientFactory);
+                return new SageMakerClient(credentials, modelId, sageMakerLogger, _httpClientFactory, defaultModels);
             
             case "openrouter":
                 var openRouterLogger = _loggerFactory.CreateLogger<OpenRouterClient>();
-                return new OpenRouterClient(credentials, modelId, openRouterLogger, _httpClientFactory);
+                return new OpenRouterClient(credentials, modelId, openRouterLogger, _httpClientFactory, defaultModels);
             
             case "openai-compatible":
             case "openaicompatible":
                 var openAiCompatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
-                return new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory);
+                return new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory, defaultModels);
             
             case "ultravox":
                 var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
-                return new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory);
+                return new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory, defaultModels);
             
             case "elevenlabs":
             case "eleven-labs":
                 var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
-                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory);
+                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory, defaultModels);
             
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");
