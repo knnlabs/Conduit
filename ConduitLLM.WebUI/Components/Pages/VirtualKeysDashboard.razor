@@ -10,6 +10,7 @@
 @inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeysDashboard> Logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Virtual Keys Dashboard - ConduitLLM</PageTitle>
@@ -45,10 +46,6 @@
         </div>
     </div>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger mb-4" role="alert">@errorMessage</div>
-}
 
     @if (isLoading)
     {
@@ -592,7 +589,6 @@
 
 @code {
     private bool isLoading = true;
-    private string? errorMessage;
     private List<VirtualKeyDto> virtualKeys = new();
     private List<VirtualKeyDto> highUsageKeys = new();
     private List<KeyAggregateSummary> keySummaries = new();
@@ -613,7 +609,6 @@
     private async Task LoadDataAsync()
     {
         isLoading = true;
-        errorMessage = null;
         
         try
         {
@@ -655,7 +650,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading dashboard data: {ex.Message}";
+            ToastService.ShowError($"Error loading dashboard data: {ex.Message}");
             Logger.LogError(ex, "Error loading virtual keys dashboard data");
         }
         finally

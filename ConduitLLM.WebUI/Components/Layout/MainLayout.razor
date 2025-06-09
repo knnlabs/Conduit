@@ -1,13 +1,17 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Services
 @inject NavigationManager NavigationManager
 @inject IInsecureModeProvider InsecureModeProvider
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 
 <CascadingValue Value="this">
     <!-- No theme providers needed with standard Blazor -->
 </CascadingValue>
+
+<ToastContainer />
 
 @if (InsecureModeProvider.IsInsecureMode)
 {

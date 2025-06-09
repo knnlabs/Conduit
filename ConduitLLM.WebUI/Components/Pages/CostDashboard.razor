@@ -11,6 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject IAdminApiClient AdminApiClient
+@inject IToastService ToastService
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -486,8 +487,7 @@
         }
         catch (Exception ex)
         {
-            // Use browser alert instead of MudBlazor Snackbar
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading filter options: {ex.Message}");
+            ToastService.ShowException(ex, "Error loading filter options");
         }
     }
 
@@ -514,7 +514,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading dashboard data: {ex.Message}");
+            ToastService.ShowException(ex, "Error loading dashboard data");
         }
         finally
         {
@@ -582,13 +582,13 @@
         {
             if (startDate == null || endDate == null)
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Please select both start and end dates");
+                ToastService.ShowValidationError("Please select both start and end dates");
                 return;
             }
             
             if (startDate > endDate)
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Start date must be before end date");
+                ToastService.ShowValidationError("Start date must be before end date");
                 return;
             }
         }
@@ -648,7 +648,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error downloading data: {ex.Message}");
+            ToastService.ShowException(ex, "Error downloading data");
         }
     }
     

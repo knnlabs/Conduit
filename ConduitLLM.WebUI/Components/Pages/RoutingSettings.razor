@@ -6,10 +6,12 @@
 @using ConduitLLM.WebUI.Services
 @using ConduitLLM.WebUI.Components.Shared
 @using Microsoft.Extensions.Logging
+@using ConduitLLM.WebUI.Extensions
 @inject IRouterService RouterService
 @inject IAdminApiClient AdminApiClient
 @inject ILogger<RoutingSettings> Logger
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <style>
@@ -487,7 +489,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing routing settings");
-            await ShowMessage("Failed to load routing settings: " + ex.Message, true);
+            ToastService.ShowException(ex, "Failed to load routing settings");
             _isInitialized = true; // Still mark as initialized to show the error
         }
     }
@@ -524,7 +526,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load router configuration");
-            await ShowMessage("Failed to load router configuration: " + ex.Message, true);
+            ToastService.ShowException(ex, "Failed to load router configuration");
         }
     }
     
@@ -554,6 +556,7 @@ else
             if (duplicateNames.Any())
             {
                 Logger.LogError("Duplicate deployment names found: {DuplicateNames}", string.Join(", ", duplicateNames));
+                ToastService.ShowValidationError($"Duplicate deployment names found: {string.Join(", ", duplicateNames)}");
                 return false;
             }
 
@@ -563,10 +566,12 @@ else
             if (success)
             {
                 await ReloadConfiguration(); // Refresh data
+                ToastService.ShowSaveSuccess("Router configuration");
             }
             else
             {
                 Logger.LogWarning("Failed to save router configuration");
+                ToastService.ShowError("Failed to save router configuration");
             }
         }
         catch (Exception ex)
@@ -609,7 +614,7 @@ else
                 // Revert the state if save failed
                 _config.FallbacksEnabled = !newState;
                 _isEnabled = !newState;
-                await ShowMessage("Failed to update router status", true);
+                ToastService.ShowError("Failed to update router status");
             }
             
             // Update UI to reflect the current state
@@ -619,7 +624,7 @@ else
         {
             // Log error and show message
             Logger.LogError(ex, "Failed to toggle router state");
-            await ShowMessage("Failed to toggle router state: " + ex.Message, true);
+            ToastService.ShowException(ex, "Failed to toggle router state");
             
             // Revert the UI if an exception occurred
             _config.FallbacksEnabled = !newState;
@@ -693,12 +698,14 @@ else
             if (string.IsNullOrWhiteSpace(_editingDeployment.ModelName))
             {
                 Logger.LogWarning("Model name cannot be empty");
+                ToastService.ShowValidationError("Model name cannot be empty");
                 return;
             }
             
             if (string.IsNullOrWhiteSpace(_editingDeployment.ProviderName))
             {
                 Logger.LogWarning("Provider name cannot be empty");
+                ToastService.ShowValidationError("Provider name cannot be empty");
                 return;
             }
             
@@ -766,6 +773,7 @@ else
             if (usedInFallbacks)
             {
                 Logger.LogWarning("Cannot delete '{DeploymentName}' because it's used in fallback configurations", deploymentName);
+                ToastService.ShowWarning($"Cannot delete '{deploymentName}' because it's used in fallback configurations");
                 return;
             }
             
@@ -807,7 +815,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening fallback modal");
-            await ShowMessage("Error opening modal: " + ex.Message, true);
+            ToastService.ShowException(ex, "Error opening modal");
         }
     }
     
@@ -835,7 +843,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error opening fallback modal for editing");
-            await ShowMessage("Error opening modal: " + ex.Message, true);
+            ToastService.ShowException(ex, "Error opening modal");
         }
     }
     
@@ -847,6 +855,7 @@ else
             if (string.IsNullOrEmpty(_editingFallback.PrimaryModelDeploymentId))
             {
                 Logger.LogWarning("Primary model must be selected");
+                ToastService.ShowValidationError("Primary model must be selected");
                 return;
             }
             
@@ -854,6 +863,7 @@ else
                 !_editingFallback.FallbackModelDeploymentIds.Any())
             {
                 Logger.LogWarning("At least one fallback model must be selected");
+                ToastService.ShowValidationError("At least one fallback model must be selected");
                 return;
             }
             
@@ -951,11 +961,7 @@ else
         return model != null ? $"{model.ModelName} ({model.ProviderName})" : "Unknown Model";
     }
     
-    private async Task ShowMessage(string message, bool isError)
-    {
-        await JSRuntime.InvokeVoidAsync("alert", message);
-        StateHasChanged();
-    }
+    // Note: ShowMessage method removed - replaced with ToastService
     
     private async Task LoadProvidersAndMappingsAsync()
     {
@@ -972,7 +978,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading providers and mappings");
-            await ShowMessage("Failed to load providers and mappings: " + ex.Message, true);
+            ToastService.ShowException(ex, "Failed to load providers and mappings");
         }
     }
 }

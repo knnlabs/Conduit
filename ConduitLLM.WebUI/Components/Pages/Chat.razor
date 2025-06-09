@@ -11,6 +11,7 @@
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Chat Playground - ConduitLLM</PageTitle>
@@ -120,14 +121,6 @@
                             </button>
                         </div>
                         
-                        <!-- Error Display -->
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger border-0 shadow-sm">
-                                <i class="fa fa-exclamation-circle me-2"></i>
-                                @errorMessage
-                            </div>
-                        }
                     </div>
                 </div>
 
@@ -493,7 +486,6 @@
     private double topP = 1.0;
     private bool _streamResponse = true;
     private bool isLoading = false;
-    private string errorMessage = "";
     private List<Message> chatHistory = new();
     private string? streamedResponse = null;
     private bool _autoScroll = true;
@@ -527,7 +519,7 @@
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading model mappings: {ex.Message}");
-            errorMessage = $"Error loading model mappings: {ex.Message}";
+            ToastService.ShowError($"Error loading model mappings: {ex.Message}");
             modelMappings = new List<ModelProviderMappingDto>();
         }
     }
@@ -539,13 +531,12 @@
         
         if (string.IsNullOrWhiteSpace(userMessage) || string.IsNullOrWhiteSpace(selectedModelAlias))
         {
-            errorMessage = "Please select a model and enter a user message.";
+            ToastService.ShowError("Please select a model and enter a user message.");
             Console.WriteLine($"[Chat Component] Validation failed. Model empty: {string.IsNullOrWhiteSpace(selectedModelAlias)}, Message empty: {string.IsNullOrWhiteSpace(userMessage)}");
             return;
         }
 
         isLoading = true;
-        errorMessage = "";
         
         try
         {
@@ -616,14 +607,14 @@
                 }
                 else
                 {
-                    errorMessage = "No response content received.";
+                    ToastService.ShowError("No response content received.");
                     return;
                 }
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Request failed: {ex.Message}";
+            ToastService.ShowError($"Request failed: {ex.Message}");
             Console.Error.WriteLine(ex.ToString());
         }
         finally
@@ -672,7 +663,6 @@
     {
         chatHistory.Clear();
         streamedResponse = null;
-        errorMessage = "";
     }
     
     private string GetMessageClass(string role)

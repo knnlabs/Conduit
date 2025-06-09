@@ -1,0 +1,69 @@
+@using ConduitLLM.WebUI.Models
+
+<div class="toast-notification toast-@GetSeverityClass() @(Notification.IsDismissing ? "toast-dismissing" : "") @Notification.AdditionalCssClass"
+     @onclick="HandleClick">
+    <div class="toast-content">
+        <div class="toast-icon">
+            <i class="@GetIconClass()"></i>
+        </div>
+        <div class="toast-body">
+            @if (!string.IsNullOrEmpty(Notification.Title))
+            {
+                <div class="toast-title">@Notification.Title</div>
+            }
+            <div class="toast-message">@Notification.Message</div>
+            @if (!string.IsNullOrEmpty(Notification.ActionText))
+            {
+                <button class="toast-action" @onclick:stopPropagation="true" @onclick="HandleAction">
+                    @Notification.ActionText
+                </button>
+            }
+        </div>
+        @if (Notification.IsDismissible)
+        {
+            <button class="toast-close" @onclick:stopPropagation="true" @onclick="HandleDismiss">
+                <i class="fa fa-times"></i>
+            </button>
+        }
+    </div>
+    @if (Notification.DurationMs > 0)
+    {
+        <div class="toast-progress">
+            <div class="toast-progress-bar" style="animation-duration: @(Notification.DurationMs)ms;"></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ToastNotification Notification { get; set; } = null!;
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private string GetSeverityClass() => Notification.Severity.ToString().ToLower();
+
+    private string GetIconClass() => Notification.Severity switch
+    {
+        ToastSeverity.Success => "fa fa-check-circle",
+        ToastSeverity.Error => "fa fa-exclamation-circle",
+        ToastSeverity.Warning => "fa fa-exclamation-triangle",
+        _ => "fa fa-info-circle"
+    };
+
+    private async Task HandleDismiss()
+    {
+        Notification.IsDismissing = true;
+        StateHasChanged();
+        await Task.Delay(300); // Wait for animation
+        await OnDismiss.InvokeAsync();
+    }
+
+    private void HandleAction()
+    {
+        Notification.ActionCallback?.Invoke();
+    }
+
+    private void HandleClick()
+    {
+        // Optional: dismiss on click
+        // await HandleDismiss();
+    }
+}

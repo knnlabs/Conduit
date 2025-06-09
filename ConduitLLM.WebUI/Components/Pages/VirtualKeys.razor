@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 
 @inject ILogger<VirtualKeys> Logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Virtual Keys - ConduitLLM</PageTitle>
@@ -31,10 +32,6 @@
         </Statistics>
     </PageHeader>
     
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger my-2" role="alert">@errorMessage</div>
-    }
     
     <!-- Main Content Card -->
     <div class="card vk-card shadow-lg border-0 rounded-4">
@@ -339,7 +336,6 @@
 
 @code {
     private List<VirtualKeyDto>? virtualKeys;
-    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -350,12 +346,11 @@
     {
         try
         {
-            errorMessage = null;
             virtualKeys = (await AdminApiClient.GetAllVirtualKeysAsync()).ToList();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading virtual keys: {ex.Message}";
+            ToastService.ShowError($"Error loading virtual keys: {ex.Message}", "Load Error");
             Logger.LogError(ex, "Error loading virtual keys");
         }
     }
@@ -374,8 +369,6 @@
     {
         try
         {
-            errorMessage = null; 
-            
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
                 $"Are you sure you want to delete the virtual key '{keyName}'? This cannot be undone.");
                 
@@ -385,19 +378,17 @@
             if (success)
             {
                 await LoadDataAsync();
-                await JSRuntime.InvokeVoidAsync("alert", $"Virtual key '{keyName}' deleted successfully");
+                ToastService.ShowSuccess($"Virtual key '{keyName}' deleted successfully", "Key Deleted");
             }
             else
             {
-                errorMessage = $"Could not delete key with ID {id}. The key may have been already deleted.";
-                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete virtual key");
+                ToastService.ShowError($"Could not delete key with ID {id}. The key may have been already deleted.", "Delete Failed");
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error deleting virtual key: {ex.Message}";
+            ToastService.ShowError($"Error deleting virtual key: {ex.Message}", "Delete Error");
             Logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", id);
-            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while deleting the virtual key");
         }
     }
 
@@ -405,8 +396,6 @@
     {
         try
         {
-            errorMessage = null; 
-            
             bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
                 $"Are you sure you want to reset the spend for virtual key '{keyName}'? This will set the current spend to zero.");
                 
@@ -416,19 +405,17 @@
             if (success)
             {
                 await LoadDataAsync();
-                await JSRuntime.InvokeVoidAsync("alert", $"Spend for key '{keyName}' reset successfully");
+                ToastService.ShowSuccess($"Spend for key '{keyName}' reset successfully", "Spend Reset");
             }
             else
             {
-                errorMessage = $"Could not reset spend for key with ID {id}. The key may not exist.";
-                await JSRuntime.InvokeVoidAsync("alert", "Failed to reset key spend");
+                ToastService.ShowError($"Could not reset spend for key with ID {id}. The key may not exist.", "Reset Failed");
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error resetting spend: {ex.Message}";
+            ToastService.ShowError($"Error resetting spend: {ex.Message}", "Reset Error");
             Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", id);
-            await JSRuntime.InvokeVoidAsync("alert", "An error occurred while resetting key spend");
         }
     }
 }

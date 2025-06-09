@@ -11,6 +11,7 @@
 @inject IJSRuntime JSRuntime
 @inject ILogger<AudioUsage> Logger
 @inject NotificationService NotificationService
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Audio Usage Dashboard</PageTitle>
@@ -342,8 +343,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading audio usage data");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, 
-                "Error loading audio usage data: " + ex.Message);
+            ToastService.ShowError("Error loading audio usage data: " + ex.Message);
         }
         finally
         {
@@ -489,8 +489,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading usage logs");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, 
-                "Error downloading logs: " + ex.Message);
+            ToastService.ShowError("Error downloading logs: " + ex.Message);
         }
     }
 

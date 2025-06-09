@@ -5,9 +5,11 @@
 @using ConduitLLM.Core.Caching
 @using Microsoft.Extensions.Configuration
 @using ConduitLLM.WebUI.Components.Shared
+@using ConduitLLM.WebUI.Extensions
 @inject IConfiguration Configuration
 @inject ICacheStatusService CacheStatusService
 @inject ICacheMetricsService MetricsService
+@inject IToastService ToastService
 @rendermode InteractiveServer
 @inject ILogger<CachingSettings> Logger
 @implements IDisposable
@@ -113,12 +115,6 @@
                                         <i class="fa fa-check-circle me-1"></i> Test
                                     </button>
                                 </div>
-                                @if (_redisConnectionTested && !_redisConnectionSuccess)
-                                {
-                                    <div class="text-danger mt-2">
-                                        <small>@_redisConnectionError</small>
-                                    </div>
-                                }
                             </div>
                             <div class="form-group mb-4">
                                 <label for="redisInstanceName">Redis Instance Name</label>
@@ -127,16 +123,6 @@
                                        disabled="@(!_isEnabled)" />
                             </div>
                             
-                            @if (_redisConnectionTested && _redisConnectionSuccess)
-                            {
-                                <div class="alert alert-success">
-                                    <div class="d-flex justify-content-between">
-                                        <span>Connected to Redis server</span>
-                                        <span>Version: @_redisServerVersion</span>
-                                    </div>
-                                    <small>Connection latency: @_redisConnectionLatency.ToString("F2") ms</small>
-                                </div>
-                            }
                             
                             @if (_cacheStats.RedisConnection != null)
                             {
@@ -348,12 +334,6 @@
                                     @(_redisConnectionSuccess ? "Connected" : "Failed")
                                 </span>
                             </li>
-                            @if (!_redisConnectionSuccess && !string.IsNullOrEmpty(_redisConnectionError))
-                            {
-                                <li class="list-group-item">
-                                    <small class="text-danger">@_redisConnectionError</small>
-                                </li>
-                            }
                         }
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Total Items:</span>
@@ -453,7 +433,6 @@
     // Redis connection state
     private bool _redisConnectionTested = false;
     private bool _redisConnectionSuccess = false;
-    private string _redisConnectionError = string.Empty;
     private string _redisServerVersion = string.Empty;
     private double _redisConnectionLatency = 0;
     
@@ -493,7 +472,8 @@
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error refreshing cache statistics: {ex.Message}");
+                Logger.LogError(ex, "Error refreshing cache statistics");
+                // Don't show toast for background refresh errors to avoid spamming the user
             }
         }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
@@ -560,6 +540,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading cache configuration");
+            ToastService.ShowException(ex, "Failed to load cache configuration");
         }
         finally
         {
@@ -602,6 +583,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading cache statistics: {Message}", ex.Message);
+            ToastService.ShowException(ex, "Failed to load cache statistics");
         }
     }
     
@@ -626,10 +608,12 @@
             await LoadCacheStatisticsAsync();
             
             Logger.LogInformation("Cache configuration saved");
+            ToastService.ShowSaveSuccess("Cache configuration");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving cache configuration");
+            ToastService.ShowException(ex, "Failed to save cache configuration");
         }
     }
     
@@ -649,6 +633,8 @@
             
             // Update UI to reflect the current state
             StateHasChanged();
+            
+            ToastService.ShowSuccess($"Cache {(newValue ? "enabled" : "disabled")} successfully");
         }
         catch (Exception ex)
         {
@@ -658,6 +644,8 @@
             // Revert the UI if an exception occurred
             _isEnabled = !newValue;
             StateHasChanged();
+            
+            ToastService.ShowException(ex, "Failed to toggle cache state");
         }
     }
     
@@ -667,7 +655,6 @@
         {
             _redisConnectionTested = true;
             _redisConnectionSuccess = false;
-            _redisConnectionError = string.Empty;
             
             // Test the Redis connection
             var result = await CacheStatusService.TestRedisConnectionAsync(_redisConnectionString);
@@ -679,18 +666,20 @@
             {
                 _redisServerVersion = result.ServerVersion ?? "Unknown";
                 Logger.LogInformation("Redis connection test successful: {Version}", _redisServerVersion);
+                ToastService.ShowSuccess($"Connected to Redis server (v{_redisServerVersion}). Latency: {_redisConnectionLatency:F2}ms");
             }
             else
             {
-                _redisConnectionError = result.ErrorMessage ?? "Unknown error";
-                Logger.LogWarning("Redis connection test failed: {Error}", _redisConnectionError);
+                var errorMessage = result.ErrorMessage ?? "Unknown error";
+                Logger.LogWarning("Redis connection test failed: {Error}", errorMessage);
+                ToastService.ShowError(errorMessage, "Redis Connection Failed");
             }
         }
         catch (Exception ex)
         {
             _redisConnectionSuccess = false;
-            _redisConnectionError = $"Error testing connection: {ex.Message}";
             Logger.LogError(ex, "Error testing Redis connection");
+            ToastService.ShowException(ex, "Failed to test Redis connection");
         }
     }
     
@@ -719,10 +708,12 @@
             await LoadCacheStatisticsAsync();
             
             Logger.LogInformation("Cache cleared successfully");
+            ToastService.ShowSuccess("Cache cleared successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error clearing cache");
+            ToastService.ShowException(ex, "Failed to clear cache");
         }
     }
     

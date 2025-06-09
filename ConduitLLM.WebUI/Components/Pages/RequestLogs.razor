@@ -13,6 +13,7 @@
 @inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<RequestLogs> Logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Request Logs - ConduitLLM</PageTitle>
@@ -112,12 +113,6 @@
     @if (isLoading)
     {
         <LoadingSpinner Message="Loading request logs..." />
-    }
-    else if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger border-0 rounded-3">
-            <i class="fa fa-exclamation-triangle me-2"></i>@errorMessage
-        </div>
     }
     else if (logs?.Any() == true)
     {
@@ -372,7 +367,6 @@
     private List<string> availableModels = new();
     
     private bool isLoading = false;
-    private string? errorMessage;
     
     private int currentPage = 1;
     private int pageSize = 20;
@@ -399,14 +393,13 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading initial data for request logs");
-            errorMessage = "Error loading filter data. Please refresh the page.";
+            ToastService.ShowError("Error loading filter data. Please refresh the page.");
         }
     }
     
     private async Task LoadLogs()
     {
         isLoading = true;
-        errorMessage = null;
         StateHasChanged();
         
         try
@@ -457,7 +450,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading request logs");
-            errorMessage = "Error loading request logs. Please try again.";
+            ToastService.ShowError("Error loading request logs. Please try again.");
             logs = new List<ConduitLLM.Configuration.DTOs.RequestLogDto>();
         }
         finally

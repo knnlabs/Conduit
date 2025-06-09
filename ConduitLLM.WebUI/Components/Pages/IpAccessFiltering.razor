@@ -3,13 +3,13 @@
 @using ConduitLLM.Configuration.DTOs.IpFilter
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.Models
-@using ConduitLLM.WebUI.Services
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Components.Shared
+@using ConduitLLM.WebUI.Extensions
 @attribute [Authorize]
 @inject IAdminApiClient AdminApiClient
-@inject NotificationService NotificationService
+@inject IToastService ToastService
 @inject ILogger<IpAccessFiltering> Logger
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -416,7 +416,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading IP filtering data");
-            NotificationService.AddNotification(NotificationType.Error, "Error loading IP filtering data", ex.Message);
+            ToastService.ShowException(ex, "Error loading IP filtering data");
             
             _loading = false;
             StateHasChanged();
@@ -435,7 +435,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error refreshing IP filters");
-            NotificationService.AddNotification(NotificationType.Error, "Error refreshing IP filters", ex.Message);
+            ToastService.ShowException(ex, "Error refreshing IP filters");
         }
     }
     
@@ -452,16 +452,14 @@
             if (success)
             {
                 Logger.LogInformation("IP filtering enabled state changed to: {IsEnabled}", newValue);
-                NotificationService.AddNotification(NotificationType.Success, 
-                    $"IP filtering {(newValue ? "enabled" : "disabled")} successfully");
+                ToastService.ShowSuccess($"IP filtering {(newValue ? "enabled" : "disabled")} successfully");
             }
             else
             {
                 Logger.LogWarning("Failed to update IP filtering enabled state");
                 // Revert the setting if save failed
                 _settings.IsEnabled = !newValue;
-                NotificationService.AddNotification(NotificationType.Error, 
-                    "Failed to update IP filtering status");
+                ToastService.ShowError("Failed to update IP filtering status");
             }
             
             // Update UI to reflect the current state
@@ -474,8 +472,7 @@
             
             // Revert the setting if an exception occurred
             _settings.IsEnabled = !newValue;
-            NotificationService.AddNotification(NotificationType.Error, 
-                "Error updating IP filtering status", ex.Message);
+            ToastService.ShowException(ex, "Error updating IP filtering status");
             StateHasChanged();
         }
     }
@@ -496,20 +493,17 @@
             
             if (success)
             {
-                NotificationService.AddNotification(NotificationType.Success, 
-                    "IP filtering settings saved successfully");
+                ToastService.ShowSaveSuccess("IP filtering settings");
             }
             else
             {
-                NotificationService.AddNotification(NotificationType.Error, 
-                    "Error saving IP filtering settings", errorMessage);
+                ToastService.ShowError(errorMessage ?? "Failed to save IP filtering settings");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving IP filtering settings");
-            NotificationService.AddNotification(NotificationType.Error, 
-                "Error saving IP filtering settings", ex.Message);
+            ToastService.ShowException(ex, "Error saving IP filtering settings");
         }
     }
     
@@ -640,8 +634,7 @@
             
             if (success)
             {
-                NotificationService.AddNotification(NotificationType.Success, 
-                    "IP filter saved successfully");
+                ToastService.ShowSaveSuccess("IP filter");
                     
                 // Close modal and refresh filters
                 CloseModals();
@@ -676,8 +669,7 @@
             
             if (success)
             {
-                NotificationService.AddNotification(NotificationType.Success, 
-                    "IP filter deleted successfully");
+                ToastService.ShowDeleteSuccess("IP filter");
                     
                 // Close modal and refresh filters
                 CloseModals();
@@ -685,16 +677,14 @@
             }
             else
             {
-                NotificationService.AddNotification(NotificationType.Error, 
-                    "Error deleting IP filter", errorMessage);
+                ToastService.ShowError(errorMessage ?? "Failed to delete IP filter");
                 CloseModals();
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting IP filter with ID {Id}", _filterToDelete.Id);
-            NotificationService.AddNotification(NotificationType.Error,
-                "Error deleting IP filter", ex.Message);
+            ToastService.ShowException(ex, "Error deleting IP filter");
             CloseModals();
         }
     }

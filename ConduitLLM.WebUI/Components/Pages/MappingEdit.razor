@@ -12,6 +12,7 @@
 @using Microsoft.Extensions.Logging
 
 @inject Interfaces.IProviderCredentialService ProviderCredentialService
+@inject IToastService ToastService
 @inject Interfaces.IModelProviderMappingService ModelProviderMappingService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
@@ -41,11 +42,6 @@ else
     <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="MappingForm">
         <DataAnnotationsValidator />
         <ValidationSummary />
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mb-4">@errorMessage</div>
-        }
 
         <div class="card p-4 mb-4">
             <div class="mb-4">
@@ -196,7 +192,6 @@ else
     private string providerName = "";
     private List<ConfigDTO.ProviderCredentialDto> availableProviders = new();
     private List<string> providerModels = new();
-    private string? errorMessage; // General errors displayed at the form level
     private string? modelLoadErrorMessage; // Specific error for model loading
     private bool isLoadingModels = false; // Loading provider-specific models
     private bool isLoadingPage = true;
@@ -255,7 +250,7 @@ else
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initializing mapping editor");
-            errorMessage = ex.Message;
+            ToastService.ShowError($"Error initializing mapping editor: {ex.Message}");
         }
         finally
         {
@@ -408,7 +403,6 @@ else
     {
         // Clear previous validation errors
         messageStore?.Clear();
-        errorMessage = null;
         isSaving = true;
         StateHasChanged();
         
@@ -419,7 +413,7 @@ else
                 string.IsNullOrWhiteSpace(providerName) ||
                 string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId))
             {
-                errorMessage = "All fields are required";
+                ToastService.ShowError("All fields are required");
                 return;
             }
             
@@ -428,7 +422,7 @@ else
                 
             if (provider == null)
             {
-                errorMessage = $"Provider '{providerName}' not found.";
+                ToastService.ShowError($"Provider '{providerName}' not found.");
                 return;
             }
             
@@ -460,8 +454,7 @@ else
                 
                 if (result == null)
                 {
-                    errorMessage = "Error: Mapping not found during update.";
-                    StateHasChanged();
+                    ToastService.ShowError("Error: Mapping not found during update.");
                     return;
                 }
             }
@@ -471,8 +464,7 @@ else
                 
                 if (result == null)
                 {
-                    errorMessage = "Error: Failed to create mapping.";
-                    StateHasChanged();
+                    ToastService.ShowError("Error: Failed to create mapping.");
                     return;
                 }
             }
@@ -496,11 +488,12 @@ else
                 // We still proceed with navigation even if notification fails
             }
             
+            ToastService.ShowSuccess($"Mapping {(Id.HasValue ? "updated" : "created")} successfully!");
             NavigationManager.NavigateTo("/configuration"); // Redirect back to the list
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error saving mapping: {ex.Message}";
+            ToastService.ShowError($"Error saving mapping: {ex.Message}");
         }
         finally
         {

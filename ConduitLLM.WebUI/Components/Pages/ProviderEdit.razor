@@ -17,6 +17,7 @@
 @inject NavigationManager NavigationManager
 @inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>@(Id.HasValue ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
@@ -63,14 +64,7 @@
             @* Keep ValidationSummary for other potential errors *@
             <ValidationSummary />
 
-            @* Display general errors above the form *@
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger border-0 shadow-sm mb-4">
-                    <i class="fa fa-exclamation-circle me-2"></i>
-                    @errorMessage
-                </div>
-            }
+            @* Removed inline error display - using toast notifications instead *@
 
             <div class="row">
                 <div class="col-12 col-lg-6">
@@ -362,7 +356,6 @@
     }
 
     private ProviderCredentialDto provider = new ProviderCredentialDto { ProviderName = "" };
-    private string? errorMessage;
     private bool isLoading = true;
     private bool isSaving = false;
     private bool isTestingConnection = false;
@@ -406,8 +399,8 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading provider: {ex.Message}");
-                errorMessage = $"Error loading provider: {ex.Message}";
+                _logger.LogError(ex, "Error loading provider");
+                ToastService.ShowError($"Error loading provider: {ex.Message}");
             }
             finally
             {
@@ -428,7 +421,6 @@
     private async Task HandleValidSubmit()
     {
         isSaving = true;
-        errorMessage = null;
         StateHasChanged();
         
         try 
@@ -436,7 +428,7 @@
             // Validate API Base URL for OpenAI Compatible providers
             if (provider.ProviderName == "OpenAI Compatible" && string.IsNullOrWhiteSpace(provider.ApiBase))
             {
-                errorMessage = "API Base URL is required for OpenAI Compatible providers.";
+                ToastService.ShowError("API Base URL is required for OpenAI Compatible providers.");
                 isSaving = false;
                 StateHasChanged();
                 return;
@@ -470,6 +462,8 @@
                 {
                     throw new Exception($"Failed to update provider {provider.ProviderName}");
                 }
+                
+                ToastService.ShowSuccess($"Provider '{provider.ProviderName}' updated successfully!");
             }
             else // Add
             {
@@ -489,6 +483,8 @@
                 {
                     throw new Exception($"Failed to create provider {provider.ProviderName}");
                 }
+                
+                ToastService.ShowSuccess($"Provider '{provider.ProviderName}' created successfully!");
             }
             
             // Notify the Conduit HTTP proxy about configuration changes
@@ -502,6 +498,7 @@
                 if (!notificationSuccess)
                 {
                     _logger.LogWarning("Failed to notify proxy server about configuration changes. The server may need to be restarted.");
+                    ToastService.ShowWarning("Configuration saved, but failed to notify proxy server. The server may need to be restarted.");
                     // We still proceed with navigation even if notification fails
                 }
             }
@@ -515,9 +512,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving provider: {ex.Message}");
-            errorMessage = $"Error saving provider: {ex.Message}";
             _logger.LogError(ex, "Error saving provider configuration");
+            ToastService.ShowError($"Error saving provider: {ex.Message}");
         }
         finally
         {
@@ -535,9 +531,7 @@
     {
         if (string.IsNullOrWhiteSpace(provider.ApiKey))
         {
-            showConnectionStatus = true;
-            connectionStatusMessage = "API key is required to test the connection";
-            connectionStatus = null;
+            ToastService.ShowError("API key is required to test the connection");
             return;
         }
 
@@ -571,6 +565,7 @@
                     IsOnline = true
                 };
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
+                ToastService.ShowSuccess("Connection test successful! Provider is online.");
             }
             else
             {
@@ -582,6 +577,7 @@
                     IsOnline = false
                 };
                 connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
+                ToastService.ShowError($"Connection test failed: {connectionStatus.StatusMessage}");
             }
             showConnectionStatus = true;
         }

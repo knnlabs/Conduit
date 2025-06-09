@@ -13,6 +13,7 @@
 @inject ILogger<AudioTest> Logger
 @inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 
 <PageTitle>Audio Test - ConduitLLM</PageTitle>
 
@@ -40,21 +41,6 @@
         </div>
     </div>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger border-0 shadow-sm mb-4">
-            <i class="fa fa-exclamation-circle me-2"></i>
-            @errorMessage
-        </div>
-    }
-
-    @if (!string.IsNullOrEmpty(successMessage))
-    {
-        <div class="alert alert-success border-0 shadow-sm mb-4">
-            <i class="fa fa-check-circle me-2"></i>
-            @successMessage
-        </div>
-    }
 
     <!-- Provider Selection -->
     <div class="card shadow-sm border-0 mb-4">
@@ -432,8 +418,6 @@
     
     // UI state
     private string activeTab = "transcription";
-    private string? errorMessage;
-    private string? successMessage;
     
     // Transcription state
     private byte[]? uploadedFileContent;
@@ -474,7 +458,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error initializing audio test page");
-            errorMessage = "Failed to load audio providers";
+            ToastService.ShowError("Failed to load audio providers");
         }
     }
     
@@ -505,12 +489,11 @@
     {
         try
         {
-            errorMessage = null;
             var file = e.File;
             
             if (file.Size > 25 * 1024 * 1024) // 25MB limit
             {
-                errorMessage = "File size must be less than 25MB";
+                ToastService.ShowError("File size must be less than 25MB");
                 return;
             }
             
@@ -526,7 +509,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error handling file upload");
-            errorMessage = "Failed to upload file";
+            ToastService.ShowError("Failed to upload file");
         }
     }
     
@@ -542,7 +525,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error starting recording");
-            errorMessage = "Failed to start recording. Please check microphone permissions.";
+            ToastService.ShowError("Failed to start recording. Please check microphone permissions.");
             isRecording = false;
         }
     }
@@ -567,7 +550,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error stopping recording");
-            errorMessage = "Failed to stop recording";
+            ToastService.ShowError("Failed to stop recording");
         }
     }
     
@@ -576,14 +559,12 @@
     {
         try
         {
-            errorMessage = null;
-            successMessage = null;
             isTestingTranscription = true;
             
             var audioData = uploadedFileContent ?? recordedAudioData;
             if (audioData == null)
             {
-                errorMessage = "No audio data to transcribe";
+                ToastService.ShowError("No audio data to transcribe");
                 return;
             }
             
@@ -598,12 +579,12 @@
                 Provider = selectedProvider?.ProviderName ?? "Unknown"
             };
             
-            successMessage = "Transcription completed successfully!";
+            ToastService.ShowSuccess("Transcription completed successfully!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error testing transcription");
-            errorMessage = $"Transcription failed: {ex.Message}";
+            ToastService.ShowError($"Transcription failed: {ex.Message}");
         }
         finally
         {
@@ -615,13 +596,11 @@
     {
         try
         {
-            errorMessage = null;
-            successMessage = null;
             isTestingTTS = true;
             
             if (string.IsNullOrWhiteSpace(ttsText))
             {
-                errorMessage = "Please enter text to convert";
+                ToastService.ShowError("Please enter text to convert");
                 return;
             }
             
@@ -636,12 +615,12 @@
             ttsDurationMs = 1500;
             ttsProvider = selectedProvider?.ProviderName ?? "Unknown";
             
-            successMessage = "Speech generated successfully!";
+            ToastService.ShowSuccess("Speech generated successfully!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error testing text-to-speech");
-            errorMessage = $"TTS failed: {ex.Message}";
+            ToastService.ShowError($"TTS failed: {ex.Message}");
         }
         finally
         {
@@ -653,7 +632,6 @@
     {
         try
         {
-            errorMessage = null;
             isConnectingRealtime = true;
             
             // TODO: Implement actual WebSocket connection
@@ -671,7 +649,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error starting real-time session");
-            errorMessage = $"Failed to start session: {ex.Message}";
+            ToastService.ShowError($"Failed to start session: {ex.Message}");
         }
         finally
         {

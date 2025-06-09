@@ -12,6 +12,7 @@
 @using System.Threading.Tasks
 @using Microsoft.JSInterop
 @using AudioDTOs = ConduitLLM.Configuration.DTOs.Audio
+@using ConduitLLM.WebUI.Components.Shared
 
 @inject NavigationManager NavigationManager
 @inject ILogger<Configuration> Logger
@@ -19,6 +20,7 @@
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
 @inject IJSRuntime JSRuntime
 @inject ProviderModelsService ProviderModelsService
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Configuration - ConduitLLM</PageTitle>
@@ -235,7 +237,7 @@
             }
             
             <button class="btn btn-primary shadow-sm" 
-                  @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; mappingErrorMessage = null; }">
+                  @onclick="() => { isEditingMapping = true; currentMapping = new MappingFormModel { ModelAlias = string.Empty, ProviderName = string.Empty, ProviderModelId = string.Empty, Id = 0 }; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
         </div>
@@ -510,13 +512,6 @@
                 </h5>
             </div>
             <div class="card-body">
-                @if (!string.IsNullOrEmpty(audioProviderErrorMessage))
-                {
-                    <div class="alert alert-danger border-0 shadow-sm mb-4">
-                        <i class="fa fa-exclamation-circle me-2"></i>
-                        @audioProviderErrorMessage
-                    </div>
-                }
                 
                 <div class="form-group mb-4">
                     <label for="audioProviderSelect">LLM Provider</label>
@@ -663,13 +658,6 @@
                         <i class="fa fa-save me-1"></i>Save
                     </button>
                     
-                    @if (!string.IsNullOrEmpty(proxyUrlSaveMessage))
-                    {
-                        <div class="alert alert-success border-0 shadow-sm mt-3">
-                            <i class="fa fa-check-circle me-2"></i>
-                            @proxyUrlSaveMessage
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -721,12 +709,6 @@
                         <i class="fa fa-save me-1"></i> Save Retry Settings
                     </button>
                     
-                    @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
-                    {
-                        <div class="alert alert-success mt-3">
-                            @httpRetryOptionsSaveMessage
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -763,12 +745,6 @@
                         <i class="fa fa-save me-1"></i> Save Timeout Settings
                     </button>
                     
-                    @if (!string.IsNullOrEmpty(httpTimeoutOptionsSaveMessage))
-                    {
-                        <div class="alert alert-success mt-3">
-                            @httpTimeoutOptionsSaveMessage
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -877,7 +853,6 @@
     // Audio provider form state
     private bool isEditingAudioProvider = false;
     private AudioDTOs.AudioProviderConfigDto currentAudioProvider = new();
-    private string? audioProviderErrorMessage;
     // Create a custom model for the form to include an ID field
     private class MappingFormModel
     {
@@ -904,9 +879,6 @@
     
     // HTTP options state
     private string? proxyBaseUrlInput;
-    private string? proxyUrlSaveMessage;
-    private string? httpRetryOptionsSaveMessage;
-    private string? httpTimeoutOptionsSaveMessage;
     private ConduitLLM.Providers.Configuration.RetryOptions httpRetryOptions = new();
     private ConduitLLM.Providers.Configuration.TimeoutOptions httpTimeoutOptions = new();
     
@@ -1028,7 +1000,6 @@
     {
         try
         {
-            deleteErrorMessage = null;
             var providerToDelete = await AdminApiClient.GetProviderCredentialByIdAsync(id);
             if (providerToDelete == null) return;
 
@@ -1053,19 +1024,17 @@
                 await LoadProvidersAsync(); 
                 await LoadModelMappingsAsync();
                 
-                deleteErrorMessage = null;
-                await JSRuntime.InvokeVoidAsync("alert", $"Provider '{providerToDelete.ProviderName}' deleted successfully");
+                ToastService.ShowSuccess($"Provider '{providerToDelete.ProviderName}' deleted successfully");
             }
             else
             {
-                deleteErrorMessage = "Failed to delete provider.";
+                ToastService.ShowError("Failed to delete provider.");
             }
         }
         catch (Exception ex)
         {
-            deleteErrorMessage = $"Error deleting provider: {ex.Message}";
+            ToastService.ShowError($"Error deleting provider: {ex.Message}");
             Logger.LogError(ex, "Error deleting provider");
-            StateHasChanged();
         }
     }
 
@@ -1095,18 +1064,18 @@
             if (success)
             {
                 await LoadModelMappingsAsync();
-                await JSRuntime.InvokeVoidAsync("alert", "Model mapping deleted successfully");
+                ToastService.ShowSuccess("Model mapping deleted successfully");
             }
             else
             {
                 Logger.LogError("Failed to delete mapping with ID {Id}", id);
+                ToastService.ShowError("Failed to delete mapping");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting mapping");
-            deleteErrorMessage = $"Error deleting mapping: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error deleting mapping: {ex.Message}");
         }
     }
 
@@ -1122,8 +1091,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error handling guided setup for {ProviderName}", providerName);
-            deleteErrorMessage = $"Error: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error: {ex.Message}");
         }
     }
 
@@ -1161,19 +1129,17 @@
                 // The wizard should close itself via the IsOpenChanged event
                 // We don't need to set isGuidedSetupOpen = false here as it will be set in HandleIsOpenChanged
                 
-                await JSRuntime.InvokeVoidAsync("alert", $"Provider '{newProvider.ProviderName}' added successfully");
+                ToastService.ShowSuccess($"Provider '{newProvider.ProviderName}' added successfully");
             }
             else
             {
-                deleteErrorMessage = "Failed to create provider. It may already exist.";
-                await InvokeAsync(StateHasChanged);
+                ToastService.ShowError("Failed to create provider. It may already exist.");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving provider from guided setup");
-            deleteErrorMessage = $"Error saving provider: {ex.Message}";
-            await InvokeAsync(StateHasChanged);
+            ToastService.ShowError($"Error saving provider: {ex.Message}");
         }
     }
 
@@ -1226,7 +1192,6 @@
                 ProviderModelId = mapping.ProviderModelId
             };
             isEditingMapping = true;
-            mappingErrorMessage = null;
             
             // Load models for the selected provider
             await LoadModelsForSelectedProvider();
@@ -1235,23 +1200,21 @@
 
     private async Task SaveMapping()
     {
-        mappingErrorMessage = null;
-
         if (string.IsNullOrWhiteSpace(currentMapping.ModelAlias))
         {
-            mappingErrorMessage = "Model alias is required";
+            ToastService.ShowError("Model alias is required");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(currentMapping.ProviderName))
         {
-            mappingErrorMessage = "Provider is required";
+            ToastService.ShowError("Provider is required");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(currentMapping.ProviderModelId))
         {
-            mappingErrorMessage = "Provider model is required";
+            ToastService.ShowError("Provider model is required");
             return;
         }
 
@@ -1261,7 +1224,7 @@
             
         if (provider == null)
         {
-            mappingErrorMessage = $"Provider {currentMapping.ProviderName} not found. Please add this provider first.";
+            ToastService.ShowError($"Provider {currentMapping.ProviderName} not found. Please add this provider first.");
             return;
         }
         
@@ -1272,7 +1235,7 @@
                                      
         if (existingMapping != null)
         {
-            mappingErrorMessage = $"A mapping with alias '{currentMapping.ModelAlias}' already exists";
+            ToastService.ShowError($"A mapping with alias '{currentMapping.ModelAlias}' already exists");
             return;
         }
 
@@ -1300,7 +1263,7 @@
                 
                 if (!result)
                 {
-                    mappingErrorMessage = "The mapping you're trying to update no longer exists.";
+                    ToastService.ShowError("The mapping you're trying to update no longer exists.");
                     return;
                 }
             }
@@ -1310,7 +1273,7 @@
                 
                 if (!result)
                 {
-                    mappingErrorMessage = "Failed to create the mapping.";
+                    ToastService.ShowError("Failed to create the mapping.");
                     return;
                 }
             }
@@ -1324,13 +1287,12 @@
                 Id = 0
             };
             await LoadModelMappingsAsync();
-            mappingErrorMessage = null;
             
-            await JSRuntime.InvokeVoidAsync("alert", "Model mapping saved successfully");
+            ToastService.ShowSuccess("Model mapping saved successfully");
         }
         catch (Exception ex)
         {
-            mappingErrorMessage = $"Error saving mapping: {ex.Message}";
+            ToastService.ShowError($"Error saving mapping: {ex.Message}");
             Logger.LogError(ex, "Error saving mapping");
         }
     }
@@ -1341,17 +1303,11 @@
         {
             await AdminApiClient.SetSettingAsync("ConduitSettings:ProxyBaseUrl", proxyBaseUrlInput ?? string.Empty);
             
-            proxyUrlSaveMessage = "Base URL saved successfully";
-            await JSRuntime.InvokeVoidAsync("alert", "Base URL saved successfully");
-            await Task.Delay(3000); 
-            proxyUrlSaveMessage = null;
-            StateHasChanged();
+            ToastService.ShowSuccess("Base URL saved successfully");
         }
         catch (Exception ex)
         {
-            proxyUrlSaveMessage = $"Error saving URL: {ex.Message}";
-            deleteErrorMessage = $"Error saving URL: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error saving URL: {ex.Message}");
         }
     }
     
@@ -1361,14 +1317,11 @@
         {
             // TODO: Update to use AdminApiClient once HTTP config API is available
             // await AdminApiClient.UpdateHttpRetryConfigurationAsync(httpRetryOptions);
-            httpRetryOptionsSaveMessage = "HTTP retry settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP retry settings saved successfully (placeholder)");
+            ToastService.ShowSuccess("HTTP retry settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
-            httpRetryOptionsSaveMessage = $"Error saving settings: {ex.Message}";
-            deleteErrorMessage = $"Error saving settings: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
     }
 
@@ -1378,14 +1331,11 @@
         {
             // TODO: Update to use AdminApiClient once HTTP config API is available
             // await AdminApiClient.UpdateHttpTimeoutConfigurationAsync(httpTimeoutOptions);
-            httpTimeoutOptionsSaveMessage = "HTTP timeout settings saved successfully.";
-            await JSRuntime.InvokeVoidAsync("alert", "HTTP timeout settings saved successfully (placeholder)");
+            ToastService.ShowSuccess("HTTP timeout settings saved successfully (placeholder)");
         }
         catch (Exception ex)
         {
-            httpTimeoutOptionsSaveMessage = $"Error saving settings: {ex.Message}";
-            deleteErrorMessage = $"Error saving settings: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error saving settings: {ex.Message}");
         }
     }
 
@@ -1502,13 +1452,12 @@
                     CustomSettings = audioProvider.CustomSettings
                 };
                 isEditingAudioProvider = true;
-                audioProviderErrorMessage = null;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading audio provider for editing");
-            audioProviderErrorMessage = $"Error loading audio provider: {ex.Message}";
+            ToastService.ShowError($"Error loading audio provider: {ex.Message}");
         }
     }
     
@@ -1525,18 +1474,17 @@
             if (success)
             {
                 await LoadAudioProvidersAsync();
-                await JSRuntime.InvokeVoidAsync("alert", "Audio provider configuration deleted successfully");
+                ToastService.ShowSuccess("Audio provider configuration deleted successfully");
             }
             else
             {
-                audioProviderErrorMessage = "Failed to delete audio provider configuration.";
+                ToastService.ShowError("Failed to delete audio provider configuration.");
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting audio provider");
-            audioProviderErrorMessage = $"Error deleting audio provider: {ex.Message}";
-            StateHasChanged();
+            ToastService.ShowError($"Error deleting audio provider: {ex.Message}");
         }
     }
     
@@ -1544,16 +1492,13 @@
     {
         isEditingAudioProvider = false;
         currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-        audioProviderErrorMessage = null;
     }
     
     private async Task SaveAudioProvider()
     {
-        audioProviderErrorMessage = null;
-
         if (currentAudioProvider.ProviderCredentialId == 0)
         {
-            audioProviderErrorMessage = "Please select a provider";
+            ToastService.ShowError("Please select a provider");
             return;
         }
 
@@ -1568,11 +1513,11 @@
                     await LoadAudioProvidersAsync();
                     isEditingAudioProvider = false;
                     currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-                    await JSRuntime.InvokeVoidAsync("alert", "Audio provider configuration created successfully");
+                    ToastService.ShowSuccess("Audio provider configuration created successfully");
                 }
                 else
                 {
-                    audioProviderErrorMessage = "Failed to create audio provider configuration.";
+                    ToastService.ShowError("Failed to create audio provider configuration.");
                 }
             }
             else
@@ -1584,17 +1529,17 @@
                     await LoadAudioProvidersAsync();
                     isEditingAudioProvider = false;
                     currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-                    await JSRuntime.InvokeVoidAsync("alert", "Audio provider configuration updated successfully");
+                    ToastService.ShowSuccess("Audio provider configuration updated successfully");
                 }
                 else
                 {
-                    audioProviderErrorMessage = "Failed to update audio provider configuration.";
+                    ToastService.ShowError("Failed to update audio provider configuration.");
                 }
             }
         }
         catch (Exception ex)
         {
-            audioProviderErrorMessage = $"Error saving audio provider: {ex.Message}";
+            ToastService.ShowError($"Error saving audio provider: {ex.Message}");
             Logger.LogError(ex, "Error saving audio provider");
         }
     }

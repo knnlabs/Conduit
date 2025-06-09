@@ -1,0 +1,23 @@
+@using ConduitLLM.WebUI.Models
+@using ConduitLLM.WebUI.Services
+@inject IToastService ToastService
+@implements IDisposable
+
+<div class="toast-container">
+    @foreach (var notification in ToastService.Notifications)
+    {
+        <Toast Notification="notification" OnDismiss="() => ToastService.Dismiss(notification.Id)" />
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ToastService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnChange -= StateHasChanged;
+    }
+}

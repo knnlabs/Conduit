@@ -16,6 +16,7 @@
 @inject IJSRuntime JSRuntime
 @inject ILogger<ProviderHealth> Logger
 @inject NotificationService NotificationService
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Provider Health Dashboard</PageTitle>
@@ -478,7 +479,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider health data");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading provider health data: " + ex.Message);
+            ToastService.ShowError("Error loading provider health data: " + ex.Message);
         }
         finally
         {
@@ -716,7 +717,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider details for {ProviderName}", providerName);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error loading details for {providerName}: {ex.Message}");
+            ToastService.ShowError($"Error loading details for {providerName}: {ex.Message}");
         }
         finally
         {
@@ -782,7 +783,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading provider history for {ProviderName}", providerName);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error downloading history for {providerName}: {ex.Message}");
+            ToastService.ShowError($"Error downloading history for {providerName}: {ex.Message}");
         }
     }
     
@@ -830,7 +831,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading audio providers");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading audio providers: " + ex.Message);
+            ToastService.ShowError("Error loading audio providers: " + ex.Message);
         }
     }
     
@@ -887,12 +888,12 @@
             }
             
             StateHasChanged();
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Audio provider '{provider.ProviderName}' tested successfully");
+            ToastService.ShowSuccess($"Audio provider '{provider.ProviderName}' tested successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error testing audio provider {ProviderId}", provider.Id);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error testing audio provider: {ex.Message}");
+            ToastService.ShowError($"Error testing audio provider: {ex.Message}");
             
             // Mark all capabilities as unhealthy
             if (provider.TranscriptionEnabled)

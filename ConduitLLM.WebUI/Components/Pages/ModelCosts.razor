@@ -3,10 +3,12 @@
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Extensions
+@using ConduitLLM.WebUI.Services
 @using Microsoft.Extensions.Logging
 @inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<ModelCosts> Logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Model Cost Management - ConduitLLM</PageTitle>
@@ -489,7 +491,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading model costs: {ex.Message}");
+            ToastService.ShowError($"Error loading model costs: {ex.Message}");
             Logger.LogError(ex, "Error loading model costs");
         }
         finally
@@ -508,11 +510,11 @@
         try
         {
             // ClearCache method was removed in the admin API version; cache is managed internally now
-            await JSRuntime.InvokeVoidAsync("alert", "Model cost cache cleared successfully");
+            ToastService.ShowSuccess("Model cost cache cleared successfully");
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error clearing cache: {ex.Message}");
+            ToastService.ShowError($"Error clearing cache: {ex.Message}");
             Logger.LogError(ex, "Error clearing model cost cache");
         }
     }
@@ -530,6 +532,10 @@
                 OutputTokenCost = modelCost.OutputTokenCost,
                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -595,14 +601,18 @@
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
                     EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = editingModelCost.ImageCostPerImage
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage,
+                    AudioCostPerMinute = editingModelCost.AudioCostPerMinute,
+                    AudioCostPerKCharacters = editingModelCost.AudioCostPerKCharacters,
+                    AudioInputCostPerMinute = editingModelCost.AudioInputCostPerMinute,
+                    AudioOutputCostPerMinute = editingModelCost.AudioOutputCostPerMinute
                 };
                 
                 // Use extension method to set Description
                 createDto.SetDescription(editingModelCost.Description ?? string.Empty);
                 
                 await AdminApiClient.CreateModelCostAsync(createDto);
-                await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
+                ToastService.ShowSuccess($"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
             }
             else
             {
@@ -614,7 +624,11 @@
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
                     EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = editingModelCost.ImageCostPerImage
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage,
+                    AudioCostPerMinute = editingModelCost.AudioCostPerMinute,
+                    AudioCostPerKCharacters = editingModelCost.AudioCostPerKCharacters,
+                    AudioInputCostPerMinute = editingModelCost.AudioInputCostPerMinute,
+                    AudioOutputCostPerMinute = editingModelCost.AudioOutputCostPerMinute
                 };
                 
                 // Use extension method to set Description
@@ -623,11 +637,11 @@
                 var result = await AdminApiClient.UpdateModelCostAsync(editingModelCost.Id, updateDto);
                 if (result != null)
                 {
-                    await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
+                    ToastService.ShowSuccess($"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
                 }
                 else
                 {
-                    await JSRuntime.InvokeVoidAsync("alert", "Failed to update model cost. It may have been deleted.");
+                    ToastService.ShowWarning("Failed to update model cost. It may have been deleted.");
                 }
             }
             
@@ -637,7 +651,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error saving model cost: {ex.Message}");
+            ToastService.ShowError($"Error saving model cost: {ex.Message}");
             Logger.LogError(ex, "Error saving model cost: {Error}", ex.Message);
         }
         finally
@@ -658,11 +672,11 @@
             var success = await AdminApiClient.DeleteModelCostAsync(deletingModelCost.Id);
             if (success)
             {
-                await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
+                ToastService.ShowSuccess($"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
             }
             else
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete model cost. It may have already been removed.");
+                ToastService.ShowWarning("Failed to delete model cost. It may have already been removed.");
             }
             
             // Close modal and refresh list
@@ -671,7 +685,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error deleting model cost: {ex.Message}");
+            ToastService.ShowError($"Error deleting model cost: {ex.Message}");
             Logger.LogError(ex, "Error deleting model cost: {Error}", ex.Message);
         }
         finally
