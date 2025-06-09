@@ -114,7 +114,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             _mockVirtualKeyRepository
                 .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((VirtualKey)null);
+                .ReturnsAsync((VirtualKey?)null);
 
             // Act
             var result = await _service.GetVirtualKeyInfoAsync(keyId);
@@ -231,7 +231,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             _mockVirtualKeyRepository
                 .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((VirtualKey)null);
+                .ReturnsAsync((VirtualKey?)null);
 
             // Act
             var result = await _service.UpdateVirtualKeyAsync(keyId, updateRequest);
@@ -346,7 +346,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             _mockVirtualKeyRepository
                 .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((VirtualKey)null);
+                .ReturnsAsync((VirtualKey?)null);
 
             // Act
             var result = await _service.ResetSpendAsync(keyId);

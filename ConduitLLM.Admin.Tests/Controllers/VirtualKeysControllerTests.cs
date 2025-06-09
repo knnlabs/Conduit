@@ -62,7 +62,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result);
             Assert.Equal(StatusCodes.Status201Created, createdAtActionResult.StatusCode);
             Assert.Equal("GetKeyById", createdAtActionResult.ActionName);
-            Assert.Equal(1, createdAtActionResult.RouteValues["id"]);
+            Assert.Equal(1, createdAtActionResult.RouteValues?["id"]);
             
             var returnValue = Assert.IsType<CreateVirtualKeyResponseDto>(createdAtActionResult.Value);
             Assert.Equal("vk_testkeystring", returnValue.VirtualKey);
@@ -215,7 +215,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             _mockVirtualKeyService
                 .Setup(s => s.GetVirtualKeyInfoAsync(999))
-                .ReturnsAsync((VirtualKeyDto)null);
+                .ReturnsAsync((VirtualKeyDto?)null);
 
             // Act
             var result = await _controller.GetKeyById(999);

@@ -120,7 +120,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             _mockService
                 .Setup(s => s.GetFilterByIdAsync(999))
-                .ReturnsAsync((IpFilterDto)null);
+                .ReturnsAsync((IpFilterDto?)null);
 
             // Act
             var result = await _controller.GetFilterById(999);
@@ -163,7 +163,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createdResult = Assert.IsType<CreatedAtActionResult>(result);
             Assert.Equal(StatusCodes.Status201Created, createdResult.StatusCode);
             Assert.Equal("GetFilterById", createdResult.ActionName);
-            Assert.Equal(3, createdResult.RouteValues["id"]);
+            Assert.Equal(3, createdResult.RouteValues?["id"]);
             
             var returnValue = Assert.IsType<IpFilterDto>(createdResult.Value);
             Assert.Equal(3, returnValue.Id);

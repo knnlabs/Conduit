@@ -163,7 +163,7 @@ namespace ConduitLLM.Tests.Integration
                 Assert.NotNull(response);
                 Assert.NotNull(response.AudioData);
                 Assert.True(response.AudioData.Length > 0);
-                Assert.Equal(AudioFormat.Mp3.ToString(), response.Format.ToString());
+                Assert.Equal(AudioFormat.Mp3.ToString(), response.Format?.ToString());
                 _output.WriteLine($"Generated audio size: {response.AudioData.Length} bytes");
             }
             else
