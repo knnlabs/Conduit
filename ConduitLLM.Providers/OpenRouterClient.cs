@@ -105,6 +105,58 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Override GetModelsAsync to handle OpenRouter's simplified response format.
+        /// </summary>
+        public override async Task<List<InternalModels.ExtendedModelInfo>> GetModelsAsync(
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await ExecuteApiRequestAsync(async () =>
+                {
+                    using var client = CreateHttpClient(apiKey);
+                    
+                    var endpoint = GetModelsEndpoint();
+                    
+                    Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
+                    
+                    var response = await client.GetAsync(endpoint, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    
+                    // OpenRouter returns a simplified format with just model IDs
+                    var jsonDocument = JsonDocument.Parse(content);
+                    var models = new List<InternalModels.ExtendedModelInfo>();
+
+                    if (jsonDocument.RootElement.TryGetProperty("data", out var dataArray))
+                    {
+                        foreach (var item in dataArray.EnumerateArray())
+                        {
+                            if (item.TryGetProperty("id", out var idProperty))
+                            {
+                                var modelId = idProperty.GetString();
+                                if (!string.IsNullOrEmpty(modelId))
+                                {
+                                    models.Add(InternalModels.ExtendedModelInfo.Create(modelId, ProviderName, modelId));
+                                }
+                            }
+                        }
+                    }
+
+                    Logger.LogInformation($"OpenRouter returned {models.Count} models");
+                    return models;
+                }, "GetModels", cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to retrieve models from {Provider} API. Returning known models.", ProviderName);
+                return GetFallbackModels();
+            }
+        }
+
+        /// <summary>
         /// Override to implement embedding for OpenRouter API.
         /// </summary>
         /// <param name="request">The embedding request.</param>
