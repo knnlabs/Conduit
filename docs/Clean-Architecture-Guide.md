@@ -19,7 +19,8 @@ The domain layer contains business entities, interfaces, and core business logic
 
 - **Location**: `ConduitLLM.Core` and parts of `ConduitLLM.Configuration`
 - **Components**: Entities, value objects, domain events, core interfaces
-- **Key Interfaces**: `ILLMClient`, `ILLMRouter`, `IModelCapabilityDetector`
+- **Key Interfaces**: `ILLMClient`, `ILLMRouter`, `IModelCapabilityDetector`, `IAudioRouter`, `IRealtimeProxyService`
+- **Audio Interfaces**: `IAudioTranscriptionClient`, `ITextToSpeechClient`, `IRealtimeAudioClient`
 - **Responsibilities**: Define the domain model and business rules
 
 ### 2. Application Layer
@@ -28,7 +29,8 @@ The application layer orchestrates the flow of data between the domain and infra
 
 - **Location**: `ConduitLLM.Admin` and some services in `ConduitLLM.Configuration`
 - **Components**: Services, DTOs, mappers, validators
-- **Key Services**: `AdminVirtualKeyService`, `AdminRouterService`
+- **Key Services**: `AdminVirtualKeyService`, `AdminRouterService`, `AdminAudioProviderService`
+- **Audio Services**: `AdminAudioCostService`, `AdminAudioUsageService`
 - **Responsibilities**: Coordinate application activities, implement use cases
 
 ### 3. Infrastructure Layer
@@ -37,7 +39,9 @@ The infrastructure layer provides implementations of interfaces defined in the d
 
 - **Location**: `ConduitLLM.Providers`, parts of `ConduitLLM.Configuration`
 - **Components**: Database access, API clients, third-party integrations
-- **Key Services**: LLM provider clients, repositories
+- **Key Services**: LLM provider clients, repositories, audio provider implementations
+- **Audio Implementations**: `OpenAIClient` (Whisper/TTS), `ElevenLabsClient`, `UltravoxClient`
+- **Real-time Components**: `RealtimeProxyService`, message translators
 - **Responsibilities**: Provide implementation details for persistence and external services
 
 ### 4. Presentation Layer
@@ -46,8 +50,23 @@ The presentation layer handles user interaction and API endpoints:
 
 - **Location**: `ConduitLLM.Http`, `ConduitLLM.WebUI`
 - **Components**: Controllers, Blazor components, API endpoints, middleware
-- **Key Components**: API controllers, Blazor pages, middleware
-- **Responsibilities**: Accept user input, format responses, handle HTTP concerns
+- **Key Controllers**: `ChatCompletionsController`, `AudioController`, `RealtimeController`
+- **Middleware Pipeline**: Authentication, IP filtering, request tracking, rate limiting
+- **WebUI Components**: Audio usage dashboard, provider health monitoring, real-time testing
+- **Responsibilities**: Accept user input, format responses, handle HTTP/WebSocket concerns
+
+### 5. Cross-Cutting Concerns (Middleware)
+
+The middleware layer handles cross-cutting concerns that apply across the application:
+
+- **Location**: `ConduitLLM.Http/Middleware`, `ConduitLLM.WebUI/Middleware`
+- **Key Middleware**:
+  - `VirtualKeyAuthenticationMiddleware`: Validates API keys and enforces permissions
+  - `LlmRequestTrackingMiddleware`: Logs requests and tracks usage
+  - `IpFilterMiddleware`: Enforces IP-based access control
+  - `AdminAuthenticationMiddleware`: Validates master key for admin operations
+  - `ResilienceLoggingMiddleware`: Logs resilience events (retries, circuit breakers)
+- **Responsibilities**: Security, logging, monitoring, rate limiting, error handling
 
 ## Communication Flow
 
@@ -58,7 +77,17 @@ The presentation layer handles user interaction and API endpoints:
 
 2. **Client Application to LLM API**:
    ```
-   Client App → HTTP API → LLM Router → Provider Client → External LLM Provider
+   Client App → HTTP API → Middleware → LLM Router → Provider Client → External LLM Provider
+   ```
+
+3. **Audio API Flow**:
+   ```
+   Client App → Audio API → Middleware → Audio Router → Audio Provider → External Audio Service
+   ```
+
+4. **Real-time Audio Flow**:
+   ```
+   Client WebSocket → RealtimeController → RealtimeProxyService → Message Translator → Provider WebSocket
    ```
 
 ## Key Design Patterns
@@ -183,6 +212,17 @@ When adding a new LLM provider to the platform:
 3. **Add Settings**: Add provider-specific settings to the configuration
 4. **Update Admin API**: Add endpoints for managing the provider's credentials
 5. **Update WebUI**: Add UI components for configuring the provider
+
+### Adding Audio Support to a Provider
+
+When adding audio capabilities to a provider:
+
+1. **Implement Audio Interfaces**: Implement `IAudioTranscriptionClient`, `ITextToSpeechClient`, or `IRealtimeAudioClient`
+2. **Update Capability Detector**: Add provider capabilities to `AudioCapabilityDetector`
+3. **Create Message Translator**: For real-time support, implement `IRealtimeMessageTranslator`
+4. **Register in Factory**: Update the factory to create audio clients
+5. **Add Configuration**: Add audio-specific settings and models
+6. **Test Integration**: Add tests for audio endpoints and real-time connections
 
 ## Conclusion
 
