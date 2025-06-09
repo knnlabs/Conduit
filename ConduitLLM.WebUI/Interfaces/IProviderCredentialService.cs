@@ -57,5 +57,12 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="providerName">The name of the provider.</param>
         /// <returns>A result indicating whether the connection was successful.</returns>
         Task<ProviderConnectionTestResultDto?> TestConnectionAsync(string providerName);
+
+        /// <summary>
+        /// Tests a provider connection with given credentials (without saving).
+        /// </summary>
+        /// <param name="providerCredential">The provider credentials to test.</param>
+        /// <returns>A result indicating whether the connection was successful.</returns>
+        Task<ProviderConnectionTestResultDto?> TestProviderConnectionWithCredentialsAsync(ProviderCredentialDto providerCredential);
     }
 }

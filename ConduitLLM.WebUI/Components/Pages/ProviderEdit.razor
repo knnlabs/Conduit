@@ -11,6 +11,7 @@
 @using ProviderCredentialDto = ConduitLLM.Configuration.DTOs.ProviderCredentialDto
 @using CreateProviderCredentialDto = ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto
 @using UpdateProviderCredentialDto = ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto
+@using ProviderConnectionTestResultDto = ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
@@ -547,8 +548,19 @@
 
         try
         {
-            // Test the connection using the ProviderCredentialService
-            var testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            // Test the connection using the appropriate method based on whether the provider is saved
+            ProviderConnectionTestResultDto? testResult;
+            if (Id.HasValue)
+            {
+                // For existing providers, use the ID-based test
+                testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            }
+            else
+            {
+                // For new providers, use the credentials-based test
+                testResult = await ProviderCredentialService.TestProviderConnectionWithCredentialsAsync(provider);
+            }
+            
             if (testResult != null && testResult.Success)
             {
                 connectionStatus = new ProviderStatus

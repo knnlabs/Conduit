@@ -7,7 +7,10 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ConduitLLM.Admin.Services
@@ -168,7 +171,7 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<ProviderConnectionTestResult> TestProviderConnectionAsync(ProviderCredentialDto providerCredential)
+        public async Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(ProviderCredentialDto providerCredential)
         {
             if (providerCredential == null)
             {
@@ -178,19 +181,39 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var startTime = DateTime.UtcNow;
-                var result = new ProviderConnectionTestResult
+                var result = new ProviderConnectionTestResultDto
                 {
-                    IsSuccess = false,
-                    ErrorMessage = null,
-                    Details = null
+                    Success = false,
+                    Message = string.Empty,
+                    ErrorDetails = null,
+                    ProviderName = providerCredential.ProviderName,
+                    Timestamp = DateTime.UtcNow
                 };
 
-                // Get the actual credential (with the real API key)
-                var actualCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
-                if (actualCredential == null)
+                // If the credential has an ID, get the actual credential (with the real API key)
+                // Otherwise, use the provided credential directly (for testing unsaved providers)
+                ProviderCredential actualCredential;
+                if (providerCredential.Id > 0)
                 {
-                    result.ErrorMessage = $"Provider credential with ID {providerCredential.Id} not found";
-                    return result;
+                    var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
+                    if (dbCredential == null)
+                    {
+                        result.Message = $"Provider credential with ID {providerCredential.Id} not found";
+                        result.ErrorDetails = "Provider not found in database";
+                        return result;
+                    }
+                    actualCredential = dbCredential;
+                }
+                else
+                {
+                    // For testing unsaved providers, create a temporary credential object
+                    actualCredential = new ProviderCredential
+                    {
+                        ProviderName = providerCredential.ProviderName,
+                        ApiKey = providerCredential.ApiKey,
+                        BaseUrl = providerCredential.ApiBase,
+                        IsEnabled = true
+                    };
                 }
 
                 // Create an HTTP client
@@ -211,44 +234,92 @@ namespace ConduitLLM.Admin.Services
                 // Make the request
                 var responseMessage = await client.GetAsync(apiUrl);
                 var responseTime = DateTime.UtcNow - startTime;
-                result.ResponseTimeMs = responseTime.TotalMilliseconds;
 
                 // Check the response
-                result.IsSuccess = responseMessage.IsSuccessStatusCode;
-                if (!result.IsSuccess)
+                result.Success = responseMessage.IsSuccessStatusCode;
+                if (!result.Success)
                 {
                     var errorContent = await responseMessage.Content.ReadAsStringAsync();
-                    result.ErrorMessage = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
-                    result.Details = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000 
+                    result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
+                    result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000 
                         ? errorContent 
                         : "Response content too large to display";
                 }
                 else
                 {
-                    result.Details = $"Connected successfully to {providerCredential.ProviderName} API in {result.ResponseTimeMs:F2}ms";
+                    // Some providers have public endpoints that return 200 without auth
+                    // We need additional validation for these providers
+                    var providerName = providerCredential.ProviderName.ToLowerInvariant();
+                    
+                    switch (providerName)
+                    {
+                        case "openrouter":
+                            _logger.LogInformation("Performing additional OpenRouter authentication check");
+                            
+                            var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, actualCredential);
+                            
+                            if (!openRouterAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
+                                return result;
+                            }
+                            
+                            _logger.LogInformation("OpenRouter authentication check passed");
+                            break;
+                            
+                        case "google":
+                        case "gemini":
+                            _logger.LogInformation("Performing additional Google/Gemini authentication check");
+                            
+                            var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, actualCredential);
+                            
+                            if (!geminiAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Google Gemini requires a valid API key for making requests";
+                                return result;
+                            }
+                            
+                            _logger.LogInformation("Google/Gemini authentication check passed");
+                            break;
+                            
+                        case "ollama":
+                            // Ollama is a local service and doesn't require authentication
+                            _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+                    }
+                    
+                    var responseTimeMs = responseTime.TotalMilliseconds;
+                    result.Message = $"Connected successfully to {providerCredential.ProviderName} API in {responseTimeMs:F2}ms";
                 }
 
                 return result;
             }
             catch (TaskCanceledException)
             {
-                return new ProviderConnectionTestResult
+                return new ProviderConnectionTestResultDto
                 {
-                    IsSuccess = false,
-                    ErrorMessage = "The connection timed out",
-                    ResponseTimeMs = 10000  // Default to 10s for timeout
+                    Success = false,
+                    Message = "The connection timed out",
+                    ErrorDetails = "Request exceeded the 10 second timeout",
+                    ProviderName = providerCredential.ProviderName,
+                    Timestamp = DateTime.UtcNow
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName);
                 
-                return new ProviderConnectionTestResult
+                return new ProviderConnectionTestResultDto
                 {
-                    IsSuccess = false,
-                    ErrorMessage = ex.Message,
-                    Details = ex.ToString(),
-                    ResponseTimeMs = 0
+                    Success = false,
+                    Message = $"Connection test failed: {ex.Message}",
+                    ErrorDetails = ex.ToString(),
+                    ProviderName = providerCredential.ProviderName,
+                    Timestamp = DateTime.UtcNow
                 };
             }
         }
@@ -306,7 +377,7 @@ namespace ConduitLLM.Admin.Services
             var baseUrl = credential.BaseUrl;
             
             // If base URL is not specified, use a default based on provider name
-            if (string.IsNullOrEmpty(baseUrl))
+            if (string.IsNullOrWhiteSpace(baseUrl))
             {
                 baseUrl = GetDefaultBaseUrl(credential.ProviderName);
             }
@@ -317,17 +388,178 @@ namespace ConduitLLM.Admin.Services
             // Construct health check URL based on provider
             return credential.ProviderName.ToLowerInvariant() switch
             {
+                // OpenAI-compatible providers
                 "openai" => $"{baseUrl}/v1/models",
                 "anthropic" => $"{baseUrl}/v1/models",
                 "cohere" => $"{baseUrl}/v1/models",
-                "mistral" => $"{baseUrl}/v1/models",
+                "mistral" or "mistralai" => $"{baseUrl}/v1/models",
                 "groq" => $"{baseUrl}/v1/models",
-                "bedrock" => $"{baseUrl}/models", // AWS Bedrock
-                "google" => $"{baseUrl}/v1/models", // Gemini
+                "openrouter" => $"{baseUrl}/api/v1/models",
+                "fireworks" or "fireworksai" => $"{baseUrl}/v1/models",
+                "openai-compatible" or "openaicompatible" => $"{baseUrl}/v1/models",
+                
+                // Cloud providers with custom endpoints
                 "azure" => $"{baseUrl}/openai/models?api-version=2023-05-15",
+                "bedrock" => $"{baseUrl}/", // Bedrock doesn't have a simple health endpoint
+                "vertexai" => $"{baseUrl}/", // VertexAI requires complex auth
+                "sagemaker" => $"{baseUrl}/", // SageMaker endpoints are custom
+                
+                // Other LLM providers
+                "google" or "gemini" => $"{baseUrl}/v1beta/models",
                 "ollama" => $"{baseUrl}/api/tags",
+                "replicate" => $"{baseUrl}/", // Replicate doesn't have a models endpoint
+                "huggingface" => $"{baseUrl}/", // HuggingFace doesn't have a generic models endpoint
+                
+                // Audio/specialized providers
+                "ultravox" => $"{baseUrl}/", // Ultravox is realtime audio
+                "elevenlabs" or "eleven-labs" => $"{baseUrl}/v1/user", // ElevenLabs user endpoint for health check
+                
                 _ => $"{baseUrl}/models" // Generic endpoint for other providers
             };
+        }
+
+        /// <summary>
+        /// Verifies OpenRouter authentication by making a minimal authenticated request
+        /// </summary>
+        /// <param name="client">The HTTP client with auth headers already set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyOpenRouterAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                // OpenRouter requires authentication for certain operations
+                // We'll make a lightweight request that requires auth but doesn't incur usage costs
+                
+                // First, let's try the auth endpoint if available
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl) 
+                    ? credential.BaseUrl 
+                    : "https://openrouter.ai";
+                var authCheckUrl = $"{baseUrl.TrimEnd('/')}/api/v1/auth/key";
+                
+                try
+                {
+                    _logger.LogInformation("Checking OpenRouter auth endpoint: {Url}", authCheckUrl);
+                    
+                    // Try the auth key endpoint first (if it exists)
+                    var authResponse = await client.GetAsync(authCheckUrl);
+                    
+                    _logger.LogInformation("OpenRouter auth endpoint returned status: {Status}", authResponse.StatusCode);
+                    
+                    if (authResponse.StatusCode == HttpStatusCode.OK)
+                    {
+                        // If the auth endpoint exists and returns OK, we're authenticated
+                        _logger.LogInformation("OpenRouter authentication successful via auth endpoint");
+                        return true;
+                    }
+                    else if (authResponse.StatusCode == HttpStatusCode.Unauthorized || 
+                             authResponse.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        // Clear authentication failure
+                        _logger.LogWarning("OpenRouter authentication failed with status: {Status}", authResponse.StatusCode);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Auth endpoint might not exist, fall back to completion test
+                    _logger.LogInformation("OpenRouter auth endpoint check failed, falling back to completion test: {Error}", ex.Message);
+                }
+                
+                // Fallback: Make a minimal generation request that will fail immediately if auth is invalid
+                // Use the generation endpoint with parameters that will fail validation but still check auth
+                var testRequest = new
+                {
+                    model = "openrouter/auto",
+                    messages = new[]
+                    {
+                        new { role = "user", content = "test" }
+                    },
+                    max_tokens = 1,
+                    stream = false,
+                    // Add a parameter that will cause the request to fail after auth check
+                    temperature = -1.0 // Invalid temperature to fail after auth
+                };
+
+                var json = JsonSerializer.Serialize(testRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                
+                var chatUrl = $"{baseUrl.TrimEnd('/')}/api/v1/chat/completions";
+                var response = await client.PostAsync(chatUrl, content);
+                
+                // Check the response for authentication errors
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
+                // OpenRouter returns specific error messages for auth failures
+                if (response.StatusCode == HttpStatusCode.Unauthorized || 
+                    response.StatusCode == HttpStatusCode.Forbidden ||
+                    responseContent.Contains("No auth credentials found", StringComparison.OrdinalIgnoreCase) ||
+                    responseContent.Contains("Invalid API key", StringComparison.OrdinalIgnoreCase) ||
+                    responseContent.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+                
+                // If we get here without auth errors, the key is valid
+                // (even if the request failed for other reasons like invalid parameters)
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying OpenRouter authentication");
+                // If we can't verify, assume it's invalid to be safe
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Google Gemini authentication by making a test request
+        /// </summary>
+        /// <param name="client">The HTTP client with authorization header set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyGeminiAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                // Google Gemini requires API key as a query parameter, not in headers
+                // We need to make a request that requires authentication
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl) 
+                    ? credential.BaseUrl 
+                    : "https://generativelanguage.googleapis.com";
+                    
+                // Try to get a specific model which requires authentication
+                var testUrl = $"{baseUrl.TrimEnd('/')}/v1beta/models/gemini-pro?key={credential.ApiKey}";
+                
+                // Remove the Bearer token from headers since Gemini uses query param
+                client.DefaultRequestHeaders.Authorization = null;
+                
+                var response = await client.GetAsync(testUrl);
+                
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    _logger.LogInformation("Google Gemini authentication successful");
+                    return true;
+                }
+                else if (response.StatusCode == HttpStatusCode.Unauthorized || 
+                         response.StatusCode == HttpStatusCode.Forbidden ||
+                         response.StatusCode == HttpStatusCode.BadRequest) // Gemini returns 400 for invalid keys
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Google Gemini authentication failed: {Status} - {Content}", 
+                        response.StatusCode, responseContent);
+                    return false;
+                }
+                
+                // If we get another status, log it but assume auth is ok
+                _logger.LogInformation("Google Gemini returned unexpected status: {Status}", response.StatusCode);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Google Gemini authentication");
+                return false;
+            }
         }
 
         /// <summary>
@@ -342,9 +574,21 @@ namespace ConduitLLM.Admin.Services
                 "openai" => "https://api.openai.com",
                 "anthropic" => "https://api.anthropic.com",
                 "cohere" => "https://api.cohere.ai",
-                "mistral" => "https://api.mistral.ai",
+                "mistral" or "mistralai" => "https://api.mistral.ai",
                 "groq" => "https://api.groq.com",
+                "openrouter" => "https://openrouter.ai",
                 "ollama" => "http://localhost:11434",
+                "google" or "gemini" => "https://generativelanguage.googleapis.com",
+                "vertexai" => "https://us-central1-aiplatform.googleapis.com",
+                "replicate" => "https://api.replicate.com",
+                "fireworks" or "fireworksai" => "https://api.fireworks.ai",
+                "huggingface" => "https://api-inference.huggingface.co",
+                "bedrock" => "https://bedrock-runtime.us-east-1.amazonaws.com",
+                "sagemaker" => "https://runtime.sagemaker.us-east-1.amazonaws.com",
+                "azure" => "https://your-resource-name.openai.azure.com",
+                "openai-compatible" or "openaicompatible" => "http://localhost:8000",
+                "ultravox" => "https://api.ultravox.ai",
+                "elevenlabs" or "eleven-labs" => "https://api.elevenlabs.io",
                 _ => "https://api.example.com" // Generic fallback
             };
         }

@@ -243,7 +243,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The ID of the provider credential to test</param>
         /// <returns>The test result</returns>
         [HttpPost("test/{id}")]
-        [ProducesResponseType(typeof(ProviderConnectionTestResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnection(int id)
@@ -263,6 +263,34 @@ namespace ConduitLLM.Admin.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error testing connection for provider credential with ID {Id}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Tests a provider connection without saving credentials
+        /// </summary>
+        /// <param name="testRequest">The provider credentials to test</param>
+        /// <returns>The test result</returns>
+        [HttpPost("test")]
+        [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] ProviderCredentialDto testRequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var result = await _providerCredentialService.TestProviderConnectionAsync(testRequest);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", testRequest?.ProviderName);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

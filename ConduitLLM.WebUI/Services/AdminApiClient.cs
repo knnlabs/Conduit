@@ -877,6 +877,36 @@ namespace ConduitLLM.WebUI.Services
             }
         }
 
+        /// <summary>
+        /// Tests a provider connection with given credentials (without saving)
+        /// </summary>
+        /// <param name="providerCredential">The provider credentials to test</param>
+        /// <returns>The test result</returns>
+        public async Task<ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto?> TestProviderConnectionWithCredentialsAsync(ProviderCredentialDto providerCredential)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/providercredentials/test",
+                    providerCredential,
+                    _jsonOptions);
+                
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto>(_jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection for provider {ProviderName} in Admin API", providerCredential?.ProviderName);
+                return new ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto
+                {
+                    Success = false,
+                    Message = "Error testing provider connection",
+                    ErrorDetails = ex.Message,
+                    ProviderName = providerCredential?.ProviderName ?? "Unknown"
+                };
+            }
+        }
+
         #endregion
 
         #region IP Filters
