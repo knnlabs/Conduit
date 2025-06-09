@@ -190,15 +190,8 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Add a specific warning for model selection
-            if (string.IsNullOrEmpty(request.Model))
-            {
-                // Suggest a default embedding model if none specified
-                Logger.LogInformation("No embedding model specified for Fireworks. Setting default to 'nomic-embed-text'");
-                request.Model = "nomic-embed-text";
-            }
-            
             // Use the base implementation for the actual API call
+            // The model should come from the request or the model mapping system, not be hardcoded
             return await base.CreateEmbeddingAsync(request, apiKey, cancellationToken);
         }
         

@@ -28,5 +28,11 @@ public class ConduitSettings
     /// </summary>
     public int? DefaultRetries { get; set; }
 
+    /// <summary>
+    /// Gets or sets the default model configurations for providers.
+    /// This centralizes all default model settings to avoid hardcoded values in provider implementations.
+    /// </summary>
+    public ProviderDefaultModels DefaultModels { get; set; } = new();
+
     // Add other global settings as needed, e.g., logging configuration, global API key (if applicable).
 }
