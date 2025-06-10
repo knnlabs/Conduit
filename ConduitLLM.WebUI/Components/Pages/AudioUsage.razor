@@ -6,7 +6,8 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using ConduitLLM.WebUI.Components.Shared
+@using static ConduitLLM.WebUI.Components.StatCard
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<AudioUsage> Logger
@@ -14,29 +15,40 @@
 @inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>Audio Usage Dashboard</PageTitle>
+<PageTitle>Audio Usage Dashboard - ConduitLLM</PageTitle>
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-bar-chart-line me-2"></i>Audio Usage Dashboard</h1>
-        <button class="btn btn-primary" @onclick="RefreshDataAsync">
-            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <PageHeader Title="Audio Usage Dashboard" 
+                Description="Monitor and analyze audio API usage across your deployment"
+                Icon="fa-chart-line">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-microphone me-2"></i>
+                <span class="small">@(_usageSummary.TotalOperations.ToString("N0")) Total Requests</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-dollar-sign me-2"></i>
+                <span class="small">$@(_usageSummary.TotalCost.ToString("N2")) Total Cost</span>
+            </div>
+        </Statistics>
+    </PageHeader>
+    
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-primary shadow-sm" @onclick="RefreshDataAsync">
+            <i class="fa fa-sync me-2"></i>Refresh
         </button>
     </div>
 
     @if (_loading)
     {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading audio usage data...</p>
-        </div>
+        <LoadingSpinner Message="Loading audio usage data..." />
     }
     else
     {
         <!-- Date Range Filter -->
-        <div class="card mb-4">
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
                 <div class="row align-items-end">
                     <div class="col-md-3">
@@ -63,7 +75,7 @@
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-primary w-100" @onclick="ApplyFiltersAsync">
-                            <i class="bi bi-funnel me-2"></i>Apply Filters
+                            <i class="fa fa-filter me-2"></i>Apply Filters
                         </button>
                     </div>
                 </div>
@@ -73,44 +85,37 @@
         <!-- Summary Cards -->
         <div class="row mb-4">
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Requests</h5>
-                        <h2 class="text-primary">@_usageSummary.TotalOperations.ToString("N0")</h2>
-                    </div>
-                </div>
+                <StatCard Label="Total Requests" 
+                          Value="@(_usageSummary.TotalOperations.ToString("N0"))" 
+                          IconClass="fa fa-microphone" 
+                          Color="StatCardColor.Primary" />
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Transcription Minutes</h5>
-                        <h2 class="text-info">@((_usageSummary.TotalDurationSeconds / 60).ToString("N1"))</h2>
-                    </div>
-                </div>
+                <StatCard Label="Transcription Minutes" 
+                          Value="@((_usageSummary.TotalDurationSeconds / 60).ToString("N1"))" 
+                          IconClass="fa fa-clock" 
+                          Color="StatCardColor.Info" />
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">TTS Characters</h5>
-                        <h2 class="text-success">@_usageSummary.TotalCharacters.ToString("N0")</h2>
-                    </div>
-                </div>
+                <StatCard Label="TTS Characters" 
+                          Value="@(_usageSummary.TotalCharacters.ToString("N0"))" 
+                          IconClass="fa fa-font" 
+                          Color="StatCardColor.Success" />
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Cost</h5>
-                        <h2 class="text-warning">$@_usageSummary.TotalCost.ToString("N2")</h2>
-                    </div>
-                </div>
+                <StatCard Label="Total Cost" 
+                          Value="@(_usageSummary.TotalCost.ToString("N2"))" 
+                          IconClass="fa fa-dollar-sign" 
+                          Color="StatCardColor.Warning"
+                          IsCurrency="true" />
             </div>
         </div>
 
         <!-- Charts Row -->
         <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
                         <h5 class="mb-0">Usage by Provider</h5>
                     </div>
                     <div class="card-body">
@@ -119,8 +124,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
                         <h5 class="mb-0">Usage by Operation Type</h5>
                     </div>
                     <div class="card-body">
@@ -131,8 +136,8 @@
         </div>
 
         <!-- Daily Usage Trend -->
-        <div class="card mb-4">
-            <div class="card-header">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light border-0">
                 <h5 class="mb-0">Daily Usage Trend</h5>
             </div>
             <div class="card-body">
@@ -141,8 +146,8 @@
         </div>
 
         <!-- Provider Breakdown Table -->
-        <div class="card mb-4">
-            <div class="card-header">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light border-0">
                 <h5 class="mb-0">Provider Performance Breakdown</h5>
             </div>
             <div class="card-body">
@@ -179,12 +184,12 @@
         </div>
 
         <!-- Recent Usage Logs -->
-        <div class="card">
-            <div class="card-header">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light border-0">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Audio Usage Logs</h5>
-                    <button class="btn btn-sm btn-outline-primary" @onclick="DownloadLogsAsync">
-                        <i class="bi bi-download me-2"></i>Export CSV
+                    <button class="btn btn-sm btn-primary shadow-sm" @onclick="DownloadLogsAsync">
+                        <i class="fa fa-download me-2"></i>Export CSV
                     </button>
                 </div>
             </div>
@@ -322,8 +327,8 @@
 
             // Load usage summary
             _usageSummary = await AdminApiClient.GetAudioUsageSummaryAsync(
-                _startDate, 
-                _endDate, 
+                _startDate.ToUniversalTime(), 
+                _endDate.ToUniversalTime(), 
                 _filterVirtualKey, 
                 _filterProvider);
 
@@ -334,8 +339,8 @@
                 _filterVirtualKey,
                 _filterProvider,
                 null,
-                _startDate,
-                _endDate);
+                _startDate.ToUniversalTime(),
+                _endDate.ToUniversalTime());
 
             // Calculate daily usage data for trend chart
             await CalculateDailyUsageAsync();
@@ -358,7 +363,7 @@
         
         // Get all logs for the date range (up to 1000)
         var allLogs = await AdminApiClient.GetAudioUsageLogsAsync(
-            1, 1000, _filterVirtualKey, _filterProvider, null, _startDate, _endDate);
+            1, 1000, _filterVirtualKey, _filterProvider, null, _startDate.ToUniversalTime(), _endDate.ToUniversalTime());
         
         foreach (var log in allLogs.Items)
         {
@@ -406,8 +411,8 @@
             _filterVirtualKey,
             _filterProvider,
             null,
-            _startDate,
-            _endDate);
+            _startDate.ToUniversalTime(),
+            _endDate.ToUniversalTime());
         
         StateHasChanged();
     }
@@ -464,7 +469,7 @@
         {
             // Get all logs for export (up to 10000)
             var allLogs = await AdminApiClient.GetAudioUsageLogsAsync(
-                1, 10000, _filterVirtualKey, _filterProvider, null, _startDate, _endDate);
+                1, 10000, _filterVirtualKey, _filterProvider, null, _startDate.ToUniversalTime(), _endDate.ToUniversalTime());
             
             var csv = new System.Text.StringBuilder();
             csv.AppendLine("Timestamp,VirtualKey,Provider,Operation,Model,Duration/Characters,Cost,Status");
@@ -509,3 +514,24 @@
         _ => "danger"
     };
 }
+
+<style>
+    .stat-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0,0,0,.02);
+    }
+    
+    canvas {
+        max-height: 300px !important;
+    }
+</style>

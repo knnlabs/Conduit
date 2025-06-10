@@ -58,7 +58,8 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error checking circuit breaker status");
+            // Circuit breaker check failures are expected when the API is down
+            Logger.LogDebug(ex, "Error checking circuit breaker status");
         }
         finally
         {

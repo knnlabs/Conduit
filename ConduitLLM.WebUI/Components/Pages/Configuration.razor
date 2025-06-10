@@ -11,7 +11,6 @@
 @using System.Linq
 @using System.Threading.Tasks
 @using Microsoft.JSInterop
-@using AudioDTOs = ConduitLLM.Configuration.DTOs.Audio
 @using ConduitLLM.WebUI.Components.Shared
 
 @inject NavigationManager NavigationManager
@@ -28,274 +27,11 @@
 <div class="container container-xxl mt-4">
     <!-- Header Section -->
     <PageHeader Title="Configuration Management" 
-                Description="Configure audio capabilities and system settings for your deployment"
+                Description="Configure system settings for your deployment"
                 Icon="fa-cogs">
         <Statistics>
-            <div class="stat-item">
-                <i class="fa fa-headphones me-2"></i>
-                <span class="small">@(audioProviders?.Count ?? 0) Audio Providers</span>
-            </div>
         </Statistics>
     </PageHeader>
-
-    <!-- Audio Providers Section -->
-    <div class="card shadow-sm border-0 mb-5">
-        <div class="card-header bg-light border-0">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fa fa-headphones me-2 text-info"></i>Audio Providers
-                </h5>
-                <button class="btn btn-primary shadow-sm" @onclick="() => isEditingAudioProvider = true">
-                    <i class="fa fa-plus me-1"></i> Configure Audio Provider
-                </button>
-            </div>
-        </div>
-        
-        <div class="card-body">
-            <div class="alert alert-info border-0 shadow-sm mb-4">
-                <i class="fa fa-info-circle me-2"></i>
-                <strong>Audio Providers:</strong> Configure audio capabilities for your LLM providers including transcription, text-to-speech, and real-time audio.
-            </div>
-            
-            @if (audioProviders == null)
-            {
-                <div class="d-flex justify-content-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            }
-            else if (!audioProviders.Any())
-            {
-                <div class="text-center py-5">
-                    <i class="fa fa-headphones fa-4x text-muted mb-4"></i>
-                    <h4 class="text-muted mb-3">No Audio Providers Configured</h4>
-                    <p class="text-muted mb-4">Configure audio capabilities for your existing LLM providers</p>
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive mb-4">
-                    <table class="table table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th>Provider</th>
-                                <th>Transcription</th>
-                                <th>Text-to-Speech</th>
-                                <th>Real-time Audio</th>
-                                <th>Priority</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var audioProvider in audioProviders)
-                            {
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="provider-icon bg-info-light rounded-circle p-2 me-3">
-                                                <i class="fa fa-headphones text-info"></i>
-                                            </div>
-                                            <span class="fw-semibold">@audioProvider.ProviderName</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if (audioProvider.TranscriptionEnabled)
-                                        {
-                                            <span class="badge bg-success">
-                                                <i class="fa fa-check me-1"></i>Enabled
-                                            </span>
-                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultTranscriptionModel))
-                                            {
-                                                <br/>
-                                                <small class="text-muted">@audioProvider.DefaultTranscriptionModel</small>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Disabled</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (audioProvider.TextToSpeechEnabled)
-                                        {
-                                            <span class="badge bg-success">
-                                                <i class="fa fa-check me-1"></i>Enabled
-                                            </span>
-                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultTTSModel))
-                                            {
-                                                <br/>
-                                                <small class="text-muted">@audioProvider.DefaultTTSModel</small>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Disabled</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (audioProvider.RealtimeEnabled)
-                                        {
-                                            <span class="badge bg-success">
-                                                <i class="fa fa-check me-1"></i>Enabled
-                                            </span>
-                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultRealtimeModel))
-                                            {
-                                                <br/>
-                                                <small class="text-muted">@audioProvider.DefaultRealtimeModel</small>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Disabled</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary">@audioProvider.RoutingPriority</span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => EditAudioProvider(audioProvider.Id)">
-                                                <i class="fa fa-edit me-1"></i> Edit
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteAudioProvider(audioProvider.Id)">
-                                                <i class="fa fa-trash me-1"></i> Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
-    </div>
-
-    @if (isEditingAudioProvider)
-    {
-        <div class="card shadow-sm border-0 mb-5">
-            <div class="card-header bg-light border-0">
-                <h5 class="mb-0">
-                    <i class="fa fa-@(currentAudioProvider.Id == 0 ? "plus" : "edit") me-2 text-info"></i>
-                    @(currentAudioProvider.Id == 0 ? "Configure" : "Edit") Audio Provider
-                </h5>
-            </div>
-            <div class="card-body">
-                
-                <div class="form-group mb-4">
-                    <label for="audioProviderSelect">LLM Provider</label>
-                    <select class="form-select" id="audioProviderSelect" 
-                            @bind="currentAudioProvider.ProviderCredentialId">
-                        <option value="0">-- Select Provider --</option>
-                        @if (providerCredentials != null)
-                        {
-                            @foreach (var provider in providerCredentials.OrderBy(p => p.ProviderName))
-                            {
-                                <option value="@provider.Id">@provider.ProviderName</option>
-                            }
-                        }
-                    </select>
-                    <small class="form-text text-muted">Select the LLM provider to configure audio capabilities for</small>
-                </div>
-                
-                <!-- Transcription Settings -->
-                <h6 class="mb-3"><i class="fa fa-microphone me-2"></i>Transcription Settings</h6>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="transcriptionEnabled" 
-                                   @bind="currentAudioProvider.TranscriptionEnabled" />
-                            <label class="form-check-label" for="transcriptionEnabled">
-                                Enable Transcription
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="transcriptionModel">Default Transcription Model</label>
-                            <input type="text" class="form-control" id="transcriptionModel" 
-                                   @bind="currentAudioProvider.DefaultTranscriptionModel"
-                                   placeholder="e.g., whisper-1"
-                                   disabled="@(!currentAudioProvider.TranscriptionEnabled)" />
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Text-to-Speech Settings -->
-                <h6 class="mb-3"><i class="fa fa-volume-up me-2"></i>Text-to-Speech Settings</h6>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="ttsEnabled" 
-                                   @bind="currentAudioProvider.TextToSpeechEnabled" />
-                            <label class="form-check-label" for="ttsEnabled">
-                                Enable Text-to-Speech
-                            </label>
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="ttsModel">Default TTS Model</label>
-                            <input type="text" class="form-control" id="ttsModel" 
-                                   @bind="currentAudioProvider.DefaultTTSModel"
-                                   placeholder="e.g., tts-1"
-                                   disabled="@(!currentAudioProvider.TextToSpeechEnabled)" />
-                        </div>
-                        <div class="form-group">
-                            <label for="ttsVoice">Default TTS Voice</label>
-                            <input type="text" class="form-control" id="ttsVoice" 
-                                   @bind="currentAudioProvider.DefaultTTSVoice"
-                                   placeholder="e.g., alloy"
-                                   disabled="@(!currentAudioProvider.TextToSpeechEnabled)" />
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Real-time Audio Settings -->
-                <h6 class="mb-3"><i class="fa fa-podcast me-2"></i>Real-time Audio Settings</h6>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="realtimeEnabled" 
-                                   @bind="currentAudioProvider.RealtimeEnabled" />
-                            <label class="form-check-label" for="realtimeEnabled">
-                                Enable Real-time Audio
-                            </label>
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="realtimeModel">Default Real-time Model</label>
-                            <input type="text" class="form-control" id="realtimeModel" 
-                                   @bind="currentAudioProvider.DefaultRealtimeModel"
-                                   placeholder="e.g., gpt-4-realtime"
-                                   disabled="@(!currentAudioProvider.RealtimeEnabled)" />
-                        </div>
-                        <div class="form-group">
-                            <label for="realtimeEndpoint">WebSocket Endpoint</label>
-                            <input type="text" class="form-control" id="realtimeEndpoint" 
-                                   @bind="currentAudioProvider.RealtimeEndpoint"
-                                   placeholder="e.g., wss://api.openai.com/v1/realtime"
-                                   disabled="@(!currentAudioProvider.RealtimeEnabled)" />
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Routing Priority -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="routingPriority">Routing Priority</label>
-                            <input type="number" class="form-control" id="routingPriority" 
-                                   @bind="currentAudioProvider.RoutingPriority"
-                                   min="1" max="1000" />
-                            <small class="form-text text-muted">Higher priority providers are preferred when routing audio requests</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-outline-secondary me-2" @onclick="CancelAudioProviderEdit">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveAudioProvider">Save</button>
-                </div>
-            </div>
-        </div>
-    }
 
     <!-- Global Settings Section -->
     <div class="row mb-4">
@@ -511,11 +247,6 @@
     // --- State ---
     private List<ConfigDTOs.ProviderCredentialDto> providerCredentials = new(); // Still needed for audio provider dropdown
     private List<ConfigDTOs.GlobalSettingDto> globalSettings = new();
-    private List<AudioDTOs.AudioProviderConfigDto> audioProviders = new();
-
-    // Audio provider form state
-    private bool isEditingAudioProvider = false;
-    private AudioDTOs.AudioProviderConfigDto currentAudioProvider = new();
 
     // Settings state
     private ConfigDTOs.GlobalSettingDto currentSettings = new();
@@ -531,7 +262,6 @@
         try
         {
             await LoadProvidersAsync();
-            await LoadAudioProvidersAsync();
             await LoadProxyUrlAsync();
             await LoadHttpRetryOptionsAsync();
             await LoadHttpTimeoutOptionsAsync();
@@ -556,19 +286,6 @@
         {
             Logger.LogError(ex, "Error loading provider credentials");
             providerCredentials = new List<ConfigDTOs.ProviderCredentialDto>(); 
-        }
-    }
-    
-    private async Task LoadAudioProvidersAsync()
-    {
-        try
-        {
-            audioProviders = await AdminApiClient.GetAudioProvidersAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading audio providers");
-            audioProviders = new List<AudioDTOs.AudioProviderConfigDto>();
         }
     }
     
@@ -645,122 +362,6 @@
         return Task.CompletedTask;
     }
 
-    // --- Audio Provider Methods ---
-    
-    private async Task EditAudioProvider(int id)
-    {
-        try
-        {
-            var audioProvider = await AdminApiClient.GetAudioProviderAsync(id);
-            if (audioProvider != null)
-            {
-                currentAudioProvider = new AudioDTOs.AudioProviderConfigDto
-                {
-                    Id = audioProvider.Id,
-                    ProviderCredentialId = audioProvider.ProviderCredentialId,
-                    TranscriptionEnabled = audioProvider.TranscriptionEnabled,
-                    DefaultTranscriptionModel = audioProvider.DefaultTranscriptionModel,
-                    TextToSpeechEnabled = audioProvider.TextToSpeechEnabled,
-                    DefaultTTSModel = audioProvider.DefaultTTSModel,
-                    DefaultTTSVoice = audioProvider.DefaultTTSVoice,
-                    RealtimeEnabled = audioProvider.RealtimeEnabled,
-                    DefaultRealtimeModel = audioProvider.DefaultRealtimeModel,
-                    RealtimeEndpoint = audioProvider.RealtimeEndpoint,
-                    RoutingPriority = audioProvider.RoutingPriority,
-                    CustomSettings = audioProvider.CustomSettings
-                };
-                isEditingAudioProvider = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading audio provider for editing");
-            ToastService.ShowError($"Error loading audio provider: {ex.Message}");
-        }
-    }
-    
-    private async Task DeleteAudioProvider(int id)
-    {
-        try
-        {
-            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
-                "Are you sure you want to delete this audio provider configuration? This cannot be undone.");
-
-            if (!confirmed) return;
-
-            var success = await AdminApiClient.DeleteAudioProviderAsync(id);
-            if (success)
-            {
-                await LoadAudioProvidersAsync();
-                ToastService.ShowSuccess("Audio provider configuration deleted successfully");
-            }
-            else
-            {
-                ToastService.ShowError("Failed to delete audio provider configuration.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting audio provider");
-            ToastService.ShowError($"Error deleting audio provider: {ex.Message}");
-        }
-    }
-    
-    private void CancelAudioProviderEdit()
-    {
-        isEditingAudioProvider = false;
-        currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-    }
-    
-    private async Task SaveAudioProvider()
-    {
-        if (currentAudioProvider.ProviderCredentialId == 0)
-        {
-            ToastService.ShowError("Please select a provider");
-            return;
-        }
-
-        try
-        {
-            if (currentAudioProvider.Id == 0)
-            {
-                // Create new
-                var newAudioProvider = await AdminApiClient.CreateAudioProviderAsync(currentAudioProvider);
-                if (newAudioProvider != null)
-                {
-                    await LoadAudioProvidersAsync();
-                    isEditingAudioProvider = false;
-                    currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-                    ToastService.ShowSuccess("Audio provider configuration created successfully");
-                }
-                else
-                {
-                    ToastService.ShowError("Failed to create audio provider configuration.");
-                }
-            }
-            else
-            {
-                // Update existing
-                var updatedAudioProvider = await AdminApiClient.UpdateAudioProviderAsync(currentAudioProvider.Id, currentAudioProvider);
-                if (updatedAudioProvider != null)
-                {
-                    await LoadAudioProvidersAsync();
-                    isEditingAudioProvider = false;
-                    currentAudioProvider = new AudioDTOs.AudioProviderConfigDto();
-                    ToastService.ShowSuccess("Audio provider configuration updated successfully");
-                }
-                else
-                {
-                    ToastService.ShowError("Failed to update audio provider configuration.");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError($"Error saving audio provider: {ex.Message}");
-            Logger.LogError(ex, "Error saving audio provider");
-        }
-    }
 }
 
 <style>
@@ -770,18 +371,6 @@
         border-radius: 20px;
         padding: 0.5rem 1rem;
         display: inline-block;
-    }
-    
-    .provider-icon {
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .bg-info-light {
-        background-color: rgba(13, 202, 240, 0.1);
     }
     
     .hover-card {
