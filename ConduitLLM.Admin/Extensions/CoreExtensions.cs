@@ -21,8 +21,8 @@ namespace ConduitLLM.Admin.Extensions
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddCoreServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // Add database services - use DbContext type directly
-            services.AddDatabaseServices<Microsoft.EntityFrameworkCore.DbContext>();
+            // Add database services - use ConfigurationDbContext
+            services.AddDatabaseServices<ConduitLLM.Configuration.ConfigurationDbContext>();
             
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();

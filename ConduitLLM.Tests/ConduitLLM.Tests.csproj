@@ -28,9 +28,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- Exclude all adapter test files and files with compilation errors from compilation temporarily -->
+  <!-- Exclude files with compilation errors from compilation temporarily -->
   <ItemGroup>
-    <Compile Remove="WebUI\Adapters\**" />
     <Compile Remove="WebUI\RepositoryServices\**" />
     <Compile Remove="RepositoryServices\**" />
     <Compile Remove="Services\CostDashboardServiceTests.cs" />
@@ -44,11 +43,21 @@
     <Compile Remove="WebUI\Providers\RequestLogServiceProviderTests.cs" />
     <Compile Remove="Extensions\LogsSummaryDtoToWebUIDtoExtensions.cs" />
     <Compile Remove="Extensions\LogsSummaryDtoExtensions.cs" />
+    <!-- Exclude adapter tests that don't have their adapter implementations yet -->
+    <Compile Remove="WebUI\Adapters\CostDashboardServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\GlobalSettingServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\IpFilterServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\ModelCostServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\ModelProviderMappingServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\ProviderCredentialServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\ProviderHealthServiceAdapterTests.cs" />
+    <Compile Remove="WebUI\Adapters\VirtualKeyServiceAdapterTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
+    <ProjectReference Include="..\ConduitLLM.Admin\ConduitLLM.Admin.csproj" />
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\ConduitLLM.Http\ConduitLLM.Http.csproj" />
     <ProjectReference Include="..\ConduitLLM.WebUI\ConduitLLM.WebUI.csproj" />

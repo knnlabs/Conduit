@@ -11,7 +11,7 @@ namespace ConduitLLM.Admin;
 /// <summary>
 /// Entry point for the Admin API application
 /// </summary>
-public class Program
+public partial class Program
 {
     /// <summary>
     /// Application entry point that configures and starts the web application
@@ -165,3 +165,6 @@ public class Program
         app.Run();
     }
 }
+
+// Make Program accessible for testing
+public partial class Program { }

@@ -84,10 +84,45 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
    dotnet run
    ```
 
-Note: For WebUI to communicate with the Admin API, set the environment variable:
+Note: For WebUI to communicate with the Admin API, set the environment variables:
 ```bash
 export CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
 export CONDUIT_USE_ADMIN_API=true
+export CONDUIT_MASTER_KEY=your_secure_master_key
+```
+
+## Architecture Overview: Admin API
+
+Starting in May 2025, ConduitLLM uses a three-tier architecture:
+
+1. **Admin API (`ConduitLLM.Admin`)**: Central configuration and management service
+   - Handles all database operations
+   - Manages virtual keys, model configurations, and provider settings
+   - Provides REST API for administrative operations
+   - Runs on port 5002 by default
+
+2. **HTTP API Gateway (`ConduitLLM.Http`)**: OpenAI-compatible API service
+   - Handles LLM requests from clients
+   - Routes requests to appropriate providers
+   - Validates virtual keys via Admin API
+   - Runs on port 5000 by default
+
+3. **WebUI (`ConduitLLM.WebUI`)**: Blazor-based administration dashboard
+   - Provides visual interface for configuration
+   - Communicates with Admin API for all operations
+   - Runs on port 5001 by default
+
+### Admin API Mode
+
+The WebUI can operate in two modes:
+- **Legacy Mode** (deprecated): Direct database access
+- **Admin API Mode** (recommended): All operations go through Admin API
+
+To enable Admin API mode, set these environment variables:
+```bash
+CONDUIT_USE_ADMIN_API=true
+CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
+CONDUIT_MASTER_KEY=your_secure_master_key
 ```
 
 ## Docker Images: Component Separation
