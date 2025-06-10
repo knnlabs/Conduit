@@ -44,8 +44,8 @@ namespace ConduitLLM.WebUI.Services
                 var defaultOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
                 
                 // Save to global settings via by-key endpoint
-                await SetSettingAsync("Conduit:HttpTimeout:TimeoutSeconds", defaultOptions.TimeoutSeconds.ToString());
-                await SetSettingAsync("Conduit:HttpTimeout:EnableTimeoutLogging", defaultOptions.EnableTimeoutLogging.ToString());
+                await SetSettingAsync("HttpTimeout:TimeoutSeconds", defaultOptions.TimeoutSeconds.ToString());
+                await SetSettingAsync("HttpTimeout:EnableTimeoutLogging", defaultOptions.EnableTimeoutLogging.ToString());
                 
                 return true;
             }
@@ -65,10 +65,10 @@ namespace ConduitLLM.WebUI.Services
                 var defaultOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
                 
                 // Save to global settings via by-key endpoint
-                await SetSettingAsync("Conduit:HttpRetry:MaxRetries", defaultOptions.MaxRetries.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:InitialDelaySeconds", defaultOptions.InitialDelaySeconds.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:MaxDelaySeconds", defaultOptions.MaxDelaySeconds.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:EnableRetryLogging", defaultOptions.EnableRetryLogging.ToString());
+                await SetSettingAsync("HttpRetry:MaxRetries", defaultOptions.MaxRetries.ToString());
+                await SetSettingAsync("HttpRetry:InitialDelaySeconds", defaultOptions.InitialDelaySeconds.ToString());
+                await SetSettingAsync("HttpRetry:MaxDelaySeconds", defaultOptions.MaxDelaySeconds.ToString());
+                await SetSettingAsync("HttpRetry:EnableRetryLogging", defaultOptions.EnableRetryLogging.ToString());
                 
                 return true;
             }

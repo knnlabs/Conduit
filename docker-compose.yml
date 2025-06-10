@@ -42,7 +42,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      ASPNETCORE_ENVIRONMENT: Production
       CONDUIT_CACHE_ENABLED: "true"
       CONDUIT_CACHE_TYPE: "Redis"
       CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
@@ -68,7 +68,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      ASPNETCORE_ENVIRONMENT: Production
       AdminApi__MasterKey: alpha
       AdminApi__AllowedOrigins__0: http://webui:8080
       AdminApi__AllowedOrigins__1: http://localhost:5001
