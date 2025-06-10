@@ -50,6 +50,16 @@ ConduitLLM provides environment variables for configuring security-related aspec
 | `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for administrative operations. Required for certain API endpoints. |
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
+| `CONDUIT_REDIS_CONNECTION_STRING` | String | *None* | Redis connection string for Data Protection key persistence. When provided, ASP.NET Core Data Protection keys are stored in Redis for distributed scenarios. Format: `redis-host:6379` or full connection string. |
+
+### Data Protection Keys
+
+ASP.NET Core Data Protection is used to protect sensitive data like authentication cookies and anti-forgery tokens. By default, these keys are stored in the file system, which can cause issues in distributed scenarios:
+- Keys are lost when containers restart
+- Different container instances can't share keys
+- Users may experience authentication issues
+
+When `CONDUIT_REDIS_CONNECTION_STRING` is provided, Data Protection keys are persisted to Redis, solving these issues. If Redis is unavailable, the system falls back to file system storage.
 
 ## Database
 
@@ -124,6 +134,7 @@ services:
       - CONDUIT_ADMIN_TIMEOUT_SECONDS=30
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
     ports:
       - "5000:5000"
     depends_on:
@@ -140,6 +151,7 @@ services:
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
@@ -169,6 +181,7 @@ services:
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
     ports:
       - "5002:5002"
     depends_on:

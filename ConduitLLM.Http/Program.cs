@@ -14,6 +14,7 @@ using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
+using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -146,6 +147,10 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, Condui
 
 // Register cache service based on configuration
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.ICacheService, ConduitLLM.Configuration.Services.CacheService>();
+
+// Configure Data Protection with Redis persistence
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Register Configuration adapters (moved from Core)
 builder.Services.AddConfigurationAdapters();

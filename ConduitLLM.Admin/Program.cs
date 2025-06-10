@@ -89,6 +89,10 @@ public class Program
         builder.Services.AddHealthChecks()
             .AddAudioProviderHealthChecks("audio");
 
+        // Configure Data Protection with Redis persistence
+        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+        builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
         var app = builder.Build();
 
         // Initialize database - Always run unless explicitly told to skip

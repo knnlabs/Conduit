@@ -208,6 +208,10 @@ builder.Services.AddRazorComponents()
 // Register context management services
 builder.Services.AddConduitContextManagement(builder.Configuration);
 
+// Configure Data Protection with Redis persistence
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
 var app = builder.Build();
 
 // Log usage mode
