@@ -15,6 +15,8 @@ using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extension
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions
+using HealthChecks.UI.Client; // Added for health check UI response writer
+using Microsoft.AspNetCore.Diagnostics.HealthChecks; // Added for health check options
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -139,6 +141,7 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IVirtualKeySpen
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelCostRepository, ConduitLLM.Configuration.Repositories.ModelCostRepository>();
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelProviderMappingRepository, ConduitLLM.Configuration.Repositories.ModelProviderMappingRepository>();
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository, ConduitLLM.Configuration.Repositories.ProviderCredentialRepository>();
+builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderHealthRepository, ConduitLLM.Configuration.Repositories.ProviderHealthRepository>();
 
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
@@ -202,6 +205,10 @@ builder.Services.AddCors(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddConduitHealthChecks(builder.Configuration);
+
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
 
@@ -264,14 +271,26 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(120)
 });
 
-// Add a health check endpoint
 // Add controllers to the app
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
-// Add a health check endpoint
-app.MapGet("/health", () => {
-    return Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
+// Map health check endpoints with JSON response
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false, // No checks = always healthy for liveness
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
 // Add completions endpoint (legacy)

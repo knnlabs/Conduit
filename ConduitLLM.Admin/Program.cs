@@ -5,6 +5,8 @@ using ConduitLLM.Providers.Extensions;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace ConduitLLM.Admin;
 
@@ -87,6 +89,7 @@ public partial class Program
 
         // Add health checks
         builder.Services.AddHealthChecks()
+            .AddConduitHealthChecks(builder.Configuration)
             .AddAudioProviderHealthChecks("audio");
 
         // Configure Data Protection with Redis persistence
@@ -154,12 +157,28 @@ public partial class Program
 
         app.MapControllers();
         
-        // Map health checks
-        app.MapHealthChecks("/health/ready");
-        app.MapHealthChecks("/health/live");
-        app.MapHealthChecks("/health/audio", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        // Map health check endpoints with JSON response
+        app.MapHealthChecks("/health", new HealthCheckOptions
         {
-            Predicate = check => check.Tags.Contains("audio")
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+        
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+        
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = _ => false, // No checks = always healthy for liveness
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+        
+        app.MapHealthChecks("/health/audio", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("audio"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
 
         app.Run();

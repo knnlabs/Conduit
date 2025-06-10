@@ -18,6 +18,8 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Options;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ConduitLLM.Configuration.Services;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Caching;
 using ConduitLLM.Core.Extensions;
@@ -199,8 +201,7 @@ builder.Services.AddAntiforgery();
 
 // Add health checks
 builder.Services.AddHealthChecks()
-    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical" })
-    .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"), tags: new[] { "self" });
+    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin-api", tags: new[] { "ready" });
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -337,34 +338,24 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
-// Map health checks
-app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+// Map health check endpoints with JSON response
+app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "application/json";
-        var result = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds,
-                data = e.Value.Data
-            }),
-            totalDuration = report.TotalDuration.TotalMilliseconds
-        });
-        await context.Response.WriteAsync(result);
-    }
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 
-// Map specific health check for critical components only
-app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
-    Predicate = check => check.Tags.Contains("critical")
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false, // No checks = always healthy for liveness
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
 
 // Map controllers first
 app.MapControllers();
