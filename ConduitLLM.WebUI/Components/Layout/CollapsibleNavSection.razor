@@ -1,0 +1,129 @@
+@using Microsoft.AspNetCore.Components.Routing
+@inject ILogger<CollapsibleNavSection> Logger
+
+<div class="nav-group">
+    <div class="nav-group-header @(IsExpanded ? "expanded" : "")" @onclick="Toggle">
+        <div class="nav-group-header-content">
+            <i class="@IconClass"></i>
+            <span>@Title</span>
+        </div>
+        <i class="fa fa-chevron-right nav-chevron"></i>
+    </div>
+    
+    <div class="nav-group-content @(IsExpanded ? "show" : "")">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The title displayed in the section header.
+    /// </summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// The CSS class for the icon displayed in the header.
+    /// </summary>
+    [Parameter] public string IconClass { get; set; } = "fa fa-folder";
+    
+    /// <summary>
+    /// Whether the section is initially expanded.
+    /// </summary>
+    [Parameter] public bool InitiallyExpanded { get; set; } = true;
+    
+    /// <summary>
+    /// The content to display when the section is expanded.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    /// <summary>
+    /// Event callback when the expanded state changes.
+    /// </summary>
+    [Parameter] public EventCallback<bool> IsExpandedChanged { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the section is currently expanded.
+    /// </summary>
+    [Parameter] public bool IsExpanded { get; set; }
+    
+    /// <summary>
+    /// A unique key to persist the expanded state in local storage.
+    /// </summary>
+    [Parameter] public string? PersistenceKey { get; set; }
+    
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    
+    private bool _initialized = false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_initialized)
+        {
+            _initialized = true;
+            Logger.LogDebug("Initializing CollapsibleNavSection '{Title}' with PersistenceKey: {PersistenceKey}", 
+                Title, PersistenceKey ?? "none");
+            
+            // If a persistence key is provided, try to load the state from local storage
+            if (!string.IsNullOrEmpty(PersistenceKey))
+            {
+                try
+                {
+                    var savedState = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", $"nav-section-{PersistenceKey}");
+                    if (!string.IsNullOrEmpty(savedState) && bool.TryParse(savedState, out var expanded))
+                    {
+                        IsExpanded = expanded;
+                        Logger.LogDebug("Loaded persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
+                    }
+                    else
+                    {
+                        IsExpanded = InitiallyExpanded;
+                        Logger.LogDebug("No persisted state found for '{Title}', using initial value: {IsExpanded}", 
+                            Title, IsExpanded);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // If local storage fails, use the initial value
+                    Logger.LogWarning(ex, "Failed to load persisted state for '{Title}', using initial value", Title);
+                    IsExpanded = InitiallyExpanded;
+                }
+            }
+            else
+            {
+                IsExpanded = InitiallyExpanded;
+                Logger.LogDebug("No persistence key for '{Title}', using initial value: {IsExpanded}", 
+                    Title, IsExpanded);
+            }
+        }
+    }
+    
+    private async Task Toggle()
+    {
+        var previousState = IsExpanded;
+        IsExpanded = !IsExpanded;
+        Logger.LogDebug("Toggled '{Title}' from {PreviousState} to {NewState}", Title, previousState, IsExpanded);
+        
+        // Force UI update
+        StateHasChanged();
+        
+        // Save state to local storage if persistence key is provided
+        if (!string.IsNullOrEmpty(PersistenceKey))
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", $"nav-section-{PersistenceKey}", IsExpanded.ToString());
+                Logger.LogDebug("Persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail
+                Logger.LogWarning(ex, "Failed to persist state for '{Title}'", Title);
+            }
+        }
+        
+        if (IsExpandedChanged.HasDelegate)
+        {
+            await IsExpandedChanged.InvokeAsync(IsExpanded);
+        }
+    }
+}

@@ -1,184 +1,43 @@
 @using Microsoft.AspNetCore.Components.Routing
+@using ConduitLLM.WebUI.Components.Layout
 
 <div class="nav-menu">
     <!-- Main Navigation -->
     <div class="nav-sections">
         <!-- Dashboard -->
-        <NavLink class="nav-link nav-link-primary" href="" Match="NavLinkMatch.All">
-            <div class="nav-link-content">
-                <i class="fa fa-home"></i>
-                <span>Dashboard</span>
-            </div>
-            <div class="nav-link-indicator"></div>
-        </NavLink>
+        <NavigationLink Href="" Text="Dashboard" IconClass="fa fa-home" CssClass="nav-link-primary" Match="NavLinkMatch.All" />
         
         <!-- Core Section -->
-        <div class="nav-group">
-            <div class="nav-group-header @(coreExpanded ? "expanded" : "")" @onclick="ToggleCoreSection">
-                <div class="nav-group-header-content">
-                    <i class="fa fa-puzzle-piece"></i>
-                    <span>Core Features</span>
-                </div>
-                <i class="fa fa-chevron-right nav-chevron"></i>
-            </div>
-            
-            <div class="nav-group-content @(coreExpanded ? "show" : "")">
-                <NavLink class="nav-link" href="chat" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-comment-dots"></i>
-                        <span>Chat Interface</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="audio-test" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-headphones"></i>
-                        <span>Audio Test</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-            </div>
-        </div>
+        <CollapsibleNavSection Title="Core Features" IconClass="fa fa-puzzle-piece" PersistenceKey="core" InitiallyExpanded="true">
+            <NavigationLink Href="chat" Text="Chat Interface" IconClass="fa fa-comment-dots" />
+            <NavigationLink Href="audio-test" Text="Audio Test" IconClass="fa fa-headphones" />
+        </CollapsibleNavSection>
         
         <!-- Configuration Section -->
-        <div class="nav-group">
-            <div class="nav-group-header @(configExpanded ? "expanded" : "")" @onclick="ToggleConfigSection">
-                <div class="nav-group-header-content">
-                    <i class="fa fa-cogs"></i>
-                    <span>Configuration</span>
-                </div>
-                <i class="fa fa-chevron-right nav-chevron"></i>
-            </div>
-            
-            <div class="nav-group-content @(configExpanded ? "show" : "")">
-                <NavLink class="nav-link" href="llm-providers" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-cloud"></i>
-                        <span>LLM Providers</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="model-mappings" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-sitemap"></i>
-                        <span>Model Mappings</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="configuration" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-sliders-h"></i>
-                        <span>General Settings</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="routing-settings" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-route"></i>
-                        <span>Routing</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="caching-settings" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-database"></i>
-                        <span>Caching</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="ip-access-filtering" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-shield-alt"></i>
-                        <span>IP Filtering</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-            </div>
-        </div>
+        <CollapsibleNavSection Title="Configuration" IconClass="fa fa-cogs" PersistenceKey="config" InitiallyExpanded="true">
+            <NavigationLink Href="llm-providers" Text="LLM Providers" IconClass="fa fa-cloud" />
+            <NavigationLink Href="model-mappings" Text="Model Mappings" IconClass="fa fa-sitemap" />
+            <NavigationLink Href="configuration" Text="General Settings" IconClass="fa fa-sliders-h" />
+            <NavigationLink Href="routing-settings" Text="Routing" IconClass="fa fa-route" />
+            <NavigationLink Href="caching-settings" Text="Caching" IconClass="fa fa-database" />
+            <NavigationLink Href="ip-access-filtering" Text="IP Filtering" IconClass="fa fa-shield-alt" />
+        </CollapsibleNavSection>
         
-        <!-- Keys & Costs Section -->
-        <div class="nav-group">
-            <div class="nav-group-header @(keysExpanded ? "expanded" : "")" @onclick="ToggleKeysSection">
-                <div class="nav-group-header-content">
-                    <i class="fa fa-key"></i>
-                    <span>Keys & Analytics</span>
-                </div>
-                <i class="fa fa-chevron-right nav-chevron"></i>
-            </div>
-            
-            <div class="nav-group-content @(keysExpanded ? "show" : "")">
-                <NavLink class="nav-link" href="virtualkeys" Match="NavLinkMatch.All">
-                    <div class="nav-link-content">
-                        <i class="fa fa-key"></i>
-                        <span>Virtual Keys</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="virtualkeys/dashboard" Match="NavLinkMatch.All">
-                    <div class="nav-link-content">
-                        <i class="fa fa-chart-line"></i>
-                        <span>Keys Dashboard</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="cost-dashboard" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-dollar-sign"></i>
-                        <span>Cost Analytics</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="request-logs" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-history"></i>
-                        <span>Request Logs</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="model-costs" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-money-bill-wave"></i>
-                        <span>Model Pricing</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="audio-usage" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-microphone-alt"></i>
-                        <span>Audio Usage</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-            </div>
-        </div>
+        <!-- Keys & Analytics Section -->
+        <CollapsibleNavSection Title="Keys & Analytics" IconClass="fa fa-key" PersistenceKey="keys" InitiallyExpanded="true">
+            <NavigationLink Href="virtualkeys" Text="Virtual Keys" IconClass="fa fa-key" Match="NavLinkMatch.All" />
+            <NavigationLink Href="virtualkeys/dashboard" Text="Keys Dashboard" IconClass="fa fa-chart-line" Match="NavLinkMatch.All" />
+            <NavigationLink Href="cost-dashboard" Text="Cost Analytics" IconClass="fa fa-dollar-sign" />
+            <NavigationLink Href="request-logs" Text="Request Logs" IconClass="fa fa-history" />
+            <NavigationLink Href="model-costs" Text="Model Pricing" IconClass="fa fa-money-bill-wave" />
+            <NavigationLink Href="audio-usage" Text="Audio Usage" IconClass="fa fa-microphone-alt" />
+        </CollapsibleNavSection>
         
-        <!-- System Section -->
-        <div class="nav-group">
-            <div class="nav-group-header @(systemExpanded ? "expanded" : "")" @onclick="ToggleSystemSection">
-                <div class="nav-group-header-content">
-                    <i class="fa fa-server"></i>
-                    <span>System Health</span>
-                </div>
-                <i class="fa fa-chevron-right nav-chevron"></i>
-            </div>
-            
-            <div class="nav-group-content @(systemExpanded ? "show" : "")">
-                <NavLink class="nav-link" href="system-info" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-info-circle"></i>
-                        <span>System Information</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-                <NavLink class="nav-link" href="provider-health" Match="NavLinkMatch.Prefix">
-                    <div class="nav-link-content">
-                        <i class="fa fa-heartbeat"></i>
-                        <span>Provider Health</span>
-                    </div>
-                    <div class="nav-link-indicator"></div>
-                </NavLink>
-            </div>
-        </div>
+        <!-- System Health Section -->
+        <CollapsibleNavSection Title="System Health" IconClass="fa fa-server" PersistenceKey="system" InitiallyExpanded="true">
+            <NavigationLink Href="system-info" Text="System Information" IconClass="fa fa-info-circle" />
+            <NavigationLink Href="provider-health" Text="Provider Health" IconClass="fa fa-heartbeat" />
+        </CollapsibleNavSection>
     </div>
     
     <!-- Footer -->
@@ -454,35 +313,3 @@
     }
 
 </style>
-
-@code {
-    private bool coreExpanded = true;
-    private bool configExpanded = true;
-    private bool keysExpanded = true;
-    private bool systemExpanded = true;
-    
-    private void ToggleCoreSection()
-    {
-        coreExpanded = !coreExpanded;
-        Console.WriteLine($"Core section toggled: {coreExpanded}");
-        StateHasChanged();
-    }
-    
-    private void ToggleConfigSection()
-    {
-        configExpanded = !configExpanded;
-        StateHasChanged();
-    }
-    
-    private void ToggleKeysSection()
-    {
-        keysExpanded = !keysExpanded;
-        StateHasChanged();
-    }
-    
-    private void ToggleSystemSection()
-    {
-        systemExpanded = !systemExpanded;
-        StateHasChanged();
-    }
-}
