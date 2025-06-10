@@ -239,30 +239,19 @@ namespace ConduitLLM.Core.Services
                     }
                 }
                 
-                // If capability service didn't provide tokenizer, fall back to pattern matching
-                if (_capabilityService == null || encodingName == "cl100k_base")
+                // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
+                // since TiktokenSharp only supports OpenAI encodings
+                if (encodingName == "claude" || encodingName == "gemini")
                 {
-                    // Lower case the model name for consistent matching
-                    string lowerModelName = modelName.ToLowerInvariant();
-                    
-                    // Map model names/families to their encodings
-                    if (lowerModelName.Contains("gpt-3.5") || lowerModelName.Contains("gpt-4"))
-                    {
-                        encodingName = "cl100k_base";
-                    }
-                    else if (lowerModelName.Contains("davinci") || 
-                             lowerModelName.Contains("curie") || 
-                             lowerModelName.Contains("babbage") || 
-                             lowerModelName.Contains("ada"))
-                    {
-                        encodingName = "p50k_base";
-                    }
-                    else if (lowerModelName.Contains("claude"))
-                    {
-                        // Claude models use their own tokenizer, but we'll approximate with cl100k_base
-                        encodingName = "cl100k_base";
-                        _logger.LogDebug("Using cl100k_base approximation for Claude model {Model}", modelName);
-                    }
+                    // Use cl100k_base as approximation for non-OpenAI models
+                    _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
+                    encodingName = "cl100k_base";
+                }
+                else if (encodingName == "o200k_base")
+                {
+                    // o200k_base is newer than cl100k_base, but if not supported, fall back
+                    // Try to use it, but we'll handle the error below if it's not supported
+                    _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
                 }
 
                 lock (_lock)
@@ -276,8 +265,28 @@ namespace ConduitLLM.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to get encoding {EncodingName} for model {ModelName}", encodingName, modelName);
-                            return null;
+                            _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
+                            
+                            // Try fallback to cl100k_base if the specific encoding isn't supported
+                            if (encodingName != "cl100k_base")
+                            {
+                                try
+                                {
+                                    encodingName = "cl100k_base";
+                                    encoding = TikToken.EncodingForModel(encodingName);
+                                    _encodings[encodingName] = encoding;
+                                    _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
+                                }
+                                catch (Exception fallbackEx)
+                                {
+                                    _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
+                                    return null;
+                                }
+                            }
+                            else
+                            {
+                                return null;
+                            }
                         }
                     }
                     return encoding;

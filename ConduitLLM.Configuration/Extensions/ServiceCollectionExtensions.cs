@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -132,6 +133,19 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register the database initializer
             services.AddScoped<DatabaseInitializer>();
+            
+            return services;
+        }
+        
+        /// <summary>
+        /// Adds database-backed model capability services to the service collection
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddDatabaseModelCapabilityService(this IServiceCollection services)
+        {
+            // Replace the hardcoded implementation with database-backed one
+            services.AddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
             
             return services;
         }
