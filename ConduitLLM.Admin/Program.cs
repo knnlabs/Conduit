@@ -140,7 +140,12 @@ public class Program
             app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection();
+        // Only use HTTPS redirection if explicitly enabled
+        var enableHttpsRedirection = Environment.GetEnvironmentVariable("CONDUIT_ENABLE_HTTPS_REDIRECTION") != "false";
+        if (enableHttpsRedirection)
+        {
+            app.UseHttpsRedirection();
+        }
 
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();

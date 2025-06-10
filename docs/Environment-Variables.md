@@ -91,6 +91,26 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
 
+### AutoLogin Feature
+
+The WebUI supports an AutoLogin feature that automatically authenticates users when:
+1. The `AutoLogin` global setting is set to `true` in the database
+2. The `CONDUIT_MASTER_KEY` environment variable is set
+
+To enable AutoLogin in development environments:
+```bash
+# Using the provided script
+./enable-autologin.sh
+
+# Or manually with SQLite
+sqlite3 /data/conduit.db "INSERT OR REPLACE INTO GlobalSettings (Key, Value, CreatedAt, UpdatedAt) VALUES ('AutoLogin', 'true', datetime('now'), datetime('now'))"
+
+# Or manually with PostgreSQL
+psql $CONDUIT_POSTGRES_CONNECTION_STRING -c "INSERT INTO \"GlobalSettings\" (\"Key\", \"Value\", \"CreatedAt\", \"UpdatedAt\") VALUES ('AutoLogin', 'true', NOW(), NOW()) ON CONFLICT(\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\", \"UpdatedAt\" = NOW()"
+```
+
+**Note**: AutoLogin should only be used in development or single-user environments. It bypasses the login screen entirely when enabled.
+
 ## Admin API Configuration
 
 The following environment variables are specific to the Admin API service:
