@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs;
@@ -9,7 +10,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Integration
 {
@@ -23,7 +26,19 @@ namespace ConduitLLM.Tests.Integration
 
         public AdminApiIntegrationTests(WebApplicationFactory<ConduitLLM.Admin.Program> adminFactory)
         {
-            _adminFactory = adminFactory;
+            _adminFactory = adminFactory
+                .WithWebHostBuilder(builder =>
+                {
+                    builder.ConfigureAppConfiguration((context, config) =>
+                    {
+                        // Add test configuration with master key
+                        config.AddInMemoryCollection(new Dictionary<string, string?>
+                        {
+                            { "AdminApi:MasterKey", "test-master-key" },
+                            { "ConnectionStrings:ConfigurationDb", "Data Source=:memory:" }
+                        });
+                    });
+                });
             _adminHttpClient = _adminFactory.CreateClient();
         }
 
@@ -33,49 +48,43 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            services.AddHttpClient();
             
-            var config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    { "AdminApi:BaseUrl", _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost" },
-                    { "AdminApi:MasterKey", "test-master-key" },
-                    { "AdminApi:UseAdminApi", "true" }
-                })
-                .Build();
-            
-            services.AddSingleton<IConfiguration>(config);
-            services.AddTransient<IAdminApiClient, AdminApiClient>();
+            // Configure the AdminApiClient to use the test server's HttpClient
+            var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
+            {
+                BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
+                MasterKey = "test-master-key"
+            });
             
             var serviceProvider = services.BuildServiceProvider();
-            var adminApiClient = serviceProvider.GetRequiredService<IAdminApiClient>();
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
+            
+            // Create AdminApiClient with the test HttpClient
+            var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
             // Act & Assert - Just verify we can create the client
             Assert.NotNull(adminApiClient);
         }
 
-        [Fact]
+        [Fact(Skip = "Requires database setup - run manually with test database")]
         public async Task AdminApiClient_VirtualKeyOperations_WorkEndToEnd()
         {
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            services.AddHttpClient();
             
-            var config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    { "AdminApi:BaseUrl", _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost" },
-                    { "AdminApi:MasterKey", "test-master-key" },
-                    { "AdminApi:UseAdminApi", "true" }
-                })
-                .Build();
-            
-            services.AddSingleton<IConfiguration>(config);
-            services.AddTransient<IAdminApiClient, AdminApiClient>();
+            // Configure the AdminApiClient to use the test server's HttpClient
+            var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
+            {
+                BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
+                MasterKey = "test-master-key"
+            });
             
             var serviceProvider = services.BuildServiceProvider();
-            var adminApiClient = serviceProvider.GetRequiredService<IAdminApiClient>();
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
+            
+            // Create AdminApiClient with the test HttpClient
+            var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
             // Act - Create a virtual key
             var createRequest = new CreateVirtualKeyRequestDto
@@ -116,28 +125,25 @@ namespace ConduitLLM.Tests.Integration
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Requires database setup - run manually with test database")]
         public async Task AdminApiClient_RequestLogOperations_WorkEndToEnd()
         {
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            services.AddHttpClient();
             
-            var config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    { "AdminApi:BaseUrl", _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost" },
-                    { "AdminApi:MasterKey", "test-master-key" },
-                    { "AdminApi:UseAdminApi", "true" }
-                })
-                .Build();
-            
-            services.AddSingleton<IConfiguration>(config);
-            services.AddTransient<IAdminApiClient, AdminApiClient>();
+            // Configure the AdminApiClient to use the test server's HttpClient
+            var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
+            {
+                BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
+                MasterKey = "test-master-key"
+            });
             
             var serviceProvider = services.BuildServiceProvider();
-            var adminApiClient = serviceProvider.GetRequiredService<IAdminApiClient>();
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
+            
+            // Create AdminApiClient with the test HttpClient
+            var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
             try
             {

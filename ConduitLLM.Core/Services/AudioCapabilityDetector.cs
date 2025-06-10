@@ -116,7 +116,7 @@ namespace ConduitLLM.Core.Services
             // For now, return a basic set of commonly supported formats
             return operation switch
             {
-                AudioOperation.Transcription => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.M4a, AudioFormat.Webm },
+                AudioOperation.Transcription => new[] { AudioFormat.Mp3, AudioFormat.Wav },
                 AudioOperation.TextToSpeech => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Opus },
                 AudioOperation.Realtime => new[] { AudioFormat.Pcm },
                 _ => Array.Empty<AudioFormat>()

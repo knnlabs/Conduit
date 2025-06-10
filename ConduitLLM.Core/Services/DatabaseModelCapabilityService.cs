@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Configuration.Services
+namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Database-backed implementation of the model capability service.
@@ -44,15 +45,7 @@ namespace ConduitLLM.Configuration.Services
 
             try
             {
-                var mapping = await _repository.GetByAliasAsync(model);
-                if (mapping == null)
-                {
-                    // Try to find by provider model name
-                    var allMappings = await _repository.GetAllAsync();
-                    mapping = allMappings.FirstOrDefault(m => 
-                        m.ProviderModelName.Equals(model, StringComparison.OrdinalIgnoreCase));
-                }
-
+                var mapping = await GetMappingByModelNameAsync(model);
                 var result = mapping?.SupportsVision ?? false;
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
@@ -282,14 +275,17 @@ namespace ConduitLLM.Configuration.Services
 
             try
             {
-                var allMappings = await _repository.GetAllAsync();
+                var allMappings = await _repository.GetAllAsync(default);
                 var defaultMapping = allMappings.FirstOrDefault(m =>
                     m.IsDefault &&
-                    m.ProviderCredential?.Provider?.Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
+                    m.ProviderCredential?.ProviderName?.Equals(provider, StringComparison.OrdinalIgnoreCase) == true &&
                     m.DefaultCapabilityType?.Equals(capabilityType, StringComparison.OrdinalIgnoreCase) == true);
 
                 var result = defaultMapping?.ModelAlias;
-                _cache.Set(cacheKey, result, _cacheExpiration);
+                if (result != null)
+                {
+                    _cache.Set(cacheKey, result, _cacheExpiration);
+                }
                 return result;
             }
             catch (Exception ex)
@@ -313,13 +309,13 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Helper method to get a mapping by model name, checking both alias and provider model name.
         /// </summary>
-        private async Task<Entities.ModelProviderMapping?> GetMappingByModelNameAsync(string model)
+        private async Task<ModelProviderMapping?> GetMappingByModelNameAsync(string model, CancellationToken cancellationToken = default)
         {
-            var mapping = await _repository.GetByAliasAsync(model);
+            var mapping = await _repository.GetByModelNameAsync(model, cancellationToken);
             if (mapping == null)
             {
                 // Try to find by provider model name
-                var allMappings = await _repository.GetAllAsync();
+                var allMappings = await _repository.GetAllAsync(cancellationToken);
                 mapping = allMappings.FirstOrDefault(m => 
                     m.ProviderModelName.Equals(model, StringComparison.OrdinalIgnoreCase));
             }

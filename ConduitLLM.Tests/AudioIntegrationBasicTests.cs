@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Models.Audio;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -18,7 +19,10 @@ public class AudioIntegrationBasicTests
     {
         // Arrange
         var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
-        var detector = new AudioCapabilityDetector(loggerMock.Object);
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        capabilityServiceMock.Setup(x => x.SupportsAudioTranscriptionAsync("whisper-1"))
+            .ReturnsAsync(true);
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supports = detector.SupportsTranscription("openai", "whisper-1");
@@ -32,7 +36,10 @@ public class AudioIntegrationBasicTests
     {
         // Arrange
         var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
-        var detector = new AudioCapabilityDetector(loggerMock.Object);
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        capabilityServiceMock.Setup(x => x.SupportsTextToSpeechAsync("tts-1"))
+            .ReturnsAsync(true);
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supports = detector.SupportsTextToSpeech("openai", "tts-1");
@@ -46,7 +53,8 @@ public class AudioIntegrationBasicTests
     {
         // Arrange
         var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
-        var detector = new AudioCapabilityDetector(loggerMock.Object);
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supportsTranscription = detector.SupportsTranscription("unknown-provider");

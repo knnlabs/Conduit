@@ -2,7 +2,6 @@ using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Routing;
-using ConduitLLM.Configuration.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,8 +28,8 @@ namespace ConduitLLM.Core.Extensions
             // Register model capability service - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
 
-            // Register token counter
-            services.AddSingleton<ITokenCounter, TiktokenCounter>();
+            // Register token counter - changed to Scoped to match IModelCapabilityService lifetime
+            services.AddScoped<ITokenCounter, TiktokenCounter>();
 
             // Register context manager
             services.AddScoped<IContextManager, ContextManager>();
