@@ -97,14 +97,30 @@
         
         <!-- Side Navigation -->
         <div class="sidebar">
-            <NavMenu />
+            <NavMenu @rendermode="InteractiveServer" />
         </div>
         
         <!-- Main Content Area -->
         <main class="main-content">
             <div class="main-content-inner">
                 <ConduitLLM.WebUI.Components.Shared.DeprecationWarning />
-                @Body
+                <ConduitLLM.WebUI.Components.Shared.ConduitErrorBoundary>
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent Context="exception">
+                        <div class="container mt-5">
+                            <div class="alert alert-danger" role="alert">
+                                <h4 class="alert-heading">
+                                    <i class="fa fa-exclamation-circle me-2"></i>Page Error
+                                </h4>
+                                <p>The requested page encountered an error and cannot be displayed.</p>
+                                <hr />
+                                <p class="mb-0">Please try refreshing the page or navigating to a different section.</p>
+                            </div>
+                        </div>
+                    </ErrorContent>
+                </ConduitLLM.WebUI.Components.Shared.ConduitErrorBoundary>
             </div>
         </main>
         </div>
@@ -452,10 +468,14 @@
         overflow-y: auto;
         overflow-x: hidden;
         border-right: 1px solid rgba(0, 0, 0, 0.08);
+        height: calc(100vh - 70px);
+        display: flex;
+        flex-direction: column;
     }
     
     .has-security-banner .sidebar {
         top: 138px; /* Security banner (68px) + App bar (70px) */
+        height: calc(100vh - 138px);
     }
 
     /* Main Content */

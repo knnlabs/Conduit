@@ -94,11 +94,11 @@
                                 {
                                     @if (_redisConnectionSuccess)
                                     {
-                                        <StatusBadge Status="Connected" StatusType="StatusBadge.StatusType.Success" />
+                                        <StatusBadge Status="Connected" Type="StatusBadge.StatusType.Success" />
                                     }
                                     else
                                     {
-                                        <StatusBadge Status="Connection Failed" StatusType="StatusBadge.StatusType.Error" />
+                                        <StatusBadge Status="Connection Failed" Type="StatusBadge.StatusType.Error" />
                                     }
                                 }
                             </div>
@@ -320,7 +320,7 @@
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Status:</span>
                             <StatusBadge Status="@(_cacheStats.IsEnabled ? "Enabled" : "Disabled")"
-                                         StatusType="@(_cacheStats.IsEnabled ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Secondary)" />
+                                         Type="@(_cacheStats.IsEnabled ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Secondary)" />
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Type:</span>
