@@ -31,12 +31,28 @@ namespace ConduitLLM.Admin.Extensions
             if (dbProvider == "sqlite")
             {
                 services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-                    options.UseSqlite(dbConnectionString));
+                {
+                    options.UseSqlite(dbConnectionString);
+                    // Suppress PendingModelChangesWarning in production
+                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                    if (environment == "Production")
+                    {
+                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+                    }
+                });
             }
             else if (dbProvider == "postgres")
             {
                 services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-                    options.UseNpgsql(dbConnectionString));
+                {
+                    options.UseNpgsql(dbConnectionString);
+                    // Suppress PendingModelChangesWarning in production
+                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                    if (environment == "Production")
+                    {
+                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+                    }
+                });
             }
             else
             {

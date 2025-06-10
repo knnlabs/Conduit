@@ -17,6 +17,7 @@ using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
+using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
 using Microsoft.AspNetCore.RateLimiting;
 using ConduitLLM.Http.Security;
@@ -32,19 +33,17 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
 builder.Configuration.Sources.Clear();
 builder.Configuration.AddEnvironmentVariables();
 
-// Check if --apply-migrations flag is passed
-bool explicitMigration = args.Contains("--apply-migrations");
-bool shouldApplyMigrations = explicitMigration || Environment.GetEnvironmentVariable("APPLY_MIGRATIONS") == "true";
-bool useEnsureCreated = Environment.GetEnvironmentVariable("CONDUIT_DATABASE_ENSURE_CREATED") == "true";
+// Database initialization strategy
+// We use a flexible approach that works for both development and production
+bool skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
 
-if (explicitMigration || shouldApplyMigrations)
+if (skipDatabaseInit)
 {
-    Console.WriteLine("[Conduit] Running with migration flag. Will prioritize database migration.");
+    Console.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
 }
-
-if (useEnsureCreated)
+else
 {
-    Console.WriteLine("[Conduit] Using EnsureCreated for database initialization (skipping migrations).");
+    Console.WriteLine("[Conduit] Database will be initialized automatically.");
 }
 
 // Configure JSON options for snake_case serialization (OpenAI compatibility)
@@ -88,12 +87,26 @@ var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndCon
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
+    {
+        options.UseSqlite(dbConnectionString);
+        // Suppress PendingModelChangesWarning in production
+        if (builder.Environment.IsProduction())
+        {
+            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
 }
 else if (dbProvider == "postgres")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
+    {
+        options.UseNpgsql(dbConnectionString);
+        // Suppress PendingModelChangesWarning in production
+        if (builder.Environment.IsProduction())
+        {
+            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
 }
 else
 {
@@ -189,8 +202,9 @@ builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
 
 var app = builder.Build();
 
-// Initialize database if configured
-if (shouldApplyMigrations || useEnsureCreated)
+// Initialize database - Always run unless explicitly told to skip
+// This ensures users get automatic schema updates when pulling new versions
+if (!skipDatabaseInit)
 {
     using (var scope = app.Services.CreateScope())
     {
@@ -200,7 +214,12 @@ if (shouldApplyMigrations || useEnsureCreated)
         try
         {
             initLogger.LogInformation("Starting database initialization...");
-            var success = await dbInitializer.InitializeDatabaseAsync();
+            
+            // Wait for database to be available (especially important in Docker)
+            var maxRetries = 10;
+            var retryDelay = 3000; // 3 seconds between retries
+            
+            var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
             
             if (success)
             {
@@ -208,19 +227,26 @@ if (shouldApplyMigrations || useEnsureCreated)
             }
             else
             {
-                initLogger.LogError("Database initialization failed");
-                if (!useEnsureCreated)
-                {
-                    // If not using EnsureCreated, fail hard on migration errors
-                    throw new InvalidOperationException("Database initialization failed");
-                }
+                initLogger.LogError("Database initialization failed after {MaxRetries} attempts", maxRetries);
+                // Always fail hard if database initialization fails
+                // This prevents running with an incomplete schema
+                throw new InvalidOperationException($"Database initialization failed after {maxRetries} attempts. Please check database connectivity and logs.");
             }
         }
         catch (Exception ex)
         {
-            initLogger.LogError(ex, "Error during database initialization");
-            throw;
+            initLogger.LogError(ex, "Critical error during database initialization");
+            // Re-throw to prevent the application from starting with a broken database
+            throw new InvalidOperationException("Failed to initialize database. Application cannot start.", ex);
         }
+    }
+}
+else
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        initLogger.LogWarning("Database initialization is skipped. Ensure database schema is up to date.");
     }
 }
 

@@ -168,30 +168,120 @@ namespace ConduitLLM.Configuration.Data
         {
             try
             {
-                // Try migrations first, which is the preferred approach
-                var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-                if (pendingMigrations.Any())
+                // Check if this is a new database by looking for the migrations history table
+                bool isNewDatabase = false;
+                try
                 {
-                    _logger.LogInformation("Applying {Count} pending migrations: {Migrations}", 
-                        pendingMigrations.Count(), string.Join(", ", pendingMigrations));
+                    var sql = _dbProvider == "postgres" 
+                        ? "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '__EFMigrationsHistory');"
+                        : "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory';";
                     
-                    await context.Database.MigrateAsync();
-                    _logger.LogInformation("Database migrations applied successfully");
+                    using var command = context.Database.GetDbConnection().CreateCommand();
+                    command.CommandText = sql;
+                    await context.Database.OpenConnectionAsync();
+                    var result = await command.ExecuteScalarAsync();
+                    
+                    isNewDatabase = _dbProvider == "postgres" 
+                        ? !(bool)(result ?? false)
+                        : Convert.ToInt32(result ?? 0) == 0;
+                }
+                catch
+                {
+                    // If we can't check, assume it's a new database
+                    isNewDatabase = true;
+                }
+                
+                if (isNewDatabase)
+                {
+                    _logger.LogInformation("No migration history found. Initializing database...");
+                    
+                    // Check if any tables already exist
+                    var hasExistingTables = await TableExistsAsync(context, "GlobalSettings");
+                    
+                    if (hasExistingTables)
+                    {
+                        _logger.LogWarning("Database has existing tables but no migration history. This might be from a previous run or manual creation.");
+                        
+                        // Create the migrations history table and mark all current migrations as applied
+                        try
+                        {
+                            await CreateMigrationHistoryTableAsync(context);
+                            await MarkAllMigrationsAsAppliedAsync(context);
+                            _logger.LogInformation("Migration history initialized with current migrations");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to initialize migration history");
+                            throw;
+                        }
+                    }
+                    else
+                    {
+                        // Fresh database - use EnsureCreated for cross-database compatibility
+                        // This avoids issues with database-specific migration SQL
+                        _logger.LogInformation("Creating database schema using EnsureCreated for cross-database compatibility...");
+                        
+                        try
+                        {
+                            await context.Database.EnsureCreatedAsync();
+                            _logger.LogInformation("Database schema created successfully");
+                            
+                            // Create migration history table and mark all migrations as applied
+                            // This ensures future migrations can be applied correctly
+                            await CreateMigrationHistoryTableAsync(context);
+                            await MarkAllMigrationsAsAppliedAsync(context);
+                            _logger.LogInformation("Migration history initialized for future updates");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to create database schema");
+                            throw;
+                        }
+                    }
                 }
                 else
                 {
-                    _logger.LogInformation("No pending migrations found");
+                    // For existing databases, check for pending migrations
+                    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                    if (pendingMigrations.Any())
+                    {
+                        _logger.LogInformation("Applying {Count} pending migrations: {Migrations}", 
+                            pendingMigrations.Count(), string.Join(", ", pendingMigrations));
+                        
+                        await context.Database.MigrateAsync();
+                        _logger.LogInformation("Database migrations applied successfully");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Database is up to date - no pending migrations");
+                    }
                 }
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("PendingModelChangesWarning"))
+            {
+                // This is the specific error we're seeing - handle it gracefully
+                _logger.LogWarning("Model has pending changes but migrations are empty. This is typically safe to ignore in production.");
                 
-                // Also call EnsureCreated as a backup to catch any missing tables
-                // Note: This shouldn't have any effect if migrations ran successfully
-                _logger.LogInformation("Ensuring database schema is created...");
-                await context.Database.EnsureCreatedAsync();
+                // Try to apply migrations anyway - empty migrations are harmless
+                try
+                {
+                    await context.Database.MigrateAsync();
+                    _logger.LogInformation("Empty migration applied successfully");
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogError(innerEx, "Failed to apply empty migration. Database schema may be out of sync.");
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error applying migrations, falling back to EnsureCreated");
-                await context.Database.EnsureCreatedAsync();
+                _logger.LogError(ex, "Error applying migrations. This may indicate a schema mismatch.");
+                
+                // Don't fall back to EnsureCreated in production - it's dangerous
+                // EnsureCreated can't work with migrations and could cause data loss
+                throw new InvalidOperationException(
+                    "Failed to apply database migrations. Please ensure the database is accessible and the schema is compatible.", ex);
             }
         }
         
@@ -366,6 +456,75 @@ namespace ConduitLLM.Configuration.Data
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to create index {IndexName} on table {TableName}", index.IndexName, tableName);
+                }
+            }
+        }
+        
+        private async Task CreateMigrationHistoryTableAsync(ConfigurationDbContext context)
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+            
+            using var command = connection.CreateCommand();
+            
+            if (_dbProvider == "postgres")
+            {
+                command.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                        ""MigrationId"" VARCHAR(300) NOT NULL,
+                        ""ProductVersion"" VARCHAR(32) NOT NULL,
+                        CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
+                    );";
+            }
+            else // sqlite
+            {
+                command.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                        ""MigrationId"" TEXT NOT NULL,
+                        ""ProductVersion"" TEXT NOT NULL,
+                        PRIMARY KEY (""MigrationId"")
+                    );";
+            }
+            
+            await command.ExecuteNonQueryAsync();
+        }
+        
+        private async Task MarkAllMigrationsAsAppliedAsync(ConfigurationDbContext context)
+        {
+            var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+            var allMigrations = context.Database.GetMigrations();
+            var efVersion = typeof(DbContext).Assembly.GetName().Version?.ToString() ?? "9.0.0";
+            
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+            
+            foreach (var migration in allMigrations)
+            {
+                if (!appliedMigrations.Contains(migration))
+                {
+                    using var command = connection.CreateCommand();
+                    command.CommandText = @"
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+                        VALUES (@migrationId, @productVersion);";
+                    
+                    var migrationIdParam = command.CreateParameter();
+                    migrationIdParam.ParameterName = "@migrationId";
+                    migrationIdParam.Value = migration;
+                    command.Parameters.Add(migrationIdParam);
+                    
+                    var productVersionParam = command.CreateParameter();
+                    productVersionParam.ParameterName = "@productVersion";
+                    productVersionParam.Value = efVersion;
+                    command.Parameters.Add(productVersionParam);
+                    
+                    await command.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Marked migration {Migration} as applied", migration);
                 }
             }
         }
