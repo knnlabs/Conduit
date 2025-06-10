@@ -23,7 +23,6 @@
     <PackageReference Include="Scrutor" Version="6.0.1" />
     <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
-    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

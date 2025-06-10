@@ -35,16 +35,6 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<PagedResult<AudioUsageDto>> GetUsageLogsAsync(AudioUsageQueryDto query)
         {
-            // Ensure dates in query are in UTC for PostgreSQL
-            if (query.StartDate.HasValue && query.StartDate.Value.Kind != DateTimeKind.Utc)
-            {
-                query.StartDate = query.StartDate.Value.ToUniversalTime();
-            }
-            if (query.EndDate.HasValue && query.EndDate.Value.Kind != DateTimeKind.Utc)
-            {
-                query.EndDate = query.EndDate.Value.ToUniversalTime();
-            }
-            
             var pagedResult = await _repository.GetPagedAsync(query);
             
             return new PagedResult<AudioUsageDto>
@@ -60,25 +50,17 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
         {
-            // Ensure dates are in UTC for PostgreSQL
-            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : startDate.ToUniversalTime();
-            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : endDate.ToUniversalTime();
-            
-            return await _repository.GetUsageSummaryAsync(utcStartDate, utcEndDate, virtualKey, provider);
+            return await _repository.GetUsageSummaryAsync(startDate, endDate, virtualKey, provider);
         }
 
         /// <inheritdoc/>
         public async Task<AudioKeyUsageDto> GetUsageByKeyAsync(string virtualKey, DateTime? startDate = null, DateTime? endDate = null)
         {
-            // Ensure dates are in UTC for PostgreSQL
-            var utcStartDate = startDate?.Kind == DateTimeKind.Utc ? startDate : startDate?.ToUniversalTime();
-            var utcEndDate = endDate?.Kind == DateTimeKind.Utc ? endDate : endDate?.ToUniversalTime();
-            
-            var logs = await _repository.GetByVirtualKeyAsync(virtualKey, utcStartDate, utcEndDate);
+            var logs = await _repository.GetByVirtualKeyAsync(virtualKey, startDate, endDate);
             var key = await _virtualKeyRepository.GetByKeyHashAsync(virtualKey);
             
-            var effectiveStartDate = utcStartDate ?? DateTime.UtcNow.AddDays(-30);
-            var effectiveEndDate = utcEndDate ?? DateTime.UtcNow;
+            var effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var effectiveEndDate = endDate ?? DateTime.UtcNow;
             
             var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
             var providerBreakdown = await _repository.GetProviderBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
@@ -98,14 +80,10 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
         {
-            // Ensure dates are in UTC for PostgreSQL
-            var utcStartDate = startDate?.Kind == DateTimeKind.Utc ? startDate : startDate?.ToUniversalTime();
-            var utcEndDate = endDate?.Kind == DateTimeKind.Utc ? endDate : endDate?.ToUniversalTime();
+            var logs = await _repository.GetByProviderAsync(provider, startDate, endDate);
             
-            var logs = await _repository.GetByProviderAsync(provider, utcStartDate, utcEndDate);
-            
-            var effectiveStartDate = utcStartDate ?? DateTime.UtcNow.AddDays(-30);
-            var effectiveEndDate = utcEndDate ?? DateTime.UtcNow;
+            var effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var effectiveEndDate = endDate ?? DateTime.UtcNow;
             
             var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate);
             
@@ -125,16 +103,15 @@ namespace ConduitLLM.Admin.Services
             var totalDuration = logs.Where(l => l.DurationSeconds.HasValue).Sum(l => l.DurationSeconds!.Value);
             var avgResponseTime = logs.Count > 0 ? (totalDuration / logs.Count) * 1000 : 0; // Convert to ms
 
-            return new ConduitLLM.Configuration.DTOs.Audio.AudioProviderUsageDto
+            return new AudioProviderUsageDto
             {
                 Provider = provider,
                 TotalOperations = logs.Count,
                 SuccessRate = logs.Count > 0 ? (successCount / (double)logs.Count) * 100 : 0,
-                AverageCostPerOperation = logs.Count > 0 ? logs.Sum(l => l.Cost) / logs.Count : 0,
+                AverageResponseTime = avgResponseTime,
                 TotalCost = logs.Sum(l => l.Cost),
                 OperationBreakdown = operationBreakdown,
-                DailyTrend = dailyTrend,
-                TopVirtualKeys = new List<VirtualKeyBreakdown>() // TODO: Implement top virtual keys
+                DailyTrend = dailyTrend
             };
         }
 
@@ -158,11 +135,11 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto>> GetActiveSessionsAsync()
+        public async Task<List<RealtimeSessionDto>> GetActiveSessionsAsync()
         {
             // TODO: Implement real-time session tracking
             _logger.LogWarning("Active sessions tracking not yet implemented");
-            return await Task.FromResult(new List<ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto>());
+            return await Task.FromResult(new List<RealtimeSessionDto>());
         }
 
         /// <inheritdoc/>
@@ -170,7 +147,7 @@ namespace ConduitLLM.Admin.Services
         {
             // TODO: Implement real-time session tracking
             _logger.LogWarning("Session details not yet implemented");
-            return await Task.FromResult<ConduitLLM.Configuration.DTOs.Audio.RealtimeSessionDto?>(null);
+            return await Task.FromResult<RealtimeSessionDto?>(null);
         }
 
         /// <inheritdoc/>
@@ -203,7 +180,7 @@ namespace ConduitLLM.Admin.Services
 
         private static AudioUsageDto MapToDto(Configuration.Entities.AudioUsageLog log)
         {
-            return new ConduitLLM.Configuration.DTOs.Audio.AudioUsageDto
+            return new AudioUsageDto
             {
                 Id = log.Id,
                 VirtualKey = log.VirtualKey,

@@ -60,8 +60,8 @@
         if (!_initialized)
         {
             _initialized = true;
-            // Logger.LogDebug("Initializing CollapsibleNavSection '{Title}' with PersistenceKey: {PersistenceKey}", 
-            //     Title, PersistenceKey ?? "none");
+            Logger.LogDebug("Initializing CollapsibleNavSection '{Title}' with PersistenceKey: {PersistenceKey}", 
+                Title, PersistenceKey ?? "none");
             
             // If a persistence key is provided, try to load the state from local storage
             if (!string.IsNullOrEmpty(PersistenceKey))
@@ -72,13 +72,13 @@
                     if (!string.IsNullOrEmpty(savedState) && bool.TryParse(savedState, out var expanded))
                     {
                         IsExpanded = expanded;
-                        // Logger.LogDebug("Loaded persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
+                        Logger.LogDebug("Loaded persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
                     }
                     else
                     {
                         IsExpanded = InitiallyExpanded;
-                        // Logger.LogDebug("No persisted state found for '{Title}', using initial value: {IsExpanded}", 
-                        //     Title, IsExpanded);
+                        Logger.LogDebug("No persisted state found for '{Title}', using initial value: {IsExpanded}", 
+                            Title, IsExpanded);
                     }
                 }
                 catch (Exception ex)
@@ -91,8 +91,8 @@
             else
             {
                 IsExpanded = InitiallyExpanded;
-                // Logger.LogDebug("No persistence key for '{Title}', using initial value: {IsExpanded}", 
-                //     Title, IsExpanded);
+                Logger.LogDebug("No persistence key for '{Title}', using initial value: {IsExpanded}", 
+                    Title, IsExpanded);
             }
         }
     }
@@ -101,7 +101,7 @@
     {
         var previousState = IsExpanded;
         IsExpanded = !IsExpanded;
-        // Logger.LogDebug("Toggled '{Title}' from {PreviousState} to {NewState}", Title, previousState, IsExpanded);
+        Logger.LogDebug("Toggled '{Title}' from {PreviousState} to {NewState}", Title, previousState, IsExpanded);
         
         // Force UI update
         StateHasChanged();
@@ -112,7 +112,7 @@
             try
             {
                 await JSRuntime.InvokeVoidAsync("localStorage.setItem", $"nav-section-{PersistenceKey}", IsExpanded.ToString());
-                // Logger.LogDebug("Persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
+                Logger.LogDebug("Persisted state for '{Title}': {IsExpanded}", Title, IsExpanded);
             }
             catch (Exception ex)
             {
