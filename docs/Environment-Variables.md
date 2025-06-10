@@ -81,12 +81,15 @@ These variables are used by the Admin API service for database configuration:
 
 The following environment variables are specific to the WebUI service:
 
+> **Important:** As of May 2025, the WebUI operates in Admin API mode by default. Legacy direct database access mode is deprecated and will be removed in October 2025. Ensure `CONDUIT_USE_ADMIN_API` is set to `true` (default) and configure `CONDUIT_ADMIN_API_BASE_URL` to point to your Admin API service.
+
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | The base URL of the Admin API service. |
+| `CONDUIT_ADMIN_API_BASE_URL` | String | `http://localhost:5002` | The base URL of the Admin API service. This is the primary variable for configuring Admin API connection. |
+| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | Legacy alias for `CONDUIT_ADMIN_API_BASE_URL`. Use the BASE_URL version for new deployments. |
 | `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
 | `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
-| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in future releases). |
+| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in October 2025). |
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |

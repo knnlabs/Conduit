@@ -141,10 +141,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             // Assert
             Assert.NotNull(result);
             Assert.Equal(100, result.TotalRequests);
-            Assert.Equal(50000, result.InputTokens);
-            Assert.Equal(25000, result.OutputTokens);
-            Assert.Equal(10.5m, result.EstimatedCost);
-            Assert.Equal(200, result.AverageResponseTime);
+            Assert.Equal(50000, result.TotalInputTokens);
+            Assert.Equal(25000, result.TotalOutputTokens);
+            Assert.Equal(10.5m, result.TotalCost);
+            Assert.Equal(200, result.AverageResponseTimeMs);
             Assert.Equal(sevenDaysAgo, result.StartDate);
             Assert.Equal(today, result.EndDate);
             _adminApiClientMock.Verify(c => c.GetLogsSummaryAsync(7, null), Times.Once);
