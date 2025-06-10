@@ -452,10 +452,14 @@
         overflow-y: auto;
         overflow-x: hidden;
         border-right: 1px solid rgba(0, 0, 0, 0.08);
+        height: calc(100vh - 70px);
+        display: flex;
+        flex-direction: column;
     }
     
     .has-security-banner .sidebar {
         top: 138px; /* Security banner (68px) + App bar (70px) */
+        height: calc(100vh - 138px);
     }
 
     /* Main Content */

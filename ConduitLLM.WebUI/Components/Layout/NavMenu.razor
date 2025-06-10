@@ -201,6 +201,7 @@
         background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
         position: relative;
         overflow: hidden;
+        min-height: 0; /* Enable proper flex scrolling */
     }
 
     /* Navigation Sections */
@@ -208,8 +209,10 @@
         flex: 1;
         padding: 1rem 0;
         overflow-y: auto;
+        overflow-x: hidden;
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        min-height: 0; /* Important for flex child scrolling */
     }
 
     .nav-sections::-webkit-scrollbar {
@@ -410,6 +413,7 @@
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(10px);
+        flex-shrink: 0; /* Prevent footer from shrinking */
     }
 
     .nav-footer-content {
