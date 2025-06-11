@@ -377,4 +377,31 @@ public class AdminLogService : IAdminLogService
         int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
         return date.AddDays(-1 * diff).Date;
     }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<string>> GetDistinctModelsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Getting distinct models from request logs");
+
+            // Get all logs to extract distinct model names
+            var logs = await _requestLogRepository.GetAllAsync();
+            
+            var distinctModels = logs
+                .Where(l => !string.IsNullOrEmpty(l.ModelName))
+                .Select(l => l.ModelName)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList();
+
+            _logger.LogInformation("Found {Count} distinct models", distinctModels.Count);
+            return distinctModels;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting distinct models");
+            return Enumerable.Empty<string>();
+        }
+    }
 }

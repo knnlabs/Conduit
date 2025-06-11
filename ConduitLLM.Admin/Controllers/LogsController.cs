@@ -80,11 +80,32 @@ public class LogsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a list of distinct model names from request logs
+    /// </summary>
+    /// <returns>List of model names</returns>
+    [HttpGet("models")]
+    [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetDistinctModels()
+    {
+        try
+        {
+            var models = await _logService.GetDistinctModelsAsync();
+            return Ok(models);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting distinct models");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
     /// Gets a single log entry by ID
     /// </summary>
     /// <param name="id">The ID of the log to retrieve</param>
     /// <returns>The log entry</returns>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(LogRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

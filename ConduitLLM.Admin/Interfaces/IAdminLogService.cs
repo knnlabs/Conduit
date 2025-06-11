@@ -48,4 +48,10 @@ public interface IAdminLogService
         string timeframe = "daily",
         DateTime? startDate = null,
         DateTime? endDate = null);
+
+    /// <summary>
+    /// Gets a list of distinct model names from request logs
+    /// </summary>
+    /// <returns>A collection of distinct model names</returns>
+    Task<IEnumerable<string>> GetDistinctModelsAsync();
 }
