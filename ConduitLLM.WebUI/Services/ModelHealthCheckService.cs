@@ -63,7 +63,7 @@ namespace ConduitLLM.WebUI.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error performing model health checks");
-                    
+
                     // Wait a bit before retrying after an error
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
@@ -86,18 +86,18 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Get all model deployments from the router configuration
                 var deployments = await routerService.GetModelDeploymentsAsync();
-                
+
                 // Filter to only those that have health checking enabled
                 var deploymentsToCheck = deployments
                     .Where(d => d.HealthCheckEnabled && d.IsEnabled)
                     .ToList();
-                
+
                 if (deploymentsToCheck.Count == 0)
                 {
                     _logger.LogDebug("No model deployments with health checking enabled");
                     return;
                 }
-                
+
                 _logger.LogInformation("Checking health of {Count} model deployments", deploymentsToCheck.Count);
 
                 // Check each deployment
@@ -109,24 +109,24 @@ namespace ConduitLLM.WebUI.Services
                             "Checking health of model deployment {ModelName} ({ProviderName})",
                             deployment.ModelName,
                             deployment.ProviderName);
-                        
+
                         // Get the LLM client for this provider
                         var client = clientFactory.GetClientByProvider(deployment.ProviderName);
-                        
+
                         if (client != null)
                         {
                             bool isHealthy = false;
-                            
+
                             try
                             {
                                 // Check if the model is listed by the provider
                                 var models = await client.ListModelsAsync(
                                     cancellationToken: stoppingToken);
-                                
+
                                 // Consider the model healthy if it's in the list or if the list is empty 
                                 // (some providers don't implement ListModelsAsync)
                                 isHealthy = models == null || models.Count == 0 || models.Contains(deployment.ModelName);
-                                
+
                                 if (!isHealthy)
                                 {
                                     _logger.LogWarning(
@@ -143,7 +143,7 @@ namespace ConduitLLM.WebUI.Services
                                     deployment.ProviderName);
                                 isHealthy = false;
                             }
-                            
+
                             // Update the model health status if it has changed
                             if (deployment.IsHealthy != isHealthy)
                             {
@@ -152,14 +152,14 @@ namespace ConduitLLM.WebUI.Services
                                     deployment.ModelName,
                                     deployment.ProviderName,
                                     isHealthy);
-                                
+
                                 // Update the health status in the router
                                 var router = routerService.GetRouter();
                                 if (router != null)
                                 {
                                     router.UpdateModelHealth(deployment.ModelName, isHealthy);
                                 }
-                                
+
                                 // Update the deployment in the database
                                 deployment.IsHealthy = isHealthy;
                                 await routerService.SaveModelDeploymentAsync(deployment);
@@ -174,14 +174,14 @@ namespace ConduitLLM.WebUI.Services
                                     "Unable to create client for model deployment {ModelName} ({ProviderName}), marking as unhealthy",
                                     deployment.ModelName,
                                     deployment.ProviderName);
-                                
+
                                 // Update the health status in the router
                                 var router = routerService.GetRouter();
                                 if (router != null)
                                 {
                                     router.UpdateModelHealth(deployment.ModelName, false);
                                 }
-                                
+
                                 // Update the deployment in the database
                                 deployment.IsHealthy = false;
                                 await routerService.SaveModelDeploymentAsync(deployment);
@@ -195,7 +195,7 @@ namespace ConduitLLM.WebUI.Services
                             "Error checking health of model deployment {ModelName} ({ProviderName})",
                             deployment.ModelName,
                             deployment.ProviderName);
-                        
+
                         // Mark the model as unhealthy on error
                         if (deployment.IsHealthy)
                         {
@@ -205,13 +205,13 @@ namespace ConduitLLM.WebUI.Services
                             {
                                 router.UpdateModelHealth(deployment.ModelName, false);
                             }
-                            
+
                             // Update the deployment in the database
                             deployment.IsHealthy = false;
                             await routerService.SaveModelDeploymentAsync(deployment);
                         }
                     }
-                    
+
                     // Add a short delay between checks to avoid rate limiting
                     await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
                 }

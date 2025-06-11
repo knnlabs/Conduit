@@ -35,7 +35,7 @@ internal record GeminiPart
 {
     [JsonPropertyName("text")]
     public string? Text { get; init; }
-    
+
     [JsonPropertyName("inline_data")]
     public GeminiInlineData? InlineData { get; init; }
 }
@@ -44,7 +44,7 @@ internal record GeminiInlineData
 {
     [JsonPropertyName("mime_type")]
     public required string MimeType { get; init; }
-    
+
     [JsonPropertyName("data")]
     public required string Data { get; init; }
 }

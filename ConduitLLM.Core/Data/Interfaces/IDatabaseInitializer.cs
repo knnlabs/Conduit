@@ -43,7 +43,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         Task EnsureDatabaseAsync(bool ensureCreated = true, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Checks if the database connection is valid.
         /// </summary>
@@ -78,7 +78,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         Task<bool> VerifyConnectionAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Applies any pending migrations to the database.
         /// </summary>

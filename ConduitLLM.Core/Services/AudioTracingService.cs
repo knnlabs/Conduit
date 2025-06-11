@@ -5,9 +5,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -32,7 +34,7 @@ namespace ConduitLLM.Core.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
-            
+
             // Initialize OpenTelemetry activity source
             _activitySource = new ActivitySource("ConduitLLM.Audio", "1.0.0");
 
@@ -366,7 +368,7 @@ namespace ConduitLLM.Core.Services
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
             if (!sortedValues.Any()) return 0;
-            
+
             var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
         }
@@ -378,7 +380,7 @@ namespace ConduitLLM.Core.Services
         {
             var timeline = new List<TraceTimelinePoint>();
             var interval = TimeSpan.FromMinutes(5);
-            
+
             for (var timestamp = startTime; timestamp <= endTime; timestamp = timestamp.Add(interval))
             {
                 var windowEnd = timestamp.Add(interval);
@@ -489,13 +491,13 @@ namespace ConduitLLM.Core.Services
             };
 
             _trace.Events.Add(evt);
-            
+
             var activityEvent = new ActivityEvent(
                 eventName,
                 DateTimeOffset.UtcNow,
-                new ActivityTagsCollection(evt.Attributes.Select(kvp => 
+                new ActivityTagsCollection(evt.Attributes.Select(kvp =>
                     new KeyValuePair<string, object?>(kvp.Key, kvp.Value))));
-            
+
             Activity.AddEvent(activityEvent);
         }
 
@@ -537,10 +539,10 @@ namespace ConduitLLM.Core.Services
         public Dictionary<string, string> GetPropagationHeaders()
         {
             var headers = new Dictionary<string, string>();
-            
+
             // W3C Trace Context headers
             headers["traceparent"] = $"00-{Activity.TraceId}-{Activity.SpanId}-01"; // Always set as sampled
-            
+
             if (Activity.TraceStateString != null)
             {
                 headers["tracestate"] = Activity.TraceStateString;

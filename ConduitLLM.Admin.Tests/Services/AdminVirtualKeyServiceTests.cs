@@ -1,13 +1,17 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
+
 using Moq;
+
+using Xunit;
 
 namespace ConduitLLM.Admin.Tests.Services
 {
@@ -205,15 +209,15 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             Assert.True(result);
-            
+
             // Verify that the repository's UpdateAsync was called with updated values
             _mockVirtualKeyRepository.Verify(r => r.UpdateAsync(
-                It.Is<VirtualKey>(k => 
+                It.Is<VirtualKey>(k =>
                     k.Id == keyId &&
                     k.KeyName == updateRequest.KeyName &&
                     k.AllowedModels == updateRequest.AllowedModels &&
                     k.MaxBudget == updateRequest.MaxBudget),
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -238,7 +242,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             Assert.False(result);
-            
+
             // Verify that the repository's UpdateAsync was not called
             _mockVirtualKeyRepository.Verify(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Never);
         }
@@ -248,12 +252,12 @@ namespace ConduitLLM.Admin.Tests.Services
         {
             // Arrange
             int keyId = 1;
-            
+
             // Setup GetByIdAsync to return a virtual key
             _mockVirtualKeyRepository
                 .Setup(r => r.GetByIdAsync(keyId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VirtualKey { Id = keyId, KeyName = "Test Key" });
-                
+
             // Setup DeleteAsync to return true
             _mockVirtualKeyRepository
                 .Setup(r => r.DeleteAsync(keyId, It.IsAny<CancellationToken>()))
@@ -264,7 +268,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             Assert.True(result);
-            
+
             // Verify that the repository's DeleteAsync was called with the correct ID
             _mockVirtualKeyRepository.Verify(r => r.DeleteAsync(keyId, It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -320,21 +324,21 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             Assert.True(result);
-            
+
             // Verify history was created with correct amount
             _mockSpendHistoryRepository.Verify(r => r.CreateAsync(
-                It.Is<VirtualKeySpendHistory>(h => 
+                It.Is<VirtualKeySpendHistory>(h =>
                     h.VirtualKeyId == keyId &&
                     h.Amount == 50),
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<CancellationToken>()),
                 Times.Once);
-            
+
             // Verify key was updated with spend reset to 0
             _mockVirtualKeyRepository.Verify(r => r.UpdateAsync(
-                It.Is<VirtualKey>(k => 
+                It.Is<VirtualKey>(k =>
                     k.Id == keyId &&
                     k.CurrentSpend == 0),
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -353,7 +357,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Assert
             Assert.False(result);
-            
+
             // Verify repository methods were not called
             _mockSpendHistoryRepository.Verify(r => r.CreateAsync(It.IsAny<VirtualKeySpendHistory>(), It.IsAny<CancellationToken>()), Times.Never);
             _mockVirtualKeyRepository.Verify(r => r.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Never);

@@ -1,10 +1,12 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -18,7 +20,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IAdminGlobalSettingService _globalSettingService;
         private readonly ILogger<GlobalSettingsController> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the GlobalSettingsController
         /// </summary>
@@ -31,7 +33,7 @@ namespace ConduitLLM.Admin.Controllers
             _globalSettingService = globalSettingService ?? throw new ArgumentNullException(nameof(globalSettingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <summary>
         /// Gets all global settings
         /// </summary>
@@ -52,7 +54,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets a global setting by ID
         /// </summary>
@@ -67,12 +69,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var setting = await _globalSettingService.GetSettingByIdAsync(id);
-                
+
                 if (setting == null)
                 {
                     return NotFound($"Global setting with ID {id} not found");
                 }
-                
+
                 return Ok(setting);
             }
             catch (Exception ex)
@@ -81,7 +83,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets a global setting by key
         /// </summary>
@@ -96,12 +98,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var setting = await _globalSettingService.GetSettingByKeyAsync(key);
-                
+
                 if (setting == null)
                 {
                     return NotFound($"Global setting with key '{key}' not found");
                 }
-                
+
                 return Ok(setting);
             }
             catch (Exception ex)
@@ -110,7 +112,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Creates a new global setting
         /// </summary>
@@ -126,7 +128,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdSetting = await _globalSettingService.CreateSettingAsync(setting);
@@ -143,7 +145,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Updates an existing global setting
         /// </summary>
@@ -161,22 +163,22 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             // Ensure ID in route matches ID in body
             if (id != setting.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
-            
+
             try
             {
                 var success = await _globalSettingService.UpdateSettingAsync(setting);
-                
+
                 if (!success)
                 {
                     return NotFound($"Global setting with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -185,7 +187,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Updates or creates a global setting by key
         /// </summary>
@@ -201,16 +203,16 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var success = await _globalSettingService.UpdateSettingByKeyAsync(setting);
-                
+
                 if (!success)
                 {
                     return StatusCode(StatusCodes.Status500InternalServerError, "Failed to update or create global setting");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -219,7 +221,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Deletes a global setting
         /// </summary>
@@ -234,12 +236,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _globalSettingService.DeleteSettingAsync(id);
-                
+
                 if (!success)
                 {
                     return NotFound($"Global setting with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -248,7 +250,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Deletes a global setting by key
         /// </summary>
@@ -263,12 +265,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _globalSettingService.DeleteSettingByKeyAsync(key);
-                
+
                 if (!success)
                 {
                     return NotFound($"Global setting with key '{key}' not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)

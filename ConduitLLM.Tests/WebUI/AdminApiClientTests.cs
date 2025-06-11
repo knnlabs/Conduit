@@ -1,13 +1,15 @@
-using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.WebUI.Options;
-using ConduitLLM.WebUI.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Moq;
-using Moq.Protected;
 using System.Net;
 using System.Text.Json;
 
+using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Options;
+using ConduitLLM.WebUI.Services;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using Moq;
+using Moq.Protected;
 // Alias to avoid ambiguity
 using ItProtected = Moq.Protected.ItExpr;
 
@@ -71,7 +73,7 @@ namespace ConduitLLM.Tests.WebUI
                     "SendAsync",
                     ItProtected.Is<HttpRequestMessage>(req =>
                         req.Method == HttpMethod.Get &&
-                        req.RequestUri != null && 
+                        req.RequestUri != null &&
                         req.RequestUri.ToString() == "http://localhost:5000/api/virtualkeys"),
                     ItProtected.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
@@ -173,24 +175,24 @@ namespace ConduitLLM.Tests.WebUI
         public async Task CreateVirtualKeyAsync_ReturnsCreatedKey_WhenApiReturnsSuccess()
         {
             // Arrange
-            var createDto = new ConfigDTOs.VirtualKey.CreateVirtualKeyRequestDto 
-            { 
+            var createDto = new ConfigDTOs.VirtualKey.CreateVirtualKeyRequestDto
+            {
                 KeyName = "New Key"
             };
-            
+
             var keyInfo = new ConfigDTOs.VirtualKey.VirtualKeyDto
             {
                 Id = 1,
                 Name = "New Key",
                 IsActive = true
             };
-            
-            var expectedResponse = new ConfigDTOs.VirtualKey.CreateVirtualKeyResponseDto 
-            { 
+
+            var expectedResponse = new ConfigDTOs.VirtualKey.CreateVirtualKeyResponseDto
+            {
                 VirtualKey = "gen-key-123456",
                 KeyInfo = keyInfo
             };
-            
+
             var response = new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.Created,
@@ -222,12 +224,12 @@ namespace ConduitLLM.Tests.WebUI
         public async Task UpdateVirtualKeyAsync_ReturnsTrue_WhenApiReturnsSuccess()
         {
             // Arrange
-            var updateDto = new ConfigDTOs.VirtualKey.UpdateVirtualKeyRequestDto 
-            { 
+            var updateDto = new ConfigDTOs.VirtualKey.UpdateVirtualKeyRequestDto
+            {
                 KeyName = "Updated Key",
                 IsEnabled = false
             };
-            
+
             var response = new HttpResponseMessage { StatusCode = HttpStatusCode.OK };
 
             _handlerMock.Protected()

@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Costs;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,7 @@ public class CostDashboardController : ControllerBase
 {
     private readonly IAdminCostDashboardService _costDashboardService;
     private readonly ILogger<CostDashboardController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the CostDashboardController
     /// </summary>
@@ -28,7 +29,7 @@ public class CostDashboardController : ControllerBase
         _costDashboardService = costDashboardService ?? throw new ArgumentNullException(nameof(costDashboardService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets cost dashboard summary data
     /// </summary>
@@ -41,8 +42,8 @@ public class CostDashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCostSummary(
-        [FromQuery] string timeframe = "daily", 
-        [FromQuery] DateTime? startDate = null, 
+        [FromQuery] string timeframe = "daily",
+        [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
         try
@@ -52,9 +53,9 @@ public class CostDashboardController : ControllerBase
             {
                 return BadRequest("Timeframe must be one of: daily, weekly, monthly");
             }
-            
+
             var summary = await _costDashboardService.GetCostSummaryAsync(timeframe, startDate, endDate);
-            
+
             return Ok(summary);
         }
         catch (Exception ex)
@@ -63,7 +64,7 @@ public class CostDashboardController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets cost trend data
     /// </summary>
@@ -76,8 +77,8 @@ public class CostDashboardController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetCostTrends(
-        [FromQuery] string period = "daily", 
-        [FromQuery] DateTime? startDate = null, 
+        [FromQuery] string period = "daily",
+        [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
         try
@@ -87,9 +88,9 @@ public class CostDashboardController : ControllerBase
             {
                 return BadRequest("Period must be one of: daily, weekly, monthly");
             }
-            
+
             var trends = await _costDashboardService.GetCostTrendsAsync(period, startDate, endDate);
-            
+
             return Ok(trends);
         }
         catch (Exception ex)
@@ -98,7 +99,7 @@ public class CostDashboardController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets model costs data
     /// </summary>
@@ -109,13 +110,13 @@ public class CostDashboardController : ControllerBase
     [ProducesResponseType(typeof(List<ModelCostDataDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetModelCosts(
-        [FromQuery] DateTime? startDate = null, 
+        [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
         try
         {
             var models = await _costDashboardService.GetModelCostsAsync(startDate, endDate);
-            
+
             return Ok(models);
         }
         catch (Exception ex)
@@ -124,7 +125,7 @@ public class CostDashboardController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets virtual key costs data
     /// </summary>
@@ -135,13 +136,13 @@ public class CostDashboardController : ControllerBase
     [ProducesResponseType(typeof(List<VirtualKeyCostDataDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetVirtualKeyCosts(
-        [FromQuery] DateTime? startDate = null, 
+        [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
         try
         {
             var virtualKeys = await _costDashboardService.GetVirtualKeyCostsAsync(startDate, endDate);
-            
+
             return Ok(virtualKeys);
         }
         catch (Exception ex)

@@ -1,11 +1,14 @@
 using System;
 using System.Linq;
 using System.Reflection;
+
+using ConduitLLM.WebUI.Components.Layout;
+using ConduitLLM.WebUI.Components.Shared;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+
 using Xunit;
-using ConduitLLM.WebUI.Components.Shared;
-using ConduitLLM.WebUI.Components.Layout;
 
 namespace ConduitLLM.Tests.WebUI.Components
 {
@@ -19,24 +22,24 @@ namespace ConduitLLM.Tests.WebUI.Components
         {
             // Arrange
             var componentType = typeof(StatusBadge);
-            
+
             // Act & Assert
             AssertParameterExists(componentType, "Status", typeof(string));
             AssertParameterExists(componentType, "Type", typeof(StatusBadge.StatusType));
             AssertParameterExists(componentType, "CustomText", typeof(string));
             AssertParameterExists(componentType, "CustomIcon", typeof(string));
             AssertParameterExists(componentType, "CustomClass", typeof(string));
-            
+
             // Ensure old parameter name doesn't exist
             AssertParameterDoesNotExist(componentType, "StatusType");
         }
-        
+
         [Fact]
         public void CollapsibleNavSection_HasCorrectParameters()
         {
             // Arrange
             var componentType = typeof(CollapsibleNavSection);
-            
+
             // Act & Assert
             AssertParameterExists(componentType, "Title", typeof(string));
             AssertParameterExists(componentType, "IconClass", typeof(string));
@@ -46,13 +49,13 @@ namespace ConduitLLM.Tests.WebUI.Components
             AssertParameterExists(componentType, "IsExpanded", typeof(bool));
             AssertParameterExists(componentType, "PersistenceKey", typeof(string));
         }
-        
+
         [Fact]
         public void NavigationLink_HasCorrectParameters()
         {
             // Arrange
             var componentType = typeof(NavigationLink);
-            
+
             // Act & Assert
             AssertParameterExists(componentType, "Href", typeof(string));
             AssertParameterExists(componentType, "Text", typeof(string));
@@ -60,31 +63,31 @@ namespace ConduitLLM.Tests.WebUI.Components
             AssertParameterExists(componentType, "CssClass", typeof(string));
             AssertParameterExists(componentType, "Match", typeof(NavLinkMatch));
         }
-        
+
         [Fact]
         public void ConduitErrorBoundary_HasCorrectParameters()
         {
             // Arrange
             var componentType = typeof(ConduitErrorBoundary);
-            
+
             // Act & Assert
             // ChildContent and ErrorContent are inherited from ErrorBoundaryBase
             // We check if the properties exist (including inherited ones)
             Assert.NotNull(componentType.GetProperty("ChildContent"));
             Assert.NotNull(componentType.GetProperty("ErrorContent"));
-            
+
             // These are custom parameters defined in our component
             AssertParameterExists(componentType, "ShowDetails", typeof(bool));
             AssertParameterExists(componentType, "ShowResetButton", typeof(bool));
             AssertParameterExists(componentType, "OnError", typeof(EventCallback<Exception>));
         }
-        
+
         [Fact]
         public void DevDiagnostics_HasCorrectParameters()
         {
             // Arrange
             var componentType = typeof(DevDiagnostics);
-            
+
             // Act & Assert
             AssertParameterExists(componentType, "ComponentType", typeof(Type));
             AssertParameterExists(componentType, "RenderMode", typeof(string));
@@ -92,7 +95,7 @@ namespace ConduitLLM.Tests.WebUI.Components
             AssertParameterExists(componentType, "Parameters", typeof(object));
             AssertParameterExists(componentType, "ShowParameters", typeof(bool));
         }
-        
+
         [Theory]
         [InlineData(typeof(StatusBadge))]
         [InlineData(typeof(CollapsibleNavSection))]
@@ -104,7 +107,7 @@ namespace ConduitLLM.Tests.WebUI.Components
             // Arrange
             var parameterProperties = componentType.GetProperties()
                 .Where(p => p.GetCustomAttribute<ParameterAttribute>() != null);
-            
+
             // Act & Assert
             foreach (var property in parameterProperties)
             {
@@ -113,7 +116,7 @@ namespace ConduitLLM.Tests.WebUI.Components
                 Assert.NotNull(property.GetCustomAttribute<ParameterAttribute>());
             }
         }
-        
+
         [Theory]
         [InlineData(typeof(StatusBadge), "Status", "")]
         [InlineData(typeof(CollapsibleNavSection), "Title", "")]
@@ -125,30 +128,30 @@ namespace ConduitLLM.Tests.WebUI.Components
             // Arrange
             var property = GetParameterProperty(componentType, parameterName);
             var instance = Activator.CreateInstance(componentType);
-            
+
             // Act
             var actualValue = property?.GetValue(instance);
-            
+
             // Assert
             Assert.Equal(expectedDefault, actualValue);
         }
-        
+
         private void AssertParameterExists(Type componentType, string parameterName, Type expectedType)
         {
             var property = GetParameterProperty(componentType, parameterName);
             Assert.NotNull(property);
             Assert.Equal(expectedType, property!.PropertyType);
         }
-        
+
         private void AssertParameterDoesNotExist(Type componentType, string parameterName)
         {
             var property = GetParameterProperty(componentType, parameterName);
             Assert.Null(property);
         }
-        
+
         private PropertyInfo? GetParameterProperty(Type componentType, string parameterName)
         {
-            return componentType.GetProperty(parameterName, 
+            return componentType.GetProperty(parameterName,
                 BindingFlags.Public | BindingFlags.Instance)
                 ?.GetCustomAttribute<ParameterAttribute>() != null
                 ? componentType.GetProperty(parameterName)

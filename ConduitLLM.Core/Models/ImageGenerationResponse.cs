@@ -25,7 +25,7 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("data")]
         public required List<ImageData> Data { get; set; }
-        
+
         /// <summary>
         /// Usage information for the request.
         /// This might include token counts for the prompt and other metrics

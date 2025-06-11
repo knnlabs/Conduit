@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+
 using ConduitLLM.WebUI.Services;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.WebUI.Services
@@ -28,11 +30,11 @@ namespace ConduitLLM.Tests.WebUI.Services
         {
             // Act
             var result = IpAddressValidator.IsValidIpAddress(ipAddress);
-            
+
             // Assert
             Assert.Equal(expected, result);
         }
-        
+
         [Theory]
         [InlineData("192.168.1.0/24", true)]
         [InlineData("10.0.0.0/8", true)]
@@ -57,11 +59,11 @@ namespace ConduitLLM.Tests.WebUI.Services
         {
             // Act
             var result = IpAddressValidator.IsValidCidr(cidr);
-            
+
             // Assert
             Assert.Equal(expected, result);
         }
-        
+
         [Theory]
         [InlineData("192.168.1.10", "192.168.1.0/24", true)]
         [InlineData("192.168.2.10", "192.168.1.0/24", false)]
@@ -81,11 +83,11 @@ namespace ConduitLLM.Tests.WebUI.Services
         {
             // Act
             var result = IpAddressValidator.IsIpInCidrRange(ipAddress, cidr);
-            
+
             // Assert
             Assert.Equal(expected, result);
         }
-        
+
         [Theory]
         [InlineData("192.168.1.1", "192.168.1.1")]
         [InlineData("10.0.0.1", "10.0.0.1")]
@@ -101,7 +103,7 @@ namespace ConduitLLM.Tests.WebUI.Services
         {
             // Act
             var result = IpAddressValidator.StandardizeIpAddressOrCidr(input);
-            
+
             // Assert
             Assert.Equal(expected, result);
         }

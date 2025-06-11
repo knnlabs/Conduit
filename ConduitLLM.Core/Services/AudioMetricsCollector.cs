@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -48,7 +50,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var bucket = GetOrCreateBucket(DateTime.UtcNow);
-                
+
                 bucket.TranscriptionMetrics.Add(metric);
                 bucket.UpdateOperation(AudioOperation.Transcription, metric.Success, metric.DurationMs);
 
@@ -84,7 +86,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var bucket = GetOrCreateBucket(DateTime.UtcNow);
-                
+
                 bucket.TtsMetrics.Add(metric);
                 bucket.UpdateOperation(AudioOperation.TextToSpeech, metric.Success, metric.DurationMs);
 
@@ -117,7 +119,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var bucket = GetOrCreateBucket(DateTime.UtcNow);
-                
+
                 bucket.RealtimeMetrics.Add(metric);
                 bucket.UpdateOperation(AudioOperation.Realtime, metric.Success, metric.DurationMs);
 
@@ -152,9 +154,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var bucket = GetOrCreateBucket(DateTime.UtcNow);
-                
+
                 bucket.RoutingMetrics.Add(metric);
-                
+
                 // Track routing decisions
                 bucket.TrackRoutingDecision(metric.SelectedProvider, metric.RoutingStrategy);
 
@@ -177,9 +179,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var bucket = GetOrCreateBucket(DateTime.UtcNow);
-                
+
                 bucket.ProviderHealthMetrics.Add(metric);
-                
+
                 // Update provider statistics
                 bucket.UpdateProviderHealth(metric.Provider, metric.IsHealthy, metric.ErrorRate);
 
@@ -454,7 +456,7 @@ namespace ConduitLLM.Core.Services
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
             if (!sortedValues.Any()) return 0;
-            
+
             var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
         }
@@ -466,7 +468,7 @@ namespace ConduitLLM.Core.Services
                 var cached = transcriptions.Count(m => m.ServedFromCache);
                 return transcriptions.Count > 0 ? (double)cached / transcriptions.Count : 0;
             }
-            
+
             if (metrics is List<TtsMetric> ttsMetrics)
             {
                 var cached = ttsMetrics.Count(m => m.ServedFromCache);
@@ -482,7 +484,7 @@ namespace ConduitLLM.Core.Services
             {
                 return transcriptions.Sum(m => m.FileSizeBytes);
             }
-            
+
             if (metrics is List<TtsMetric> ttsMetrics)
             {
                 return ttsMetrics.Sum(m => m.OutputSizeBytes);
@@ -499,10 +501,10 @@ namespace ConduitLLM.Core.Services
         private double CalculateRequestRate(List<MetricsBucket> buckets)
         {
             if (!buckets.Any()) return 0;
-            
+
             var totalRequests = buckets.Sum(b => b.TotalRequests);
             var timeSpan = buckets.Max(b => b.Timestamp) - buckets.Min(b => b.Timestamp);
-            
+
             return timeSpan.TotalSeconds > 0 ? totalRequests / timeSpan.TotalSeconds : 0;
         }
 
@@ -510,7 +512,7 @@ namespace ConduitLLM.Core.Services
         {
             var total = buckets.Sum(b => b.TotalRequests);
             var errors = buckets.Sum(b => b.FailedRequests);
-            
+
             return total > 0 ? (double)errors / total : 0;
         }
 

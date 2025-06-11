@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+
 using ConduitLLM.Core.Models.Routing;
 
 namespace ConduitLLM.Core.Routing.Strategies
@@ -49,7 +50,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             {
                 return null;
             }
-            
+
             // Select a random model from the available models
             return availableModels[_random.Next(availableModels.Count)];
         }

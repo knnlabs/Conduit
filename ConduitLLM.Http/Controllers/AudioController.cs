@@ -4,14 +4,16 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Audio;
+using ConduitLLM.Http.Security;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Http.Security;
-using ConduitLLM.Configuration.Services;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -156,7 +158,7 @@ namespace ConduitLLM.Http.Controllers
                 // Estimate cost based on audio duration (rough estimate: 1MB = 1 minute = $0.006)
                 var estimatedMinutes = audioData.Length / (1024.0 * 1024.0);
                 var estimatedCost = (decimal)(estimatedMinutes * 0.006);
-                
+
                 // Get virtual key entity to update spend
                 var virtualKeyEntity = await _virtualKeyService.GetVirtualKeyByKeyValueAsync(virtualKey);
                 if (virtualKeyEntity != null)
@@ -165,7 +167,7 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Return response based on format
-                if (format == TranscriptionFormat.Vtt || 
+                if (format == TranscriptionFormat.Vtt ||
                     format == TranscriptionFormat.Srt)
                 {
                     return Content(response.Text, "text/plain");
@@ -295,7 +297,7 @@ namespace ConduitLLM.Http.Controllers
                     // Estimate cost based on character count (rough estimate: $0.015 per 1K chars for tts-1)
                     var characterCount = request.Input.Length;
                     var estimatedCost = (decimal)(characterCount / 1000.0 * 0.015);
-                    
+
                     // Get virtual key entity to update spend
                     var virtualKeyEntity = await _virtualKeyService.GetVirtualKeyByKeyValueAsync(virtualKey);
                     if (virtualKeyEntity != null)

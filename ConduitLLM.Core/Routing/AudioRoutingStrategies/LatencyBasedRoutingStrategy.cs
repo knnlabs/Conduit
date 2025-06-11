@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
 {
@@ -55,7 +57,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
         {
             return SelectProviderByLatencyAsync(
                 availableProviders,
-                p => p.Capabilities.SupportedVoices.Contains(request.Voice) || 
+                p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
                      p.Capabilities.SupportedVoices.Count == 0, // Empty means all voices supported
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
@@ -116,7 +118,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .ToList();
 
             var selected = sortedProviders.First();
-            
+
             _logger.LogInformation(
                 "Selected {Provider} with effective latency {Latency}ms",
                 selected.Provider.Name,

@@ -6,9 +6,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -129,7 +131,7 @@ namespace ConduitLLM.Core.Services
             var expiryTimestamp = DateTimeOffset.UtcNow.Add(expires).ToUnixTimeSeconds();
 
             var url = $"{baseUrl}/{contentKey}?expires={expiryTimestamp}";
-            
+
             // In production, add signature for URL authentication
             var signature = GenerateUrlSignature(contentKey, expiryTimestamp);
             url += $"&sig={signature}";
@@ -145,7 +147,7 @@ namespace ConduitLLM.Core.Services
             if (_contentStore.Remove(contentKey))
             {
                 _logger.LogInformation("Invalidated CDN cache for key: {Key}", contentKey);
-                
+
                 // In production, this would trigger CDN invalidation API
                 return SimulateCdnInvalidation(contentKey, cancellationToken);
             }
@@ -231,7 +233,7 @@ namespace ConduitLLM.Core.Services
         private CdnUploadResult CreateUploadResult(string contentKey, string contentHash, long sizeBytes)
         {
             var url = GetCdnUrlAsync(contentKey).Result ?? string.Empty;
-            
+
             return new CdnUploadResult
             {
                 Url = url,
@@ -239,8 +241,8 @@ namespace ConduitLLM.Core.Services
                 ContentHash = contentHash,
                 UploadedAt = DateTime.UtcNow,
                 SizeBytes = sizeBytes,
-                EdgeLocations = _contentStore.TryGetValue(contentKey, out var entry) 
-                    ? entry.EdgeLocations 
+                EdgeLocations = _contentStore.TryGetValue(contentKey, out var entry)
+                    ? entry.EdgeLocations
                     : new List<string>()
             };
         }
@@ -325,7 +327,7 @@ namespace ConduitLLM.Core.Services
 
         public void AddUploadedBytes(long bytes) => Interlocked.Add(ref _totalBandwidthBytes, bytes);
         public void IncrementDuplicateUploads() => Interlocked.Increment(ref _duplicateUploads);
-        
+
         public void IncrementRequests(string contentType)
         {
             Interlocked.Increment(ref _totalRequests);

@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -16,7 +18,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ILogger<AudioCapabilityDetector> _logger;
         private readonly IModelCapabilityService _capabilityService;
-        
+
         /// <summary>
         /// Initializes a new instance of the AudioCapabilityDetector class.
         /// </summary>
@@ -169,8 +171,8 @@ namespace ConduitLLM.Core.Services
         {
             // This would need to be implemented by querying the database
             // For now, return basic capabilities
-            return new AudioProviderCapabilities 
-            { 
+            return new AudioProviderCapabilities
+            {
                 Provider = provider,
                 DisplayName = provider,
                 SupportedCapabilities = new List<AudioCapability>()

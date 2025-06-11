@@ -1,11 +1,13 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -68,12 +70,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByIdAsync(id);
-                
+
                 if (credential == null)
                 {
                     return NotFound($"Provider credential with ID {id} not found");
                 }
-                
+
                 return Ok(credential);
             }
             catch (Exception ex)
@@ -97,12 +99,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByNameAsync(providerName);
-                
+
                 if (credential == null)
                 {
                     return NotFound($"Provider credential for '{providerName}' not found");
                 }
-                
+
                 return Ok(credential);
             }
             catch (Exception ex)
@@ -148,7 +150,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdCredential = await _providerCredentialService.CreateProviderCredentialAsync(credential);
@@ -183,22 +185,22 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             // Ensure ID in route matches ID in body
             if (id != credential.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
-            
+
             try
             {
                 var success = await _providerCredentialService.UpdateProviderCredentialAsync(credential);
-                
+
                 if (!success)
                 {
                     return NotFound($"Provider credential with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -222,12 +224,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _providerCredentialService.DeleteProviderCredentialAsync(id);
-                
+
                 if (!success)
                 {
                     return NotFound($"Provider credential with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -251,12 +253,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByIdAsync(id);
-                
+
                 if (credential == null)
                 {
                     return NotFound($"Provider credential with ID {id} not found");
                 }
-                
+
                 var result = await _providerCredentialService.TestProviderConnectionAsync(credential);
                 return Ok(result);
             }

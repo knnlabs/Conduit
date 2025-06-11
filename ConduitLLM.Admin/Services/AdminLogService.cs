@@ -1,12 +1,14 @@
-using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Repositories;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services;
 
@@ -18,7 +20,7 @@ public class AdminLogService : IAdminLogService
     private readonly IRequestLogRepository _requestLogRepository;
     private readonly IVirtualKeyRepository _virtualKeyRepository;
     private readonly ILogger<AdminLogService> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the AdminLogService class
     /// </summary>
@@ -34,15 +36,15 @@ public class AdminLogService : IAdminLogService
         _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <inheritdoc/>
     public async Task<PagedResult<LogRequestDto>> GetLogsAsync(
-        int page = 1, 
-        int pageSize = 50, 
-        DateTime? startDate = null, 
-        DateTime? endDate = null, 
-        string? model = null, 
-        int? virtualKeyId = null, 
+        int page = 1,
+        int pageSize = 50,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string? model = null,
+        int? virtualKeyId = null,
         int? status = null)
     {
         try
@@ -50,15 +52,15 @@ public class AdminLogService : IAdminLogService
             _logger.LogInformation(
                 "Getting logs - Page: {Page}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, Model: {Model}, VirtualKeyId: {VirtualKeyId}, Status: {Status}",
                 page, pageSize, startDate, endDate, model, virtualKeyId, status);
-            
+
             // Validate page and pageSize
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 50;
-            
+
             // Set default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-7);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get logs with pagination
             // If the method doesn't exist, we can create our own implementation
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
@@ -88,10 +90,10 @@ public class AdminLogService : IAdminLogService
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
-            
+
             // Map to DTOs
             var logDtos = logs.Select(MapToDto).ToList();
-            
+
             // Create paged result
             var result = new PagedResult<LogRequestDto>
             {
@@ -101,13 +103,13 @@ public class AdminLogService : IAdminLogService
                 TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                 Items = logDtos
             };
-            
+
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting logs");
-            
+
             // Return empty result on error
             return new PagedResult<LogRequestDto>
             {
@@ -119,21 +121,21 @@ public class AdminLogService : IAdminLogService
             };
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<LogRequestDto?> GetLogByIdAsync(int id)
     {
         try
         {
             _logger.LogInformation("Getting log with ID: {LogId}", id);
-            
+
             var log = await _requestLogRepository.GetByIdAsync(id);
             if (log == null)
             {
                 _logger.LogWarning("Log with ID {LogId} not found", id);
                 return null;
             }
-            
+
             return MapToDto(log);
         }
         catch (Exception ex)
@@ -142,7 +144,7 @@ public class AdminLogService : IAdminLogService
             return null;
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<LogsSummaryDto> GetLogsSummaryAsync(
         string timeframe = "daily",
@@ -152,7 +154,7 @@ public class AdminLogService : IAdminLogService
         try
         {
             _logger.LogInformation("Getting logs summary with timeframe: {Timeframe}", timeframe);
-            
+
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch
             {
@@ -161,21 +163,21 @@ public class AdminLogService : IAdminLogService
                 "monthly" => "monthly",
                 _ => "daily" // Default to daily if invalid
             };
-            
+
             // Set default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get logs within the date range
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
-            
+
             // Calculate summary statistics
             var totalRequests = logs.Count;
             var totalCost = logs.Sum(l => l.Cost);
             var totalInputTokens = logs.Sum(l => l.InputTokens);
             var totalOutputTokens = logs.Sum(l => l.OutputTokens);
             var avgResponseTime = logs.Any() ? logs.Average(l => l.ResponseTimeMs) : 0;
-            
+
             // Group logs by model
             var modelGroups = logs
                 .GroupBy(l => l.ModelName)
@@ -188,7 +190,7 @@ public class AdminLogService : IAdminLogService
                 .OrderByDescending(m => m.Cost)
                 .Take(10)
                 .ToList();
-            
+
             // Group logs by day
             var dailyStats = logs
                 .GroupBy(l => l.Timestamp.Date)
@@ -211,7 +213,7 @@ public class AdminLogService : IAdminLogService
                 "monthly" => AggregateByMonth(dailyStats),
                 _ => dailyStats.ToList() // Default to daily stats
             };
-            
+
             // Calculate success/failure metrics
             var successfulRequests = logs.Count(l => l.StatusCode.HasValue && l.StatusCode.Value >= 200 && l.StatusCode.Value < 400);
             var failedRequests = logs.Count(l => l.StatusCode.HasValue && l.StatusCode.Value >= 400);
@@ -258,13 +260,13 @@ public class AdminLogService : IAdminLogService
                 RequestsByStatus = requestsByStatus,
                 DailyStats = dailyUsageStats
             };
-            
+
             return summary;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting logs summary");
-            
+
             // Return empty summary on error
             return new LogsSummaryDto
             {
@@ -282,7 +284,7 @@ public class AdminLogService : IAdminLogService
             };
         }
     }
-    
+
     /// <summary>
     /// Maps a RequestLog entity to a LogRequestDto
     /// </summary>
@@ -307,7 +309,7 @@ public class AdminLogService : IAdminLogService
             Timestamp = log.Timestamp
         };
     }
-    
+
     /// <summary>
     /// Daily statistics record for aggregation
     /// </summary>
@@ -364,7 +366,7 @@ public class AdminLogService : IAdminLogService
             .OrderBy(m => m.Date)
             .ToList();
     }
-    
+
     /// <summary>
     /// Gets the start of the week containing the specified date
     /// </summary>

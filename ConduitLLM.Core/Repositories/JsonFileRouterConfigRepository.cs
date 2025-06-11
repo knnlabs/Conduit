@@ -18,9 +18,9 @@ namespace ConduitLLM.Core.Repositories
     {
         private readonly string _configFilePath;
         private readonly ILogger<JsonFileRouterConfigRepository> _logger;
-        private readonly JsonSerializerOptions _jsonOptions = new() 
-        { 
-            WriteIndented = true 
+        private readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            WriteIndented = true
         };
 
         /// <summary>
@@ -48,10 +48,10 @@ namespace ConduitLLM.Core.Repositories
                 using var fileStream = new FileStream(_configFilePath, FileMode.Open, FileAccess.Read);
                 var config = await JsonSerializer.DeserializeAsync<RouterConfig>(
                     fileStream, _jsonOptions, cancellationToken);
-                
-                _logger.LogInformation("Loaded router configuration with {ModelCount} model deployments", 
+
+                _logger.LogInformation("Loaded router configuration with {ModelCount} model deployments",
                     config?.ModelDeployments?.Count ?? 0);
-                
+
                 return config;
             }
             catch (Exception ex)
@@ -80,8 +80,8 @@ namespace ConduitLLM.Core.Repositories
 
                 using var fileStream = new FileStream(_configFilePath, FileMode.Create, FileAccess.Write);
                 await JsonSerializer.SerializeAsync(fileStream, config, _jsonOptions, cancellationToken);
-                
-                _logger.LogInformation("Saved router configuration with {ModelCount} model deployments", 
+
+                _logger.LogInformation("Saved router configuration with {ModelCount} model deployments",
                     config.ModelDeployments?.Count ?? 0);
             }
             catch (Exception ex)

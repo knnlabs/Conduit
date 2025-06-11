@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ public class DatabaseBackupController : ControllerBase
 {
     private readonly IAdminDatabaseBackupService _databaseBackupService;
     private readonly ILogger<DatabaseBackupController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the DatabaseBackupController
     /// </summary>
@@ -27,7 +28,7 @@ public class DatabaseBackupController : ControllerBase
         _databaseBackupService = databaseBackupService ?? throw new ArgumentNullException(nameof(databaseBackupService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Creates a database backup
     /// </summary>
@@ -43,12 +44,12 @@ public class DatabaseBackupController : ControllerBase
         try
         {
             var result = await _databaseBackupService.CreateBackupAsync();
-            
+
             if (!result.Success)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, result.ErrorMessage);
             }
-            
+
             return Ok(result.BackupInfo);
         }
         catch (Exception ex)
@@ -57,7 +58,7 @@ public class DatabaseBackupController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets a list of available backups
     /// </summary>
@@ -78,7 +79,7 @@ public class DatabaseBackupController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Restores a database backup
     /// </summary>
@@ -96,17 +97,17 @@ public class DatabaseBackupController : ControllerBase
         try
         {
             var result = await _databaseBackupService.RestoreBackupAsync(backupId);
-            
+
             if (!result.Success)
             {
                 if (result.ErrorMessage?.Contains("not found") == true)
                 {
                     return NotFound(result.ErrorMessage);
                 }
-                
+
                 return StatusCode(StatusCodes.Status500InternalServerError, result.ErrorMessage);
             }
-            
+
             return Ok("Database restored successfully");
         }
         catch (Exception ex)
@@ -115,7 +116,7 @@ public class DatabaseBackupController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Downloads a database backup
     /// </summary>
@@ -130,14 +131,14 @@ public class DatabaseBackupController : ControllerBase
         try
         {
             var result = await _databaseBackupService.DownloadBackupAsync(backupId);
-            
+
             if (result == null)
             {
                 return NotFound($"Backup with ID {backupId} not found");
             }
-            
+
             var (fileStream, contentType, fileName) = result.Value;
-            
+
             return File(fileStream, contentType, fileName);
         }
         catch (Exception ex)

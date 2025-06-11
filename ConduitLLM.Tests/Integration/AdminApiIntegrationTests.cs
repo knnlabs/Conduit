@@ -2,15 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Xunit;
 using Xunit.Abstractions;
 
@@ -48,17 +51,17 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            
+
             // Configure the AdminApiClient to use the test server's HttpClient
             var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
             {
                 BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
                 MasterKey = "test-master-key"
             });
-            
+
             var serviceProvider = services.BuildServiceProvider();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
-            
+
             // Create AdminApiClient with the test HttpClient
             var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
@@ -72,17 +75,17 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            
+
             // Configure the AdminApiClient to use the test server's HttpClient
             var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
             {
                 BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
                 MasterKey = "test-master-key"
             });
-            
+
             var serviceProvider = services.BuildServiceProvider();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
-            
+
             // Create AdminApiClient with the test HttpClient
             var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
@@ -97,7 +100,7 @@ namespace ConduitLLM.Tests.Integration
             try
             {
                 var createResponse = await adminApiClient.CreateVirtualKeyAsync(createRequest);
-                
+
                 // Assert - Verify creation
                 Assert.NotNull(createResponse);
                 Assert.NotNull(createResponse.VirtualKey);
@@ -106,7 +109,7 @@ namespace ConduitLLM.Tests.Integration
 
                 // Act - List virtual keys
                 var keys = await adminApiClient.GetAllVirtualKeysAsync();
-                
+
                 // Assert - Verify the key appears in the list
                 Assert.NotNull(keys);
                 Assert.Contains(keys, k => k.Id == createResponse.KeyInfo.Id);
@@ -131,17 +134,17 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var services = new ServiceCollection();
             services.AddLogging();
-            
+
             // Configure the AdminApiClient to use the test server's HttpClient
             var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
             {
                 BaseUrl = _adminHttpClient.BaseAddress?.ToString() ?? "http://localhost",
                 MasterKey = "test-master-key"
             });
-            
+
             var serviceProvider = services.BuildServiceProvider();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminApiClient>>();
-            
+
             // Create AdminApiClient with the test HttpClient
             var adminApiClient = new AdminApiClient(_adminHttpClient, adminOptions, logger);
 
@@ -149,14 +152,14 @@ namespace ConduitLLM.Tests.Integration
             {
                 // Act - Get logs summary
                 var summary = await adminApiClient.GetLogsSummaryAsync(7);
-                
+
                 // Assert - Verify we got a response (even if empty)
                 Assert.NotNull(summary);
                 Assert.True(summary.TotalRequests >= 0);
 
                 // Act - Get request logs
                 var logs = await adminApiClient.GetRequestLogsAsync(1, 10);
-                
+
                 // Assert - Verify we got a response
                 Assert.NotNull(logs);
                 Assert.NotNull(logs.Items);
@@ -180,7 +183,7 @@ namespace ConduitLLM.Tests.Integration
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddHttpClient();
-            
+
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -189,10 +192,10 @@ namespace ConduitLLM.Tests.Integration
                     { "AdminApi:UseAdminApi", "true" }
                 })
                 .Build();
-            
+
             services.AddSingleton<IConfiguration>(config);
             services.AddTransient<IAdminApiClient, AdminApiClient>();
-            
+
             var serviceProvider = services.BuildServiceProvider();
             var adminApiClient = serviceProvider.GetRequiredService<IAdminApiClient>();
 
@@ -200,7 +203,7 @@ namespace ConduitLLM.Tests.Integration
             {
                 // Act - Call health endpoint
                 var response = await _adminHttpClient.GetAsync("/health");
-                
+
                 // Assert
                 Assert.True(response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable);
             }

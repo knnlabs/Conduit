@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The global setting entity or null if not found</returns>
         Task<GlobalSetting?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a global setting by key
         /// </summary>
@@ -24,14 +25,14 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The global setting entity or null if not found</returns>
         Task<GlobalSetting?> GetByKeyAsync(string key, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all global settings
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all global settings</returns>
         Task<List<GlobalSetting>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new global setting
         /// </summary>
@@ -39,7 +40,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created global setting</returns>
         Task<int> CreateAsync(GlobalSetting globalSetting, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a global setting
         /// </summary>
@@ -47,7 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(GlobalSetting globalSetting, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates or creates a global setting
         /// </summary>
@@ -57,7 +58,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the operation was successful, false otherwise</returns>
         Task<bool> UpsertAsync(string key, string value, string? description = null, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a global setting
         /// </summary>
@@ -65,7 +66,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the deletion was successful, false otherwise</returns>
         Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a global setting by key
         /// </summary>

@@ -13,7 +13,7 @@ public class ConfigurationChangeNotifier
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ConfigurationChangeNotifier> _logger;
-    
+
     public ConfigurationChangeNotifier(
         IHttpClientFactory httpClientFactory,
         ILogger<ConfigurationChangeNotifier> logger)
@@ -21,7 +21,7 @@ public class ConfigurationChangeNotifier
         _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
-    
+
     /// <summary>
     /// Notifies the Conduit HTTP proxy server that configuration has changed
     /// </summary>
@@ -32,14 +32,14 @@ public class ConfigurationChangeNotifier
         try
         {
             _logger.LogInformation("Notifying Conduit proxy server about configuration changes...");
-            
+
             // Create a clean URL without trailing slash
             var baseUrl = proxyBaseUrl.TrimEnd('/');
             var refreshUrl = $"{baseUrl}/admin/refresh-configuration";
-            
+
             var httpClient = _httpClientFactory.CreateClient();
             var response = await httpClient.PostAsync(refreshUrl, null);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Successfully notified Conduit proxy server about configuration changes");

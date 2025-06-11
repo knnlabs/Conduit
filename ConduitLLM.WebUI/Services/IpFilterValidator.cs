@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services;
@@ -11,7 +12,7 @@ namespace ConduitLLM.WebUI.Services;
 public class IpFilterValidator
 {
     private readonly ILogger<IpFilterValidator> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="IpFilterValidator"/> class
     /// </summary>
@@ -20,7 +21,7 @@ public class IpFilterValidator
     {
         _logger = logger;
     }
-    
+
     /// <summary>
     /// Validates an IP filter for proper format and checks for conflicts with existing filters
     /// </summary>
@@ -35,18 +36,18 @@ public class IpFilterValidator
         int? filterIdForUpdate = null)
     {
         // Validate filter type
-        if (filter.FilterType != IpFilterConstants.WHITELIST && 
+        if (filter.FilterType != IpFilterConstants.WHITELIST &&
             filter.FilterType != IpFilterConstants.BLACKLIST)
         {
             return (false, $"Invalid filter type: {filter.FilterType}. Must be 'whitelist' or 'blacklist'.");
         }
-        
+
         // Validate IP address or CIDR
         if (string.IsNullOrWhiteSpace(filter.IpAddressOrCidr))
         {
             return (false, "IP address or CIDR subnet cannot be empty.");
         }
-        
+
         // If it's a plain IP address
         if (!filter.IpAddressOrCidr.Contains('/'))
         {
@@ -63,7 +64,7 @@ public class IpFilterValidator
                 return (false, $"Invalid CIDR notation: {filter.IpAddressOrCidr}");
             }
         }
-        
+
         // Check for duplicates (same IP/CIDR and filter type)
         if (existingFilters != null && existingFilters.Any())
         {
@@ -98,17 +99,17 @@ public class IpFilterValidator
                     filtersToCheck = existingFilters.Where(f => f.Id != filterId).ToList();
                 }
             }
-            
-            var duplicate = filtersToCheck.FirstOrDefault(f => 
+
+            var duplicate = filtersToCheck.FirstOrDefault(f =>
                 f.FilterType.Equals(filter.FilterType, StringComparison.OrdinalIgnoreCase) &&
                 f.IpAddressOrCidr.Equals(filter.IpAddressOrCidr, StringComparison.OrdinalIgnoreCase));
-                
+
             if (duplicate != null)
             {
                 return (false, $"A {filter.FilterType} rule already exists for {filter.IpAddressOrCidr}.");
             }
         }
-        
+
         // Check for logical conflicts (same IP/CIDR with different filter types)
         if (existingFilters != null && existingFilters.Any())
         {
@@ -143,16 +144,16 @@ public class IpFilterValidator
                     filtersToCheck = existingFilters.Where(f => f.Id != filterId).ToList();
                 }
             }
-            
-            var conflict = filtersToCheck.FirstOrDefault(f => 
+
+            var conflict = filtersToCheck.FirstOrDefault(f =>
                 !f.FilterType.Equals(filter.FilterType, StringComparison.OrdinalIgnoreCase) &&
                 f.IpAddressOrCidr.Equals(filter.IpAddressOrCidr, StringComparison.OrdinalIgnoreCase));
-                
+
             if (conflict != null)
             {
                 return (false, $"Conflict detected: {filter.IpAddressOrCidr} already exists as a {conflict.FilterType} rule.");
             }
-            
+
             // Check for subnet conflicts
             if (filter.IpAddressOrCidr.Contains('/'))
             {
@@ -161,7 +162,7 @@ public class IpFilterValidator
                     // Skip if filter types are the same (not a conflict)
                     if (existing.FilterType.Equals(filter.FilterType, StringComparison.OrdinalIgnoreCase))
                         continue;
-                        
+
                     // Check if existing is a CIDR that overlaps with the new one
                     if (existing.IpAddressOrCidr.Contains('/'))
                     {
@@ -185,7 +186,7 @@ public class IpFilterValidator
                     // Skip if filter types are the same (not a conflict)
                     if (existing.FilterType.Equals(filter.FilterType, StringComparison.OrdinalIgnoreCase))
                         continue;
-                        
+
                     if (IpAddressValidator.IsIpInCidrRange(filter.IpAddressOrCidr, existing.IpAddressOrCidr))
                     {
                         return (false, $"Conflict detected: {filter.IpAddressOrCidr} ({filter.FilterType}) is contained within existing {existing.IpAddressOrCidr} ({existing.FilterType}).");
@@ -193,10 +194,10 @@ public class IpFilterValidator
                 }
             }
         }
-        
+
         return (true, null);
     }
-    
+
     /// <summary>
     /// Checks if two CIDR ranges have any overlap
     /// </summary>
@@ -208,11 +209,11 @@ public class IpFilterValidator
         // Simple implementation - check if either network address is contained in the other range
         var parts1 = cidr1.Split('/');
         var parts2 = cidr2.Split('/');
-        
+
         var networkAddress1 = parts1[0];
         var networkAddress2 = parts2[0];
-        
-        return IpAddressValidator.IsIpInCidrRange(networkAddress1, cidr2) || 
+
+        return IpAddressValidator.IsIpInCidrRange(networkAddress1, cidr2) ||
                IpAddressValidator.IsIpInCidrRange(networkAddress2, cidr1);
     }
 }

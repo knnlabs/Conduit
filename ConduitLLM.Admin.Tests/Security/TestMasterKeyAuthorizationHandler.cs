@@ -1,8 +1,10 @@
+using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Security;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 namespace ConduitLLM.Admin.Tests.Security
 {
@@ -12,7 +14,7 @@ namespace ConduitLLM.Admin.Tests.Security
     public class TestMasterKeyAuthorizationHandler : MasterKeyAuthorizationHandler
     {
         private readonly IConfiguration _configuration;
-        
+
         public TestMasterKeyAuthorizationHandler(
             IConfiguration configuration,
             ILogger<MasterKeyAuthorizationHandler> logger)
@@ -30,10 +32,10 @@ namespace ConduitLLM.Admin.Tests.Security
         {
             // Call the handler first
             HandleRequirementAsync(context, requirement);
-            
+
             // For tests, force success
             context.Succeed(requirement);
-            
+
             return Task.CompletedTask;
         }
     }

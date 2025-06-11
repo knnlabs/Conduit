@@ -39,7 +39,7 @@ public class ChatCompletionChunk
     /// </summary>
     [JsonPropertyName("object")]
     public string Object { get; set; } = "chat.completion.chunk"; // Default value
-    
+
     /// <summary>
     /// This fingerprint represents the backend configuration that the model runs with.
     /// Can be used in conjunction with the seed request parameter to understand when backend changes have been made that might impact determinism.
@@ -47,7 +47,7 @@ public class ChatCompletionChunk
     [JsonPropertyName("system_fingerprint")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? SystemFingerprint { get; set; }
-    
+
     /// <summary>
     /// The original model alias used in routing, if different from the model name.
     /// </summary>

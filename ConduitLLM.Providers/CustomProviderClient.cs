@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
-using Microsoft.Extensions.Logging;
+using System.Threading;
+using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -46,7 +46,7 @@ namespace ConduitLLM.Providers
         /// Gets the base URL for API requests.
         /// </summary>
         protected readonly string BaseUrl;
-        
+
         /// <summary>
         /// Gets the default JSON serialization options.
         /// </summary>
@@ -74,13 +74,13 @@ namespace ConduitLLM.Providers
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             string? baseUrl = null,
-            ProviderDefaultModels? defaultModels = null) 
+            ProviderDefaultModels? defaultModels = null)
             : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
-            BaseUrl = !string.IsNullOrEmpty(baseUrl) 
-                ? baseUrl 
-                : !string.IsNullOrEmpty(credentials.ApiBase) 
-                    ? credentials.ApiBase 
+            BaseUrl = !string.IsNullOrEmpty(baseUrl)
+                ? baseUrl
+                : !string.IsNullOrEmpty(credentials.ApiBase)
+                    ? credentials.ApiBase
                     : throw new ConfigurationException($"Base URL must be provided either directly or via ApiBase in credentials for {ProviderName}");
         }
 
@@ -97,7 +97,7 @@ namespace ConduitLLM.Providers
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Set the base address if not already set
             if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
             {
@@ -119,7 +119,7 @@ namespace ConduitLLM.Providers
         protected override void ValidateRequest<TRequest>(TRequest request, string operationName)
         {
             base.ValidateRequest(request, operationName);
-            
+
             // Add common validation for CustomProviderClient
             if (request is ChatCompletionRequest chatRequest)
             {
@@ -161,13 +161,13 @@ namespace ConduitLLM.Providers
             {
                 return $"HTTP error {(int)response.StatusCode}: {response.ReasonPhrase}";
             }
-            
+
             // Try to parse as JSON to extract error message
             try
             {
                 var errorJson = JsonDocument.Parse(errorJsonContent);
                 var errorRoot = errorJson.RootElement;
-                
+
                 // Try common error message paths
                 if (errorRoot.TryGetProperty("error", out var errorObj))
                 {
@@ -176,13 +176,13 @@ namespace ConduitLLM.Providers
                         return messageObj.GetString() ?? errorJsonContent;
                     }
                 }
-                
+
                 // Try other common patterns
                 if (errorRoot.TryGetProperty("message", out var directMessageObj))
                 {
                     return directMessageObj.GetString() ?? errorJsonContent;
                 }
-                
+
                 // Just return the raw content if we couldn't extract
                 return errorJsonContent;
             }

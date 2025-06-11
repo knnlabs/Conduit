@@ -4,8 +4,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -159,7 +161,7 @@ namespace ConduitLLM.WebUI.Controllers
 
                 // Compare hashes (case-insensitive)
                 bool result = string.Equals(hashedInputKey, storedHash, StringComparison.OrdinalIgnoreCase);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Master key validated successfully against hashed value");
@@ -168,7 +170,7 @@ namespace ConduitLLM.WebUI.Controllers
                 {
                     _logger.LogWarning("Invalid master key attempted");
                 }
-                
+
                 return result;
             }
             catch (Exception ex)

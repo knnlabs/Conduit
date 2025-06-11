@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using System.Collections.Generic;
+
 using ConduitLLM.Core;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -36,12 +38,12 @@ namespace ConduitLLM.Examples
             {
                 // Get a client that supports transcription (e.g., whisper-1)
                 var client = _conduit.GetClient("whisper-1");
-                
+
                 if (client is IAudioTranscriptionClient transcriptionClient)
                 {
                     // Load audio file (replace with actual audio file path)
                     var audioPath = "path/to/audio.mp3";
-                    byte[] audioData = File.Exists(audioPath) 
+                    byte[] audioData = File.Exists(audioPath)
                         ? await File.ReadAllBytesAsync(audioPath)
                         : GenerateSampleAudioData(); // Dummy data for example
 
@@ -54,7 +56,7 @@ namespace ConduitLLM.Examples
                     };
 
                     var response = await transcriptionClient.TranscribeAudioAsync(request);
-                    
+
                     _logger.LogInformation("Transcription: {Text}", response.Text);
                     _logger.LogInformation("Language: {Language}", response.Language);
                     _logger.LogInformation("Duration: {Duration}s", response.Duration);
@@ -64,7 +66,7 @@ namespace ConduitLLM.Examples
                     {
                         foreach (var segment in response.Segments)
                         {
-                            _logger.LogInformation("[{Start:F2}s - {End:F2}s] {Text}", 
+                            _logger.LogInformation("[{Start:F2}s - {End:F2}s] {Text}",
                                 segment.Start, segment.End, segment.Text);
                         }
                     }
@@ -91,7 +93,7 @@ namespace ConduitLLM.Examples
             {
                 // Get a client that supports TTS (e.g., tts-1)
                 var client = _conduit.GetClient("tts-1");
-                
+
                 if (client is ITextToSpeechClient ttsClient)
                 {
                     // List available voices
@@ -109,9 +111,9 @@ namespace ConduitLLM.Examples
                     };
 
                     var response = await ttsClient.CreateSpeechAsync(request);
-                    
+
                     _logger.LogInformation("Generated audio: {Length} bytes", response.AudioData.Length);
-                    
+
                     // Save to file
                     var outputPath = "output_speech.mp3";
                     await File.WriteAllBytesAsync(outputPath, response.AudioData);
@@ -182,10 +184,10 @@ namespace ConduitLLM.Examples
         {
             await TranscribeAudioExample();
             _logger.LogInformation("");
-            
+
             await TextToSpeechExample();
             _logger.LogInformation("");
-            
+
             await MultiProviderAudioExample();
         }
     }

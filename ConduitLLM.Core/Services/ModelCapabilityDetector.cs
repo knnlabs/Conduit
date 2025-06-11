@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -19,7 +21,7 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger<ModelCapabilityDetector> _logger;
         private readonly IModelCapabilityService? _capabilityService;
         private readonly ILLMClientFactory _clientFactory;
-        
+
         // Fallback patterns for when capability service is not available
         private static readonly Dictionary<string, List<string>> VisionCapableModelPatterns = new()
         {
@@ -29,7 +31,7 @@ namespace ConduitLLM.Core.Services
             ["bedrock"] = new List<string> { "claude-3", "claude-3-haiku", "claude-3-sonnet", "claude-3-opus" },
             ["vertexai"] = new List<string> { "gemini" }
         };
-        
+
         /// <summary>
         /// Initializes a new instance of the ModelCapabilityDetector.
         /// </summary>
@@ -44,13 +46,13 @@ namespace ConduitLLM.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _capabilityService = capabilityService;
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-            
+
             if (capabilityService == null)
             {
                 _logger.LogWarning("ModelCapabilityService not available, falling back to hardcoded patterns");
             }
         }
-        
+
         /// <summary>
         /// Determines if a model has vision (image processing) capabilities.
         /// </summary>
@@ -60,7 +62,7 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrEmpty(modelName))
                 return false;
-                
+
             // Use capability service if available
             if (_capabilityService != null)
             {
@@ -74,7 +76,7 @@ namespace ConduitLLM.Core.Services
                     _logger.LogError(ex, "Error checking vision capability for model {Model}, falling back to patterns", modelName);
                 }
             }
-            
+
             // Fallback to pattern matching
             foreach (var patternGroup in VisionCapableModelPatterns)
             {
@@ -86,10 +88,10 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Determines if a chat completion request contains image content that 
         /// requires a vision-capable model.
@@ -100,12 +102,12 @@ namespace ConduitLLM.Core.Services
         {
             if (request?.Messages == null || !request.Messages.Any())
                 return false;
-                
+
             foreach (var message in request.Messages)
             {
                 if (message.Content == null)
                     continue;
-                    
+
                 // Check for content that is not a string (likely multimodal)
                 if (message.Content is not string)
                 {
@@ -132,7 +134,7 @@ namespace ConduitLLM.Core.Services
                         {
                             if (part is ImageUrlContentPart)
                                 return true;
-                                
+
                             // Try to extract type property dynamically
                             var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
                             if (type == "image_url")
@@ -141,10 +143,10 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Gets a list of all available models that support vision capabilities.
         /// </summary>
@@ -154,15 +156,15 @@ namespace ConduitLLM.Core.Services
             // If capability service is available, this method would need to be async
             // For now, return pattern-based models
             var models = new List<string>();
-            
+
             foreach (var patternGroup in VisionCapableModelPatterns)
             {
                 models.AddRange(patternGroup.Value);
             }
-            
+
             return models.Distinct();
         }
-        
+
         /// <summary>
         /// Validates that a request can be processed by the specified model.
         /// </summary>
@@ -173,26 +175,26 @@ namespace ConduitLLM.Core.Services
         public bool ValidateRequestForModel(ChatCompletionRequest request, string modelName, out string errorMessage)
         {
             errorMessage = string.Empty;
-            
+
             if (request == null)
             {
                 errorMessage = "Request cannot be null";
                 return false;
             }
-            
+
             if (string.IsNullOrEmpty(modelName))
             {
                 errorMessage = "Model name cannot be null or empty";
                 return false;
             }
-            
+
             // Check if request contains images but model doesn't support vision
             if (ContainsImageContent(request) && !HasVisionCapability(modelName))
             {
                 errorMessage = $"Model '{modelName}' does not support vision/image inputs";
                 return false;
             }
-            
+
             return true;
         }
     }

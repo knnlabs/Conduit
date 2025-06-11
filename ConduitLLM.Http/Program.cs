@@ -4,29 +4,30 @@ using System.Text.Json.Serialization; // Required for JsonNamingPolicy
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data; // Added for database initialization
+using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
+using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Http.Adapters;
+using ConduitLLM.Http.Controllers; // Added for RealtimeController
+using ConduitLLM.Http.Security;
+using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
-using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
-using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
-using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
-using Microsoft.AspNetCore.RateLimiting;
-using ConduitLLM.Http.Security;
-using ConduitLLM.Http.Controllers; // Added for RealtimeController
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
     Args = args,
     // Don't load appsettings.json
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
@@ -165,8 +166,8 @@ builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionMana
 builder.Services.AddSingleton<IRealtimeMessageTranslatorFactory, RealtimeMessageTranslatorFactory>();
 builder.Services.AddScoped<IRealtimeProxyService, RealtimeProxyService>();
 builder.Services.AddScoped<IRealtimeUsageTracker, RealtimeUsageTracker>();
-builder.Services.AddHostedService<RealtimeConnectionManager>(provider => 
-    provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ?? 
+builder.Services.AddHostedService<RealtimeConnectionManager>(provider =>
+    provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ??
     throw new InvalidOperationException("RealtimeConnectionManager not registered properly"));
 
 // Register Real-time Message Translators
@@ -215,17 +216,17 @@ if (!skipDatabaseInit)
     {
         var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
         var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
+
         try
         {
             initLogger.LogInformation("Starting database initialization...");
-            
+
             // Wait for database to be available (especially important in Docker)
             var maxRetries = 10;
             var retryDelay = 3000; // 3 seconds between retries
-            
+
             var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
-            
+
             if (success)
             {
                 initLogger.LogInformation("Database initialization completed successfully");
@@ -272,10 +273,12 @@ Console.WriteLine("[Conduit API] Controllers registered");
 app.MapConduitHealthChecks();
 
 // Add completions endpoint (legacy)
-app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {
+app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>
+{
     logger.LogInformation("Legacy /completions endpoint called.");
     return Results.Json(
-        new {
+        new
+        {
             error = "The /completions endpoint is not implemented. Please use /chat/completions."
         },
         statusCode: 501,
@@ -286,17 +289,21 @@ app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {
 // Add embeddings endpoint
 app.MapPost("/v1/embeddings", (
     [FromBody] EmbeddingRequest? request,
-    [FromServices] ILogger<Program> logger) => {
+    [FromServices] ILogger<Program> logger) =>
+{
 
-    if (request == null) {
+    if (request == null)
+    {
         return Results.BadRequest(new { error = "Invalid request body." });
     }
 
-    try {
+    try
+    {
         // Currently embeddings are not fully implemented
         logger.LogWarning("Embeddings endpoint called but CreateEmbeddingAsync not implemented.");
         return Results.Json(
-            new {
+            new
+            {
                 error = "Embeddings routing not yet implemented."
             },
             statusCode: 501,
@@ -307,10 +314,13 @@ app.MapPost("/v1/embeddings", (
         // var response = await router.CreateEmbeddingAsync(request, cancellationToken);
         // return Results.Json(response, options: jsonSerializerOptions);
     }
-    catch (Exception ex) {
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error processing embeddings request for model: {Model}", request.Model);
-        return Results.Json(new OpenAIErrorResponse {
-            Error = new OpenAIError {
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
                 Message = ex.Message,
                 Type = "server_error",
                 Code = "internal_error"
@@ -320,31 +330,38 @@ app.MapPost("/v1/embeddings", (
 });
 
 // Add models endpoint
-app.MapGet("/v1/models", ([FromServices] ILLMRouter router, [FromServices] ILogger<Program> logger) => {
-    try {
+app.MapGet("/v1/models", ([FromServices] ILLMRouter router, [FromServices] ILogger<Program> logger) =>
+{
+    try
+    {
         logger.LogInformation("Getting available models");
 
         // Get model names from the router
         var modelNames = router.GetAvailableModels();
 
         // Convert to OpenAI format
-        var basicModelData = modelNames.Select(m => new {
+        var basicModelData = modelNames.Select(m => new
+        {
             id = m,
             @object = "model"
         }).ToList();
 
         // Create the response envelope
-        var response = new {
+        var response = new
+        {
             data = basicModelData,
             @object = "list"
         };
 
         return Results.Json(response, options: jsonSerializerOptions);
     }
-    catch (Exception ex) {
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error retrieving models list");
-        return Results.Json(new OpenAIErrorResponse {
-            Error = new OpenAIError {
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
                 Message = ex.Message,
                 Type = "server_error",
                 Code = "internal_error"
@@ -362,55 +379,68 @@ app.MapPost("/v1/chat/completions", async (
 {
     logger.LogInformation("Received /v1/chat/completions request for model: {Model}", request.Model);
 
-    try {
+    try
+    {
         // Non-streaming path
-        if (request.Stream != true) {
+        if (request.Stream != true)
+        {
             logger.LogInformation("Handling non-streaming request.");
             var response = await conduit.CreateChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted);
             return Results.Json(response, options: jsonSerializerOptions);
-        } else {
+        }
+        else
+        {
             logger.LogInformation("Handling streaming request.");
             // Implement streaming response
             var response = httpRequest.HttpContext.Response;
             response.Headers["Content-Type"] = "text/event-stream";
             response.Headers["Cache-Control"] = "no-cache";
             response.Headers["Connection"] = "keep-alive";
-            
-            try {
-                await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted)) {
+
+            try
+            {
+                await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted))
+                {
                     var json = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
                     await response.WriteAsync($"data: {json}\n\n");
                     await response.Body.FlushAsync();
                 }
-                
+
                 // Write [DONE] to signal the end of the stream
                 await response.WriteAsync("data: [DONE]\n\n");
                 await response.Body.FlushAsync();
             }
-            catch (Exception streamEx) {
+            catch (Exception streamEx)
+            {
                 logger.LogError(streamEx, "Error in stream processing");
-                var errorJson = JsonSerializer.Serialize(new OpenAIErrorResponse { 
-                    Error = new OpenAIError { 
-                        Message = streamEx.Message, 
-                        Type = "server_error", 
-                        Code = "streaming_error" 
-                    } 
+                var errorJson = JsonSerializer.Serialize(new OpenAIErrorResponse
+                {
+                    Error = new OpenAIError
+                    {
+                        Message = streamEx.Message,
+                        Type = "server_error",
+                        Code = "streaming_error"
+                    }
                 }, jsonSerializerOptions);
-                
+
                 await response.WriteAsync($"data: {errorJson}\n\n");
                 await response.Body.FlushAsync();
             }
-            
+
             return Results.Empty;
         }
-    } catch (Exception ex) {
+    }
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error processing request");
-        return Results.Json(new OpenAIErrorResponse { 
-            Error = new OpenAIError { 
-                Message = ex.Message, 
-                Type = "server_error", 
-                Code = "internal_error" 
-            } 
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
+                Message = ex.Message,
+                Type = "server_error",
+                Code = "internal_error"
+            }
         }, statusCode: 500, options: jsonSerializerOptions);
     }
 });
@@ -472,7 +502,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             if (providerCredsList.Any())
             {
                 _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
-                
+
                 // Convert database provider credentials to Core provider credentials
                 var providersList = providerCredsList.Select(p => new ProviderCredentials
                 {
@@ -481,26 +511,26 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ApiVersion = p.ApiVersion,
                     ApiBase = p.BaseUrl // Map BaseUrl from DB entity to ApiBase in settings entity
                 }).ToList();
-                
+
                 // Now integrate these with existing settings
                 // Two approaches: 
                 // 1. Replace in-memory with DB values
                 // 2. Merge DB with in-memory (with DB taking precedence)
                 // Using approach #2 here
-                
+
                 if (settings.ProviderCredentials == null)
                 {
                     settings.ProviderCredentials = new List<ProviderCredentials>();
                 }
-                
+
                 // Remove any in-memory providers that exist in DB to avoid duplicates
-                settings.ProviderCredentials.RemoveAll(p => 
-                    providersList.Any(dbp => 
+                settings.ProviderCredentials.RemoveAll(p =>
+                    providersList.Any(dbp =>
                         string.Equals(dbp.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
-                
+
                 // Then add all the database credentials
                 settings.ProviderCredentials.AddRange(providersList);
-                
+
                 foreach (var cred in providersList)
                 {
                     _logger.LogInformation("Loaded credentials for provider: {ProviderName}", cred.ProviderName);
@@ -510,16 +540,16 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             {
                 _logger.LogWarning("No provider credentials found in database");
             }
-            
+
             // Load model mappings using ModelProviderMappingRepository directly
             var modelMappingsEntities = await configDbContext.ModelProviderMappings
                 .Include(m => m.ProviderCredential)
                 .ToListAsync();
-                
+
             if (modelMappingsEntities.Any())
             {
                 _logger.LogInformation("Found {Count} model mappings in database", modelMappingsEntities.Count);
-                
+
                 // Convert database model mappings to Core model mappings
                 var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
                 {
@@ -527,24 +557,24 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ProviderName = m.ProviderCredential.ProviderName,
                     ProviderModelId = m.ProviderModelName
                 }).ToList();
-                
+
                 // Configure the model mappings in settings
                 if (settings.ModelMappings == null)
                 {
                     settings.ModelMappings = new List<ModelProviderMapping>();
                 }
-                
+
                 // Remove existing mappings that exist in DB to avoid duplicates
-                settings.ModelMappings.RemoveAll(m => 
-                    modelMappingsList.Any(dbm => 
+                settings.ModelMappings.RemoveAll(m =>
+                    modelMappingsList.Any(dbm =>
                         string.Equals(dbm.ModelAlias, m.ModelAlias, StringComparison.OrdinalIgnoreCase)));
-                
+
                 // Add all the database model mappings
                 settings.ModelMappings.AddRange(modelMappingsList);
-                
+
                 foreach (var mapping in modelMappingsList)
                 {
-                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
+                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
                         mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
                 }
             }

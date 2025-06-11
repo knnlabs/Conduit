@@ -52,13 +52,13 @@ public class ChatCompletionResponse
     [JsonPropertyName("usage")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Usage? Usage { get; set; }
-    
+
     /// <summary>
     /// The original model alias used in routing, if different from the model name.
     /// </summary>
     [JsonIgnore]
     public string? OriginalModelAlias { get; set; }
-    
+
     /// <summary>
     /// The seed that was used for generation.
     /// </summary>

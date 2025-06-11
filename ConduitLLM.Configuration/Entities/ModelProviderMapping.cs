@@ -63,7 +63,7 @@ namespace ConduitLLM.Configuration.Entities
         /// The UTC timestamp when this mapping was created.
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
+
         /// <summary>
         /// The UTC timestamp when this mapping was last updated.
         /// </summary>

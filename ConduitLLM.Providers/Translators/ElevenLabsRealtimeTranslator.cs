@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers.Translators
@@ -28,7 +30,7 @@ namespace ConduitLLM.Providers.Translators
         public ElevenLabsRealtimeTranslator(ILogger<ElevenLabsRealtimeTranslator> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -53,7 +55,7 @@ namespace ConduitLLM.Providers.Translators
                         channels = 1
                     }
                 },
-                
+
                 RealtimeTextInput textInput => new
                 {
                     type = "text_input",
@@ -63,14 +65,14 @@ namespace ConduitLLM.Providers.Translators
                         role = "user"
                     }
                 },
-                
+
                 RealtimeFunctionResponse funcResponse => new
                 {
                     type = "tool_response",
                     tool_call_id = funcResponse.CallId,
                     output = funcResponse.Output
                 },
-                
+
                 RealtimeResponseRequest responseRequest => new
                 {
                     type = "generate_response",
@@ -85,33 +87,33 @@ namespace ConduitLLM.Providers.Translators
                         }
                     }
                 },
-                
+
                 _ => throw new NotSupportedException($"Message type '{message.GetType().Name}' is not supported by ElevenLabs")
             };
 
             var json = JsonSerializer.Serialize(elevenLabsMessage, _jsonOptions);
             _logger.LogDebug("Translated to ElevenLabs: {MessageType} -> {Json}", message.GetType().Name, json);
-            
+
             return await Task.FromResult(json);
         }
 
         public async Task<IEnumerable<RealtimeMessage>> TranslateFromProviderAsync(string providerMessage)
         {
             var messages = new List<RealtimeMessage>();
-            
+
             try
             {
                 using var doc = JsonDocument.Parse(providerMessage);
                 var root = doc.RootElement;
-                
+
                 if (!root.TryGetProperty("type", out var typeElement))
                 {
                     throw new InvalidOperationException("ElevenLabs message missing 'type' field");
                 }
-                
+
                 var messageType = typeElement.GetString();
                 _logger.LogDebug("Translating from ElevenLabs: {MessageType}", messageType);
-                
+
                 switch (messageType)
                 {
                     case "conversation_started":
@@ -122,7 +124,7 @@ namespace ConduitLLM.Providers.Translators
                             Details = providerMessage
                         });
                         break;
-                        
+
                     case "audio_output":
                         if (root.TryGetProperty("audio", out var audio) &&
                             audio.TryGetProperty("data", out var audioData))
@@ -135,7 +137,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "text_output":
                         if (root.TryGetProperty("text", out var text))
                         {
@@ -146,7 +148,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "tool_call":
                         messages.Add(new RealtimeFunctionCall
                         {
@@ -156,18 +158,18 @@ namespace ConduitLLM.Providers.Translators
                             IsDelta = false
                         });
                         break;
-                        
+
                     case "turn_complete":
                         messages.Add(new RealtimeStatusMessage
                         {
                             Status = "response_complete"
                         });
-                        
+
                         // ElevenLabs includes metrics in turn_complete
                         if (root.TryGetProperty("metrics", out var metrics))
                         {
                             _logger.LogDebug("ElevenLabs metrics: {Metrics}", metrics.GetRawText());
-                            
+
                             // Extract character count for cost estimation
                             if (metrics.TryGetProperty("characters_synthesized", out var chars))
                             {
@@ -184,7 +186,7 @@ namespace ConduitLLM.Providers.Translators
                             }
                         }
                         break;
-                        
+
                     case "error":
                         var error = ParseError(root);
                         messages.Add(new RealtimeErrorMessage
@@ -192,7 +194,7 @@ namespace ConduitLLM.Providers.Translators
                             Error = error
                         });
                         break;
-                        
+
                     case "interruption":
                         messages.Add(new RealtimeStatusMessage
                         {
@@ -200,7 +202,7 @@ namespace ConduitLLM.Providers.Translators
                             Details = providerMessage
                         });
                         break;
-                        
+
                     default:
                         _logger.LogWarning("Unknown ElevenLabs message type: {Type}", messageType);
                         break;
@@ -211,28 +213,28 @@ namespace ConduitLLM.Providers.Translators
                 _logger.LogError(ex, "Error parsing ElevenLabs message: {Message}", providerMessage);
                 throw new InvalidOperationException("Failed to parse ElevenLabs realtime message", ex);
             }
-            
+
             return await Task.FromResult(messages);
         }
 
         public async Task<TranslationValidationResult> ValidateSessionConfigAsync(RealtimeSessionConfig config)
         {
             var result = new TranslationValidationResult { IsValid = true };
-            
+
             // Validate model/agent
             var supportedAgents = new[] { "conversational-v1", "rachel", "sam", "charlie" };
             if (!string.IsNullOrEmpty(config.Model) && !supportedAgents.Contains(config.Model))
             {
                 result.Warnings.Add($"Agent '{config.Model}' may not be available. Known agents: {string.Join(", ", supportedAgents)}");
             }
-            
+
             // Validate voice
             var supportedVoices = new[] { "rachel", "sam", "charlie", "emily", "adam", "elli", "josh" };
             if (!string.IsNullOrEmpty(config.Voice) && !supportedVoices.Contains(config.Voice.ToLowerInvariant()))
             {
                 result.Warnings.Add($"Voice '{config.Voice}' may not be available. Known voices: {string.Join(", ", supportedVoices)}");
             }
-            
+
             // Validate audio formats
             var supportedFormats = new[] { RealtimeAudioFormat.PCM16_16kHz };
             if (!supportedFormats.Contains(config.InputFormat))
@@ -240,13 +242,13 @@ namespace ConduitLLM.Providers.Translators
                 result.Errors.Add($"Input format '{config.InputFormat}' is not supported by ElevenLabs. Use PCM16 at 16kHz.");
                 result.IsValid = false;
             }
-            
+
             // ElevenLabs specific requirements
             if (config.TurnDetection.Enabled)
             {
                 result.Warnings.Add("ElevenLabs handles turn detection automatically based on voice activity");
             }
-            
+
             return await Task.FromResult(result);
         }
 
@@ -287,7 +289,7 @@ namespace ConduitLLM.Providers.Translators
                     }
                 }
             };
-            
+
             // Add tools/functions if configured
             if (config.Tools != null && config.Tools.Any())
             {
@@ -297,10 +299,10 @@ namespace ConduitLLM.Providers.Translators
                     description = t.Function?.Description,
                     parameters = t.Function?.Parameters
                 }).ToList();
-                
+
                 ((dynamic)elevenLabsConfig.config).tools = tools;
             }
-            
+
             return await Task.FromResult(JsonSerializer.Serialize(elevenLabsConfig, _jsonOptions));
         }
 
@@ -316,24 +318,24 @@ namespace ConduitLLM.Providers.Translators
                 ["X-ElevenLabs-Version"] = "v1",
                 ["X-Client-Info"] = "conduit-llm/1.0"
             };
-            
+
             return await Task.FromResult(headers);
         }
 
         public async Task<IEnumerable<string>> GetInitializationMessagesAsync(RealtimeSessionConfig config)
         {
             var messages = new List<string>();
-            
+
             // Send configuration
             var sessionConfig = await TransformSessionConfigAsync(config);
             messages.Add(sessionConfig);
-            
+
             // Start the conversation
             messages.Add(JsonSerializer.Serialize(new
             {
                 type = "conversation_start"
             }, _jsonOptions));
-            
+
             return messages;
         }
 
@@ -343,10 +345,10 @@ namespace ConduitLLM.Providers.Translators
             {
                 using var doc = JsonDocument.Parse(providerError);
                 var root = doc.RootElement;
-                
+
                 string? code = null;
                 string? message = null;
-                
+
                 if (root.TryGetProperty("error", out var errorElement))
                 {
                     code = errorElement.TryGetProperty("code", out var codeElem) ? codeElem.GetString() : null;
@@ -357,7 +359,7 @@ namespace ConduitLLM.Providers.Translators
                     code = codeElem.GetString();
                     message = root.TryGetProperty("message", out var msgElem) ? msgElem.GetString() : providerError;
                 }
-                
+
                 return new RealtimeError
                 {
                     Code = code ?? "unknown",
@@ -371,7 +373,7 @@ namespace ConduitLLM.Providers.Translators
             {
                 // If we can't parse it, treat as generic error
             }
-            
+
             return new RealtimeError
             {
                 Code = "provider_error",
@@ -385,7 +387,7 @@ namespace ConduitLLM.Providers.Translators
         {
             if (string.IsNullOrEmpty(voiceName))
                 return "21m00Tcm4TlvDq8ikWAM"; // Default Rachel voice ID
-                
+
             // Map common voice names to ElevenLabs voice IDs
             return voiceName.ToLowerInvariant() switch
             {
@@ -403,14 +405,14 @@ namespace ConduitLLM.Providers.Translators
         private RealtimeError ParseError(JsonElement root)
         {
             var error = root.TryGetProperty("error", out var errorElem) ? errorElem : root;
-            
+
             return new RealtimeError
             {
                 Code = error.TryGetProperty("code", out var code) ? code.GetString() ?? "unknown" : "unknown",
                 Message = error.TryGetProperty("message", out var msg) ? msg.GetString() ?? "Unknown error" : "Unknown error",
                 Severity = Core.Interfaces.ErrorSeverity.Error,
                 IsTerminal = false,
-                Details = error.TryGetProperty("details", out var details) ? 
+                Details = error.TryGetProperty("details", out var details) ?
                     JsonSerializer.Deserialize<Dictionary<string, object>>(details.GetRawText()) : null
             };
         }

@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -17,7 +19,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ILogger<AudioContentFilter> _logger;
         private readonly IAudioAuditLogger _auditLogger;
-        
+
         // Simple patterns for demo - in production, use ML models or external services
         private readonly Dictionary<string, List<string>> _inappropriatePatterns = new()
         {
@@ -103,7 +105,7 @@ namespace ConduitLLM.Core.Services
             // 1. Use speech recognition to convert to text
             // 2. Analyze audio characteristics for inappropriate content
             // 3. Check against audio fingerprinting databases
-            
+
             _logger.LogDebug(
                 "Validating audio content for format {Format}, size {Size} bytes",
                 format,
@@ -151,7 +153,7 @@ namespace ConduitLLM.Core.Services
                     foreach (Match match in matches)
                     {
                         result.ViolationCategories.Add(category.Key);
-                        
+
                         var detail = new ContentFilterDetail
                         {
                             Type = category.Key,
@@ -161,7 +163,7 @@ namespace ConduitLLM.Core.Services
                             StartIndex = match.Index,
                             EndIndex = match.Index + match.Length
                         };
-                        
+
                         details.Add(detail);
 
                         // Replace with asterisks
@@ -178,11 +180,11 @@ namespace ConduitLLM.Core.Services
                 result.WasModified = true;
                 result.FilteredText = filteredText;
                 result.Details = details;
-                
+
                 // Determine if content should be blocked entirely
                 var criticalViolations = details.Count(d => d.Severity == FilterSeverity.Critical);
                 var highViolations = details.Count(d => d.Severity == FilterSeverity.High);
-                
+
                 if (criticalViolations > 0 || highViolations > 2)
                 {
                     result.IsApproved = false;

@@ -8,8 +8,8 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Services;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Middleware
 {
@@ -21,7 +21,7 @@ namespace ConduitLLM.Http.Middleware
         private readonly RequestDelegate _next;
         private readonly IRequestLogService _requestLogService;
         private readonly ILogger<LlmRequestTrackingMiddleware> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the LlmRequestTrackingMiddleware
         /// </summary>
@@ -37,7 +37,7 @@ namespace ConduitLLM.Http.Middleware
             _requestLogService = requestLogService;
             _logger = logger;
         }
-        
+
         /// <summary>
         /// Processes the request
         /// </summary>
@@ -55,7 +55,7 @@ namespace ConduitLLM.Http.Middleware
                 await _next(context);
             }
         }
-        
+
         /// <summary>
         /// Determines if the request should be tracked
         /// </summary>
@@ -63,15 +63,15 @@ namespace ConduitLLM.Http.Middleware
         {
             // Check for virtual key header
             var hasVirtualKey = context.Request.Headers.TryGetValue("X-Virtual-Key", out var _);
-            
+
             // Check if this is an API endpoint
             var isApiRequest = context.Request.Path.StartsWithSegments("/api");
-            
+
             // We could add more criteria here
-            
+
             return hasVirtualKey && isApiRequest;
         }
-        
+
         /// <summary>
         /// Tracks the request
         /// </summary>
@@ -79,7 +79,7 @@ namespace ConduitLLM.Http.Middleware
         {
             // Get the virtual key from the header
             var keyValue = context.Request.Headers["X-Virtual-Key"].ToString();
-            
+
             // Get the virtual key ID
             var virtualKeyId = await _requestLogService.GetVirtualKeyIdFromKeyValueAsync(keyValue);
             if (virtualKeyId == null)
@@ -89,50 +89,50 @@ namespace ConduitLLM.Http.Middleware
                 await context.Response.WriteAsync("Invalid virtual key");
                 return;
             }
-            
+
             // Enable request body reading
             context.Request.EnableBuffering();
-            
+
             // Save the original response body stream
             var originalResponseBody = context.Response.Body;
-            
+
             try
             {
                 // Read the request body
                 var requestBody = await ReadBodyAsync(context.Request.Body);
-                
+
                 // Reset the request body position
                 context.Request.Body.Position = 0;
-                
+
                 // Create a new memory stream for the response body
                 using var responseBody = new MemoryStream();
                 context.Response.Body = responseBody;
-                
+
                 // Start the timer
                 var stopwatch = Stopwatch.StartNew();
-                
+
                 // Call the next middleware in the pipeline
                 await _next(context);
-                
+
                 // Stop the timer
                 stopwatch.Stop();
-                
+
                 // Read the response body
                 responseBody.Position = 0;
                 var responseContent = await ReadBodyAsync(responseBody);
-                
+
                 // Estimate tokens
                 var (inputTokens, outputTokens) = _requestLogService.EstimateTokens(requestBody, responseContent);
-                
+
                 // Extract model name from request
                 var modelName = ExtractModelName(requestBody);
-                
+
                 // Determine request type
                 var requestType = DetermineRequestType(context.Request.Path);
-                
+
                 // Calculate cost
                 var cost = _requestLogService.CalculateCost(modelName, inputTokens, outputTokens);
-                
+
                 // Log the request
                 var log = new LogRequestDto
                 {
@@ -148,9 +148,9 @@ namespace ConduitLLM.Http.Middleware
                     RequestPath = context.Request.Path,
                     StatusCode = context.Response.StatusCode
                 };
-                
+
                 await _requestLogService.LogRequestAsync(log);
-                
+
                 // Copy the response to the original stream
                 responseBody.Position = 0;
                 await responseBody.CopyToAsync(originalResponseBody);
@@ -166,7 +166,7 @@ namespace ConduitLLM.Http.Middleware
                 context.Response.Body = originalResponseBody;
             }
         }
-        
+
         /// <summary>
         /// Reads a stream into a string
         /// </summary>
@@ -179,13 +179,13 @@ namespace ConduitLLM.Http.Middleware
                     encoding: Encoding.UTF8,
                     detectEncodingFromByteOrderMarks: false,
                     leaveOpen: true);
-                    
+
                 return await reader.ReadToEndAsync();
             }
-            
+
             return string.Empty;
         }
-        
+
         /// <summary>
         /// Extracts the model name from the request body
         /// </summary>
@@ -193,11 +193,11 @@ namespace ConduitLLM.Http.Middleware
         {
             // This is a simplified implementation - in a real system,
             // you'd use proper JSON parsing
-            
+
             // Look for "model":"..."
             const string modelPattern = "\"model\":";
             var modelIndex = requestBody.IndexOf(modelPattern);
-            
+
             if (modelIndex >= 0)
             {
                 var startQuoteIndex = requestBody.IndexOf('"', modelIndex + modelPattern.Length);
@@ -210,32 +210,32 @@ namespace ConduitLLM.Http.Middleware
                     }
                 }
             }
-            
+
             return "unknown";
         }
-        
+
         /// <summary>
         /// Determines the type of request from the path
         /// </summary>
         private static string DetermineRequestType(string path)
         {
             var normalizedPath = path.ToLowerInvariant();
-            
+
             if (normalizedPath.Contains("/chat"))
             {
                 return "chat";
             }
-            
+
             if (normalizedPath.Contains("/completion"))
             {
                 return "completion";
             }
-            
+
             if (normalizedPath.Contains("/embedding"))
             {
                 return "embedding";
             }
-            
+
             return "other";
         }
     }

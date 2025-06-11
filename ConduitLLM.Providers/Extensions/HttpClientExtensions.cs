@@ -1,12 +1,15 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Net.Http;
+
+using ConduitLLM.Providers.Configuration;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 using Polly;
 using Polly.Extensions.Http;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using ConduitLLM.Providers.Configuration;
 
 namespace ConduitLLM.Providers.Extensions;
 
@@ -25,7 +28,7 @@ public static class HttpClientExtensions
         // Configure retry options from configuration
         services.AddOptions<RetryOptions>()
             .BindConfiguration(RetryOptions.SectionName);
-            
+
         // Configure timeout options from configuration
         services.AddOptions<TimeoutOptions>()
             .BindConfiguration(TimeoutOptions.SectionName);
@@ -33,7 +36,8 @@ public static class HttpClientExtensions
         // Register provider clients with timeout and retry policies
         services.AddHttpClient<OpenAIClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<OpenAIClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -41,7 +45,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<OpenAIClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -53,7 +58,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<AnthropicClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<AnthropicClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -61,7 +67,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<AnthropicClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -73,7 +80,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<CohereClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<CohereClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -81,7 +89,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<CohereClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -93,7 +102,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<GeminiClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<GeminiClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -101,7 +111,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<GeminiClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -113,7 +124,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<GroqClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<GroqClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -121,7 +133,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<GroqClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -133,7 +146,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<HuggingFaceClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<HuggingFaceClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -141,7 +155,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<HuggingFaceClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -153,7 +168,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<MistralClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<MistralClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -161,7 +177,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<MistralClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -173,7 +190,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<OpenRouterClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<OpenRouterClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -181,7 +199,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<OpenRouterClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(
@@ -193,7 +212,8 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<VertexAIClient>()
             // --- Outer Policy: Timeout ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<VertexAIClient>>();
                 var timeoutOptions = provider.GetService<IOptions<TimeoutOptions>>()?.Value ?? new TimeoutOptions();
                 return ResiliencePolicies.GetTimeoutPolicy(
@@ -201,7 +221,8 @@ public static class HttpClientExtensions
                     timeoutOptions.EnableTimeoutLogging ? logger : null);
             })
             // --- Inner Policy: Retry ---
-            .AddPolicyHandler((provider, _) => {
+            .AddPolicyHandler((provider, _) =>
+            {
                 var logger = provider.GetRequiredService<ILogger<VertexAIClient>>();
                 var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value ?? new RetryOptions();
                 return ResiliencePolicies.GetRetryPolicy(

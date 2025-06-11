@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -139,13 +141,13 @@ namespace ConduitLLM.Core.Services
             {
                 var mapping = await GetMappingByModelNameAsync(model);
                 var result = mapping?.TokenizerType;
-                
+
                 // Default to cl100k_base if not specified
                 if (string.IsNullOrEmpty(result))
                 {
                     result = "cl100k_base";
                 }
-                
+
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -169,7 +171,7 @@ namespace ConduitLLM.Core.Services
             {
                 var mapping = await GetMappingByModelNameAsync(model);
                 var result = new List<string>();
-                
+
                 if (!string.IsNullOrEmpty(mapping?.SupportedVoices))
                 {
                     try
@@ -181,7 +183,7 @@ namespace ConduitLLM.Core.Services
                         _logger.LogWarning(ex, "Invalid JSON in SupportedVoices for model {Model}", model);
                     }
                 }
-                
+
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -205,7 +207,7 @@ namespace ConduitLLM.Core.Services
             {
                 var mapping = await GetMappingByModelNameAsync(model);
                 var result = new List<string>();
-                
+
                 if (!string.IsNullOrEmpty(mapping?.SupportedLanguages))
                 {
                     try
@@ -217,7 +219,7 @@ namespace ConduitLLM.Core.Services
                         _logger.LogWarning(ex, "Invalid JSON in SupportedLanguages for model {Model}", model);
                     }
                 }
-                
+
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -241,7 +243,7 @@ namespace ConduitLLM.Core.Services
             {
                 var mapping = await GetMappingByModelNameAsync(model);
                 var result = new List<string>();
-                
+
                 if (!string.IsNullOrEmpty(mapping?.SupportedFormats))
                 {
                     try
@@ -253,7 +255,7 @@ namespace ConduitLLM.Core.Services
                         _logger.LogWarning(ex, "Invalid JSON in SupportedFormats for model {Model}", model);
                     }
                 }
-                
+
                 _cache.Set(cacheKey, result, _cacheExpiration);
                 return result;
             }
@@ -290,7 +292,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting default model for provider {Provider} and capability {Capability}", 
+                _logger.LogError(ex, "Error getting default model for provider {Provider} and capability {Capability}",
                     provider, capabilityType);
                 return null;
             }
@@ -316,7 +318,7 @@ namespace ConduitLLM.Core.Services
             {
                 // Try to find by provider model name
                 var allMappings = await _repository.GetAllAsync(cancellationToken);
-                mapping = allMappings.FirstOrDefault(m => 
+                mapping = allMappings.FirstOrDefault(m =>
                     m.ProviderModelName.Equals(model, StringComparison.OrdinalIgnoreCase));
             }
             return mapping;

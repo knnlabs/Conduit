@@ -4,13 +4,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces.Configuration;
-using Microsoft.Extensions.Options;
+using ConduitLLM.Core.Models;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Core
 {
@@ -84,7 +85,7 @@ namespace ConduitLLM.Core
             {
                 // Extract the routing strategy if specified in the model name
                 var (routingStrategy, actualModel) = ExtractRoutingInfoFromModel(request.Model);
-                
+
                 // Set the cleaned model name back in the request if provided
                 if (!string.IsNullOrEmpty(actualModel))
                 {
@@ -139,7 +140,7 @@ namespace ConduitLLM.Core
             {
                 // Extract the routing strategy if specified in the model name
                 var (routingStrategy, actualModel) = ExtractRoutingInfoFromModel(request.Model);
-                
+
                 // Set the cleaned model name back in the request if provided
                 if (!string.IsNullOrEmpty(actualModel))
                 {
@@ -176,7 +177,7 @@ namespace ConduitLLM.Core
         private async Task<ChatCompletionRequest> ApplyContextManagementAsync(ChatCompletionRequest request)
         {
             // Skip if context management is disabled or services aren't available
-            if (_contextManager == null || _modelProviderMappingService == null || _contextOptions == null || 
+            if (_contextManager == null || _modelProviderMappingService == null || _contextOptions == null ||
                 !_contextOptions.Value.EnableAutomaticContextManagement)
             {
                 return request;
@@ -186,10 +187,10 @@ namespace ConduitLLM.Core
             {
                 // Get model context window limit
                 int? maxContextTokens = null;
-                
+
                 // First try to get model-specific context limit
                 var mapping = await _modelProviderMappingService.GetMappingByModelAliasAsync(request.Model);
-                
+
                 // Handle the MaxContextTokens property which may or may not exist yet
                 // depending on whether the migration has been applied
                 var maxContextTokensProperty = mapping?.GetType().GetProperty("MaxContextTokens");
@@ -198,19 +199,19 @@ namespace ConduitLLM.Core
                     maxContextTokens = maxContextTokensProperty.GetValue(mapping) as int?;
                     if (maxContextTokens.HasValue)
                     {
-                        _logger.LogDebug("Using model-specific context window limit of {Tokens} tokens for {Model}", 
+                        _logger.LogDebug("Using model-specific context window limit of {Tokens} tokens for {Model}",
                             maxContextTokens, request.Model);
                     }
                 }
-                
+
                 // Fall back to default limit if configured
                 if (!maxContextTokens.HasValue && _contextOptions.Value.DefaultMaxContextTokens.HasValue)
                 {
                     maxContextTokens = _contextOptions.Value.DefaultMaxContextTokens;
-                    _logger.LogDebug("Using default context window limit of {Tokens} tokens for {Model}", 
+                    _logger.LogDebug("Using default context window limit of {Tokens} tokens for {Model}",
                         maxContextTokens, request.Model);
                 }
-                
+
                 // Apply context management if we have a limit
                 if (maxContextTokens.HasValue && _contextManager != null)
                 {
@@ -222,7 +223,7 @@ namespace ConduitLLM.Core
                 // Log error but don't fail the request - just pass through without context management
                 _logger.LogError(ex, "Error applying context management for model {Model}", request.Model);
             }
-            
+
             return request;
         }
 
@@ -312,10 +313,10 @@ namespace ConduitLLM.Core
             if (modelName.StartsWith("router:", StringComparison.OrdinalIgnoreCase))
             {
                 string remaining = modelName.Substring("router:".Length);
-                
+
                 // Split by colon to extract strategy and model (if present)
                 var parts = remaining.Split(':', 2);
-                
+
                 if (parts.Length == 2)
                 {
                     // Format: router:strategy:model
@@ -336,11 +337,11 @@ namespace ConduitLLM.Core
                     }
                 }
             }
-            
+
             // Not a router format
             return (null, modelName);
         }
-        
+
         /// <summary>
         /// Checks if a string is a known routing strategy
         /// </summary>

@@ -1,9 +1,3 @@
-using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +6,14 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -218,7 +220,7 @@ namespace ConduitLLM.Admin.Services
 
                 // Create an HTTP client
                 using var client = _httpClientFactory.CreateClient();
-                
+
                 // Configure timeout
                 client.Timeout = TimeSpan.FromSeconds(10);
 
@@ -241,8 +243,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     var errorContent = await responseMessage.Content.ReadAsStringAsync();
                     result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
-                    result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000 
-                        ? errorContent 
+                    result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
+                        ? errorContent
                         : "Response content too large to display";
                 }
                 else
@@ -250,14 +252,14 @@ namespace ConduitLLM.Admin.Services
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
                     var providerName = providerCredential.ProviderName.ToLowerInvariant();
-                    
+
                     switch (providerName)
                     {
                         case "openrouter":
                             _logger.LogInformation("Performing additional OpenRouter authentication check");
-                            
+
                             var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, actualCredential);
-                            
+
                             if (!openRouterAuthSuccessful)
                             {
                                 result.Success = false;
@@ -265,16 +267,16 @@ namespace ConduitLLM.Admin.Services
                                 result.ErrorDetails = "Invalid API key - OpenRouter requires a valid API key for making requests";
                                 return result;
                             }
-                            
+
                             _logger.LogInformation("OpenRouter authentication check passed");
                             break;
-                            
+
                         case "google":
                         case "gemini":
                             _logger.LogInformation("Performing additional Google/Gemini authentication check");
-                            
+
                             var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, actualCredential);
-                            
+
                             if (!geminiAuthSuccessful)
                             {
                                 result.Success = false;
@@ -282,16 +284,16 @@ namespace ConduitLLM.Admin.Services
                                 result.ErrorDetails = "Invalid API key - Google Gemini requires a valid API key for making requests";
                                 return result;
                             }
-                            
+
                             _logger.LogInformation("Google/Gemini authentication check passed");
                             break;
-                            
+
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
                             _logger.LogInformation("Skipping authentication check for Ollama (local service)");
                             break;
                     }
-                    
+
                     var responseTimeMs = responseTime.TotalMilliseconds;
                     result.Message = $"Connected successfully to {providerCredential.ProviderName} API in {responseTimeMs:F2}ms";
                 }
@@ -312,7 +314,7 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName);
-                
+
                 return new ProviderConnectionTestResultDto
                 {
                     Success = false,
@@ -375,16 +377,16 @@ namespace ConduitLLM.Admin.Services
         {
             // Default URL
             var baseUrl = credential.BaseUrl;
-            
+
             // If base URL is not specified, use a default based on provider name
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
                 baseUrl = GetDefaultBaseUrl(credential.ProviderName);
             }
-            
+
             // Trim trailing slash if present
             baseUrl = baseUrl?.TrimEnd('/');
-            
+
             // Construct health check URL based on provider
             return credential.ProviderName.ToLowerInvariant() switch
             {
@@ -397,23 +399,23 @@ namespace ConduitLLM.Admin.Services
                 "openrouter" => $"{baseUrl}/api/v1/models",
                 "fireworks" or "fireworksai" => $"{baseUrl}/v1/models",
                 "openai-compatible" or "openaicompatible" => $"{baseUrl}/v1/models",
-                
+
                 // Cloud providers with custom endpoints
                 "azure" => $"{baseUrl}/openai/models?api-version=2023-05-15",
                 "bedrock" => $"{baseUrl}/", // Bedrock doesn't have a simple health endpoint
                 "vertexai" => $"{baseUrl}/", // VertexAI requires complex auth
                 "sagemaker" => $"{baseUrl}/", // SageMaker endpoints are custom
-                
+
                 // Other LLM providers
                 "google" or "gemini" => $"{baseUrl}/v1beta/models",
                 "ollama" => $"{baseUrl}/api/tags",
                 "replicate" => $"{baseUrl}/", // Replicate doesn't have a models endpoint
                 "huggingface" => $"{baseUrl}/", // HuggingFace doesn't have a generic models endpoint
-                
+
                 // Audio/specialized providers
                 "ultravox" => $"{baseUrl}/", // Ultravox is realtime audio
                 "elevenlabs" or "eleven-labs" => $"{baseUrl}/v1/user", // ElevenLabs user endpoint for health check
-                
+
                 _ => $"{baseUrl}/models" // Generic endpoint for other providers
             };
         }
@@ -430,29 +432,29 @@ namespace ConduitLLM.Admin.Services
             {
                 // OpenRouter requires authentication for certain operations
                 // We'll make a lightweight request that requires auth but doesn't incur usage costs
-                
+
                 // First, let's try the auth endpoint if available
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl) 
-                    ? credential.BaseUrl 
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl
                     : "https://openrouter.ai";
                 var authCheckUrl = $"{baseUrl.TrimEnd('/')}/api/v1/auth/key";
-                
+
                 try
                 {
                     _logger.LogInformation("Checking OpenRouter auth endpoint: {Url}", authCheckUrl);
-                    
+
                     // Try the auth key endpoint first (if it exists)
                     var authResponse = await client.GetAsync(authCheckUrl);
-                    
+
                     _logger.LogInformation("OpenRouter auth endpoint returned status: {Status}", authResponse.StatusCode);
-                    
+
                     if (authResponse.StatusCode == HttpStatusCode.OK)
                     {
                         // If the auth endpoint exists and returns OK, we're authenticated
                         _logger.LogInformation("OpenRouter authentication successful via auth endpoint");
                         return true;
                     }
-                    else if (authResponse.StatusCode == HttpStatusCode.Unauthorized || 
+                    else if (authResponse.StatusCode == HttpStatusCode.Unauthorized ||
                              authResponse.StatusCode == HttpStatusCode.Forbidden)
                     {
                         // Clear authentication failure
@@ -465,7 +467,7 @@ namespace ConduitLLM.Admin.Services
                     // Auth endpoint might not exist, fall back to completion test
                     _logger.LogInformation("OpenRouter auth endpoint check failed, falling back to completion test: {Error}", ex.Message);
                 }
-                
+
                 // Fallback: Make a minimal generation request that will fail immediately if auth is invalid
                 // Use the generation endpoint with parameters that will fail validation but still check auth
                 var testRequest = new
@@ -483,15 +485,15 @@ namespace ConduitLLM.Admin.Services
 
                 var json = JsonSerializer.Serialize(testRequest);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                
+
                 var chatUrl = $"{baseUrl.TrimEnd('/')}/api/v1/chat/completions";
                 var response = await client.PostAsync(chatUrl, content);
-                
+
                 // Check the response for authentication errors
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 // OpenRouter returns specific error messages for auth failures
-                if (response.StatusCode == HttpStatusCode.Unauthorized || 
+                if (response.StatusCode == HttpStatusCode.Unauthorized ||
                     response.StatusCode == HttpStatusCode.Forbidden ||
                     responseContent.Contains("No auth credentials found", StringComparison.OrdinalIgnoreCase) ||
                     responseContent.Contains("Invalid API key", StringComparison.OrdinalIgnoreCase) ||
@@ -499,7 +501,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     return false;
                 }
-                
+
                 // If we get here without auth errors, the key is valid
                 // (even if the request failed for other reasons like invalid parameters)
                 return true;
@@ -524,33 +526,33 @@ namespace ConduitLLM.Admin.Services
             {
                 // Google Gemini requires API key as a query parameter, not in headers
                 // We need to make a request that requires authentication
-                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl) 
-                    ? credential.BaseUrl 
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl
                     : "https://generativelanguage.googleapis.com";
-                    
+
                 // Try to get a specific model which requires authentication
                 var testUrl = $"{baseUrl.TrimEnd('/')}/v1beta/models/gemini-pro?key={credential.ApiKey}";
-                
+
                 // Remove the Bearer token from headers since Gemini uses query param
                 client.DefaultRequestHeaders.Authorization = null;
-                
+
                 var response = await client.GetAsync(testUrl);
-                
+
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
                     _logger.LogInformation("Google Gemini authentication successful");
                     return true;
                 }
-                else if (response.StatusCode == HttpStatusCode.Unauthorized || 
+                else if (response.StatusCode == HttpStatusCode.Unauthorized ||
                          response.StatusCode == HttpStatusCode.Forbidden ||
                          response.StatusCode == HttpStatusCode.BadRequest) // Gemini returns 400 for invalid keys
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("Google Gemini authentication failed: {Status} - {Content}", 
+                    _logger.LogWarning("Google Gemini authentication failed: {Status} - {Content}",
                         response.StatusCode, responseContent);
                     return false;
                 }
-                
+
                 // If we get another status, log it but assume auth is ok
                 _logger.LogInformation("Google Gemini returned unexpected status: {Status}", response.StatusCode);
                 return true;

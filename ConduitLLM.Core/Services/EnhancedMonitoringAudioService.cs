@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -45,10 +47,10 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var response = await base.TranscribeAudioAsync(request, apiKey, cancellationToken);
-            
+
             // Track usage
             await TrackTranscriptionUsageAsync(request, response, apiKey ?? "default");
-            
+
             return response;
         }
 
@@ -59,10 +61,10 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var response = await base.CreateSpeechAsync(request, apiKey, cancellationToken);
-            
+
             // Track usage
             await TrackTextToSpeechUsageAsync(request, response, apiKey ?? "default");
-            
+
             return response;
         }
 
@@ -72,7 +74,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             await base.CloseSessionAsync(session, cancellationToken);
-            
+
             // Track session usage
             var virtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "default";
             await TrackRealtimeSessionUsageAsync(session, virtualKey);
@@ -85,13 +87,13 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var usageTracker = scope.ServiceProvider.GetService<IAudioUsageTracker>();
-            
+
             if (usageTracker == null) return;
 
             var provider = base._transcriptionClient.GetType().Name.Replace("Client", "");
             var model = request.Model ?? "whisper-1";
             var duration = response.Duration ?? (request.AudioData?.Length ?? 0) / 16000.0; // Estimate
-            
+
             // Calculate cost
             var costResult = await _audioCostCalculator.CalculateTranscriptionCostAsync(
                 provider,
@@ -117,13 +119,13 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var usageTracker = scope.ServiceProvider.GetService<IAudioUsageTracker>();
-            
+
             if (usageTracker == null) return;
 
             var provider = base._ttsClient.GetType().Name.Replace("Client", "");
             var model = request.Model ?? "tts-1";
             var duration = response.Duration ?? (response.AudioData?.Length ?? 0) / 24000.0; // Estimate
-            
+
             // Calculate cost
             var costResult = await _audioCostCalculator.CalculateTextToSpeechCostAsync(
                 provider,
@@ -148,16 +150,16 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var usageTracker = scope.ServiceProvider.GetService<IAudioUsageTracker>();
-            
+
             if (usageTracker == null) return;
 
             var provider = session.Provider;
             var model = session.Config.Model ?? "gpt-4-realtime";
-            
+
             // Calculate cost based on audio duration
             var inputMinutes = session.Statistics.InputAudioDuration.TotalMinutes;
             var outputMinutes = session.Statistics.OutputAudioDuration.TotalMinutes;
-            
+
             var costResult = await _audioCostCalculator.CalculateRealtimeCostAsync(
                 provider,
                 model,

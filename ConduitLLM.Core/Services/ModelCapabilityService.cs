@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
@@ -59,7 +61,7 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public Task<bool> SupportsVisionAsync(string model)
         {
-            return Task.FromResult(VisionModels.Contains(model) || 
+            return Task.FromResult(VisionModels.Contains(model) ||
                                  VisionModels.Any(vm => model.Contains(vm, StringComparison.OrdinalIgnoreCase)));
         }
 

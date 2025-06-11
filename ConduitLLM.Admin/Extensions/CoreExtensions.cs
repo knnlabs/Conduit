@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Adapters;
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Extensions;
 using ConduitLLM.Core.Extensions;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,11 +24,11 @@ namespace ConduitLLM.Admin.Extensions
         {
             // Add database services - use ConfigurationDbContext
             services.AddDatabaseServices<ConduitLLM.Configuration.ConfigurationDbContext>();
-            
+
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
             var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
-            
+
             if (dbProvider == "sqlite")
             {
                 services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
@@ -58,13 +59,13 @@ namespace ConduitLLM.Admin.Extensions
             {
                 throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
             }
-            
+
             // Add context management services
             services.AddConduitContextManagement(configuration);
-            
+
             // Add Configuration adapters (moved from Core)
             services.AddConfigurationAdapters();
-            
+
             return services;
         }
     }

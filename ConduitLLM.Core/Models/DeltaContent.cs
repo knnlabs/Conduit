@@ -21,7 +21,7 @@ public class DeltaContent
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Content { get; set; }
-    
+
     /// <summary>
     /// The tool calls made by the assistant in this delta chunk.
     /// </summary>

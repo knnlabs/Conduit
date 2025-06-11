@@ -4,8 +4,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -110,7 +112,7 @@ namespace ConduitLLM.Core.Utilities
                 using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write);
                 await JsonSerializer.SerializeAsync(fileStream, data, options ?? DefaultJsonOptions, cancellationToken);
                 await fileStream.FlushAsync(cancellationToken);
-                
+
                 logger?.LogInformation("Successfully wrote JSON to {FilePath}", filePath);
             }
             catch (IOException ex)
@@ -205,7 +207,7 @@ namespace ConduitLLM.Core.Utilities
                 using var writer = new StreamWriter(fileStream, Encoding.UTF8);
                 await writer.WriteAsync(content);
                 await writer.FlushAsync();
-                
+
                 logger?.LogInformation("Successfully wrote to {FilePath}", filePath);
             }
             catch (IOException ex)

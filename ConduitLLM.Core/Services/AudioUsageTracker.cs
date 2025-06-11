@@ -1,11 +1,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -131,7 +133,7 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var repository = scope.ServiceProvider.GetService<IAudioUsageLogRepository>();
-            
+
             if (repository == null)
             {
                 _logger.LogWarning("Audio usage log repository not available");
@@ -160,14 +162,14 @@ namespace ConduitLLM.Core.Services
                 };
 
                 await repository.CreateAsync(log);
-                
+
                 // Also update virtual key spend
                 var virtualKeyRepo = scope.ServiceProvider.GetService<IVirtualKeyRepository>();
                 if (virtualKeyRepo != null)
                 {
                     await UpdateVirtualKeySpendAsync(virtualKeyRepo, virtualKey, cost);
                 }
-                
+
                 _logger.LogDebug(
                     "Tracked {OperationType} usage for {VirtualKey}: {Duration}s, ${Cost:F4}",
                     operationType, virtualKey, durationSeconds, cost);
@@ -187,12 +189,12 @@ namespace ConduitLLM.Core.Services
             {
                 var keys = await repository.GetAllAsync();
                 var key = keys.FirstOrDefault(k => k.KeyHash == virtualKey);
-                
+
                 if (key != null)
                 {
                     key.CurrentSpend += (decimal)cost;
                     key.UpdatedAt = DateTime.UtcNow;
-                    
+
                     await repository.UpdateAsync(key);
                 }
             }

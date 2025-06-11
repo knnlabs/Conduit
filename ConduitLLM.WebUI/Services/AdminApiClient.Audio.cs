@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services
@@ -106,7 +108,7 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.PostAsJsonAsync(
                     "api/admin/audio/providers", providerConfig);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<AudioProviderConfigDto>() 
+                return await response.Content.ReadFromJsonAsync<AudioProviderConfigDto>()
                     ?? throw new InvalidOperationException("Invalid response from server");
             }
             catch (Exception ex)
@@ -170,7 +172,7 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.PostAsync(
                     $"api/admin/audio/providers/{id}/test?operationType={operationType}", null);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<AudioProviderTestResult>() 
+                return await response.Content.ReadFromJsonAsync<AudioProviderTestResult>()
                     ?? throw new InvalidOperationException("Invalid response from server");
             }
             catch (Exception ex)
@@ -279,7 +281,7 @@ namespace ConduitLLM.WebUI.Services
                 var response = await _httpClient.PostAsJsonAsync(
                     "api/admin/audio/costs", cost);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<AudioCostDto>() 
+                return await response.Content.ReadFromJsonAsync<AudioCostDto>()
                     ?? throw new InvalidOperationException("Invalid response from server");
             }
             catch (Exception ex)

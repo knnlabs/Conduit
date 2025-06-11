@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services.Adapters;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 // Using global namespace aliases from DTONamespaceAliases.cs
@@ -113,7 +117,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             // Arrange
             var today = DateTime.UtcNow;
             var sevenDaysAgo = today.AddDays(-7);
-            
+
             var adminSummary = new ConfigDTOs.LogsSummaryDto
             {
                 TotalRequests = 100,

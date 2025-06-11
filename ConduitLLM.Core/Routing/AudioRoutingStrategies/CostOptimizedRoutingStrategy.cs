@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
 {
@@ -65,7 +67,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 availableProviders,
                 p => CalculateTTSCost(p, characterCount),
                 qualityThreshold,
-                p => p.Capabilities.SupportedVoices.Contains(request.Voice) || 
+                p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
                      p.Capabilities.SupportedVoices.Count == 0,
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
@@ -98,7 +100,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
         {
             // Filter by availability, quality threshold, and other criteria
             var eligibleProviders = availableProviders
-                .Where(p => p.IsAvailable && 
+                .Where(p => p.IsAvailable &&
                            p.Capabilities.QualityScore >= qualityThreshold &&
                            filters.All(f => f(p)))
                 .ToList();
@@ -119,7 +121,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                     BaseCost = costCalculator(p),
                     EffectiveCost = CalculateEffectiveCost(costCalculator(p), p.Metrics.SuccessRate),
                     QualityAdjustedCost = CalculateQualityAdjustedCost(
-                        costCalculator(p), 
+                        costCalculator(p),
                         p.Metrics.SuccessRate,
                         p.Capabilities.QualityScore)
                 })
@@ -127,7 +129,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .ToList();
 
             var selected = costedProviders.First();
-            
+
             _logger.LogInformation(
                 "Selected {Provider} with cost ${Cost:F4} (effective: ${Effective:F4}, quality-adjusted: ${QualityAdjusted:F4})",
                 selected.Provider.Name,
@@ -152,7 +154,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
         {
             // Account for retries due to failures
             if (successRate <= 0) return baseCost * 10; // Penalize heavily
-            
+
             var expectedAttempts = 1.0 / successRate;
             return baseCost * (decimal)expectedAttempts;
         }
@@ -162,7 +164,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             // Lower quality should be reflected as higher "true" cost
             var qualityMultiplier = 2.0 - (qualityScore / 100.0); // 1.0 to 2.0
             var effectiveCost = CalculateEffectiveCost(baseCost, successRate);
-            
+
             return effectiveCost * (decimal)qualityMultiplier;
         }
 

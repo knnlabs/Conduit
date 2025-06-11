@@ -134,7 +134,7 @@ public class StreamingTests
     {
         await Task.Delay(1, cancellationToken); // Simulate async work before throwing
         cancellationToken.ThrowIfCancellationRequested();
-        
+
         // This approach makes it an async iterator without unreachable code
         await Task.FromException<ChatCompletionChunk>(new LLMCommunicationException(message));
         yield break;
@@ -170,7 +170,7 @@ public class StreamingTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-             // Pass null for apiKey
+            // Pass null for apiKey
             await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, CancellationToken.None))
             {
                 // Should not reach here
@@ -195,7 +195,7 @@ public class StreamingTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ConfigurationException>(async () =>
         {
-             // Pass null for apiKey
+            // Pass null for apiKey
             await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, CancellationToken.None))
             {
                 // Should not reach here

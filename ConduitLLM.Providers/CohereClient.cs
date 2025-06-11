@@ -1,23 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Linq;
-
-using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
-using ConduitLLM.Core.Utilities;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -88,7 +88,7 @@ namespace ConduitLLM.Providers
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Set Cohere-specific headers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -102,7 +102,7 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "ChatCompletion");
-            
+
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient(apiKey);
@@ -110,7 +110,7 @@ namespace ConduitLLM.Providers
 
                 var endpoint = ChatEndpoint;
                 Logger.LogDebug("Sending chat completion request to Cohere API at {Endpoint}", endpoint);
-                
+
                 var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<CohereChatRequest, CohereChatResponse>(
                     client,
                     HttpMethod.Post,
@@ -120,7 +120,7 @@ namespace ConduitLLM.Providers
                     DefaultSerializerOptions,
                     Logger,
                     cancellationToken);
-                
+
                 return MapFromCohereResponse(response, request.Model);
             }, "ChatCompletion", cancellationToken);
         }
@@ -132,21 +132,21 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletion");
-            
+
             // Initialize variables outside try/catch so they're accessible throughout the method
             StreamReader? reader = null;
             HttpResponseMessage? response = null;
-            
+
             try
             {
                 using var client = CreateHttpClient(apiKey);
-                
+
                 // Map request and ensure streaming is enabled
                 var cohereRequest = MapToCohereRequest(request) with { Stream = true };
-                
+
                 var endpoint = ChatEndpoint;
                 Logger.LogDebug("Sending streaming chat completion request to Cohere API at {Endpoint}", endpoint);
-                
+
                 response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
                     client,
                     HttpMethod.Post,
@@ -156,7 +156,7 @@ namespace ConduitLLM.Providers
                     DefaultSerializerOptions,
                     Logger,
                     cancellationToken);
-                
+
                 // Set up streaming resources
                 var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 reader = new StreamReader(stream, Encoding.UTF8);
@@ -167,7 +167,7 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "Error initializing streaming chat completion from Cohere");
                 throw ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
             }
-            
+
             // Process the streaming response outside try/catch for yield returns
             if (reader != null)
             {
@@ -175,12 +175,12 @@ namespace ConduitLLM.Providers
                 {
                     string? generationId = null;
                     bool isFirstChunk = true;
-                    
+
                     while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
                     {
                         string? line;
                         ChatCompletionChunk? chunkToYield = null;
-                        
+
                         try
                         {
                             line = await reader.ReadLineAsync();
@@ -188,7 +188,7 @@ namespace ConduitLLM.Providers
                             {
                                 continue;
                             }
-                            
+
                             Logger.LogTrace("Received stream line: {Line}", line);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -196,7 +196,7 @@ namespace ConduitLLM.Providers
                             Logger.LogError(ex, "Error reading from Cohere stream");
                             throw new LLMCommunicationException($"Error reading from Cohere stream: {ex.Message}", ex);
                         }
-                        
+
                         try
                         {
                             // Parse the basic event structure to get the event type
@@ -205,10 +205,10 @@ namespace ConduitLLM.Providers
                             {
                                 continue;
                             }
-                            
+
                             // Now process different event types and yield results
                             // This is now outside the main try/catch block so we can safely yield
-                            
+
                             switch (baseEvent.EventType)
                             {
                                 case "stream-start":
@@ -217,7 +217,7 @@ namespace ConduitLLM.Providers
                                     Logger.LogDebug("Cohere stream started with generation ID: {GenerationId}", generationId);
                                     // No chunk to yield for stream-start
                                     break;
-                                    
+
                                 case "text-generation":
                                     var textEvent = JsonSerializer.Deserialize<CohereTextGenerationEvent>(line, DefaultSerializerOptions);
                                     if (textEvent != null && !string.IsNullOrEmpty(textEvent.Text))
@@ -230,7 +230,7 @@ namespace ConduitLLM.Providers
                                             null,
                                             request.Model
                                         );
-                                        
+
                                         // Only the first chunk needs the assistant role
                                         if (isFirstChunk)
                                         {
@@ -238,14 +238,14 @@ namespace ConduitLLM.Providers
                                         }
                                     }
                                     break;
-                                    
+
                                 case "stream-end":
                                     var endEvent = JsonSerializer.Deserialize<CohereStreamEndEvent>(line, DefaultSerializerOptions);
                                     if (endEvent != null)
                                     {
                                         // Map Cohere finish reason to standardized format
                                         string finishReason = MapFinishReason(endEvent.FinishReason);
-                                        
+
                                         // Prepare a final chunk with the finish reason
                                         chunkToYield = CreateChatCompletionChunk(
                                             "", // Empty content for final chunk
@@ -254,11 +254,11 @@ namespace ConduitLLM.Providers
                                             finishReason,
                                             request.Model
                                         );
-                                        
+
                                         Logger.LogDebug("Cohere stream ended with finish reason: {FinishReason}", finishReason);
                                     }
                                     break;
-                                    
+
                                 // Ignore other event types for now
                                 default:
                                     Logger.LogTrace("Ignoring Cohere event type: {EventType}", baseEvent.EventType);
@@ -270,7 +270,7 @@ namespace ConduitLLM.Providers
                             Logger.LogError(ex, "Error deserializing Cohere stream event: {Line}", line);
                             throw new LLMCommunicationException($"Error processing Cohere stream: {ex.Message}", ex);
                         }
-                        
+
                         // Now we can safely yield outside the try-catch block
                         if (chunkToYield != null)
                         {
@@ -279,7 +279,7 @@ namespace ConduitLLM.Providers
                     }
                 }
             }
-            
+
             // No need for a final catch block since we've moved all error handling into specific contexts
         }
 
@@ -346,7 +346,7 @@ namespace ConduitLLM.Providers
             // Extract chat history and system message (preamble)
             var history = new List<CohereMessage>();
             string? preamble = null;
-            
+
             // Process all but the last user message
             foreach (var message in request.Messages)
             {
@@ -356,14 +356,14 @@ namespace ConduitLLM.Providers
                     preamble = ContentHelper.GetContentAsString(message.Content);
                     continue;
                 }
-                
+
                 // Skip the last user message as it will be set as the primary message
-                if (message == request.Messages.LastOrDefault(m => 
+                if (message == request.Messages.LastOrDefault(m =>
                     m.Role.Equals("user", StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }
-                
+
                 // Map non-system messages to Cohere's format
                 string role = message.Role.ToLowerInvariant() switch
                 {
@@ -372,32 +372,32 @@ namespace ConduitLLM.Providers
                     "tool" => "TOOL", // Not standard in Cohere but added for completeness
                     _ => string.Empty
                 };
-                
+
                 if (string.IsNullOrEmpty(role))
                 {
                     Logger.LogWarning("Unsupported message role '{Role}' encountered for Cohere chat history. Skipping message.", message.Role);
                     continue;
                 }
-                
+
                 history.Add(new CohereMessage
                 {
                     Role = role,
                     Message = ContentHelper.GetContentAsString(message.Content)
                 });
             }
-            
+
             // Get the last user message as the primary message
-            string userMessage = request.Messages.LastOrDefault(m => 
+            string userMessage = request.Messages.LastOrDefault(m =>
                 m.Role.Equals("user", StringComparison.OrdinalIgnoreCase))?.Content != null
-                ? ContentHelper.GetContentAsString(request.Messages.Last(m => 
+                ? ContentHelper.GetContentAsString(request.Messages.Last(m =>
                     m.Role.Equals("user", StringComparison.OrdinalIgnoreCase)).Content)
                 : string.Empty;
-            
+
             if (string.IsNullOrEmpty(userMessage))
             {
                 Logger.LogWarning("No user message found in request for Cohere. Using empty message.");
             }
-            
+
             // Create the Cohere request
             var cohereRequest = new CohereChatRequest
             {
@@ -412,7 +412,7 @@ namespace ConduitLLM.Providers
                 // Map stop to Cohere's stop_sequences if provided
                 StopSequences = request.Stop
             };
-            
+
             return cohereRequest;
         }
 
@@ -438,7 +438,7 @@ namespace ConduitLLM.Providers
             // Extract prompt and completion tokens from response metadata
             int promptTokens = 0;
             int completionTokens = 0;
-            
+
             // Try both tokens and billedUnits fields
             if (response.Meta?.Tokens != null)
             {
@@ -450,7 +450,7 @@ namespace ConduitLLM.Providers
                 promptTokens = response.Meta.BilledUnits.InputTokens ?? 0;
                 completionTokens = response.Meta.BilledUnits.OutputTokens ?? 0;
             }
-            
+
             // Create and return the standardized response
             return new ChatCompletionResponse
             {
@@ -458,8 +458,8 @@ namespace ConduitLLM.Providers
                 Object = "chat.completion", // Mimic OpenAI structure
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // Use current time
                 Model = originalModelAlias ?? ProviderModelId, // Return the alias the user requested
-                Choices = new List<Choice> 
-                { 
+                Choices = new List<Choice>
+                {
                     new Choice
                     {
                         Index = 0,

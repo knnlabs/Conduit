@@ -1,7 +1,8 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Data
 {
@@ -18,17 +19,17 @@ namespace ConduitLLM.Configuration.Data
         /// <param name="retryDelayMs">Delay between retries in milliseconds</param>
         /// <returns>True if the database was initialized successfully, false otherwise</returns>
         public static async Task<bool> InitializeDatabaseAsync(
-            this IServiceProvider serviceProvider, 
-            int maxRetries = 5, 
+            this IServiceProvider serviceProvider,
+            int maxRetries = 5,
             int retryDelayMs = 1000)
         {
             using var scope = serviceProvider.CreateScope();
             var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<DatabaseInitializer>>();
-            
+
             logger.LogInformation("Starting database initialization");
             bool success = await initializer.InitializeDatabaseAsync(maxRetries, retryDelayMs);
-            
+
             if (success)
             {
                 logger.LogInformation("Database initialization completed successfully");
@@ -37,10 +38,10 @@ namespace ConduitLLM.Configuration.Data
             {
                 logger.LogWarning("Database initialization completed with warnings");
             }
-            
+
             return success;
         }
-        
+
         /// <summary>
         /// Ensures that specified tables exist in the database
         /// </summary>

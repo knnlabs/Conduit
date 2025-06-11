@@ -2,10 +2,12 @@ using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Configuration.Repositories;
+
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -68,7 +70,7 @@ namespace ConduitLLM.Core.Services
             entry.Metadata["WasBlocked"] = entry.WasBlocked.ToString();
             entry.Metadata["WasModified"] = entry.WasModified.ToString();
             entry.Metadata["ViolationCount"] = entry.ViolationCategories.Count.ToString();
-            
+
             if (entry.ViolationCategories.Any())
             {
                 entry.Metadata["ViolationCategories"] = string.Join(",", entry.ViolationCategories);
@@ -97,7 +99,7 @@ namespace ConduitLLM.Core.Services
             entry.Metadata["PiiDetected"] = entry.PiiDetected.ToString();
             entry.Metadata["EntityCount"] = entry.EntityCount.ToString();
             entry.Metadata["RiskScore"] = entry.RiskScore.ToString("F2");
-            
+
             if (entry.PiiTypes.Any())
             {
                 entry.Metadata["PiiTypes"] = string.Join(",", entry.PiiTypes);
@@ -164,7 +166,7 @@ namespace ConduitLLM.Core.Services
                     "Failed to log audio audit entry {Id}",
                     entry.Id);
             }
-            
+
             return Task.CompletedTask;
         }
 

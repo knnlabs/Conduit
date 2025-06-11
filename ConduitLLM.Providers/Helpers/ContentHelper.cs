@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.Helpers
@@ -22,16 +23,16 @@ namespace ConduitLLM.Providers.Helpers
         public static List<string> ExtractMultimodalContent(object? content)
         {
             var textParts = new List<string>();
-            
+
             if (content == null)
                 return textParts;
-                
+
             if (content is string textContent)
             {
                 textParts.Add(textContent);
                 return textParts;
             }
-            
+
             // Handle JSON Element or list of content parts
             if (content is JsonElement jsonElement)
             {
@@ -40,13 +41,13 @@ namespace ConduitLLM.Providers.Helpers
                     textParts.Add(jsonElement.GetString() ?? string.Empty);
                     return textParts;
                 }
-                
+
                 if (jsonElement.ValueKind == JsonValueKind.Array)
                 {
                     // Extract all text content parts
                     foreach (var element in jsonElement.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
@@ -56,7 +57,7 @@ namespace ConduitLLM.Providers.Helpers
                     return textParts;
                 }
             }
-            
+
             // Handle ContentParts from direct API usage
             if (content is IEnumerable<object> contentList)
             {
@@ -67,26 +68,26 @@ namespace ConduitLLM.Providers.Helpers
                         textParts.Add(textPart.Text);
                     }
                 }
-                
+
                 if (textParts.Any())
                 {
                     return textParts;
                 }
             }
-            
+
             // Try to serialize and then extract text parts (for collections or other objects)
             try
             {
                 var json = JsonSerializer.Serialize(content);
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                
+
                 if (root.ValueKind == JsonValueKind.Array)
                 {
                     // It's likely content parts
                     foreach (var element in root.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
@@ -100,12 +101,12 @@ namespace ConduitLLM.Providers.Helpers
             {
                 // If we can't process it properly, just use the string representation
             }
-            
+
             // Fallback: Just add the string representation
             textParts.Add(content.ToString() ?? string.Empty);
             return textParts;
         }
-        
+
         /// <summary>
         /// Converts message content (which could be a string or content parts) to a simple string.
         /// Useful for providers that don't support multimodal inputs.
@@ -116,23 +117,23 @@ namespace ConduitLLM.Providers.Helpers
         {
             if (content == null)
                 return string.Empty;
-            
+
             if (content is string textContent)
                 return textContent;
-            
+
             // Handle JSON Element or list of content parts
             if (content is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
                     return jsonElement.GetString() ?? string.Empty;
-                
+
                 if (jsonElement.ValueKind == JsonValueKind.Array)
                 {
                     // Combine all text content parts
                     var sb = new StringBuilder();
                     foreach (var element in jsonElement.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
@@ -141,7 +142,7 @@ namespace ConduitLLM.Providers.Helpers
                             {
                                 if (sb.Length > 0)
                                     sb.AppendLine();
-                                    
+
                                 sb.Append(text);
                             }
                         }
@@ -150,7 +151,7 @@ namespace ConduitLLM.Providers.Helpers
                     return sb.ToString();
                 }
             }
-            
+
             // Handle ContentParts from direct API usage
             if (content is IEnumerable<object> contentList)
             {
@@ -163,32 +164,32 @@ namespace ConduitLLM.Providers.Helpers
                         {
                             if (sb.Length > 0)
                                 sb.AppendLine();
-                                
+
                             sb.Append(textPart.Text);
                         }
                     }
                 }
-                
+
                 if (sb.Length > 0)
                 {
                     return sb.ToString();
                 }
             }
-            
+
             // Try to serialize and then extract text parts (for collections or other objects)
             try
             {
                 var json = JsonSerializer.Serialize(content);
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                
+
                 if (root.ValueKind == JsonValueKind.Array)
                 {
                     // It's likely content parts
                     var sb = new StringBuilder();
                     foreach (var element in root.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "text" &&
                             element.TryGetProperty("text", out var textElement))
                         {
@@ -197,7 +198,7 @@ namespace ConduitLLM.Providers.Helpers
                             {
                                 if (sb.Length > 0)
                                     sb.AppendLine();
-                                    
+
                                 sb.Append(text);
                             }
                         }
@@ -209,11 +210,11 @@ namespace ConduitLLM.Providers.Helpers
             {
                 // If we can't process it properly, just return the string representation
             }
-            
+
             // Fallback: Just return the string representation
             return content.ToString() ?? string.Empty;
         }
-        
+
         /// <summary>
         /// Determines if the content contains only text (no images).
         /// </summary>
@@ -223,7 +224,7 @@ namespace ConduitLLM.Providers.Helpers
         {
             if (content == null || content is string)
                 return true;
-            
+
             // Handle ContentParts from direct API usage
             if (content is IEnumerable<object> contentList)
             {
@@ -231,28 +232,28 @@ namespace ConduitLLM.Providers.Helpers
                 {
                     if (part is ImageUrlContentPart)
                         return false;
-                        
+
                     // Check for type property dynamically for custom implementations
                     var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
                     if (type == "image_url")
                         return false;
                 }
-                
+
                 return true;
             }
-            
+
             // Handle JSON Element
             if (content is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.String)
                     return true;
-                
+
                 if (jsonElement.ValueKind == JsonValueKind.Array)
                 {
                     // Check each element in the array
                     foreach (var element in jsonElement.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "image_url")
                         {
                             return false; // Found an image
@@ -261,26 +262,26 @@ namespace ConduitLLM.Providers.Helpers
                     return true; // No images found
                 }
             }
-            
+
             // Try to serialize and check parts
             try
             {
                 var json = JsonSerializer.Serialize(content);
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
-                
+
                 if (root.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var element in root.EnumerateArray())
                     {
-                        if (element.TryGetProperty("type", out var typeElement) && 
+                        if (element.TryGetProperty("type", out var typeElement) &&
                             typeElement.GetString() == "image_url")
                         {
                             return false; // Found an image
                         }
                     }
                 }
-                
+
                 return true; // No images found
             }
             catch
@@ -289,7 +290,7 @@ namespace ConduitLLM.Providers.Helpers
                 return true;
             }
         }
-        
+
         /// <summary>
         /// Extracts image URLs from multimodal content.
         /// </summary>
@@ -298,13 +299,13 @@ namespace ConduitLLM.Providers.Helpers
         public static List<ImageUrl> ExtractImageUrls(object? content)
         {
             var imageUrls = new List<ImageUrl>();
-            
+
             if (content == null)
                 return imageUrls;
-                
+
             if (content is string)
                 return imageUrls; // Plain strings don't contain images
-            
+
             // Handle ContentParts from direct API usage
             if (content is IEnumerable<object> contentList)
             {
@@ -315,35 +316,35 @@ namespace ConduitLLM.Providers.Helpers
                         imageUrls.Add(imagePart.ImageUrl);
                     }
                 }
-                
+
                 if (imageUrls.Any())
                 {
                     return imageUrls;
                 }
             }
-            
+
             // Handle JSON Element
             if (content is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
             {
                 foreach (var element in jsonElement.EnumerateArray())
                 {
-                    if (element.TryGetProperty("type", out var typeElement) && 
+                    if (element.TryGetProperty("type", out var typeElement) &&
                         typeElement.GetString() == "image_url" &&
                         element.TryGetProperty("image_url", out var imageUrlElement))
                     {
                         string? url = null;
                         string? detail = null;
-                        
+
                         if (imageUrlElement.TryGetProperty("url", out var urlElement))
                         {
                             url = urlElement.GetString();
                         }
-                        
+
                         if (imageUrlElement.TryGetProperty("detail", out var detailElement))
                         {
                             detail = detailElement.GetString();
                         }
-                        
+
                         if (!string.IsNullOrEmpty(url))
                         {
                             imageUrls.Add(new ImageUrl
@@ -355,10 +356,10 @@ namespace ConduitLLM.Providers.Helpers
                     }
                 }
             }
-            
+
             return imageUrls;
         }
-        
+
         /// <summary>
         /// Creates a standard multimodal content list combining text and image parts.
         /// </summary>
@@ -368,13 +369,13 @@ namespace ConduitLLM.Providers.Helpers
         public static List<object> CreateMultimodalContent(string text, IEnumerable<ImageUrl>? imageUrls = null)
         {
             var content = new List<object>();
-            
+
             // Add text content if present
             if (!string.IsNullOrEmpty(text))
             {
                 content.Add(new TextContentPart { Text = text });
             }
-            
+
             // Add images if present
             if (imageUrls != null)
             {
@@ -383,10 +384,10 @@ namespace ConduitLLM.Providers.Helpers
                     content.Add(new ImageUrlContentPart { ImageUrl = imageUrl });
                 }
             }
-            
+
             return content;
         }
-        
+
         /// <summary>
         /// Creates a string description of any multimodal content (useful for logging).
         /// </summary>
@@ -396,32 +397,32 @@ namespace ConduitLLM.Providers.Helpers
         {
             if (content == null)
                 return "[null]";
-                
+
             if (content is string textContent)
                 return $"Text: {(textContent.Length > 50 ? textContent.Substring(0, 47) + "..." : textContent)}";
-                
+
             var textParts = ExtractMultimodalContent(content);
             var imageUrls = ExtractImageUrls(content);
-            
+
             var sb = new StringBuilder();
-            
+
             if (textParts.Any())
             {
                 var combinedText = string.Join(" ", textParts);
                 sb.Append($"Text parts: {textParts.Count} ({(combinedText.Length > 50 ? combinedText.Substring(0, 47) + "..." : combinedText)})");
             }
-            
+
             if (imageUrls.Any())
             {
                 if (sb.Length > 0)
                     sb.Append(", ");
-                    
+
                 sb.Append($"Image parts: {imageUrls.Count}");
             }
-            
+
             if (sb.Length == 0)
                 return "[unknown content format]";
-                
+
             return sb.ToString();
         }
     }

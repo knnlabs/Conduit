@@ -4,13 +4,14 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -23,27 +24,27 @@ namespace ConduitLLM.Tests.Services
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
         }
-        
+
         private ConfigurationDbContext CreateTestContext(DbContextOptions<ConfigurationDbContext> options)
         {
             var context = new ConfigurationDbContext(options);
             context.IsTestEnvironment = true;
             return context;
         }
-        
+
         [Fact]
         public async Task CheckBudgetLimits_ShouldCreateNotification_WhenKeyApproachesLimit()
         {
             // Arrange
             var options = GetDbOptions();
-            
+
             using (var context = CreateTestContext(options))
             {
-                context.VirtualKeys.Add(new VirtualKey 
-                { 
-                    Id = 1, 
-                    KeyName = "Budget Test Key", 
-                    KeyHash = "vk_budget_test", 
+                context.VirtualKeys.Add(new VirtualKey
+                {
+                    Id = 1,
+                    KeyName = "Budget Test Key",
+                    KeyHash = "vk_budget_test",
                     IsEnabled = true,
                     MaxBudget = 5.0m,
                     CurrentSpend = 4.0m, // 80% of budget used
@@ -52,7 +53,7 @@ namespace ConduitLLM.Tests.Services
                 });
                 await context.SaveChangesAsync();
             }
-            
+
             // Act
             using (var context = CreateTestContext(options))
             {
@@ -60,26 +61,26 @@ namespace ConduitLLM.Tests.Services
                 var mockNotificationRepo = new Mock<INotificationRepository>();
                 mockNotificationRepo.Setup(repo => repo.GetAllAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(await context.Notifications.ToListAsync());
-                
+
                 mockNotificationRepo.Setup(repo => repo.CreateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(1);
-                
+
                 mockNotificationRepo.Setup(repo => repo.UpdateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
-                
+
                 var mockVirtualKeyRepo = new Mock<IVirtualKeyRepository>();
                 mockVirtualKeyRepo.Setup(repo => repo.GetAllAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(await context.VirtualKeys.ToListAsync());
-                
+
                 var mockLogger = new Mock<ILogger<NotificationService>>();
-                
+
                 var service = new NotificationService(
-                    mockNotificationRepo.Object, 
-                    mockVirtualKeyRepo.Object, 
+                    mockNotificationRepo.Object,
+                    mockVirtualKeyRepo.Object,
                     mockLogger.Object);
-                    
+
                 await service.CheckBudgetLimitsAsync();
-                
+
                 // Add notification directly to database to simulate the service's work
                 // (since our mock doesn't actually save to the database)
                 var notification = new Notification
@@ -94,43 +95,43 @@ namespace ConduitLLM.Tests.Services
                 context.Notifications.Add(notification);
                 await context.SaveChangesAsync();
             }
-            
+
             // Assert
             using (var context = CreateTestContext(options))
             {
                 var notification = await context.Notifications.FirstOrDefaultAsync();
-                
+
                 Assert.NotNull(notification);
                 Assert.Equal(1, notification.VirtualKeyId);
                 Assert.Equal(ConduitLLM.Configuration.Entities.NotificationType.BudgetWarning, notification.Type);
                 Assert.False(notification.IsRead);
-                
+
                 // The actual message format may vary, so just check for key parts
                 Assert.Contains("Virtual key", notification.Message);
                 Assert.Contains("Budget Test Key", notification.Message);
             }
         }
-        
+
         [Fact]
         public async Task CheckKeyExpiration_ShouldCreateNotification_WhenKeyApproachesExpiration()
         {
             // Arrange
             var options = GetDbOptions();
             var expirationDate = DateTime.UtcNow.AddDays(5); // Expires in 5 days
-            
+
             using (var context = CreateTestContext(options))
             {
-                context.VirtualKeys.Add(new VirtualKey 
-                { 
-                    Id = 1, 
-                    KeyName = "Expiring Key", 
-                    KeyHash = "vk_expiring", 
+                context.VirtualKeys.Add(new VirtualKey
+                {
+                    Id = 1,
+                    KeyName = "Expiring Key",
+                    KeyHash = "vk_expiring",
                     IsEnabled = true,
                     ExpiresAt = expirationDate
                 });
                 await context.SaveChangesAsync();
             }
-            
+
             // Act
             using (var context = CreateTestContext(options))
             {
@@ -138,26 +139,26 @@ namespace ConduitLLM.Tests.Services
                 var mockNotificationRepo = new Mock<INotificationRepository>();
                 mockNotificationRepo.Setup(repo => repo.GetAllAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(await context.Notifications.ToListAsync());
-                
+
                 mockNotificationRepo.Setup(repo => repo.CreateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(1);
-                
+
                 mockNotificationRepo.Setup(repo => repo.UpdateAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
-                
+
                 var mockVirtualKeyRepo = new Mock<IVirtualKeyRepository>();
                 mockVirtualKeyRepo.Setup(repo => repo.GetAllAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(await context.VirtualKeys.ToListAsync());
-                
+
                 var mockLogger = new Mock<ILogger<NotificationService>>();
-                
+
                 var service = new NotificationService(
-                    mockNotificationRepo.Object, 
-                    mockVirtualKeyRepo.Object, 
+                    mockNotificationRepo.Object,
+                    mockVirtualKeyRepo.Object,
                     mockLogger.Object);
-                    
+
                 await service.CheckKeyExpirationAsync();
-                
+
                 // Add notification directly to database to simulate the service's work
                 // (since our mock doesn't actually save to the database)
                 var notification = new Notification
@@ -172,40 +173,40 @@ namespace ConduitLLM.Tests.Services
                 context.Notifications.Add(notification);
                 await context.SaveChangesAsync();
             }
-            
+
             // Assert
             using (var context = CreateTestContext(options))
             {
                 var notification = await context.Notifications.FirstOrDefaultAsync();
-                
+
                 Assert.NotNull(notification);
                 Assert.Equal(1, notification.VirtualKeyId);
                 Assert.Equal(ConduitLLM.Configuration.Entities.NotificationType.ExpirationWarning, notification.Type);
                 Assert.False(notification.IsRead);
-                
+
                 // The actual message format may vary, so just check for key parts
                 Assert.Contains("Virtual key", notification.Message);
                 Assert.Contains("Expiring Key", notification.Message);
                 Assert.Contains("expire", notification.Message);
             }
         }
-        
+
         [Fact]
         public async Task MarkNotificationAsRead_ShouldUpdateReadStatus()
         {
             // Arrange
             var options = GetDbOptions();
-            
+
             using (var context = CreateTestContext(options))
             {
-                context.VirtualKeys.Add(new VirtualKey 
-                { 
-                    Id = 1, 
-                    KeyName = "Test Key", 
-                    KeyHash = "vk_test", 
+                context.VirtualKeys.Add(new VirtualKey
+                {
+                    Id = 1,
+                    KeyName = "Test Key",
+                    KeyHash = "vk_test",
                     IsEnabled = true
                 });
-                
+
                 context.Notifications.Add(new Notification
                 {
                     Id = 1,
@@ -215,10 +216,10 @@ namespace ConduitLLM.Tests.Services
                     CreatedAt = DateTime.UtcNow,
                     IsRead = false
                 });
-                
+
                 await context.SaveChangesAsync();
             }
-            
+
             // Act
             using (var context = CreateTestContext(options))
             {
@@ -226,7 +227,8 @@ namespace ConduitLLM.Tests.Services
                 var mockNotificationRepo = new Mock<INotificationRepository>();
                 mockNotificationRepo.Setup(repo => repo.MarkAsReadAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true)
-                    .Callback<int, CancellationToken>((id, _) => {
+                    .Callback<int, CancellationToken>((id, _) =>
+                    {
                         // Manually update the notification in the database
                         var notification = context.Notifications.Find(id);
                         if (notification != null)
@@ -235,23 +237,23 @@ namespace ConduitLLM.Tests.Services
                             context.SaveChanges();
                         }
                     });
-                
+
                 var mockVirtualKeyRepo = new Mock<IVirtualKeyRepository>();
                 var mockLogger = new Mock<ILogger<NotificationService>>();
-                
+
                 var service = new NotificationService(
-                    mockNotificationRepo.Object, 
-                    mockVirtualKeyRepo.Object, 
+                    mockNotificationRepo.Object,
+                    mockVirtualKeyRepo.Object,
                     mockLogger.Object);
-                    
+
                 await service.MarkAsReadAsync(1);
             }
-            
+
             // Assert
             using (var context = CreateTestContext(options))
             {
                 var notification = await context.Notifications.FindAsync(1);
-                
+
                 Assert.NotNull(notification);
                 Assert.True(notification.IsRead);
             }

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.InternalModels
@@ -13,37 +14,37 @@ namespace ConduitLLM.Providers.InternalModels
         /// Gets or sets the display name of the model.
         /// </summary>
         public string? Name { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the provider name for this model.
         /// </summary>
         public string? Provider { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the capabilities of this model.
         /// </summary>
         public ModelCapabilities? Capabilities { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the token limits for this model.
         /// </summary>
         public ModelTokenLimits? TokenLimits { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the original model alias used in routing.
         /// </summary>
         public string? OriginalModelAlias { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the seed used for this model.
         /// </summary>
         public int? Seed { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the provider model ID (actual model name used by the provider API).
         /// </summary>
         public string? ProviderModelId { get; set; }
-        
+
         /// <summary>
         /// Creates a new instance of the ExtendedModelInfo class.
         /// </summary>
@@ -52,7 +53,7 @@ namespace ConduitLLM.Providers.InternalModels
             // Set a default value for required property OwnedBy
             OwnedBy = "unknown";
         }
-        
+
         /// <summary>
         /// Helper method to create an ExtendedModelInfo with required fields populated.
         /// </summary>
@@ -70,7 +71,7 @@ namespace ConduitLLM.Providers.InternalModels
                 ProviderModelId = providerModelId
             };
         }
-        
+
         /// <summary>
         /// Adds a display name to the model information.
         /// </summary>
@@ -81,7 +82,7 @@ namespace ConduitLLM.Providers.InternalModels
             Name = name;
             return this;
         }
-        
+
         /// <summary>
         /// Adds capabilities information to the model.
         /// </summary>
@@ -92,7 +93,7 @@ namespace ConduitLLM.Providers.InternalModels
             Capabilities = capabilities;
             return this;
         }
-        
+
         /// <summary>
         /// Adds token limit information to the model.
         /// </summary>
@@ -104,7 +105,7 @@ namespace ConduitLLM.Providers.InternalModels
             return this;
         }
     }
-    
+
     /// <summary>
     /// Describes token limits for a model.
     /// </summary>
@@ -114,17 +115,17 @@ namespace ConduitLLM.Providers.InternalModels
         /// Gets or sets the maximum context length in tokens.
         /// </summary>
         public int? Context { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the maximum input length in tokens.
         /// </summary>
         public int? Input { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the maximum output length in tokens.
         /// </summary>
         public int? Output { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the maximum input tokens for the model.
         /// </summary>
@@ -134,7 +135,7 @@ namespace ConduitLLM.Providers.InternalModels
             get => Input;
             set => Input = value;
         }
-        
+
         /// <summary>
         /// Gets or sets the maximum output tokens for the model.
         /// </summary>
@@ -144,7 +145,7 @@ namespace ConduitLLM.Providers.InternalModels
             get => Output;
             set => Output = value;
         }
-        
+
         /// <summary>
         /// Gets or sets the maximum total tokens for the model.
         /// </summary>

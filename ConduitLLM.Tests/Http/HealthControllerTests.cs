@@ -6,11 +6,13 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Http
@@ -50,10 +52,10 @@ namespace ConduitLLM.Tests.Http
             // Assert
             response.EnsureSuccessStatusCode();
             Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             Assert.Equal("Healthy", healthReport.RootElement.GetProperty("status").GetString());
         }
 
@@ -67,8 +69,8 @@ namespace ConduitLLM.Tests.Http
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddHealthChecks()
-                        .AddCheck("database", 
-                            new TestHealthCheck(HealthStatus.Unhealthy, "Cannot connect to database"), 
+                        .AddCheck("database",
+                            new TestHealthCheck(HealthStatus.Unhealthy, "Cannot connect to database"),
                             failureStatus: HealthStatus.Unhealthy,
                             tags: new[] { "db", "ready" });
                 });
@@ -79,12 +81,12 @@ namespace ConduitLLM.Tests.Http
 
             // Assert
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             Assert.Equal("Unhealthy", healthReport.RootElement.GetProperty("status").GetString());
-            
+
             // Verify the database check details
             var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
             var databaseCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "database");
@@ -103,10 +105,10 @@ namespace ConduitLLM.Tests.Http
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddHealthChecks()
-                        .AddCheck("database", 
+                        .AddCheck("database",
                             new TestHealthCheck(HealthStatus.Healthy, "Database is healthy"),
                             tags: new[] { "db", "ready" })
-                        .AddCheck("redis", 
+                        .AddCheck("redis",
                             new TestHealthCheck(HealthStatus.Degraded, "Redis connection is slow"),
                             failureStatus: HealthStatus.Degraded,
                             tags: new[] { "cache", "ready" });
@@ -118,10 +120,10 @@ namespace ConduitLLM.Tests.Http
 
             // Assert
             response.EnsureSuccessStatusCode(); // Degraded should return 200
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             Assert.Equal("Degraded", healthReport.RootElement.GetProperty("status").GetString());
         }
 
@@ -136,10 +138,10 @@ namespace ConduitLLM.Tests.Http
                 {
                     // Even if dependencies are unhealthy, liveness should return OK
                     services.AddHealthChecks()
-                        .AddCheck("database", 
+                        .AddCheck("database",
                             new TestHealthCheck(HealthStatus.Unhealthy, "Database is down"),
                             tags: new[] { "db" })
-                        .AddCheck("redis", 
+                        .AddCheck("redis",
                             new TestHealthCheck(HealthStatus.Unhealthy, "Redis is down"),
                             tags: new[] { "cache" });
                 });
@@ -150,10 +152,10 @@ namespace ConduitLLM.Tests.Http
 
             // Assert
             response.EnsureSuccessStatusCode();
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             // Live endpoint has no checks, so it should always be healthy
             Assert.Equal("Healthy", healthReport.RootElement.GetProperty("status").GetString());
         }
@@ -168,10 +170,10 @@ namespace ConduitLLM.Tests.Http
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddHealthChecks()
-                        .AddCheck("providers", 
-                            new TestHealthCheck(HealthStatus.Healthy, "All providers are online", 
-                                data: new Dictionary<string, object> 
-                                { 
+                        .AddCheck("providers",
+                            new TestHealthCheck(HealthStatus.Healthy, "All providers are online",
+                                data: new Dictionary<string, object>
+                                {
                                     { "openai", "online" },
                                     { "anthropic", "online" }
                                 }),
@@ -184,16 +186,16 @@ namespace ConduitLLM.Tests.Http
 
             // Assert
             response.EnsureSuccessStatusCode();
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
             var providerCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "providers");
-            
+
             Assert.NotEqual(default(JsonElement), providerCheck);
             Assert.Equal("Healthy", providerCheck.GetProperty("status").GetString());
-            
+
             // Check that provider data is included
             var data = providerCheck.GetProperty("data");
             Assert.Equal("online", data.GetProperty("openai").GetString());
@@ -210,7 +212,7 @@ namespace ConduitLLM.Tests.Http
                 builder.ConfigureTestServices(services =>
                 {
                     services.AddHealthChecks()
-                        .AddCheck("failing_check", 
+                        .AddCheck("failing_check",
                             new FailingHealthCheck(new Exception("Test exception during health check")));
                 });
             }).CreateClient();
@@ -220,15 +222,15 @@ namespace ConduitLLM.Tests.Http
 
             // Assert
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            
+
             var content = await response.Content.ReadAsStringAsync();
             var healthReport = JsonDocument.Parse(content);
-            
+
             Assert.Equal("Unhealthy", healthReport.RootElement.GetProperty("status").GetString());
-            
+
             var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
             var failingCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "failing_check");
-            
+
             Assert.NotEqual(default(JsonElement), failingCheck);
             Assert.Equal("Unhealthy", failingCheck.GetProperty("status").GetString());
             Assert.Contains("Test exception", failingCheck.GetProperty("exception").GetString());
@@ -260,7 +262,7 @@ namespace ConduitLLM.Tests.Http
                 HealthStatus.Unhealthy => HealthCheckResult.Unhealthy(_description, _exception, _data),
                 _ => HealthCheckResult.Unhealthy(_description)
             };
-            
+
             return Task.FromResult(result);
         }
     }

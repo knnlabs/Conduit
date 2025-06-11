@@ -26,7 +26,7 @@ namespace ConduitLLM.WebUI.Services
         /// <param name="durationMs">Duration before auto-dismiss (0 = no auto-dismiss).</param>
         /// <param name="actionText">Optional action button text.</param>
         /// <param name="actionCallback">Optional action callback.</param>
-        void Show(string message, ToastSeverity severity = ToastSeverity.Info, string? title = null, 
+        void Show(string message, ToastSeverity severity = ToastSeverity.Info, string? title = null,
             int? durationMs = null, string? actionText = null, Action? actionCallback = null);
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace ConduitLLM.WebUI.Services
         public event Action? OnChange;
 
         /// <inheritdoc />
-        public void Show(string message, ToastSeverity severity = ToastSeverity.Info, string? title = null, 
+        public void Show(string message, ToastSeverity severity = ToastSeverity.Info, string? title = null,
             int? durationMs = null, string? actionText = null, Action? actionCallback = null)
         {
             var notification = new ToastNotification

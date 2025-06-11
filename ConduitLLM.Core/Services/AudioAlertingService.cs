@@ -7,9 +7,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -38,7 +40,7 @@ namespace ConduitLLM.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
             _httpClient = httpClientFactory?.CreateClient("AlertingService") ?? throw new ArgumentNullException(nameof(httpClientFactory));
-            
+
             // Load default alert rules
             LoadDefaultRules();
         }
@@ -53,7 +55,7 @@ namespace ConduitLLM.Core.Services
                 rule.Id = Guid.NewGuid().ToString();
 
             _alertRules[rule.Id] = rule;
-            
+
             _logger.LogInformation(
                 "Registered alert rule: {RuleName} ({RuleId}) for metric {MetricType}",
                 rule.Name, rule.Id, rule.MetricType);
@@ -66,7 +68,7 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrEmpty(ruleId))
                 throw new ArgumentException("Rule ID cannot be empty", nameof(ruleId));
-            
+
             if (rule == null)
                 throw new ArgumentNullException(nameof(rule));
 
@@ -75,7 +77,7 @@ namespace ConduitLLM.Core.Services
 
             rule.Id = ruleId;
             _alertRules[ruleId] = rule;
-            
+
             _logger.LogInformation("Updated alert rule: {RuleId}", ruleId);
 
             return Task.CompletedTask;
@@ -111,7 +113,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var activeRules = await GetActiveRulesAsync();
-                
+
                 foreach (var rule in activeRules)
                 {
                     try
@@ -187,7 +189,7 @@ namespace ConduitLLM.Core.Services
                 // Simulate metric value
                 var testMetrics = CreateTestMetrics(rule.MetricType);
                 var metricValue = ExtractMetricValue(rule.MetricType, testMetrics);
-                
+
                 result.SimulatedMetricValue = metricValue;
                 result.WouldTrigger = EvaluateCondition(rule.Condition, metricValue);
 
@@ -255,7 +257,7 @@ namespace ConduitLLM.Core.Services
             lock (_historyLock)
             {
                 _alertHistory.Add(alert);
-                
+
                 // Trim old history
                 if (_alertHistory.Count > _options.MaxHistorySize)
                 {
@@ -336,19 +338,19 @@ namespace ConduitLLM.Core.Services
                     case NotificationChannelType.Email:
                         await SendEmailNotificationAsync(channel, alert, cancellationToken);
                         break;
-                    
+
                     case NotificationChannelType.Webhook:
                         await SendWebhookNotificationAsync(channel, alert, cancellationToken);
                         break;
-                    
+
                     case NotificationChannelType.Slack:
                         await SendSlackNotificationAsync(channel, alert, cancellationToken);
                         break;
-                    
+
                     case NotificationChannelType.Teams:
                         await SendTeamsNotificationAsync(channel, alert, cancellationToken);
                         break;
-                    
+
                     default:
                         _logger.LogWarning("Unsupported notification channel type: {Type}", channel.Type);
                         break;
@@ -356,7 +358,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                _logger.LogError(ex,
                     "Failed to send {ChannelType} notification for alert {AlertId}",
                     channel.Type, alert.Id);
             }
@@ -384,7 +386,7 @@ namespace ConduitLLM.Core.Services
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync(channel.Target, content, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError(
@@ -402,7 +404,7 @@ namespace ConduitLLM.Core.Services
             _logger.LogInformation(
                 "Email notification would be sent to {Target} for alert {AlertId}",
                 channel.Target, alert.Id);
-            
+
             await Task.CompletedTask;
         }
 
@@ -508,7 +510,7 @@ namespace ConduitLLM.Core.Services
                         var testPayload = new { test = true, timestamp = DateTime.UtcNow };
                         var json = JsonSerializer.Serialize(testPayload);
                         var content = new StringContent(json, Encoding.UTF8, "application/json");
-                        
+
                         var response = await _httpClient.PostAsync(channel.Target, content);
                         result.Success = response.IsSuccessStatusCode;
                         if (!result.Success)
@@ -516,12 +518,12 @@ namespace ConduitLLM.Core.Services
                             result.ErrorMessage = $"HTTP {response.StatusCode}: {response.ReasonPhrase}";
                         }
                         break;
-                    
+
                     case NotificationChannelType.Email:
                         // Would test SMTP connectivity
                         result.Success = true;
                         break;
-                    
+
                     default:
                         result.Success = false;
                         result.ErrorMessage = $"Unsupported channel type: {channel.Type}";

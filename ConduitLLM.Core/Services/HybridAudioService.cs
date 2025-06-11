@@ -7,10 +7,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -230,7 +232,7 @@ namespace ConduitLLM.Core.Services
                         finalAudioFormat,
                         0.85, // High quality compression
                         cancellationToken);
-                    _logger.LogDebug("Compressed audio from {Original} to {Compressed} bytes", 
+                    _logger.LogDebug("Compressed audio from {Original} to {Compressed} bytes",
                         ttsResponse.AudioData.Length, finalAudioData.Length);
                 }
 

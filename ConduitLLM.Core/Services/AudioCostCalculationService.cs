@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -17,7 +19,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<AudioCostCalculationService> _logger;
-        
+
         // Provider-specific pricing models (per minute rates)
         private readonly Dictionary<string, ProviderPricingModel> _pricingModels = new()
         {
@@ -117,7 +119,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var durationMinutes = durationSeconds / 60.0;
-            
+
             // Check database for custom pricing first
             var customRate = await GetCustomRateAsync(provider, "transcription", model);
             if (customRate.HasValue)
@@ -155,7 +157,7 @@ namespace ConduitLLM.Core.Services
             // Default fallback rate
             var defaultRate = 0.01m; // $0.01 per minute
             _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate", provider, model);
-            
+
             return new AudioCostResult
             {
                 Provider = provider,
@@ -220,7 +222,7 @@ namespace ConduitLLM.Core.Services
             // Default fallback rate
             var defaultRate = 0.00002m; // $20 per 1M characters
             _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate", provider, model);
-            
+
             return new AudioCostResult
             {
                 Provider = provider,
@@ -312,7 +314,7 @@ namespace ConduitLLM.Core.Services
             var defaultInputRate = 0.05m; // $0.05 per minute input
             var defaultOutputRate = 0.10m; // $0.10 per minute output
             _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rates", provider, model);
-            
+
             var fallbackCost = (double)(
                 defaultInputRate * (decimal)inputMinutes +
                 defaultOutputRate * (decimal)outputMinutes);
@@ -354,7 +356,7 @@ namespace ConduitLLM.Core.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var repository = scope.ServiceProvider.GetService<IAudioCostRepository>();
-            
+
             if (repository == null) return null;
 
             try
@@ -367,7 +369,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get custom rate for {Provider}/{Operation}/{Model}", 
+                _logger.LogError(ex, "Failed to get custom rate for {Provider}/{Operation}/{Model}",
                     provider, operation, model);
             }
 

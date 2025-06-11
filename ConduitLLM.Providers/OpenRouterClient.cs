@@ -5,9 +5,11 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -49,13 +51,13 @@ namespace ConduitLLM.Providers
                 /// The base URL for OpenRouter API requests.
                 /// </summary>
                 public const string ApiBase = "https://openrouter.ai/api/v1/";
-                
+
                 /// <summary>
                 /// The full API endpoint for OpenRouter requests.
                 /// </summary>
                 public const string ApiEndpoint = "https://openrouter.ai/api/v1";
             }
-            
+
             /// <summary>
             /// API endpoints relative to the base URL.
             /// </summary>
@@ -65,7 +67,7 @@ namespace ConduitLLM.Providers
                 /// Endpoint for chat completions.
                 /// </summary>
                 public const string ChatCompletions = "/chat/completions";
-                
+
                 /// <summary>
                 /// Endpoint for listing available models.
                 /// </summary>
@@ -120,16 +122,16 @@ namespace ConduitLLM.Providers
                 return await ExecuteApiRequestAsync(async () =>
                 {
                     using var client = CreateHttpClient(apiKey);
-                    
+
                     var endpoint = GetModelsEndpoint();
-                    
+
                     Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
-                    
+
                     var response = await client.GetAsync(endpoint, cancellationToken);
                     response.EnsureSuccessStatusCode();
 
                     var content = await response.Content.ReadAsStringAsync(cancellationToken);
-                    
+
                     // OpenRouter returns a simplified format with just model IDs
                     var jsonDocument = JsonDocument.Parse(content);
                     var models = new List<InternalModels.ExtendedModelInfo>();
@@ -216,7 +218,7 @@ namespace ConduitLLM.Providers
             {
                 credentials.ApiBase = Constants.Urls.ApiBase;
             }
-            
+
             return credentials;
         }
 
@@ -235,12 +237,12 @@ namespace ConduitLLM.Providers
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Add OpenRouter-specific headers
             client.DefaultRequestHeaders.Add("HTTP-Referer", "https://conduit-llm.com");
             client.DefaultRequestHeaders.Add("X-Title", "ConduitLLM");
         }
-        
+
         /// <summary>
         /// Gets the chat completion endpoint URL.
         /// </summary>

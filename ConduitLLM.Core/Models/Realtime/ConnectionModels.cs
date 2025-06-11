@@ -36,37 +36,37 @@ namespace ConduitLLM.Core.Models.Realtime
         /// Usage statistics for this connection.
         /// </summary>
         public ConnectionUsageStats? Usage { get; set; }
-        
+
         /// <summary>
         /// The virtual key associated with this connection.
         /// </summary>
         public string VirtualKey { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// The provider connection ID.
         /// </summary>
         public string? ProviderConnectionId { get; set; }
-        
+
         /// <summary>
         /// Connection start time.
         /// </summary>
         public DateTime StartTime { get; set; }
-        
+
         /// <summary>
         /// Last activity timestamp.
         /// </summary>
         public DateTime LastActivity { get; set; }
-        
+
         /// <summary>
         /// Total audio bytes processed.
         /// </summary>
         public long AudioBytesProcessed { get; set; }
-        
+
         /// <summary>
         /// Total tokens used.
         /// </summary>
         public long TokensUsed { get; set; }
-        
+
         /// <summary>
         /// Estimated cost.
         /// </summary>

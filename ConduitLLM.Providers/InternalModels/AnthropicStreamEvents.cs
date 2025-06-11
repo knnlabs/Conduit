@@ -10,10 +10,10 @@ namespace ConduitLLM.Providers.InternalModels
     {
         [JsonPropertyName("type")]
         public string Type { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("index")]
         public int? Index { get; set; }
-        
+
         [JsonPropertyName("delta")]
         public AnthropicStreamDelta? Delta { get; set; }
     }

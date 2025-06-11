@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
@@ -17,6 +17,8 @@ using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.Translators;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -44,7 +46,7 @@ namespace ConduitLLM.Providers
             ProviderDefaultModels? defaultModels = null)
             : base(credentials, providerModelId, logger, httpClientFactory, "Ultravox", defaultModels)
         {
-            var translatorLogger = logger as ILogger<UltravoxRealtimeTranslator> 
+            var translatorLogger = logger as ILogger<UltravoxRealtimeTranslator>
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<UltravoxRealtimeTranslator>();
             _translator = new UltravoxRealtimeTranslator(translatorLogger);
         }
@@ -181,8 +183,8 @@ namespace ConduitLLM.Providers
                     Id = "ultravox-v1",
                     OwnedBy = "ultravox",
                     Provider = "Ultravox",
-                    Capabilities = new ModelCapabilities 
-                    { 
+                    Capabilities = new ModelCapabilities
+                    {
                         RealtimeAudio = true,
                         SupportedAudioOperations = new List<AudioOperation> { AudioOperation.Realtime }
                     }
@@ -192,8 +194,8 @@ namespace ConduitLLM.Providers
                     Id = "ultravox-telephony",
                     OwnedBy = "ultravox",
                     Provider = "Ultravox",
-                    Capabilities = new ModelCapabilities 
-                    { 
+                    Capabilities = new ModelCapabilities
+                    {
                         RealtimeAudio = true,
                         SupportedAudioOperations = new List<AudioOperation> { AudioOperation.Realtime }
                     }
@@ -362,7 +364,7 @@ namespace ConduitLLM.Providers
                 SessionId = message.SessionId,
                 Timestamp = message.Timestamp
             };
-            
+
             var jsonMessage = await _translator.TranslateToProviderAsync(realtimeMessage);
             var buffer = System.Text.Encoding.UTF8.GetBytes(jsonMessage);
             await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, cancellationToken);
@@ -375,19 +377,19 @@ namespace ConduitLLM.Providers
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
-            
+
             while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
                 ProviderRealtimeMessage? messageToYield = null;
                 bool shouldBreak = false;
-                
+
                 try
                 {
                     var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var json = System.Text.Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, result.Count);
-                        
+
                         messageToYield = new ProviderRealtimeMessage
                         {
                             Type = "message",
@@ -415,12 +417,12 @@ namespace ConduitLLM.Providers
                     };
                     shouldBreak = true;
                 }
-                
+
                 if (messageToYield != null)
                 {
                     yield return messageToYield;
                 }
-                
+
                 if (shouldBreak)
                 {
                     break;

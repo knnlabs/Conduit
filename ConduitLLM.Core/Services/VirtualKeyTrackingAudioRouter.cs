@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -38,13 +40,13 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var client = await _innerRouter.GetTranscriptionClientAsync(request, virtualKey, cancellationToken);
-            
+
             // Store virtual key in request metadata if available
             if (client != null && request.ProviderOptions != null)
             {
                 request.ProviderOptions["_virtualKey"] = virtualKey;
             }
-            
+
             return client;
         }
 
@@ -55,13 +57,13 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var client = await _innerRouter.GetTextToSpeechClientAsync(request, virtualKey, cancellationToken);
-            
+
             // Store virtual key in request metadata if available
             if (client != null && request.ProviderOptions != null)
             {
                 request.ProviderOptions["_virtualKey"] = virtualKey;
             }
-            
+
             return client;
         }
 
@@ -72,13 +74,13 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var client = await _innerRouter.GetRealtimeClientAsync(config, virtualKey, cancellationToken);
-            
+
             if (client != null)
             {
                 // Wrap the client to ensure virtual key tracking
                 return new VirtualKeyTrackingRealtimeClient(client, virtualKey, _serviceProvider, _logger);
             }
-            
+
             return client;
         }
 
@@ -153,24 +155,24 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             var session = await _innerClient.CreateSessionAsync(config, apiKey ?? _virtualKey, cancellationToken);
-            
+
             // Ensure virtual key is stored in metadata
             if (session.Metadata == null)
             {
                 session.Metadata = new Dictionary<string, object>();
             }
             session.Metadata["VirtualKey"] = apiKey ?? _virtualKey;
-            
+
             // Store session in session store if available
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();
             if (sessionStore != null)
             {
                 await sessionStore.StoreSessionAsync(session, cancellationToken: cancellationToken);
-                _logger.LogDebug("Stored realtime session {SessionId} for virtual key {VirtualKey}", 
+                _logger.LogDebug("Stored realtime session {SessionId} for virtual key {VirtualKey}",
                     session.Id, apiKey ?? _virtualKey);
             }
-            
+
             return session;
         }
 
@@ -194,7 +196,7 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             await _innerClient.CloseSessionAsync(session, cancellationToken);
-            
+
             // Update session in store
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();

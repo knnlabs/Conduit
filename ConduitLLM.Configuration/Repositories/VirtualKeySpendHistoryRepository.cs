@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -90,9 +92,9 @@ namespace ConduitLLM.Configuration.Repositories
 
         /// <inheritdoc/>
         public async Task<List<VirtualKeySpendHistory>> GetByVirtualKeyAndDateRangeAsync(
-            int virtualKeyId, 
-            DateTime startDate, 
-            DateTime endDate, 
+            int virtualKeyId,
+            DateTime startDate,
+            DateTime endDate,
             CancellationToken cancellationToken = default)
         {
             try
@@ -106,7 +108,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting spend history for virtual key {VirtualKeyId} and date range {StartDate} to {EndDate}", 
+                _logger.LogError(ex, "Error getting spend history for virtual key {VirtualKeyId} and date range {StartDate} to {EndDate}",
                     virtualKeyId, startDate, endDate);
                 throw;
             }
@@ -123,26 +125,26 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamp if not provided
                 if (spendHistory.Timestamp == default)
                 {
                     spendHistory.Timestamp = DateTime.UtcNow;
                 }
-                
+
                 dbContext.VirtualKeySpendHistories.Add(spendHistory);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return spendHistory.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating spend history for virtual key {VirtualKeyId}", 
+                _logger.LogError(ex, "Database error creating spend history for virtual key {VirtualKeyId}",
                     spendHistory.VirtualKeyId);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating spend history for virtual key {VirtualKeyId}", 
+                _logger.LogError(ex, "Error creating spend history for virtual key {VirtualKeyId}",
                     spendHistory.VirtualKeyId);
                 throw;
             }
@@ -159,14 +161,14 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 dbContext.VirtualKeySpendHistories.Update(spendHistory);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating spend history with ID {HistoryId}", 
+                _logger.LogError(ex, "Error updating spend history with ID {HistoryId}",
                     spendHistory.Id);
                 throw;
             }
@@ -179,12 +181,12 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var spendHistory = await dbContext.VirtualKeySpendHistories.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (spendHistory == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.VirtualKeySpendHistories.Remove(spendHistory);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;

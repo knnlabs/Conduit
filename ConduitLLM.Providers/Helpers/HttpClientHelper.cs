@@ -7,9 +7,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Utilities;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers.Helpers
 {
@@ -98,20 +100,20 @@ namespace ConduitLLM.Providers.Helpers
             CancellationToken cancellationToken = default)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
-            
+
             try
             {
                 var request = new HttpRequestMessage(method, endpoint);
-                
+
                 // Add form content
                 if (formData != null && formData.Count > 0)
                 {
                     request.Content = new FormUrlEncodedContent(formData);
                 }
-                
+
                 // Add headers
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                
+
                 if (headers != null)
                 {
                     foreach (var header in headers)
@@ -119,11 +121,11 @@ namespace ConduitLLM.Providers.Helpers
                         request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
                 }
-                
+
                 logger?.LogDebug("Sending {Method} form request to {Endpoint}", method, endpoint);
-                
+
                 using var response = await client.SendAsync(request, cancellationToken);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await Core.Utilities.HttpClientHelper.ReadErrorContentAsync(response, cancellationToken);
@@ -131,9 +133,9 @@ namespace ConduitLLM.Providers.Helpers
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}");
                 }
-                
+
                 logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
-                
+
                 var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 return await JsonSerializer.DeserializeAsync<TResponse>(responseStream, options, cancellationToken)
                     ?? throw new LLMCommunicationException("Failed to deserialize response");
@@ -211,9 +213,9 @@ namespace ConduitLLM.Providers.Helpers
             {
                 return string.Empty;
             }
-            
+
             var queryParts = new List<string>();
-            
+
             foreach (var parameter in parameters)
             {
                 if (parameter.Value != null)
@@ -221,7 +223,7 @@ namespace ConduitLLM.Providers.Helpers
                     queryParts.Add($"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}");
                 }
             }
-            
+
             return queryParts.Count > 0 ? "?" + string.Join("&", queryParts) : string.Empty;
         }
 
@@ -241,10 +243,10 @@ namespace ConduitLLM.Providers.Helpers
             {
                 return baseUrl;
             }
-            
+
             var separator = baseUrl.Contains("?") ? "&" : "?";
             var queryParts = new List<string>();
-            
+
             foreach (var parameter in parameters)
             {
                 if (parameter.Value != null)
@@ -252,9 +254,9 @@ namespace ConduitLLM.Providers.Helpers
                     queryParts.Add($"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}");
                 }
             }
-            
-            return queryParts.Count > 0 
-                ? baseUrl + separator + string.Join("&", queryParts) 
+
+            return queryParts.Count > 0
+                ? baseUrl + separator + string.Join("&", queryParts)
                 : baseUrl;
         }
 
@@ -292,14 +294,14 @@ namespace ConduitLLM.Providers.Helpers
             Dictionary<string, string>? formFields = null)
         {
             var content = new MultipartFormDataContent();
-            
+
             // Add file contents if provided
             if (fileContents != null)
             {
                 foreach (var file in fileContents)
                 {
                     var fileContent = new ByteArrayContent(file.Value);
-                    
+
                     // Try to determine content type from file extension if a filename is provided
                     if (fileNames != null && fileNames.TryGetValue(file.Key, out var fileName))
                     {
@@ -308,7 +310,7 @@ namespace ConduitLLM.Providers.Helpers
                         {
                             fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
                         }
-                        
+
                         content.Add(fileContent, file.Key, fileName);
                     }
                     else
@@ -317,7 +319,7 @@ namespace ConduitLLM.Providers.Helpers
                     }
                 }
             }
-            
+
             // Add form fields if provided
             if (formFields != null)
             {
@@ -326,7 +328,7 @@ namespace ConduitLLM.Providers.Helpers
                     content.Add(new StringContent(field.Value), field.Key);
                 }
             }
-            
+
             return content;
         }
 
@@ -338,7 +340,7 @@ namespace ConduitLLM.Providers.Helpers
         private static string? GetContentTypeFromFileName(string fileName)
         {
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            
+
             return extension switch
             {
                 ".jpg" or ".jpeg" => "image/jpeg",

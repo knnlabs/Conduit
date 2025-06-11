@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -84,12 +86,12 @@ namespace ConduitLLM.WebUI.Controllers
             try
             {
                 var mapping = await _mappingService.GetMappingByIdAsync(id);
-                
+
                 if (mapping == null)
                 {
                     return NotFound($"Model provider mapping with ID {id} not found");
                 }
-                
+
                 return Ok(mapping);
             }
             catch (Exception ex)
@@ -113,12 +115,12 @@ namespace ConduitLLM.WebUI.Controllers
             try
             {
                 var mapping = await _mappingService.GetMappingByModelAliasAsync(modelAlias);
-                
+
                 if (mapping == null)
                 {
                     return NotFound($"No mapping found for model alias '{modelAlias}'");
                 }
-                
+
                 return Ok(mapping);
             }
             catch (Exception ex)
@@ -161,7 +163,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 await _mappingService.AddMappingAsync(mapping);
-                
+
                 // Return the created mapping
                 var createdMapping = await _mappingService.GetMappingByModelAliasAsync(mapping.ModelAlias);
                 return CreatedAtAction(nameof(GetMappingByAlias), new { modelAlias = mapping.ModelAlias }, createdMapping);
@@ -209,7 +211,7 @@ namespace ConduitLLM.WebUI.Controllers
 
                 // Update the mapping
                 await _mappingService.UpdateMappingAsync(mapping);
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -240,7 +242,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 await _mappingService.DeleteMappingAsync(id);
-                
+
                 return NoContent();
             }
             catch (Exception ex)

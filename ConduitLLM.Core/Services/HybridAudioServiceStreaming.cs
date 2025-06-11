@@ -5,9 +5,11 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -29,7 +31,7 @@ namespace ConduitLLM.Core.Services
             // Step 1: Process transcription
             AudioTranscriptionResponse? transcriptionResult = null;
             Exception? transcriptionError = null;
-            
+
             try
             {
                 transcriptionResult = await ProcessTranscriptionAsync(request, cancellationToken);
@@ -61,10 +63,10 @@ namespace ConduitLLM.Core.Services
             var responseBuilder = new StringBuilder();
             var ttsQueue = new Queue<string>();
             var llmError = await ProcessLlmStreamingAsync(
-                request, 
-                transcriptionResult, 
-                responseBuilder, 
-                ttsQueue, 
+                request,
+                transcriptionResult,
+                responseBuilder,
+                ttsQueue,
                 cancellationToken);
 
             if (llmError != null)
@@ -231,7 +233,7 @@ namespace ConduitLLM.Core.Services
         {
             var chunks = new List<HybridAudioChunk>();
             var text = responseBuilder.ToString();
-            
+
             if (!string.IsNullOrEmpty(text))
             {
                 // Split into smaller chunks for progressive display
@@ -272,7 +274,7 @@ namespace ConduitLLM.Core.Services
                 while (ttsQueue.Count > 0)
                 {
                     var textToSpeak = ttsQueue.Dequeue();
-                    
+
                     var ttsRequest = new TextToSpeechRequest
                     {
                         Input = textToSpeak,

@@ -101,17 +101,17 @@ namespace ConduitLLM.Configuration.Options
         /// <summary>
         /// Gets the default absolute expiration time as TimeSpan
         /// </summary>
-        public TimeSpan? DefaultAbsoluteExpiration => 
-            UseDefaultExpirationTimes && DefaultAbsoluteExpirationMinutes > 0 
-                ? TimeSpan.FromMinutes(DefaultAbsoluteExpirationMinutes) 
+        public TimeSpan? DefaultAbsoluteExpiration =>
+            UseDefaultExpirationTimes && DefaultAbsoluteExpirationMinutes > 0
+                ? TimeSpan.FromMinutes(DefaultAbsoluteExpirationMinutes)
                 : null;
 
         /// <summary>
         /// Gets the default sliding expiration time as TimeSpan
         /// </summary>
-        public TimeSpan? DefaultSlidingExpiration => 
-            UseDefaultExpirationTimes && DefaultSlidingExpirationMinutes > 0 
-                ? TimeSpan.FromMinutes(DefaultSlidingExpirationMinutes) 
+        public TimeSpan? DefaultSlidingExpiration =>
+            UseDefaultExpirationTimes && DefaultSlidingExpirationMinutes > 0
+                ? TimeSpan.FromMinutes(DefaultSlidingExpirationMinutes)
                 : null;
     }
 

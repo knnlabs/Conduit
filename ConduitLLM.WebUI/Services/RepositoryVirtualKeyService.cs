@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.WebUI.Extensions;
 using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services
@@ -24,7 +26,7 @@ namespace ConduitLLM.WebUI.Services
     /// providing a seamless transition between the two interface designs. This design pattern allows
     /// for incremental refactoring of the codebase without breaking existing functionality.
     /// </remarks>
-    public class RepositoryVirtualKeyService : ConduitLLM.Core.Interfaces.IVirtualKeyService 
+    public class RepositoryVirtualKeyService : ConduitLLM.Core.Interfaces.IVirtualKeyService
     {
         private readonly ConduitLLM.WebUI.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<RepositoryVirtualKeyService> _logger;

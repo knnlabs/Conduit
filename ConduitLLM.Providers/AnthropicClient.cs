@@ -8,14 +8,15 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Providers.InternalModels;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
-using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.InternalModels;
 
+using Microsoft.Extensions.Logging;
 // Use explicit namespaces to avoid ambiguity
 using CoreModels = ConduitLLM.Core.Models;
 using InternalModels = ConduitLLM.Providers.InternalModels;
@@ -54,43 +55,43 @@ namespace ConduitLLM.Providers
                 /// </summary>
                 public const string DefaultApiBase = "https://api.anthropic.com/v1";
             }
-            
+
             public static class Headers
             {
                 /// <summary>
                 /// Required Anthropic API version header value
                 /// </summary>
                 public const string AnthropicVersion = "2023-06-01";
-                
+
                 /// <summary>
                 /// Anthropic API key header name
                 /// </summary>
                 public const string ApiKeyHeader = "x-api-key";
-                
+
                 /// <summary>
                 /// Anthropic API version header name
                 /// </summary>
                 public const string VersionHeader = "anthropic-version";
             }
-            
+
             public static class Endpoints
             {
                 public const string Messages = "/v1/messages";
             }
-            
+
             public static class StreamEvents
             {
                 /// <summary>
                 /// Event type for content block deltas in streaming responses
                 /// </summary>
                 public const string ContentBlockDelta = "content_block_delta";
-                
+
                 /// <summary>
                 /// Event type for message stop in streaming responses
                 /// </summary>
                 public const string MessageStop = "message_stop";
             }
-            
+
             public static class ErrorMessages
             {
                 public const string MissingApiKey = "API key (x-api-key) is missing for provider 'anthropic'";
@@ -111,16 +112,16 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when credentials, providerModelId, or logger is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing in the credentials.</exception>
         public AnthropicClient(
-            ProviderCredentials credentials, 
-            string providerModelId, 
+            ProviderCredentials credentials,
+            string providerModelId,
             ILogger<AnthropicClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  credentials, 
-                  providerModelId, 
-                  logger, 
-                  httpClientFactory, 
+                  credentials,
+                  providerModelId,
+                  logger,
+                  httpClientFactory,
                   "anthropic",
                   defaultModels)
         {
@@ -174,16 +175,16 @@ namespace ConduitLLM.Providers
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Set Anthropic-specific headers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add(Constants.Headers.VersionHeader, Constants.Headers.AnthropicVersion);
             client.DefaultRequestHeaders.Add(Constants.Headers.ApiKeyHeader, apiKey);
-            
+
             // Remove the Authorization header set by the base class
             client.DefaultRequestHeaders.Authorization = null;
-            
+
             // Set the base address
             string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? Constants.Urls.DefaultApiBase : Credentials.ApiBase;
             client.BaseAddress = new Uri(apiBase.TrimEnd('/'));
@@ -222,14 +223,14 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "ChatCompletion");
-            
+
             try
             {
                 return await ExecuteApiRequestAsync(async () =>
                 {
                     using var client = CreateHttpClient(apiKey);
                     var anthropicRequest = MapToAnthropicRequest(request);
-                    
+
                     var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<AnthropicMessageRequest, AnthropicMessageResponse>(
                         client,
                         HttpMethod.Post,
@@ -239,7 +240,7 @@ namespace ConduitLLM.Providers
                         DefaultJsonOptions,
                         Logger,
                         cancellationToken);
-                    
+
                     return MapFromAnthropicResponse(response, request.Model);
                 }, "ChatCompletion", cancellationToken);
             }
@@ -295,9 +296,9 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletion");
-            
+
             HttpResponseMessage? response = null;
-            
+
             try
             {
                 using var client = CreateHttpClient(apiKey);
@@ -315,7 +316,7 @@ namespace ConduitLLM.Providers
                     StopSequences = baseRequest.StopSequences,
                     Stream = true
                 };
-                
+
                 response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
                     client,
                     HttpMethod.Post,
@@ -332,7 +333,7 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "Error streaming chat completion from Anthropic: {ErrorMessage}", enhancedErrorMessage);
                 throw new LLMCommunicationException(enhancedErrorMessage, ex);
             }
-            
+
             // Process the stream outside of the try/catch block to avoid yielding in try
             if (response != null)
             {
@@ -342,7 +343,7 @@ namespace ConduitLLM.Providers
                 }
             }
         }
-        
+
         /// <summary>
         /// Processes the streaming response from Anthropic.
         /// </summary>
@@ -351,13 +352,13 @@ namespace ConduitLLM.Providers
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
         /// <returns>An async enumerable of chat completion chunks.</returns>
         private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> ProcessAnthropicStreamAsync(
-            HttpResponseMessage response, 
+            HttpResponseMessage response,
             string modelId,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // Create a wrapped enumerator to handle errors outside the yielding loop
             IAsyncEnumerable<AnthropicMessageStreamEvent> streamEvents;
-            
+
             try
             {
                 // Get the stream of events but don't start consuming it yet
@@ -370,7 +371,7 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "Error initializing Anthropic stream: {ErrorMessage}", enhancedErrorMessage);
                 throw new LLMCommunicationException(enhancedErrorMessage, ex);
             }
-            
+
             // Process the events outside the try/catch block
             await foreach (var chunk in streamEvents.WithCancellation(cancellationToken))
             {
@@ -380,7 +381,7 @@ namespace ConduitLLM.Providers
                     // Map Anthropic stream event to chat completion chunk
                     var deltaContent = chunk.Delta?.Text ?? "";
                     var index = chunk.Index;
-                    
+
                     yield return new CoreModels.ChatCompletionChunk
                     {
                         // Generate a new ID since AnthropicMessageStreamEvent doesn't have a Message.Id property
@@ -482,7 +483,7 @@ namespace ConduitLLM.Providers
                 }
             };
         }
-        
+
         /// <summary>
         /// Gets available models from the Anthropic API.
         /// </summary>
@@ -519,7 +520,7 @@ namespace ConduitLLM.Providers
                 InternalModels.ExtendedModelInfo.Create("claude-instant-1.2", "anthropic", "claude-instant-1.2")
             });
         }
-        
+
         /// <summary>
         /// Creates an ExtendedModelInfo with vision capability set to true.
         /// </summary>
@@ -530,15 +531,15 @@ namespace ConduitLLM.Providers
         private static InternalModels.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
         {
             var modelInfo = InternalModels.ExtendedModelInfo.Create(id, provider, displayName ?? id);
-            
+
             // Set the vision capability
             if (modelInfo.Capabilities == null)
             {
                 modelInfo.Capabilities = new InternalModels.ModelCapabilities();
             }
-            
+
             modelInfo.Capabilities.Vision = true;
-            
+
             return modelInfo;
         }
 
@@ -631,31 +632,32 @@ namespace ConduitLLM.Providers
                     // Anthropic uses a dedicated system prompt field instead of a message
                     systemPrompt = ContentHelper.GetContentAsString(message.Content);
                 }
-                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase) || 
+                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase) ||
                          message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
                 {
                     // Process standard messages
                     AnthropicMessage anthropicMessage;
-                    
+
                     // Handle tool calls and results if present
                     if (message.ToolCalls != null && message.ToolCalls.Count > 0)
                     {
                         // Convert to Anthropic's content format
                         var contentParts = ContentHelper.ExtractMultimodalContent(message.Content ?? "");
-                        var contentBlocks = contentParts.Select(part => 
+                        var contentBlocks = contentParts.Select(part =>
                             new AnthropicContentBlock { Type = "text", Text = part }).ToList();
-                        
+
                         // Add tool calls at the end
                         foreach (var toolCall in message.ToolCalls)
                         {
-                            contentBlocks.Add(new AnthropicContentBlock { 
-                                Type = "tool_use", 
+                            contentBlocks.Add(new AnthropicContentBlock
+                            {
+                                Type = "tool_use",
                                 Id = toolCall.Id,
                                 Name = toolCall.Function?.Name ?? "",
                                 Input = toolCall.Function?.Arguments ?? "{}"
                             });
                         }
-                        
+
                         anthropicMessage = new AnthropicMessage
                         {
                             Role = message.Role.ToLowerInvariant(),
@@ -681,7 +683,7 @@ namespace ConduitLLM.Providers
                     {
                         // Multimodal message with images
                         var contentBlocks = MapToAnthropicContentBlocks(message.Content);
-                        
+
                         anthropicMessage = new AnthropicMessage
                         {
                             Role = message.Role.ToLowerInvariant(),
@@ -697,7 +699,7 @@ namespace ConduitLLM.Providers
                             Content = ContentHelper.GetContentAsString(message.Content)
                         };
                     }
-                    
+
                     userAndAssistantMessages.Add(anthropicMessage);
                 }
                 // Ignore any other role types (like function)
@@ -718,7 +720,7 @@ namespace ConduitLLM.Providers
 
             return anthropicRequest;
         }
-        
+
         /// <summary>
         /// Maps multimodal content to Anthropic's content blocks format.
         /// </summary>
@@ -727,24 +729,24 @@ namespace ConduitLLM.Providers
         private List<AnthropicContentBlock> MapToAnthropicContentBlocks(object? content)
         {
             var contentBlocks = new List<AnthropicContentBlock>();
-            
+
             if (content == null)
                 return contentBlocks;
-            
+
             // Add text content blocks
             var textParts = ContentHelper.ExtractMultimodalContent(content);
             foreach (var text in textParts)
             {
                 if (!string.IsNullOrEmpty(text))
                 {
-                    contentBlocks.Add(new AnthropicContentBlock 
-                    { 
-                        Type = "text", 
-                        Text = text 
+                    contentBlocks.Add(new AnthropicContentBlock
+                    {
+                        Type = "text",
+                        Text = text
                     });
                 }
             }
-            
+
             // Add image content blocks
             var imageUrls = ContentHelper.ExtractImageUrls(content);
             foreach (var imageUrl in imageUrls)
@@ -755,7 +757,7 @@ namespace ConduitLLM.Providers
                     // Extract the MIME type and base64 data
                     var mimeType = imageUrl.MimeType;
                     var base64Data = imageUrl.Base64Data;
-                    
+
                     if (!string.IsNullOrEmpty(mimeType) && !string.IsNullOrEmpty(base64Data))
                     {
                         contentBlocks.Add(new AnthropicContentBlock
@@ -778,29 +780,29 @@ namespace ConduitLLM.Providers
                     {
                         var imageData = Core.Utilities.ImageUtility.DownloadImageAsync(imageUrl.Url)
                             .ConfigureAwait(false).GetAwaiter().GetResult();
-                            
+
                         // Try to determine the MIME type
                         string mimeType = "image/jpeg"; // Default fallback
                         if (imageData.Length >= 2)
                         {
                             if (imageData[0] == 0xFF && imageData[1] == 0xD8) // JPEG
                                 mimeType = "image/jpeg";
-                            else if (imageData.Length >= 8 && 
-                                    imageData[0] == 0x89 && imageData[1] == 0x50 && 
+                            else if (imageData.Length >= 8 &&
+                                    imageData[0] == 0x89 && imageData[1] == 0x50 &&
                                     imageData[2] == 0x4E && imageData[3] == 0x47) // PNG
                                 mimeType = "image/png";
-                            else if (imageData.Length >= 3 && 
-                                    imageData[0] == 0x47 && imageData[1] == 0x49 && 
+                            else if (imageData.Length >= 3 &&
+                                    imageData[0] == 0x47 && imageData[1] == 0x49 &&
                                     imageData[2] == 0x46) // GIF
                                 mimeType = "image/gif";
-                            else if (imageData.Length >= 4 && 
+                            else if (imageData.Length >= 4 &&
                                     (imageData[0] == 0x42 && imageData[1] == 0x4D)) // BMP
                                 mimeType = "image/bmp";
                         }
-                        
+
                         // Convert to base64
                         var base64Data = Convert.ToBase64String(imageData);
-                        
+
                         contentBlocks.Add(new AnthropicContentBlock
                         {
                             Type = "image",
@@ -819,7 +821,7 @@ namespace ConduitLLM.Providers
                     }
                 }
             }
-            
+
             return contentBlocks;
         }
 
@@ -846,25 +848,25 @@ namespace ConduitLLM.Providers
         /// </para>
         /// </remarks>
         private CoreModels.ChatCompletionResponse MapFromAnthropicResponse(
-            AnthropicMessageResponse response, 
+            AnthropicMessageResponse response,
             string? originalModelAlias)
         {
             string responseContent = "";
             List<CoreModels.ToolCall>? toolCalls = null;
-            
+
             // Process the content of the response, which could be a string or blocks
             if (response.Content is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
             {
                 var textContent = new StringBuilder();
                 var toolUseBlocks = new List<JsonElement>();
-                
+
                 // Process each content block
                 foreach (JsonElement block in jsonElement.EnumerateArray())
                 {
                     if (block.TryGetProperty("type", out var typeElement))
                     {
                         string? blockType = typeElement.GetString();
-                        
+
                         if (blockType == "text" && block.TryGetProperty("text", out var textElement))
                         {
                             textContent.Append(textElement.GetString());
@@ -875,29 +877,29 @@ namespace ConduitLLM.Providers
                         }
                     }
                 }
-                
+
                 responseContent = textContent.ToString();
-                
+
                 // Process tool calls if any
                 if (toolUseBlocks.Count > 0)
                 {
                     toolCalls = new List<CoreModels.ToolCall>();
-                    
+
                     foreach (var block in toolUseBlocks)
                     {
                         string? id = null;
                         string? name = null;
                         string? input = null;
-                        
+
                         if (block.TryGetProperty("id", out var idElement))
                             id = idElement.GetString();
-                            
+
                         if (block.TryGetProperty("name", out var nameElement))
                             name = nameElement.GetString();
-                            
+
                         if (block.TryGetProperty("input", out var inputElement))
                             input = inputElement.GetString();
-                            
+
                         if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(name))
                         {
                             toolCalls.Add(new CoreModels.ToolCall
@@ -919,7 +921,7 @@ namespace ConduitLLM.Providers
                 // Fallback for string content or other content types
                 responseContent = ContentHelper.GetContentAsString(response.Content);
             }
-            
+
             // Create the standardized response
             var result = new CoreModels.ChatCompletionResponse
             {
@@ -949,7 +951,7 @@ namespace ConduitLLM.Providers
                 },
                 OriginalModelAlias = originalModelAlias
             };
-            
+
             return result;
         }
 
@@ -980,7 +982,7 @@ namespace ConduitLLM.Providers
         /// when a message_stop event is received.
         /// </para>
         /// </remarks>
-        
+
         /// <summary>
         /// Creates a final chunk with finish reason for streaming responses.
         /// </summary>
@@ -1003,7 +1005,7 @@ namespace ConduitLLM.Providers
         /// OpenAI-compatible streaming format.
         /// </para>
         /// </remarks>
-        
+
         /// <summary>
         /// Extracts a more helpful error message from exception details for Anthropic errors.
         /// </summary>
@@ -1029,26 +1031,26 @@ namespace ConduitLLM.Providers
         {
             // Extract the message from the exception
             var msg = ex.Message;
-            
+
             // Check for model not found errors
             if (msg.Contains("model not found", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("not supported", StringComparison.OrdinalIgnoreCase) && 
+                msg.Contains("not supported", StringComparison.OrdinalIgnoreCase) &&
                 msg.Contains("model", StringComparison.OrdinalIgnoreCase))
             {
                 return Constants.ErrorMessages.ModelNotFound;
             }
-            
+
             // Check for authentication errors
             if (msg.Contains("invalid api key", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("invalid_auth", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("authentication", StringComparison.OrdinalIgnoreCase) && 
+                msg.Contains("authentication", StringComparison.OrdinalIgnoreCase) &&
                 msg.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("unauthorized", StringComparison.OrdinalIgnoreCase))
             {
                 return Constants.ErrorMessages.InvalidApiKey;
             }
-            
+
             // Check for rate limit errors
             if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("rate_limit", StringComparison.OrdinalIgnoreCase) ||
@@ -1057,7 +1059,7 @@ namespace ConduitLLM.Providers
             {
                 return Constants.ErrorMessages.RateLimitExceeded;
             }
-            
+
             // Look for JSON content in the message
             var jsonStart = msg.IndexOf("{");
             var jsonEnd = msg.LastIndexOf("}");
@@ -1092,19 +1094,19 @@ namespace ConduitLLM.Providers
                     // If parsing fails, continue to the next method
                 }
             }
-            
+
             // Look for Body data in the exception's Data dictionary
             if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
             {
                 return $"Anthropic API error: {body}";
             }
-            
+
             // Try inner exception
             if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
             {
                 return $"Anthropic API error: {ex.InnerException.Message}";
             }
-            
+
             // Fallback to original message with provider name
             return $"Anthropic API error: {msg}";
         }

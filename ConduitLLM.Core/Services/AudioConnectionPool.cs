@@ -5,9 +5,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Core.Services
 {
@@ -94,15 +96,15 @@ namespace ConduitLLM.Core.Services
                 stats.IdleConnections += poolStats.IdleConnections;
                 stats.UnhealthyConnections += poolStats.UnhealthyConnections;
                 stats.TotalRequests += poolStats.TotalRequests;
-                
+
                 stats.ProviderStats[p.Provider] = new ProviderPoolStatistics
                 {
                     Provider = p.Provider,
                     ConnectionCount = poolStats.TotalCreated,
                     ActiveCount = poolStats.ActiveConnections,
                     AverageAge = poolStats.AverageAge,
-                    RequestsPerConnection = poolStats.TotalCreated > 0 
-                        ? (double)poolStats.TotalRequests / poolStats.TotalCreated 
+                    RequestsPerConnection = poolStats.TotalCreated > 0
+                        ? (double)poolStats.TotalRequests / poolStats.TotalCreated
                         : 0
                 };
             }
@@ -169,11 +171,11 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken)
         {
             var httpClient = _httpClientFactory.CreateClient($"AudioProvider_{provider}");
-            
+
             // Configure HTTP client
             httpClient.Timeout = TimeSpan.FromSeconds(_options.ConnectionTimeout);
             httpClient.DefaultRequestHeaders.Add("X-Provider", provider);
-            
+
             var connection = new AudioProviderConnection(provider, httpClient);
 
             // Validate the connection
@@ -262,7 +264,7 @@ namespace ConduitLLM.Core.Services
 
         public void ReturnConnection(IAudioProviderConnection connection)
         {
-            if (connection is AudioProviderConnection conn && 
+            if (connection is AudioProviderConnection conn &&
                 _activeConnections.TryRemove(conn.ConnectionId, out _))
             {
                 if (conn.IsHealthy && !IsExpired(conn) && _connections.Count < _options.MaxConnectionsPerProvider)

@@ -17,7 +17,7 @@ public static class ModelCostDtoExtensions
         // This is a no-op since we're not storing the value anywhere
         // It just exists to prevent compilation errors
     }
-    
+
     /// <summary>
     /// Extension method to provide backward compatibility for Description property on UpdateModelCostDto
     /// </summary>

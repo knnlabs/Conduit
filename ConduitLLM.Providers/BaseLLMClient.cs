@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Extensions.Logging;
+
+using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
-using ConduitLLM.Configuration;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -28,7 +30,7 @@ namespace ConduitLLM.Providers
         protected readonly string ProviderName;
         protected readonly IHttpClientFactory? HttpClientFactory;
         protected readonly ProviderDefaultModels? DefaultModels;
-        
+
         protected static readonly JsonSerializerOptions DefaultJsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -58,7 +60,7 @@ namespace ConduitLLM.Providers
             HttpClientFactory = httpClientFactory;
             ProviderName = providerName ?? GetType().Name.Replace("Client", string.Empty);
             DefaultModels = defaultModels;
-            
+
             ValidateCredentials();
         }
 
@@ -82,7 +84,7 @@ namespace ConduitLLM.Providers
         protected virtual HttpClient CreateHttpClient(string? apiKey = null)
         {
             HttpClient client;
-            
+
             if (HttpClientFactory != null)
             {
                 client = HttpClientFactory.CreateClient($"{ProviderName}LLMClient");
@@ -91,13 +93,13 @@ namespace ConduitLLM.Providers
             {
                 client = new HttpClient();
             }
-            
+
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
             }
-            
+
             ConfigureHttpClient(client, effectiveApiKey);
             return client;
         }
@@ -113,7 +115,7 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // Default to Bearer authentication - override in derived classes if needed
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         }
@@ -151,7 +153,7 @@ namespace ConduitLLM.Providers
         public abstract Task<List<ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default);
-            
+
         /// <summary>
         /// Lists available model IDs from the LLM provider.
         /// </summary>
@@ -190,7 +192,7 @@ namespace ConduitLLM.Providers
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default);
-            
+
         /// <summary>
         /// Reads error content from an HTTP response.
         /// </summary>
@@ -201,7 +203,7 @@ namespace ConduitLLM.Providers
         {
             return await ConduitLLM.Core.Utilities.HttpClientHelper.ReadErrorContentAsync(response, cancellationToken);
         }
-        
+
         /// <summary>
         /// Safely executes an API request with standardized error handling.
         /// </summary>
@@ -216,14 +218,15 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken)
         {
             return await ExceptionHandler.HandleHttpRequestAsync(
-                async () => {
+                async () =>
+                {
                     cancellationToken.ThrowIfCancellationRequested();
                     return await operation();
                 },
                 Logger,
                 $"{ProviderName} ({operationName})");
         }
-        
+
         /// <summary>
         /// Prepares and validates a request before sending it to the API.
         /// </summary>
@@ -236,11 +239,11 @@ namespace ConduitLLM.Providers
         {
             if (request == null)
             {
-                throw new ArgumentNullException(nameof(request), 
+                throw new ArgumentNullException(nameof(request),
                     $"Request cannot be null for {operationName} operation");
             }
         }
-        
+
         /// <summary>
         /// Creates a dictionary of standard headers for API requests.
         /// </summary>
@@ -249,16 +252,16 @@ namespace ConduitLLM.Providers
         protected virtual Dictionary<string, string> CreateStandardHeaders(string? apiKey = null)
         {
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-            
+
             var headers = new Dictionary<string, string>
             {
                 ["User-Agent"] = "ConduitLLM"
             };
-            
+
             // Add authentication - default to Bearer
             // Override in derived classes to use different auth methods
             headers["Authorization"] = $"Bearer {effectiveApiKey}";
-            
+
             return headers;
         }
     }

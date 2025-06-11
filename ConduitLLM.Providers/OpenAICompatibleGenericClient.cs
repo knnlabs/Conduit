@@ -1,8 +1,10 @@
 using System;
 using System.Net.Http;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -28,8 +30,8 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API base URL is missing.</exception>
         public OpenAICompatibleGenericClient(
-            ProviderCredentials credentials, 
-            string providerModelId, 
+            ProviderCredentials credentials,
+            string providerModelId,
             ILogger<OpenAICompatibleGenericClient> logger,
             IHttpClientFactory httpClientFactory,
             ProviderDefaultModels? defaultModels = null)
@@ -69,7 +71,7 @@ namespace ConduitLLM.Providers
             // Use standard Bearer token authentication like OpenAI
             // Most OpenAI-compatible APIs expect this format
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Add a custom user agent to identify requests from Conduit
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM/OpenAI-Compatible");
         }

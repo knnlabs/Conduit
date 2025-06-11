@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Audio;
 
 namespace ConduitLLM.Core.Services
 {
@@ -91,7 +93,7 @@ namespace ConduitLLM.Core.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 var sessionStore = scope.ServiceProvider.GetRequiredService<IRealtimeSessionStore>();
-                
+
                 var cleaned = await sessionStore.CleanupExpiredSessionsAsync(
                     _options.MaxSessionAge,
                     CancellationToken.None);
@@ -119,12 +121,12 @@ namespace ConduitLLM.Core.Services
                 var metricsCollector = scope.ServiceProvider.GetRequiredService<IAudioMetricsCollector>();
 
                 var sessions = await sessionStore.GetActiveSessionsAsync(CancellationToken.None);
-                
+
                 // Collect aggregate metrics
                 var totalSessions = sessions.Count;
                 var sessionsByProvider = sessions.GroupBy(s => s.Provider)
                     .ToDictionary(g => g.Key, g => g.Count());
-                
+
                 var totalInputDuration = sessions.Sum(s => s.Statistics.InputAudioDuration.TotalSeconds);
                 var totalOutputDuration = sessions.Sum(s => s.Statistics.OutputAudioDuration.TotalSeconds);
 
@@ -187,9 +189,9 @@ namespace ConduitLLM.Core.Services
                 {
                     zombie.State = SessionState.Error;
                     zombie.Statistics.ErrorCount++;
-                    
+
                     await sessionStore.UpdateSessionAsync(zombie, CancellationToken.None);
-                    
+
                     // Optionally terminate the zombie session
                     if (_options.AutoTerminateZombies)
                     {

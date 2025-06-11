@@ -16,13 +16,13 @@ public static class WebApplicationExtensions
     {
         // Add CORS middleware
         app.UseCors("AdminCorsPolicy");
-        
+
         // Add authentication middleware
         app.UseMiddleware<AdminAuthenticationMiddleware>();
-        
+
         // Add request tracking middleware
         app.UseMiddleware<AdminRequestTrackingMiddleware>();
-        
+
         return app;
     }
 }

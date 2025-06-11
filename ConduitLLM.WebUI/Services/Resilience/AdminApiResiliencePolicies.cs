@@ -1,10 +1,12 @@
 using System;
 using System.Net;
 using System.Net.Http;
+
 using Microsoft.Extensions.Logging;
+
 using Polly;
-using Polly.Extensions.Http;
 using Polly.CircuitBreaker;
+using Polly.Extensions.Http;
 using Polly.Timeout;
 
 namespace ConduitLLM.WebUI.Services.Resilience
@@ -46,8 +48,8 @@ namespace ConduitLLM.WebUI.Services.Resilience
         /// <summary>
         /// Creates a circuit breaker policy to prevent cascading failures.
         /// </summary>
-        public static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy(ILogger logger, 
-            int handledEventsAllowedBeforeBreaking = 5, 
+        public static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy(ILogger logger,
+            int handledEventsAllowedBeforeBreaking = 5,
             TimeSpan? durationOfBreak = null)
         {
             durationOfBreak ??= TimeSpan.FromSeconds(30);
@@ -81,7 +83,7 @@ namespace ConduitLLM.WebUI.Services.Resilience
         public static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy(int timeoutSeconds = 30)
         {
             return Policy.TimeoutAsync<HttpResponseMessage>(
-                timeoutSeconds, 
+                timeoutSeconds,
                 TimeoutStrategy.Pessimistic); // Pessimistic = cancels HttpClient request
         }
 
@@ -106,9 +108,9 @@ namespace ConduitLLM.WebUI.Services.Resilience
         /// </summary>
         public static IAsyncPolicy<HttpResponseMessage> GetNonCriticalOperationPolicy(ILogger logger)
         {
-            return GetCombinedPolicy(logger, 
-                retryCount: 2, 
-                circuitBreakerThreshold: 10, 
+            return GetCombinedPolicy(logger,
+                retryCount: 2,
+                circuitBreakerThreshold: 10,
                 timeoutSeconds: 60);
         }
 
@@ -117,9 +119,9 @@ namespace ConduitLLM.WebUI.Services.Resilience
         /// </summary>
         public static IAsyncPolicy<HttpResponseMessage> GetCriticalOperationPolicy(ILogger logger)
         {
-            return GetCombinedPolicy(logger, 
-                retryCount: 5, 
-                circuitBreakerThreshold: 3, 
+            return GetCombinedPolicy(logger,
+                retryCount: 5,
+                circuitBreakerThreshold: 3,
                 timeoutSeconds: 120);
         }
 

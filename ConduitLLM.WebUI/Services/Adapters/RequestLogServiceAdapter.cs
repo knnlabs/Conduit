@@ -4,10 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.Extensions.Logging;
+
 using ConfigDTOs = ConduitLLM.Configuration.DTOs;
 using WebUIDTOs = ConduitLLM.WebUI.DTOs;
 
@@ -273,10 +276,10 @@ namespace ConduitLLM.WebUI.Services.Adapters
             {
                 foreach (var entry in summary.RequestsByModel)
                 {
-                    var cost = summary.CostByModel?.ContainsKey(entry.Key) == true 
-                        ? summary.CostByModel[entry.Key] 
+                    var cost = summary.CostByModel?.ContainsKey(entry.Key) == true
+                        ? summary.CostByModel[entry.Key]
                         : 0m;
-                    
+
                     webUiSummary.ModelBreakdown.Add(new RequestsByModelDto
                     {
                         ModelName = entry.Key,

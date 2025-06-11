@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Realtime;
-using ConduitLLM.Configuration.Services;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
@@ -54,13 +56,13 @@ namespace ConduitLLM.Http.Services
                 OutputTokens = 0,
                 EstimatedCost = 0
             };
-            
+
             _sessions[connectionId] = session;
-            
+
             _logger.LogInformation(
                 "Started usage tracking for connection {ConnectionId}, model {Model}, virtualKeyId {VirtualKeyId}",
                 connectionId, model, virtualKeyId);
-            
+
             await Task.CompletedTask;
         }
 
@@ -71,15 +73,15 @@ namespace ConduitLLM.Http.Services
                 _logger.LogWarning("Attempted to update usage for unknown connection {ConnectionId}", connectionId);
                 return;
             }
-            
+
             // Update from stats
             session.LastActivity = DateTime.UtcNow;
             session.EstimatedCost = stats.EstimatedCost;
-            
+
             _logger.LogDebug(
                 "Updated usage stats for connection {ConnectionId}",
                 connectionId);
-            
+
             await Task.CompletedTask;
         }
 
@@ -90,7 +92,7 @@ namespace ConduitLLM.Http.Services
                 _logger.LogWarning("Attempted to track audio for unknown connection {ConnectionId}", connectionId);
                 return;
             }
-            
+
             if (isInput)
             {
                 session.InputAudioSeconds += audioSeconds;
@@ -99,13 +101,13 @@ namespace ConduitLLM.Http.Services
             {
                 session.OutputAudioSeconds += audioSeconds;
             }
-            
+
             session.LastActivity = DateTime.UtcNow;
-            
+
             _logger.LogDebug(
                 "Tracked {Seconds}s of {Type} audio for connection {ConnectionId}",
                 audioSeconds, isInput ? "input" : "output", connectionId);
-            
+
             await Task.CompletedTask;
         }
 
@@ -116,15 +118,15 @@ namespace ConduitLLM.Http.Services
                 _logger.LogWarning("Attempted to track tokens for unknown connection {ConnectionId}", connectionId);
                 return;
             }
-            
+
             session.InputTokens += usage.PromptTokens;
             session.OutputTokens += usage.CompletionTokens;
             session.LastActivity = DateTime.UtcNow;
-            
+
             _logger.LogDebug(
                 "Tracked {InputTokens} input tokens and {OutputTokens} output tokens for connection {ConnectionId}",
                 usage.PromptTokens, usage.CompletionTokens, connectionId);
-            
+
             await Task.CompletedTask;
         }
 
@@ -134,7 +136,7 @@ namespace ConduitLLM.Http.Services
             {
                 return 0;
             }
-            
+
             // Get cost configuration for the model
             var modelCost = await _costService.GetCostForModelAsync(session.Model);
             if (modelCost == null)
@@ -142,20 +144,20 @@ namespace ConduitLLM.Http.Services
                 _logger.LogWarning("No cost configuration found for model {Model}", session.Model);
                 return 0;
             }
-            
+
             decimal totalCost = 0;
-            
+
             // Calculate token costs (costs are typically per 1K tokens)
             if (session.InputTokens > 0)
             {
                 totalCost += (session.InputTokens / 1000m) * modelCost.InputTokenCost;
             }
-            
+
             if (session.OutputTokens > 0)
             {
                 totalCost += (session.OutputTokens / 1000m) * modelCost.OutputTokenCost;
             }
-            
+
             // For audio, we'll use a simple approximation
             // Assuming 1 minute of audio ≈ 1000 tokens for cost estimation
             if (session.InputAudioSeconds > 0)
@@ -163,13 +165,13 @@ namespace ConduitLLM.Http.Services
                 var inputMinutes = (decimal)(session.InputAudioSeconds / 60.0);
                 totalCost += inputMinutes * modelCost.InputTokenCost; // 1 minute ≈ 1K tokens worth
             }
-            
+
             if (session.OutputAudioSeconds > 0)
             {
                 var outputMinutes = (decimal)(session.OutputAudioSeconds / 60.0);
                 totalCost += outputMinutes * modelCost.OutputTokenCost; // 1 minute ≈ 1K tokens worth
             }
-            
+
             return totalCost;
         }
 
@@ -179,27 +181,27 @@ namespace ConduitLLM.Http.Services
             {
                 throw new InvalidOperationException($"Connection {connectionId} not found in usage tracking");
             }
-            
+
             // Update with final stats if provided
             if (finalStats != null)
             {
                 session.EstimatedCost = finalStats.EstimatedCost;
                 session.LastActivity = DateTime.UtcNow;
             }
-            
+
             var totalCost = await GetEstimatedCostAsync(connectionId);
-            
+
             // Record usage with virtual key service by updating spend
             if (totalCost > 0)
             {
                 await _virtualKeyService.UpdateSpendAsync(session.VirtualKeyId, totalCost);
             }
-            
+
             var duration = DateTime.UtcNow - session.StartTime;
             _logger.LogInformation(
                 "Finalized session {ConnectionId}: Duration={Duration}s, Cost=${Cost:F4}",
                 connectionId, duration.TotalSeconds, totalCost);
-            
+
             return totalCost;
         }
 
@@ -209,13 +211,13 @@ namespace ConduitLLM.Http.Services
             {
                 return null;
             }
-            
+
             var duration = DateTime.UtcNow - session.StartTime;
             var totalCost = await GetEstimatedCostAsync(connectionId);
-            
+
             // Get cost configuration for breakdown
             var modelCost = await _costService.GetCostForModelAsync(session.Model);
-            
+
             var details = new RealtimeUsageDetails
             {
                 ConnectionId = connectionId,
@@ -228,7 +230,7 @@ namespace ConduitLLM.Http.Services
                 StartedAt = session.StartTime,
                 EndedAt = null // Still active
             };
-            
+
             if (modelCost != null)
             {
                 // Calculate cost breakdown
@@ -236,13 +238,13 @@ namespace ConduitLLM.Http.Services
                 {
                     InputAudioCost = (decimal)(session.InputAudioSeconds / 60.0) * modelCost.InputTokenCost,
                     OutputAudioCost = (decimal)(session.OutputAudioSeconds / 60.0) * modelCost.OutputTokenCost,
-                    TokenCost = (session.InputTokens / 1000m * modelCost.InputTokenCost) + 
+                    TokenCost = (session.InputTokens / 1000m * modelCost.InputTokenCost) +
                                 (session.OutputTokens / 1000m * modelCost.OutputTokenCost),
                     FunctionCallCost = 0,
                     AdditionalFees = 0
                 };
             }
-            
+
             return details;
         }
 

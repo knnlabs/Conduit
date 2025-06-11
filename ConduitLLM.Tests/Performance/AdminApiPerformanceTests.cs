@@ -8,14 +8,18 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Moq;
 using Moq.Protected;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Performance
@@ -33,22 +37,22 @@ namespace ConduitLLM.Tests.Performance
         {
             var services = new ServiceCollection();
             services.AddLogging();
-            
+
             _mockHttpHandler = new Mock<HttpMessageHandler>();
-            
+
             var httpClient = new HttpClient(_mockHttpHandler.Object)
             {
                 BaseAddress = new Uri("http://localhost:5000")
             };
-            
+
             services.AddSingleton(_ => httpClient);
-            
+
             var adminOptions = Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
             {
                 BaseUrl = "http://localhost:5000",
                 MasterKey = "test-master-key"
             });
-            
+
             _serviceProvider = services.BuildServiceProvider();
             _adminApiClient = new AdminApiClient(
                 httpClient,
@@ -72,9 +76,9 @@ namespace ConduitLLM.Tests.Performance
                     MaxBudget = 100m + i
                 });
             }
-            
+
             var jsonResponse = JsonSerializer.Serialize(largeKeySet);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -128,9 +132,9 @@ namespace ConduitLLM.Tests.Performance
                 PageSize = 20,
                 TotalPages = 5
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(pagedResult);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -174,13 +178,13 @@ namespace ConduitLLM.Tests.Performance
             // Act & Measure
             var stopwatch = Stopwatch.StartNew();
             var tasks = new List<Task>();
-            
+
             // Simulate 50 concurrent requests
             for (int i = 0; i < 50; i++)
             {
                 tasks.Add(_adminApiClient.GetAllVirtualKeysAsync());
             }
-            
+
             await Task.WhenAll(tasks);
             stopwatch.Stop();
 
@@ -214,9 +218,9 @@ namespace ConduitLLM.Tests.Performance
                     ["gpt-3.5-turbo"] = 50.00m
                 }
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(summary);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",

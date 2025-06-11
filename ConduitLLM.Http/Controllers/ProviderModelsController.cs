@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Providers;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -48,14 +50,14 @@ namespace ConduitLLM.Http.Controllers
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
         public async Task<IActionResult> GetProviderModels(
-            string providerName, 
+            string providerName,
             [FromQuery] bool forceRefresh = false)
         {
             try
             {
-                _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})", 
+                _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})",
                     providerName, forceRefresh);
-                
+
                 // Get the provider credentials from the database
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 // EF Core can't translate StringComparison.OrdinalIgnoreCase, use ToLower() instead
@@ -83,18 +85,18 @@ namespace ConduitLLM.Http.Controllers
                     ApiBase = provider.BaseUrl,
                     ApiVersion = provider.ApiVersion
                 };
-                
+
                 // Use the model list service to get models
                 var models = await _modelListService.GetModelsForProviderAsync(providerCredentials, forceRefresh);
-                
+
                 // Sort the models alphabetically for better UX
                 var sortedModels = models
                     .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                
-                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}", 
+
+                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}",
                     sortedModels.Count, providerName);
-                    
+
                 return Ok(sortedModels);
             }
             catch (Exception ex)

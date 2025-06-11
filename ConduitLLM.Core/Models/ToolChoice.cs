@@ -53,7 +53,7 @@ public class ToolChoice
         {
             throw new ArgumentNullException(nameof(functionName), "Function name cannot be null or empty");
         }
-        
+
         return new(new
         {
             type = "function",
@@ -97,7 +97,7 @@ public class ToolChoiceConverter : JsonConverter<ToolChoice>
         {
             // Read the object as JsonDocument
             using JsonDocument doc = JsonDocument.ParseValue(ref reader);
-            
+
             // Extract function name
             if (doc.RootElement.TryGetProperty("function", out JsonElement functionElement) &&
                 functionElement.TryGetProperty("name", out JsonElement nameElement))
@@ -108,10 +108,10 @@ public class ToolChoiceConverter : JsonConverter<ToolChoice>
                     return ToolChoice.Function(functionName);
                 }
             }
-            
+
             throw new JsonException("Invalid tool_choice object format");
         }
-        
+
         throw new JsonException($"Unexpected token type for tool_choice: {reader.TokenType}");
     }
 
@@ -119,7 +119,7 @@ public class ToolChoiceConverter : JsonConverter<ToolChoice>
     public override void Write(Utf8JsonWriter writer, ToolChoice value, JsonSerializerOptions options)
     {
         var serializedValue = value.GetSerializedValue();
-        
+
         if (serializedValue is string stringValue)
         {
             writer.WriteStringValue(stringValue);

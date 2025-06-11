@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+
 using ConduitLLM.Configuration.Constants;
 
 namespace ConduitLLM.Configuration.DTOs.IpFilter;
@@ -14,7 +15,7 @@ public class CreateIpFilterDto
     [Required]
     [StringLength(10)]
     public string FilterType { get; set; } = IpFilterConstants.BLACKLIST;
-    
+
     /// <summary>
     /// The IP address or subnet in CIDR notation (e.g., "192.168.1.1" or "192.168.1.0/24")
     /// </summary>
@@ -36,13 +37,13 @@ public class CreateIpFilterDto
     /// </summary>
     [StringLength(100)]
     public string Name { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Optional description of the filter
     /// </summary>
     [StringLength(500)]
     public string? Description { get; set; }
-    
+
     /// <summary>
     /// Whether the filter is currently active
     /// </summary>

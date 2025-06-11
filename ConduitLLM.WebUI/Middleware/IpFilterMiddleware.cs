@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text.Json;
+
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,7 +20,7 @@ public class IpFilterMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<IpFilterMiddleware> _logger;
     private readonly IOptions<IpFilterOptions> _options;
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="IpFilterMiddleware"/> class
     /// </summary>
@@ -34,7 +36,7 @@ public class IpFilterMiddleware
         _logger = logger;
         _options = options;
     }
-    
+
     /// <summary>
     /// Invokes the middleware
     /// </summary>
@@ -49,14 +51,14 @@ public class IpFilterMiddleware
         {
             // Try to get the IP filter settings, with fallback for API connection issues
             var settings = await GetIpFilterSettingsWithFallbackAsync(ipFilterService);
-            
+
             // Skip filtering if it's disabled in settings
             if (!settings.IsEnabled)
             {
                 await _next(context);
                 return;
             }
-            
+
             // Skip filtering for excluded paths
             string path = context.Request.Path.Value ?? string.Empty;
             if (IsExcludedPath(path, settings.ExcludedEndpoints))
@@ -65,7 +67,7 @@ public class IpFilterMiddleware
                 await _next(context);
                 return;
             }
-            
+
             // Skip filtering for admin UI access if configured
             if (settings.BypassForAdminUi && !path.StartsWith("/api/"))
             {
@@ -73,14 +75,14 @@ public class IpFilterMiddleware
                 await _next(context);
                 return;
             }
-            
+
             // Get the client IP address
             string? clientIp = GetClientIpAddress(context);
             if (string.IsNullOrEmpty(clientIp))
             {
-                _logger.LogWarning("Could not determine client IP address. Applying default allow setting: {DefaultAllow}", 
+                _logger.LogWarning("Could not determine client IP address. Applying default allow setting: {DefaultAllow}",
                     settings.DefaultAllow);
-                    
+
                 if (settings.DefaultAllow)
                 {
                     await _next(context);
@@ -89,10 +91,10 @@ public class IpFilterMiddleware
                 {
                     await RespondWithForbidden(context, "Could not determine client IP address");
                 }
-                
+
                 return;
             }
-            
+
             // Check if the IP is allowed, with fallback handling for API connection issues
             bool isAllowed = await CheckIpWithFallbackAsync(ipFilterService, clientIp, settings.DefaultAllow);
             if (isAllowed)
@@ -109,13 +111,13 @@ public class IpFilterMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in IP filtering middleware");
-            
+
             // In case of error, continue to the next middleware
             // This ensures that IP filtering doesn't break the application if there's an issue
             await _next(context);
         }
     }
-    
+
     /// <summary>
     /// Gets IP filter settings with fallback in case of Admin API connection issues
     /// </summary>
@@ -127,16 +129,16 @@ public class IpFilterMiddleware
         {
             // Try to get settings from the Admin API
             var settings = await ipFilterService.GetIpFilterSettingsAsync();
-            
+
             // This conversion is no longer needed since the IpFilterService now returns the DTO directly
-            
+
             return settings;
         }
         catch (Exception ex)
         {
             // Log the error
             _logger.LogError(ex, "Failed to retrieve IP filter settings from Admin API. Using permissive defaults.");
-            
+
             // Return permissive default settings to avoid blocking legitimate access
             return new Configuration.DTOs.IpFilter.IpFilterSettingsDto
             {
@@ -150,7 +152,7 @@ public class IpFilterMiddleware
             };
         }
     }
-    
+
     /// <summary>
     /// Checks if an IP is allowed with fallback handling in case of Admin API connection issues
     /// </summary>
@@ -168,14 +170,14 @@ public class IpFilterMiddleware
         catch (Exception ex)
         {
             // Log the error
-            _logger.LogError(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}", 
+            _logger.LogError(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}",
                 clientIp, defaultAllow);
-            
+
             // Fall back to the default allow setting
             return defaultAllow;
         }
     }
-    
+
     private bool IsExcludedPath(string path, IEnumerable<string> excludedEndpoints)
     {
         foreach (var excludedPath in excludedEndpoints)
@@ -185,10 +187,10 @@ public class IpFilterMiddleware
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     private static string? GetClientIpAddress(HttpContext context)
     {
         // Check for X-Forwarded-For header
@@ -199,16 +201,16 @@ public class IpFilterMiddleware
             string clientIp = forwardedFor.Split(',')[0].Trim();
             return clientIp;
         }
-        
+
         // Fallback to connection remote IP
         return context.Connection.RemoteIpAddress?.ToString();
     }
-    
+
     private static async Task RespondWithForbidden(HttpContext context, string message)
     {
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
         context.Response.ContentType = "application/json";
-        
+
         var error = new
         {
             error = new
@@ -218,7 +220,7 @@ public class IpFilterMiddleware
                 code = StatusCodes.Status403Forbidden
             }
         };
-        
+
         await JsonSerializer.SerializeAsync(context.Response.Body, error);
     }
 }

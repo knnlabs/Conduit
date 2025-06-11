@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Routing.AudioRoutingStrategies;
-using ConduitLLM.Configuration.Options;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Core.Routing
 {
@@ -101,15 +103,15 @@ namespace ConduitLLM.Core.Routing
 
                 // For now, hardcode known audio providers
                 // In a real implementation, this would query the database
-                var audioProviders = new List<string> 
-                { 
-                    "OpenAI", 
-                    "ElevenLabs", 
-                    "Google", 
-                    "Azure", 
-                    "Deepgram" 
+                var audioProviders = new List<string>
+                {
+                    "OpenAI",
+                    "ElevenLabs",
+                    "Google",
+                    "Azure",
+                    "Deepgram"
                 };
-                
+
                 foreach (var provider in audioProviders)
                 {
                     var info = await BuildProviderInfoAsync(provider, cancellationToken);
@@ -133,8 +135,8 @@ namespace ConduitLLM.Core.Routing
         {
             var providerInfo = await GetProviderInfoAsync(cancellationToken);
             var providerName = await _currentStrategy.SelectTranscriptionProviderAsync(
-                request, 
-                providerInfo, 
+                request,
+                providerInfo,
                 cancellationToken);
 
             if (string.IsNullOrEmpty(providerName))
@@ -209,7 +211,7 @@ namespace ConduitLLM.Core.Routing
             try
             {
                 var providerInfo = await GetProviderInfoAsync(cancellationToken);
-                
+
                 return requestType switch
                 {
                     AudioRequestType.Transcription => await _currentStrategy.SelectTranscriptionProviderAsync(
@@ -236,7 +238,7 @@ namespace ConduitLLM.Core.Routing
             CancellationToken cancellationToken = default)
         {
             var providerInfo = await GetProviderInfoAsync(cancellationToken);
-            
+
             var eligibleProviders = providerInfo
                 .Where(p => p.IsAvailable && p.Metrics.AverageLatencyMs <= maxLatencyMs)
                 .OrderBy(p => p.Metrics.AverageLatencyMs)
@@ -258,7 +260,7 @@ namespace ConduitLLM.Core.Routing
             try
             {
                 var providerInfo = await GetProviderInfoAsync(cancellationToken);
-                
+
                 return requestType switch
                 {
                     AudioRequestType.Transcription => await _currentStrategy.SelectTranscriptionProviderAsync(
@@ -401,7 +403,7 @@ namespace ConduitLLM.Core.Routing
             CancellationToken cancellationToken = default)
         {
             var providerInfo = await GetProviderInfoAsync(cancellationToken);
-            
+
             if (!string.IsNullOrEmpty(provider))
             {
                 var info = providerInfo.FirstOrDefault(p => p.Name.Equals(provider, StringComparison.OrdinalIgnoreCase));
@@ -485,7 +487,7 @@ namespace ConduitLLM.Core.Routing
         {
             // For now, return default capabilities
             object? capabilities = null;
-            
+
             return new AudioProviderInfo
             {
                 Name = provider,
@@ -502,7 +504,7 @@ namespace ConduitLLM.Core.Routing
             try
             {
                 var client = _clientFactory.GetClientByProvider(provider);
-                
+
                 // Quick availability check
                 if (client is IAudioTranscriptionClient sttClient)
                 {
@@ -560,7 +562,7 @@ namespace ConduitLLM.Core.Routing
                 LastUpdated = DateTime.UtcNow,
                 SampleSize = 1000
             };
-            
+
             return Task.FromResult(metrics);
         }
 

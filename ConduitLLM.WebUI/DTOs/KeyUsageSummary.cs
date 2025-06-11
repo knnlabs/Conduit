@@ -11,12 +11,12 @@ namespace ConduitLLM.WebUI.DTOs
         /// ID of the virtual key
         /// </summary>
         public int VirtualKeyId { get; set; }
-        
+
         /// <summary>
         /// Name of the virtual key
         /// </summary>
         public string KeyName { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Alias for KeyName for backward compatibility
         /// </summary>
@@ -89,14 +89,14 @@ namespace ConduitLLM.WebUI.DTOs
         /// Number of requests in the last 24 hours
         /// </summary>
         public int RequestsLast24Hours { get; set; }
-        
+
         /// <summary>
         /// Number of requests in the last day (alias for RequestsLast24Hours)
         /// </summary>
-        public int LastDayRequests 
-        { 
-            get => RequestsLast24Hours; 
-            set => RequestsLast24Hours = value; 
+        public int LastDayRequests
+        {
+            get => RequestsLast24Hours;
+            set => RequestsLast24Hours = value;
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace ConduitLLM.WebUI.DTOs
         /// Number of requests in the last 30 days
         /// </summary>
         public int RequestsLast30Days { get; set; }
-        
+
         /// <summary>
         /// Date when the key was created
         /// </summary>

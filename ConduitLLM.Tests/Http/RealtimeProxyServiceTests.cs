@@ -4,13 +4,17 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Http.Services;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Http

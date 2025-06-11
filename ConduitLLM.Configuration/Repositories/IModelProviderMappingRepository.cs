@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -35,7 +36,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model provider mapping entity or null if not found</returns>
         Task<Entities.ModelProviderMapping?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a model provider mapping by model alias
         /// </summary>
@@ -43,14 +44,14 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model provider mapping entity or null if not found</returns>
         Task<Entities.ModelProviderMapping?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all model provider mappings
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all model provider mappings</returns>
         Task<List<Entities.ModelProviderMapping>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all model provider mappings for a specific provider
         /// </summary>
@@ -58,7 +59,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model provider mappings for the specified provider</returns>
         Task<List<Entities.ModelProviderMapping>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new model provider mapping
         /// </summary>
@@ -66,7 +67,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created model provider mapping</returns>
         Task<int> CreateAsync(Entities.ModelProviderMapping modelProviderMapping, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a model provider mapping
         /// </summary>
@@ -74,7 +75,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(Entities.ModelProviderMapping modelProviderMapping, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a model provider mapping
         /// </summary>

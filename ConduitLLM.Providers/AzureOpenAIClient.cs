@@ -4,11 +4,13 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -59,16 +61,16 @@ namespace ConduitLLM.Providers
         {
             // Deployment name is equivalent to provider model ID in Azure
             _deploymentName = deploymentName ?? throw new ArgumentNullException(nameof(deploymentName), "Deployment name is required for Azure OpenAI.");
-            
+
             // Validate Azure-specific required fields
             if (string.IsNullOrWhiteSpace(credentials.ApiBase))
             {
                 throw new ConfigurationException("ApiBase (Azure resource endpoint) is required for Azure OpenAI. Format: https://{resource-name}.openai.azure.com");
             }
-            
+
             // Use the provided API version or default to a recent version
             _apiVersion = !string.IsNullOrWhiteSpace(credentials.ApiVersion) ? credentials.ApiVersion : "2024-02-01";
-            
+
             // For Azure OpenAI, we need to override the endpoints using the proper base URL and API version
             // The BaseUrl field is initialized in the base class constructor, we don't need to reassign it here
         }
@@ -147,11 +149,11 @@ namespace ConduitLLM.Providers
         {
             // Call base but skip the Authorization header setting
             // We'll just configure headers ourselves for Azure
-            
+
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // Azure OpenAI uses api-key header instead of Authorization header
             client.DefaultRequestHeaders.Add("api-key", apiKey);
         }

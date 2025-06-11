@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Caching;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using Microsoft.Extensions.Options;
 
 using Moq;
@@ -36,7 +36,7 @@ namespace ConduitLLM.Tests.Caching
             _cacheServiceMock = new Mock<ICacheService>();
             _metricsServiceMock = new Mock<ICacheMetricsService>();
             _loggerMock = new Mock<ILogger<CachingLLMClient>>();
-            
+
             _cacheOptions = new CacheOptions
             {
                 IsEnabled = true,
@@ -49,10 +49,10 @@ namespace ConduitLLM.Tests.Caching
                 IncludeTopPInKey = true,
                 HashAlgorithm = "MD5"
             };
-            
+
             _cacheOptionsMock = new Mock<IOptions<CacheOptions>>();
             _cacheOptionsMock.Setup(o => o.Value).Returns(_cacheOptions);
-            
+
             _cachingClient = new CachingLLMClient(
                 _innerClientMock.Object,
                 _cacheServiceMock.Object,
@@ -76,7 +76,7 @@ namespace ConduitLLM.Tests.Caching
                 Temperature = 0.7,
                 MaxTokens = 100
             };
-            
+
             var expectedResponse = new ChatCompletionResponse
             {
                 Id = "test-id",
@@ -93,15 +93,15 @@ namespace ConduitLLM.Tests.Caching
                     }
                 }
             };
-            
+
             // Setup cache hit
             _cacheServiceMock
                 .Setup(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()))
                 .Returns(expectedResponse);
-            
+
             // Act
             var result = await _cachingClient.CreateChatCompletionAsync(request);
-            
+
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
 
@@ -109,21 +109,21 @@ namespace ConduitLLM.Tests.Caching
             var expectedContent = expectedResponse.Choices[0].Message.Content?.ToString();
             var resultContent = result.Choices[0].Message.Content?.ToString();
             Assert.Equal(expectedContent, resultContent);
-            
+
             // Verify cache was checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Once);
-            
+
             // Verify inner client was not called
             _innerClientMock.Verify(c => c.CreateChatCompletionAsync(
-                It.IsAny<ChatCompletionRequest>(), 
-                It.IsAny<string>(), 
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<ChatCompletionRequest>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
                 Times.Never);
-            
+
             // Verify metrics were recorded
             _metricsServiceMock.Verify(m => m.RecordHit(
-                It.IsAny<double>(), 
-                It.Is<string>(s => s == "test-model")), 
+                It.IsAny<double>(),
+                It.Is<string>(s => s == "test-model")),
                 Times.Once);
         }
 
@@ -141,7 +141,7 @@ namespace ConduitLLM.Tests.Caching
                 Temperature = 0.7,
                 MaxTokens = 100
             };
-            
+
             var expectedResponse = new ChatCompletionResponse
             {
                 Id = "test-id",
@@ -158,23 +158,23 @@ namespace ConduitLLM.Tests.Caching
                     }
                 }
             };
-            
+
             // Setup cache miss
             _cacheServiceMock
                 .Setup(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()))
                 .Returns((ChatCompletionResponse?)null);
-            
+
             // Setup inner client response
             _innerClientMock
                 .Setup(c => c.CreateChatCompletionAsync(
-                    It.IsAny<ChatCompletionRequest>(), 
-                    It.IsAny<string>(), 
+                    It.IsAny<ChatCompletionRequest>(),
+                    It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
-            
+
             // Act
             var result = await _cachingClient.CreateChatCompletionAsync(request);
-            
+
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
 
@@ -182,28 +182,28 @@ namespace ConduitLLM.Tests.Caching
             var expectedContent = expectedResponse.Choices[0].Message.Content?.ToString();
             var resultContent = result.Choices[0].Message.Content?.ToString();
             Assert.Equal(expectedContent, resultContent);
-            
+
             // Verify cache was checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Once);
-            
+
             // Verify inner client was called
             _innerClientMock.Verify(c => c.CreateChatCompletionAsync(
-                It.IsAny<ChatCompletionRequest>(), 
-                It.IsAny<string>(), 
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<ChatCompletionRequest>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
                 Times.Once);
-            
+
             // Verify response was cached
             _cacheServiceMock.Verify(c => c.Set(
                 It.IsAny<string>(),
                 It.Is<ChatCompletionResponse>(r => r.Id == expectedResponse.Id),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Once);
-            
+
             // Verify metrics were recorded
             _metricsServiceMock.Verify(m => m.RecordMiss(
-                It.Is<string>(s => s == "test-model")), 
+                It.Is<string>(s => s == "test-model")),
                 Times.Once);
         }
 
@@ -220,7 +220,7 @@ namespace ConduitLLM.Tests.Caching
                 },
                 Stream = true
             };
-            
+
             var expectedResponse = new ChatCompletionResponse
             {
                 Id = "test-id",
@@ -237,47 +237,47 @@ namespace ConduitLLM.Tests.Caching
                     }
                 }
             };
-            
+
             // Setup inner client response
             _innerClientMock
                 .Setup(c => c.CreateChatCompletionAsync(
-                    It.IsAny<ChatCompletionRequest>(), 
-                    It.IsAny<string>(), 
+                    It.IsAny<ChatCompletionRequest>(),
+                    It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
-            
+
             // Act
             var result = await _cachingClient.CreateChatCompletionAsync(request);
-            
+
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
-            
+
             // Verify cache was not checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Never);
-            
+
             // Verify inner client was called directly
             _innerClientMock.Verify(c => c.CreateChatCompletionAsync(
-                It.IsAny<ChatCompletionRequest>(), 
-                It.IsAny<string>(), 
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<ChatCompletionRequest>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
                 Times.Once);
-            
+
             // Verify response was not cached
             _cacheServiceMock.Verify(c => c.Set(
                 It.IsAny<string>(),
                 It.IsAny<ChatCompletionResponse>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Never);
-            
+
             // Verify metrics were not recorded
             _metricsServiceMock.Verify(m => m.RecordHit(
-                It.IsAny<double>(), 
-                It.IsAny<string>()), 
+                It.IsAny<double>(),
+                It.IsAny<string>()),
                 Times.Never);
-            
+
             _metricsServiceMock.Verify(m => m.RecordMiss(
-                It.IsAny<string>()), 
+                It.IsAny<string>()),
                 Times.Never);
         }
 
@@ -289,10 +289,10 @@ namespace ConduitLLM.Tests.Caching
             {
                 IsEnabled = false
             };
-            
+
             var cacheOptionsMock = new Mock<IOptions<CacheOptions>>();
             cacheOptionsMock.Setup(o => o.Value).Returns(disabledCacheOptions);
-            
+
             var clientWithDisabledCache = new CachingLLMClient(
                 _innerClientMock.Object,
                 _cacheServiceMock.Object,
@@ -300,7 +300,7 @@ namespace ConduitLLM.Tests.Caching
                 cacheOptionsMock.Object,
                 _loggerMock.Object
             );
-            
+
             var request = new ChatCompletionRequest
             {
                 Model = "test-model",
@@ -309,7 +309,7 @@ namespace ConduitLLM.Tests.Caching
                     new Message { Role = "user", Content = "Hello" }
                 }
             };
-            
+
             var expectedResponse = new ChatCompletionResponse
             {
                 Id = "test-id",
@@ -326,37 +326,37 @@ namespace ConduitLLM.Tests.Caching
                     }
                 }
             };
-            
+
             // Setup inner client response
             _innerClientMock
                 .Setup(c => c.CreateChatCompletionAsync(
-                    It.IsAny<ChatCompletionRequest>(), 
-                    It.IsAny<string>(), 
+                    It.IsAny<ChatCompletionRequest>(),
+                    It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
-            
+
             // Act
             var result = await clientWithDisabledCache.CreateChatCompletionAsync(request);
-            
+
             // Assert
             Assert.Equal(expectedResponse.Id, result.Id);
-            
+
             // Verify cache was not checked
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Never);
-            
+
             // Verify inner client was called directly
             _innerClientMock.Verify(c => c.CreateChatCompletionAsync(
-                It.IsAny<ChatCompletionRequest>(), 
-                It.IsAny<string>(), 
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<ChatCompletionRequest>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
                 Times.Once);
-            
+
             // Verify response was not cached
             _cacheServiceMock.Verify(c => c.Set(
                 It.IsAny<string>(),
                 It.IsAny<ChatCompletionResponse>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Never);
         }
 
@@ -365,7 +365,7 @@ namespace ConduitLLM.Tests.Caching
         {
             // Arrange
             var expectedModels = new List<string> { "model1", "model2" };
-            
+
             // Setup cache service to return cached models
             _cacheServiceMock
                 .Setup(c => c.GetOrCreateAsync<List<string>>(
@@ -374,27 +374,27 @@ namespace ConduitLLM.Tests.Caching
                     It.IsAny<TimeSpan?>(),
                     It.IsAny<TimeSpan?>()))
                 .ReturnsAsync(expectedModels);
-            
+
             // Act
             var result = await _cachingClient.ListModelsAsync();
-            
+
             // Assert
             Assert.Equal(2, result.Count);
             Assert.Equal("model1", result[0]);
             Assert.Equal("model2", result[1]);
-            
+
             // Verify cache was used
             _cacheServiceMock.Verify(c => c.GetOrCreateAsync<List<string>>(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<List<string>>>>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Once);
-            
+
             // Verify inner client was not called directly
             _innerClientMock.Verify(c => c.ListModelsAsync(
                 It.IsAny<string>(),
-                It.IsAny<CancellationToken>()), 
+                It.IsAny<CancellationToken>()),
                 Times.Never);
         }
 
@@ -406,10 +406,10 @@ namespace ConduitLLM.Tests.Caching
             {
                 IsEnabled = false
             };
-            
+
             var cacheOptionsMock = new Mock<IOptions<CacheOptions>>();
             cacheOptionsMock.Setup(o => o.Value).Returns(disabledCacheOptions);
-            
+
             var clientWithDisabledCache = new CachingLLMClient(
                 _innerClientMock.Object,
                 _cacheServiceMock.Object,
@@ -417,30 +417,30 @@ namespace ConduitLLM.Tests.Caching
                 cacheOptionsMock.Object,
                 _loggerMock.Object
             );
-            
+
             var expectedModels = new List<string> { "model1", "model2" };
-            
+
             // Setup inner client response
             _innerClientMock
                 .Setup(c => c.ListModelsAsync(null, default))
                 .ReturnsAsync(expectedModels);
-            
+
             // Act
             var result = await clientWithDisabledCache.ListModelsAsync();
-            
+
             // Assert
             Assert.Equal(2, result.Count);
             Assert.Equal("model1", result[0]);
             Assert.Equal("model2", result[1]);
-            
+
             // Verify cache was not used
             _cacheServiceMock.Verify(c => c.GetOrCreateAsync<List<string>>(
                 It.IsAny<string>(),
                 It.IsAny<Func<Task<List<string>>>>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Never);
-            
+
             // Verify inner client was called directly
             _innerClientMock.Verify(c => c.ListModelsAsync(null, default), Times.Once);
         }
@@ -458,32 +458,32 @@ namespace ConduitLLM.Tests.Caching
                 },
                 Stream = true
             };
-            
+
             // Setup inner client response - just verify the method is called
             _innerClientMock
                 .Setup(c => c.StreamChatCompletionAsync(
-                    It.IsAny<ChatCompletionRequest>(), 
-                    null, 
+                    It.IsAny<ChatCompletionRequest>(),
+                    null,
                     default));
-            
+
             // Act - just call the method, don't await the result
             _cachingClient.StreamChatCompletionAsync(request);
-            
+
             // Assert
             // Verify inner client was called directly
             _innerClientMock.Verify(c => c.StreamChatCompletionAsync(
-                It.IsAny<ChatCompletionRequest>(), 
-                null, 
-                default), 
+                It.IsAny<ChatCompletionRequest>(),
+                null,
+                default),
                 Times.Once);
-            
+
             // Verify cache was not used
             _cacheServiceMock.Verify(c => c.Get<ChatCompletionResponse>(It.IsAny<string>()), Times.Never);
             _cacheServiceMock.Verify(c => c.Set(
                 It.IsAny<string>(),
                 It.IsAny<ChatCompletionResponse>(),
                 It.IsAny<TimeSpan?>(),
-                It.IsAny<TimeSpan?>()), 
+                It.IsAny<TimeSpan?>()),
                 Times.Never);
         }
     }

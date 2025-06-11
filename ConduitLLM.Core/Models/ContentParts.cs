@@ -1,9 +1,9 @@
-using System.Text.Json.Serialization;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Net.Http;
-using System.IO;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace ConduitLLM.Core.Models;
 
@@ -60,21 +60,21 @@ public class ImageUrl
     [JsonPropertyName("detail")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Detail { get; set; }
-    
+
     /// <summary>
     /// Returns true if the URL is a base64 data URL
     /// </summary>
     [JsonIgnore]
     public bool IsBase64DataUrl => Url.StartsWith("data:image/");
-    
+
     /// <summary>
     /// Gets the MIME type from the data URL, or null if this is not a data URL
     /// </summary>
     [JsonIgnore]
-    public string? MimeType => IsBase64DataUrl 
-        ? Url.Substring(5, Url.IndexOf(';') - 5) 
+    public string? MimeType => IsBase64DataUrl
+        ? Url.Substring(5, Url.IndexOf(';') - 5)
         : null;
-        
+
     /// <summary>
     /// Gets the base64 data without the prefix, or null if this is not a data URL
     /// </summary>
@@ -84,10 +84,10 @@ public class ImageUrl
         get
         {
             if (!IsBase64DataUrl) return null;
-            
+
             int startIndex = Url.IndexOf("base64,");
             if (startIndex < 0) return null;
-            
+
             return Url.Substring(startIndex + 7);
         }
     }
@@ -108,19 +108,19 @@ public static class ImageUrlExtensions
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"Image file not found: {filePath}");
-            
+
         byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
         string mimeType = GetMimeTypeFromFileExtension(Path.GetExtension(filePath));
-        
+
         string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(fileBytes)}";
-        
+
         return new ImageUrl
         {
             Url = dataUrl,
             Detail = detail
         };
     }
-    
+
     /// <summary>
     /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL
     /// </summary>
@@ -131,43 +131,43 @@ public static class ImageUrlExtensions
     {
         if (string.IsNullOrEmpty(url))
             throw new ArgumentException("URL cannot be null or empty", nameof(url));
-            
+
         if (url.StartsWith("data:"))
             return new ImageUrl { Url = url, Detail = detail };
-            
+
         using var httpClient = new HttpClient();
         byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
-        
+
         // Try to determine MIME type from content or fall back to a default
         string mimeType = "image/jpeg"; // Default fallback
-        
+
         // Check magic numbers for common image formats
         if (imageBytes.Length >= 2)
         {
             if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8) // JPEG
                 mimeType = "image/jpeg";
-            else if (imageBytes.Length >= 8 && 
-                     imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && 
+            else if (imageBytes.Length >= 8 &&
+                     imageBytes[0] == 0x89 && imageBytes[1] == 0x50 &&
                      imageBytes[2] == 0x4E && imageBytes[3] == 0x47) // PNG
                 mimeType = "image/png";
-            else if (imageBytes.Length >= 3 && 
-                     imageBytes[0] == 0x47 && imageBytes[1] == 0x49 && 
+            else if (imageBytes.Length >= 3 &&
+                     imageBytes[0] == 0x47 && imageBytes[1] == 0x49 &&
                      imageBytes[2] == 0x46) // GIF
                 mimeType = "image/gif";
-            else if (imageBytes.Length >= 4 && 
+            else if (imageBytes.Length >= 4 &&
                      (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)) // BMP
                 mimeType = "image/bmp";
         }
-        
+
         string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
-        
+
         return new ImageUrl
         {
             Url = dataUrl,
             Detail = detail
         };
     }
-    
+
     /// <summary>
     /// Gets a MIME type based on the file extension
     /// </summary>
@@ -178,7 +178,7 @@ public static class ImageUrlExtensions
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",
             ".gif" => "image/gif",
-            ".webp" => "image/webp", 
+            ".webp" => "image/webp",
             ".bmp" => "image/bmp",
             _ => "application/octet-stream" // Default fallback
         };

@@ -1,8 +1,10 @@
+using System;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using StackExchange.Redis;
-using System;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -28,11 +30,11 @@ namespace ConduitLLM.Configuration.Extensions
             {
                 services.AddDataProtection()
                     .SetApplicationName(applicationName);
-                
+
                 using var serviceProvider = services.BuildServiceProvider();
                 var logger = serviceProvider.GetService<ILogger<IDataProtectionBuilder>>();
                 logger?.LogWarning("Redis connection string not provided. Data Protection keys will be stored in the file system. This may cause issues in distributed scenarios.");
-                
+
                 return services;
             }
 
@@ -40,18 +42,18 @@ namespace ConduitLLM.Configuration.Extensions
             {
                 // Parse the connection string to handle different formats
                 var connectionString = ParseRedisConnectionString(redisConnectionString);
-                
+
                 // Create Redis connection
                 var redis = ConnectionMultiplexer.Connect(connectionString);
-                
+
                 // Configure Data Protection to use Redis
                 services.AddDataProtection()
                     .PersistKeysToStackExchangeRedis(redis, $"{applicationName}-DataProtection-Keys")
                     .SetApplicationName(applicationName);
-                
+
                 // Register the Redis connection as a singleton for reuse
                 services.AddSingleton<IConnectionMultiplexer>(redis);
-                
+
                 using var serviceProvider = services.BuildServiceProvider();
                 var logger = serviceProvider.GetService<ILogger<IDataProtectionBuilder>>();
                 logger?.LogInformation("Data Protection configured to use Redis for key persistence at {RedisEndpoint}", connectionString);
@@ -61,12 +63,12 @@ namespace ConduitLLM.Configuration.Extensions
                 // If Redis connection fails, fall back to file system
                 services.AddDataProtection()
                     .SetApplicationName(applicationName);
-                
+
                 using var serviceProvider = services.BuildServiceProvider();
                 var logger = serviceProvider.GetService<ILogger<IDataProtectionBuilder>>();
                 logger?.LogError(ex, "Failed to connect to Redis for Data Protection. Falling back to file system storage.");
             }
-            
+
             return services;
         }
 
@@ -82,13 +84,13 @@ namespace ConduitLLM.Configuration.Extensions
             {
                 return connectionString;
             }
-            
+
             // Handle host only format (default port 6379)
             if (!connectionString.Contains(":") && !connectionString.Contains("="))
             {
                 return $"{connectionString}:6379";
             }
-            
+
             // Return as-is for full connection strings
             return connectionString;
         }

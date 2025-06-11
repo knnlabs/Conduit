@@ -15,10 +15,10 @@ public interface IAdminCostDashboardService
     /// <param name="endDate">The end date for the summary</param>
     /// <returns>The cost dashboard summary</returns>
     Task<CostDashboardDto> GetCostSummaryAsync(
-        string timeframe = "daily", 
-        DateTime? startDate = null, 
+        string timeframe = "daily",
+        DateTime? startDate = null,
         DateTime? endDate = null);
-    
+
     /// <summary>
     /// Gets cost trend data
     /// </summary>
@@ -27,10 +27,10 @@ public interface IAdminCostDashboardService
     /// <param name="endDate">The end date for the trend</param>
     /// <returns>The cost trend data</returns>
     Task<CostTrendDto> GetCostTrendsAsync(
-        string period = "daily", 
-        DateTime? startDate = null, 
+        string period = "daily",
+        DateTime? startDate = null,
         DateTime? endDate = null);
-    
+
     /// <summary>
     /// Gets model costs data
     /// </summary>
@@ -38,9 +38,9 @@ public interface IAdminCostDashboardService
     /// <param name="endDate">The end date for the data</param>
     /// <returns>The model costs data</returns>
     Task<List<ModelCostDataDto>> GetModelCostsAsync(
-        DateTime? startDate = null, 
+        DateTime? startDate = null,
         DateTime? endDate = null);
-    
+
     /// <summary>
     /// Gets virtual key costs data
     /// </summary>
@@ -48,6 +48,6 @@ public interface IAdminCostDashboardService
     /// <param name="endDate">The end date for the data</param>
     /// <returns>The virtual key costs data</returns>
     Task<List<VirtualKeyCostDataDto>> GetVirtualKeyCostsAsync(
-        DateTime? startDate = null, 
+        DateTime? startDate = null,
         DateTime? endDate = null);
 }

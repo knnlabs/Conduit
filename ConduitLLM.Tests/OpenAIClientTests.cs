@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json; // For CreateJsonResponse
@@ -16,16 +17,14 @@ using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks; // For response/request DTOs and SseContent
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Contrib.HttpClient; // For mocking HttpClient
 using Moq.Protected; // Add this for Protected() extension method
 
+using Xunit;
 // Use explicit import to avoid ambiguity with itExpr
 using ItExpr = Moq.Protected.ItExpr;
-
-using Xunit;
 
 namespace ConduitLLM.Tests;
 
@@ -44,26 +43,29 @@ public class OpenAIClientTests
         _handlerMock = new Mock<HttpMessageHandler>();
         _httpClient = _handlerMock.CreateClient(); // The client using the mock handler
         _loggerMock = new Mock<ILogger<OpenAIClient>>();
-        
+
         // Use the adapter to create the factory mock
         _mockHttpClientFactory = new Mock<IHttpClientFactory>();
         _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
                               .Returns(_httpClient);
 
-        _openAICredentials = new ProviderCredentials { 
-            ProviderName = "OpenAI", 
+        _openAICredentials = new ProviderCredentials
+        {
+            ProviderName = "OpenAI",
             ApiKey = "sk-openai-testkey",
             ApiBase = "https://api.openai.com"  // Set default API base to avoid null reference
         };
-        _azureCredentials = new ProviderCredentials { 
-            ProviderName = "Azure", 
-            ApiKey = "azure-testkey", 
-            ApiBase = "http://localhost:12345/" 
+        _azureCredentials = new ProviderCredentials
+        {
+            ProviderName = "Azure",
+            ApiKey = "azure-testkey",
+            ApiBase = "http://localhost:12345/"
         };
-        _mistralCredentials = new ProviderCredentials { 
-            ProviderName = "Mistral", 
-            ApiKey = "mistral-testkey", 
-            ApiBase = "http://localhost:12346/v1/" 
+        _mistralCredentials = new ProviderCredentials
+        {
+            ProviderName = "Mistral",
+            ApiKey = "mistral-testkey",
+            ApiBase = "http://localhost:12346/v1/"
         }; // Ensure trailing slash
     }
 
@@ -125,7 +127,7 @@ public class OpenAIClientTests
             .Verifiable();
 
         // Pass factory mock, remove httpClient named arg
-        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure"); 
+        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure");
 
         // Act
         var response = await client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None);
@@ -136,14 +138,14 @@ public class OpenAIClientTests
         Assert.Equal(request.Model, response.Model); // Should return original alias
 
         _handlerMock.Protected().Verify(
-            "SendAsync", 
+            "SendAsync",
             Times.Once(),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
         );
     }
 
-     [Fact]
+    [Fact]
     public async Task CreateChatCompletionAsync_Mistral_Success()
     {
         // Arrange
@@ -155,11 +157,11 @@ public class OpenAIClientTests
         // Create a dedicated mock handler for this test
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         mockHandler.SetupRequest(HttpMethod.Post, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(expectedResponseDto))
             .Verifiable();
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -174,7 +176,7 @@ public class OpenAIClientTests
         Assert.Equal(request.Model, response.Model);
 
         mockHandler.Protected().Verify(
-            "SendAsync", 
+            "SendAsync",
             Times.Once(),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
@@ -190,7 +192,7 @@ public class OpenAIClientTests
         // Arrange
         var request = CreateTestRequest("openai-alias");
         var providerModelId = "gpt-4-test";
-        
+
         // Create a dedicated mock handler for this test
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
@@ -207,7 +209,7 @@ public class OpenAIClientTests
             {
                 Content = new StringContent(errorContent, System.Text.Encoding.UTF8, "application/json")
             });
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -234,7 +236,7 @@ public class OpenAIClientTests
         // Create a dedicated mock handler that throws an exception
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
@@ -242,7 +244,7 @@ public class OpenAIClientTests
                 Moq.Protected.ItExpr.IsAny<CancellationToken>()
             )
             .ThrowsAsync(httpRequestException);
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -257,7 +259,7 @@ public class OpenAIClientTests
         Assert.Equal(httpRequestException, ex.InnerException);
     }
 
-     [Fact]
+    [Fact]
     public async Task CreateChatCompletionAsync_Timeout_ThrowsLLMCommunicationException()
     {
         // Arrange
@@ -271,7 +273,7 @@ public class OpenAIClientTests
         // Create a dedicated mock handler that throws a timeout exception
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
@@ -279,7 +281,7 @@ public class OpenAIClientTests
                 Moq.Protected.ItExpr.IsAny<CancellationToken>()
             )
             .ThrowsAsync(taskCanceledException);
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -311,29 +313,29 @@ public class OpenAIClientTests
         Assert.Contains("missing", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-     [Fact]
+    [Fact]
     public void CreateChatCompletionAsync_MissingApiKeyWithOverrideNull_ThrowsConfigurationException()
     {
         // Arrange
         var request = CreateTestRequest();
         var providerModelId = "gpt-4";
-        
+
         // Create client with valid key first
         var validKeyCredentials = new ProviderCredentials { ProviderName = "OpenAI", ApiKey = "valid-key" };
         // Pass factory mock, remove httpClient named arg
-        var client = new OpenAIClient(validKeyCredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object); 
+        var client = new OpenAIClient(validKeyCredentials, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object);
 
         // Setup mock for the valid call
         _handlerMock.SetupRequest(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(CreateSuccessOpenAIDto()));
-        
+
         // This should work fine with the configured key
         client.CreateChatCompletionAsync(request, apiKey: null, cancellationToken: CancellationToken.None);
 
         // Verify that attempting to construct a client with a null key throws exception
         var credentialsWithMissingKey = new ProviderCredentials { ProviderName = "OpenAI", ApiKey = null };
         var ex = Record.Exception(() => new OpenAIClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, _mockHttpClientFactory.Object)); // Pass factory mock
-        
+
         Assert.NotNull(ex); // Should throw
         // Accept any exception type, just check it's about missing API key
         Assert.Contains("missing", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -439,20 +441,20 @@ public class OpenAIClientTests
         var providerModelId = "gpt-4-test";
 
         var chunksDto = CreateStandardOpenAIChunks().ToList();
-        
+
         // Use a separate mock handler specifically for this test to avoid interference
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         // Use SseContent instead of CreateSseStreamContent for consistent behavior
         var content = SseContent.FromChunks(chunksDto);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         // Properly setup the handler with Protected setup to ensure response is returned
         // Use more permissive matching to ensure the mock responds to the request
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -460,11 +462,11 @@ public class OpenAIClientTests
             {
                 Content = content
             });
-            
+
         // Create a dedicated factory for this test that returns our configured client
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
-        
+
         var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object);
 
         // Act
@@ -476,13 +478,13 @@ public class OpenAIClientTests
 
         // Assert - only check that we get chunks back with expected properties
         Assert.NotEmpty(receivedChunks);
-        foreach (var chunk in receivedChunks) 
+        foreach (var chunk in receivedChunks)
         {
             Assert.NotNull(chunk.Id);
             // Verify original alias is mapped back
             Assert.Equal(request.Model, chunk.Model);
         }
-        
+
         // Don't verify the exact URL, just that a request was made
         mockHandler.Protected()
             .Verify(
@@ -492,7 +494,7 @@ public class OpenAIClientTests
                 ItExpr.IsAny<CancellationToken>());
     }
 
-     [Fact]
+    [Fact]
     public async Task StreamChatCompletionAsync_Azure_Success()
     {
         // Arrange
@@ -506,10 +508,10 @@ public class OpenAIClientTests
         };
         var deploymentName = "my-azure-deployment";
         var apiVersion = "2024-02-01";
-        
+
         // This is the expected full URL pattern for Azure OpenAI including the deployment and API version
         var expectedUri = $"{_azureCredentials.ApiBase!.TrimEnd('/')}/openai/deployments/{deploymentName}/chat/completions?api-version={apiVersion}";
-        
+
         var chunksDto = CreateStandardOpenAIChunks().ToList();
         var content = SseContent.FromChunks(chunksDto);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
@@ -517,7 +519,7 @@ public class OpenAIClientTests
         // Use more permissive matching to ensure the mock responds to the request
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -528,7 +530,7 @@ public class OpenAIClientTests
             .Verifiable();
 
         // Pass factory mock, remove httpClient named arg
-        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure"); 
+        var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, _mockHttpClientFactory.Object, providerName: "azure");
 
         // Act
         var receivedChunks = new List<ChatCompletionChunk>();
@@ -564,20 +566,20 @@ public class OpenAIClientTests
         };
         var providerModelId = "mistral-large-latest";
         var expectedUri = $"{_mistralCredentials.ApiBase!.TrimEnd('/')}/chat/completions"; // Mistral uses v1 path
-        
+
         // Create sample SSE content using SseContent helper
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(3);
         var content = SseContent.FromChunks(chunksDto);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         // Create a dedicated mock handler for this test
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         // Use more permissive matching to ensure the mock responds to the request
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -602,7 +604,7 @@ public class OpenAIClientTests
 
         // Assert - just check that we received chunks and the model name is mapped correctly
         Assert.NotEmpty(receivedChunks);
-        
+
         // Don't verify the exact URL, just that a request was made
         mockHandler.Protected()
             .Verify(
@@ -640,11 +642,11 @@ public class OpenAIClientTests
                             "data: [DONE]\n\n";
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         // Use more permissive matching to ensure the mock responds to the request
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -664,7 +666,7 @@ public class OpenAIClientTests
         // Don't check specific message content
     }
 
-     [Fact]
+    [Fact]
     public async Task StreamChatCompletionAsync_HttpRequestExceptionDuringStream_ThrowsLLMCommunicationException()
     {
         // Arrange
@@ -677,19 +679,19 @@ public class OpenAIClientTests
             Stream = true
         };
         var providerModelId = "gpt-4-test";
-        
+
         // Use SseContent helper that can throw on read
         var content = SseContent.FromChunks(OpenAIChatCompletionChunk.GenerateChunks(1), throwOnRead: true);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         // Create dedicated mock handler for this test
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         // Use more permissive matching to ensure the mock responds to the request
         mockHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -698,12 +700,12 @@ public class OpenAIClientTests
                 Content = content
             })
             .Verifiable();
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
-            
+
         var client = new OpenAIClient(_openAICredentials, providerModelId, _loggerMock.Object, tempFactoryMock.Object);
-        
+
         // Act & Assert - The implementation now throws LLMCommunicationException, not IOException
         var ex = await Assert.ThrowsAsync<LLMCommunicationException>(async () =>
         {
@@ -712,12 +714,12 @@ public class OpenAIClientTests
                 // Might get some chunks before error depending on exact simulation
             }
         });
-        
+
         // Check that the exception is not null
         Assert.NotNull(ex);
-        
+
         mockHandler.Protected().Verify(
-            "SendAsync", 
+            "SendAsync",
             Times.Once(),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()
@@ -733,10 +735,10 @@ public class OpenAIClientTests
         var emptyStream = new List<OpenAIChatCompletionChunk>();
         var content = SseContent.FromChunks(emptyStream);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -763,10 +765,10 @@ public class OpenAIClientTests
         var invalidChunk = new OpenAIChatCompletionChunk { Id = "bad", Choices = null! };
         var content = SseContent.FromChunks(new[] { invalidChunk });
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -804,10 +806,10 @@ public class OpenAIClientTests
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(1);
         var content = SseContent.FromChunks(chunksDto, throwOnRead: true);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -833,10 +835,10 @@ public class OpenAIClientTests
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(2);
         var content = SseContent.FromChunks(chunksDto, delayMs: 100);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -866,10 +868,10 @@ public class OpenAIClientTests
         var chunksDto = OpenAIChatCompletionChunk.GenerateChunks(100);
         var content = SseContent.FromChunks(chunksDto);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-        
+
         _handlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
-                "SendAsync", 
+                "SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()
             )
@@ -891,7 +893,7 @@ public class OpenAIClientTests
     // These tests are skipped due to issues with how model information is resolved
     // The OpenAICompatibleClient.GetModelsAsync method always returns fallback models
     // if there's any issue with the API call, making it difficult to test in isolation.
-    
+
     private Task ListModelsAsync_OpenAI_Success_Implementation()
     {
         // Skip this test for now as the fallback model mechanism
@@ -899,7 +901,7 @@ public class OpenAIClientTests
         Assert.True(true);
         return Task.CompletedTask;
     }
-    
+
     private Task ListModelsAsync_Mistral_Success_Implementation()
     {
         // Skip this test for now as the fallback model mechanism
@@ -916,13 +918,13 @@ public class OpenAIClientTests
         var apiVersion = "2024-02-01";
         var apiBase = _azureCredentials.ApiBase!.TrimEnd('/');
         var expectedUri = $"{apiBase}/openai/deployments?api-version={apiVersion}";
-        
+
         // Create a response with some sample deployments using anonymous types
-        var azureResponse = new 
+        var azureResponse = new
         {
-            data = new[] 
+            data = new[]
             {
-                new 
+                new
                 {
                     id = "deployment1",
                     deploymentId = "gpt4-deployment",
@@ -930,7 +932,7 @@ public class OpenAIClientTests
                     status = "succeeded",
                     provisioningState = "Succeeded"
                 },
-                new 
+                new
                 {
                     id = "deployment2",
                     deploymentId = "gpt35-deployment",
@@ -940,29 +942,29 @@ public class OpenAIClientTests
                 }
             }
         };
-        
+
         // Create dedicated mock handler for this test
         var mockHandler = new Mock<HttpMessageHandler>();
         var mockClient = mockHandler.CreateClient();
-        
+
         mockHandler.SetupRequest(HttpMethod.Get, expectedUri)
             .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(azureResponse))
             .Verifiable();
-            
+
         var tempFactoryMock = new Mock<IHttpClientFactory>();
         tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
-        
+
         var client = new OpenAIClient(_azureCredentials, deploymentName, _loggerMock.Object, tempFactoryMock.Object, providerName: "azure");
-        
+
         // Act
         var models = await client.ListModelsAsync(cancellationToken: CancellationToken.None);
-        
+
         // Assert
         Assert.NotNull(models);
         Assert.Equal(2, models.Count);
         Assert.Contains("gpt4-deployment", models);
         Assert.Contains("gpt35-deployment", models);
-        
+
         mockHandler.VerifyRequest(HttpMethod.Get, expectedUri, Times.Once());
     }
 
@@ -975,7 +977,7 @@ public class OpenAIClientTests
         return Task.CompletedTask;
     }
 
-     [Fact]
+    [Fact]
     public void ListModelsAsync_MissingApiKey_ThrowsConfigurationException()
     {
         // Arrange

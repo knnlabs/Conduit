@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
 {
@@ -37,7 +39,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             CancellationToken cancellationToken = default)
         {
             var language = request.Language ?? DetectLanguageFromRequest(request);
-            
+
             return SelectProviderByLanguageAsync(
                 language,
                 availableProviders,
@@ -52,11 +54,11 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             CancellationToken cancellationToken = default)
         {
             var language = request.Language ?? "en";
-            
+
             return SelectProviderByLanguageAsync(
                 language,
                 availableProviders,
-                p => p.Capabilities.SupportedVoices.Contains(request.Voice) || 
+                p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
                      p.Capabilities.SupportedVoices.Count == 0,
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()));
         }
@@ -111,7 +113,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .ToList();
 
             var selected = scoredProviders.First();
-            
+
             _logger.LogInformation(
                 "Selected {Provider} for language {Language} with score {Score:F2}",
                 selected.Provider.Name,
@@ -151,22 +153,22 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 ("google", "asian") => 0.95,
                 ("google", "european") => 0.85,
                 ("google", "english") => 0.90,
-                
+
                 // Azure strong in European languages
                 ("azure", "european") => 0.95,
                 ("azure", "english") => 0.90,
                 ("azure", "asian") => 0.80,
-                
+
                 // OpenAI/Whisper very good at English
                 ("openai", "english") => 0.95,
                 ("openai", "european") => 0.85,
                 ("openai", "asian") => 0.75,
-                
+
                 // Deepgram excellent for English real-time
                 ("deepgram", "english") => 0.98,
                 ("deepgram", "european") => 0.80,
                 ("deepgram", "asian") => 0.70,
-                
+
                 // Default scores
                 (_, "english") => 0.80,
                 (_, _) => 0.70

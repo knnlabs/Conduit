@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
 {
@@ -54,7 +56,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             return SelectProviderByQualityAsync(
                 availableProviders,
                 AudioRequestType.TextToSpeech,
-                p => p.Capabilities.SupportedVoices.Contains(request.Voice) || 
+                p => p.Capabilities.SupportedVoices.Contains(request.Voice) ||
                      p.Capabilities.SupportedVoices.Count == 0,
                 p => SupportsLanguage(p, request.Language),
                 p => SupportsFormat(p, request.ResponseFormat?.ToString()),
@@ -73,7 +75,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             }
 
             var qualityMetrics = _providerQualityMetrics[provider];
-            
+
             // Update quality metrics based on success and user feedback
             if (metrics.Success)
             {
@@ -117,7 +119,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
                 .ToList();
 
             var selected = scoredProviders.First();
-            
+
             _logger.LogInformation(
                 "Selected {Provider} with quality score {Score:F2} for {RequestType}",
                 selected.Provider.Name,
@@ -134,7 +136,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
         {
             var baseQuality = provider.Capabilities.QualityScore / 100.0;
             var successRate = provider.Metrics.SuccessRate;
-            
+
             // Get historical quality metrics
             var historicalQuality = 0.8; // Default
             if (_providerQualityMetrics.TryGetValue(provider.Name, out var metrics))
@@ -155,8 +157,8 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             var featureBonus = CalculateFeatureBonus(provider, requestType);
 
             // Combine all factors
-            var finalScore = (baseQuality * 0.3) + 
-                           (successRate * 0.2) + 
+            var finalScore = (baseQuality * 0.3) +
+                           (successRate * 0.2) +
                            (historicalQuality * 0.2) +
                            (typeMultiplier * 0.2) +
                            (featureBonus * 0.1);

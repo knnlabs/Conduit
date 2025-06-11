@@ -2,8 +2,10 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -40,16 +42,16 @@ namespace ConduitLLM.Core.Utilities
                 ex is not OperationCanceledException)
             {
                 logger.LogError(ex, errorMessage);
-                
+
                 if (exceptionTransformer != null)
                 {
                     throw exceptionTransformer(ex);
                 }
-                
+
                 throw new LLMCommunicationException(errorMessage, ex);
             }
         }
-        
+
         /// <summary>
         /// Executes an operation with specific handling for HTTP-related exceptions.
         /// </summary>
@@ -71,12 +73,12 @@ namespace ConduitLLM.Core.Utilities
             catch (HttpRequestException ex)
             {
                 logger.LogError(ex, "HTTP request to {ServiceName} failed: {Message}", serviceName, ex.Message);
-                
+
                 var statusCode = ex.StatusCode ?? HttpStatusCode.ServiceUnavailable;
-                var statusMessage = statusCode != HttpStatusCode.ServiceUnavailable 
-                    ? $"HTTP {(int)statusCode} {statusCode}" 
+                var statusMessage = statusCode != HttpStatusCode.ServiceUnavailable
+                    ? $"HTTP {(int)statusCode} {statusCode}"
                     : "Service Unavailable";
-                
+
                 throw new LLMCommunicationException(
                     $"Failed to communicate with {serviceName}: {statusMessage} - {ex.Message}", ex);
             }
@@ -96,7 +98,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new LLMCommunicationException($"Unexpected error during {serviceName} communication: {ex.Message}", ex);
             }
         }
-        
+
         /// <summary>
         /// Handles exceptions that occur during LLM model communication.
         /// </summary>
@@ -114,47 +116,47 @@ namespace ConduitLLM.Core.Utilities
             if (ex is HttpRequestException httpEx)
             {
                 var statusCode = httpEx.StatusCode ?? HttpStatusCode.ServiceUnavailable;
-                
+
                 if (statusCode == HttpStatusCode.TooManyRequests)
                 {
                     logger.LogWarning(httpEx, "Rate limit exceeded for {Provider} model {Model}", providerName, modelName);
                     return new LLMCommunicationException($"Rate limit exceeded for {providerName}", httpEx);
                 }
-                
+
                 if (statusCode == HttpStatusCode.Unauthorized || statusCode == HttpStatusCode.Forbidden)
                 {
                     logger.LogError(httpEx, "Authentication failed for {Provider}", providerName);
                     return new ConfigurationException($"Authentication failed for {providerName}. Please check your API key.", httpEx);
                 }
-                
+
                 if (statusCode == HttpStatusCode.NotFound)
                 {
                     logger.LogError(httpEx, "Model {Model} not found for {Provider}", modelName, providerName);
                     return new ModelUnavailableException($"Model '{modelName}' not found for provider {providerName}", httpEx);
                 }
-                
-                logger.LogError(httpEx, "HTTP error from {Provider} using model {Model}: {StatusCode}", 
+
+                logger.LogError(httpEx, "HTTP error from {Provider} using model {Model}: {StatusCode}",
                     providerName, modelName, statusCode);
                 return new LLMCommunicationException($"Error communicating with {providerName}: HTTP {(int)statusCode}", httpEx);
             }
-            
+
             if (ex is TaskCanceledException or TimeoutException)
             {
                 logger.LogWarning(ex, "Request to {Provider} timed out for model {Model}", providerName, modelName);
                 return new LLMCommunicationException($"Request to {providerName} timed out", ex);
             }
-            
+
             if (ex is ConfigurationException)
             {
                 // Pass through configuration exceptions
                 return ex;
             }
-            
+
             // General error handling
             logger.LogError(ex, "Error processing request to {Provider} for model {Model}", providerName, modelName);
             return new LLMCommunicationException($"Error processing request to {providerName}: {ex.Message}", ex);
         }
-        
+
         /// <summary>
         /// Handles configuration validation exceptions in a standardized way.
         /// </summary>
@@ -188,7 +190,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ConfigurationException($"Configuration error for {contextName}: {ex.Message}", ex);
             }
         }
-        
+
         /// <summary>
         /// Logs an exception appropriately based on its type and severity.
         /// </summary>
@@ -202,31 +204,31 @@ namespace ConduitLLM.Core.Utilities
                 logger.LogInformation(exception, "Operation canceled in {Context}", context);
                 return;
             }
-            
+
             if (exception is ValidationException)
             {
                 logger.LogWarning(exception, "Validation error in {Context}: {Message}", context, exception.Message);
                 return;
             }
-            
+
             if (exception is ConfigurationException)
             {
                 logger.LogError(exception, "Configuration error in {Context}: {Message}", context, exception.Message);
                 return;
             }
-            
+
             if (exception is ModelUnavailableException)
             {
                 logger.LogError(exception, "Model unavailable in {Context}: {Message}", context, exception.Message);
                 return;
             }
-            
+
             if (exception is LLMCommunicationException)
             {
                 logger.LogError(exception, "Communication error in {Context}: {Message}", context, exception.Message);
                 return;
             }
-            
+
             // Default case for unexpected exceptions
             logger.LogError(exception, "Unexpected error in {Context}: {Message}", context, exception.Message);
         }

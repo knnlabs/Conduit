@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.IpFilter;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,7 @@ public class IpFilterController : ControllerBase
 {
     private readonly IAdminIpFilterService _ipFilterService;
     private readonly ILogger<IpFilterController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the IpFilterController
     /// </summary>
@@ -28,7 +29,7 @@ public class IpFilterController : ControllerBase
         _ipFilterService = ipFilterService ?? throw new ArgumentNullException(nameof(ipFilterService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets all IP filters
     /// </summary>
@@ -49,7 +50,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets all enabled IP filters
     /// </summary>
@@ -70,7 +71,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets an IP filter by ID
     /// </summary>
@@ -85,12 +86,12 @@ public class IpFilterController : ControllerBase
         try
         {
             var filter = await _ipFilterService.GetFilterByIdAsync(id);
-            
+
             if (filter == null)
             {
                 return NotFound($"IP filter with ID {id} not found");
             }
-            
+
             return Ok(filter);
         }
         catch (Exception ex)
@@ -99,7 +100,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Creates a new IP filter
     /// </summary>
@@ -122,12 +123,12 @@ public class IpFilterController : ControllerBase
         try
         {
             var (success, errorMessage, createdFilter) = await _ipFilterService.CreateFilterAsync(filter);
-            
+
             if (!success)
             {
                 return BadRequest(errorMessage);
             }
-            
+
             return CreatedAtAction(nameof(GetFilterById), new { id = createdFilter!.Id }, createdFilter);
         }
         catch (Exception ex)
@@ -136,7 +137,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Updates an existing IP filter
     /// </summary>
@@ -167,17 +168,17 @@ public class IpFilterController : ControllerBase
         try
         {
             var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
-            
+
             if (!success)
             {
                 if (errorMessage?.Contains("not found") == true)
                 {
                     return NotFound(errorMessage);
                 }
-                
+
                 return BadRequest(errorMessage);
             }
-            
+
             return NoContent();
         }
         catch (Exception ex)
@@ -186,7 +187,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Deletes an IP filter
     /// </summary>
@@ -204,17 +205,17 @@ public class IpFilterController : ControllerBase
         try
         {
             var (success, errorMessage) = await _ipFilterService.DeleteFilterAsync(id);
-            
+
             if (!success)
             {
                 if (errorMessage?.Contains("not found") == true)
                 {
                     return NotFound(errorMessage);
                 }
-                
+
                 return BadRequest(errorMessage);
             }
-            
+
             return NoContent();
         }
         catch (Exception ex)
@@ -223,7 +224,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets the current IP filter settings
     /// </summary>
@@ -244,7 +245,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Updates the IP filter settings
     /// </summary>
@@ -267,12 +268,12 @@ public class IpFilterController : ControllerBase
         try
         {
             var (success, errorMessage) = await _ipFilterService.UpdateIpFilterSettingsAsync(settings);
-            
+
             if (!success)
             {
                 return BadRequest(errorMessage);
             }
-            
+
             return NoContent();
         }
         catch (Exception ex)
@@ -281,7 +282,7 @@ public class IpFilterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Checks if an IP address is allowed based on current filter rules
     /// </summary>
@@ -298,7 +299,7 @@ public class IpFilterController : ControllerBase
         {
             return BadRequest("IP address must be provided");
         }
-        
+
         try
         {
             var result = await _ipFilterService.CheckIpAddressAsync(ipAddress);

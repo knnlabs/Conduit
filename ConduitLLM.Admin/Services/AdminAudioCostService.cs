@@ -4,11 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -84,7 +86,7 @@ namespace ConduitLLM.Admin.Services
             };
 
             var created = await _repository.CreateAsync(cost);
-            _logger.LogInformation("Created audio cost configuration {Id} for {Provider} {Operation}", 
+            _logger.LogInformation("Created audio cost configuration {Id} for {Provider} {Operation}",
                 created.Id, created.Provider, created.OperationType);
 
             return MapToDto(created);
@@ -164,7 +166,7 @@ namespace ConduitLLM.Admin.Services
                             existing.EffectiveFrom = cost.EffectiveFrom;
                             existing.EffectiveTo = cost.EffectiveTo;
                             existing.UpdatedAt = DateTime.UtcNow;
-                            
+
                             await _repository.UpdateAsync(existing);
                         }
                         else
@@ -172,7 +174,7 @@ namespace ConduitLLM.Admin.Services
                             // Create new
                             await _repository.CreateAsync(cost);
                         }
-                        
+
                         result.SuccessCount++;
                     }
                     catch (Exception ex)
@@ -182,7 +184,7 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
-                _logger.LogInformation("Imported {Success} costs successfully, {Failed} failed", 
+                _logger.LogInformation("Imported {Success} costs successfully, {Failed} failed",
                     result.SuccessCount, result.FailureCount);
             }
             catch (Exception ex)
@@ -198,7 +200,7 @@ namespace ConduitLLM.Admin.Services
         public async Task<string> ExportCostsAsync(string format, string? provider = null)
         {
             var costs = provider != null ? await _repository.GetByProviderAsync(provider) : await _repository.GetAllAsync();
-            
+
             format = format?.ToLowerInvariant() ?? "json";
 
             return format switch
@@ -261,7 +263,7 @@ namespace ConduitLLM.Admin.Services
         {
             var costs = new List<AudioCost>();
             var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (lines.Length < 2)
             {
                 throw new ArgumentException("CSV data must contain header and at least one data row");

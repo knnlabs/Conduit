@@ -1,12 +1,14 @@
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.HealthChecks;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-using ConduitLLM.Configuration.HealthChecks;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -120,7 +122,7 @@ namespace ConduitLLM.Configuration.Extensions
         private static async Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
         {
             context.Response.ContentType = "application/json";
-            
+
             // Set appropriate status code based on health status
             context.Response.StatusCode = report.Status switch
             {
@@ -129,7 +131,7 @@ namespace ConduitLLM.Configuration.Extensions
                 HealthStatus.Unhealthy => 503,
                 _ => 503 // Default to unhealthy for any unknown status
             };
-            
+
             var response = new
             {
                 status = report.Status.ToString(),

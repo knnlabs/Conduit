@@ -52,12 +52,12 @@ namespace ConduitLLM.WebUI.Extensions
 
             // Register router configuration repository
             // WebUI always uses Admin API - no direct database access
-            
+
             // Register router service via AdminApiClient
-            services.AddScoped<IRouterService>(sp => 
+            services.AddScoped<IRouterService>(sp =>
             {
                 var adminApiClient = sp.GetRequiredService<IAdminApiClient>();
-                return (adminApiClient as IRouterService) 
+                return (adminApiClient as IRouterService)
                     ?? throw new InvalidOperationException("AdminApiClient must implement IRouterService");
             });
 
@@ -68,21 +68,21 @@ namespace ConduitLLM.WebUI.Extensions
             if (routerOptions.Enabled)
             {
                 // Add router-specific services with DefaultLLMRouter
-                services.AddScoped<ILLMRouter>(sp => 
+                services.AddScoped<ILLMRouter>(sp =>
                 {
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
                     var logger = sp.GetRequiredService<ILogger<DefaultLLMRouter>>();
-                    
+
                     // Create a default router with an initial configuration
                     var router = new DefaultLLMRouter(clientFactory, logger);
-                    
+
                     // The RouterService will initialize the router with the proper configuration
                     // during its initialization phase
                     return router;
                 });
-                
+
                 // Update Conduit registration to include the router
-                services.AddScoped<Conduit>(sp => 
+                services.AddScoped<Conduit>(sp =>
                 {
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
                     var router = sp.GetRequiredService<ILLMRouter>();
@@ -90,9 +90,9 @@ namespace ConduitLLM.WebUI.Extensions
                     var contextManager = sp.GetService<IContextManager>();
                     var modelProviderMappingService = sp.GetService<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService>();
                     var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
-                    
+
                     return new Conduit(
-                        clientFactory, 
+                        clientFactory,
                         logger,
                         router: router,
                         contextManager: contextManager,
@@ -103,16 +103,16 @@ namespace ConduitLLM.WebUI.Extensions
             {
                 // Add null router to ensure interface is satisfied when disabled
                 services.AddScoped<ILLMRouter>(sp => null!);
-                
+
                 // Register default Conduit without router
-                services.AddScoped<Conduit>(sp => 
+                services.AddScoped<Conduit>(sp =>
                 {
                     var clientFactory = sp.GetRequiredService<ILLMClientFactory>();
                     var logger = sp.GetRequiredService<ILogger<Conduit>>();
                     var contextManager = sp.GetService<IContextManager>();
                     var modelProviderMappingService = sp.GetService<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService>();
                     var contextOptions = sp.GetService<IOptions<ContextManagementOptions>>();
-                    
+
                     return new Conduit(
                         clientFactory,
                         logger,

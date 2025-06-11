@@ -26,7 +26,7 @@ namespace ConduitLLM.Core.Routing
         /// with different price points are available.
         /// </summary>
         LeastCost,
-        
+
         /// <summary>
         /// Round-robin strategy that distributes requests evenly across all available models.
         /// This strategy is useful for load balancing across multiple models.
@@ -44,7 +44,7 @@ namespace ConduitLLM.Core.Routing
         /// Models with lower priority values are selected first.
         /// </summary>
         HighestPriority,
-        
+
         /// <summary>
         /// Selects a random model from the available options.
         /// This strategy provides simple load balancing without tracking model usage.

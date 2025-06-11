@@ -1,6 +1,7 @@
-using ConduitLLM.Configuration.DTOs;
 using System;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.Interfaces;
 
@@ -21,21 +22,21 @@ public interface IAdminLogService
     /// <param name="status">Optional filter by status code</param>
     /// <returns>A paged result containing the request logs</returns>
     Task<PagedResult<LogRequestDto>> GetLogsAsync(
-        int page = 1, 
-        int pageSize = 50, 
-        DateTime? startDate = null, 
-        DateTime? endDate = null, 
-        string? model = null, 
-        int? virtualKeyId = null, 
+        int page = 1,
+        int pageSize = 50,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string? model = null,
+        int? virtualKeyId = null,
         int? status = null);
-    
+
     /// <summary>
     /// Gets a single log entry by ID
     /// </summary>
     /// <param name="id">The ID of the log to retrieve</param>
     /// <returns>The log entry, or null if not found</returns>
     Task<LogRequestDto?> GetLogByIdAsync(int id);
-    
+
     /// <summary>
     /// Gets logs summarized by the specified timeframe
     /// </summary>

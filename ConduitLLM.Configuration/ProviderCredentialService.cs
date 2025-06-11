@@ -51,7 +51,7 @@ namespace ConduitLLM.Configuration
 
         public Task<ProviderCredential?> GetCredentialByProviderNameAsync(string providerName)
         {
-             _logger.LogInformation("Getting credential by Provider Name (placeholder): {ProviderName}", providerName);
+            _logger.LogInformation("Getting credential by Provider Name (placeholder): {ProviderName}", providerName);
             // TODO: Implement database logic
             ProviderCredential? result = null;
             return Task.FromResult(result);

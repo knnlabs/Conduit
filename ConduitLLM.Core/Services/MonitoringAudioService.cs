@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -104,7 +106,7 @@ namespace ConduitLLM.Core.Services
                 metric.ErrorCode = ex.GetType().Name;
 
                 trace.RecordException(ex);
-                
+
                 _logger.LogError(ex,
                     "Transcription failed after {Duration}ms",
                     metric.DurationMs);
@@ -114,7 +116,7 @@ namespace ConduitLLM.Core.Services
             finally
             {
                 await _metricsCollector.RecordTranscriptionMetricAsync(metric);
-                
+
                 // Check alerts
                 var snapshot = await _metricsCollector.GetCurrentSnapshotAsync();
                 await _alertingService.EvaluateMetricsAsync(snapshot, CancellationToken.None);
@@ -203,7 +205,7 @@ namespace ConduitLLM.Core.Services
                 metric.ErrorCode = ex.GetType().Name;
 
                 trace.RecordException(ex);
-                
+
                 _logger.LogError(ex,
                     "TTS failed after {Duration}ms",
                     metric.DurationMs);
@@ -213,7 +215,7 @@ namespace ConduitLLM.Core.Services
             finally
             {
                 await _metricsCollector.RecordTtsMetricAsync(metric);
-                
+
                 // Check alerts
                 var snapshot = await _metricsCollector.GetCurrentSnapshotAsync();
                 await _alertingService.EvaluateMetricsAsync(snapshot, CancellationToken.None);
@@ -241,7 +243,7 @@ namespace ConduitLLM.Core.Services
 
             var chunks = _ttsClient.StreamSpeechAsync(request, apiKey, cancellationToken);
             var enumerator = chunks.GetAsyncEnumerator(cancellationToken);
-            
+
             try
             {
                 while (true)
@@ -259,7 +261,7 @@ namespace ConduitLLM.Core.Services
                         _logger.LogError(ex, "TTS streaming failed after {Duration}ms", stopwatch.ElapsedMilliseconds);
                         throw;
                     }
-                    
+
                     if (chunk != null)
                     {
                         totalBytes += chunk.Data?.Length ?? 0;
@@ -267,11 +269,11 @@ namespace ConduitLLM.Core.Services
                         {
                             ["chunk_size"] = chunk.Data?.Length ?? 0
                         });
-                        
+
                         yield return chunk;
                     }
                 }
-                
+
                 trace.SetStatus(TraceStatus.Ok);
                 _logger.LogInformation(
                     "TTS streaming completed: {TotalBytes} bytes in {Duration}ms",
@@ -299,7 +301,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var voices = await _ttsClient.ListVoicesAsync(apiKey, cancellationToken);
-                
+
                 trace.AddTag("voice.count", voices.Count.ToString());
                 trace.SetStatus(TraceStatus.Ok);
 
@@ -372,7 +374,7 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 trace.RecordException(ex);
-                
+
                 _logger.LogError(ex,
                     "Failed to create realtime session");
 
@@ -387,7 +389,7 @@ namespace ConduitLLM.Core.Services
         {
             var stream = _realtimeClient.StreamAudioAsync(session, cancellationToken);
             var virtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "default";
-            
+
             return new MonitoredDuplexStream(
                 stream,
                 _metricsCollector,
@@ -412,11 +414,11 @@ namespace ConduitLLM.Core.Services
             CancellationToken cancellationToken = default)
         {
             await _realtimeClient.CloseSessionAsync(session, cancellationToken);
-            
+
             // Record session completion metrics
             var sessionDuration = (DateTime.UtcNow - session.CreatedAt).TotalSeconds;
             var virtualKey = session.Metadata?.GetValueOrDefault("VirtualKey")?.ToString() ?? "default";
-            
+
             await _metricsCollector.RecordRealtimeMetricAsync(new RealtimeMetric
             {
                 Provider = _realtimeClient.GetType().Name,
@@ -476,7 +478,7 @@ namespace ConduitLLM.Core.Services
             _virtualKey = apiKey;
             _provider = provider;
             _sessionId = sessionId;
-            
+
             _streamTrace = _tracingService.StartTrace(
                 $"audio.realtime.stream.{sessionId}",
                 AudioOperation.Realtime,
@@ -491,12 +493,12 @@ namespace ConduitLLM.Core.Services
         public async ValueTask SendAsync(RealtimeAudioFrame item, CancellationToken cancellationToken = default)
         {
             using var span = _tracingService.CreateSpan(_streamTrace, "stream.send");
-            
+
             try
             {
                 await _innerStream.SendAsync(item, cancellationToken);
                 _framesSent++;
-                
+
                 span.AddTag("frame.type", item.Type.ToString());
                 span.AddTag("frame.size", item.AudioData?.Length.ToString() ?? "0");
                 span.SetStatus(TraceStatus.Ok);
@@ -514,11 +516,11 @@ namespace ConduitLLM.Core.Services
             await foreach (var response in _innerStream.ReceiveAsync(cancellationToken))
             {
                 _framesReceived++;
-                
+
                 using var span = _tracingService.CreateSpan(_streamTrace, "stream.receive");
                 span.AddTag("response.type", response.Type.ToString());
                 span.SetStatus(TraceStatus.Ok);
-                
+
                 yield return response;
             }
         }
@@ -526,7 +528,7 @@ namespace ConduitLLM.Core.Services
         public async ValueTask CompleteAsync()
         {
             await _innerStream.CompleteAsync();
-            
+
             _streamTrace.AddTag("frames.sent", _framesSent.ToString());
             _streamTrace.AddTag("frames.received", _framesReceived.ToString());
             _streamTrace.SetStatus(TraceStatus.Ok);

@@ -1,9 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -84,7 +86,7 @@ namespace ConduitLLM.Core.Services
 
                 // Perform transcription
                 var transcriptionResult = await client.TranscribeAudioAsync(request, cancellationToken: cancellationToken);
-                
+
                 var response = new SecureTranscriptionResponse
                 {
                     OriginalText = transcriptionResult.Text,
@@ -141,7 +143,7 @@ namespace ConduitLLM.Core.Services
                 auditEntry.Success = false;
                 auditEntry.ErrorMessage = ex.Message;
                 auditEntry.DurationMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                
+
                 _logger.LogError(ex, "Secure transcription failed");
                 throw;
             }
@@ -266,7 +268,7 @@ namespace ConduitLLM.Core.Services
                 auditEntry.Success = false;
                 auditEntry.ErrorMessage = ex.Message;
                 auditEntry.DurationMs = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                
+
                 _logger.LogError(ex, "Secure TTS failed");
                 throw;
             }

@@ -1,15 +1,19 @@
-using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Xunit;
-using Moq;
+
+using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs.VirtualKey;
+
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
+using Xunit;
 
 namespace ConduitLLM.Admin.Tests.Controllers
 {
@@ -63,7 +67,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             Assert.Equal(StatusCodes.Status201Created, createdAtActionResult.StatusCode);
             Assert.Equal("GetKeyById", createdAtActionResult.ActionName);
             Assert.Equal(1, createdAtActionResult.RouteValues?["id"]);
-            
+
             var returnValue = Assert.IsType<CreateVirtualKeyResponseDto>(createdAtActionResult.Value);
             Assert.Equal("vk_testkeystring", returnValue.VirtualKey);
             Assert.Equal(1, returnValue.KeyInfo.Id);
@@ -75,7 +79,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Arrange
             var request = new CreateVirtualKeyRequestDto(); // Missing required fields
-            
+
             _controller.ModelState.AddModelError("KeyName", "The KeyName field is required.");
 
             // Act
@@ -154,7 +158,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-            
+
             var returnValue = Assert.IsType<List<VirtualKeyDto>>(okResult.Value);
             Assert.Equal(2, returnValue.Count);
             Assert.Equal(1, returnValue[0].Id);
@@ -183,13 +187,13 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetKeyById_ExistingKey_ReturnsOkWithKey()
         {
             // Arrange
-            var key = new VirtualKeyDto 
-            { 
-                Id = 1, 
+            var key = new VirtualKeyDto
+            {
+                Id = 1,
                 KeyName = "Test Key",
                 AllowedModels = "gpt-4",
                 MaxBudget = 100,
-                BudgetDuration = "monthly" 
+                BudgetDuration = "monthly"
             };
 
             _mockVirtualKeyService
@@ -202,7 +206,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
-            
+
             var returnValue = Assert.IsType<VirtualKeyDto>(okResult.Value);
             Assert.Equal(1, returnValue.Id);
             Assert.Equal("Test Key", returnValue.KeyName);
@@ -289,7 +293,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
         {
             // Arrange
             var request = new UpdateVirtualKeyRequestDto(); // Valid but empty
-            
+
             _controller.ModelState.AddModelError("KeyName", "The KeyName field is required.");
 
             // Act

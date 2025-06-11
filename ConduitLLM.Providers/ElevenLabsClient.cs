@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
@@ -17,6 +17,8 @@ using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.Translators;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -44,7 +46,7 @@ namespace ConduitLLM.Providers
             ProviderDefaultModels? defaultModels = null)
             : base(credentials, providerModelId, logger, httpClientFactory, "ElevenLabs", defaultModels)
         {
-            var translatorLogger = logger as ILogger<ElevenLabsRealtimeTranslator> 
+            var translatorLogger = logger as ILogger<ElevenLabsRealtimeTranslator>
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance.CreateLogger<ElevenLabsRealtimeTranslator>();
             _translator = new ElevenLabsRealtimeTranslator(translatorLogger);
         }
@@ -90,13 +92,13 @@ namespace ConduitLLM.Providers
             }
 
             using var httpClient = CreateHttpClient(effectiveApiKey);
-            
+
             // ElevenLabs uses voice IDs instead of voice names
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM"; // Default voice ID
             var model = request.Model ?? GetDefaultTextToSpeechModel();
-            
+
             var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}";
-            
+
             var requestBody = new Dictionary<string, object>
             {
                 ["text"] = request.Input,
@@ -113,7 +115,7 @@ namespace ConduitLLM.Providers
             using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             var response = await httpClient.PostAsync(requestUrl, content, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -121,7 +123,7 @@ namespace ConduitLLM.Providers
             }
 
             var audioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-            
+
             return new TextToSpeechResponse
             {
                 AudioData = audioData,
@@ -148,12 +150,12 @@ namespace ConduitLLM.Providers
             }
 
             using var httpClient = CreateHttpClient(effectiveApiKey);
-            
+
             var voiceId = request.Voice ?? "21m00Tcm4TlvDq8ikWAM";
             var model = request.Model ?? GetDefaultTextToSpeechModel();
-            
+
             var requestUrl = $"{API_BASE_URL}/text-to-speech/{voiceId}/stream";
-            
+
             var requestBody = new Dictionary<string, object>
             {
                 ["text"] = request.Input,
@@ -169,7 +171,7 @@ namespace ConduitLLM.Providers
             using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             var response = await httpClient.PostAsync(requestUrl, content, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -179,19 +181,19 @@ namespace ConduitLLM.Providers
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             var buffer = new byte[4096];
             int bytesRead;
-            
+
             while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
             {
                 var chunk = new byte[bytesRead];
                 Array.Copy(buffer, 0, chunk, 0, bytesRead);
-                
+
                 yield return new AudioChunk
                 {
                     Data = chunk,
                     IsFinal = false
                 };
             }
-            
+
             // Final chunk
             yield return new AudioChunk
             {
@@ -214,9 +216,9 @@ namespace ConduitLLM.Providers
             }
 
             using var httpClient = CreateHttpClient(effectiveApiKey);
-            
+
             var response = await httpClient.GetAsync($"{API_BASE_URL}/voices", cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -225,7 +227,7 @@ namespace ConduitLLM.Providers
 
             var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
             var voicesResponse = JsonSerializer.Deserialize<ElevenLabsVoicesResponse>(jsonContent, DefaultJsonOptions);
-            
+
             return voicesResponse?.Voices?.Select(v => new VoiceInfo
             {
                 VoiceId = v.VoiceId,
@@ -432,8 +434,8 @@ namespace ConduitLLM.Providers
                     Id = "eleven_monolingual_v1",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities 
-                    { 
+                    Capabilities = new ModelCapabilities
+                    {
                         Chat = false,
                         TextToSpeech = true,
                         RealtimeAudio = false,
@@ -445,8 +447,8 @@ namespace ConduitLLM.Providers
                     Id = "eleven_multilingual_v2",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities 
-                    { 
+                    Capabilities = new ModelCapabilities
+                    {
                         Chat = false,
                         TextToSpeech = true,
                         RealtimeAudio = false,
@@ -458,8 +460,8 @@ namespace ConduitLLM.Providers
                     Id = "eleven_conversational_v1",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities 
-                    { 
+                    Capabilities = new ModelCapabilities
+                    {
                         Chat = false,
                         TextToSpeech = false,
                         RealtimeAudio = true,
@@ -524,15 +526,15 @@ namespace ConduitLLM.Providers
             // Check provider-specific override first
             var providerOverride = DefaultModels?.Audio?.ProviderOverrides
                 ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TextToSpeechModel;
-            
+
             if (!string.IsNullOrWhiteSpace(providerOverride))
                 return providerOverride;
-            
+
             // Check global default
             var globalDefault = DefaultModels?.Audio?.DefaultTextToSpeechModel;
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
-            
+
             // Fallback to hardcoded default for backward compatibility
             return "eleven_monolingual_v1";
         }
@@ -545,15 +547,15 @@ namespace ConduitLLM.Providers
             // Check provider-specific override first
             var providerOverride = DefaultModels?.Realtime?.ProviderOverrides
                 ?.GetValueOrDefault(ProviderName.ToLowerInvariant());
-            
+
             if (!string.IsNullOrWhiteSpace(providerOverride))
                 return providerOverride;
-            
+
             // Check global default
             var globalDefault = DefaultModels?.Realtime?.DefaultRealtimeModel;
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
-            
+
             // Fallback to hardcoded default for backward compatibility
             return "eleven_conversational_v1";
         }
@@ -624,12 +626,12 @@ namespace ConduitLLM.Providers
                 throw new InvalidOperationException("WebSocket is not open");
 
             // Convert ProviderRealtimeMessage to RealtimeMessage for translator
-            var realtimeMessage = new RealtimeAudioFrame 
-            { 
+            var realtimeMessage = new RealtimeAudioFrame
+            {
                 SessionId = message.SessionId,
                 Timestamp = message.Timestamp
             };
-            
+
             var jsonMessage = await _translator.TranslateToProviderAsync(realtimeMessage);
             var buffer = System.Text.Encoding.UTF8.GetBytes(jsonMessage);
             await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, cancellationToken);
@@ -642,19 +644,19 @@ namespace ConduitLLM.Providers
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
-            
+
             while (!cancellationToken.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
                 ProviderRealtimeMessage? messageToYield = null;
                 bool shouldBreak = false;
-                
+
                 try
                 {
                     var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var json = System.Text.Encoding.UTF8.GetString(buffer.Array!, buffer.Offset, result.Count);
-                        
+
                         // Parse the message
                         messageToYield = new ProviderRealtimeMessage
                         {
@@ -683,12 +685,12 @@ namespace ConduitLLM.Providers
                     };
                     shouldBreak = true;
                 }
-                
+
                 if (messageToYield != null)
                 {
                     yield return messageToYield;
                 }
-                
+
                 if (shouldBreak)
                 {
                     break;

@@ -13,18 +13,18 @@ namespace ConduitLLM.Configuration.Entities
         /// A budget warning notification
         /// </summary>
         BudgetWarning,
-        
+
         /// <summary>
         /// An expiration warning notification
         /// </summary>
         ExpirationWarning,
-        
+
         /// <summary>
         /// A system notification
         /// </summary>
         System
     }
-    
+
     /// <summary>
     /// Severity level of notification
     /// </summary>
@@ -34,18 +34,18 @@ namespace ConduitLLM.Configuration.Entities
         /// Informational notification
         /// </summary>
         Info,
-        
+
         /// <summary>
         /// Warning notification
         /// </summary>
         Warning,
-        
+
         /// <summary>
         /// Error or critical notification
         /// </summary>
         Error
     }
-    
+
     /// <summary>
     /// Represents a notification related to virtual keys
     /// </summary>
@@ -56,40 +56,40 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [Key]
         public int Id { get; set; }
-        
+
         /// <summary>
         /// ID of the virtual key related to this notification
         /// </summary>
         public int? VirtualKeyId { get; set; }
-        
+
         /// <summary>
         /// Foreign key relationship to the virtual key
         /// </summary>
         [ForeignKey("VirtualKeyId")]
         public virtual VirtualKey? VirtualKey { get; set; }
-        
+
         /// <summary>
         /// Type of the notification
         /// </summary>
         public NotificationType Type { get; set; }
-        
+
         /// <summary>
         /// Severity level of the notification
         /// </summary>
         public NotificationSeverity Severity { get; set; }
-        
+
         /// <summary>
         /// Message text of the notification
         /// </summary>
         [Required]
         [MaxLength(500)]
         public string Message { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Whether the notification has been read
         /// </summary>
         public bool IsRead { get; set; }
-        
+
         /// <summary>
         /// Timestamp when the notification was created
         /// </summary>

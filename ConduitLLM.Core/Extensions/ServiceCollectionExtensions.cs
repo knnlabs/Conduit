@@ -1,7 +1,8 @@
 using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Routing;
+using ConduitLLM.Core.Services;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,10 +48,10 @@ namespace ConduitLLM.Core.Extensions
         {
             // Register model capability service if not already registered - use database-backed implementation
             services.TryAddScoped<IModelCapabilityService, DatabaseModelCapabilityService>();
-            
+
             // Register audio capability detector
             services.AddScoped<IAudioCapabilityDetector, AudioCapabilityDetector>();
-            
+
             // Register audio routers
             services.AddScoped<IAudioRouter, AdvancedAudioRouter>();
             services.AddScoped<IAdvancedAudioRouter, AdvancedAudioRouter>();

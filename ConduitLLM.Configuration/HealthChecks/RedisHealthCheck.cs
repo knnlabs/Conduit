@@ -1,11 +1,13 @@
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+
+using StackExchange.Redis;
 
 namespace ConduitLLM.Configuration.HealthChecks
 {
@@ -43,9 +45,9 @@ namespace ConduitLLM.Configuration.HealthChecks
                 var options = ConfigurationOptions.Parse(_connectionString);
                 options.ConnectTimeout = 5000; // 5 second timeout
                 options.AbortOnConnectFail = false;
-                
+
                 using var connection = await ConnectionMultiplexer.ConnectAsync(options);
-                
+
                 if (!connection.IsConnected)
                 {
                     return HealthCheckResult.Unhealthy("Redis connection is not established");
@@ -60,7 +62,7 @@ namespace ConduitLLM.Configuration.HealthChecks
                 {
                     var server = connection.GetServer(endpoint);
                     var ping = await database.PingAsync();
-                    
+
                     healthData[$"endpoint_{endpoint}"] = new
                     {
                         connected = server.IsConnected,
@@ -73,12 +75,12 @@ namespace ConduitLLM.Configuration.HealthChecks
                 // Check if Redis is in a degraded state
                 var servers = endpoints.Select(ep => connection.GetServer(ep)).ToList();
                 var connectedServers = servers.Count(s => s.IsConnected);
-                
+
                 if (connectedServers == 0)
                 {
                     return HealthCheckResult.Unhealthy("No Redis servers are connected", data: healthData);
                 }
-                
+
                 if (connectedServers < servers.Count)
                 {
                     return HealthCheckResult.Degraded(

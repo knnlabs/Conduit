@@ -7,14 +7,18 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Moq;
 using Moq.Protected;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Integration
@@ -32,22 +36,22 @@ namespace ConduitLLM.Tests.Integration
         {
             var services = new ServiceCollection();
             services.AddLogging();
-            
+
             // Mock HTTP handler for testing
             _mockHttpHandler = new Mock<HttpMessageHandler>();
-            
+
             var httpClient = new HttpClient(_mockHttpHandler.Object)
             {
                 BaseAddress = new Uri("http://localhost:5000")
             };
-            
+
             services.AddSingleton(_ => httpClient);
             services.AddHttpClient<AdminApiClient>((sp, client) =>
             {
                 var existingClient = sp.GetRequiredService<HttpClient>();
                 client.BaseAddress = existingClient.BaseAddress;
             }).ConfigurePrimaryHttpMessageHandler(() => _mockHttpHandler.Object);
-            
+
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -56,15 +60,15 @@ namespace ConduitLLM.Tests.Integration
                     { "AdminApi:UseAdminApi", "true" }
                 })
                 .Build();
-            
+
             services.AddSingleton<IConfiguration>(config);
-            
+
             var adminOptions = Microsoft.Extensions.Options.Options.Create(new ConduitLLM.WebUI.Options.AdminApiOptions
             {
                 BaseUrl = "http://localhost:5000",
                 MasterKey = "test-master-key"
             });
-            
+
             _serviceProvider = services.BuildServiceProvider();
             _adminApiClient = new AdminApiClient(
                 httpClient,
@@ -79,17 +83,17 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var expectedKeys = new List<VirtualKeyDto>
             {
-                new VirtualKeyDto 
-                { 
-                    Id = 1, 
-                    Name = "Test Key", 
+                new VirtualKeyDto
+                {
+                    Id = 1,
+                    Name = "Test Key",
                     AllowedModels = "gpt-4",
-                    MaxBudget = 100m 
+                    MaxBudget = 100m
                 }
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(expectedKeys);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -122,7 +126,7 @@ namespace ConduitLLM.Tests.Integration
                 AllowedModels = "gpt-4,claude-v1",
                 MaxBudget = 200m
             };
-            
+
             var expectedResponse = new CreateVirtualKeyResponseDto
             {
                 VirtualKey = "vk_test123",
@@ -134,9 +138,9 @@ namespace ConduitLLM.Tests.Integration
                     MaxBudget = createRequest.MaxBudget
                 }
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(expectedResponse);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -181,9 +185,9 @@ namespace ConduitLLM.Tests.Integration
                     }
                 }
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(expectedSummary);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -211,7 +215,7 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var keyId = 123;
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
@@ -256,9 +260,9 @@ namespace ConduitLLM.Tests.Integration
                 CurrentPage = 1,
                 PageSize = 10
             };
-            
+
             var jsonResponse = JsonSerializer.Serialize(expectedResult);
-            
+
             _mockHttpHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",

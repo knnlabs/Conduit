@@ -1,10 +1,12 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -18,7 +20,7 @@ public class ModelProviderMappingController : ControllerBase
 {
     private readonly IAdminModelProviderMappingService _mappingService;
     private readonly ILogger<ModelProviderMappingController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the ModelProviderMappingController
     /// </summary>
@@ -31,7 +33,7 @@ public class ModelProviderMappingController : ControllerBase
         _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets all model provider mappings
     /// </summary>
@@ -52,7 +54,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving model provider mappings");
         }
     }
-    
+
     /// <summary>
     /// Gets a specific model provider mapping by ID
     /// </summary>
@@ -67,12 +69,12 @@ public class ModelProviderMappingController : ControllerBase
         try
         {
             var mapping = await _mappingService.GetMappingByIdAsync(id);
-            
+
             if (mapping == null)
             {
                 return NotFound($"Model provider mapping with ID {id} not found");
             }
-            
+
             return Ok(mapping);
         }
         catch (Exception ex)
@@ -81,7 +83,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
         }
     }
-    
+
     /// <summary>
     /// Gets a model provider mapping by model ID
     /// </summary>
@@ -110,7 +112,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
         }
     }
-    
+
     /// <summary>
     /// Creates a new model provider mapping
     /// </summary>
@@ -149,7 +151,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model provider mapping");
         }
     }
-    
+
     /// <summary>
     /// Updates an existing model provider mapping
     /// </summary>
@@ -194,7 +196,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the model provider mapping");
         }
     }
-    
+
     /// <summary>
     /// Deletes a model provider mapping
     /// </summary>
@@ -212,12 +214,12 @@ public class ModelProviderMappingController : ControllerBase
         try
         {
             bool success = await _mappingService.DeleteMappingAsync(id);
-            
+
             if (!success)
             {
                 return NotFound($"Model provider mapping with ID {id} not found");
             }
-            
+
             return NoContent();
         }
         catch (Exception ex)
@@ -226,7 +228,7 @@ public class ModelProviderMappingController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the model provider mapping");
         }
     }
-    
+
     /// <summary>
     /// Gets a list of all available providers
     /// </summary>

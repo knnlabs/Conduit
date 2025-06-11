@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using ConduitLLM.Configuration.DTOs.Costs;
 
 namespace ConduitLLM.Tests.WebUI.Extensions
@@ -21,7 +22,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             }
             return total;
         }
-        
+
         /// <summary>
         /// Gets the total input tokens from the dashboard
         /// </summary>
@@ -30,7 +31,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             // In tests, just return a fixed value based on the test data
             return 250;
         }
-        
+
         /// <summary>
         /// Gets the total output tokens from the dashboard
         /// </summary>
@@ -39,7 +40,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             // In tests, just return a fixed value based on the test data
             return 125;
         }
-        
+
         /// <summary>
         /// Gets the cost trends from the dashboard
         /// </summary>
@@ -60,7 +61,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
                 }
             };
         }
-        
+
         /// <summary>
         /// Gets the cost by model from the dashboard
         /// </summary>
@@ -77,7 +78,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
                 }
             };
         }
-        
+
         /// <summary>
         /// Gets the cost by virtual key from the dashboard
         /// </summary>

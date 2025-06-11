@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -11,13 +12,12 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
-using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.InternalModels.BedrockModels;
 using ConduitLLM.Tests.TestHelpers;
+using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Protected;
@@ -41,7 +41,7 @@ public class BedrockClientTests
             ApiBase = "us-east-1",
             ProviderName = "AWSBedrock"
         };
-        
+
         _loggerMock = new Mock<ILogger<BedrockClient>>();
         _handlerMock = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_handlerMock.Object)
@@ -65,7 +65,7 @@ public class BedrockClientTests
         Assert.True(true, "Test simplified to allow build to pass");
         return Task.CompletedTask;
     }
-    
+
     [Fact]
     public Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
     {

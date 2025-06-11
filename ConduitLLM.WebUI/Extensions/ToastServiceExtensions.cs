@@ -45,10 +45,10 @@ namespace ConduitLLM.WebUI.Extensions
         /// </summary>
         public static void ShowException(this IToastService toastService, Exception ex, string? prefix = null)
         {
-            var message = string.IsNullOrEmpty(prefix) 
-                ? ex.Message 
+            var message = string.IsNullOrEmpty(prefix)
+                ? ex.Message
                 : $"{prefix}: {ex.Message}";
-            
+
             toastService.ShowError(message, "Error", durationMs: 10000);
         }
 
@@ -82,8 +82,8 @@ namespace ConduitLLM.WebUI.Extensions
         public static void ShowApiConnectionError(this IToastService toastService)
         {
             toastService.ShowError(
-                "Unable to connect to the Admin API. Please check the connection.", 
-                "Connection Error", 
+                "Unable to connect to the Admin API. Please check the connection.",
+                "Connection Error",
                 durationMs: 10000
             );
         }
@@ -94,11 +94,11 @@ namespace ConduitLLM.WebUI.Extensions
         public static void ShowWithRetry(this IToastService toastService, string message, Action retryAction)
         {
             toastService.Show(
-                message, 
-                ToastSeverity.Error, 
-                title: "Error", 
+                message,
+                ToastSeverity.Error,
+                title: "Error",
                 durationMs: 0, // Don't auto-dismiss
-                actionText: "Retry", 
+                actionText: "Retry",
                 actionCallback: retryAction
             );
         }

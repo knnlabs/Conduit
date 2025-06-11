@@ -6,9 +6,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
+
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -281,7 +283,7 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogWarning(ex, "Failed to cache audio, continuing without cache");
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -510,7 +512,7 @@ namespace ConduitLLM.Core.Services
             var compressionRatio = 0.3 + (0.7 * quality); // 30% to 100% of original
             var newSize = (int)(audioData.Length * compressionRatio);
             var result = new byte[newSize];
-            
+
             // Simple sampling to simulate compression
             var step = audioData.Length / (double)newSize;
             for (int i = 0; i < newSize; i++)

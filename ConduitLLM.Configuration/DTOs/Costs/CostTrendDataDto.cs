@@ -11,7 +11,7 @@ namespace ConduitLLM.Configuration.DTOs.Costs
         /// Date of the cost data point
         /// </summary>
         public DateTime Date { get; set; }
-        
+
         /// <summary>
         /// Cost amount
         /// </summary>

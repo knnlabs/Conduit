@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -16,7 +17,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _memoryCache;
         private readonly ILogger<ProviderModelsService> _logger;
-        
+
         // Cache models for 30 minutes in the UI layer
         private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(30);
 
@@ -31,7 +32,7 @@ namespace ConduitLLM.WebUI.Services
             IMemoryCache memoryCache,
             ILogger<ProviderModelsService> logger)
         {
-            _httpClient = httpClientFactory?.CreateClient("ConduitAPI") 
+            _httpClient = httpClientFactory?.CreateClient("ConduitAPI")
                 ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -49,42 +50,42 @@ namespace ConduitLLM.WebUI.Services
             {
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
             }
-            
+
             string cacheKey = $"provider_models_{providerName}";
-            
+
             // Check cache first unless force refresh is requested
             if (!forceRefresh && _memoryCache.TryGetValue(cacheKey, out List<string>? cachedModels) && cachedModels != null)
             {
                 _logger.LogDebug("Returning cached models for provider {ProviderName}", providerName);
                 return cachedModels;
             }
-            
+
             try
             {
                 _logger.LogInformation("Fetching models for provider {ProviderName} from API", providerName);
-                
+
                 // Call the API
                 var response = await _httpClient.GetAsync(
                     $"api/provider-models/{providerName}?forceRefresh={forceRefresh}");
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     var models = await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
-                    
-                    _logger.LogInformation("Retrieved {Count} models for provider {ProviderName}", 
+
+                    _logger.LogInformation("Retrieved {Count} models for provider {ProviderName}",
                         models.Count, providerName);
-                    
+
                     // Cache the results
                     _memoryCache.Set(cacheKey, models, _cacheDuration);
-                    
+
                     return models;
                 }
-                
+
                 // Handle error responses
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("Error retrieving models for provider {ProviderName}: {StatusCode} - {ErrorContent}", 
+                _logger.LogWarning("Error retrieving models for provider {ProviderName}: {StatusCode} - {ErrorContent}",
                     providerName, response.StatusCode, errorContent);
-                    
+
                 return new List<string>();
             }
             catch (Exception ex)

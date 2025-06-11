@@ -1,15 +1,19 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.Extensions.Logging;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Data;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Data
@@ -56,27 +60,27 @@ namespace ConduitLLM.Tests.Data
             // Arrange
             // Mock the database connection to succeed
             _databaseFacadeMock.Setup(d => d.CanConnectAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            
+
             // Mock the database connection for table existence checks
             var mockConnection = new Mock<System.Data.Common.DbConnection>();
             var mockCommand = new Mock<System.Data.Common.DbCommand>();
-            
+
             mockConnection.SetupGet(c => c.State).Returns(System.Data.ConnectionState.Open);
             mockConnection.Setup(c => c.CreateCommand()).Returns(mockCommand.Object);
             mockCommand.SetupSet(c => c.CommandText = It.IsAny<string>());
-            
+
             // For SQLite, return 0 to indicate no migration history table exists
             mockCommand.Setup(c => c.ExecuteScalarAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => 0);
-            
+
             _databaseFacadeMock.Setup(d => d.GetDbConnection()).Returns(mockConnection.Object);
             _databaseFacadeMock.Setup(d => d.OpenConnectionAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            
+
             // Mock EnsureCreatedAsync to succeed
             _databaseFacadeMock.Setup(d => d.EnsureCreatedAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
-            
+
             // Mock the migrations methods - these are extension methods that we'll simulate
             // by ensuring the database operations succeed
             mockCommand.Setup(c => c.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()))
@@ -114,15 +118,15 @@ namespace ConduitLLM.Tests.Data
             // Arrange
             // Mock the database connection to succeed
             _databaseFacadeMock.Setup(d => d.CanConnectAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            
+
             // Mock the database connection for table existence checks
             var mockConnection = new Mock<System.Data.Common.DbConnection>();
             var mockCommand = new Mock<System.Data.Common.DbCommand>();
-            
+
             mockConnection.SetupGet(c => c.State).Returns(System.Data.ConnectionState.Open);
             mockConnection.Setup(c => c.CreateCommand()).Returns(mockCommand.Object);
             mockCommand.SetupSet(c => c.CommandText = It.IsAny<string>());
-            
+
             // Setup different responses based on the query
             var callCount = 0;
             mockCommand.Setup(c => c.ExecuteScalarAsync(It.IsAny<CancellationToken>()))
@@ -136,15 +140,15 @@ namespace ConduitLLM.Tests.Data
                     // Subsequent calls for table existence checks - return 1 (exists)
                     return 1;
                 });
-            
+
             _databaseFacadeMock.Setup(d => d.GetDbConnection()).Returns(mockConnection.Object);
             _databaseFacadeMock.Setup(d => d.OpenConnectionAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            
+
             // Mock EnsureCreatedAsync to succeed
             _databaseFacadeMock.Setup(d => d.EnsureCreatedAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
-            
+
             // Mock ExecuteNonQueryAsync for CREATE TABLE and INSERT operations
             mockCommand.Setup(c => c.ExecuteNonQueryAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(1);

@@ -1,12 +1,14 @@
-using ConduitLLM.Admin.Extensions;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs.Costs;
-using ConduitLLM.Configuration.Repositories;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs.Costs;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services;
 
@@ -18,7 +20,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     private readonly IRequestLogRepository _requestLogRepository;
     private readonly IVirtualKeyRepository _virtualKeyRepository;
     private readonly ILogger<AdminCostDashboardService> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the AdminCostDashboardService class
     /// </summary>
@@ -34,17 +36,17 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <inheritdoc/>
     public async Task<CostDashboardDto> GetCostSummaryAsync(
-        string timeframe = "daily", 
-        DateTime? startDate = null, 
+        string timeframe = "daily",
+        DateTime? startDate = null,
         DateTime? endDate = null)
     {
         try
         {
             _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", timeframe);
-            
+
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch
             {
@@ -53,11 +55,11 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 "monthly" => "monthly",
                 _ => "daily" // Default to daily if invalid
             };
-            
+
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get logs within the date range
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
 
@@ -89,25 +91,25 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 .Select(g => new { VirtualKeyId = g.Key, Cost = g.Sum(l => l.Cost), Count = g.Count() })
                 .OrderByDescending(v => v.Cost)
                 .ToList();
-            
+
             // Calculate last 24 hours cost
             var last24HoursCost = dailyCosts
                 .Where(d => d.Date >= DateTime.UtcNow.AddDays(-1))
                 .Sum(d => d.Cost);
-            
+
             // Calculate last 7 days cost
             var last7DaysCost = dailyCosts
                 .Where(d => d.Date >= DateTime.UtcNow.AddDays(-7))
                 .Sum(d => d.Cost);
-            
+
             // Calculate last 30 days cost
             var last30DaysCost = dailyCosts
                 .Where(d => d.Date >= DateTime.UtcNow.AddDays(-30))
                 .Sum(d => d.Cost);
-            
+
             // Calculate total cost
             var totalCost = dailyCosts.Sum(d => d.Cost);
-            
+
             // Calculate cost by model
             var topModelsBySpend = modelCosts
                 .OrderByDescending(m => m.Cost)
@@ -116,12 +118,12 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 {
                     Name = m.Model,
                     Cost = m.Cost,
-                    Percentage = totalCost > 0 
-                        ? Math.Round(m.Cost / totalCost * 100, 2) 
+                    Percentage = totalCost > 0
+                        ? Math.Round(m.Cost / totalCost * 100, 2)
                         : 0
                 })
                 .ToList();
-            
+
             // Calculate cost by provider
             var topProvidersBySpend = providerCosts
                 .OrderByDescending(p => p.Cost)
@@ -130,12 +132,12 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 {
                     Name = p.Provider,
                     Cost = p.Cost,
-                    Percentage = totalCost > 0 
-                        ? Math.Round(p.Cost / totalCost * 100, 2) 
+                    Percentage = totalCost > 0
+                        ? Math.Round(p.Cost / totalCost * 100, 2)
                         : 0
                 })
                 .ToList();
-            
+
             // Calculate cost by virtual key
             var topVirtualKeysBySpend = new List<DetailedCostDataDto>();
 
@@ -155,7 +157,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                         : 0
                 })
                 .ToList();
-            
+
             // Map to DTO
             var costDashboard = new CostDashboardDto
             {
@@ -170,13 +172,13 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 TopProvidersBySpend = topProvidersBySpend,
                 TopVirtualKeysBySpend = topVirtualKeysBySpend
             };
-            
+
             return costDashboard;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting cost summary");
-            
+
             // Return empty summary on error
             return new CostDashboardDto
             {
@@ -193,17 +195,17 @@ public class AdminCostDashboardService : IAdminCostDashboardService
             };
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<CostTrendDto> GetCostTrendsAsync(
-        string period = "daily", 
-        DateTime? startDate = null, 
+        string period = "daily",
+        DateTime? startDate = null,
         DateTime? endDate = null)
     {
         try
         {
             _logger.LogInformation("Getting cost trends with period: {Period}", period);
-            
+
             // Normalize period (case-insensitive)
             period = period.ToLower() switch
             {
@@ -212,17 +214,17 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 "monthly" => "monthly",
                 _ => "daily" // Default to daily if invalid
             };
-            
+
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get daily costs using extension method
             var dailyCosts = await _requestLogRepository.GetDailyCostsAsync(startDate.Value, endDate.Value);
-            
+
             // Aggregate based on period
             var aggregatedCosts = AggregateCosts(dailyCosts, period);
-            
+
             // Map to DTO
             var costTrend = new CostTrendDto
             {
@@ -237,13 +239,13 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                     })
                     .ToList()
             };
-            
+
             return costTrend;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting cost trends");
-            
+
             // Return empty trends on error
             return new CostTrendDto
             {
@@ -254,27 +256,28 @@ public class AdminCostDashboardService : IAdminCostDashboardService
             };
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<List<ModelCostDataDto>> GetModelCostsAsync(
-        DateTime? startDate = null, 
+        DateTime? startDate = null,
         DateTime? endDate = null)
     {
         try
         {
             _logger.LogInformation("Getting model costs");
-            
+
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get logs within the date range
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
 
             // Calculate model costs
             var modelCosts = logs
                 .GroupBy(l => l.ModelName)
-                .Select(g => new {
+                .Select(g => new
+                {
                     Model = g.Key,
                     Cost = g.Sum(l => l.Cost),
                     Count = g.Count()
@@ -284,7 +287,8 @@ public class AdminCostDashboardService : IAdminCostDashboardService
             // Calculate model tokens
             var modelTokens = logs
                 .GroupBy(l => l.ModelName)
-                .Select(g => new {
+                .Select(g => new
+                {
                     Model = g.Key,
                     TotalTokens = g.Sum(l => l.InputTokens + l.OutputTokens)
                 })
@@ -306,15 +310,15 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                     Cost = m.Cost,
                     TotalTokens = m.Tokens,
                     RequestCount = m.Requests,
-                    CostPerToken = m.Tokens > 0 
+                    CostPerToken = m.Tokens > 0
                         ? Math.Round(m.Cost / m.Tokens * 1000, 4) // Cost per 1K tokens
                         : 0,
-                    AverageCostPerRequest = m.Requests > 0 
-                        ? Math.Round(m.Cost / m.Requests, 4) 
+                    AverageCostPerRequest = m.Requests > 0
+                        ? Math.Round(m.Cost / m.Requests, 4)
                         : 0
                 })
                 .ToList();
-            
+
             return result;
         }
         catch (Exception ex)
@@ -323,27 +327,28 @@ public class AdminCostDashboardService : IAdminCostDashboardService
             return new List<ModelCostDataDto>();
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<List<VirtualKeyCostDataDto>> GetVirtualKeyCostsAsync(
-        DateTime? startDate = null, 
+        DateTime? startDate = null,
         DateTime? endDate = null)
     {
         try
         {
             _logger.LogInformation("Getting virtual key costs");
-            
+
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
             endDate ??= DateTime.UtcNow;
-            
+
             // Get logs within the date range
             var logs = await _requestLogRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
 
             // Calculate virtual key costs
             var virtualKeyCosts = logs
                 .GroupBy(l => l.VirtualKeyId)
-                .Select(g => new {
+                .Select(g => new
+                {
                     VirtualKeyId = g.Key,
                     Cost = g.Sum(l => l.Cost),
                     Count = g.Count()
@@ -369,12 +374,12 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                     KeyName = v.KeyName,
                     Cost = v.Cost,
                     RequestCount = v.Requests,
-                    AverageCostPerRequest = v.Requests > 0 
-                        ? Math.Round(v.Cost / v.Requests, 4) 
+                    AverageCostPerRequest = v.Requests > 0
+                        ? Math.Round(v.Cost / v.Requests, 4)
                         : 0
                 })
                 .ToList();
-            
+
             return result;
         }
         catch (Exception ex)
@@ -383,7 +388,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
             return new List<VirtualKeyCostDataDto>();
         }
     }
-    
+
     private static List<(DateTime Date, decimal Cost)> AggregateCosts(
         IEnumerable<(DateTime Date, decimal Cost)> dailyCosts,
         string period)
@@ -392,7 +397,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         {
             return new List<(DateTime, decimal)>();
         }
-        
+
         return period.ToLower() switch
         {
             "weekly" => dailyCosts
@@ -400,17 +405,17 @@ public class AdminCostDashboardService : IAdminCostDashboardService
                 .Select(g => (g.Key, g.Sum(d => d.Cost)))
                 .OrderBy(d => d.Key)
                 .ToList(),
-            
+
             "monthly" => dailyCosts
                 .GroupBy(d => new DateTime(d.Date.Year, d.Date.Month, 1))
                 .Select(g => (g.Key, g.Sum(d => d.Cost)))
                 .OrderBy(d => d.Key)
                 .ToList(),
-            
+
             _ => dailyCosts.OrderBy(d => d.Date).ToList() // Default: return daily costs
         };
     }
-    
+
     private static DateTime GetStartOfWeek(DateTime date)
     {
         int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;

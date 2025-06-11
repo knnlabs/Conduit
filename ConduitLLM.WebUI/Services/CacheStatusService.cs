@@ -37,7 +37,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly IOptions<CacheOptions> _cacheOptions;
         private readonly Configuration.Services.ICacheService _cacheService;
         private readonly IRedisCacheMetricsService? _redisCacheMetrics;
-        
+
         private const string CACHE_CONFIG_KEY = "CacheConfig";
         private Timer? _statisticsTimer;
         private CacheConfig? _lastLoadedConfig;
@@ -62,27 +62,27 @@ namespace ConduitLLM.WebUI.Services
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _redisCacheMetrics = redisCacheMetrics;
-            
+
             // Initialize cache settings asynchronously - with error handling
-            _ = Task.Run(async () => 
+            _ = Task.Run(async () =>
             {
-                try 
+                try
                 {
                     // Check for cancellation before starting
                     if (_cts.Token.IsCancellationRequested)
                         return;
-                
+
                     await InitializeCacheAsync(_cts.Token);
-                    
+
                     // Start a timer to periodically update cache statistics
-                    _statisticsTimer = new Timer(async _ => 
+                    _statisticsTimer = new Timer(async _ =>
                     {
-                        try 
+                        try
                         {
                             // Skip if service is disposed or cancellation requested
                             if (_isDisposed || _cts.Token.IsCancellationRequested)
                                 return;
-                                
+
                             await SaveStatisticsToConfigAsync(false, _cts.Token);
                         }
                         catch (Exception ex)
@@ -97,7 +97,7 @@ namespace ConduitLLM.WebUI.Services
                 }
             }, _cts.Token);
         }
-        
+
         /// <inheritdoc/>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during status retrieval</exception>
         public async Task<Models.CacheStatus> GetCacheStatusAsync()
@@ -116,7 +116,7 @@ namespace ConduitLLM.WebUI.Services
                     StatusMessage = "Cache service is disposed"
                 };
             }
-            
+
             try
             {
                 var options = _cacheOptions.Value;
@@ -125,17 +125,17 @@ namespace ConduitLLM.WebUI.Services
                     IsEnabled = options.IsEnabled,
                     CacheType = options.CacheType
                 };
-                
+
                 // Get current metrics
                 var totalRequests = _metricsService.GetTotalRequests();
                 var hitRate = _metricsService.GetHitRate();
                 var avgResponseTime = _metricsService.GetAverageRetrievalTimeMs();
-                
+
                 // If we don't have any metrics yet but have persisted statistics, use those
                 if (totalRequests == 0 && _lastLoadedConfig != null)
                 {
                     _logger.LogDebug("Using persisted cache statistics from database");
-                    
+
                     result.TotalItems = _lastLoadedConfig.TotalItems;
                     result.HitRate = _lastLoadedConfig.HitRate;
                     result.MemoryUsageBytes = _lastLoadedConfig.MemoryUsageBytes;
@@ -149,14 +149,14 @@ namespace ConduitLLM.WebUI.Services
                     result.MemoryUsageBytes = EstimateMemoryUsage(options);
                     result.AvgResponseTime = avgResponseTime;
                 }
-                
+
                 // Check again if service is disposed before potentially lengthy operations
                 if (_isDisposed)
                 {
                     result.StatusMessage = "Cache service was disposed during status retrieval";
                     return result;
                 }
-                
+
                 // Add Redis-specific info if using Redis cache
                 if (options.CacheType?.ToLowerInvariant() == "redis" && _redisCacheMetrics != null)
                 {
@@ -168,10 +168,10 @@ namespace ConduitLLM.WebUI.Services
                             result.StatusMessage = "Cache service was disposed during Redis status check";
                             return result;
                         }
-                        
+
                         // Get Redis connection status
                         result.IsRedisConnected = await _redisCacheMetrics.IsConnectedAsync();
-                        
+
                         if (result.IsRedisConnected)
                         {
                             // Check if service is disposed before Redis detail operations
@@ -180,31 +180,31 @@ namespace ConduitLLM.WebUI.Services
                                 result.StatusMessage = "Cache service was disposed during Redis detail retrieval";
                                 return result;
                             }
-                            
+
                             // Get Redis client info
                             var clientInfo = await _redisCacheMetrics.GetClientInfoAsync();
                             var memoryStats = await _redisCacheMetrics.GetMemoryStatsAsync();
                             var dbStats = await _redisCacheMetrics.GetDatabaseStatsAsync();
                             var serverInfo = await _redisCacheMetrics.GetServerInfoAsync();
-                            
+
                             // Final check if service is disposed before constructing result
                             if (_isDisposed)
                             {
                                 result.StatusMessage = "Cache service was disposed during Redis metrics collection";
                                 return result;
                             }
-                            
+
                             // Set Redis connection info
                             result.RedisConnection = new Models.RedisConnectionInfo
                             {
                                 ConnectedClients = clientInfo.ConnectedClients,
-                                Endpoint = serverInfo.TryGetValue("server:redis_version", out var version) ? 
-                                    serverInfo.TryGetValue("server:os", out var os) ? $"{os} (Redis {version})" : $"Redis {version}" : 
+                                Endpoint = serverInfo.TryGetValue("server:redis_version", out var version) ?
+                                    serverInfo.TryGetValue("server:os", out var os) ? $"{os} (Redis {version})" : $"Redis {version}" :
                                     "Redis Server",
                                 Version = serverInfo.TryGetValue("server:redis_version", out var v) ? v : "Unknown",
                                 InstanceName = options.RedisInstanceName
                             };
-                            
+
                             // Set Redis memory info
                             result.RedisMemory = new Models.RedisMemoryInfo
                             {
@@ -213,7 +213,7 @@ namespace ConduitLLM.WebUI.Services
                                 FragmentationRatio = memoryStats.FragmentationRatio,
                                 CachedMemory = memoryStats.CachedMemory
                             };
-                            
+
                             // Set Redis database info
                             result.RedisDatabase = new Models.RedisDatabaseInfo
                             {
@@ -224,7 +224,7 @@ namespace ConduitLLM.WebUI.Services
                                 Misses = dbStats.Misses,
                                 HitRatePercentage = dbStats.HitRate
                             };
-                            
+
                             // Update memory usage from Redis stats
                             if (memoryStats.UsedMemory > 0)
                             {
@@ -244,7 +244,7 @@ namespace ConduitLLM.WebUI.Services
                         result.StatusMessage = $"Redis metrics error: {redisEx.Message}";
                     }
                 }
-                
+
                 return result;
             }
             catch (ObjectDisposedException)
@@ -268,7 +268,7 @@ namespace ConduitLLM.WebUI.Services
                     _cacheOptions.Value?.IsEnabled ?? false,
                     _cacheOptions.Value?.CacheType ?? "Unknown",
                     _metricsService != null);
-                    
+
                 return new Models.CacheStatus
                 {
                     IsEnabled = false,
@@ -281,7 +281,7 @@ namespace ConduitLLM.WebUI.Services
                 };
             }
         }
-        
+
         /// <inheritdoc/>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task SetCacheEnabledAsync(bool enabled)
@@ -289,15 +289,15 @@ namespace ConduitLLM.WebUI.Services
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             try
             {
                 // Update options and save to database
                 var options = _cacheOptions.Value;
                 options.IsEnabled = enabled;
-                
+
                 await SaveCacheConfigAsync(_cts.Token);
-                
+
                 _logger.LogInformation("Cache {Status}", enabled ? "enabled" : "disabled");
             }
             catch (OperationCanceledException)
@@ -313,7 +313,7 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error setting cache enabled state to {Enabled}", enabled);
             }
         }
-        
+
         /// <inheritdoc/>
         /// <exception cref="Exception">Handles and logs any exceptions that occur during operation</exception>
         public async Task ClearCacheAsync()
@@ -321,18 +321,18 @@ namespace ConduitLLM.WebUI.Services
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             try
             {
                 // Clear the entire LLM response cache
                 _cacheService.RemoveByPrefix("llm:");
-                
+
                 // Reset the metrics
                 _metricsService.Reset();
-                
+
                 // Save updated (empty) statistics
                 await SaveStatisticsToConfigAsync(false, _cts.Token);
-                
+
                 _logger.LogInformation("Cache cleared");
             }
             catch (OperationCanceledException)
@@ -348,50 +348,50 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error clearing cache");
             }
         }
-        
+
         /// <inheritdoc/>
         public async Task SetCacheTypeAsync(string cacheType)
         {
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             try
             {
                 if (string.IsNullOrEmpty(cacheType))
                 {
                     throw new ArgumentException("Cache type cannot be empty");
                 }
-                
+
                 var options = _cacheOptions.Value;
                 var oldType = options.CacheType;
-                
+
                 // Validate cache type
                 if (cacheType.ToLowerInvariant() != "memory" && cacheType.ToLowerInvariant() != "redis")
                 {
                     throw new ArgumentException($"Invalid cache type: {cacheType}. Valid values are 'Memory' or 'Redis'");
                 }
-                
+
                 // Check if service is disposed before expensive operation
                 if (_isDisposed)
                     return;
-                    
+
                 // If changing type, clear cache first
                 if (oldType?.ToLowerInvariant() != cacheType.ToLowerInvariant() && options.IsEnabled)
                 {
                     await ClearCacheAsync();
-                    
+
                     // Re-check if service is disposed after potentially expensive operation
                     if (_isDisposed)
                         return;
                 }
-                
+
                 // Update options
                 options.CacheType = cacheType;
-                
+
                 // Save configuration
                 await SaveCacheConfigAsync(_cts.Token);
-                
+
                 _logger.LogInformation("Cache type set to {CacheType}", cacheType);
             }
             catch (OperationCanceledException)
@@ -408,48 +408,48 @@ namespace ConduitLLM.WebUI.Services
                 throw;
             }
         }
-        
+
         /// <inheritdoc/>
         public async Task UpdateRedisSettingsAsync(string connectionString, string instanceName)
         {
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             try
             {
                 if (string.IsNullOrEmpty(connectionString))
                 {
                     throw new ArgumentException("Redis connection string cannot be empty");
                 }
-                
+
                 var options = _cacheOptions.Value;
-                
+
                 // Test connection before saving
                 if (_redisCacheMetrics != null)
                 {
                     // Check if service is disposed before external call
                     if (_isDisposed)
                         return;
-                        
+
                     var testResult = await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
                     if (!testResult.IsSuccess)
                     {
                         throw new Exception($"Failed to connect to Redis: {testResult.ErrorMessage}");
                     }
-                    
+
                     // Re-check if service is disposed after external call
                     if (_isDisposed)
                         return;
                 }
-                
+
                 // Update options
                 options.RedisConnectionString = connectionString;
                 options.RedisInstanceName = instanceName ?? "conduit:";
-                
+
                 // Save configuration
                 await SaveCacheConfigAsync(_cts.Token);
-                
+
                 _logger.LogInformation("Redis settings updated");
             }
             catch (OperationCanceledException)
@@ -466,7 +466,7 @@ namespace ConduitLLM.WebUI.Services
                 throw;
             }
         }
-        
+
         /// <inheritdoc/>
         public async Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString)
         {
@@ -479,7 +479,7 @@ namespace ConduitLLM.WebUI.Services
                     ErrorMessage = "Cache service is disposed"
                 };
             }
-            
+
             try
             {
                 if (_redisCacheMetrics == null)
@@ -490,7 +490,7 @@ namespace ConduitLLM.WebUI.Services
                         ErrorMessage = "Redis metrics service is not available"
                     };
                 }
-                
+
                 // Use the cancellation token to ensure we can cancel if needed
                 return await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
             }
@@ -521,7 +521,7 @@ namespace ConduitLLM.WebUI.Services
                 };
             }
         }
-        
+
         /// <summary>
         /// Initializes the cache from configuration stored in the database
         /// </summary>
@@ -538,7 +538,7 @@ namespace ConduitLLM.WebUI.Services
             // Check if service is disposed
             if (_isDisposed)
                 return;
-            
+
             bool lockAcquired = false;
             try
             {
@@ -549,27 +549,27 @@ namespace ConduitLLM.WebUI.Services
                     _logger.LogWarning("Failed to acquire config lock for initialization after timeout");
                     return;
                 }
-                
+
                 // Double-check cancellation and disposal after lock acquisition
                 if (cancellationToken.IsCancellationRequested || _isDisposed)
                     return;
-                
+
                 try
                 {
                     // Get cache configuration from settings using repository
                     var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
-                    
+
                     if (cacheSetting != null)
                     {
                         try
                         {
                             // Parse cache settings
                             var config = JsonSerializer.Deserialize<CacheConfig>(cacheSetting.Value);
-                            
+
                             if (config != null)
                             {
                                 _lastLoadedConfig = config;
-                                
+
                                 // Update the options with stored values
                                 var options = _cacheOptions.Value;
                                 options.IsEnabled = config.IsEnabled;
@@ -585,13 +585,13 @@ namespace ConduitLLM.WebUI.Services
                                 options.IncludeMaxTokensInKey = config.IncludeMaxTokensInKey;
                                 options.IncludeTopPInKey = config.IncludeTopPInKey;
                                 options.HashAlgorithm = config.HashAlgorithm;
-                                
+
                                 // Set model rules if available
                                 if (config.ModelRules != null && config.ModelRules.Count > 0)
                                 {
                                     options.ModelSpecificRules ??= new List<Configuration.Options.ModelCacheRule>();
                                     options.ModelSpecificRules.Clear();
-                                    
+
                                     foreach (var rule in config.ModelRules)
                                     {
                                         options.ModelSpecificRules.Add(new Configuration.Options.ModelCacheRule
@@ -602,24 +602,24 @@ namespace ConduitLLM.WebUI.Services
                                         });
                                     }
                                 }
-                                
+
                                 // Check for cancellation and disposal again before potentially lengthy operation
                                 if (cancellationToken.IsCancellationRequested || _isDisposed)
                                     return;
-                                
+
                                 // Initialize metrics service with persisted values if it doesn't have data yet
                                 if (_metricsService.GetTotalRequests() == 0 && config.TotalRequests > 0)
                                 {
-                                    _logger.LogInformation("Initializing cache metrics from persisted data. Total requests: {TotalRequests}, Hit rate: {HitRate}%", 
+                                    _logger.LogInformation("Initializing cache metrics from persisted data. Total requests: {TotalRequests}, Hit rate: {HitRate}%",
                                         config.TotalRequests, config.HitRate * 100);
-                                    
+
                                     // Convert model-specific stats to dictionary for import
                                     Dictionary<string, ModelCacheMetrics>? modelMetrics = null;
-                                    
+
                                     if (config.ModelStats != null && config.ModelStats.Count > 0)
                                     {
                                         modelMetrics = new Dictionary<string, ModelCacheMetrics>();
-                                        
+
                                         foreach (var modelStat in config.ModelStats)
                                         {
                                             modelMetrics[modelStat.ModelName] = new ModelCacheMetrics
@@ -629,10 +629,10 @@ namespace ConduitLLM.WebUI.Services
                                                 TotalRetrievalTimeMs = modelStat.TotalRetrievalTimeMs
                                             };
                                         }
-                                        
+
                                         _logger.LogInformation("Importing statistics for {Count} models", modelMetrics.Count);
                                     }
-                                    
+
                                     // Update the metrics service with persisted values including model-specific metrics
                                     _metricsService.ImportStats(
                                         config.TotalHits,
@@ -640,7 +640,7 @@ namespace ConduitLLM.WebUI.Services
                                         config.AvgResponseTimeMs,
                                         modelMetrics);
                                 }
-                                
+
                                 _logger.LogInformation("Cache initialized from database settings");
                             }
                         }
@@ -654,7 +654,7 @@ namespace ConduitLLM.WebUI.Services
                         // Check for cancellation and disposal before creating default settings
                         if (cancellationToken.IsCancellationRequested || _isDisposed)
                             return;
-                            
+
                         // Create default cache settings
                         await SaveCacheConfigAsync(cancellationToken);
                         _logger.LogInformation("Default cache configuration created");
@@ -691,7 +691,7 @@ namespace ConduitLLM.WebUI.Services
                 }
             }
         }
-        
+
         /// <summary>
         /// Saves the current cache configuration to the database
         /// </summary>
@@ -707,7 +707,7 @@ namespace ConduitLLM.WebUI.Services
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             bool lockAcquired = false;
             try
             {
@@ -718,11 +718,11 @@ namespace ConduitLLM.WebUI.Services
                     _logger.LogWarning("Failed to acquire config lock for saving configuration after timeout");
                     return;
                 }
-                
+
                 // Double-check cancellation and disposal after lock acquisition
                 if (cancellationToken.IsCancellationRequested || _isDisposed)
                     return;
-                
+
                 try
                 {
                     // Get the latest metrics before saving
@@ -747,7 +747,7 @@ namespace ConduitLLM.WebUI.Services
                 // Only release if we acquired the lock and it hasn't been disposed
                 if (lockAcquired && !_isDisposed && _configLock.CurrentCount == 0)
                 {
-                    try 
+                    try
                     {
                         _configLock.Release();
                     }
@@ -758,7 +758,7 @@ namespace ConduitLLM.WebUI.Services
                 }
             }
         }
-        
+
         /// <summary>
         /// Saves the current cache statistics to the configuration in the database
         /// </summary>
@@ -776,7 +776,7 @@ namespace ConduitLLM.WebUI.Services
             // Check if service is disposed
             if (_isDisposed)
                 return;
-                
+
             bool lockAcquired = false;
             try
             {
@@ -787,20 +787,20 @@ namespace ConduitLLM.WebUI.Services
                     _logger.LogWarning("Failed to acquire config lock for saving statistics after timeout");
                     return;
                 }
-                
+
                 // Double-check cancellation and disposal after lock acquisition
                 if (cancellationToken.IsCancellationRequested || _isDisposed)
                     return;
-                
+
                 try
                 {
                     // Get existing config or create new one using repository
                     var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
-                    
+
                     // Check for cancellation after repository call
                     if (cancellationToken.IsCancellationRequested || _isDisposed)
                         return;
-                    
+
                     CacheConfig config;
                     if (cacheSetting != null)
                     {
@@ -811,25 +811,25 @@ namespace ConduitLLM.WebUI.Services
                     {
                         // Create new default config
                         config = new CacheConfig();
-                        
+
                         // Create a new global setting using repository
-                        cacheSetting = new ConduitLLM.Configuration.Entities.GlobalSetting 
+                        cacheSetting = new ConduitLLM.Configuration.Entities.GlobalSetting
                         {
                             Key = CACHE_CONFIG_KEY,
                             Value = "{}",
                             Description = "Cache configuration and statistics"
                         };
-                        
+
                         // Add the new setting
                         await _globalSettingRepository.CreateAsync(cacheSetting);
-                        
+
                         // Check for cancellation after repository update
                         if (cancellationToken.IsCancellationRequested || _isDisposed)
                             return;
                     }
-                    
+
                     var options = _cacheOptions.Value;
-                    
+
                     // Only update configuration properties if requested
                     if (includeConfig)
                     {
@@ -846,7 +846,7 @@ namespace ConduitLLM.WebUI.Services
                         config.IncludeMaxTokensInKey = options.IncludeMaxTokensInKey;
                         config.IncludeTopPInKey = options.IncludeTopPInKey;
                         config.HashAlgorithm = options.HashAlgorithm;
-                        
+
                         // Convert model rules
                         config.ModelRules.Clear();
                         if (options.ModelSpecificRules != null && options.ModelSpecificRules.Count > 0)
@@ -862,7 +862,7 @@ namespace ConduitLLM.WebUI.Services
                             }
                         }
                     }
-                    
+
                     // Always update statistics
                     config.TotalItems = (int)_metricsService.GetTotalRequests();
                     config.HitRate = _metricsService.GetHitRate();
@@ -872,17 +872,17 @@ namespace ConduitLLM.WebUI.Services
                     config.TotalMisses = _metricsService.GetTotalMisses();
                     config.TotalRequests = _metricsService.GetTotalRequests();
                     config.LastUpdated = DateTime.UtcNow;
-                    
+
                     // Final cancellation check before expensive or database operations
                     if (cancellationToken.IsCancellationRequested || _isDisposed)
                         return;
-                    
+
                     // Update model-specific statistics
                     config.ModelStats.Clear();
-                    
+
                     var modelMetrics = _metricsService.GetModelMetrics();
                     var trackedModels = _metricsService.GetTrackedModels();
-                    
+
                     foreach (var modelName in trackedModels)
                     {
                         var metrics = _metricsService.GetMetricsForModel(modelName);
@@ -897,15 +897,15 @@ namespace ConduitLLM.WebUI.Services
                             });
                         }
                     }
-                    
+
                     // Save the updated config using repository
                     cacheSetting.Value = JsonSerializer.Serialize(config);
                     await _globalSettingRepository.UpdateAsync(cacheSetting);
-                    
+
                     // Update the cached config
                     _lastLoadedConfig = config;
-                    
-                    _logger.LogDebug("Cache statistics saved to database. Total requests: {TotalRequests}, Hit rate: {HitRate}%", 
+
+                    _logger.LogDebug("Cache statistics saved to database. Total requests: {TotalRequests}, Hit rate: {HitRate}%",
                         config.TotalRequests, config.HitRate * 100);
                 }
                 finally
@@ -927,7 +927,7 @@ namespace ConduitLLM.WebUI.Services
                 // Only release if we acquired the lock and it hasn't been disposed
                 if (lockAcquired && !_isDisposed && _configLock.CurrentCount == 0)
                 {
-                    try 
+                    try
                     {
                         _configLock.Release();
                     }
@@ -938,7 +938,7 @@ namespace ConduitLLM.WebUI.Services
                 }
             }
         }
-        
+
         /// <summary>
         /// Estimates the memory usage of the cache based on configuration and usage patterns
         /// </summary>
@@ -958,7 +958,7 @@ namespace ConduitLLM.WebUI.Services
         {
             if (!options.IsEnabled)
                 return 0;
-                
+
             if (options.CacheType == "Redis")
             {
                 // For Redis, we don't have direct memory usage info
@@ -971,11 +971,11 @@ namespace ConduitLLM.WebUI.Services
                 // Estimate based on item count and a rough per-item size
                 const int estimatedBytesPerCachedResponse = 4096; // In-memory cache has more overhead
                 const long baselineUsage = 2 * 1024 * 1024; // 2MB baseline for the cache infrastructure
-                
+
                 return baselineUsage + (_metricsService.GetTotalRequests() * estimatedBytesPerCachedResponse);
             }
         }
-        
+
         /// <summary>
         /// Disposes of resources used by the service
         /// </summary>
@@ -987,20 +987,20 @@ namespace ConduitLLM.WebUI.Services
         {
             if (_isDisposed)
                 return;
-                
+
             _isDisposed = true;
-            
+
             try
             {
                 // Signal cancellation to stop any pending operations
                 _cts.Cancel();
-                
+
                 // Stop and dispose of the timer
                 _statisticsTimer?.Dispose();
-                
+
                 // Dispose the cancellation token source
                 _cts.Dispose();
-                
+
                 // Only dispose the semaphore after pending operations should be stopped
                 _configLock.Dispose();
             }
@@ -1009,7 +1009,7 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error during CacheStatusService disposal");
             }
         }
-        
+
         /// <summary>
         /// Configuration class for cache settings and statistics stored in the database
         /// </summary>
@@ -1036,7 +1036,7 @@ namespace ConduitLLM.WebUI.Services
             public bool IncludeTopPInKey { get; set; } = false;
             public string HashAlgorithm { get; set; } = "MD5";
             public System.Collections.Generic.List<ModelRuleConfig> ModelRules { get; set; } = new System.Collections.Generic.List<ModelRuleConfig>();
-            
+
             // Statistics Properties
             public int TotalItems { get; set; } = 0;
             public double HitRate { get; set; } = 0.0;
@@ -1046,11 +1046,11 @@ namespace ConduitLLM.WebUI.Services
             public long TotalMisses { get; set; } = 0;
             public long TotalRequests { get; set; } = 0;
             public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
-            
+
             // Model-specific Statistics
             public System.Collections.Generic.List<ModelStatsConfig> ModelStats { get; set; } = new System.Collections.Generic.List<ModelStatsConfig>();
         }
-        
+
         /// <summary>
         /// Model cache rule configuration for database storage
         /// </summary>
@@ -1066,7 +1066,7 @@ namespace ConduitLLM.WebUI.Services
             public int CacheBehavior { get; set; } = 0;
             public int? ExpirationMinutes { get; set; }
         }
-        
+
         /// <summary>
         /// Model-specific cache statistics for database storage
         /// </summary>

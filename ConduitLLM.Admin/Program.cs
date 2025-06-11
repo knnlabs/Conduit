@@ -1,10 +1,12 @@
+using System.Reflection;
+
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Providers.Extensions;
-using Microsoft.OpenApi.Models;
-using System.Reflection;
+
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.OpenApi.Models;
 
 namespace ConduitLLM.Admin;
 
@@ -24,16 +26,16 @@ public partial class Program
         // Add services to the container
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        
+
         // Add HttpClient factory for provider connection testing
         builder.Services.AddHttpClient();
-        
+
         // Configure Swagger with XML comments
         builder.Services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo 
-            { 
-                Title = "ConduitLLM Admin API", 
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "ConduitLLM Admin API",
                 Version = "v1",
                 Description = "Administrative API for ConduitLLM",
                 Contact = new OpenApiContact
@@ -46,7 +48,7 @@ public partial class Program
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
             c.IncludeXmlComments(xmlPath);
-            
+
             // Add security definition for API Key
             c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
             {
@@ -75,13 +77,13 @@ public partial class Program
 
         // Add Core services
         builder.Services.AddCoreServices(builder.Configuration);
-        
+
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);
-        
+
         // Add Provider services (needed for ILLMClientFactory)
         builder.Services.AddProviderServices();
-        
+
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);
 
@@ -104,17 +106,17 @@ public partial class Program
             {
                 var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
                 var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-                
+
                 try
                 {
                     initLogger.LogInformation("Starting database initialization for Admin API...");
-                    
+
                     // Wait for database to be available (especially important in Docker)
                     var maxRetries = 10;
                     var retryDelay = 3000; // 3 seconds between retries
-                    
+
                     var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
-                    
+
                     if (success)
                     {
                         initLogger.LogInformation("Database initialization completed successfully");
@@ -153,7 +155,7 @@ public partial class Program
         app.UseAuthorization();
 
         app.MapControllers();
-        
+
         // Map standardized health check endpoints
         app.MapConduitHealthChecks();
 

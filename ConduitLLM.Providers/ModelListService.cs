@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -17,7 +19,7 @@ namespace ConduitLLM.Providers
         private readonly ILLMClientFactory _clientFactory;
         private readonly IMemoryCache _cache;
         private readonly ILogger<ModelListService> _logger;
-        
+
         // Default cache duration - 1 hour is reasonable for model lists
         private readonly TimeSpan _cacheDuration = TimeSpan.FromHours(1);
 
@@ -56,36 +58,36 @@ namespace ConduitLLM.Providers
 
             // Create a cache key based on provider name
             string cacheKey = $"provider_models:{providerCredential.ProviderName}";
-            
+
             // Try to get from cache if not forcing a refresh
             if (!forceRefresh && _cache.TryGetValue(cacheKey, out List<string>? cachedModels) && cachedModels != null)
             {
-                _logger.LogDebug("Returning cached models for provider {ProviderName}", 
+                _logger.LogDebug("Returning cached models for provider {ProviderName}",
                     providerCredential.ProviderName);
                 return cachedModels;
             }
 
             try
             {
-                _logger.LogInformation("Fetching models from provider {ProviderName}", 
+                _logger.LogInformation("Fetching models from provider {ProviderName}",
                     providerCredential.ProviderName);
-                
+
                 // Create a client using the existing factory
                 var client = _clientFactory.GetClientByProvider(providerCredential.ProviderName);
-                
+
                 // Get models from the provider API
                 var models = await client.ListModelsAsync(
-                    providerCredential.ApiKey, 
+                    providerCredential.ApiKey,
                     cancellationToken);
-                
+
                 // Cache the results
                 _cache.Set(cacheKey, models, _cacheDuration);
-                
+
                 return models;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", 
+                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}",
                     providerCredential.ProviderName);
                 throw;
             }

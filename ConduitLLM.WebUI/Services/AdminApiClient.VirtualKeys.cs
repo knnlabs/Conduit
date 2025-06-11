@@ -1,18 +1,21 @@
-using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Net.Http.Json;
+
+using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.Extensions.Logging;
-using ConfigVKDto = ConduitLLM.Configuration.DTOs.VirtualKey;
-using VirtualKeyValidationResult = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult;
-using VirtualKeyValidationInfoDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto;
+
 using BudgetCheckResult = ConduitLLM.Configuration.DTOs.VirtualKey.BudgetCheckResult;
-using ValidateVirtualKeyRequest = ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest;
+using ConfigVKDto = ConduitLLM.Configuration.DTOs.VirtualKey;
 using UpdateSpendRequest = ConduitLLM.Configuration.DTOs.VirtualKey.UpdateSpendRequest;
+using ValidateVirtualKeyRequest = ConduitLLM.Configuration.DTOs.VirtualKey.ValidateVirtualKeyRequest;
+using VirtualKeyValidationInfoDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationInfoDto;
+using VirtualKeyValidationResult = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyValidationResult;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -25,18 +28,18 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                var request = new ValidateVirtualKeyRequest 
-                { 
+                var request = new ValidateVirtualKeyRequest
+                {
                     Key = key,
                     RequestedModel = requestedModel
                 };
-                
+
                 var response = await _httpClient.PostAsJsonAsync("api/virtualkeys/validate", request);
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
                 }
-                
+
                 return await response.Content.ReadFromJsonAsync<VirtualKeyValidationResult>(_jsonOptions);
             }
             catch (Exception ex)
@@ -45,7 +48,7 @@ namespace ConduitLLM.WebUI.Services
                 return null;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<bool> UpdateVirtualKeySpendAsync(int id, decimal cost)
         {
@@ -55,7 +58,7 @@ namespace ConduitLLM.WebUI.Services
                 {
                     Cost = cost
                 };
-                
+
                 var response = await _httpClient.PostAsJsonAsync($"api/virtualkeys/{id}/spend", request);
                 return response.IsSuccessStatusCode;
             }
@@ -65,7 +68,7 @@ namespace ConduitLLM.WebUI.Services
                 return false;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<BudgetCheckResult?> CheckVirtualKeyBudgetAsync(int id)
         {
@@ -76,7 +79,7 @@ namespace ConduitLLM.WebUI.Services
                 {
                     return null;
                 }
-                
+
                 return await response.Content.ReadFromJsonAsync<BudgetCheckResult>(_jsonOptions);
             }
             catch (Exception ex)
@@ -85,7 +88,7 @@ namespace ConduitLLM.WebUI.Services
                 return null;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<VirtualKeyValidationInfoDto?> GetVirtualKeyValidationInfoAsync(int id)
         {
@@ -96,7 +99,7 @@ namespace ConduitLLM.WebUI.Services
                 {
                     return null;
                 }
-                
+
                 return await response.Content.ReadFromJsonAsync<VirtualKeyValidationInfoDto>(_jsonOptions);
             }
             catch (Exception ex)
@@ -105,7 +108,7 @@ namespace ConduitLLM.WebUI.Services
                 return null;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task PerformVirtualKeyMaintenanceAsync()
         {
@@ -118,7 +121,7 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error performing virtual key maintenance");
             }
         }
-        
+
         #endregion
 
         #region IVirtualKeyService Implementation
@@ -127,13 +130,13 @@ namespace ConduitLLM.WebUI.Services
         async Task<ConfigVKDto.CreateVirtualKeyResponseDto> IVirtualKeyService.GenerateVirtualKeyAsync(ConfigVKDto.CreateVirtualKeyRequestDto request)
         {
             var response = await CreateVirtualKeyAsync(request);
-            
+
             if (response == null)
             {
                 _logger.LogError("Failed to create virtual key with name: {Name}", request.KeyName);
                 throw new InvalidOperationException($"Failed to create virtual key: {request.KeyName}");
             }
-            
+
             return response;
         }
 
@@ -176,12 +179,12 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 var result = await GetVirtualKeyValidationResultAsync(key, requestedModel);
-                
+
                 if (result == null)
                 {
                     return null;
                 }
-                
+
                 // Create VirtualKeyValidationInfoDto from the validation result
                 return new VirtualKeyValidationInfoDto
                 {

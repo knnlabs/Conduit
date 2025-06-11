@@ -1,4 +1,5 @@
 using System;
+
 using ConfigDTO = ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.WebUI.DTOs
@@ -10,7 +11,7 @@ namespace ConduitLLM.WebUI.DTOs
     public class ModelProviderMappingDto : ConfigDTO.ModelProviderMappingDto
     {
         // All functionality is inherited from the base class
-        
+
         /// <summary>
         /// The model alias used in client requests (for backward compatibility)
         /// </summary>
@@ -19,7 +20,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => ModelId;
             set => ModelId = value;
         }
-        
+
         /// <summary>
         /// The provider-specific model name (for backward compatibility)
         /// </summary>
@@ -28,7 +29,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => ProviderModelId;
             set => ProviderModelId = value;
         }
-        
+
         /// <summary>
         /// The provider credential ID (for backward compatibility)
         /// </summary>
@@ -37,7 +38,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => int.TryParse(ProviderId, out int id) ? id : 0;
             set => ProviderId = value.ToString();
         }
-        
+
         /// <summary>
         /// The maximum number of tokens the model can handle (for backward compatibility)
         /// </summary>
@@ -46,12 +47,12 @@ namespace ConduitLLM.WebUI.DTOs
             get => MaxContextLength;
             set => MaxContextLength = value;
         }
-        
+
         /// <summary>
         /// The provider name (for UI display)
         /// </summary>
         public string ProviderName { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// The provider-specific deployment name (for backward compatibility)
         /// </summary>

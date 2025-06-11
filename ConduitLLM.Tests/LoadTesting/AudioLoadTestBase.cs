@@ -5,8 +5,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.LoadTesting
@@ -60,7 +62,7 @@ namespace ConduitLLM.Tests.LoadTesting
 
             // Calculate results
             var result = CalculateResults(stopwatch.Elapsed);
-            
+
             // Print summary
             PrintTestSummary(config, result);
 
@@ -81,14 +83,14 @@ namespace ConduitLLM.Tests.LoadTesting
 
             try
             {
-                while (!cancellationToken.IsCancellationRequested && 
+                while (!cancellationToken.IsCancellationRequested &&
                        (config.RequestsPerUser == -1 || requestCount < config.RequestsPerUser))
                 {
                     var operationType = SelectOperation(random, config.OperationWeights);
                     await ExecuteOperationAsync(userId, operationType, cancellationToken);
-                    
+
                     requestCount++;
-                    
+
                     // Apply think time
                     if (config.ThinkTimeMs > 0)
                     {
@@ -129,15 +131,15 @@ namespace ConduitLLM.Tests.LoadTesting
                     case AudioOperationType.Transcription:
                         await ExecuteTranscriptionAsync(userId, cancellationToken);
                         break;
-                    
+
                     case AudioOperationType.TextToSpeech:
                         await ExecuteTextToSpeechAsync(userId, cancellationToken);
                         break;
-                    
+
                     case AudioOperationType.RealtimeSession:
                         await ExecuteRealtimeSessionAsync(userId, cancellationToken);
                         break;
-                    
+
                     case AudioOperationType.HybridConversation:
                         await ExecuteHybridConversationAsync(userId, cancellationToken);
                         break;
@@ -148,7 +150,7 @@ namespace ConduitLLM.Tests.LoadTesting
             catch (Exception ex)
             {
                 errorType = ex.GetType().Name;
-                _logger.LogDebug(ex, "Operation {OperationType} failed for user {UserId}", 
+                _logger.LogDebug(ex, "Operation {OperationType} failed for user {UserId}",
                     operationType, userId);
             }
             finally
@@ -246,8 +248,8 @@ namespace ConduitLLM.Tests.LoadTesting
 
             // Calculate overall metrics
             result.Throughput = result.TotalOperations / duration.TotalSeconds;
-            result.ErrorRate = result.TotalOperations > 0 
-                ? (double)result.FailedOperations / result.TotalOperations 
+            result.ErrorRate = result.TotalOperations > 0
+                ? (double)result.FailedOperations / result.TotalOperations
                 : 0;
 
             return result;
@@ -259,7 +261,7 @@ namespace ConduitLLM.Tests.LoadTesting
         private double GetPercentile(List<double> sortedValues, double percentile)
         {
             if (!sortedValues.Any()) return 0;
-            
+
             var index = (int)Math.Ceiling(percentile * sortedValues.Count) - 1;
             return sortedValues[Math.Max(0, Math.Min(index, sortedValues.Count - 1))];
         }
@@ -283,7 +285,7 @@ namespace ConduitLLM.Tests.LoadTesting
                 _output.WriteLine($"\n{kvp.Key} Operations:");
                 _output.WriteLine($"  Count: {metrics.TotalCount:N0} (Success: {metrics.SuccessCount:N0}, Failure: {metrics.FailureCount:N0})");
                 _output.WriteLine($"  Latency - Avg: {metrics.AverageLatencyMs:F1}ms, P50: {metrics.P50LatencyMs:F1}ms, P95: {metrics.P95LatencyMs:F1}ms, P99: {metrics.P99LatencyMs:F1}ms");
-                
+
                 if (metrics.ErrorBreakdown.Any())
                 {
                     _output.WriteLine("  Errors:");

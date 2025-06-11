@@ -2,14 +2,15 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.WebUI.Interfaces;
-using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Models;
+using ConduitLLM.WebUI.Options;
 // Use qualified names when referring to DTO types to avoid ambiguity
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -61,7 +62,7 @@ namespace ConduitLLM.WebUI.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             var adminOptions = options?.Value ?? new AdminApiOptions();
-            
+
             // Configure base URL
             if (!string.IsNullOrEmpty(adminOptions.BaseUrl))
             {
@@ -71,7 +72,7 @@ namespace ConduitLLM.WebUI.Services
 
             // Configure timeout
             _httpClient.Timeout = TimeSpan.FromSeconds(adminOptions.TimeoutSeconds);
-            
+
             // Configure authentication headers
             if (!string.IsNullOrEmpty(adminOptions.MasterKey))
             {
@@ -80,12 +81,12 @@ namespace ConduitLLM.WebUI.Services
                 {
                     _httpClient.DefaultRequestHeaders.Remove("X-Master-Key");
                 }
-                
+
                 if (_httpClient.DefaultRequestHeaders.Contains("X-API-Key"))
                 {
                     _httpClient.DefaultRequestHeaders.Remove("X-API-Key");
                 }
-                
+
                 // Add the master key header - use X-API-Key as expected by AdminAuthenticationMiddleware
                 _httpClient.DefaultRequestHeaders.Add("X-API-Key", adminOptions.MasterKey);
                 _logger.LogInformation("AdminApiClient configured with master key (length: {Length})", adminOptions.MasterKey.Length);
@@ -122,12 +123,12 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 var response = await _httpClient.GetAsync($"api/virtualkeys/{id}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<VirtualKeyDto>(_jsonOptions);
             }
@@ -215,7 +216,7 @@ namespace ConduitLLM.WebUI.Services
 
                 // Try to deserialize as Configuration DTOs (Costs namespace)
                 var costsDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto>>(_jsonOptions);
-                
+
                 if (costsDtos != null)
                 {
                     // Convert Configuration.DTOs.Costs DTOs to WebUI DTOs
@@ -234,10 +235,10 @@ namespace ConduitLLM.WebUI.Services
                         LastDayRequests = 0
                     }).ToList();
                 }
-                
+
                 // Fallback: try deserialization as Configuration DTOs (base namespace)
                 var baseDtos = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto>>(_jsonOptions);
-                
+
                 if (baseDtos != null)
                 {
                     // Convert Configuration.DTOs DTOs to WebUI DTOs
@@ -249,7 +250,7 @@ namespace ConduitLLM.WebUI.Services
                         RequestCount = dto.RequestCount
                     }).ToList();
                 }
-                
+
                 // Return empty if no deserialization worked
                 return Enumerable.Empty<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>();
             }
@@ -289,12 +290,12 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Use "by-key" endpoint per the GlobalSettingsController route pattern
                 var response = await _httpClient.GetAsync($"api/globalsettings/by-key/{Uri.EscapeDataString(key)}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<GlobalSettingDto>(_jsonOptions);
             }
@@ -317,15 +318,15 @@ namespace ConduitLLM.WebUI.Services
                     Value = setting.Value,
                     Description = setting.Description
                 };
-                
+
                 var response = await _httpClient.PutAsJsonAsync("api/globalsettings/by-key", updateDto);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     // Return the setting since PUT doesn't return content
                     return setting;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return null;
             }
@@ -380,12 +381,12 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 var response = await _httpClient.GetAsync($"api/providerhealth/configurations/{Uri.EscapeDataString(providerName)}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ProviderHealthConfigurationDto>(_jsonOptions);
             }
@@ -419,7 +420,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/providerhealth/configurations/{Uri.EscapeDataString(providerName)}", config);
                 response.EnsureSuccessStatusCode();
-                
+
                 // Admin API returns 204 No Content for successful updates, not a ProviderHealthConfigurationDto
                 // So we need to fetch the updated record separately
                 if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
@@ -427,7 +428,7 @@ namespace ConduitLLM.WebUI.Services
                     // Fetch the updated provider health configuration to return it
                     return await GetProviderHealthConfigurationByNameAsync(providerName);
                 }
-                
+
                 // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ProviderHealthConfigurationDto>(_jsonOptions);
             }
@@ -523,12 +524,12 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 var response = await _httpClient.GetAsync($"api/modelcosts/{id}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ModelCostDto>(_jsonOptions);
             }
@@ -562,7 +563,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/modelcosts/{id}", modelCost);
                 response.EnsureSuccessStatusCode();
-                
+
                 // Admin API returns 204 No Content for successful updates, not a ModelCostDto
                 // So we need to fetch the updated record separately
                 if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
@@ -570,7 +571,7 @@ namespace ConduitLLM.WebUI.Services
                     // Fetch the updated model cost to return it
                     return await GetModelCostByIdAsync(id);
                 }
-                
+
                 // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ModelCostDto>(_jsonOptions);
             }
@@ -681,20 +682,20 @@ namespace ConduitLLM.WebUI.Services
                     CreatedAt = mapping.CreatedAt,
                     UpdatedAt = mapping.UpdatedAt
                 };
-                
-                _logger.LogInformation("Creating model provider mapping: ModelId={ModelId}, ProviderId={ProviderId}, ProviderModelId={ProviderModelId}", 
+
+                _logger.LogInformation("Creating model provider mapping: ModelId={ModelId}, ProviderId={ProviderId}, ProviderModelId={ProviderModelId}",
                     dto.ModelId, dto.ProviderId, dto.ProviderModelId);
-                
+
                 // Use "modelprovider" instead of "modelprovidermappings" to match controller name
                 var response = await _httpClient.PostAsJsonAsync("api/modelprovidermapping", dto);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Failed to create model provider mapping. Status: {StatusCode}, Error: {Error}", 
+                    _logger.LogError("Failed to create model provider mapping. Status: {StatusCode}, Error: {Error}",
                         response.StatusCode, errorContent);
                 }
-                
+
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
@@ -721,7 +722,7 @@ namespace ConduitLLM.WebUI.Services
                     CreatedAt = mapping.CreatedAt,
                     UpdatedAt = mapping.UpdatedAt
                 };
-                
+
                 // Use "modelprovider" instead of "modelprovidermappings" to match controller name
                 var response = await _httpClient.PutAsJsonAsync($"api/modelprovidermapping/{id}", dto);
                 return response.IsSuccessStatusCode;
@@ -778,12 +779,12 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 var response = await _httpClient.GetAsync($"api/providercredentials/{id}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ProviderCredentialDto>(_jsonOptions);
             }
@@ -801,12 +802,12 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Use "name" instead of "by-name" to match controller route
                 var response = await _httpClient.GetAsync($"api/providercredentials/name/{Uri.EscapeDataString(providerName)}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ProviderCredentialDto>(_jsonOptions);
             }
@@ -840,7 +841,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.PutAsJsonAsync($"api/providercredentials/{id}", credential);
                 response.EnsureSuccessStatusCode();
-                
+
                 // Admin API returns 204 No Content for successful updates, not a ProviderCredentialDto
                 // So we need to fetch the updated record separately
                 if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
@@ -848,7 +849,7 @@ namespace ConduitLLM.WebUI.Services
                     // Fetch the updated provider credential to return it
                     return await GetProviderCredentialByIdAsync(id);
                 }
-                
+
                 // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<ProviderCredentialDto>(_jsonOptions);
             }
@@ -892,11 +893,11 @@ namespace ConduitLLM.WebUI.Services
                         ProviderName = providerName
                     };
                 }
-                
+
                 var response = await _httpClient.PostAsync(
                     $"api/providercredentials/test/{provider.Id}",
                     new StringContent(string.Empty, Encoding.UTF8, "application/json"));
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto>(_jsonOptions);
             }
@@ -926,7 +927,7 @@ namespace ConduitLLM.WebUI.Services
                     "api/providercredentials/test",
                     providerCredential,
                     _jsonOptions);
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto>(_jsonOptions);
             }
@@ -1049,12 +1050,12 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Use singular "ipfilter" to match the controller's route
                 var response = await _httpClient.GetAsync($"api/ipfilter/{id}");
-                
+
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return null;
                 }
-                
+
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IpFilterDto>(_jsonOptions);
             }
@@ -1090,7 +1091,7 @@ namespace ConduitLLM.WebUI.Services
                 // Use singular "ipfilter" to match the controller's route
                 var response = await _httpClient.PutAsJsonAsync($"api/ipfilter/{id}", ipFilter);
                 response.EnsureSuccessStatusCode();
-                
+
                 // Admin API returns 204 No Content for successful updates, not an IpFilterDto
                 // So we need to fetch the updated record separately
                 if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
@@ -1098,7 +1099,7 @@ namespace ConduitLLM.WebUI.Services
                     // Fetch the updated IP filter to return it
                     return await GetIpFilterByIdAsync(id);
                 }
-                
+
                 // Fallback in case the API changes to return content
                 return await response.Content.ReadFromJsonAsync<IpFilterDto>(_jsonOptions);
             }
@@ -1219,13 +1220,13 @@ namespace ConduitLLM.WebUI.Services
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<IEnumerable<ConduitLLM.Configuration.DTOs.DailyUsageStatsDto>>(_jsonOptions);
-                
+
                 // Convert Configuration DTOs to WebUI DTOs
                 if (result == null)
                 {
                     return Enumerable.Empty<ConduitLLM.WebUI.DTOs.DailyUsageStatsDto>();
                 }
-                
+
                 // Map the DTOs
                 return result.Select(dto => new ConduitLLM.WebUI.DTOs.DailyUsageStatsDto
                 {
@@ -1369,13 +1370,13 @@ namespace ConduitLLM.WebUI.Services
                 response.EnsureSuccessStatusCode();
 
                 var configResult = await response.Content.ReadFromJsonAsync<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>>(_jsonOptions);
-                
+
                 // Convert from Configuration DTOs to WebUI DTOs
                 if (configResult == null)
                 {
                     return new List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>();
                 }
-                
+
                 var webUiResult = configResult.Select(dto => new ConduitLLM.WebUI.DTOs.DetailedCostDataDto
                 {
                     // Map Configuration DTO properties to WebUI DTO properties
@@ -1383,7 +1384,7 @@ namespace ConduitLLM.WebUI.Services
                     Cost = dto.Cost,
                     Percentage = dto.Percentage
                 }).ToList();
-                
+
                 return webUiResult;
             }
             catch (Exception ex)
@@ -1578,7 +1579,7 @@ namespace ConduitLLM.WebUI.Services
         {
             var fallbacks = await GetAllFallbackConfigurationsAsync();
             var result = new Dictionary<string, List<string>>();
-            
+
             foreach (var fallback in fallbacks)
             {
                 if (!string.IsNullOrEmpty(fallback.PrimaryModelDeploymentId))
@@ -1586,7 +1587,7 @@ namespace ConduitLLM.WebUI.Services
                     result[fallback.PrimaryModelDeploymentId] = fallback.FallbackModelDeploymentIds ?? new List<string>();
                 }
             }
-            
+
             return result;
         }
 
@@ -1603,7 +1604,7 @@ namespace ConduitLLM.WebUI.Services
                 PrimaryModelDeploymentId = primaryModel,
                 FallbackModelDeploymentIds = fallbackModels
             };
-            
+
             return await SetFallbackConfigurationAsync(fallbackConfig);
         }
 

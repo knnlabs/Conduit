@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Options;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using StackExchange.Redis;
 
 namespace ConduitLLM.Configuration.Services
@@ -78,14 +79,14 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 var options = new DistributedCacheEntryOptions();
-                
+
                 // Use provided expiration time or fall back to default from configuration
                 var absExpiration = absoluteExpiration ?? _cacheOptions.DefaultAbsoluteExpiration;
                 var slideExpiration = slidingExpiration ?? _cacheOptions.DefaultSlidingExpiration;
-                
+
                 if (absExpiration.HasValue)
                     options.AbsoluteExpirationRelativeToNow = absExpiration.Value;
-                    
+
                 if (slideExpiration.HasValue)
                     options.SlidingExpiration = slideExpiration.Value;
 
@@ -168,12 +169,12 @@ namespace ConduitLLM.Configuration.Services
                 // This will find all keys that match the specified pattern
                 var server = _connectionMultiplexer.GetServer(_connectionMultiplexer.GetEndPoints()[0]);
                 var keys = server.Keys(pattern: $"{prefix}*");
-                
+
                 foreach (var key in keys)
                 {
                     _redisDatabase.KeyDelete(key);
                 }
-                
+
                 _logger.LogInformation("Removed all items with prefix {Prefix} from Redis cache", prefix);
             }
             catch (Exception ex)

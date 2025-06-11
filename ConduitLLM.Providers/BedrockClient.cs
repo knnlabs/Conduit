@@ -41,16 +41,16 @@ namespace ConduitLLM.Providers
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
         /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public BedrockClient(
-            ProviderCredentials credentials, 
-            string providerModelId, 
+            ProviderCredentials credentials,
+            string providerModelId,
             ILogger<BedrockClient> logger,
             IHttpClientFactory? httpClientFactory = null,
             ProviderDefaultModels? defaultModels = null)
             : base(
-                  EnsureBedrockCredentials(credentials), 
-                  providerModelId, 
-                  logger, 
-                  httpClientFactory, 
+                  EnsureBedrockCredentials(credentials),
+                  providerModelId,
+                  logger,
+                  httpClientFactory,
                   "bedrock",
                   defaultModels)
         {
@@ -70,7 +70,7 @@ namespace ConduitLLM.Providers
             {
                 throw new ConfigurationException("AWS Access Key is required for Bedrock API");
             }
-            
+
             // Note: In a real implementation, we would check for AWS Secret Key
             // For now, we'll assume it's available via environment variables
             // We only check for ApiKey which maps to AWS Access Key ID
@@ -84,11 +84,11 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // For Bedrock, we don't add the standard Authorization header
             // Instead, we'll handle AWS Signature V4 auth per request
             client.DefaultRequestHeaders.Authorization = null;
-            
+
             string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? DefaultBedrockApiBase : Credentials.ApiBase;
             client.BaseAddress = new Uri(apiBase);
         }
@@ -100,12 +100,12 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "ChatCompletion");
-            
+
             return await ExecuteApiRequestAsync(async () =>
             {
                 // Determine which model provider is being used
                 string modelId = request.Model ?? ProviderModelId;
-                
+
                 if (modelId.Contains("anthropic.claude", StringComparison.OrdinalIgnoreCase))
                 {
                     return await CreateAnthropicClaudeChatCompletionAsync(request, apiKey, cancellationToken);
@@ -146,7 +146,7 @@ namespace ConduitLLM.Providers
                 TopP = request.TopP.HasValue ? (float?)request.TopP.Value : null,
                 Messages = new List<BedrockClaudeMessage>()
             };
-            
+
             // Extract system message if present
             var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
             if (systemMessage != null)
@@ -154,7 +154,7 @@ namespace ConduitLLM.Providers
                 // Handle system message content, which could be string or content parts
                 claudeRequest.System = ContentHelper.GetContentAsString(systemMessage.Content);
             }
-            
+
             // Map user and assistant messages
             foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
             {
@@ -175,10 +175,10 @@ namespace ConduitLLM.Providers
 
             string modelId = request.Model ?? ProviderModelId;
             using var client = CreateHttpClient(apiKey);
-            
+
             // In a real implementation, we'd use AWS SDK, but for demonstration we'll use HTTP
             string apiUrl = $"/model/{modelId}/invoke";
-            
+
             // Use our common HTTP client helper to send the request
             // Note: In production, we would add AWS Signature V4 auth to these requests
             var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockClaudeChatRequest, BedrockClaudeChatResponse>(
@@ -190,12 +190,12 @@ namespace ConduitLLM.Providers
                 DefaultJsonOptions,
                 Logger,
                 cancellationToken);
-            
+
             if (bedrockResponse == null || bedrockResponse.Content == null || !bedrockResponse.Content.Any())
             {
                 throw new LLMCommunicationException("Failed to deserialize the response from AWS Bedrock API or response content is empty");
             }
-            
+
             // Map to core response format
             return new ChatCompletionResponse
             {
@@ -233,7 +233,7 @@ namespace ConduitLLM.Providers
             // Implementation for Meta Llama models through Bedrock
             // This would follow a similar pattern to the Claude implementation above,
             // but with Meta-specific request/response formats
-            
+
             // For now, throw not implemented exception
             // In a complete implementation, this would be filled out
             throw new NotImplementedException("Meta Llama models through Bedrock not yet implemented");
@@ -247,7 +247,7 @@ namespace ConduitLLM.Providers
             // Implementation for Amazon Titan models through Bedrock
             // This would follow a similar pattern to the Claude implementation above,
             // but with Titan-specific request/response formats
-            
+
             // For now, throw not implemented exception
             // In a complete implementation, this would be filled out
             throw new NotImplementedException("Amazon Titan models through Bedrock not yet implemented");
@@ -261,7 +261,7 @@ namespace ConduitLLM.Providers
             // Implementation for Cohere models through Bedrock
             // This would follow a similar pattern to the Claude implementation above,
             // but with Cohere-specific request/response formats
-            
+
             // For now, throw not implemented exception
             // In a complete implementation, this would be filled out
             throw new NotImplementedException("Cohere models through Bedrock not yet implemented");
@@ -275,7 +275,7 @@ namespace ConduitLLM.Providers
             // Implementation for AI21 models through Bedrock
             // This would follow a similar pattern to the Claude implementation above,
             // but with AI21-specific request/response formats
-            
+
             // For now, throw not implemented exception
             // In a complete implementation, this would be filled out
             throw new NotImplementedException("AI21 models through Bedrock not yet implemented");
@@ -288,10 +288,10 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletion");
-            
+
             // Get all chunks outside of try/catch to avoid the "yield in try" issue
             var chunks = await FetchStreamChunksAsync(request, apiKey, cancellationToken);
-            
+
             // Now yield the chunks outside of any try blocks
             foreach (var chunk in chunks)
             {
@@ -299,11 +299,11 @@ namespace ConduitLLM.Providers
                 {
                     yield break;
                 }
-                
+
                 yield return chunk;
             }
         }
-        
+
         /// <summary>
         /// Helper method to fetch all stream chunks without yielding in a try block
         /// </summary>
@@ -313,30 +313,30 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             var chunks = new List<ChatCompletionChunk>();
-            
+
             try
             {
                 var modelId = request.Model ?? ProviderModelId;
-                
+
                 // For proper implementation, we would use AWS SDK with InvokeModelWithResponseStreamAsync
                 // This is a placeholder for the implementation
                 // In a real implementation, we would:
-                
+
                 var config = new AmazonBedrockRuntimeConfig
                 {
                     RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(_region)
                 };
-                
+
                 // Use AWS credentials from configuration
                 // In a real implementation, we would use AWS credentials properly
                 // For this example, we'll just use the ApiKey 
                 // In a real implementation, ApiSecret would be provided or retrieved from 
                 // AWS credential chain (environment variables, profile, etc.)
                 using var client = new AmazonBedrockRuntimeClient(
-                    Credentials.ApiKey, 
+                    Credentials.ApiKey,
                     "dummy-secret-key", // This is a placeholder for illustration
                     config);
-                
+
                 // Create a request appropriate for the model type
                 // Example for Claude
                 var bedrockRequest = new BedrockClaudeChatRequest
@@ -347,14 +347,14 @@ namespace ConduitLLM.Providers
                     Stream = true,
                     Messages = new List<BedrockClaudeMessage>()
                 };
-                
+
                 // Extract system message if present
                 var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
                 if (systemMessage != null)
                 {
                     bedrockRequest.System = ContentHelper.GetContentAsString(systemMessage.Content);
                 }
-                
+
                 // Map user and assistant messages
                 foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
                 {
@@ -372,7 +372,7 @@ namespace ConduitLLM.Providers
                         }
                     });
                 }
-                
+
                 var requestBody = JsonSerializer.Serialize(bedrockRequest, DefaultJsonOptions);
                 var invokeRequest = new InvokeModelWithResponseStreamRequest
                 {
@@ -381,19 +381,19 @@ namespace ConduitLLM.Providers
                     ContentType = "application/json",
                     Accept = "application/json"
                 };
-                
+
                 var response = await client.InvokeModelWithResponseStreamAsync(invokeRequest, cancellationToken);
-                
+
                 // Process the streaming response
                 // In AWS SDK, ResponseStream doesn't directly support IAsyncEnumerable
                 // We need to manually read the stream
-                
+
                 // Note: In a real implementation, this would need proper event stream parsing
                 // For now, this is a simplified version that processes the payloads
-                
+
                 // Simplified streaming implementation for illustration
                 Logger.LogWarning("Streaming implementation for AWS Bedrock is a simplified version");
-                
+
                 // Simulate a single chunk response since we can't properly process the event stream in this example
                 chunks.Add(new ChatCompletionChunk
                 {
@@ -414,7 +414,7 @@ namespace ConduitLLM.Providers
                         }
                     }
                 });
-                
+
                 // Add a final chunk
                 chunks.Add(new ChatCompletionChunk
                 {
@@ -432,7 +432,7 @@ namespace ConduitLLM.Providers
                         }
                     }
                 });
-                
+
                 return chunks;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -448,14 +448,14 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("Getting models from AWS Bedrock");
-            
+
             try
             {
                 // In a real implementation, we would use AWS SDK to list available models
                 // For now, return a static list of commonly available models
-                
+
                 await Task.Delay(1, cancellationToken); // Adding await to make this truly async
-                
+
                 return new List<ExtendedModelInfo>
                 {
                     ExtendedModelInfo.Create("anthropic.claude-3-opus-20240229-v1:0", ProviderName, "anthropic.claude-3-opus-20240229-v1:0"),
@@ -485,7 +485,7 @@ namespace ConduitLLM.Providers
                 return GetFallbackModels();
             }
         }
-        
+
         /// <summary>
         /// Gets a fallback list of models for Bedrock.
         /// </summary>
@@ -509,9 +509,9 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateEmbedding");
-            
+
             string modelId = request.Model ?? ProviderModelId;
-            
+
             if (modelId.Contains("cohere.embed", StringComparison.OrdinalIgnoreCase) ||
                 modelId.Contains("amazon.titan-embed", StringComparison.OrdinalIgnoreCase))
             {
@@ -530,9 +530,9 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateImage");
-            
+
             string modelId = request.Model ?? ProviderModelId;
-            
+
             if (modelId.Contains("stability", StringComparison.OrdinalIgnoreCase))
             {
                 throw new NotImplementedException("Image generation support for Bedrock is not yet implemented");
@@ -542,9 +542,9 @@ namespace ConduitLLM.Providers
                 throw new UnsupportedProviderException($"The model {modelId} does not support image generation in Bedrock");
             }
         }
-        
+
         #region Helper Methods
-        
+
         /// <summary>
         /// Maps Bedrock stop reasons to the standardized finish reasons used in the core models.
         /// </summary>
@@ -559,7 +559,7 @@ namespace ConduitLLM.Providers
                 _ => stopReason ?? "unknown"
             };
         }
-        
+
         /// <summary>
         /// Creates headers for AWS authentication.
         /// </summary>
@@ -574,7 +574,7 @@ namespace ConduitLLM.Providers
         private Dictionary<string, string> CreateAWSAuthHeaders(string path, string body, string? apiKey = null)
         {
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-            
+
             // In a real implementation, this would create AWS Signature V4 headers
             // For simplicity, this returns placeholder headers
             var headers = new Dictionary<string, string>
@@ -584,10 +584,10 @@ namespace ConduitLLM.Providers
                 ["Authorization"] = $"AWS4-HMAC-SHA256 Credential={effectiveApiKey}"
                 // In a real implementation, this would include a proper signature
             };
-            
+
             return headers;
         }
-        
+
         #endregion
     }
 }

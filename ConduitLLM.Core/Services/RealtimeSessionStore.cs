@@ -5,10 +5,12 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -49,7 +51,7 @@ namespace ConduitLLM.Core.Services
 
             // Store in distributed cache
             _cacheService.Set(key, session, effectiveTtl);
-            
+
             // Update indices
             await UpdateIndicesAsync(session, effectiveTtl, cancellationToken);
             _logger.LogDebug("Stored session {SessionId} with TTL {TTL}", session.Id, effectiveTtl);
@@ -94,7 +96,7 @@ namespace ConduitLLM.Core.Services
             // Calculate remaining TTL
             var age = DateTime.UtcNow - existing.CreatedAt;
             var remainingTtl = _defaultTtl - age;
-            
+
             if (remainingTtl > TimeSpan.Zero)
             {
                 await StoreSessionAsync(session, remainingTtl, cancellationToken);
@@ -132,7 +134,7 @@ namespace ConduitLLM.Core.Services
         {
             var sessions = new List<RealtimeSession>();
             var indexKey = $"{_indexPrefix}active";
-            
+
             // Get session IDs from index
             var sessionIds = _cacheService.Get<List<string>>(indexKey) ?? new List<string>();
 
@@ -155,7 +157,7 @@ namespace ConduitLLM.Core.Services
         {
             var sessions = new List<RealtimeSession>();
             var indexKey = $"{_indexPrefix}vkey:{virtualKey}";
-            
+
             // Get session IDs from index
             var sessionIds = _cacheService.Get<List<string>>(indexKey) ?? new List<string>();
 
@@ -195,7 +197,7 @@ namespace ConduitLLM.Core.Services
         {
             var cutoff = DateTime.UtcNow - maxAge;
             var cleaned = 0;
-            
+
             // Get all active sessions
             var sessions = await GetActiveSessionsAsync(cancellationToken);
 
@@ -228,7 +230,7 @@ namespace ConduitLLM.Core.Services
             // Update active sessions index
             var activeKey = $"{_indexPrefix}active";
             var activeList = _cacheService.Get<List<string>>(activeKey) ?? new List<string>();
-            
+
             if (!activeList.Contains(session.Id))
             {
                 activeList.Add(session.Id);
@@ -241,7 +243,7 @@ namespace ConduitLLM.Core.Services
             {
                 var vkeyKey = $"{_indexPrefix}vkey:{virtualKey}";
                 var vkeyList = _cacheService.Get<List<string>>(vkeyKey) ?? new List<string>();
-                
+
                 if (!vkeyList.Contains(session.Id))
                 {
                     vkeyList.Add(session.Id);
@@ -260,7 +262,7 @@ namespace ConduitLLM.Core.Services
             var activeKey = $"{_indexPrefix}active";
             var activeList = _cacheService.Get<List<string>>(activeKey) ?? new List<string>();
             activeList.Remove(session.Id);
-            
+
             if (activeList.Count > 0)
             {
                 _cacheService.Set(activeKey, activeList, _defaultTtl);
@@ -277,7 +279,7 @@ namespace ConduitLLM.Core.Services
                 var vkeyKey = $"{_indexPrefix}vkey:{virtualKey}";
                 var vkeyList = _cacheService.Get<List<string>>(vkeyKey) ?? new List<string>();
                 vkeyList.Remove(session.Id);
-                
+
                 if (vkeyList.Count > 0)
                 {
                     _cacheService.Set(vkeyKey, vkeyList, _defaultTtl);

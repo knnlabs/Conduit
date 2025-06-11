@@ -8,15 +8,16 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Configuration;
 
+using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 // Use aliases to avoid ambiguities
 using CoreModels = ConduitLLM.Core.Models;
+using CoreUtils = ConduitLLM.Core.Utilities;
 using InternalModels = ConduitLLM.Providers.InternalModels;
 using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
-using CoreUtils = ConduitLLM.Core.Utilities;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 
 namespace ConduitLLM.Providers
@@ -95,7 +96,7 @@ namespace ConduitLLM.Providers
                 InternalModels.ExtendedModelInfo.Create("gemma-7b-it", "groq", "gemma-7b-it")
             }
         };
-        
+
         /// <summary>
         /// Creates an ExtendedModelInfo with vision capability set to true.
         /// </summary>
@@ -106,15 +107,15 @@ namespace ConduitLLM.Providers
         private static InternalModels.ExtendedModelInfo CreateVisionCapableModel(string id, string provider, string? displayName = null)
         {
             var modelInfo = InternalModels.ExtendedModelInfo.Create(id, provider, displayName ?? id);
-            
+
             // Set the vision capability
             if (modelInfo.Capabilities == null)
             {
                 modelInfo.Capabilities = new InternalModels.ModelCapabilities();
             }
-            
+
             modelInfo.Capabilities.Vision = true;
-            
+
             return modelInfo;
         }
 
@@ -134,7 +135,7 @@ namespace ConduitLLM.Providers
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
             string? baseUrl = null,
-            ProviderDefaultModels? defaultModels = null) 
+            ProviderDefaultModels? defaultModels = null)
             : base(credentials, providerModelId, logger, httpClientFactory, providerName, defaultModels)
         {
             BaseUrl = baseUrl ?? "https://api.openai.com/v1";
@@ -167,16 +168,16 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "ChatCompletion");
-            
+
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient(apiKey);
                 var openAiRequest = MapToOpenAIRequest(request);
-                
+
                 var endpoint = GetChatCompletionEndpoint();
-                
+
                 Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
-                
+
                 // Use our common HTTP client helper to send the request
                 var openAiResponse = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIModels.OpenAIChatCompletionResponse>(
                     client,
@@ -187,7 +188,7 @@ namespace ConduitLLM.Providers
                     DefaultJsonOptions,
                     Logger,
                     cancellationToken);
-                
+
                 return MapFromOpenAIResponse(openAiResponse, request.Model);
             }, "ChatCompletion", cancellationToken);
         }
@@ -220,10 +221,10 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletion");
-            
+
             // Get all chunks outside of try/catch to avoid the "yield in try" issue
             var chunks = await FetchStreamChunksAsync(request, apiKey, cancellationToken);
-            
+
             // Now yield the chunks outside of any try blocks
             foreach (var chunk in chunks)
             {
@@ -231,11 +232,11 @@ namespace ConduitLLM.Providers
                 {
                     yield break;
                 }
-                
+
                 yield return chunk;
             }
         }
-        
+
         /// <summary>
         /// Helper method to fetch all stream chunks without yielding in a try block
         /// </summary>
@@ -245,18 +246,18 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             var chunks = new List<CoreModels.ChatCompletionChunk>();
-            
+
             try
             {
                 using var client = CreateHttpClient(apiKey);
                 var openAiRequest = PrepareStreamingRequest(request);
                 var endpoint = GetChatCompletionEndpoint();
-                
+
                 Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
-                
+
                 var response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
                 chunks = await ProcessStreamingResponseAsync(response, request.Model, cancellationToken);
-                
+
                 return chunks;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -264,7 +265,7 @@ namespace ConduitLLM.Providers
                 // Process the error with enhanced error extraction
                 var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
                 Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
-                
+
                 var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
                 throw error;
             }
@@ -278,7 +279,7 @@ namespace ConduitLLM.Providers
         private object PrepareStreamingRequest(CoreModels.ChatCompletionRequest request)
         {
             var openAiRequest = MapToOpenAIRequest(request);
-            
+
             // Force stream parameter to true based on the request's type
             if (openAiRequest is JsonElement jsonElement)
             {
@@ -294,11 +295,11 @@ namespace ConduitLLM.Providers
                 reqObj = reqObj with { Stream = true };
                 return reqObj;
             }
-            
+
             // If we can't determine the type, return the original request
             return openAiRequest;
         }
-        
+
         /// <summary>
         /// Forces the stream parameter to true in a JsonElement
         /// </summary>
@@ -313,11 +314,11 @@ namespace ConduitLLM.Providers
                 tempObj["stream"] = true;
                 return tempObj;
             }
-            
+
             // If deserialization fails, return the original element
             return jsonElement;
         }
-        
+
         /// <summary>
         /// Sends a streaming request to the specified endpoint
         /// </summary>
@@ -328,9 +329,9 @@ namespace ConduitLLM.Providers
         /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>The HTTP response message</returns>
         private async Task<HttpResponseMessage> SendStreamingRequestAsync(
-            HttpClient client, 
-            string endpoint, 
-            object request, 
+            HttpClient client,
+            string endpoint,
+            object request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
@@ -344,7 +345,7 @@ namespace ConduitLLM.Providers
                 Logger,
                 cancellationToken);
         }
-        
+
         /// <summary>
         /// Processes a streaming response and returns a list of chat completion chunks
         /// </summary>
@@ -353,12 +354,12 @@ namespace ConduitLLM.Providers
         /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>A list of chat completion chunks</returns>
         private async Task<List<CoreModels.ChatCompletionChunk>> ProcessStreamingResponseAsync(
-            HttpResponseMessage response, 
+            HttpResponseMessage response,
             string? originalModelAlias,
             CancellationToken cancellationToken)
         {
             var chunks = new List<CoreModels.ChatCompletionChunk>();
-            
+
             // Use StreamHelper to process the SSE stream
             await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIModels.OpenAIChatCompletionChunk>(
                 response, Logger, DefaultJsonOptions, cancellationToken))
@@ -367,10 +368,10 @@ namespace ConduitLLM.Providers
                 {
                     break;
                 }
-                
+
                 chunks.Add(MapFromOpenAIChunk(chunk, originalModelAlias));
             }
-            
+
             return chunks;
         }
 
@@ -394,11 +395,11 @@ namespace ConduitLLM.Providers
                 return await ExecuteApiRequestAsync(async () =>
                 {
                     using var client = CreateHttpClient(apiKey);
-                    
+
                     var endpoint = GetModelsEndpoint();
-                    
+
                     Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
-                    
+
                     var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIModels.ListModelsResponse>(
                         client,
                         HttpMethod.Get,
@@ -408,7 +409,7 @@ namespace ConduitLLM.Providers
                         DefaultJsonOptions,
                         Logger,
                         cancellationToken);
-                    
+
                     return response.Data
                         .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
                         .ToList();
@@ -443,11 +444,11 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateEmbedding");
-            
+
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient(apiKey);
-                
+
                 var openAiRequest = new OpenAIModels.EmbeddingRequest
                 {
                     Model = request.Model ?? ProviderModelId,
@@ -456,11 +457,11 @@ namespace ConduitLLM.Providers
                     User = request.User ?? string.Empty,
                     Dimensions = request.Dimensions
                 };
-                
+
                 var endpoint = GetEmbeddingEndpoint();
-                
+
                 Logger.LogDebug("Creating embeddings using {Provider} at {Endpoint}", ProviderName, endpoint);
-                
+
                 var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<OpenAIModels.EmbeddingRequest, OpenAIModels.EmbeddingResponse>(
                     client,
                     HttpMethod.Post,
@@ -470,7 +471,7 @@ namespace ConduitLLM.Providers
                     DefaultJsonOptions,
                     Logger,
                     cancellationToken);
-                
+
                 return new CoreModels.EmbeddingResponse
                 {
                     Data = response.Data.Select(d => new CoreModels.EmbeddingData
@@ -513,11 +514,11 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateImage");
-            
+
             return await ExecuteApiRequestAsync(async () =>
             {
                 using var client = CreateHttpClient(apiKey);
-                
+
                 var openAiRequest = new OpenAIModels.ImageGenerationRequest
                 {
                     Prompt = request.Prompt,
@@ -529,11 +530,11 @@ namespace ConduitLLM.Providers
                     ResponseFormat = "b64_json",
                     User = request.User ?? string.Empty
                 };
-                
+
                 var endpoint = GetImageGenerationEndpoint();
-                
+
                 Logger.LogDebug("Creating images using {Provider} at {Endpoint}", ProviderName, endpoint);
-                
+
                 var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<OpenAIModels.ImageGenerationRequest, OpenAIModels.ImageGenerationResponse>(
                     client,
                     HttpMethod.Post,
@@ -543,7 +544,7 @@ namespace ConduitLLM.Providers
                     DefaultJsonOptions,
                     Logger,
                     cancellationToken);
-                
+
                 return new CoreModels.ImageGenerationResponse
                 {
                     Created = response.Created,
@@ -568,7 +569,7 @@ namespace ConduitLLM.Providers
         {
             return $"{BaseUrl}/chat/completions";
         }
-        
+
         /// <summary>
         /// Gets the models endpoint for the provider.
         /// </summary>
@@ -580,7 +581,7 @@ namespace ConduitLLM.Providers
         {
             return $"{BaseUrl}/models";
         }
-        
+
         /// <summary>
         /// Gets the embedding endpoint for the provider.
         /// </summary>
@@ -592,7 +593,7 @@ namespace ConduitLLM.Providers
         {
             return $"{BaseUrl}/embeddings";
         }
-        
+
         /// <summary>
         /// Gets the image generation endpoint for the provider.
         /// </summary>
@@ -619,14 +620,14 @@ namespace ConduitLLM.Providers
             {
                 return models;
             }
-            
+
             // Generic fallback for unknown providers
             return new List<InternalModels.ExtendedModelInfo>
             {
                 InternalModels.ExtendedModelInfo.Create(ProviderModelId, ProviderName, ProviderModelId)
             };
         }
-        
+
         /// <summary>
         /// Maps the provider-agnostic request to OpenAI format.
         /// </summary>
@@ -648,7 +649,7 @@ namespace ConduitLLM.Providers
                     Description = t.Function?.Description
                 }).Cast<object>().ToList();
             }
-            
+
             // Map tool choice if present
             object? openAiToolChoice = null;
             if (request.ToolChoice != null)
@@ -656,9 +657,10 @@ namespace ConduitLLM.Providers
                 // Use the GetSerializedValue method to get the properly formatted object
                 openAiToolChoice = request.ToolChoice;
             }
-            
+
             // Map messages with their content - handle multimodal content for vision models
-            var messages = request.Messages.Select(m => {
+            var messages = request.Messages.Select(m =>
+            {
                 // Check if this is a multimodal message
                 if (ProviderHelpers.ContentHelper.IsTextOnly(m.Content))
                 {
@@ -693,7 +695,7 @@ namespace ConduitLLM.Providers
                     };
                 }
             }).ToList();
-            
+
             // Create the OpenAI request
             return new OpenAIModels.OpenAIChatCompletionRequest
             {
@@ -707,7 +709,7 @@ namespace ConduitLLM.Providers
                 Stream = request.Stream ?? false
             };
         }
-        
+
         /// <summary>
         /// Maps multimodal content to the format expected by OpenAI's API.
         /// </summary>
@@ -717,13 +719,13 @@ namespace ConduitLLM.Providers
         {
             if (content == null)
                 return "";
-                
+
             if (content is string textContent)
                 return textContent;
-                
+
             // Create a list to hold the formatted content parts
             var contentParts = new List<object>();
-            
+
             // Extract text parts
             var textParts = ProviderHelpers.ContentHelper.ExtractMultimodalContent(content);
             foreach (var text in textParts)
@@ -737,7 +739,7 @@ namespace ConduitLLM.Providers
                     });
                 }
             }
-            
+
             // Extract image URLs
             var imageUrls = ProviderHelpers.ContentHelper.ExtractImageUrls(content);
             foreach (var imageUrl in imageUrls)
@@ -752,14 +754,14 @@ namespace ConduitLLM.Providers
                     }
                 });
             }
-            
+
             // If no parts were added, return an empty string
             if (contentParts.Count == 0)
                 return "";
-                
+
             return contentParts;
         }
-        
+
         /// <summary>
         /// Maps the OpenAI response to provider-agnostic format.
         /// </summary>
@@ -771,31 +773,31 @@ namespace ConduitLLM.Providers
         /// Derived classes can override this method to provide custom mapping.
         /// </remarks>
         protected virtual CoreModels.ChatCompletionResponse MapFromOpenAIResponse(
-            object responseObj, 
+            object responseObj,
             string? originalModelAlias)
         {
             // Cast using dynamic to avoid multiple type-specific methods
             dynamic response = responseObj;
-            
+
             try
             {
                 // Create the basic response with required fields
                 var result = CreateBasicChatCompletionResponse(response, originalModelAlias);
-                
+
                 // Add optional properties if they exist
                 result = AddOptionalResponseProperties(result, response);
-                
+
                 return result;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error mapping OpenAI response: {Message}", ex.Message);
-                
+
                 // Create a minimal response with as much data as we can salvage
                 return CreateFallbackChatCompletionResponse(response, originalModelAlias);
             }
         }
-        
+
         /// <summary>
         /// Creates a basic chat completion response with required fields.
         /// </summary>
@@ -817,7 +819,7 @@ namespace ConduitLLM.Providers
                 OriginalModelAlias = originalModelAlias
             };
         }
-        
+
         /// <summary>
         /// Creates a fallback chat completion response when the normal mapping fails.
         /// </summary>
@@ -855,7 +857,7 @@ namespace ConduitLLM.Providers
                 };
             }
         }
-        
+
         /// <summary>
         /// Maps the usage information from a dynamic response.
         /// </summary>
@@ -867,7 +869,7 @@ namespace ConduitLLM.Providers
             {
                 return null;
             }
-            
+
             try
             {
                 return new CoreModels.Usage
@@ -883,7 +885,7 @@ namespace ConduitLLM.Providers
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Adds optional properties to a chat completion response if they exist in the provider response.
         /// </summary>
@@ -911,7 +913,7 @@ namespace ConduitLLM.Providers
             {
                 Logger.LogWarning(ex, "Error adding SystemFingerprint property: {Message}", ex.Message);
             }
-            
+
             // Try to add Seed
             try
             {
@@ -929,10 +931,10 @@ namespace ConduitLLM.Providers
             {
                 Logger.LogWarning(ex, "Error adding Seed property: {Message}", ex.Message);
             }
-            
+
             return response;
         }
-        
+
         /// <summary>
         /// Tries to get a property value from a dynamic object, returning a default value if not found.
         /// </summary>
@@ -954,7 +956,7 @@ namespace ConduitLLM.Providers
                     {
                         return (T)property.GetValue(obj, null);
                     }
-                    
+
                     // If reflection fails, try dynamic access
                     if (obj is IDictionary<string, object> dictObj && dictObj.TryGetValue(propertyName, out var dictValue))
                     {
@@ -966,10 +968,10 @@ namespace ConduitLLM.Providers
             {
                 // Property doesn't exist or couldn't be accessed
             }
-            
+
             return defaultValue;
         }
-        
+
         /// <summary>
         /// Checks if a dynamic object has a specific property.
         /// </summary>
@@ -1000,7 +1002,7 @@ namespace ConduitLLM.Providers
                 }
             }
         }
-        
+
         /// <summary>
         /// Maps the OpenAI streaming chunk to provider-agnostic format.
         /// </summary>
@@ -1012,12 +1014,12 @@ namespace ConduitLLM.Providers
         /// Derived classes can override this method to provide custom mapping.
         /// </remarks>
         protected virtual CoreModels.ChatCompletionChunk MapFromOpenAIChunk(
-            object chunkObj, 
+            object chunkObj,
             string? originalModelAlias)
         {
             // Cast using dynamic to avoid multiple type-specific methods
             dynamic chunk = chunkObj;
-            
+
             return new CoreModels.ChatCompletionChunk
             {
                 Id = chunk.Id,
@@ -1029,7 +1031,7 @@ namespace ConduitLLM.Providers
                 OriginalModelAlias = originalModelAlias
             };
         }
-        
+
         /// <summary>
         /// Maps dynamic choices from a response to strongly-typed Choice objects.
         /// </summary>
@@ -1038,13 +1040,13 @@ namespace ConduitLLM.Providers
         private List<CoreModels.Choice> MapDynamicChoices(dynamic dynamicChoices)
         {
             var choices = new List<CoreModels.Choice>();
-            
+
             // Handle null choices
             if (dynamicChoices == null)
             {
                 return choices;
             }
-            
+
             try
             {
                 foreach (var choice in dynamicChoices)
@@ -1066,10 +1068,10 @@ namespace ConduitLLM.Providers
                 // Log and return whatever choices we managed to process
                 Logger.LogError(ex, "Error mapping choices");
             }
-            
+
             return choices;
         }
-        
+
         /// <summary>
         /// Maps a single dynamic choice to a strongly-typed Choice object.
         /// </summary>
@@ -1087,16 +1089,16 @@ namespace ConduitLLM.Providers
                     Content = choice.Message.Content
                 }
             };
-            
+
             // Handle tool calls if present
             if (choice.Message.ToolCalls != null)
             {
                 mappedChoice.Message.ToolCalls = MapResponseToolCalls(choice.Message.ToolCalls);
             }
-            
+
             return mappedChoice;
         }
-        
+
         /// <summary>
         /// Maps dynamic tool calls from a response to strongly-typed ToolCall objects.
         /// </summary>
@@ -1105,7 +1107,7 @@ namespace ConduitLLM.Providers
         private List<CoreModels.ToolCall> MapResponseToolCalls(dynamic toolCalls)
         {
             var mappedToolCalls = new List<CoreModels.ToolCall>();
-            
+
             foreach (var toolCall in toolCalls)
             {
                 try
@@ -1119,10 +1121,10 @@ namespace ConduitLLM.Providers
                     Logger.LogWarning("Error mapping tool call: {Error}", ex.Message);
                 }
             }
-            
+
             return mappedToolCalls;
         }
-        
+
         /// <summary>
         /// Maps a single dynamic tool call from a response to a strongly-typed ToolCall object.
         /// </summary>
@@ -1141,7 +1143,7 @@ namespace ConduitLLM.Providers
                 }
             };
         }
-        
+
         /// <summary>
         /// Maps dynamic streaming choices to strongly-typed StreamingChoice objects.
         /// </summary>
@@ -1152,13 +1154,13 @@ namespace ConduitLLM.Providers
             try
             {
                 var choices = new List<CoreModels.StreamingChoice>();
-                
+
                 // Handle null choices
                 if (dynamicChoices == null)
                 {
                     return choices;
                 }
-                
+
                 foreach (var choice in dynamicChoices)
                 {
                     try
@@ -1172,7 +1174,7 @@ namespace ConduitLLM.Providers
                         Logger.LogWarning("Error processing streaming choice: {Error}", ex.Message);
                     }
                 }
-                
+
                 return choices;
             }
             catch (Exception ex)
@@ -1182,7 +1184,7 @@ namespace ConduitLLM.Providers
                 return new List<CoreModels.StreamingChoice>();
             }
         }
-        
+
         /// <summary>
         /// Maps a single dynamic streaming choice to a strongly-typed StreamingChoice object.
         /// </summary>
@@ -1200,16 +1202,16 @@ namespace ConduitLLM.Providers
                     Content = choice.Delta?.Content
                 }
             };
-            
+
             // Handle tool calls if present
             if (choice.Delta != null && choice.Delta.ToolCalls != null)
             {
                 streamingChoice.Delta.ToolCalls = MapToolCalls(choice.Delta.ToolCalls);
             }
-            
+
             return streamingChoice;
         }
-        
+
         /// <summary>
         /// Maps dynamic tool calls to strongly-typed ToolCallChunk objects.
         /// </summary>
@@ -1218,7 +1220,7 @@ namespace ConduitLLM.Providers
         private List<CoreModels.ToolCallChunk> MapToolCalls(dynamic toolCalls)
         {
             var mappedToolCalls = new List<CoreModels.ToolCallChunk>();
-            
+
             foreach (var toolCall in toolCalls)
             {
                 try
@@ -1232,10 +1234,10 @@ namespace ConduitLLM.Providers
                     Logger.LogWarning("Error processing tool call in stream: {Error}", ex.Message);
                 }
             }
-            
+
             return mappedToolCalls;
         }
-        
+
         /// <summary>
         /// Maps a single dynamic tool call to a strongly-typed ToolCallChunk object.
         /// </summary>
@@ -1249,7 +1251,7 @@ namespace ConduitLLM.Providers
                 Id = toolCall.Id,
                 Type = toolCall.Type
             };
-            
+
             if (toolCall.Function != null)
             {
                 mappedToolCall.Function = new CoreModels.FunctionCallChunk
@@ -1258,10 +1260,10 @@ namespace ConduitLLM.Providers
                     Arguments = toolCall.Function.Arguments
                 };
             }
-            
+
             return mappedToolCall;
         }
-        
+
         /// <summary>
         /// Configure the HTTP client with provider-specific settings.
         /// </summary>
@@ -1274,13 +1276,13 @@ namespace ConduitLLM.Providers
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Set the base address if not already set
             if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
             {
                 client.BaseAddress = new Uri(BaseUrl);
             }
-            
+
             // Add OpenAI API version header if needed
             // client.DefaultRequestHeaders.Add("OpenAI-Version", "2023-05-15");
         }
@@ -1297,7 +1299,7 @@ namespace ConduitLLM.Providers
         protected virtual string ExtractEnhancedErrorMessage(Exception ex)
         {
             // Try to extract error details in order of preference:
-            
+
             // 1. Look for "Response:" pattern in the message
             var msg = ex.Message;
             var responseIdx = msg.IndexOf("Response:");
@@ -1309,7 +1311,7 @@ namespace ConduitLLM.Providers
                     return extracted;
                 }
             }
-            
+
             // 2. Look for JSON content in the message
             var jsonStart = msg.IndexOf("{");
             var jsonEnd = msg.LastIndexOf("}");
@@ -1332,19 +1334,19 @@ namespace ConduitLLM.Providers
                     // If parsing fails, continue to the next method
                 }
             }
-            
+
             // 3. Look for Body data in the exception's Data dictionary
             if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
             {
                 return body;
             }
-            
+
             // 4. Try inner exception
             if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
             {
                 return ex.InnerException.Message;
             }
-            
+
             // 5. Fallback to original message
             return msg;
         }

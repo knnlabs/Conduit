@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -115,7 +117,7 @@ namespace ConduitLLM.Core.Services
             foreach (var entity in detectionResult.Entities.OrderByDescending(e => e.StartIndex))
             {
                 var replacement = GetRedactionReplacement(entity, options);
-                
+
                 redactedText = redactedText.Remove(entity.StartIndex, entity.EndIndex - entity.StartIndex);
                 redactedText = redactedText.Insert(entity.StartIndex, replacement);
             }
@@ -228,7 +230,7 @@ namespace ConduitLLM.Core.Services
 
             var sum = 0;
             var alternate = false;
-            
+
             for (var i = digits.Length - 1; i >= 0; i--)
             {
                 var digit = digits[i];

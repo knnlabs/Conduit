@@ -1,10 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Data
 {
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Data
         private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
         private readonly ILogger<DatabaseInitializer> _logger;
         private readonly string _dbProvider;
-        
+
         // Dictionary of table definitions for direct creation when migrations fail
         private readonly Dictionary<string, Dictionary<string, string>> _tableDefinitions;
 
@@ -31,7 +32,7 @@ namespace ConduitLLM.Configuration.Data
         {
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Determine database provider by creating a context and checking its database provider name
             using var context = _dbContextFactory.CreateDbContext();
             _dbProvider = context.Database.ProviderName?.ToLowerInvariant() switch
@@ -40,9 +41,9 @@ namespace ConduitLLM.Configuration.Data
                 var p when p?.Contains("npgsql") == true => "postgres",
                 _ => throw new InvalidOperationException($"Unsupported database provider: {context.Database.ProviderName}")
             };
-            
+
             _logger.LogInformation("Database provider detected: {Provider}", _dbProvider);
-            
+
             // Initialize table definitions for each supported provider
             _tableDefinitions = InitializeTableDefinitions();
         }
@@ -56,49 +57,49 @@ namespace ConduitLLM.Configuration.Data
         public async Task<bool> InitializeDatabaseAsync(int maxRetries = 5, int retryDelayMs = 1000)
         {
             _logger.LogInformation("Starting database initialization with {Provider} provider", _dbProvider);
-            
+
             for (int retry = 0; retry < maxRetries; retry++)
             {
                 try
                 {
                     using var context = _dbContextFactory.CreateDbContext();
-                    
+
                     // Verify database connection
                     if (!await context.Database.CanConnectAsync())
                     {
-                        _logger.LogWarning("Cannot connect to database. Attempt {Retry}/{MaxRetries}", 
+                        _logger.LogWarning("Cannot connect to database. Attempt {Retry}/{MaxRetries}",
                             retry + 1, maxRetries);
                         await Task.Delay(retryDelayMs);
                         continue;
                     }
-                    
+
                     // Try both EnsureCreated and Migrate approaches
                     await ApplyMigrationsWithFallbackAsync(context);
-                    
+
                     // Verify critical tables exist
-                    var tablesToVerify = new[] 
-                    { 
-                        "GlobalSettings", 
-                        "VirtualKeys", 
-                        "ModelCosts", 
+                    var tablesToVerify = new[]
+                    {
+                        "GlobalSettings",
+                        "VirtualKeys",
+                        "ModelCosts",
                         "RequestLogs",
                         "VirtualKeySpendHistory",
                         "ProviderHealthRecords",
                         "IpFilters"
                     };
-                    
+
                     if (!await AreTablesCreatedAsync(context, tablesToVerify))
                     {
                         _logger.LogWarning("Not all required tables were created by migrations. Attempting direct table creation.");
                         await EnsureTablesExistAsync(tablesToVerify);
                     }
-                    
+
                     _logger.LogInformation("Database initialization completed successfully");
                     return true;
                 }
                 catch (Exception ex) when (retry < maxRetries - 1)
                 {
-                    _logger.LogWarning(ex, "Error during database initialization. Attempt {Retry}/{MaxRetries}", 
+                    _logger.LogWarning(ex, "Error during database initialization. Attempt {Retry}/{MaxRetries}",
                         retry + 1, maxRetries);
                     await Task.Delay(retryDelayMs);
                 }
@@ -108,10 +109,10 @@ namespace ConduitLLM.Configuration.Data
                     return false;
                 }
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Ensures that specific tables exist by creating them directly if necessary
         /// </summary>
@@ -123,23 +124,23 @@ namespace ConduitLLM.Configuration.Data
             {
                 return true;
             }
-            
+
             using var context = _dbContextFactory.CreateDbContext();
             bool allTablesExist = true;
-            
+
             foreach (var tableName in tableNames)
             {
                 if (!await TableExistsAsync(context, tableName))
                 {
                     _logger.LogInformation("Table {TableName} does not exist. Attempting to create it directly.", tableName);
-                    
+
                     if (!_tableDefinitions.TryGetValue(tableName, out var tableDefinition))
                     {
                         _logger.LogWarning("No table definition found for {TableName}", tableName);
                         allTablesExist = false;
                         continue;
                     }
-                    
+
                     try
                     {
                         await CreateTableDirectlyAsync(context, tableName, tableDefinition);
@@ -152,18 +153,18 @@ namespace ConduitLLM.Configuration.Data
                     }
                 }
             }
-            
+
             return allTablesExist;
         }
-        
+
         /// <summary>
         /// Gets the current database provider type
         /// </summary>
         /// <returns>The database provider type as a string ("sqlite" or "postgres")</returns>
         public string GetDatabaseProviderType() => _dbProvider;
-        
+
         // Private helper methods
-        
+
         private async Task ApplyMigrationsWithFallbackAsync(ConfigurationDbContext context)
         {
             try
@@ -172,16 +173,16 @@ namespace ConduitLLM.Configuration.Data
                 bool isNewDatabase = false;
                 try
                 {
-                    var sql = _dbProvider == "postgres" 
+                    var sql = _dbProvider == "postgres"
                         ? "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '__EFMigrationsHistory');"
                         : "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory';";
-                    
+
                     using var command = context.Database.GetDbConnection().CreateCommand();
                     command.CommandText = sql;
                     await context.Database.OpenConnectionAsync();
                     var result = await command.ExecuteScalarAsync();
-                    
-                    isNewDatabase = _dbProvider == "postgres" 
+
+                    isNewDatabase = _dbProvider == "postgres"
                         ? !(bool)(result ?? false)
                         : Convert.ToInt32(result ?? 0) == 0;
                 }
@@ -190,18 +191,18 @@ namespace ConduitLLM.Configuration.Data
                     // If we can't check, assume it's a new database
                     isNewDatabase = true;
                 }
-                
+
                 if (isNewDatabase)
                 {
                     _logger.LogInformation("No migration history found. Initializing database...");
-                    
+
                     // Check if any tables already exist
                     var hasExistingTables = await TableExistsAsync(context, "GlobalSettings");
-                    
+
                     if (hasExistingTables)
                     {
                         _logger.LogWarning("Database has existing tables but no migration history. This might be from a previous run or manual creation.");
-                        
+
                         // Create the migrations history table and mark all current migrations as applied
                         try
                         {
@@ -220,12 +221,12 @@ namespace ConduitLLM.Configuration.Data
                         // Fresh database - use EnsureCreated for cross-database compatibility
                         // This avoids issues with database-specific migration SQL
                         _logger.LogInformation("Creating database schema using EnsureCreated for cross-database compatibility...");
-                        
+
                         try
                         {
                             await context.Database.EnsureCreatedAsync();
                             _logger.LogInformation("Database schema created successfully");
-                            
+
                             // Create migration history table and mark all migrations as applied
                             // This ensures future migrations can be applied correctly
                             await CreateMigrationHistoryTableAsync(context);
@@ -245,9 +246,9 @@ namespace ConduitLLM.Configuration.Data
                     var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
                     if (pendingMigrations.Any())
                     {
-                        _logger.LogInformation("Applying {Count} pending migrations: {Migrations}", 
+                        _logger.LogInformation("Applying {Count} pending migrations: {Migrations}",
                             pendingMigrations.Count(), string.Join(", ", pendingMigrations));
-                        
+
                         await context.Database.MigrateAsync();
                         _logger.LogInformation("Database migrations applied successfully");
                     }
@@ -261,7 +262,7 @@ namespace ConduitLLM.Configuration.Data
             {
                 // This is the specific error we're seeing - handle it gracefully
                 _logger.LogWarning("Model has pending changes but migrations are empty. This is typically safe to ignore in production.");
-                
+
                 // Try to apply migrations anyway - empty migrations are harmless
                 try
                 {
@@ -277,14 +278,14 @@ namespace ConduitLLM.Configuration.Data
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error applying migrations. This may indicate a schema mismatch.");
-                
+
                 // Don't fall back to EnsureCreated in production - it's dangerous
                 // EnsureCreated can't work with migrations and could cause data loss
                 throw new InvalidOperationException(
                     "Failed to apply database migrations. Please ensure the database is accessible and the schema is compatible.", ex);
             }
         }
-        
+
         private async Task<bool> AreTablesCreatedAsync(ConfigurationDbContext context, string[] tableNames)
         {
             foreach (var tableName in tableNames)
@@ -295,10 +296,10 @@ namespace ConduitLLM.Configuration.Data
                     return false;
                 }
             }
-            
+
             return true;
         }
-        
+
         private async Task<bool> TableExistsAsync(ConfigurationDbContext context, string tableName)
         {
             try
@@ -308,9 +309,9 @@ namespace ConduitLLM.Configuration.Data
                 {
                     await connection.OpenAsync();
                 }
-                
+
                 using var command = connection.CreateCommand();
-                
+
                 if (_dbProvider == "postgres")
                 {
                     command.CommandText = $@"
@@ -319,7 +320,7 @@ namespace ConduitLLM.Configuration.Data
                             WHERE table_schema = 'public' 
                             AND table_name = '{tableName}'
                         );";
-                    
+
                     var result = await command.ExecuteScalarAsync();
                     return result != null && (result is bool boolResult ? boolResult : Convert.ToBoolean(result));
                 }
@@ -329,7 +330,7 @@ namespace ConduitLLM.Configuration.Data
                         SELECT COUNT(*) 
                         FROM sqlite_master 
                         WHERE type='table' AND name='{tableName}';";
-                    
+
                     var result = await command.ExecuteScalarAsync();
                     return result != null && Convert.ToInt32(result) > 0;
                 }
@@ -340,7 +341,7 @@ namespace ConduitLLM.Configuration.Data
                 return false;
             }
         }
-        
+
         private async Task CreateTableDirectlyAsync(ConfigurationDbContext context, string tableName, Dictionary<string, string> columnDefinitions)
         {
             var connection = context.Database.GetDbConnection();
@@ -348,17 +349,17 @@ namespace ConduitLLM.Configuration.Data
             {
                 await connection.OpenAsync();
             }
-            
+
             using var command = connection.CreateCommand();
-            
+
             // Build the CREATE TABLE statement based on the provider
             string createTableSql;
-            
+
             if (_dbProvider == "postgres")
             {
-                var columnDefinitionsSql = string.Join(", ", 
+                var columnDefinitionsSql = string.Join(", ",
                     columnDefinitions.Select(kv => $"\"{kv.Key}\" {kv.Value}"));
-                
+
                 createTableSql = $@"
                     CREATE TABLE IF NOT EXISTS ""{tableName}"" (
                         {columnDefinitionsSql}
@@ -366,69 +367,69 @@ namespace ConduitLLM.Configuration.Data
             }
             else // sqlite
             {
-                var columnDefinitionsSql = string.Join(", ", 
+                var columnDefinitionsSql = string.Join(", ",
                     columnDefinitions.Select(kv => $"\"{kv.Key}\" {kv.Value}"));
-                
+
                 createTableSql = $@"
                     CREATE TABLE IF NOT EXISTS ""{tableName}"" (
                         {columnDefinitionsSql}
                     );";
             }
-            
+
             command.CommandText = createTableSql;
             await command.ExecuteNonQueryAsync();
-            
+
             // Create indexes for the table based on common patterns
             await CreateCommonIndexesAsync(context, tableName);
         }
-        
+
         private async Task CreateCommonIndexesAsync(ConfigurationDbContext context, string tableName)
         {
             // We'll create some common indexes based on the table name
             var indexesToCreate = new List<(string IndexName, string[] Columns, bool IsUnique)>();
-            
+
             // Common index patterns based on table name
             switch (tableName)
             {
                 case "GlobalSettings":
                     indexesToCreate.Add(("IX_GlobalSettings_Key", new[] { "Key" }, true));
                     break;
-                    
+
                 case "VirtualKeys":
                     indexesToCreate.Add(("IX_VirtualKeys_KeyHash", new[] { "KeyHash" }, true));
                     break;
-                    
+
                 case "ModelCosts":
                     indexesToCreate.Add(("IX_ModelCosts_ModelIdPattern", new[] { "ModelIdPattern" }, false));
                     break;
-                    
+
                 case "RequestLogs":
                     indexesToCreate.Add(("IX_RequestLogs_VirtualKeyId", new[] { "VirtualKeyId" }, false));
                     indexesToCreate.Add(("IX_RequestLogs_Timestamp", new[] { "Timestamp" }, false));
                     break;
-                    
+
                 case "VirtualKeySpendHistory":
                     indexesToCreate.Add(("IX_VirtualKeySpendHistory_VirtualKeyId", new[] { "VirtualKeyId" }, false));
                     indexesToCreate.Add(("IX_VirtualKeySpendHistory_Timestamp", new[] { "Timestamp" }, false));
                     break;
-                    
+
                 case "ProviderHealthRecords":
                     indexesToCreate.Add(("IX_ProviderHealthRecords_ProviderName_TimestampUtc", new[] { "ProviderName", "TimestampUtc" }, false));
                     indexesToCreate.Add(("IX_ProviderHealthRecords_IsOnline", new[] { "IsOnline" }, false));
                     break;
-                    
+
                 case "IpFilters":
                     indexesToCreate.Add(("IX_IpFilters_FilterType_IpAddressOrCidr", new[] { "FilterType", "IpAddressOrCidr" }, false));
                     indexesToCreate.Add(("IX_IpFilters_IsEnabled", new[] { "IsEnabled" }, false));
                     break;
             }
-            
+
             var connection = context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync();
             }
-            
+
             foreach (var index in indexesToCreate)
             {
                 try
@@ -436,7 +437,7 @@ namespace ConduitLLM.Configuration.Data
                     using var command = connection.CreateCommand();
                     string columnsList = string.Join(", ", index.Columns.Select(c => $"\"{c}\""));
                     string uniqueClause = index.IsUnique ? "UNIQUE" : "";
-                    
+
                     if (_dbProvider == "postgres")
                     {
                         command.CommandText = $@"
@@ -449,7 +450,7 @@ namespace ConduitLLM.Configuration.Data
                             CREATE {uniqueClause} INDEX IF NOT EXISTS ""{index.IndexName}"" 
                             ON ""{tableName}"" ({columnsList});";
                     }
-                    
+
                     await command.ExecuteNonQueryAsync();
                     _logger.LogInformation("Created index {IndexName} on table {TableName}", index.IndexName, tableName);
                 }
@@ -459,7 +460,7 @@ namespace ConduitLLM.Configuration.Data
                 }
             }
         }
-        
+
         private async Task CreateMigrationHistoryTableAsync(ConfigurationDbContext context)
         {
             var connection = context.Database.GetDbConnection();
@@ -467,9 +468,9 @@ namespace ConduitLLM.Configuration.Data
             {
                 await connection.OpenAsync();
             }
-            
+
             using var command = connection.CreateCommand();
-            
+
             if (_dbProvider == "postgres")
             {
                 command.CommandText = @"
@@ -488,22 +489,22 @@ namespace ConduitLLM.Configuration.Data
                         PRIMARY KEY (""MigrationId"")
                     );";
             }
-            
+
             await command.ExecuteNonQueryAsync();
         }
-        
+
         private async Task MarkAllMigrationsAsAppliedAsync(ConfigurationDbContext context)
         {
             var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
             var allMigrations = context.Database.GetMigrations();
             var efVersion = typeof(DbContext).Assembly.GetName().Version?.ToString() ?? "9.0.0";
-            
+
             var connection = context.Database.GetDbConnection();
             if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync();
             }
-            
+
             foreach (var migration in allMigrations)
             {
                 if (!appliedMigrations.Contains(migration))
@@ -512,27 +513,27 @@ namespace ConduitLLM.Configuration.Data
                     command.CommandText = @"
                         INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
                         VALUES (@migrationId, @productVersion);";
-                    
+
                     var migrationIdParam = command.CreateParameter();
                     migrationIdParam.ParameterName = "@migrationId";
                     migrationIdParam.Value = migration;
                     command.Parameters.Add(migrationIdParam);
-                    
+
                     var productVersionParam = command.CreateParameter();
                     productVersionParam.ParameterName = "@productVersion";
                     productVersionParam.Value = efVersion;
                     command.Parameters.Add(productVersionParam);
-                    
+
                     await command.ExecuteNonQueryAsync();
                     _logger.LogInformation("Marked migration {Migration} as applied", migration);
                 }
             }
         }
-        
+
         private Dictionary<string, Dictionary<string, string>> InitializeTableDefinitions()
         {
             var definitions = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-            
+
             // Define IpFilters table for both providers
             if (_dbProvider == "postgres")
             {
@@ -548,7 +549,7 @@ namespace ConduitLLM.Configuration.Data
                     { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
                     { "RowVersion", "BYTEA NULL" }
                 };
-                
+
                 definitions["GlobalSettings"] = new Dictionary<string, string>
                 {
                     { "Id", "SERIAL PRIMARY KEY" },
@@ -558,7 +559,7 @@ namespace ConduitLLM.Configuration.Data
                     { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
                     { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
-                
+
                 definitions["ProviderHealthRecords"] = new Dictionary<string, string>
                 {
                     { "Id", "SERIAL PRIMARY KEY" },
@@ -587,7 +588,7 @@ namespace ConduitLLM.Configuration.Data
                     { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
                     { "RowVersion", "BLOB NULL" }
                 };
-                
+
                 definitions["GlobalSettings"] = new Dictionary<string, string>
                 {
                     { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
@@ -597,7 +598,7 @@ namespace ConduitLLM.Configuration.Data
                     { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
                     { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
-                
+
                 definitions["ProviderHealthRecords"] = new Dictionary<string, string>
                 {
                     { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
@@ -612,9 +613,9 @@ namespace ConduitLLM.Configuration.Data
                     { "TimestampUtc", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
             }
-            
+
             // Add other table definitions as needed
-            
+
             return definitions;
         }
     }

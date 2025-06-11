@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
 {
@@ -128,7 +129,7 @@ namespace ConduitLLM.Http.Services
             // Check expiration
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
-                _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}", 
+                _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
                     virtualKey.KeyName, virtualKey.Id, virtualKey.ExpiresAt);
                 return null;
             }
@@ -136,7 +137,7 @@ namespace ConduitLLM.Http.Services
             // Check budget
             if (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value)
             {
-                _logger.LogWarning("Virtual key budget depleted: {KeyName} (ID: {KeyId}), spent {CurrentSpend}, budget {MaxBudget}", 
+                _logger.LogWarning("Virtual key budget depleted: {KeyName} (ID: {KeyId}), spent {CurrentSpend}, budget {MaxBudget}",
                     virtualKey.KeyName, virtualKey.Id, virtualKey.CurrentSpend, virtualKey.MaxBudget);
                 return null;
             }
@@ -145,17 +146,17 @@ namespace ConduitLLM.Http.Services
             if (!string.IsNullOrEmpty(requestedModel) && !string.IsNullOrEmpty(virtualKey.AllowedModels))
             {
                 bool isModelAllowed = IsModelAllowed(requestedModel, virtualKey.AllowedModels);
-                
+
                 if (!isModelAllowed)
                 {
-                    _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}", 
+                    _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
                         virtualKey.KeyName, virtualKey.Id, requestedModel);
                     return null;
                 }
             }
 
             // All validations passed
-            _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})", 
+            _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
                 virtualKey.KeyName, virtualKey.Id);
             return virtualKey;
         }
@@ -179,7 +180,7 @@ namespace ConduitLLM.Http.Services
                 {
                     _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}", keyId, virtualKey.CurrentSpend);
                 }
-                
+
                 return success;
             }
             catch (Exception ex)
@@ -193,8 +194,8 @@ namespace ConduitLLM.Http.Services
         public async Task<bool> ResetBudgetIfExpiredAsync(int keyId, CancellationToken cancellationToken = default)
         {
             var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId, cancellationToken);
-            if (virtualKey == null || 
-                string.IsNullOrEmpty(virtualKey.BudgetDuration) || 
+            if (virtualKey == null ||
+                string.IsNullOrEmpty(virtualKey.BudgetDuration) ||
                 !virtualKey.BudgetStartDate.HasValue)
             {
                 // Can't reset budget if key doesn't exist or has no budget duration/start date
@@ -215,7 +216,7 @@ namespace ConduitLLM.Http.Services
                     1,
                     0, 0, 0,
                     DateTimeKind.Utc).AddDays(-1); // Last day of the month
-                
+
                 needsReset = now > periodEnd;
             }
             else if (virtualKey.BudgetDuration.Equals("Daily", StringComparison.OrdinalIgnoreCase))
@@ -241,12 +242,12 @@ namespace ConduitLLM.Http.Services
                     }
 
                     _logger.LogInformation(
-                        "Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}", 
+                        "Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}",
                         keyId, virtualKey.CurrentSpend, virtualKey.BudgetStartDate);
-                    
+
                     // Reset the spend
                     virtualKey.CurrentSpend = 0;
-                    
+
                     // Set new budget start date based on duration
                     if (virtualKey.BudgetDuration.Equals("Monthly", StringComparison.OrdinalIgnoreCase))
                     {
@@ -256,18 +257,18 @@ namespace ConduitLLM.Http.Services
                     {
                         virtualKey.BudgetStartDate = DateTime.UtcNow.Date; // Start of current day (UTC)
                     }
-                    
+
                     virtualKey.UpdatedAt = now;
-                    
+
                     bool success = await _virtualKeyRepository.UpdateAsync(virtualKey, cancellationToken);
-                    
+
                     if (success)
                     {
                         _logger.LogInformation(
-                            "Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}", 
+                            "Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}",
                             keyId, virtualKey.BudgetStartDate);
                     }
-                    
+
                     return success;
                 }
                 catch (Exception ex)
@@ -291,18 +292,18 @@ namespace ConduitLLM.Http.Services
         {
             if (string.IsNullOrEmpty(allowedModels))
                 return true; // No restrictions
-            
+
             var allowedModelsList = allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            
+
             // First check for exact match
             if (allowedModelsList.Any(m => string.Equals(m, requestedModel, StringComparison.OrdinalIgnoreCase)))
                 return true;
-            
+
             // Then check for wildcard/prefix matches
             foreach (var allowedModel in allowedModelsList)
             {
                 // Handle wildcards like "gpt-4*" to match any GPT-4 model
-                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) && 
+                if (allowedModel.EndsWith("*", StringComparison.OrdinalIgnoreCase) &&
                     allowedModel.Length > 1)
                 {
                     string prefix = allowedModel.Substring(0, allowedModel.Length - 1);
@@ -310,7 +311,7 @@ namespace ConduitLLM.Http.Services
                         return true;
                 }
             }
-            
+
             return false;
         }
     }

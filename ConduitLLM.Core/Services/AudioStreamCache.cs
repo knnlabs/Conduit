@@ -6,12 +6,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Configuration.Services;
 
 namespace ConduitLLM.Core.Services
 {
@@ -62,7 +64,7 @@ namespace ConduitLLM.Core.Services
 
             _metrics.IncrementCachedItems();
             _logger.LogDebug("Cached transcription with key {Key} for {Duration}", cacheKey, effectiveTtl);
-            
+
             return Task.CompletedTask;
         }
 
@@ -129,9 +131,9 @@ namespace ConduitLLM.Core.Services
 
             _metrics.IncrementCachedItems();
             _metrics.AddCachedBytes(response.AudioData.Length);
-            _logger.LogDebug("Cached TTS audio with key {Key} ({Size} bytes) for {Duration}", 
+            _logger.LogDebug("Cached TTS audio with key {Key} ({Size} bytes) for {Duration}",
                 cacheKey, response.AudioData.Length, effectiveTtl);
-            
+
             return Task.CompletedTask;
         }
 
@@ -224,8 +226,8 @@ namespace ConduitLLM.Core.Services
                 TranscriptionMisses = _metrics.TranscriptionMisses,
                 TtsHits = _metrics.TtsHits,
                 TtsMisses = _metrics.TtsMisses,
-                AverageEntrySizeBytes = _metrics.TotalEntries > 0 
-                    ? _metrics.TotalSizeBytes / _metrics.TotalEntries 
+                AverageEntrySizeBytes = _metrics.TotalEntries > 0
+                    ? _metrics.TotalSizeBytes / _metrics.TotalEntries
                     : 0,
                 OldestEntryAge = _metrics.OldestEntryTime.HasValue
                     ? DateTime.UtcNow - _metrics.OldestEntryTime.Value
@@ -240,12 +242,12 @@ namespace ConduitLLM.Core.Services
         {
             // Memory cache handles expiration automatically
             // For distributed cache, we'd need to track keys separately
-            
+
             _logger.LogInformation("Clearing expired cache entries");
-            
+
             // Reset metrics for expired entries
             var cleared = await Task.FromResult(0);
-            
+
             return cleared;
         }
 
@@ -287,7 +289,7 @@ namespace ConduitLLM.Core.Services
         {
             using var sha256 = SHA256.Create();
             var dataHash = Convert.ToBase64String(sha256.ComputeHash(request.AudioData ?? Array.Empty<byte>()));
-            
+
             var keyParts = new[]
             {
                 "transcription",

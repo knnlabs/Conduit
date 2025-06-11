@@ -1,4 +1,5 @@
 using System;
+
 using ConfigDTO = ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.WebUI.DTOs
@@ -10,7 +11,7 @@ namespace ConduitLLM.WebUI.DTOs
     public class ProviderCredentialDto : ConfigDTO.ProviderCredentialDto
     {
         // All functionality is inherited from the base class
-        
+
         /// <summary>
         /// Base URL for the provider API (alias for backward compatibility)
         /// </summary>

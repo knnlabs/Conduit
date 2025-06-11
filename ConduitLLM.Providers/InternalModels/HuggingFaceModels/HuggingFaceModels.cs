@@ -10,10 +10,10 @@ public class HuggingFaceTextGenerationRequest
 {
     [JsonPropertyName("inputs")]
     public string Inputs { get; set; } = null!;
-    
+
     [JsonPropertyName("parameters")]
     public HuggingFaceParameters? Parameters { get; set; }
-    
+
     [JsonPropertyName("options")]
     public HuggingFaceOptions? Options { get; set; }
 }
@@ -25,25 +25,25 @@ public class HuggingFaceParameters
 {
     [JsonPropertyName("max_new_tokens")]
     public int? MaxNewTokens { get; set; }
-    
+
     [JsonPropertyName("temperature")]
     public double? Temperature { get; set; }
-    
+
     [JsonPropertyName("top_p")]
     public double? TopP { get; set; }
-    
+
     [JsonPropertyName("top_k")]
     public int? TopK { get; set; }
-    
+
     [JsonPropertyName("repetition_penalty")]
     public double? RepetitionPenalty { get; set; }
-    
+
     [JsonPropertyName("do_sample")]
     public bool? DoSample { get; set; }
-    
+
     [JsonPropertyName("stop")]
     public List<string>? Stop { get; set; }
-    
+
     [JsonPropertyName("return_full_text")]
     public bool? ReturnFullText { get; set; }
 }
@@ -55,7 +55,7 @@ public class HuggingFaceOptions
 {
     [JsonPropertyName("use_cache")]
     public bool? UseCache { get; set; }
-    
+
     [JsonPropertyName("wait_for_model")]
     public bool? WaitForModel { get; set; }
 }
@@ -76,10 +76,10 @@ public class HuggingFaceChatRequest
 {
     [JsonPropertyName("inputs")]
     public HuggingFaceChatInputs Inputs { get; set; } = new();
-    
+
     [JsonPropertyName("parameters")]
     public HuggingFaceParameters? Parameters { get; set; }
-    
+
     [JsonPropertyName("options")]
     public HuggingFaceOptions? Options { get; set; }
 }
@@ -91,10 +91,10 @@ public class HuggingFaceChatInputs
 {
     [JsonPropertyName("past_user_inputs")]
     public List<string>? PastUserInputs { get; set; }
-    
+
     [JsonPropertyName("generated_responses")]
     public List<string>? GeneratedResponses { get; set; }
-    
+
     [JsonPropertyName("text")]
     public string? Text { get; set; }
 }
@@ -106,7 +106,7 @@ public class HuggingFaceChatResponse
 {
     [JsonPropertyName("generated_text")]
     public string? GeneratedText { get; set; }
-    
+
     [JsonPropertyName("conversation")]
     public HuggingFaceConversation? Conversation { get; set; }
 }
@@ -118,7 +118,7 @@ public class HuggingFaceConversation
 {
     [JsonPropertyName("past_user_inputs")]
     public List<string>? PastUserInputs { get; set; }
-    
+
     [JsonPropertyName("generated_responses")]
     public List<string>? GeneratedResponses { get; set; }
 }
@@ -130,7 +130,7 @@ public class HuggingFaceEmbeddingRequest
 {
     [JsonPropertyName("inputs")]
     public string[] Inputs { get; set; } = null!;
-    
+
     [JsonPropertyName("options")]
     public HuggingFaceOptions? Options { get; set; }
 }
@@ -152,7 +152,7 @@ public class HuggingFaceImageGenerationRequest
 {
     [JsonPropertyName("inputs")]
     public string Inputs { get; set; } = null!;
-    
+
     [JsonPropertyName("options")]
     public HuggingFaceOptions? Options { get; set; }
 }
@@ -164,7 +164,7 @@ public class HuggingFacePipelineRequest
 {
     [JsonPropertyName("inputs")]
     public object Inputs { get; set; } = null!;
-    
+
     [JsonPropertyName("parameters")]
     public object? Parameters { get; set; }
 }

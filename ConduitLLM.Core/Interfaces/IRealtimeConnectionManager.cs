@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models.Realtime;
 
 namespace ConduitLLM.Core.Interfaces
@@ -25,8 +26,8 @@ namespace ConduitLLM.Core.Interfaces
         /// <returns>A task that completes when registration is done.</returns>
         /// <exception cref="InvalidOperationException">Thrown when connection limit is exceeded.</exception>
         Task RegisterConnectionAsync(
-            string connectionId, 
-            int virtualKeyId, 
+            string connectionId,
+            int virtualKeyId,
             string model,
             WebSocket webSocket);
 

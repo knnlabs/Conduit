@@ -1,9 +1,11 @@
+using System;
+
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Services;
-using Microsoft.Extensions.DependencyInjection;
+
 using Microsoft.Extensions.Configuration;
-using System;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.WebUI.Extensions
 {
@@ -55,7 +57,7 @@ namespace ConduitLLM.WebUI.Extensions
             // Register HTTP client for AdminApiClient with resilience policies
             services.AddHttpClient<AdminApiClient>()
                 .AddAdminApiResiliencePolicies();
-            
+
             // Register as interfaces
             services.AddScoped<IAdminApiClient>(sp => sp.GetRequiredService<AdminApiClient>());
             services.AddScoped<IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());

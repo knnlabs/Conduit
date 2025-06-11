@@ -3,15 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Repositories
@@ -26,28 +30,28 @@ namespace ConduitLLM.Tests.Repositories
         {
             _mockDbContextFactory = new Mock<IDbContextFactory<ConfigurationDbContext>>();
             _mockLogger = new Mock<ILogger<ModelCostRepository>>();
-            
+
             _repository = new ModelCostRepository(_mockDbContextFactory.Object, _mockLogger.Object);
         }
-        
+
         // Helper method to create DbSet mocks
         private static Mock<DbSet<T>> CreateDbSetMock<T>(List<T> data) where T : class
         {
             var queryable = data.AsQueryable();
             var mockSet = new Mock<DbSet<T>>();
-            
+
             mockSet.As<IAsyncEnumerable<T>>()
                 .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
                 .Returns(new TestAsyncEnumerator<T>(queryable.GetEnumerator()));
-            
+
             mockSet.As<IQueryable<T>>()
                 .Setup(m => m.Provider)
                 .Returns(new TestAsyncQueryProvider<T>(queryable.Provider));
-            
+
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
-            
+
             return mockSet;
         }
 
@@ -64,7 +68,7 @@ namespace ConduitLLM.Tests.Repositories
                     ApiKey = "sk-test-key"
                 }
             };
-            
+
             var modelMappings = new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>
             {
                 new ConduitLLM.Configuration.Entities.ModelProviderMapping
@@ -82,7 +86,7 @@ namespace ConduitLLM.Tests.Repositories
                     ProviderCredentialId = 1
                 }
             };
-            
+
             var modelCosts = new List<ModelCost>
             {
                 new ModelCost
@@ -114,31 +118,31 @@ namespace ConduitLLM.Tests.Repositories
                     OutputTokenCost = 0.00003m
                 }
             };
-            
+
             // Set up DbSet mocks
             var credentialsDbSet = CreateDbSetMock(credentials);
             var modelMappingsDbSet = CreateDbSetMock(modelMappings);
             var modelCostsDbSet = CreateDbSetMock(modelCosts);
-            
+
             // Create a new mock context for this test
             var mockDbContext = new Mock<ConfigurationDbContext>(new DbContextOptions<ConfigurationDbContext>());
             mockDbContext.Setup(c => c.ProviderCredentials).Returns(credentialsDbSet.Object);
             mockDbContext.Setup(c => c.ModelProviderMappings).Returns(modelMappingsDbSet.Object);
             mockDbContext.Setup(c => c.ModelCosts).Returns(modelCostsDbSet.Object);
-            
+
             // Add mock for Database
             var mockDatabase = new Mock<DatabaseFacade>(mockDbContext.Object);
             mockDatabase.Setup(d => d.BeginTransactionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Mock.Of<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
             mockDbContext.Setup(c => c.Database).Returns(mockDatabase.Object);
-            
+
             // Update the factory to return this context
             _mockDbContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockDbContext.Object);
-            
+
             // Act
             var result = await _repository.GetByProviderAsync(providerName);
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Equal(3, result.Count); // 2 exact matches + openai/* pattern
@@ -147,7 +151,7 @@ namespace ConduitLLM.Tests.Repositories
             Assert.Contains(result, c => c.Id == 3); // openai/whisper (provider name in pattern)
             Assert.DoesNotContain(result, c => c.Id == 4); // anthropic* (not related to OpenAI)
         }
-        
+
         [Fact]
         public async Task GetByProviderAsync_WithWildcardPatterns_ReturnsMatchingCosts()
         {
@@ -161,7 +165,7 @@ namespace ConduitLLM.Tests.Repositories
                     ApiKey = "sk-ant-key"
                 }
             };
-            
+
             var modelMappings = new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>
             {
                 new ConduitLLM.Configuration.Entities.ModelProviderMapping
@@ -172,7 +176,7 @@ namespace ConduitLLM.Tests.Repositories
                     ProviderCredentialId = 1
                 }
             };
-            
+
             var modelCosts = new List<ModelCost>
             {
                 new ModelCost
@@ -204,31 +208,31 @@ namespace ConduitLLM.Tests.Repositories
                     OutputTokenCost = 0.00003m
                 }
             };
-            
+
             // Set up DbSet mocks
             var credentialsDbSet = CreateDbSetMock(credentials);
             var modelMappingsDbSet = CreateDbSetMock(modelMappings);
             var modelCostsDbSet = CreateDbSetMock(modelCosts);
-            
+
             // Create a new mock context for this test
             var mockDbContext = new Mock<ConfigurationDbContext>(new DbContextOptions<ConfigurationDbContext>());
             mockDbContext.Setup(c => c.ProviderCredentials).Returns(credentialsDbSet.Object);
             mockDbContext.Setup(c => c.ModelProviderMappings).Returns(modelMappingsDbSet.Object);
             mockDbContext.Setup(c => c.ModelCosts).Returns(modelCostsDbSet.Object);
-            
+
             // Add mock for Database
             var mockDatabase = new Mock<DatabaseFacade>(mockDbContext.Object);
             mockDatabase.Setup(d => d.BeginTransactionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Mock.Of<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
             mockDbContext.Setup(c => c.Database).Returns(mockDatabase.Object);
-            
+
             // Update the factory to return this context
             _mockDbContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockDbContext.Object);
-            
+
             // Act
             var result = await _repository.GetByProviderAsync(providerName);
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Equal(3, result.Count); // claude-3* wildcard match + anthropic* prefix patterns
@@ -237,42 +241,42 @@ namespace ConduitLLM.Tests.Repositories
             Assert.Contains(result, c => c.Id == 3); // anthropic* matches provider name pattern
             Assert.DoesNotContain(result, c => c.Id == 4); // openai* not related to Anthropic
         }
-        
+
         [Fact]
         public async Task GetByProviderAsync_WithNoCredentials_ReturnsEmptyList()
         {
             // Arrange
             var providerName = "NonExistentProvider";
-            
+
             // Set up empty DbSet mocks
             var credentialsDbSet = CreateDbSetMock(new List<ProviderCredential>());
             var modelMappingsDbSet = CreateDbSetMock(new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>());
             var modelCostsDbSet = CreateDbSetMock(new List<ModelCost>());
-            
+
             // Create a new mock context for this test
             var mockDbContext = new Mock<ConfigurationDbContext>(new DbContextOptions<ConfigurationDbContext>());
             mockDbContext.Setup(c => c.ProviderCredentials).Returns(credentialsDbSet.Object);
             mockDbContext.Setup(c => c.ModelProviderMappings).Returns(modelMappingsDbSet.Object);
             mockDbContext.Setup(c => c.ModelCosts).Returns(modelCostsDbSet.Object);
-            
+
             // Add mock for Database
             var mockDatabase = new Mock<DatabaseFacade>(mockDbContext.Object);
             mockDatabase.Setup(d => d.BeginTransactionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Mock.Of<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
             mockDbContext.Setup(c => c.Database).Returns(mockDatabase.Object);
-            
+
             // Update the factory to return this context
             _mockDbContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockDbContext.Object);
-            
+
             // Act
             var result = await _repository.GetByProviderAsync(providerName);
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Empty(result);
         }
-        
+
         [Fact]
         public async Task GetByProviderAsync_WithNoModelMappings_ReturnsEmptyList()
         {
@@ -286,37 +290,37 @@ namespace ConduitLLM.Tests.Repositories
                     ApiKey = "sk-test-key"
                 }
             };
-            
+
             // Set up DbSet mocks
             var credentialsDbSet = CreateDbSetMock(credentials);
             var modelMappingsDbSet = CreateDbSetMock(new List<ConduitLLM.Configuration.Entities.ModelProviderMapping>());
             var modelCostsDbSet = CreateDbSetMock(new List<ModelCost>());
-            
+
             // Create a new mock context for this test
             var mockDbContext = new Mock<ConfigurationDbContext>(new DbContextOptions<ConfigurationDbContext>());
             mockDbContext.Setup(c => c.ProviderCredentials).Returns(credentialsDbSet.Object);
             mockDbContext.Setup(c => c.ModelProviderMappings).Returns(modelMappingsDbSet.Object);
             mockDbContext.Setup(c => c.ModelCosts).Returns(modelCostsDbSet.Object);
-            
+
             // Add mock for Database
             var mockDatabase = new Mock<DatabaseFacade>(mockDbContext.Object);
             mockDatabase.Setup(d => d.BeginTransactionAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Mock.Of<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction>());
             mockDbContext.Setup(c => c.Database).Returns(mockDatabase.Object);
-            
+
             // Update the factory to return this context
             _mockDbContextFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockDbContext.Object);
-            
+
             // Act
             var result = await _repository.GetByProviderAsync(providerName);
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Empty(result);
         }
     }
-    
+
     // Helper classes for mocking async queries
     internal class TestAsyncQueryProvider<TEntity> : IAsyncQueryProvider
     {
@@ -351,7 +355,7 @@ namespace ConduitLLM.Tests.Repositories
         {
             var resultType = typeof(TResult).GetGenericArguments()[0];
             var executionResult = _inner.Execute(expression);
-            
+
             var method = typeof(Task).GetMethod(nameof(Task.FromResult))!;
             return (TResult)method
                 .MakeGenericMethod(resultType)

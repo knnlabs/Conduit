@@ -1,12 +1,14 @@
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Configuration.Repositories;
+
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.HealthChecks
 {
@@ -65,7 +67,7 @@ namespace ConduitLLM.Configuration.HealthChecks
                 foreach (var provider in enabledProviders)
                 {
                     var recentHealth = await _providerHealthRepository.GetLatestStatusAsync(provider.ProviderName);
-                    
+
                     if (recentHealth == null)
                     {
                         healthData[$"{provider.ProviderName}_status"] = "Unknown";

@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -45,7 +47,7 @@ namespace ConduitLLM.Admin.Services
         public async Task<PagedResult<AudioUsageDto>> GetUsageLogsAsync(AudioUsageQueryDto query)
         {
             var pagedResult = await _repository.GetPagedAsync(query);
-            
+
             return new PagedResult<AudioUsageDto>
             {
                 Items = pagedResult.Items.Select(MapToDto).ToList(),
@@ -67,10 +69,10 @@ namespace ConduitLLM.Admin.Services
         {
             var logs = await _repository.GetByVirtualKeyAsync(virtualKey, startDate, endDate);
             var key = await _virtualKeyRepository.GetByKeyHashAsync(virtualKey);
-            
+
             var effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
             var effectiveEndDate = endDate ?? DateTime.UtcNow;
-            
+
             var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
             var providerBreakdown = await _repository.GetProviderBreakdownAsync(effectiveStartDate, effectiveEndDate, virtualKey);
 
@@ -90,12 +92,12 @@ namespace ConduitLLM.Admin.Services
         public async Task<Interfaces.AudioProviderUsageDto> GetUsageByProviderAsync(string provider, DateTime? startDate = null, DateTime? endDate = null)
         {
             var logs = await _repository.GetByProviderAsync(provider, startDate, endDate);
-            
+
             var effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
             var effectiveEndDate = endDate ?? DateTime.UtcNow;
-            
+
             var operationBreakdown = await _repository.GetOperationBreakdownAsync(effectiveStartDate, effectiveEndDate);
-            
+
             // Calculate daily trend
             var dailyTrend = logs
                 .GroupBy(l => l.Timestamp.Date)
@@ -129,7 +131,7 @@ namespace ConduitLLM.Admin.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();
-            
+
             if (sessionStore == null)
             {
                 _logger.LogWarning("Real-time session store not available");
@@ -154,7 +156,7 @@ namespace ConduitLLM.Admin.Services
                 .GroupBy(s => s.Provider)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            var averageDuration = sessions.Any() 
+            var averageDuration = sessions.Any()
                 ? sessions.Average(s => s.Statistics.Duration.TotalMinutes)
                 : 0;
 
@@ -162,7 +164,7 @@ namespace ConduitLLM.Admin.Services
                 .Sum(s => s.Statistics.Duration.TotalMinutes);
 
             var successfulSessions = sessions.Count(s => s.Statistics.ErrorCount == 0);
-            var successRate = sessions.Any() 
+            var successRate = sessions.Any()
                 ? (successfulSessions / (double)sessions.Count) * 100
                 : 100;
 
@@ -171,7 +173,7 @@ namespace ConduitLLM.Admin.Services
                 : 0;
 
             // Calculate cost (simplified - would need proper cost calculation)
-            var totalCostToday = todaySessions.Sum(s => 
+            var totalCostToday = todaySessions.Sum(s =>
             {
                 var inputMinutes = s.Statistics.InputAudioDuration.TotalMinutes;
                 var outputMinutes = s.Statistics.OutputAudioDuration.TotalMinutes;
@@ -196,7 +198,7 @@ namespace ConduitLLM.Admin.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();
-            
+
             if (sessionStore == null)
             {
                 _logger.LogWarning("Real-time session store not available");
@@ -204,7 +206,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             var sessions = await sessionStore.GetActiveSessionsAsync();
-            
+
             return sessions.Select(s => MapSessionToDto(s)).ToList();
         }
 
@@ -213,7 +215,7 @@ namespace ConduitLLM.Admin.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();
-            
+
             if (sessionStore == null)
             {
                 _logger.LogWarning("Real-time session store not available");
@@ -221,7 +223,7 @@ namespace ConduitLLM.Admin.Services
             }
 
             var session = await sessionStore.GetSessionAsync(sessionId);
-            
+
             return session != null ? MapSessionToDto(session) : null;
         }
 
@@ -230,7 +232,7 @@ namespace ConduitLLM.Admin.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var sessionStore = scope.ServiceProvider.GetService<IRealtimeSessionStore>();
-            
+
             if (sessionStore == null)
             {
                 _logger.LogWarning("Real-time session store not available");
@@ -247,17 +249,17 @@ namespace ConduitLLM.Admin.Services
             // Update session state to closed
             session.State = SessionState.Closed;
             session.Statistics.Duration = DateTime.UtcNow - session.CreatedAt;
-            
+
             await sessionStore.UpdateSessionAsync(session);
-            
+
             // Remove from active sessions
             var removed = await sessionStore.RemoveSessionAsync(sessionId);
-            
+
             if (removed)
             {
                 _logger.LogInformation("Terminated session {SessionId}", sessionId);
             }
-            
+
             return removed;
         }
 
@@ -285,10 +287,10 @@ namespace ConduitLLM.Admin.Services
         {
             var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
             var deletedCount = await _repository.DeleteOldLogsAsync(cutoffDate);
-            
-            _logger.LogInformation("Cleaned up {Count} audio usage logs older than {Date}", 
+
+            _logger.LogInformation("Cleaned up {Count} audio usage logs older than {Date}",
                 deletedCount, cutoffDate);
-            
+
             return deletedCount;
         }
 
@@ -345,7 +347,7 @@ namespace ConduitLLM.Admin.Services
             // Simple cost calculation - should use actual provider rates
             var inputMinutes = session.Statistics.InputAudioDuration.TotalMinutes;
             var outputMinutes = session.Statistics.OutputAudioDuration.TotalMinutes;
-            
+
             return session.Provider.ToLowerInvariant() switch
             {
                 "openai" => (inputMinutes * 0.015) + (outputMinutes * 0.03),
@@ -358,14 +360,14 @@ namespace ConduitLLM.Admin.Services
         {
             var csv = new StringBuilder();
             csv.AppendLine("Timestamp,VirtualKey,Provider,Operation,Model,Duration,Cost,Status,Language,Voice");
-            
+
             foreach (var log in logs.OrderBy(l => l.Timestamp))
             {
                 csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.VirtualKey},{log.Provider}," +
                     $"{log.OperationType},{log.Model},{log.DurationSeconds},{log.Cost:F4}," +
                     $"{log.StatusCode},{log.Language ?? "N/A"},{log.Voice ?? "N/A"}");
             }
-            
+
             return await Task.FromResult(csv.ToString());
         }
 
@@ -385,7 +387,7 @@ namespace ConduitLLM.Admin.Services
                 voice = l.Voice,
                 error = l.ErrorMessage
             });
-            
+
             return await Task.FromResult(System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = true

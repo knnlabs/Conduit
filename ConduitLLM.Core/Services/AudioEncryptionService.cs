@@ -5,8 +5,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -40,7 +42,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 using var aesGcm = new AesGcm(await GetOrCreateKeyAsync(), 16); // 16 byte tag size
-                
+
                 // Generate nonce/IV
                 var nonce = new byte[12]; // AES-GCM nonce is 12 bytes
                 RandomNumberGenerator.Fill(nonce);
@@ -106,7 +108,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 using var aesGcm = new AesGcm(key, 16); // 16 byte tag size
-                
+
                 // Prepare plaintext buffer
                 var plaintext = new byte[encryptedData.EncryptedBytes.Length];
 
@@ -149,12 +151,12 @@ namespace ConduitLLM.Core.Services
         {
             var key = new byte[32]; // 256 bits
             RandomNumberGenerator.Fill(key);
-            
+
             var keyId = Guid.NewGuid().ToString();
             _keyStore[keyId] = key;
-            
+
             _logger.LogInformation("Generated new encryption key: {KeyId}", keyId);
-            
+
             return Task.FromResult(keyId);
         }
 

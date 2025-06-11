@@ -1,9 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -49,7 +51,7 @@ namespace ConduitLLM.Core.Services
             var cached = await _streamCache.GetCachedTranscriptionAsync(request, cancellationToken);
             if (cached != null)
             {
-                _logger.LogInformation("Returning cached transcription (saved {Ms}ms)", 
+                _logger.LogInformation("Returning cached transcription (saved {Ms}ms)",
                     (DateTime.UtcNow - startTime).TotalMilliseconds);
                 return cached;
             }
@@ -63,7 +65,7 @@ namespace ConduitLLM.Core.Services
 
             // Get pooled connection
             var connection = await _connectionPool.GetConnectionAsync(client.GetType().Name, cancellationToken);
-            
+
             try
             {
                 // Perform transcription using pooled connection
@@ -118,7 +120,7 @@ namespace ConduitLLM.Core.Services
                             Language = request.Language
                         },
                         cancellationToken);
-                    
+
                     cdnUrl = cdnResult.Url;
                 }
 
@@ -207,8 +209,8 @@ namespace ConduitLLM.Core.Services
             foreach (var provider in config.Providers)
             {
                 warmupTasks.Add(_connectionPool.WarmupAsync(
-                    provider, 
-                    config.ConnectionsPerProvider, 
+                    provider,
+                    config.ConnectionsPerProvider,
                     cancellationToken));
             }
 
@@ -216,7 +218,7 @@ namespace ConduitLLM.Core.Services
             if (config.PreloadContent != null)
             {
                 warmupTasks.Add(_streamCache.PreloadContentAsync(
-                    config.PreloadContent, 
+                    config.PreloadContent,
                     cancellationToken));
             }
 

@@ -65,8 +65,8 @@ public class LLMClientFactoryTests
         // Setup the mock HttpClientFactory to return a default HttpClient when CreateClient is called.
         // Tests that need specific handler behavior will need to configure this further.
         _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
-                              .Returns(new HttpClient()); 
-                              
+                              .Returns(new HttpClient());
+
         return new LLMClientFactory(_mockSettingsOptions.Object, _mockLoggerFactory.Object, _mockHttpClientFactory.Object); // Pass the mock factory object
     }
 
@@ -149,7 +149,7 @@ public class LLMClientFactoryTests
         Assert.Contains($"No model mapping found for alias '{nonExistentAlias}'", ex.Message);
     }
 
-     [Fact]
+    [Fact]
     public void GetClientByProvider_ProviderCredsNotFound_ThrowsConfigurationException()
     {
         // Arrange
@@ -185,7 +185,7 @@ public class LLMClientFactoryTests
         Assert.Contains("not currently supported", ex.Message);
     }
 
-     [Fact]
+    [Fact]
     public void GetClientByProvider_UnsupportedProvider_ThrowsUnsupportedProviderException()
     {
         // Arrange

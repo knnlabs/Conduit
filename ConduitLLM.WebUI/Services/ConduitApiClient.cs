@@ -2,8 +2,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+
 using ConduitLLM.Core.Models;
 using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +36,7 @@ public class ConduitApiClient : IConduitApiClient
 
         // Note: HttpClient BaseAddress is configured in Program.cs via dependency injection
         // Don't override it here as it may be different for local dev vs containerized deployment
-        
+
         // Get the admin API key to use for requests
         string adminApiKey = configuration["ApiClient:AdminApiKey"] ?? "";
         if (!string.IsNullOrEmpty(adminApiKey))
@@ -88,13 +90,13 @@ public class ConduitApiClient : IConduitApiClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
-                "/v1/chat/completions", 
-                request, 
-                _jsonOptions, 
+                "/v1/chat/completions",
+                request,
+                _jsonOptions,
                 cancellationToken);
 
             response.EnsureSuccessStatusCode();
-            
+
             return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken);
         }
         catch (Exception ex)
@@ -117,9 +119,9 @@ public class ConduitApiClient : IConduitApiClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
-                "/v1/embeddings", 
-                request, 
-                _jsonOptions, 
+                "/v1/embeddings",
+                request,
+                _jsonOptions,
                 cancellationToken);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotImplemented)
@@ -129,7 +131,7 @@ public class ConduitApiClient : IConduitApiClient
             }
 
             response.EnsureSuccessStatusCode();
-            
+
             return await response.Content.ReadFromJsonAsync<EmbeddingResponse>(_jsonOptions, cancellationToken);
         }
         catch (Exception ex)
@@ -153,18 +155,18 @@ public class ConduitApiClient : IConduitApiClient
 
         // Ensure streaming is enabled
         request.Stream = true;
-        
+
         var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", request, _jsonOptions, cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Streaming chat completion request failed with status: {StatusCode}, Content: {Content}", 
+            _logger.LogError("Streaming chat completion request failed with status: {StatusCode}, Content: {Content}",
                 response.StatusCode, errorContent);
             response.Dispose();
             yield break;
         }
-        
+
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
         using (response)
@@ -172,15 +174,15 @@ public class ConduitApiClient : IConduitApiClient
             while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync(cancellationToken);
-                
+
                 if (string.IsNullOrEmpty(line) || !line.StartsWith("data: "))
                     continue;
-                    
+
                 var jsonData = line.Substring(6); // Remove "data: " prefix
-                
+
                 if (jsonData == "[DONE]")
                     break;
-                    
+
                 ChatCompletionChunk? chunk = null;
                 if (TryDeserializeChunk(jsonData, out chunk) && chunk != null)
                 {

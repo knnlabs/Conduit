@@ -2,8 +2,10 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing
 {
@@ -34,7 +36,7 @@ namespace ConduitLLM.Core.Routing
             {
                 // Get available providers
                 var providers = new[] { "openai", "azure", "google", "vertexai" };
-                
+
                 // Find providers that support transcription
                 var transcriptionProviders = providers
                     .Where(p => _capabilityDetector.SupportsTranscription(p))
@@ -81,7 +83,7 @@ namespace ConduitLLM.Core.Routing
             {
                 // Get available providers
                 var providers = new[] { "openai", "azure", "elevenlabs", "google", "vertexai" };
-                
+
                 // Find providers that support TTS
                 var ttsProviders = providers
                     .Where(p => _capabilityDetector.SupportsTextToSpeech(p))

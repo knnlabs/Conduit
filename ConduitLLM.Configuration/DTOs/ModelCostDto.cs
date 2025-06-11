@@ -216,22 +216,22 @@ namespace ConduitLLM.Configuration.DTOs
         /// Model name or pattern
         /// </summary>
         public string Model { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Number of requests for this model
         /// </summary>
         public int RequestCount { get; set; }
-        
+
         /// <summary>
         /// Total cost for this model in USD
         /// </summary>
         public decimal TotalCost { get; set; }
-        
+
         /// <summary>
         /// Total input tokens processed
         /// </summary>
         public long InputTokens { get; set; }
-        
+
         /// <summary>
         /// Total output tokens generated
         /// </summary>

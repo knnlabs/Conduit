@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models.Audio;
 
 namespace ConduitLLM.Core.Interfaces
@@ -136,15 +137,15 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Gets the transcription hit rate.
         /// </summary>
-        public double TranscriptionHitRate => 
-            TranscriptionHits + TranscriptionMisses == 0 ? 0 : 
+        public double TranscriptionHitRate =>
+            TranscriptionHits + TranscriptionMisses == 0 ? 0 :
             (double)TranscriptionHits / (TranscriptionHits + TranscriptionMisses);
 
         /// <summary>
         /// Gets the TTS hit rate.
         /// </summary>
-        public double TtsHitRate => 
-            TtsHits + TtsMisses == 0 ? 0 : 
+        public double TtsHitRate =>
+            TtsHits + TtsMisses == 0 ? 0 :
             (double)TtsHits / (TtsHits + TtsMisses);
     }
 

@@ -4,11 +4,12 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -29,7 +30,7 @@ namespace ConduitLLM.Providers
     {
         // Default base URL for Fireworks API
         private const string DefaultFireworksApiBase = "https://api.fireworks.ai/inference/v1";
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="FireworksClient"/> class.
         /// </summary>
@@ -54,7 +55,7 @@ namespace ConduitLLM.Providers
                 defaultModels)
         {
         }
-        
+
         /// <summary>
         /// Configures the HTTP client with Fireworks-specific settings.
         /// </summary>
@@ -64,14 +65,14 @@ namespace ConduitLLM.Providers
         {
             // Call base implementation to set standard headers
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Fireworks uses OpenAI-compatible Authentication with Bearer token
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            
+
             // Set any Fireworks-specific headers if needed
             // client.DefaultRequestHeaders.Add("Fireworks-Version", "2023-12-01");
         }
-        
+
         /// <summary>
         /// Gets a fallback list of models for Fireworks.
         /// </summary>
@@ -162,21 +163,21 @@ namespace ConduitLLM.Providers
                     })
             };
         }
-        
+
         /// <summary>
         /// Validates credentials for Fireworks.
         /// </summary>
         protected override void ValidateCredentials()
         {
             base.ValidateCredentials();
-            
+
             // Fireworks requires an API key
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
                 throw new Core.Exceptions.ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
         }
-        
+
         /// <summary>
         /// Creates embeddings using Fireworks API.
         /// </summary>
@@ -197,7 +198,7 @@ namespace ConduitLLM.Providers
             // The model should come from the request or the model mapping system, not be hardcoded
             return await base.CreateEmbeddingAsync(request, apiKey, cancellationToken);
         }
-        
+
         /// <summary>
         /// Creates images using Fireworks API.
         /// </summary>

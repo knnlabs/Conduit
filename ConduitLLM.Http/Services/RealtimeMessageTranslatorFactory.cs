@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
+
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +23,7 @@ namespace ConduitLLM.Http.Services
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Register default translators
             RegisterDefaultTranslators();
         }
@@ -32,7 +34,7 @@ namespace ConduitLLM.Http.Services
             {
                 return translator;
             }
-            
+
             // Try to resolve from DI container
             var translatorType = provider.ToLowerInvariant() switch
             {
@@ -42,7 +44,7 @@ namespace ConduitLLM.Http.Services
                 // "elevenlabs" => typeof(Providers.Translators.ElevenLabsRealtimeTranslator),
                 _ => null
             };
-            
+
             if (translatorType != null)
             {
                 try
@@ -59,7 +61,7 @@ namespace ConduitLLM.Http.Services
                     _logger.LogError(ex, "Failed to create translator for provider {Provider}", provider);
                 }
             }
-            
+
             _logger.LogWarning("No translator found for provider: {Provider}", provider);
             return null;
         }

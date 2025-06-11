@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -73,7 +74,7 @@ namespace ConduitLLM.WebUI.Services
             // Get the setting by ID first to find its key
             var setting = await GetByIdAsync(id, cancellationToken);
             if (setting == null) return false;
-            
+
             return await _adminApiClient.DeleteGlobalSettingAsync(setting.Key);
         }
 

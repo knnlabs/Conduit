@@ -2,12 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Services;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
@@ -79,7 +83,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             _mockRepository.Setup(r => r.GetByModelNameAsync("unknown-model", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelProviderMapping?)null);
-            
+
             _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<ModelProviderMapping>());
 
@@ -378,7 +382,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             _mockRepository.Setup(r => r.GetByModelNameAsync("actual-model-name", It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelProviderMapping?)null);
-            
+
             _mockRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(allMappings);
 

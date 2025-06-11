@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Extensions;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,13 +20,13 @@ namespace ConduitLLM.Admin.Extensions
         {
             // Add repositories
             services.AddRepositories();
-            
+
             // Add caching services
             services.AddCachingServices(configuration);
-            
+
             // Add database initialization
             services.AddDatabaseInitialization();
-            
+
             return services;
         }
     }
