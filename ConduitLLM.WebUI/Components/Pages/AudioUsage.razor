@@ -3,6 +3,7 @@
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.Configuration.DTOs.Audio
 @using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Components.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authorization
@@ -16,11 +17,27 @@
 
 <PageTitle>Audio Usage Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-bar-chart-line me-2"></i>Audio Usage Dashboard</h1>
-        <button class="btn btn-primary" @onclick="RefreshDataAsync">
-            <i class="bi bi-arrow-clockwise me-2"></i>Refresh
+<div class="container container-xxl mt-4">
+    <!-- Header Section -->
+    <PageHeader Title="Audio Usage Dashboard" 
+                Description="Monitor and analyze audio API usage across all providers"
+                Icon="fa-microphone-alt">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-chart-line me-2"></i>
+                <span class="small">@(_usageSummary?.TotalOperations.ToString("N0") ?? "0") Total Operations</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-dollar-sign me-2"></i>
+                <span class="small">$@(_usageSummary?.TotalCost.ToString("N2") ?? "0.00") Total Cost</span>
+            </div>
+        </Statistics>
+    </PageHeader>
+    
+    <!-- Action buttons -->
+    <div class="mb-3">
+        <button class="btn btn-primary shadow-sm" @onclick="RefreshDataAsync">
+            <i class="fa fa-sync-alt me-1"></i>Refresh
         </button>
     </div>
 
@@ -63,7 +80,7 @@
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-primary w-100" @onclick="ApplyFiltersAsync">
-                            <i class="bi bi-funnel me-2"></i>Apply Filters
+                            <i class="fa fa-filter me-2"></i>Apply Filters
                         </button>
                     </div>
                 </div>
@@ -76,7 +93,7 @@
                 <div class="card text-center">
                     <div class="card-body">
                         <h5 class="card-title">Total Requests</h5>
-                        <h2 class="text-primary">@_usageSummary.TotalOperations.ToString("N0")</h2>
+                        <h2 class="text-primary">@(_usageSummary?.TotalOperations.ToString("N0") ?? "0")</h2>
                     </div>
                 </div>
             </div>
@@ -84,7 +101,7 @@
                 <div class="card text-center">
                     <div class="card-body">
                         <h5 class="card-title">Transcription Minutes</h5>
-                        <h2 class="text-info">@((_usageSummary.TotalDurationSeconds / 60).ToString("N1"))</h2>
+                        <h2 class="text-info">@((_usageSummary?.TotalDurationSeconds / 60)?.ToString("N1") ?? "0.0")</h2>
                     </div>
                 </div>
             </div>
@@ -92,7 +109,7 @@
                 <div class="card text-center">
                     <div class="card-body">
                         <h5 class="card-title">TTS Characters</h5>
-                        <h2 class="text-success">@_usageSummary.TotalCharacters.ToString("N0")</h2>
+                        <h2 class="text-success">@(_usageSummary?.TotalCharacters.ToString("N0") ?? "0")</h2>
                     </div>
                 </div>
             </div>
@@ -100,7 +117,7 @@
                 <div class="card text-center">
                     <div class="card-body">
                         <h5 class="card-title">Total Cost</h5>
-                        <h2 class="text-warning">$@_usageSummary.TotalCost.ToString("N2")</h2>
+                        <h2 class="text-warning">$@(_usageSummary?.TotalCost.ToString("N2") ?? "0.00")</h2>
                     </div>
                 </div>
             </div>
@@ -158,7 +175,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var provider in _usageSummary.ProviderBreakdown)
+                            @foreach (var provider in _usageSummary?.ProviderBreakdown ?? new List<ProviderBreakdown>())
                             {
                                 <tr>
                                     <td>@provider.Provider</td>
@@ -184,7 +201,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Audio Usage Logs</h5>
                     <button class="btn btn-sm btn-outline-primary" @onclick="DownloadLogsAsync">
-                        <i class="bi bi-download me-2"></i>Export CSV
+                        <i class="fa fa-download me-2"></i>Export CSV
                     </button>
                 </div>
             </div>
@@ -204,7 +221,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var log in _usageLogs.Items)
+                            @foreach (var log in _usageLogs?.Items ?? new List<AudioUsageDto>())
                             {
                                 <tr>
                                     <td>@log.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
@@ -248,21 +265,21 @@
                 </div>
 
                 <!-- Pagination -->
-                @if (_usageLogs.TotalPages > 1)
+                @if (_usageLogs?.TotalPages > 1)
                 {
                     <nav aria-label="Usage logs pagination">
                         <ul class="pagination justify-content-center">
                             <li class="page-item @(_currentPage == 1 ? "disabled" : "")">
                                 <a class="page-link" @onclick="() => LoadPageAsync(_currentPage - 1)" href="javascript:void(0)">Previous</a>
                             </li>
-                            @for (int i = Math.Max(1, _currentPage - 2); i <= Math.Min(_usageLogs.TotalPages, _currentPage + 2); i++)
+                            @for (int i = Math.Max(1, _currentPage - 2); i <= Math.Min(_usageLogs?.TotalPages ?? 1, _currentPage + 2); i++)
                             {
                                 int pageNumber = i;
                                 <li class="page-item @(pageNumber == _currentPage ? "active" : "")">
                                     <a class="page-link" @onclick="() => LoadPageAsync(pageNumber)" href="javascript:void(0)">@pageNumber</a>
                                 </li>
                             }
-                            <li class="page-item @(_currentPage == _usageLogs.TotalPages ? "disabled" : "")">
+                            <li class="page-item @(_currentPage == _usageLogs?.TotalPages ? "disabled" : "")">
                                 <a class="page-link" @onclick="() => LoadPageAsync(_currentPage + 1)" href="javascript:void(0)">Next</a>
                             </li>
                         </ul>
@@ -303,7 +320,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_loading && _usageSummary.ProviderBreakdown.Any())
+        if (!_loading && _usageSummary?.ProviderBreakdown?.Any() == true)
         {
             await RenderChartsAsync();
         }
@@ -417,7 +434,7 @@
         try
         {
             // Provider usage chart
-            if (_usageSummary.ProviderBreakdown.Any())
+            if (_usageSummary?.ProviderBreakdown?.Any() == true)
             {
                 var providerLabels = _usageSummary.ProviderBreakdown.Select(p => p.Provider).ToArray();
                 var providerData = _usageSummary.ProviderBreakdown
@@ -429,7 +446,7 @@
             }
 
             // Operation type chart
-            if (_usageSummary.OperationBreakdown.Any())
+            if (_usageSummary?.OperationBreakdown?.Any() == true)
             {
                 var operationLabels = _usageSummary.OperationBreakdown.Select(o => o.OperationType).ToArray();
                 var operationData = _usageSummary.OperationBreakdown

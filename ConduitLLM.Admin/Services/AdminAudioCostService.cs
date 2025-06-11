@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Admin.Interfaces;
@@ -129,22 +131,82 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<BulkImportResult> ImportCostsAsync(string data, string format)
         {
-            // TODO: Implement bulk import functionality
-            _logger.LogWarning("Bulk import not yet implemented");
-            return await Task.FromResult(new BulkImportResult
+            var result = new BulkImportResult
             {
                 SuccessCount = 0,
                 FailureCount = 0,
-                Errors = new List<string> { "Bulk import not yet implemented" }
-            });
+                Errors = new List<string>()
+            };
+
+            try
+            {
+                format = format?.ToLowerInvariant() ?? "json";
+                var costs = format switch
+                {
+                    "json" => ParseJsonImport(data),
+                    "csv" => ParseCsvImport(data),
+                    _ => throw new ArgumentException($"Unsupported import format: {format}")
+                };
+
+                foreach (var cost in costs)
+                {
+                    try
+                    {
+                        // Check if cost configuration already exists
+                        var existing = await _repository.GetCurrentCostAsync(
+                            cost.Provider, cost.OperationType, cost.Model);
+
+                        if (existing != null)
+                        {
+                            // Update existing
+                            existing.CostUnit = cost.CostUnit;
+                            existing.CostPerUnit = cost.CostPerUnit;
+                            existing.EffectiveFrom = cost.EffectiveFrom;
+                            existing.EffectiveTo = cost.EffectiveTo;
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            
+                            await _repository.UpdateAsync(existing);
+                        }
+                        else
+                        {
+                            // Create new
+                            await _repository.CreateAsync(cost);
+                        }
+                        
+                        result.SuccessCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.FailureCount++;
+                        result.Errors.Add($"Failed to import cost for {cost.Provider}/{cost.OperationType}: {ex.Message}");
+                    }
+                }
+
+                _logger.LogInformation("Imported {Success} costs successfully, {Failed} failed", 
+                    result.SuccessCount, result.FailureCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during bulk import");
+                result.Errors.Add($"Import failed: {ex.Message}");
+            }
+
+            return result;
         }
 
         /// <inheritdoc/>
         public async Task<string> ExportCostsAsync(string format, string? provider = null)
         {
-            // TODO: Implement export functionality
-            _logger.LogWarning("Export not yet implemented");
-            return await Task.FromResult("Export not yet implemented");
+            var costs = provider != null ? await _repository.GetByProviderAsync(provider) : await _repository.GetAllAsync();
+            
+            format = format?.ToLowerInvariant() ?? "json";
+
+            return format switch
+            {
+                "json" => GenerateJsonExport(costs),
+                "csv" => GenerateCsvExport(costs),
+                _ => throw new ArgumentException($"Unsupported export format: {format}")
+            };
         }
 
         private static AudioCostDto MapToDto(AudioCost cost)
@@ -166,5 +228,128 @@ namespace ConduitLLM.Admin.Services
                 UpdatedAt = cost.UpdatedAt
             };
         }
+
+        private List<AudioCost> ParseJsonImport(string jsonData)
+        {
+            try
+            {
+                var importData = JsonSerializer.Deserialize<List<AudioCostImportDto>>(jsonData);
+                if (importData == null) return new List<AudioCost>();
+
+                return importData.Select(d => new AudioCost
+                {
+                    Provider = d.Provider,
+                    OperationType = d.OperationType,
+                    Model = d.Model ?? "default",
+                    CostUnit = d.CostUnit,
+                    CostPerUnit = d.CostPerUnit,
+                    MinimumCharge = d.MinimumCharge,
+                    IsActive = d.IsActive ?? true,
+                    EffectiveFrom = d.EffectiveFrom ?? DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse JSON import data");
+                throw new ArgumentException("Invalid JSON format", ex);
+            }
+        }
+
+        private List<AudioCost> ParseCsvImport(string csvData)
+        {
+            var costs = new List<AudioCost>();
+            var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            if (lines.Length < 2)
+            {
+                throw new ArgumentException("CSV data must contain header and at least one data row");
+            }
+
+            // Skip header
+            for (int i = 1; i < lines.Length; i++)
+            {
+                var parts = lines[i].Split(',');
+                if (parts.Length < 5)
+                {
+                    _logger.LogWarning("Skipping invalid CSV line: {Line}", lines[i]);
+                    continue;
+                }
+
+                try
+                {
+                    costs.Add(new AudioCost
+                    {
+                        Provider = parts[0].Trim(),
+                        OperationType = parts[1].Trim(),
+                        Model = parts.Length > 2 ? parts[2].Trim() : "default",
+                        CostUnit = parts[3].Trim(),
+                        CostPerUnit = decimal.Parse(parts[4].Trim()),
+                        MinimumCharge = parts.Length > 5 ? decimal.Parse(parts[5].Trim()) : null,
+                        IsActive = true,
+                        EffectiveFrom = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to parse CSV line: {Line}", lines[i]);
+                    throw new ArgumentException($"Invalid CSV data at line {i + 1}", ex);
+                }
+            }
+
+            return costs;
+        }
+
+        private string GenerateJsonExport(List<AudioCost> costs)
+        {
+            var exportData = costs.Select(c => new AudioCostImportDto
+            {
+                Provider = c.Provider,
+                OperationType = c.OperationType,
+                Model = c.Model,
+                CostUnit = c.CostUnit,
+                CostPerUnit = c.CostPerUnit,
+                MinimumCharge = c.MinimumCharge,
+                IsActive = c.IsActive,
+                EffectiveFrom = c.EffectiveFrom
+            });
+
+            return JsonSerializer.Serialize(exportData, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+
+        private string GenerateCsvExport(List<AudioCost> costs)
+        {
+            var csv = new StringBuilder();
+            csv.AppendLine("Provider,OperationType,Model,CostUnit,CostPerUnit,MinimumCharge");
+
+            foreach (var cost in costs.OrderBy(c => c.Provider).ThenBy(c => c.OperationType))
+            {
+                csv.AppendLine($"{cost.Provider},{cost.OperationType},{cost.Model}," +
+                    $"{cost.CostUnit},{cost.CostPerUnit},{cost.MinimumCharge ?? 0}");
+            }
+
+            return csv.ToString();
+        }
+    }
+
+    /// <summary>
+    /// DTO for importing audio costs.
+    /// </summary>
+    internal class AudioCostImportDto
+    {
+        public string Provider { get; set; } = string.Empty;
+        public string OperationType { get; set; } = string.Empty;
+        public string? Model { get; set; }
+        public string CostUnit { get; set; } = string.Empty;
+        public decimal CostPerUnit { get; set; }
+        public decimal? MinimumCharge { get; set; }
+        public bool? IsActive { get; set; }
+        public DateTime? EffectiveFrom { get; set; }
     }
 }

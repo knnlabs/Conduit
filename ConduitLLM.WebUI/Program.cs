@@ -197,10 +197,14 @@ builder.Services.AddSignalR(options =>
 // Add antiforgery services
 builder.Services.AddAntiforgery();
 
-// Add health checks
-builder.Services.AddHealthChecks()
-    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical" })
-    .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"), tags: new[] { "self" });
+// Configure Data Protection with Redis persistence
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
+// Add standardized health checks
+// Note: WebUI doesn't directly access the database, so we don't need database or provider health checks
+builder.Services.AddConduitHealthChecks(connectionString: null, redisConnectionString, includeProviderCheck: false)
+    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical", "ready" });
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -208,10 +212,6 @@ builder.Services.AddRazorComponents()
 
 // Register context management services
 builder.Services.AddConduitContextManagement(builder.Configuration);
-
-// Configure Data Protection with Redis persistence
-var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 var app = builder.Build();
 
@@ -337,34 +337,8 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
-// Map health checks
-app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-{
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "application/json";
-        var result = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds,
-                data = e.Value.Data
-            }),
-            totalDuration = report.TotalDuration.TotalMilliseconds
-        });
-        await context.Response.WriteAsync(result);
-    }
-});
-
-// Map specific health check for critical components only
-app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-{
-    Predicate = check => check.Tags.Contains("critical")
-});
+// Map standardized health check endpoints
+app.MapConduitHealthChecks();
 
 // Map controllers first
 app.MapControllers();

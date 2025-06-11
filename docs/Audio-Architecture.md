@@ -117,6 +117,8 @@ Client <--WebSocket--> RealtimeController <---> RealtimeProxyService <--WebSocke
 2. **RealtimeProxyService**: Core proxy managing bidirectional message flow
 3. **RealtimeConnectionManager**: Manages active connections and enforces limits
 4. **RealtimeMessageTranslator**: Translates between Conduit and provider formats
+5. **RealtimeSessionStore**: Hybrid storage for session state and lifecycle
+6. **RealtimeUsageTracker**: Real-time cost and usage monitoring
 
 ### Message Translation
 
@@ -177,13 +179,22 @@ Audio usage is tracked comprehensively:
 ### Cost Calculation
 
 ```csharp
-public class AudioCostCalculator
+public interface IAudioCostCalculationService
 {
-    public decimal CalculateTranscriptionCost(int durationSeconds, decimal costPerMinute);
-    public decimal CalculateTTSCost(int characterCount, decimal costPerCharacter);
-    public decimal CalculateRealtimeCost(int durationSeconds, int tokens, AudioCostConfig config);
+    Task<decimal> CalculateTranscriptionCostAsync(
+        string provider, string model, double durationSeconds);
+    Task<decimal> CalculateTextToSpeechCostAsync(
+        string provider, string model, int characterCount);
+    Task<decimal> CalculateRealtimeCostAsync(
+        string provider, string model, RealtimeUsageData usage);
 }
 ```
+
+The `AudioCostCalculationService` implementation:
+- Uses provider-specific pricing models
+- Integrates with database for dynamic pricing
+- Supports tiered pricing and volume discounts
+- Automatically updates virtual key spending
 
 ## Configuration
 
@@ -285,16 +296,27 @@ public class AudioProviderHealthCheck
 - Rate limiting per connection
 - Automatic disconnect on abuse
 
+## Recent Enhancements
+
+Completed improvements to the audio architecture:
+
+1. **Real-time Session Management**: Hybrid storage with Redis and in-memory caching
+2. **Advanced Routing**: Multiple strategies including latency, cost, quality, and geographic
+3. **Security Features**: Encryption, PII detection, content filtering, audit logging
+4. **Performance Optimization**: Connection pooling, stream caching, CDN integration
+5. **Virtual Key Tracking**: Complete integration throughout audio pipeline
+6. **Export/Import**: Full data portability for usage and costs
+
 ## Future Enhancements
 
-Planned improvements for the audio architecture:
+Potential improvements for the audio architecture:
 
 1. **Hybrid Processing**: Combine multiple providers for better accuracy
-2. **Audio Preprocessing**: Noise reduction, format conversion
-3. **Advanced Routing**: ML-based provider selection
-4. **Caching**: Cache common TTS requests
-5. **Batch Operations**: Support bulk transcription/TTS
-6. **Custom Models**: Support for fine-tuned audio models
+2. **Audio Preprocessing**: Enhanced noise reduction, format conversion
+3. **ML-based Routing**: Use machine learning for provider selection
+4. **Batch Operations**: Support bulk transcription/TTS
+5. **Custom Models**: Support for fine-tuned audio models
+6. **Voice Cloning**: Expand voice cloning capabilities beyond ElevenLabs
 
 ## Best Practices
 

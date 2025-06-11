@@ -14,7 +14,7 @@ using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
-using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions
+using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -133,12 +133,8 @@ builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>
 builder.Services.AddScoped<ITokenCounter, ConduitLLM.Core.Services.TiktokenCounter>();
 builder.Services.AddScoped<IContextManager, ConduitLLM.Core.Services.ContextManager>();
 
-// Register repositories
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IVirtualKeyRepository, ConduitLLM.Configuration.Repositories.VirtualKeyRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IVirtualKeySpendHistoryRepository, ConduitLLM.Configuration.Repositories.VirtualKeySpendHistoryRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelCostRepository, ConduitLLM.Configuration.Repositories.ModelCostRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelProviderMappingRepository, ConduitLLM.Configuration.Repositories.ModelProviderMappingRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository, ConduitLLM.Configuration.Repositories.ProviderCredentialRepository>();
+// Register all repositories using the extension method
+builder.Services.AddRepositories();
 
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
@@ -162,7 +158,7 @@ builder.Services.AddScoped<ModelListService>();
 builder.Services.AddScoped<Conduit>();
 
 // Register Audio services
-builder.Services.AddConduitAudioServices();
+builder.Services.AddConduitAudioServices(builder.Configuration);
 
 // Register Real-time Audio services
 builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionManager>();
@@ -201,6 +197,10 @@ builder.Services.AddCors(options =>
 
 // Add Controller support
 builder.Services.AddControllers();
+
+// Add standardized health checks
+var redisHealthConnection = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddConduitHealthChecks(dbConnectionString, redisHealthConnection);
 
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
@@ -264,15 +264,12 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(120)
 });
 
-// Add a health check endpoint
 // Add controllers to the app
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
-// Add a health check endpoint
-app.MapGet("/health", () => {
-    return Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
-});
+// Map standardized health check endpoints
+app.MapConduitHealthChecks();
 
 // Add completions endpoint (legacy)
 app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {

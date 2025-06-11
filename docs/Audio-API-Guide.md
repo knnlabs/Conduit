@@ -2,13 +2,32 @@
 
 This guide covers the audio capabilities available in ConduitLLM, including audio transcription (Speech-to-Text), text-to-speech (TTS), and real-time bidirectional audio streaming.
 
+## Implementation Status
+
+The Audio API is **fully implemented** with the following features:
+- ✅ Speech-to-Text (Transcription)
+- ✅ Text-to-Speech 
+- ✅ Real-time Audio Streaming
+- ✅ Provider routing and failover
+- ✅ Virtual key tracking and cost attribution
+- ✅ Export/import functionality
+- ✅ Advanced security features
+
 ## Overview
 
 ConduitLLM provides a unified interface for audio operations across multiple providers:
 
+### Production Ready
 - **OpenAI**: Whisper (transcription), TTS, and Realtime API
-- **ElevenLabs**: High-quality TTS and Conversational AI
-- **Ultravox**: Low-latency real-time voice AI optimized for telephony
+- **Azure OpenAI**: Azure-hosted Whisper and TTS models
+- **ElevenLabs**: Premium text-to-speech and conversational AI
+- **Ultravox**: Low-latency real-time conversational AI
+- **Groq**: High-speed Whisper transcription
+- **Deepgram**: Real-time STT with excellent accuracy
+
+### Coming Soon
+- **Google Cloud**: Speech-to-Text and Text-to-Speech
+- **Amazon Polly/Transcribe**: AWS audio services
 
 ## Audio Transcription (Speech-to-Text)
 
@@ -197,6 +216,38 @@ if (response.EventType == RealtimeEventType.FunctionCall)
 }
 ```
 
+## Advanced Features
+
+### Routing Strategies
+
+The Audio API supports multiple routing strategies:
+- **Cost-optimized**: Routes to cheapest provider
+- **Quality-based**: Routes to highest quality provider
+- **Latency-based**: Routes to fastest provider
+- **Geographic**: Routes based on user location
+- **Language-optimized**: Routes based on language expertise
+
+### Security Features
+
+- **Audio Encryption**: AES-256-GCM encryption for audio streams
+- **PII Detection**: Automatic detection and redaction of sensitive information
+- **Content Filtering**: Filter inappropriate audio content
+- **Audit Logging**: Comprehensive audit trail for compliance
+
+### Export/Import
+
+Export audio usage data and costs:
+```bash
+# Export usage data as CSV
+curl -X GET "https://api.conduit.ai/admin/audio/usage/export?format=csv" \
+  -H "X-Master-Key: your-master-key"
+
+# Import cost configuration
+curl -X POST "https://api.conduit.ai/admin/audio/costs/import?format=json" \
+  -H "X-Master-Key: your-master-key" \
+  -d @costs.json
+```
+
 ## Audio Configuration in Admin API
 
 ### Configure Audio Providers
@@ -327,10 +378,17 @@ catch (LLMCommunicationException ex)
 2. **Real-time Connection Drops**
    - Implement reconnection logic
    - Monitor session health with heartbeat messages
+   - Check connection limits per virtual key
 
 3. **High Latency**
    - Use appropriate audio chunk sizes (100-200ms)
    - Enable server-side VAD for turn detection
+   - Consider using latency-based routing
+
+4. **Cost Attribution**
+   - Ensure virtual keys have proper audio permissions
+   - Monitor usage through the admin dashboard
+   - Set spending limits on virtual keys
 
 ### Debug Logging
 

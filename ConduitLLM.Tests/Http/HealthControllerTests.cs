@@ -4,186 +4,279 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using ConduitLLM.Configuration;
-using ConduitLLM.Http.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Xunit;
 
 namespace ConduitLLM.Tests.Http
 {
-    public class HealthControllerTests
+    /// <summary>
+    /// Tests for the standardized health check middleware implementation.
+    /// Note: The HealthController has been removed in favor of ASP.NET Core Health Checks middleware.
+    /// </summary>
+    public class HealthControllerTests : IClassFixture<WebApplicationFactory<Program>>
     {
-        private readonly DbContextOptions<ConfigurationDbContext> _dbContextOptions;
-        
-        public HealthControllerTests()
+        private readonly WebApplicationFactory<Program> _factory;
+
+        public HealthControllerTests(WebApplicationFactory<Program> factory)
         {
-            // Setup in-memory database for testing
-            _dbContextOptions = new DbContextOptionsBuilder<ConfigurationDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DbHealthCheck_{Guid.NewGuid()}")
-                .Options;
+            _factory = factory;
         }
-        
+
         [Fact]
-        public async Task GetDatabaseHealth_ReturnsOk_WhenDatabaseIsHealthy()
+        public async Task GetHealth_ReturnsOk_WhenAllServicesAreHealthy()
         {
             // Arrange
-            var loggerMock = new Mock<ILogger<HealthController>>();
-            var dbContextFactoryMock = new Mock<IDbContextFactory<ConfigurationDbContext>>();
-            
-            // Setup the factory to return our context
-            using var dbContext = new ConfigurationDbContext(_dbContextOptions);
-            dbContext.Database.EnsureCreated();
-            
-            dbContextFactoryMock
-                .Setup(f => f.CreateDbContextAsync(default))
-                .ReturnsAsync(dbContext);
-            
-            // Use our test controller to have full control over the test
-            var controller = new TestHealthController(
-                dbContextFactoryMock.Object,
-                loggerMock.Object,
-                simulateConnected: true,
-                hasPendingMigrations: false);
-            
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    // Override health checks for testing
+                    services.AddHealthChecks()
+                        .AddCheck("test_database", new TestHealthCheck(HealthStatus.Healthy, "Test database is healthy"))
+                        .AddCheck("test_redis", new TestHealthCheck(HealthStatus.Healthy, "Test Redis is healthy"));
+                });
+            }).CreateClient();
+
             // Act
-            var result = await controller.GetDatabaseHealthAsync();
-            
+            var response = await client.GetAsync("/health");
+
             // Assert
-            var okResult = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
-            var response = Assert.IsType<DatabaseHealthResponse>(okResult.Value);
-            Assert.Equal("healthy", response.Status);
-            Assert.Null(response.Details);
+            response.EnsureSuccessStatusCode();
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            Assert.Equal("Healthy", healthReport.RootElement.GetProperty("status").GetString());
         }
-        
+
         [Fact]
-        public async Task GetDatabaseHealth_ReturnsServiceUnavailable_WhenCannotConnect()
+        public async Task GetHealthReady_ReturnsServiceUnavailable_WhenDatabaseIsUnhealthy()
         {
             // Arrange
-            var loggerMock = new Mock<ILogger<HealthController>>();
-            var dbContextFactoryMock = new Mock<IDbContextFactory<ConfigurationDbContext>>();
-            
-            // Setup the factory to return our context
-            using var dbContext = new ConfigurationDbContext(_dbContextOptions);
-            
-            dbContextFactoryMock
-                .Setup(f => f.CreateDbContextAsync(default))
-                .ReturnsAsync(dbContext);
-            
-            // Use our test controller with connection issues
-            var controller = new TestHealthController(
-                dbContextFactoryMock.Object,
-                loggerMock.Object,
-                simulateConnected: false);
-            
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddHealthChecks()
+                        .AddCheck("database", 
+                            new TestHealthCheck(HealthStatus.Unhealthy, "Cannot connect to database"), 
+                            failureStatus: HealthStatus.Unhealthy,
+                            tags: new[] { "db", "ready" });
+                });
+            }).CreateClient();
+
             // Act
-            var result = await controller.GetDatabaseHealthAsync();
-            
+            var response = await client.GetAsync("/health/ready");
+
             // Assert
-            var statusCodeResult = Assert.IsType<Microsoft.AspNetCore.Mvc.ObjectResult>(result);
-            Assert.Equal((int)HttpStatusCode.ServiceUnavailable, statusCodeResult.StatusCode);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
             
-            var response = Assert.IsType<DatabaseHealthResponse>(statusCodeResult.Value);
-            Assert.Equal("unhealthy", response.Status);
-            Assert.Equal("Cannot connect to database", response.Details);
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            Assert.Equal("Unhealthy", healthReport.RootElement.GetProperty("status").GetString());
+            
+            // Verify the database check details
+            var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
+            var databaseCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "database");
+            Assert.NotEqual(default(JsonElement), databaseCheck);
+            Assert.Equal("Unhealthy", databaseCheck.GetProperty("status").GetString());
+            Assert.Equal("Cannot connect to database", databaseCheck.GetProperty("description").GetString());
         }
-        
+
         [Fact]
-        public async Task GetDatabaseHealth_ReturnsServiceUnavailable_WhenPendingMigrations()
+        public async Task GetHealthReady_ReturnsDegraded_WhenRedisIsUnhealthy()
         {
             // Arrange
-            var loggerMock = new Mock<ILogger<HealthController>>();
-            var dbContextFactoryMock = new Mock<IDbContextFactory<ConfigurationDbContext>>();
-            
-            // Setup the factory to return our context
-            using var dbContext = new ConfigurationDbContext(_dbContextOptions);
-            
-            dbContextFactoryMock
-                .Setup(f => f.CreateDbContextAsync(default))
-                .ReturnsAsync(dbContext);
-            
-            // Use our test controller with pending migrations
-            var controller = new TestHealthController(
-                dbContextFactoryMock.Object,
-                loggerMock.Object,
-                simulateConnected: true,
-                hasPendingMigrations: true);
-            
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddHealthChecks()
+                        .AddCheck("database", 
+                            new TestHealthCheck(HealthStatus.Healthy, "Database is healthy"),
+                            tags: new[] { "db", "ready" })
+                        .AddCheck("redis", 
+                            new TestHealthCheck(HealthStatus.Degraded, "Redis connection is slow"),
+                            failureStatus: HealthStatus.Degraded,
+                            tags: new[] { "cache", "ready" });
+                });
+            }).CreateClient();
+
             // Act
-            var result = await controller.GetDatabaseHealthAsync();
-            
+            var response = await client.GetAsync("/health/ready");
+
             // Assert
-            var statusCodeResult = Assert.IsType<Microsoft.AspNetCore.Mvc.ObjectResult>(result);
-            Assert.Equal((int)HttpStatusCode.ServiceUnavailable, statusCodeResult.StatusCode);
+            response.EnsureSuccessStatusCode(); // Degraded should return 200
             
-            var response = Assert.IsType<DatabaseHealthResponse>(statusCodeResult.Value);
-            Assert.Equal("unhealthy", response.Status);
-            Assert.Equal("Database has pending migrations", response.Details);
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            Assert.Equal("Degraded", healthReport.RootElement.GetProperty("status").GetString());
         }
-        
+
         [Fact]
-        public async Task GetDatabaseHealth_ReturnsInternalServerError_WhenExceptionOccurs()
+        public async Task GetHealthLive_AlwaysReturnsOk_WhenApplicationIsRunning()
         {
             // Arrange
-            var loggerMock = new Mock<ILogger<HealthController>>();
-            var dbContextFactoryMock = new Mock<IDbContextFactory<ConfigurationDbContext>>();
-            
-            dbContextFactoryMock
-                .Setup(f => f.CreateDbContextAsync(default))
-                .ThrowsAsync(new Exception("Test exception"));
-            
-            var controller = new HealthController(dbContextFactoryMock.Object, loggerMock.Object);
-            
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    // Even if dependencies are unhealthy, liveness should return OK
+                    services.AddHealthChecks()
+                        .AddCheck("database", 
+                            new TestHealthCheck(HealthStatus.Unhealthy, "Database is down"),
+                            tags: new[] { "db" })
+                        .AddCheck("redis", 
+                            new TestHealthCheck(HealthStatus.Unhealthy, "Redis is down"),
+                            tags: new[] { "cache" });
+                });
+            }).CreateClient();
+
             // Act
-            var result = await controller.GetDatabaseHealthAsync();
-            
+            var response = await client.GetAsync("/health/live");
+
             // Assert
-            var statusCodeResult = Assert.IsType<Microsoft.AspNetCore.Mvc.ObjectResult>(result);
-            Assert.Equal((int)HttpStatusCode.InternalServerError, statusCodeResult.StatusCode);
+            response.EnsureSuccessStatusCode();
             
-            var response = Assert.IsType<DatabaseHealthResponse>(statusCodeResult.Value);
-            Assert.Equal("unhealthy", response.Status);
-            Assert.Equal("Error: Test exception", response.Details);
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            // Live endpoint has no checks, so it should always be healthy
+            Assert.Equal("Healthy", healthReport.RootElement.GetProperty("status").GetString());
+        }
+
+        [Fact]
+        public async Task HealthEndpoint_IncludesProviderHealth_WhenConfigured()
+        {
+            // Arrange
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddHealthChecks()
+                        .AddCheck("providers", 
+                            new TestHealthCheck(HealthStatus.Healthy, "All providers are online", 
+                                data: new Dictionary<string, object> 
+                                { 
+                                    { "openai", "online" },
+                                    { "anthropic", "online" }
+                                }),
+                            tags: new[] { "providers", "ready" });
+                });
+            }).CreateClient();
+
+            // Act
+            var response = await client.GetAsync("/health");
+
+            // Assert
+            response.EnsureSuccessStatusCode();
+            
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
+            var providerCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "providers");
+            
+            Assert.NotEqual(default(JsonElement), providerCheck);
+            Assert.Equal("Healthy", providerCheck.GetProperty("status").GetString());
+            
+            // Check that provider data is included
+            var data = providerCheck.GetProperty("data");
+            Assert.Equal("online", data.GetProperty("openai").GetString());
+            Assert.Equal("online", data.GetProperty("anthropic").GetString());
+        }
+
+        [Fact]
+        public async Task HealthEndpoint_ReturnsDetailedError_WhenExceptionOccurs()
+        {
+            // Arrange
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Test");
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddHealthChecks()
+                        .AddCheck("failing_check", 
+                            new FailingHealthCheck(new Exception("Test exception during health check")));
+                });
+            }).CreateClient();
+
+            // Act
+            var response = await client.GetAsync("/health");
+
+            // Assert
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            
+            var content = await response.Content.ReadAsStringAsync();
+            var healthReport = JsonDocument.Parse(content);
+            
+            Assert.Equal("Unhealthy", healthReport.RootElement.GetProperty("status").GetString());
+            
+            var checks = healthReport.RootElement.GetProperty("checks").EnumerateArray();
+            var failingCheck = checks.FirstOrDefault(c => c.GetProperty("name").GetString() == "failing_check");
+            
+            Assert.NotEqual(default(JsonElement), failingCheck);
+            Assert.Equal("Unhealthy", failingCheck.GetProperty("status").GetString());
+            Assert.Contains("Test exception", failingCheck.GetProperty("exception").GetString());
         }
     }
-    
-    // Test-specific controller that overrides the database interaction
-    public class TestHealthController : HealthController
+
+    // Test health check implementations
+    public class TestHealthCheck : IHealthCheck
     {
-        private readonly bool _hasPendingMigrations;
-        private readonly IEnumerable<string> _pendingMigrations;
-        private readonly bool _simulateConnected;
-        
-        public TestHealthController(
-            IDbContextFactory<ConfigurationDbContext> dbContextFactory,
-            ILogger<HealthController> logger,
-            bool simulateConnected = true,
-            bool hasPendingMigrations = false,
-            IEnumerable<string>? pendingMigrations = null)
-            : base(dbContextFactory, logger)
+        private readonly HealthStatus _status;
+        private readonly string _description;
+        private readonly Exception? _exception;
+        private readonly Dictionary<string, object>? _data;
+
+        public TestHealthCheck(HealthStatus status, string description, Exception? exception = null, Dictionary<string, object>? data = null)
         {
-            _simulateConnected = simulateConnected;
-            _hasPendingMigrations = hasPendingMigrations;
-            _pendingMigrations = pendingMigrations ?? (hasPendingMigrations ? new[] { "TestMigration" } : Array.Empty<string>());
+            _status = status;
+            _description = description;
+            _exception = exception;
+            _data = data;
         }
-        
-        // Override for testing connection status
-        protected override Task<bool> CanConnectAsync(ConfigurationDbContext dbContext)
+
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(_simulateConnected); // Use Task.FromResult for async mock
+            var result = _status switch
+            {
+                HealthStatus.Healthy => HealthCheckResult.Healthy(_description, _data),
+                HealthStatus.Degraded => HealthCheckResult.Degraded(_description, _exception, _data),
+                HealthStatus.Unhealthy => HealthCheckResult.Unhealthy(_description, _exception, _data),
+                _ => HealthCheckResult.Unhealthy(_description)
+            };
+            
+            return Task.FromResult(result);
         }
-        
-        // Override for testing migrations
-        protected override Task<IEnumerable<string>> GetPendingMigrationsAsync(ConfigurationDbContext dbContext)
+    }
+
+    public class FailingHealthCheck : IHealthCheck
+    {
+        private readonly Exception _exception;
+
+        public FailingHealthCheck(Exception exception)
         {
-            // Override the method to return our test data
-            return Task.FromResult(_pendingMigrations);
+            _exception = exception;
+        }
+
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        {
+            throw _exception;
         }
     }
 }

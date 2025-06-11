@@ -301,4 +301,137 @@ namespace ConduitLLM.Configuration.DTOs.Audio
         /// </summary>
         public bool OnlyErrors { get; set; } = false;
     }
+
+    /// <summary>
+    /// DTO for audio key usage statistics.
+    /// </summary>
+    public class AudioKeyUsageDto
+    {
+        /// <summary>
+        /// Virtual key identifier.
+        /// </summary>
+        public string VirtualKey { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Name of the virtual key.
+        /// </summary>
+        public string KeyName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Total number of audio operations.
+        /// </summary>
+        public int TotalOperations { get; set; }
+
+        /// <summary>
+        /// Total cost in USD.
+        /// </summary>
+        public decimal TotalCost { get; set; }
+
+        /// <summary>
+        /// Total duration in seconds.
+        /// </summary>
+        public double TotalDurationSeconds { get; set; }
+
+        /// <summary>
+        /// Last usage timestamp.
+        /// </summary>
+        public DateTime? LastUsed { get; set; }
+
+        /// <summary>
+        /// Success rate percentage.
+        /// </summary>
+        public double SuccessRate { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for audio provider usage statistics.
+    /// </summary>
+    public class AudioProviderUsageDto
+    {
+        /// <summary>
+        /// Provider name.
+        /// </summary>
+        public string Provider { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Total number of operations.
+        /// </summary>
+        public int TotalOperations { get; set; }
+
+        /// <summary>
+        /// Number of transcription operations.
+        /// </summary>
+        public int TranscriptionCount { get; set; }
+
+        /// <summary>
+        /// Number of text-to-speech operations.
+        /// </summary>
+        public int TextToSpeechCount { get; set; }
+
+        /// <summary>
+        /// Number of real-time sessions.
+        /// </summary>
+        public int RealtimeSessionCount { get; set; }
+
+        /// <summary>
+        /// Total cost in USD.
+        /// </summary>
+        public decimal TotalCost { get; set; }
+
+        /// <summary>
+        /// Average response time in milliseconds.
+        /// </summary>
+        public double AverageResponseTime { get; set; }
+
+        /// <summary>
+        /// Success rate percentage.
+        /// </summary>
+        public double SuccessRate { get; set; }
+
+        /// <summary>
+        /// Most used model.
+        /// </summary>
+        public string? MostUsedModel { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for daily usage trend data.
+    /// </summary>
+    public class DailyUsageTrend
+    {
+        /// <summary>
+        /// Date of the usage.
+        /// </summary>
+        public DateTime Date { get; set; }
+
+        /// <summary>
+        /// Number of operations on this date.
+        /// </summary>
+        public int OperationCount { get; set; }
+
+        /// <summary>
+        /// Total cost for this date.
+        /// </summary>
+        public decimal TotalCost { get; set; }
+
+        /// <summary>
+        /// Total duration in seconds for this date.
+        /// </summary>
+        public double TotalDurationSeconds { get; set; }
+
+        /// <summary>
+        /// Number of unique virtual keys used.
+        /// </summary>
+        public int UniqueKeys { get; set; }
+
+        /// <summary>
+        /// Number of unique providers used.
+        /// </summary>
+        public int UniqueProviders { get; set; }
+
+        /// <summary>
+        /// Success rate for this date.
+        /// </summary>
+        public double SuccessRate { get; set; }
+    }
 }

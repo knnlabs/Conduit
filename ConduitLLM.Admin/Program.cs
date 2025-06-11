@@ -85,13 +85,13 @@ public partial class Program
         // Add Admin services
         builder.Services.AddAdminServices(builder.Configuration);
 
-        // Add health checks
-        builder.Services.AddHealthChecks()
-            .AddAudioProviderHealthChecks("audio");
-
         // Configure Data Protection with Redis persistence
         var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
+        // Add standardized health checks
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString);
 
         var app = builder.Build();
 
@@ -154,13 +154,8 @@ public partial class Program
 
         app.MapControllers();
         
-        // Map health checks
-        app.MapHealthChecks("/health/ready");
-        app.MapHealthChecks("/health/live");
-        app.MapHealthChecks("/health/audio", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-        {
-            Predicate = check => check.Tags.Contains("audio")
-        });
+        // Map standardized health check endpoints
+        app.MapConduitHealthChecks();
 
         app.Run();
     }
