@@ -96,6 +96,9 @@ namespace ConduitLLM.WebUI.Services
                 // Audio Usage prerequisites (optional)
                 tasks.Add(CheckAudioUsagePrerequisitesAsync());
 
+                // Audio Providers prerequisites
+                tasks.Add(CheckAudioProvidersPrerequisitesAsync());
+
                 await Task.WhenAll(tasks);
 
                 _lastRefresh = DateTime.UtcNow;
@@ -204,6 +207,30 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking audio usage prerequisites");
+            }
+        }
+
+        private async Task CheckAudioProvidersPrerequisitesAsync()
+        {
+            try
+            {
+                // Check if any LLM providers are configured
+                var providers = await _adminApiClient.GetAllProviderCredentialsAsync();
+                var hasLLMProviders = providers?.Any() ?? false;
+
+                var newState = new NavigationItemState
+                {
+                    IsEnabled = hasLLMProviders,
+                    TooltipMessage = hasLLMProviders ? null : "Configure LLM providers first to enable audio capabilities",
+                    RequiredConfigurationUrl = hasLLMProviders ? null : "/llm-providers",
+                    ShowIndicator = !hasLLMProviders
+                };
+
+                UpdateState("/audio-providers", newState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking audio providers prerequisites");
             }
         }
 

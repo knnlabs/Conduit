@@ -49,17 +49,28 @@
                 <h5 class="mb-0">
                     <i class="fa fa-headphones me-2 text-info"></i>Audio Providers
                 </h5>
-                <button class="btn btn-primary shadow-sm" @onclick="AddAudioProvider">
+                <button class="btn btn-primary shadow-sm" @onclick="AddAudioProvider" disabled="@(!providerCredentials.Any())">
                     <i class="fa fa-plus me-1"></i> Configure Audio Provider
                 </button>
             </div>
         </div>
         
         <div class="card-body">
-            <div class="alert alert-info border-0 shadow-sm mb-4">
-                <i class="fa fa-info-circle me-2"></i>
-                <strong>Audio Providers:</strong> Configure audio capabilities for your LLM providers including transcription, text-to-speech, and real-time audio.
-            </div>
+            @if (!providerCredentials.Any())
+            {
+                <div class="alert alert-warning border-0 shadow-sm mb-4">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    <strong>No LLM Providers Configured:</strong> You must configure at least one LLM provider before adding audio capabilities.
+                    <a href="/llm-providers" class="alert-link ms-2">Configure LLM Providers <i class="fa fa-arrow-right ms-1"></i></a>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="fa fa-info-circle me-2"></i>
+                    <strong>Audio Providers:</strong> Configure audio capabilities for your LLM providers including transcription, text-to-speech, and real-time audio.
+                </div>
+            }
             
             @if (audioProviders == null)
             {

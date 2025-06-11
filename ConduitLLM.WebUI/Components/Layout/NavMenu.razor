@@ -30,7 +30,12 @@
         <!-- Configuration Section -->
         <CollapsibleNavSection Title="Configuration" IconClass="fa fa-cogs" PersistenceKey="config" InitiallyExpanded="true">
             <NavigationLink Href="llm-providers" Text="LLM Providers" IconClass="fa fa-cloud" />
-            <NavigationLink Href="audio-providers" Text="Audio Providers" IconClass="fa fa-headphones" />
+            <NavigationLink Href="audio-providers" 
+                           Text="Audio Providers" 
+                           IconClass="fa fa-headphones"
+                           IsEnabled="@GetNavigationState("/audio-providers").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/audio-providers").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/audio-providers").ShowIndicator" />
             <NavigationLink Href="model-mappings" Text="Model Mappings" IconClass="fa fa-sitemap" />
             <NavigationLink Href="configuration" Text="General Settings" IconClass="fa fa-sliders-h" />
             <NavigationLink Href="routing-settings" Text="Routing" IconClass="fa fa-route" />
