@@ -1,5 +1,9 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using ConduitLLM.WebUI.Components.Layout
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Models
+@implements IDisposable
+@inject INavigationStateService NavigationStateService
 
 <div class="nav-menu">
     <!-- Main Navigation -->
@@ -9,8 +13,18 @@
         
         <!-- Core Section -->
         <CollapsibleNavSection Title="Core Features" IconClass="fa fa-puzzle-piece" PersistenceKey="core" InitiallyExpanded="true">
-            <NavigationLink Href="chat" Text="Chat Interface" IconClass="fa fa-comment-dots" />
-            <NavigationLink Href="audio-test" Text="Audio Test" IconClass="fa fa-headphones" />
+            <NavigationLink Href="chat" 
+                           Text="Chat Interface" 
+                           IconClass="fa fa-comment-dots"
+                           IsEnabled="@GetNavigationState("/chat").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/chat").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/chat").ShowIndicator" />
+            <NavigationLink Href="audio-test" 
+                           Text="Audio Test" 
+                           IconClass="fa fa-headphones"
+                           IsEnabled="@GetNavigationState("/audio-test").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/audio-test").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/audio-test").ShowIndicator" />
         </CollapsibleNavSection>
         
         <!-- Configuration Section -->
@@ -29,9 +43,19 @@
             <NavigationLink Href="virtualkeys" Text="Virtual Keys" IconClass="fa fa-key" Match="NavLinkMatch.All" />
             <NavigationLink Href="virtualkeys/dashboard" Text="Keys Dashboard" IconClass="fa fa-chart-line" Match="NavLinkMatch.All" />
             <NavigationLink Href="cost-dashboard" Text="Cost Analytics" IconClass="fa fa-dollar-sign" />
-            <NavigationLink Href="request-logs" Text="Request Logs" IconClass="fa fa-history" />
+            <NavigationLink Href="request-logs" 
+                           Text="Request Logs" 
+                           IconClass="fa fa-history"
+                           IsEnabled="@GetNavigationState("/request-logs").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/request-logs").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/request-logs").ShowIndicator" />
             <NavigationLink Href="model-costs" Text="Model Pricing" IconClass="fa fa-money-bill-wave" />
-            <NavigationLink Href="audio-usage" Text="Audio Usage" IconClass="fa fa-microphone-alt" />
+            <NavigationLink Href="audio-usage" 
+                           Text="Audio Usage" 
+                           IconClass="fa fa-microphone-alt"
+                           IsEnabled="@GetNavigationState("/audio-usage").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/audio-usage").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/audio-usage").ShowIndicator" />
         </CollapsibleNavSection>
         
         <!-- System Health Section -->
@@ -166,6 +190,62 @@
 
     .nav-link.active .nav-link-indicator {
         width: 4px;
+    }
+
+    /* Disabled Navigation Links */
+    .nav-link-disabled {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 1rem 0.25rem;
+        padding: 0.75rem 1rem;
+        color: rgba(255, 255, 255, 0.4);
+        text-decoration: none;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        cursor: not-allowed;
+        opacity: 0.6;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-link-disabled:hover {
+        transform: none;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+    }
+
+    .nav-link-disabled .nav-link-content i {
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Warning and Lock Indicators */
+    .nav-link-warning-indicator,
+    .nav-link-lock-indicator {
+        margin-left: auto;
+        font-size: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .nav-link-warning-indicator {
+        color: #fbbf24;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .nav-link-lock-indicator {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    @@keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: .5;
+        }
     }
 
     /* Navigation Groups */
@@ -314,3 +394,32 @@
     }
 
 </style>
+
+@code {
+    private Dictionary<string, NavigationItemState> _navigationStates = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load initial navigation states
+        _navigationStates = await NavigationStateService.GetAllNavigationStatesAsync();
+        
+        // Subscribe to state changes
+        NavigationStateService.NavigationStateChanged += OnNavigationStateChanged;
+    }
+
+    private NavigationItemState GetNavigationState(string route)
+    {
+        return _navigationStates.GetValueOrDefault(route, new NavigationItemState { IsEnabled = true });
+    }
+
+    private async void OnNavigationStateChanged(object? sender, NavigationStateChangedEventArgs e)
+    {
+        _navigationStates[e.Route] = e.NewState;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NavigationStateService.NavigationStateChanged -= OnNavigationStateChanged;
+    }
+}
