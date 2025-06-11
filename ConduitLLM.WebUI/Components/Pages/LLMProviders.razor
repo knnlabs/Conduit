@@ -210,7 +210,7 @@
     private ConfigDTOs.ProviderCredentialDto currentProvider = new();
     
     private readonly List<string> _supportedProviders = new List<string> {
-        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Google", "Mistral", "Groq", "HuggingFace", "AWS", "Azure", "OpenRouter", "Cerebras"
+        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Gemini", "Mistral", "Groq", "HuggingFace", "AWS Bedrock", "SageMaker", "VertexAI", "Fireworks", "OpenRouter", "Cerebras"
     };
     
     protected override async Task OnInitializedAsync()
@@ -295,8 +295,8 @@
         {
             Logger.LogDebug("LaunchGuidedSetup called for provider: {ProviderName}", providerName);
             
-            // Navigate to the provider edit page
-            NavigationManager.NavigateTo("/configuration/provider/edit");
+            // Navigate to the provider edit page with the provider name as a query parameter
+            NavigationManager.NavigateTo($"/configuration/provider/edit?provider={Uri.EscapeDataString(providerName)}");
         }
         catch (Exception ex)
         {
@@ -313,12 +313,14 @@
             "OpenAI Compatible" => "Connect to any service with an OpenAI-compatible API (Requires Base URL)",
             "Anthropic" => "Connect to Claude models for advanced reasoning",
             "Cohere" => "Connect to Cohere's command models",
-            "Google" => "Connect to Google AI models like Gemini",
+            "Gemini" => "Connect to Google AI models like Gemini",
             "Mistral" => "Connect to Mistral AI's models",
             "Groq" => "Connect to models running on Groq's LPU Inference Engine for high speed",
             "HuggingFace" => "Access models hosted on Hugging Face Inference Endpoints",
-            "AWS" => "Connect to models via AWS Bedrock or SageMaker (Requires Base URL)",
-            "Azure" => "Connect to models deployed on Azure OpenAI Service (Requires Base URL)",
+            "AWS Bedrock" => "Connect to foundation models via Amazon Bedrock",
+            "SageMaker" => "Connect to hosted LLMs via AWS SageMaker",
+            "VertexAI" => "Connect to Google Vertex AI models",
+            "Fireworks" => "Connect to a variety of open-source and first-party models",
             "OpenRouter" => "Route requests to various models through OpenRouter",
             "Cerebras" => "Connect to models running on Cerebras infrastructure",
             _ => "Connect to AI models through this provider"

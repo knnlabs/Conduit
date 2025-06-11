@@ -1,6 +1,7 @@
 @page "/configuration/provider/edit/{id?}"
 @using System.Text.Json
 @using Microsoft.Extensions.Logging
+@using Microsoft.AspNetCore.WebUtilities
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.Configuration.Entities
@@ -399,7 +400,19 @@
         else
         {
             // Initialize a new DTO for adding
-            provider = new ProviderCredentialDto { ProviderName = "" }; 
+            provider = new ProviderCredentialDto { ProviderName = "" };
+            
+            // Check if a provider name was passed via query string
+            var uri = new Uri(NavigationManager.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("provider", out var providerValues))
+            {
+                var providerName = providerValues.FirstOrDefault();
+                if (!string.IsNullOrEmpty(providerName) && _supportedProviders.Contains(providerName))
+                {
+                    provider.ProviderName = providerName;
+                }
+            }
+            
             isLoading = false;
         }
         
