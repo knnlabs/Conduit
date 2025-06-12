@@ -6,7 +6,7 @@
 <div class="toast-container">
     @foreach (var notification in ToastService.Notifications)
     {
-        <Toast Notification="notification" OnDismiss="() => ToastService.Dismiss(notification.Id)" />
+        <Toast Notification="notification" OnDismiss="() => DismissNotification(notification.Id)" />
     }
 </div>
 
@@ -14,6 +14,11 @@
     protected override void OnInitialized()
     {
         ToastService.OnChange += StateHasChanged;
+    }
+
+    private void DismissNotification(Guid notificationId)
+    {
+        ToastService.Dismiss(notificationId);
     }
 
     public void Dispose()

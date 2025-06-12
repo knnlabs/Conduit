@@ -21,7 +21,7 @@
         </div>
         @if (Notification.IsDismissible)
         {
-            <button class="toast-close" @onclick:stopPropagation="true" @onclick="HandleDismiss">
+            <button class="toast-close" @onclick:stopPropagation="true" @onclick="HandleDismiss" type="button" aria-label="Close">
                 <i class="fa fa-times"></i>
             </button>
         }
@@ -50,6 +50,8 @@
 
     private async Task HandleDismiss()
     {
+        if (Notification.IsDismissing) return; // Prevent double-clicks
+        
         Notification.IsDismissing = true;
         StateHasChanged();
         await Task.Delay(300); // Wait for animation

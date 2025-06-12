@@ -3,7 +3,7 @@
     position: fixed;
     top: 1rem;
     right: 1rem;
-    z-index: 9999;
+    z-index: 10000;
     pointer-events: none;
     max-width: 420px;
     width: 100%;
@@ -103,11 +103,18 @@
     cursor: pointer;
     transition: all 0.2s ease;
     border-radius: 0.25rem;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
 }
 
 .toast-close:hover {
     background: rgba(0, 0, 0, 0.05);
     color: #495057;
+}
+
+.toast-close i {
+    pointer-events: none;
 }
 
 /* Progress Bar */

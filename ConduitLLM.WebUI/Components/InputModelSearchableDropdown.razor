@@ -44,7 +44,7 @@
     private ModelCostDto? GetModelCost(string modelId)
     {
         return ModelCosts?.FirstOrDefault(c => 
-            c.ModelId.Equals(modelId, StringComparison.OrdinalIgnoreCase));
+            c.ModelIdPattern.Equals(modelId, StringComparison.OrdinalIgnoreCase));
     }
     
     private string GetModelDescription(ModelInfo model)
@@ -125,7 +125,7 @@
         out string? validationErrorMessage)
     {
         result = value;
-        validationErrorMessage = null;
+        validationErrorMessage = null!;
         return true;
     }
     

@@ -11,7 +11,7 @@
                         Items="@Items"
                         SelectedValue="@InternalValue"
                         SelectedValueChanged="@OnSelectedValueChanged"
-                        ValueSelector="@ValueSelector"
+                        ValueSelector="@(item => ValueSelector(item)?.ToString() ?? "")"
                         DisplaySelector="@DisplaySelector"
                         DescriptionSelector="@DescriptionSelector"
                         Placeholder="@Placeholder"
@@ -116,7 +116,7 @@
         // For other types, try to convert
         if (value == null)
         {
-            result = default(TValue);
+            result = default(TValue)!;
             validationErrorMessage = null;
             return true;
         }
