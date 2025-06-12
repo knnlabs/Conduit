@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -15,16 +16,19 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// The model identifier used in client requests
         /// </summary>
+        [Required(ErrorMessage = "Model Alias is required")]
         public string ModelId { get; set; } = string.Empty;
 
         /// <summary>
         /// The provider-specific model identifier
         /// </summary>
+        [Required(ErrorMessage = "Provider Model ID is required")]
         public string ProviderModelId { get; set; } = string.Empty;
 
         /// <summary>
         /// The provider identifier
         /// </summary>
+        [Required(ErrorMessage = "Provider is required")]
         public string ProviderId { get; set; } = string.Empty;
 
         /// <summary>

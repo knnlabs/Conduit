@@ -4,10 +4,14 @@
 
 <div class="searchable-dropdown-container" id="@dropdownId">
     <div class="dropdown @(IsOpen ? "show" : "")">
-        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center"
+        <button class="@($"dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center {CssClass}")"
                 type="button"
                 @onclick="ToggleDropdown"
-                disabled="@Disabled">
+                disabled="@Disabled"
+                aria-describedby="@AriaDescribedBy"
+                aria-invalid="@(CssClass?.Contains("is-invalid") == true ? "true" : null)"
+                aria-expanded="@(IsOpen ? "true" : "false")"
+                aria-haspopup="listbox">
             <span class="text-truncate">
                 @if (string.IsNullOrEmpty(SelectedValue))
                 {
@@ -251,6 +255,8 @@
     [Parameter] public string NoResultsMessage { get; set; } = "No results found";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public Func<TItem, string, bool>? CustomSearchFilter { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
     
     private bool IsOpen = false;
     private string searchTerm = "";

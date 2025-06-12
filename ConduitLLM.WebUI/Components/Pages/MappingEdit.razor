@@ -10,6 +10,7 @@
 @using System.Net.Http
 @using System.Net.Http.Headers
 @using Microsoft.Extensions.Logging
+@using Microsoft.AspNetCore.Components.Forms
 
 @inject Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IToastService ToastService
@@ -40,7 +41,7 @@ else if (!string.IsNullOrEmpty(Id) && dtoMapping == null)
 }
 else
 {
-    <EditForm EditContext="editContext" OnValidSubmit="HandleValidSubmit" FormName="MappingForm">
+    <EditForm Model="dtoMapping" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
@@ -64,15 +65,15 @@ else
                 <div class="mb-4">
                     <label for="providerName" class="form-label">Provider Name</label>
                     <select class="form-select" id="providerName" 
-                            value="@providerName"
-                            @onchange="@(async (ChangeEventArgs e) => await ProviderSelectedAsync(e.Value?.ToString() ?? ""))">
+                            @bind="@SelectedProviderId"
+                            @bind:after="@(async () => await ProviderSelectedByIdAsync(SelectedProviderId))">
                         <option value="">-- Select Provider --</option>
                         @foreach (var provider in availableProviders)
                         {
-                            <option value="@provider.ProviderName">@provider.ProviderName</option>
+                            <option value="@provider.Id">@provider.ProviderName</option>
                         }
                     </select>
-                    <ValidationMessage For="@(() => providerName)" />
+                    <ValidationMessage For="@(() => dtoMapping.ProviderId)" />
                 </div>
             }
 
@@ -91,7 +92,7 @@ else
                         <input type="text" class="form-control" id="providerModelIdInput"
                                @bind="dtoMapping.ProviderModelId"
                                placeholder="Enter model ID"
-                               disabled="@string.IsNullOrEmpty(providerName)" />
+                               disabled="@string.IsNullOrEmpty(dtoMapping.ProviderId)" />
                         
                         @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
                         {
@@ -100,7 +101,7 @@ else
                         @if (providerModels == null || !providerModels.Any())
                         {
                             <small class="text-muted mt-1 d-block">
-                                @(string.IsNullOrEmpty(providerName) 
+                                @(string.IsNullOrEmpty(dtoMapping.ProviderId) 
                                     ? "Select provider first" 
                                     : "Could not retrieve model list. Please enter the model ID manually.")
                             </small>
@@ -108,7 +109,7 @@ else
                         <div class="mt-2">
                             <button type="button" class="btn btn-sm btn-outline-secondary"
                                     @onclick="@(() => RefreshModels(true))"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
+                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderId))">
                                 <i class="fa fa-refresh me-1"></i> Try loading models again
                             </button>
                             @if (showModelTextbox && providerModels != null && providerModels.Any())
@@ -125,22 +126,22 @@ else
                 {
                     <div class="d-flex gap-2">
                         <div class="flex-grow-1">
-                            <ModelSearchableDropdown 
+                            <InputModelSearchableDropdown 
                                 Models="@providerModels"
-                                @bind-SelectedModelId="@dtoMapping.ProviderModelId"
+                                @bind-Value="@dtoMapping.ProviderModelId"
                                 ProviderName="@providerName"
                                 ModelCosts="@modelCosts"
-                                Disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))" />
+                                Disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderId))" />
                         </div>
                         <button class="btn btn-outline-secondary" type="button"
                                 @onclick="@(() => RefreshModels(true))"
-                                disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
+                                disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderId))"
                                 title="Refresh model list">
                             <i class="fa fa-refresh"></i>
                         </button>
                         <button class="btn btn-outline-secondary" type="button"
                                 @onclick="ToggleModelInputMode"
-                                disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
+                                disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderId))"
                                 title="Enter model ID manually">
                             <i class="fa fa-pencil"></i>
                         </button>
@@ -148,6 +149,11 @@ else
                     <small class="form-text text-muted">Search by model name, provider, or cost. Click <i class="fa fa-pencil"></i> to enter manually</small>
                 }
                 <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
+                
+                @* Debug: Show current value *@
+                <div class="mt-2">
+                    <small class="text-muted">Current ProviderModelId value: "@dtoMapping.ProviderModelId"</small>
+                </div>
             </div>
         </div>
             
@@ -195,10 +201,21 @@ else
     private bool isLoadingModels = false; // Loading provider-specific models
     private bool isLoadingPage = true;
     private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
-    private EditContext? editContext;
-    private ValidationMessageStore? messageStore;
     private bool isSaving = false;
     private List<ConfigDTO.ModelCostDto> modelCosts = new();
+
+    private string SelectedProviderId
+    {
+        get => dtoMapping.ProviderId;
+        set
+        {
+            if (dtoMapping.ProviderId != value)
+            {
+                dtoMapping.ProviderId = value;
+                // Don't trigger async work in property setter, let the onchange event handle it
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -254,9 +271,7 @@ else
                 };
             }
 
-            // Initialize EditContext with validation support
-            editContext = new EditContext(dtoMapping);
-            messageStore = new ValidationMessageStore(editContext);
+            // Form validation will be handled by Blazor's built-in validation
         }
         catch (Exception ex)
         {
@@ -342,34 +357,34 @@ else
         }
     }
 
-    private async Task ProviderSelectedAsync(string selectedProvider)
+    private async Task ProviderSelectedByIdAsync(string selectedProviderId)
     {
-        if (string.IsNullOrEmpty(selectedProvider))
+        if (string.IsNullOrEmpty(selectedProviderId))
         {
             // Clear provider models if no provider selected
             providerModels.Clear();
             providerName = "";
             dtoMapping.ProviderId = "";
+            dtoMapping.ProviderModelId = ""; // Also clear the model selection
+            StateHasChanged();
             return;
         }
         
-        if (selectedProvider != providerName)
+        // Find the provider by ID
+        var selectedProviderObj = availableProviders.FirstOrDefault(p => p.Id.ToString() == selectedProviderId);
+        if (selectedProviderObj != null)
         {
-            // Update the provider name and clear the model ID since provider changed
-            providerName = selectedProvider;
-            dtoMapping.ProviderModelId = ""; // Reset model selection
-            
-            // Set ProviderId based on selected provider
-            var selectedProviderObj = availableProviders.FirstOrDefault(p => p.ProviderName == selectedProvider);
-            if (selectedProviderObj != null)
-            {
-                dtoMapping.ProviderId = selectedProviderObj.Id.ToString();
-            }
+            // Update the provider ID and name
+            dtoMapping.ProviderId = selectedProviderId;
+            providerName = selectedProviderObj.ProviderName;
+            dtoMapping.ProviderModelId = ""; // Reset model selection when provider changes
             
             // Load models for the selected provider
-            await LoadProviderModelsAsync(selectedProvider);
+            await LoadProviderModelsAsync(providerName);
+            StateHasChanged();
         }
     }
+
 
     private void ProviderModelSelected(string selectedModel)
     {
@@ -414,28 +429,21 @@ else
 
     private async Task HandleValidSubmit()
     {
-        // Clear previous validation errors
-        messageStore?.Clear();
+        _logger.LogInformation("HandleValidSubmit called");
+        
         isSaving = true;
         StateHasChanged();
         
         try
         {
-            // Validate required fields
-            if (string.IsNullOrWhiteSpace(dtoMapping.ModelId) || 
-                string.IsNullOrWhiteSpace(providerName) ||
-                string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId))
-            {
-                ToastService.ShowError("All fields are required");
-                return;
-            }
             
             // Check if provider exists
-            var provider = await ProviderCredentialService.GetByProviderNameAsync(providerName);
+            var provider = await ProviderCredentialService.GetByIdAsync(
+                int.TryParse(dtoMapping.ProviderId, out int providerId) ? providerId : 0);
                 
             if (provider == null)
             {
-                ToastService.ShowError($"Provider '{providerName}' not found.");
+                ToastService.ShowError($"Provider with ID '{dtoMapping.ProviderId}' not found.");
                 return;
             }
             
@@ -446,17 +454,10 @@ else
 
             if (aliasExists)
             {
-                 // Add validation message specifically for the ModelId field
-                 messageStore?.Add(() => dtoMapping.ModelId, $"Model alias '{dtoMapping.ModelId}' already exists.");
-                 editContext?.NotifyValidationStateChanged(); // Trigger UI update for validation messages
+                 ToastService.ShowError($"Model alias '{dtoMapping.ModelId}' already exists.");
                  return; // Stop processing
             }
 
-            // Update mapping DTO with provider ID
-            dtoMapping.ProviderId = provider.Id.ToString();
-            // Set additional properties for backward compatibility
-            
-            
             // Save the mapping
             bool result;
             

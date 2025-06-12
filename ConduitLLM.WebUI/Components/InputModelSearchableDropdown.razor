@@ -1,27 +1,25 @@
 @using ConduitLLM.Configuration.DTOs
-@inherits ComponentBase
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputBase<string?>
 
-<div class="model-searchable-dropdown">
-    <SearchableDropdown TItem="ModelInfo"
-                        Items="@ModelInfos"
-                        SelectedValue="@SelectedModelId"
-                        SelectedValueChanged="@OnSelectedValueChanged"
-                        ValueSelector="@(model => model.ModelId)"
-                        DisplaySelector="@(model => model.ModelId)"
-                        DescriptionSelector="@GetModelDescription"
-                        Placeholder="@Placeholder"
-                        EmptyOptionText="@EmptyOptionText"
-                        ShowSearch="true"
-                        SearchPlaceholder="Search by model name, provider, or cost..."
-                        NoResultsMessage="No models found matching your search"
-                        Disabled="@Disabled"
-                        CustomSearchFilter="@SearchModels" />
-</div>
+<InputSearchableDropdown TValue="string?"
+                         TItem="ModelInfo"
+                         @bind-Value="@CurrentValue"
+                         Items="@ModelInfos"
+                         ValueSelector="@(model => model.ModelId)"
+                         DisplaySelector="@(model => model.ModelId)"
+                         DescriptionSelector="@GetModelDescription"
+                         Placeholder="@Placeholder"
+                         EmptyOptionText="@EmptyOptionText"
+                         ShowSearch="true"
+                         SearchPlaceholder="Search by model name, provider, or cost..."
+                         NoResultsMessage="No models found matching your search"
+                         Disabled="@Disabled"
+                         CustomSearchFilter="@SearchModels"
+                         ValidationFor="@ValueExpression" />
 
 @code {
     [Parameter] public List<string> Models { get; set; } = new();
-    [Parameter] public string? SelectedModelId { get; set; }
-    [Parameter] public EventCallback<string?> SelectedModelIdChanged { get; set; }
     [Parameter] public string ProviderName { get; set; } = "";
     [Parameter] public List<ModelCostDto>? ModelCosts { get; set; }
     [Parameter] public string Placeholder { get; set; } = "-- Select Model --";
@@ -32,6 +30,8 @@
     
     protected override void OnParametersSet()
     {
+        base.OnParametersSet();
+        
         // Convert string models to ModelInfo objects
         ModelInfos = Models.Select(modelId => new ModelInfo
         {
@@ -44,24 +44,25 @@
     private ModelCostDto? GetModelCost(string modelId)
     {
         return ModelCosts?.FirstOrDefault(c => 
-            c.ModelIdPattern.Equals(modelId, StringComparison.OrdinalIgnoreCase) || 
-            c.ModelIdPattern.Equals($"{ProviderName}/{modelId}", StringComparison.OrdinalIgnoreCase));
+            c.ModelId.Equals(modelId, StringComparison.OrdinalIgnoreCase));
     }
     
     private string GetModelDescription(ModelInfo model)
     {
         var parts = new List<string>();
         
+        // Add provider name if available
         if (!string.IsNullOrEmpty(model.Provider))
         {
             parts.Add($"Provider: {model.Provider}");
         }
         
+        // Add cost information if available
         if (model.Cost != null)
         {
             var costParts = new List<string>();
             
-            // Convert from per-token to per-million tokens
+            // Convert from per-token to per-million tokens for display
             var inputCostPerMillion = model.Cost.InputTokenCost * 1_000_000;
             var outputCostPerMillion = model.Cost.OutputTokenCost * 1_000_000;
             
@@ -104,7 +105,7 @@
             return true;
             
         // Search for "free" models
-        if (searchTermLower.Contains("free") && model.Cost != null &&
+        if (searchTermLower == "free" && model.Cost != null && 
             model.Cost.InputTokenCost == 0 && model.Cost.OutputTokenCost == 0)
             return true;
             
@@ -119,10 +120,13 @@
         return false;
     }
     
-    private async Task OnSelectedValueChanged(string? value)
+    protected override bool TryParseValueFromString(string? value, 
+        out string? result, 
+        out string? validationErrorMessage)
     {
-        SelectedModelId = value;
-        await SelectedModelIdChanged.InvokeAsync(value);
+        result = value;
+        validationErrorMessage = null;
+        return true;
     }
     
     private class ModelInfo
