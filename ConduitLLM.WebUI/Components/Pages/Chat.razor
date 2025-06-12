@@ -134,76 +134,15 @@
                             <span class="badge bg-secondary">@chatHistory.Count messages</span>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="chat-container" style="max-height: 500px; overflow-y: auto;">
-                            @if (!chatHistory.Any() && !isLoading)
-                            {
-                                <div class="text-center py-5">
-                                    <i class="fa fa-comments fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">Start a conversation by sending your first message above.</p>
-                                </div>
-                            }
-                            @foreach (var message in chatHistory)
-                            {
-                                <div class="message-bubble @GetMessageClass(message.Role) mb-3">
-                                    <div class="message-header">
-                                        <div class="d-flex align-items-center">
-                                            @if (message.Role == "user")
-                                            {
-                                                <i class="fa fa-user-circle me-2"></i>
-                                            }
-                                            else if (message.Role == "assistant")
-                                            {
-                                                <i class="fa fa-robot me-2"></i>
-                                            }
-                                            else
-                                            {
-                                                <i class="fa fa-cog me-2"></i>
-                                            }
-                                            <span class="fw-semibold text-capitalize">@message.Role</span>
-                                        </div>
-                                    </div>
-                                    <div class="message-content">
-                                        @RenderMessageContent(message.Content ?? string.Empty)
-                                    </div>
-                                </div>
-                            }
-                            @if (isLoading && _streamResponse)
-                            {
-                                <div class="message-bubble assistant-message mb-3">
-                                    <div class="message-header">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fa fa-robot me-2"></i>
-                                            <span class="fw-semibold">Assistant</span>
-                                        </div>
-                                    </div>
-                                    <div class="message-content">
-                                        <div class="d-flex align-items-center">
-                                            <div class="spinner-border spinner-border-sm me-2" role="status">
-                                                <span class="visually-hidden">Loading...</span>
-                                            </div>
-                                            <span class="text-muted">Typing...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            @if (isLoading && !_streamResponse)
-                            {
-                                <div class="message-bubble assistant-message mb-3">
-                                    <div class="message-header">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fa fa-robot me-2"></i>
-                                            <span class="fw-semibold">Assistant</span>
-                                        </div>
-                                    </div>
-                                    <div class="message-content">
-                                        <div class="d-flex align-items-center">
-                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                            <span class="text-muted">Thinking...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
+                    <div class="card-body p-0">
+                        <div style="height: 500px;">
+                            <ChatHistory Messages="chatHistory" 
+                                         IsLoading="isLoading" 
+                                         StreamingMessage="streamedResponse"
+                                         ShowRawMessage="_showRawMessage"
+                                         AutoScroll="_autoScroll"
+                                         OnDeleteMessage="DeleteMessage"
+                                         OnRegenerateMessage="RegenerateMessage" />
                         </div>
                     </div>
                 </div>
@@ -391,47 +330,6 @@
         display: inline-block;
     }
     
-    .message-bubble {
-        border-radius: 15px;
-        border: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: all 0.2s ease;
-    }
-    
-    .message-bubble:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .message-header {
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid rgba(0,0,0,0.1);
-        margin-bottom: 0.75rem;
-    }
-    
-    .message-content {
-        color: #333;
-    }
-    
-    .user-message {
-        background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
-        border-left: 4px solid #2196f3;
-    }
-    
-    .assistant-message {
-        background: linear-gradient(135deg, #f3e5f5 0%, #faf0ff 100%);
-        border-left: 4px solid #9c27b0;
-    }
-    
-    .system-message {
-        background: linear-gradient(135deg, #e8f5e8 0%, #f0fff0 100%);
-        border-left: 4px solid #4caf50;
-    }
-    
-    .chat-container {
-        border-radius: 10px;
-        background: #fafafa;
-        padding: 1rem;
-    }
     
     .card {
         transition: all 0.2s ease;
@@ -541,7 +439,7 @@
         try
         {
             // Add user message to chat history
-            var userChatMessage = new Message { Role = "user", Content = userMessage };
+            var userChatMessage = new Message { Role = "user", Content = userMessage, Timestamp = DateTime.Now };
             chatHistory.Add(userChatMessage);
             
             // Add system message if provided
@@ -573,7 +471,7 @@
                 streamedResponse = ""; // Reset the streamed response
                 
                 // Add assistant message to chat history
-                chatHistory.Add(new Message { Role = "assistant", Content = "" });
+                chatHistory.Add(new Message { Role = "assistant", Content = "", Timestamp = DateTime.Now });
                 
                 await foreach (var chunk in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
                 {
@@ -602,7 +500,8 @@
                     chatHistory.Add(new Message
                     {
                         Role = assistantMessage.Role,
-                        Content = assistantMessage.Content
+                        Content = assistantMessage.Content,
+                        Timestamp = DateTime.Now
                     });
                 }
                 else
@@ -665,141 +564,36 @@
         streamedResponse = null;
     }
     
-    private string GetMessageClass(string role)
+    private Task DeleteMessage(int index)
     {
-        return role switch
+        if (index >= 0 && index < chatHistory.Count)
         {
-            "user" => "user-message",
-            "assistant" => "assistant-message",
-            "system" => "system-message",
-            _ => ""
-        };
+            chatHistory.RemoveAt(index);
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
     }
     
-    private RenderFragment RenderMessageContent(object content) => builder =>
+    private async Task RegenerateMessage(int index)
     {
-        // Handle null content
-        if (content == null)
+        if (index >= 0 && index < chatHistory.Count && chatHistory[index].Role == "assistant")
         {
-            builder.OpenElement(0, "pre");
-            builder.AddAttribute(1, "style", "white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;");
-            builder.AddContent(2, string.Empty);
-            builder.CloseElement();
-            return;
-        }
-
-        try
-        {
-            if (content is string strContent)
-            {
-                // Display plain string content
-                builder.OpenElement(0, "pre");
-                builder.AddAttribute(1, "style", "white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;");
-                builder.AddContent(2, strContent);
-                builder.CloseElement();
-                return;
-            }
+            // Remove this message and all messages after it
+            chatHistory.RemoveRange(index, chatHistory.Count - index);
             
-            // Try to handle content as JsonElement
-            if (content is JsonElement jsonElement)
+            // Find the last user message
+            var lastUserMessage = chatHistory.LastOrDefault(m => m.Role == "user");
+            if (lastUserMessage != null)
             {
-                if (jsonElement.ValueKind == JsonValueKind.String)
-                {
-                    // It's a plain string inside a JsonElement
-                    builder.OpenElement(0, "pre");
-                    builder.AddAttribute(1, "style", "white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;");
-                    builder.AddContent(2, jsonElement.GetString());
-                    builder.CloseElement();
-                    return;
-                }
-                else if (jsonElement.ValueKind == JsonValueKind.Array)
-                {
-                    // It's an array of content parts
-                    foreach (var element in jsonElement.EnumerateArray())
-                    {
-                        RenderContentPart(builder, element);
-                    }
-                    return;
-                }
-            }
-            
-            // Try to serialize and deserialize as content parts
-            var json = JsonSerializer.Serialize(content);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-            
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                // It's an array - render each part
-                foreach (var element in root.EnumerateArray())
-                {
-                    RenderContentPart(builder, element);
-                }
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error rendering content: {ex.Message}");
-        }
-        
-        // Fallback - just render the string representation
-        builder.OpenElement(0, "pre");
-        builder.AddAttribute(1, "style", "white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;");
-        builder.AddContent(2, content.ToString());
-        builder.CloseElement();
-    };
-    
-    /// <summary>
-    /// Renders a single content part based on its type (text or image)
-    /// </summary>
-    private void RenderContentPart(RenderTreeBuilder builder, JsonElement element)
-    {
-        try
-        {
-            if (element.TryGetProperty("type", out var typeElement))
-            {
-                var type = typeElement.GetString();
+                // Temporarily store the user message content
+                var tempUserMessage = lastUserMessage.Content?.ToString() ?? "";
                 
-                if (type == "text" && element.TryGetProperty("text", out var textElement))
-                {
-                    // Text content part
-                    builder.OpenElement(0, "div");
-                    builder.AddAttribute(1, "class", "mb-2");
-                    builder.OpenElement(2, "pre");
-                    builder.AddAttribute(3, "style", "white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0;");
-                    builder.AddContent(4, textElement.GetString());
-                    builder.CloseElement(); // Close pre
-                    builder.CloseElement(); // Close div
-                }
-                else if (type == "image_url" && element.TryGetProperty("image_url", out var imageUrlElement))
-                {
-                    // Image content part
-                    if (imageUrlElement.TryGetProperty("url", out var urlElement))
-                    {
-                        var url = urlElement.GetString();
-                        if (!string.IsNullOrEmpty(url))
-                        {
-                            builder.OpenElement(0, "div");
-                            builder.AddAttribute(1, "class", "my-3");
-                            
-                            // Image element
-                            builder.OpenElement(2, "img");
-                            builder.AddAttribute(3, "src", url);
-                            builder.AddAttribute(4, "class", "mud-elevation-1 rounded");
-                            builder.AddAttribute(5, "style", "max-width: 100%; max-height: 400px;");
-                            builder.AddAttribute(6, "alt", "AI generated image");
-                            builder.CloseElement(); // Close img
-                            
-                            builder.CloseElement(); // Close div
-                        }
-                    }
-                }
+                // Set the userMessage field to the last user message
+                userMessage = tempUserMessage;
+                
+                // Trigger a new request
+                await SendRequest();
             }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error rendering content part: {ex.Message}");
         }
     }
 }

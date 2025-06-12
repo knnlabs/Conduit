@@ -147,6 +147,7 @@ Console.WriteLine("[Conduit WebUI] Registering controllers");
 builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastService, ConduitLLM.WebUI.Services.ToastService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.NavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFileVersionService, ConduitLLM.WebUI.Services.FileVersionService>();

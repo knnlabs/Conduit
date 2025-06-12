@@ -1,0 +1,726 @@
+@using ConduitLLM.Core.Models
+@using Microsoft.AspNetCore.Components
+@using System.Text.Json
+@using ConduitLLM.WebUI.Services
+@inject IJSRuntime JSRuntime
+@inject MarkdownService MarkdownService
+@inject IToastService ToastService
+@rendermode InteractiveServer
+
+<div class="chat-history-container">
+    <div class="chat-messages @(_autoScroll ? "auto-scroll" : "")" @ref="chatContainer">
+        @if (!Messages.Any() && !IsLoading)
+        {
+            <div class="empty-state">
+                <i class="fa fa-comments fa-3x text-muted mb-3"></i>
+                <p class="text-muted">@EmptyStateMessage</p>
+            </div>
+        }
+        
+        @{
+            DateTime? lastMessageDate = null;
+        }
+        
+        @foreach (var (message, index) in Messages.Select((m, i) => (m, i)))
+        {
+            var messageDate = message.Timestamp?.Date ?? DateTime.Now.Date;
+            var showDateSeparator = lastMessageDate == null || messageDate != lastMessageDate;
+            lastMessageDate = messageDate;
+            
+            @if (showDateSeparator)
+            {
+                <div class="date-separator">
+                    <span class="date-label">@GetDateLabel(messageDate)</span>
+                </div>
+            }
+            
+            <div class="message-wrapper @(GetMessageAlignment(message.Role))">
+                <div class="message-bubble @GetMessageClass(message.Role) @(_selectedMessageIndex == index ? "selected" : "")"
+                     @onclick="() => SelectMessage(index)">
+                    <div class="message-header">
+                        <div class="message-info">
+                            @if (message.Role == "user")
+                            {
+                                <i class="fa fa-user-circle message-icon"></i>
+                            }
+                            else if (message.Role == "assistant")
+                            {
+                                <i class="fa fa-robot message-icon"></i>
+                            }
+                            else
+                            {
+                                <i class="fa fa-cog message-icon"></i>
+                            }
+                            <span class="message-role">@GetRoleDisplayName(message.Role)</span>
+                            @if (message.Timestamp != null)
+                            {
+                                <span class="message-timestamp">@GetRelativeTime(message.Timestamp.Value)</span>
+                            }
+                        </div>
+                        @if (_selectedMessageIndex == index)
+                        {
+                            <div class="message-actions">
+                                <button class="action-btn" @onclick:stopPropagation="true" @onclick="() => CopyMessage(message)" title="Copy">
+                                    <i class="fa fa-copy"></i>
+                                </button>
+                                @if (message.Role == "assistant" && OnRegenerateMessage.HasDelegate)
+                                {
+                                    <button class="action-btn" @onclick:stopPropagation="true" @onclick="() => OnRegenerateMessage.InvokeAsync(index)" title="Regenerate">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                }
+                                @if (OnDeleteMessage.HasDelegate)
+                                {
+                                    <button class="action-btn action-btn-danger" @onclick:stopPropagation="true" @onclick="() => OnDeleteMessage.InvokeAsync(index)" title="Delete">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="message-content">
+                        @if (ShowRawMessage)
+                        {
+                            <pre class="raw-message">@message.Content</pre>
+                        }
+                        else
+                        {
+                            @RenderMessageContent(message.Content?.ToString() ?? string.Empty)
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        
+        @if (IsLoading)
+        {
+            <div class="message-wrapper assistant-align">
+                <div class="message-bubble assistant-message loading-message">
+                    <div class="message-header">
+                        <div class="message-info">
+                            <i class="fa fa-robot message-icon"></i>
+                            <span class="message-role">Assistant</span>
+                        </div>
+                    </div>
+                    <div class="message-content">
+                        @if (StreamingMessage != null && !string.IsNullOrEmpty(StreamingMessage))
+                        {
+                            @RenderMessageContent(StreamingMessage)
+                        }
+                        else
+                        {
+                            <div class="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    @if (_showScrollButton)
+    {
+        <button class="scroll-to-bottom-btn" @onclick="ScrollToBottom" title="Scroll to bottom">
+            <i class="fa fa-arrow-down"></i>
+            @if (_unreadCount > 0)
+            {
+                <span class="unread-badge">@_unreadCount</span>
+            }
+        </button>
+    }
+</div>
+
+<style>
+    .chat-history-container {
+        position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        scroll-behavior: smooth;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .date-separator {
+        text-align: center;
+        margin: 1.5rem 0;
+        position: relative;
+    }
+    
+    .date-separator::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--bs-border-color);
+        opacity: 0.5;
+    }
+    
+    .date-label {
+        background: var(--bs-body-bg);
+        padding: 0.25rem 1rem;
+        position: relative;
+        font-size: 0.875rem;
+        color: var(--bs-secondary);
+        font-weight: 500;
+    }
+    
+    .message-wrapper {
+        margin-bottom: 1rem;
+        display: flex;
+    }
+    
+    .message-wrapper.user-align {
+        justify-content: flex-end;
+    }
+    
+    .message-wrapper.assistant-align,
+    .message-wrapper.system-align {
+        justify-content: flex-start;
+    }
+    
+    .message-bubble {
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .message-bubble:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+    
+    .message-bubble.selected {
+        box-shadow: 0 0 0 2px var(--bs-primary);
+    }
+    
+    .user-message {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-bottom-right-radius: 0.25rem;
+    }
+    
+    .assistant-message {
+        background: var(--bs-gray-100);
+        border-bottom-left-radius: 0.25rem;
+    }
+    
+    .system-message {
+        background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        color: white;
+    }
+    
+    [data-bs-theme="dark"] .assistant-message {
+        background: var(--bs-gray-800);
+    }
+    
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        gap: 0.5rem;
+    }
+    
+    .message-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .message-icon {
+        font-size: 1.1rem;
+        opacity: 0.8;
+    }
+    
+    .message-role {
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: capitalize;
+    }
+    
+    .message-timestamp {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        margin-left: 0.5rem;
+    }
+    
+    .message-actions {
+        display: flex;
+        gap: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .message-bubble:hover .message-actions,
+    .message-bubble.selected .message-actions {
+        opacity: 1;
+    }
+    
+    .action-btn {
+        background: transparent;
+        border: none;
+        color: inherit;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+    }
+    
+    .action-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .assistant-message .action-btn:hover,
+    .system-message .action-btn:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-btn-danger:hover {
+        color: var(--bs-danger);
+    }
+    
+    .message-content {
+        word-wrap: break-word;
+        line-height: 1.5;
+    }
+    
+    .raw-message {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+    
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: var(--bs-secondary);
+        border-radius: 50%;
+        animation: typing 1.4s infinite;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @@keyframes typing {
+        0%, 60%, 100% {
+            opacity: 0.3;
+            transform: translateY(0);
+        }
+        30% {
+            opacity: 1;
+            transform: translateY(-10px);
+        }
+    }
+    
+    .scroll-to-bottom-btn {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: var(--bs-primary);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .scroll-to-bottom-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    
+    .unread-badge {
+        position: absolute;
+        top: -0.25rem;
+        right: -0.25rem;
+        background: var(--bs-danger);
+        color: white;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 1rem;
+        min-width: 1.5rem;
+        text-align: center;
+    }
+    
+    /* Markdown content styles */
+    .markdown-content {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    
+    .markdown-content pre {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        margin: 0.75rem 0;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .markdown-content code {
+        background: rgba(0, 0, 0, 0.1);
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    }
+    
+    .markdown-content pre code {
+        background: transparent;
+        padding: 0;
+        font-size: 0.875rem;
+    }
+    
+    .user-message .markdown-content pre,
+    .user-message .markdown-content code,
+    .system-message .markdown-content pre,
+    .system-message .markdown-content code {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .markdown-content h1,
+    .markdown-content h2,
+    .markdown-content h3,
+    .markdown-content h4,
+    .markdown-content h5,
+    .markdown-content h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .markdown-content h1 { font-size: 1.5rem; }
+    .markdown-content h2 { font-size: 1.3rem; }
+    .markdown-content h3 { font-size: 1.1rem; }
+    .markdown-content h4 { font-size: 1rem; }
+    .markdown-content h5 { font-size: 0.9rem; }
+    .markdown-content h6 { font-size: 0.85rem; }
+    
+    .markdown-content p {
+        margin: 0.5rem 0;
+    }
+    
+    .markdown-content ul,
+    .markdown-content ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .markdown-content li {
+        margin: 0.25rem 0;
+    }
+    
+    .markdown-content blockquote {
+        border-left: 3px solid currentColor;
+        padding-left: 1rem;
+        margin: 0.75rem 0;
+        opacity: 0.8;
+        font-style: italic;
+    }
+    
+    .markdown-content table {
+        border-collapse: collapse;
+        margin: 0.75rem 0;
+        width: 100%;
+    }
+    
+    .markdown-content th,
+    .markdown-content td {
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        padding: 0.5rem;
+        text-align: left;
+    }
+    
+    .markdown-content th {
+        background: rgba(0, 0, 0, 0.1);
+        font-weight: 600;
+    }
+    
+    .user-message .markdown-content th,
+    .user-message .markdown-content td,
+    .system-message .markdown-content th,
+    .system-message .markdown-content td {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .user-message .markdown-content th,
+    .system-message .markdown-content th {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .markdown-content a {
+        color: inherit;
+        text-decoration: underline;
+        opacity: 0.9;
+    }
+    
+    .markdown-content a:hover {
+        text-decoration: none;
+        opacity: 1;
+    }
+    
+    .markdown-content hr {
+        border: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.2);
+        margin: 1rem 0;
+    }
+    
+    .user-message .markdown-content hr,
+    .system-message .markdown-content hr {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .markdown-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        margin: 0.75rem 0;
+    }
+    
+    /* Dark mode adjustments */
+    [data-bs-theme="dark"] .markdown-content pre {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    [data-bs-theme="dark"] .markdown-content code {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .markdown-content th,
+    [data-bs-theme="dark"] .markdown-content td {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    [data-bs-theme="dark"] .markdown-content th {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .markdown-content hr {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .message-bubble {
+            max-width: 85%;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public List<Message> Messages { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? StreamingMessage { get; set; }
+    [Parameter] public bool ShowRawMessage { get; set; }
+    [Parameter] public bool AutoScroll { get; set; } = true;
+    [Parameter] public string EmptyStateMessage { get; set; } = "Start a conversation by sending your first message.";
+    [Parameter] public EventCallback<int> OnDeleteMessage { get; set; }
+    [Parameter] public EventCallback<int> OnRegenerateMessage { get; set; }
+    [Parameter] public EventCallback<Message> OnEditMessage { get; set; }
+    
+    private ElementReference chatContainer;
+    private bool _autoScroll = true;
+    private bool _showScrollButton = false;
+    private int _unreadCount = 0;
+    private int? _selectedMessageIndex = null;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SetupScrollListener();
+        }
+        
+        if (_autoScroll && Messages.Any())
+        {
+            await ScrollToBottom();
+        }
+    }
+    
+    private async Task SetupScrollListener()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            window.chatHistoryScrollHandler = (element) => {
+                element.addEventListener('scroll', (e) => {
+                    const isAtBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + 50;
+                    const scrollData = {
+                        scrollTop: element.scrollTop,
+                        scrollHeight: element.scrollHeight,
+                        clientHeight: element.clientHeight,
+                        isAtBottom: isAtBottom
+                    };
+                    element.dispatchEvent(new CustomEvent('chatscroll', { detail: scrollData }));
+                });
+            };
+        ");
+        
+        await JSRuntime.InvokeVoidAsync("chatHistoryScrollHandler", chatContainer);
+    }
+    
+    private async Task ScrollToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            document.querySelector('.chat-messages').scrollTo({{
+                top: document.querySelector('.chat-messages').scrollHeight,
+                behavior: 'smooth'
+            }});
+        ");
+        _showScrollButton = false;
+        _unreadCount = 0;
+    }
+    
+    private void SelectMessage(int index)
+    {
+        _selectedMessageIndex = _selectedMessageIndex == index ? null : index;
+    }
+    
+    private async Task CopyMessage(Message message)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", message.Content ?? "");
+            ToastService.ShowSuccess("Message copied to clipboard");
+        }
+        catch
+        {
+            ToastService.ShowError("Failed to copy message");
+        }
+    }
+    
+    private string GetMessageClass(string role)
+    {
+        return role switch
+        {
+            "user" => "user-message",
+            "assistant" => "assistant-message",
+            "system" => "system-message",
+            _ => ""
+        };
+    }
+    
+    private string GetMessageAlignment(string role)
+    {
+        return role switch
+        {
+            "user" => "user-align",
+            "assistant" => "assistant-align",
+            "system" => "system-align",
+            _ => ""
+        };
+    }
+    
+    private string GetRoleDisplayName(string role)
+    {
+        return role switch
+        {
+            "user" => "You",
+            "assistant" => "Assistant",
+            "system" => "System",
+            _ => role
+        };
+    }
+    
+    private string GetRelativeTime(DateTime timestamp)
+    {
+        var timeSpan = DateTime.Now - timestamp;
+        
+        if (timeSpan.TotalSeconds < 60)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        
+        return timestamp.ToString("MMM d");
+    }
+    
+    private string GetDateLabel(DateTime date)
+    {
+        if (date.Date == DateTime.Today)
+            return "Today";
+        if (date.Date == DateTime.Today.AddDays(-1))
+            return "Yesterday";
+        if (date.Date > DateTime.Today.AddDays(-7))
+            return date.ToString("dddd");
+        
+        return date.ToString("MMMM d, yyyy");
+    }
+    
+    private RenderFragment RenderMessageContent(string content) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            builder.AddContent(0, string.Empty);
+            return;
+        }
+
+        // Check if content looks like it contains markdown
+        bool hasMarkdown = content.Contains("```") || 
+                          content.Contains("**") || 
+                          content.Contains("*") ||
+                          content.Contains("#") ||
+                          content.Contains("[") ||
+                          content.Contains("`") ||
+                          content.Contains(">") ||
+                          content.Contains("|");
+
+        if (hasMarkdown)
+        {
+            // Render as markdown
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "markdown-content");
+            builder.AddMarkupContent(2, MarkdownService.ToHtml(content));
+            builder.CloseElement();
+        }
+        else
+        {
+            // Render as plain text
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "style", "white-space: pre-wrap;");
+            builder.AddContent(2, content);
+            builder.CloseElement();
+        }
+    };
+}
