@@ -1,0 +1,221 @@
+@using Microsoft.AspNetCore.Components
+@implements IDisposable
+@rendermode InteractiveServer
+
+<div class="hovercard-container" @onmouseenter="ShowHovercard" @onmouseleave="HideHovercard">
+    @ChildContent
+    
+    @if (_isVisible)
+    {
+        <div class="hovercard @Position @(_isFullyVisible ? "visible" : "")" @ref="hovercardElement">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <div class="hovercard-header">
+                    <h6 class="hovercard-title">@Title</h6>
+                </div>
+            }
+            <div class="hovercard-body">
+                @HovercardContent
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .hovercard-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .hovercard {
+        position: absolute;
+        z-index: 10000;
+        min-width: 320px;
+        max-width: 400px;
+        background: var(--bs-body-bg, #fff);
+        border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.125));
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: auto;
+    }
+
+    .hovercard.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Dark mode support */
+    [data-bs-theme="dark"] .hovercard {
+        background: var(--bs-dark, #212529);
+        border-color: var(--bs-border-color, rgba(255, 255, 255, 0.125));
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .hovercard-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-gray-100);
+        border-radius: 8px 8px 0 0;
+    }
+
+    [data-bs-theme="dark"] .hovercard-header {
+        background: var(--bs-gray-800);
+    }
+
+    .hovercard-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+    }
+
+    .hovercard-body {
+        padding: 16px;
+    }
+
+    /* Position variations */
+    .hovercard.bottom {
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .hovercard.top {
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .hovercard.left {
+        top: 50%;
+        right: calc(100% + 8px);
+        transform: translateY(-50%);
+    }
+
+    .hovercard.right {
+        top: 50%;
+        left: calc(100% + 8px);
+        transform: translateY(-50%);
+    }
+
+    .hovercard.bottom-start {
+        top: calc(100% + 8px);
+        left: 0;
+    }
+
+    .hovercard.bottom-end {
+        top: calc(100% + 8px);
+        right: 0;
+    }
+
+    /* Arrow/pointer */
+    .hovercard::before {
+        content: "";
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: var(--bs-body-bg, #fff);
+        border: 1px solid var(--bs-border-color);
+        transform: rotate(45deg);
+    }
+
+    [data-bs-theme="dark"] .hovercard::before {
+        background: var(--bs-dark, #212529);
+    }
+
+    .hovercard.bottom::before,
+    .hovercard.bottom-start::before,
+    .hovercard.bottom-end::before {
+        top: -7px;
+        border-right: none;
+        border-bottom: none;
+    }
+
+    .hovercard.bottom::before {
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+    }
+
+    .hovercard.bottom-start::before {
+        left: 16px;
+    }
+
+    .hovercard.bottom-end::before {
+        right: 16px;
+    }
+
+    .hovercard.top::before {
+        bottom: -7px;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        border-left: none;
+        border-top: none;
+    }
+
+    .hovercard.left::before {
+        right: -7px;
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+        border-left: none;
+        border-bottom: none;
+    }
+
+    .hovercard.right::before {
+        left: -7px;
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+        border-right: none;
+        border-top: none;
+    }
+</style>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HovercardContent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Position { get; set; } = "bottom";
+    [Parameter] public int Delay { get; set; } = 300; // Milliseconds before showing
+
+    private bool _isVisible = false;
+    private bool _isFullyVisible = false;
+    private ElementReference hovercardElement;
+    private System.Threading.CancellationTokenSource? _cancellationTokenSource;
+
+    private async Task ShowHovercard()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource = new System.Threading.CancellationTokenSource();
+        
+        try
+        {
+            _isVisible = true;
+            StateHasChanged();
+            
+            await Task.Delay(Delay, _cancellationTokenSource.Token);
+            
+            _isFullyVisible = true;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when mouse leaves before delay completes
+        }
+    }
+
+    private void HideHovercard()
+    {
+        _cancellationTokenSource?.Cancel();
+        _isFullyVisible = false;
+        _isVisible = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+    }
+}

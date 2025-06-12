@@ -1,89 +1,150 @@
 @using Microsoft.AspNetCore.Components
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Models
 @using System.Threading
 @implements IDisposable
+@rendermode InteractiveServer
 
 @inject IAdminApiHealthService HealthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
 <div class="admin-api-status">
-    @if (HealthService.IsHealthy)
-    {
-        <span class="status-indicator healthy" title="Admin API is healthy">
-            <i class="bi bi-check-circle-fill"></i>
-        </span>
-    }
-    else
-    {
-        <span class="status-indicator @(ShowDetails ? "unhealthy-active" : "unhealthy")" @onclick="ToggleDetails" title="Admin API health issues">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-        </span>
-    }
-
-    @if (ShowDetails)
-    {
-        <div class="admin-api-details">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Admin API Health Status</h5>
-                    <button type="button" class="btn-close" aria-label="Close" @onclick="ToggleDetails"></button>
-                </div>
-                <div class="card-body">
-                    <p>
-                        <strong>Status:</strong>
-                        @if (HealthService.IsHealthy)
-                        {
-                            <span class="badge bg-success">Healthy</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-danger">Unhealthy</span>
-                        }
-                    </p>
-                    
-                    @if (!HealthService.IsHealthy && !string.IsNullOrEmpty(HealthService.LastErrorMessage))
-                    {
-                        <p><strong>Error:</strong> @HealthService.LastErrorMessage</p>
-                    }
-                    
-                    <p><strong>Last Checked:</strong> @(HealthService.LastChecked == DateTime.MinValue ? "Never" : HealthService.LastChecked.ToString("yyyy-MM-dd HH:mm:ss"))</p>
-                    
-                    @{
-                        var details = HealthService.GetConnectionDetails();
-                    }
-
-                    <h6 class="mt-3">Configuration</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <tr>
-                                <th>Admin API Base URL</th>
-                                <td>@details.BaseUrl</td>
-                            </tr>
-                            <tr>
-                                <th>Admin API Mode</th>
-                                <td>@(details.UseAdminApi ? "Enabled" : "Disabled (Legacy)")</td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-between mt-3">
-                        <button @onclick="CheckHealthNow" class="btn btn-primary">
-                            <i class="bi bi-arrow-repeat"></i> Check Now
+    <Hovercard Position="bottom-end" Delay="200">
+        <ChildContent>
+            @if (HealthService.IsHealthy)
+            {
+                <span class="status-indicator healthy">
+                    <i class="bi bi-check-circle-fill"></i>
+                </span>
+            }
+            else
+            {
+                <span class="status-indicator unhealthy">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </span>
+            }
+        </ChildContent>
+        <HovercardContent>
+            <div class="health-status-card">
+                <div class="status-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            @if (HealthService.IsHealthy)
+                            {
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <span class="status-text text-success">Healthy</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                                <span class="status-text text-danger">Unhealthy</span>
+                            }
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="CheckHealthNow">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
-                        
-                        <a href="@GetTroubleshootingUrl()" target="_blank" class="btn btn-outline-secondary">
-                            <i class="bi bi-question-circle"></i> Troubleshooting
-                        </a>
                     </div>
+                </div>
+
+                @if (!HealthService.IsHealthy && !string.IsNullOrEmpty(HealthService.LastErrorMessage))
+                {
+                    <div class="alert alert-danger alert-sm mt-3 mb-2">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        @HealthService.LastErrorMessage
+                    </div>
+                }
+
+                @{
+                    var details = HealthService.GetConnectionDetails();
+                    var detailedStatus = HealthService.LastDetailedStatus;
+                }
+
+                <div class="info-section">
+                    <h6 class="section-title">Connection Details</h6>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Admin API</span>
+                            <span class="info-value">@(details.UseAdminApi ? "Enabled" : "Disabled")</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Base URL</span>
+                            <span class="info-value text-truncate" title="@details.BaseUrl">@details.BaseUrl</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Last Check</span>
+                            <span class="info-value">@FormatLastChecked()</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (detailedStatus != null && detailedStatus.Checks.Any())
+                {
+                    <div class="health-checks-section">
+                        <h6 class="section-title">Health Checks</h6>
+                        <div class="health-check-list">
+                            @foreach (var check in detailedStatus.Checks)
+                            {
+                                <div class="health-check-item">
+                                    <div class="check-header">
+                                        <span class="check-name">@FormatCheckName(check.Name)</span>
+                                        <span class="check-status @GetStatusClass(check.Status)">
+                                            @check.Status
+                                        </span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(check.Description))
+                                    {
+                                        <div class="check-description">@check.Description</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(check.Exception))
+                                    {
+                                        <div class="check-error">
+                                            <i class="bi bi-exclamation-circle"></i> @check.Exception
+                                        </div>
+                                    }
+                                    @if (check.Name == "providers" && check.Data != null)
+                                    {
+                                        <div class="provider-details">
+                                            @foreach (var kvp in check.Data.Where(d => d.Key.EndsWith("_status")))
+                                            {
+                                                var providerName = kvp.Key.Replace("_status", "");
+                                                var status = kvp.Value.ToString();
+                                                <div class="provider-item">
+                                                    <span class="provider-name">@providerName</span>
+                                                    <span class="provider-status @GetProviderStatusClass(status)">
+                                                        @status
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    <div class="check-duration">@check.Duration.ToString("F1")ms</div>
+                                </div>
+                            }
+                        </div>
+                        <div class="total-duration">
+                            Total check time: <strong>@detailedStatus.TotalDuration.ToString("F1")ms</strong>
+                        </div>
+                    </div>
+                }
+
+                <div class="action-links">
+                    <a href="/provider-health" class="action-link">
+                        <i class="bi bi-heart-pulse"></i> Provider Health
+                    </a>
+                    <a href="/logs" class="action-link">
+                        <i class="bi bi-journal-text"></i> View Logs
+                    </a>
+                    <a href="/configuration" class="action-link">
+                        <i class="bi bi-gear"></i> Configuration
+                    </a>
                 </div>
             </div>
-        </div>
-    }
+        </HovercardContent>
+    </Hovercard>
 </div>
 
 @code {
-    private bool ShowDetails { get; set; } = false;
     private Timer? _refreshTimer;
 
     protected override void OnInitialized()
@@ -101,20 +162,65 @@
         _refreshTimer?.Dispose();
     }
 
-    private void ToggleDetails()
-    {
-        ShowDetails = !ShowDetails;
-    }
-
     private async Task CheckHealthNow()
     {
-        await HealthService.CheckHealthAsync(force: true);
+        await HealthService.GetDetailedHealthAsync(force: true);
         StateHasChanged();
     }
 
-    private string GetTroubleshootingUrl()
+    private string FormatLastChecked()
     {
-        return "/docs/admin-api-migration-guide.md";
+        if (HealthService.LastChecked == DateTime.MinValue)
+        {
+            return "Never";
+        }
+
+        var elapsed = DateTime.UtcNow - HealthService.LastChecked;
+        if (elapsed.TotalSeconds < 60)
+        {
+            return "Just now";
+        }
+        else if (elapsed.TotalMinutes < 60)
+        {
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        }
+        else
+        {
+            return HealthService.LastChecked.ToString("HH:mm:ss");
+        }
+    }
+
+    private string FormatCheckName(string name)
+    {
+        return name switch
+        {
+            "database" => "Database",
+            "redis" => "Redis Cache",
+            "providers" => "LLM Providers",
+            _ => name
+        };
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "healthy" => "badge bg-success",
+            "degraded" => "badge bg-warning",
+            "unhealthy" => "badge bg-danger",
+            _ => "badge bg-secondary"
+        };
+    }
+
+    private string GetProviderStatusClass(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "online" => "text-success",
+            "offline" => "text-danger",
+            "unknown" => "text-warning",
+            _ => "text-secondary"
+        };
     }
 }
 
@@ -127,38 +233,237 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .status-indicator:hover {
+        transform: scale(1.1);
     }
 
     .healthy {
-        color: #198754; /* Bootstrap success color */
+        color: #198754;
     }
 
     .unhealthy {
-        color: #dc3545; /* Bootstrap danger color */
+        color: #dc3545;
         animation: pulse 2s infinite;
-    }
-    
-    .unhealthy-active {
-        color: #dc3545; /* Bootstrap danger color */
     }
 
     @@keyframes pulse {
         0% { opacity: 1; }
-        50% { opacity: 0.5; }
+        50% { opacity: 0.6; }
         100% { opacity: 1; }
     }
 
-    .admin-api-details {
+    .health-status-card {
+        min-width: 380px;
+    }
+
+    .status-header {
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--bs-border-color);
+        margin-bottom: 16px;
+    }
+
+    .status-text {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .alert-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .info-section, .health-checks-section {
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--bs-secondary, #6c757d);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    [data-bs-theme="dark"] .section-title {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 8px;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .info-label {
+        font-size: 0.875rem;
+        color: var(--bs-secondary, #6c757d);
+    }
+
+    .info-value {
+        font-size: 0.875rem;
+        font-weight: 500;
+        max-width: 200px;
+        color: var(--bs-body-color, #212529);
+    }
+
+    [data-bs-theme="dark"] .info-label {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    [data-bs-theme="dark"] .info-value {
+        color: var(--bs-body-color, #dee2e6);
+    }
+
+    .health-check-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .health-check-item {
+        padding: 12px;
+        background: var(--bs-gray-100);
+        border-radius: 6px;
+        position: relative;
+    }
+
+    [data-bs-theme="dark"] .health-check-item {
+        background: var(--bs-gray-800);
+    }
+
+    .check-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .check-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--bs-body-color, #212529);
+    }
+
+    [data-bs-theme="dark"] .check-name {
+        color: var(--bs-body-color, #dee2e6);
+    }
+
+    .check-status {
+        font-size: 0.75rem;
+    }
+
+    .check-description {
+        font-size: 0.8rem;
+        color: var(--bs-secondary, #6c757d);
+        margin-top: 4px;
+    }
+
+    [data-bs-theme="dark"] .check-description {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    .check-error {
+        font-size: 0.8rem;
+        color: var(--bs-danger);
+        margin-top: 4px;
+    }
+
+    .check-duration {
         position: absolute;
-        top: 100%;
-        right: 0;
-        z-index: 1000;
-        width: 350px;
+        bottom: 4px;
+        right: 8px;
+        font-size: 0.7rem;
+        color: var(--bs-secondary, #6c757d);
+    }
+
+    [data-bs-theme="dark"] .check-duration {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    .provider-details {
         margin-top: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding-left: 16px;
+    }
+
+    .provider-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 2px 0;
+        font-size: 0.8rem;
+    }
+
+    .provider-name {
+        color: var(--bs-secondary, #6c757d);
+    }
+
+    [data-bs-theme="dark"] .provider-name {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    .provider-status {
+        font-weight: 500;
+    }
+
+    .total-duration {
+        text-align: right;
+        font-size: 0.8rem;
+        color: var(--bs-secondary, #6c757d);
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--bs-border-color);
+    }
+
+    [data-bs-theme="dark"] .total-duration {
+        color: var(--bs-secondary, #adb5bd);
+    }
+
+    .action-links {
+        display: flex;
+        gap: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--bs-border-color);
+    }
+
+    .action-link {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.875rem;
+        color: var(--bs-link-color, #0d6efd);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .action-link:hover {
+        color: var(--bs-link-hover-color, #0a58ca);
+        text-decoration: underline;
+    }
+
+    [data-bs-theme="dark"] .action-link {
+        color: var(--bs-link-color, #6ea8fe);
+    }
+
+    [data-bs-theme="dark"] .action-link:hover {
+        color: var(--bs-link-hover-color, #8bb9fe);
+    }
+
+    .btn-outline-primary {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
     }
 </style>
