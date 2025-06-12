@@ -1298,3 +1298,125 @@ main {
         font-size: 0.875rem;
     }
 }
+
+/* ===== Global Fix for Sidebar Card Toggle Spacing ===== */
+
+/* Ensure proper padding for all cards in sidebar columns */
+.col-lg-4 .card .card-body,
+.col-md-4 .card .card-body,
+.col-xl-4 .card .card-body {
+    padding: 1.25rem; /* Slightly increase padding for better spacing */
+}
+
+/* Fix form-check elements in sidebar cards to have proper spacing */
+.col-lg-4 .card .form-check,
+.col-md-4 .card .form-check,
+.col-xl-4 .card .form-check {
+    padding-left: 2rem; /* Ensure toggle switch has enough space */
+    margin-bottom: 0.75rem; /* Add vertical spacing between toggles */
+}
+
+/* Ensure form-check-input (toggle switches) are not too close to edge */
+.col-lg-4 .card .form-check-input,
+.col-md-4 .card .form-check-input,
+.col-xl-4 .card .form-check-input {
+    margin-left: -1.75rem; /* Adjust to align properly with increased padding */
+}
+
+/* Fix spacing for list-group items in sidebar cards */
+.col-lg-4 .card .list-group-item,
+.col-md-4 .card .list-group-item,
+.col-xl-4 .card .list-group-item {
+    padding: 0.75rem 1.25rem; /* Add horizontal padding */
+}
+
+/* Ensure consistent spacing for all form elements in sidebar cards */
+.col-lg-4 .card .form-group,
+.col-md-4 .card .form-group,
+.col-xl-4 .card .form-group {
+    margin-bottom: 1rem;
+}
+
+/* Fix spacing for configuration status cards specifically */
+.card-header + .card-body .form-check:first-child {
+    margin-top: 0.5rem; /* Add top margin for first toggle */
+}
+
+/* Ensure toggle labels have proper spacing */
+.form-check-label {
+    padding-left: 0.5rem; /* Add space between toggle and label */
+    line-height: 1.5; /* Improve vertical alignment */
+}
+
+/* Fix spacing in nested cards or bordered sections */
+.card .border.rounded .form-check {
+    padding-left: 2rem;
+    margin: 0.75rem 0;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 991px) {
+    .col-lg-4 .card .card-body,
+    .col-md-4 .card .card-body {
+        padding: 1rem; /* Slightly reduce padding on smaller screens */
+    }
+    
+    .col-lg-4 .card .form-check,
+    .col-md-4 .card .form-check {
+        padding-left: 1.75rem;
+    }
+    
+    .col-lg-4 .card .form-check-input,
+    .col-md-4 .card .form-check-input {
+        margin-left: -1.5rem;
+    }
+}
+
+/* ===== Additional fixes for ToggleCard component ===== */
+
+/* Ensure ToggleCard has proper spacing */
+.toggle-card .card-body {
+    padding: 1.25rem !important;
+}
+
+.toggle-card .form-check {
+    margin-bottom: 0.75rem;
+    padding-left: 2rem;
+}
+
+.toggle-card .form-check-input {
+    margin-left: -1.75rem;
+}
+
+/* Fix for form-switch specific styling */
+.form-check.form-switch {
+    padding-left: 2.5rem; /* Extra space for switch toggles */
+}
+
+.form-check.form-switch .form-check-input {
+    margin-left: -2.5rem;
+    width: 3rem; /* Standard Bootstrap switch width */
+}
+
+/* Ensure proper spacing in configuration cards */
+.configuration-card .card-body,
+.config-status-card .card-body {
+    padding: 1.25rem;
+}
+
+/* Fix spacing for nested form elements in cards */
+.card .card-body > .form-check:first-child {
+    margin-top: 0;
+}
+
+.card .card-body > .form-check:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure proper alignment for toggle descriptions */
+.toggle-description {
+    margin-top: 0.5rem;
+    margin-left: 2rem;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
