@@ -76,7 +76,7 @@ else
                 </div>
             }
 
-            <div class="mb-4">
+            <div class="mb-4" style="position: relative; z-index: 1000;">
                 <label for="providerModelId" class="form-label">Provider Model ID</label>
                 @if (isLoadingModels)
                 {
@@ -197,7 +197,7 @@ else
     private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
     private EditContext? editContext;
     private ValidationMessageStore? messageStore;
-    private bool isSaving = false; // Saving the mapping
+    private bool isSaving = false;
     private List<ConfigDTO.ModelCostDto> modelCosts = new();
 
     protected override async Task OnInitializedAsync()
@@ -348,6 +348,8 @@ else
         {
             // Clear provider models if no provider selected
             providerModels.Clear();
+            providerName = "";
+            dtoMapping.ProviderId = "";
             return;
         }
         
