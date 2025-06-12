@@ -29,7 +29,7 @@ namespace ConduitLLM.WebUI.Services
     /// - AdminApiClient.HttpConfig.cs - HTTP configuration operations
     /// - AdminApiClient.CostDashboard.cs - Cost dashboard operations
     /// </summary>
-    public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService, ConduitLLM.WebUI.Interfaces.IProviderCredentialService
+    public partial class AdminApiClient : IAdminApiClient, ConduitLLM.WebUI.Interfaces.IGlobalSettingService, ConduitLLM.WebUI.Interfaces.IVirtualKeyService, IRouterService, ConduitLLM.WebUI.Interfaces.IProviderCredentialService, ConduitLLM.WebUI.Interfaces.IModelCostService
     {
         // This method from IAdminApiClient is implemented in AdminApiClient.VirtualKeys.cs
         // using the name GetVirtualKeyValidationResultAsync to avoid method name collision
@@ -537,6 +537,45 @@ namespace ConduitLLM.WebUI.Services
             {
                 _logger.LogError(ex, "Error retrieving model cost with ID {ModelCostId} from Admin API", id);
                 return null;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ModelCostDto?> GetModelCostByPatternAsync(string modelIdPattern)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/modelcosts/pattern/{Uri.EscapeDataString(modelIdPattern)}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return null;
+                }
+                
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<ModelCostDto>(_jsonOptions);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to get model cost by pattern {Pattern} from Admin API", modelIdPattern);
+                return null;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<decimal> CalculateCostAsync(string modelId, int inputTokens, int outputTokens)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/modelcosts/calculate?modelId={Uri.EscapeDataString(modelId)}&inputTokens={inputTokens}&outputTokens={outputTokens}");
+                response.EnsureSuccessStatusCode();
+                
+                var result = await response.Content.ReadFromJsonAsync<decimal>(_jsonOptions);
+                return result;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to calculate cost for model {ModelId} from Admin API", modelId);
+                return 0m;
             }
         }
 

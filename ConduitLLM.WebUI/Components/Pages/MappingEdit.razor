@@ -21,6 +21,7 @@
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject ProviderModelsService ProviderModelsService
+@inject IModelCostService ModelCostService
 @rendermode InteractiveServer
 
 <h3 class="mb-4">@(!string.IsNullOrEmpty(Id) ? "Edit Mapping" : "Add Mapping")</h3>
@@ -75,80 +76,78 @@ else
                 </div>
             }
 
-            <div class="d-flex align-items-center gap-2 mb-4">
-                <div class="flex-grow-1">
-                    <label for="providerModelId" class="form-label">Provider Model ID</label>
-                    @if (isLoadingModels)
-                    {
-                        <div class="d-flex align-items-center">
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            <span>Loading models...</span>
-                        </div>
-                    }
-                    else if (showModelTextbox || (providerModels == null || !providerModels.Any()))
-                    {
-                        <div>
-                            <input type="text" class="form-control" id="providerModelIdInput"
-                                   @bind="dtoMapping.ProviderModelId"
-                                   placeholder="Enter model ID"
-                                   disabled="@string.IsNullOrEmpty(providerName)" />
-                            
-                            @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
-                            {
-                                <small class="text-danger mt-1 d-block">@modelLoadErrorMessage</small>
-                            }
-                            @if (providerModels == null || !providerModels.Any())
-                            {
-                                <small class="text-muted mt-1 d-block">
-                                    @(string.IsNullOrEmpty(providerName) 
-                                        ? "Select provider first" 
-                                        : "Could not retrieve model list. Please enter the model ID manually.")
-                                </small>
-                            }
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => RefreshModels(true))"
-                                        disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
-                                    <i class="fa fa-refresh me-1"></i> Try loading models again
-                                </button>
-                                @if (showModelTextbox && providerModels != null && providerModels.Any())
-                                {
-                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
-                                            @onclick="ToggleModelInputMode">
-                                        <i class="fa fa-list me-1"></i> Show dropdown
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="input-group">
-                            <select class="form-select" id="providerModelId"
-                                    value="@dtoMapping.ProviderModelId"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
-                                    @onchange="@((ChangeEventArgs e) => ProviderModelSelected(e.Value?.ToString() ?? ""))">
-                                <option value="">-- Select Model --</option>
-                                @foreach (var modelId in providerModels.OrderBy(m => m))
-                                {
-                                    <option value="@modelId">@modelId</option>
-                                }
-                            </select>
-                            <button class="btn btn-outline-secondary" type="button"
+            <div class="mb-4">
+                <label for="providerModelId" class="form-label">Provider Model ID</label>
+                @if (isLoadingModels)
+                {
+                    <div class="d-flex align-items-center">
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Loading models...</span>
+                    </div>
+                }
+                else if (showModelTextbox || (providerModels == null || !providerModels.Any()))
+                {
+                    <div>
+                        <input type="text" class="form-control" id="providerModelIdInput"
+                               @bind="dtoMapping.ProviderModelId"
+                               placeholder="Enter model ID"
+                               disabled="@string.IsNullOrEmpty(providerName)" />
+                        
+                        @if (!string.IsNullOrEmpty(modelLoadErrorMessage))
+                        {
+                            <small class="text-danger mt-1 d-block">@modelLoadErrorMessage</small>
+                        }
+                        @if (providerModels == null || !providerModels.Any())
+                        {
+                            <small class="text-muted mt-1 d-block">
+                                @(string.IsNullOrEmpty(providerName) 
+                                    ? "Select provider first" 
+                                    : "Could not retrieve model list. Please enter the model ID manually.")
+                            </small>
+                        }
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
                                     @onclick="@(() => RefreshModels(true))"
                                     disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
-                                <i class="fa fa-refresh"></i>
+                                <i class="fa fa-refresh me-1"></i> Try loading models again
                             </button>
-                            <button class="btn btn-outline-secondary" type="button"
-                                    @onclick="ToggleModelInputMode"
-                                    disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))">
-                                <i class="fa fa-pencil"></i>
-                            </button>
+                            @if (showModelTextbox && providerModels != null && providerModels.Any())
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                                        @onclick="ToggleModelInputMode">
+                                    <i class="fa fa-list me-1"></i> Show searchable dropdown
+                                </button>
+                            }
                         </div>
-                        <small class="form-text text-muted">Select from available models or click <i class="fa fa-pencil"></i> to enter manually</small>
-                    }
-                    <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
-                </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex gap-2">
+                        <div class="flex-grow-1">
+                            <ModelSearchableDropdown 
+                                Models="@providerModels"
+                                @bind-SelectedModelId="@dtoMapping.ProviderModelId"
+                                ProviderName="@providerName"
+                                ModelCosts="@modelCosts"
+                                Disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))" />
+                        </div>
+                        <button class="btn btn-outline-secondary" type="button"
+                                @onclick="@(() => RefreshModels(true))"
+                                disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
+                                title="Refresh model list">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button"
+                                @onclick="ToggleModelInputMode"
+                                disabled="@(isLoadingModels || string.IsNullOrEmpty(providerName))"
+                                title="Enter model ID manually">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                    </div>
+                    <small class="form-text text-muted">Search by model name, provider, or cost. Click <i class="fa fa-pencil"></i> to enter manually</small>
+                }
+                <ValidationMessage For="@(() => dtoMapping.ProviderModelId)" />
             </div>
         </div>
             
@@ -199,6 +198,7 @@ else
     private EditContext? editContext;
     private ValidationMessageStore? messageStore;
     private bool isSaving = false; // Saving the mapping
+    private List<ConfigDTO.ModelCostDto> modelCosts = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -207,6 +207,17 @@ else
             // Load available providers
             var providers = await ProviderCredentialService.GetAllAsync();
             availableProviders = providers.ToList();
+            
+            // Load model costs
+            try
+            {
+                modelCosts = (await ModelCostService.GetAllModelCostsAsync()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load model costs");
+                // Continue without costs - not critical for functionality
+            }
             
             if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var mappingId)) // Editing existing
             {

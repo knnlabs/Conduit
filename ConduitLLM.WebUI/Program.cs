@@ -181,6 +181,7 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>(sp =>
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.ProviderStatusService>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelCostService>(sp => sp.GetRequiredService<AdminApiClient>());
 
 // Register global setting repository adapter for CacheStatusService
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IGlobalSettingRepository, ConduitLLM.WebUI.Services.AdminApiGlobalSettingRepositoryAdapter>();

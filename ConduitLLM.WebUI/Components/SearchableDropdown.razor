@@ -1,0 +1,371 @@
+@typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="searchable-dropdown-container" id="@dropdownId">
+    <div class="dropdown @(IsOpen ? "show" : "")">
+        <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center"
+                type="button"
+                @onclick="ToggleDropdown"
+                disabled="@Disabled">
+            <span class="text-truncate">
+                @if (string.IsNullOrEmpty(SelectedValue))
+                {
+                    <span class="text-muted">@Placeholder</span>
+                }
+                else
+                {
+                    @SelectedValue
+                }
+            </span>
+        </button>
+        
+        <div class="dropdown-menu w-100 @(IsOpen ? "show" : "")" style="max-height: 400px; overflow-y: auto;">
+            @if (ShowSearch)
+            {
+                <div class="dropdown-search-container px-3 py-2 sticky-top bg-white border-bottom">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="@SearchPlaceholder"
+                               value="@searchTerm"
+                               @oninput="OnSearchInput"
+                               @onclick:stopPropagation="true" />
+                        @if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            <button class="btn btn-outline-secondary" 
+                                    type="button"
+                                    @onclick="ClearSearch"
+                                    @onclick:stopPropagation="true">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+            
+            <div class="dropdown-items-container">
+                @if (!FilteredItems.Any())
+                {
+                    <div class="dropdown-item-text text-muted text-center py-3">
+                        @NoResultsMessage
+                    </div>
+                }
+                else
+                {
+                    @if (!string.IsNullOrEmpty(EmptyOptionText))
+                    {
+                        <button class="dropdown-item @(string.IsNullOrEmpty(SelectedValue) ? "active" : "")"
+                                type="button"
+                                @onclick="@(() => SelectItem(default(TItem)))">
+                            <span class="text-muted">@EmptyOptionText</span>
+                        </button>
+                    }
+                    
+                    @foreach (var item in FilteredItems)
+                    {
+                        var itemValue = ValueSelector(item);
+                        var displayText = DisplaySelector(item);
+                        var description = DescriptionSelector?.Invoke(item);
+                        
+                        <button class="dropdown-item @(itemValue == SelectedValue ? "active" : "")"
+                                type="button"
+                                @onclick="@(() => SelectItem(item))">
+                            <div class="d-flex flex-column">
+                                <span class="fw-normal">@displayText</span>
+                                @if (!string.IsNullOrEmpty(description))
+                                {
+                                    <small class="text-muted">@description</small>
+                                }
+                            </div>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .searchable-dropdown-container {
+        position: relative;
+    }
+    
+    .searchable-dropdown-container .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 1050;
+        display: none;
+        min-width: 100%;
+        padding: 0;
+        margin: 0.125rem 0 0;
+        font-size: 0.875rem;
+        color: #212529;
+        text-align: left;
+        list-style: none;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 0.375rem;
+        box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .searchable-dropdown-container .dropdown-menu.show {
+        display: block;
+        animation: fadeIn 0.15s ease-out;
+    }
+    
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .searchable-dropdown-container .dropdown-search-container {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+    
+    .searchable-dropdown-container .dropdown-search-container .input-group {
+        border: none;
+    }
+    
+    .searchable-dropdown-container .dropdown-search-container .input-group-text {
+        background-color: transparent;
+        border: none;
+        color: #6c757d;
+    }
+    
+    .searchable-dropdown-container .dropdown-search-container .form-control {
+        border: none;
+        background-color: transparent;
+        padding-left: 0;
+    }
+    
+    .searchable-dropdown-container .dropdown-search-container .form-control:focus {
+        box-shadow: none;
+    }
+    
+    .searchable-dropdown-container .dropdown-items-container {
+        max-height: 300px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #dee2e6 transparent;
+    }
+    
+    .searchable-dropdown-container .dropdown-items-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .searchable-dropdown-container .dropdown-items-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .searchable-dropdown-container .dropdown-items-container::-webkit-scrollbar-thumb {
+        background-color: #dee2e6;
+        border-radius: 3px;
+    }
+    
+    .searchable-dropdown-container .dropdown-items-container::-webkit-scrollbar-thumb:hover {
+        background-color: #adb5bd;
+    }
+    
+    .searchable-dropdown-container .dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        clear: both;
+        font-weight: 400;
+        color: #212529;
+        text-align: inherit;
+        text-decoration: none;
+        white-space: normal;
+        background-color: transparent;
+        border: 0;
+        transition: all 0.15s ease-in-out;
+        cursor: pointer;
+    }
+    
+    .searchable-dropdown-container .dropdown-item:hover {
+        color: #1e2125;
+        background-color: #f8f9fa;
+    }
+    
+    .searchable-dropdown-container .dropdown-item.active {
+        color: #fff;
+        background-color: #0d6efd;
+    }
+    
+    .searchable-dropdown-container .dropdown-item.active small {
+        color: rgba(255, 255, 255, 0.75);
+    }
+    
+    .searchable-dropdown-container .dropdown-item small {
+        display: block;
+        margin-top: 0.125rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+    }
+    
+    .searchable-dropdown-container .dropdown-item-text {
+        display: block;
+        padding: 0.5rem 1rem;
+        color: #6c757d;
+    }
+    
+    .searchable-dropdown-container .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+    }
+    
+    .searchable-dropdown-container .dropdown-toggle::after {
+        transition: transform 0.2s ease;
+    }
+    
+    .searchable-dropdown-container .dropdown.show .dropdown-toggle::after {
+        transform: rotate(180deg);
+    }
+</style>
+
+@code {
+    [Parameter] public List<TItem> Items { get; set; } = new();
+    [Parameter] public string? SelectedValue { get; set; }
+    [Parameter] public EventCallback<string?> SelectedValueChanged { get; set; }
+    [Parameter] public Func<TItem, string> ValueSelector { get; set; } = item => item?.ToString() ?? "";
+    [Parameter] public Func<TItem, string> DisplaySelector { get; set; } = item => item?.ToString() ?? "";
+    [Parameter] public Func<TItem, string>? DescriptionSelector { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "-- Select an option --";
+    [Parameter] public string EmptyOptionText { get; set; } = "-- Select an option --";
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public string NoResultsMessage { get; set; } = "No results found";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public Func<TItem, string, bool>? CustomSearchFilter { get; set; }
+    
+    private bool IsOpen = false;
+    private string searchTerm = "";
+    private List<TItem> FilteredItems = new();
+    private string dropdownId = $"dropdown-{Guid.NewGuid()}";
+    private DotNetObjectReference<SearchableDropdown<TItem>>? dotNetRef;
+    
+    protected override void OnInitialized()
+    {
+        FilterItems();
+    }
+    
+    protected override void OnParametersSet()
+    {
+        FilterItems();
+    }
+    
+    private async Task ToggleDropdown()
+    {
+        if (!Disabled)
+        {
+            IsOpen = !IsOpen;
+            if (IsOpen)
+            {
+                // Set up click outside handler when opening
+                dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("searchableDropdown.addClickOutsideHandler", dotNetRef, dropdownId);
+            }
+            else
+            {
+                searchTerm = "";
+                FilterItems();
+                // Remove click outside handler when closing
+                await JS.InvokeVoidAsync("searchableDropdown.removeClickOutsideHandler", dropdownId);
+            }
+        }
+    }
+    
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        FilterItems();
+    }
+    
+    private void ClearSearch()
+    {
+        searchTerm = "";
+        FilterItems();
+    }
+    
+    private void FilterItems()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            FilteredItems = Items;
+        }
+        else
+        {
+            var searchTermLower = searchTerm.ToLowerInvariant();
+            
+            if (CustomSearchFilter != null)
+            {
+                FilteredItems = Items.Where(item => CustomSearchFilter(item, searchTerm)).ToList();
+            }
+            else
+            {
+                FilteredItems = Items.Where(item =>
+                {
+                    var value = ValueSelector(item)?.ToLowerInvariant() ?? "";
+                    var display = DisplaySelector(item)?.ToLowerInvariant() ?? "";
+                    var description = DescriptionSelector?.Invoke(item)?.ToLowerInvariant() ?? "";
+                    
+                    return value.Contains(searchTermLower) || 
+                           display.Contains(searchTermLower) || 
+                           description.Contains(searchTermLower);
+                }).ToList();
+            }
+        }
+    }
+    
+    private async Task SelectItem(TItem? item)
+    {
+        if (item == null)
+        {
+            SelectedValue = null;
+        }
+        else
+        {
+            SelectedValue = ValueSelector(item);
+        }
+        
+        await SelectedValueChanged.InvokeAsync(SelectedValue);
+        IsOpen = false;
+        searchTerm = "";
+        FilterItems();
+    }
+    
+    [JSInvokable]
+    public void CloseDropdown()
+    {
+        if (IsOpen)
+        {
+            IsOpen = false;
+            searchTerm = "";
+            FilterItems();
+            StateHasChanged();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (IsOpen)
+        {
+            await JS.InvokeVoidAsync("searchableDropdown.removeClickOutsideHandler", dropdownId);
+        }
+        dotNetRef?.Dispose();
+    }
+}
