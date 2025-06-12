@@ -482,7 +482,7 @@ namespace ConduitLLM.Providers
                                     Embedding = ollamaResponse.Embedding
                                 }
                             },
-                            Model = request.Model, // Use original requested model alias
+                            Model = request.Model ?? ProviderModelId, // Use original requested model alias or fallback to provider model ID
                             Usage = new Usage
                             {
                                 PromptTokens = EstimateTokenCount(prompt),

@@ -699,7 +699,7 @@ namespace ConduitLLM.Providers
             // Create the OpenAI request
             return new OpenAIModels.OpenAIChatCompletionRequest
             {
-                Model = request.Model ?? ProviderModelId,
+                Model = ProviderModelId,  // Always use the provider's model ID, not the alias
                 Messages = messages,
                 MaxTokens = request.MaxTokens,
                 Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null,

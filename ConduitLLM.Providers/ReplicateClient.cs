@@ -157,7 +157,7 @@ namespace ConduitLLM.Providers
             // First chunk with role "assistant" - outside try block so we can yield
             yield return CreateChatCompletionChunk(
                 string.Empty,
-                request.Model,
+                ProviderModelId,
                 true,
                 null,
                 request.Model);
@@ -194,7 +194,7 @@ namespace ConduitLLM.Providers
                     // Yield the content as a chunk
                     yield return CreateChatCompletionChunk(
                         content,
-                        request.Model,
+                        ProviderModelId,
                         false,
                         "stop",
                         request.Model);

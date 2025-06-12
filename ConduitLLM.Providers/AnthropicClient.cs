@@ -708,7 +708,7 @@ namespace ConduitLLM.Providers
             // Create the Anthropic request
             var anthropicRequest = new AnthropicMessageRequest
             {
-                Model = request.Model ?? ProviderModelId,
+                Model = ProviderModelId,
                 Messages = userAndAssistantMessages,
                 SystemPrompt = !string.IsNullOrEmpty(systemPrompt) ? systemPrompt : null,
                 MaxTokens = request.MaxTokens ?? 4096, // Default max tokens if not specified

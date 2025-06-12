@@ -1,8 +1,8 @@
 @using ConduitLLM.Configuration.DTOs
 @using Microsoft.AspNetCore.Components.Forms
-@inherits InputBase<string?>
+@inherits InputBase<string>
 
-<InputSearchableDropdown TValue="string?"
+<InputSearchableDropdown TValue="string"
                          TItem="ModelInfo"
                          @bind-Value="@CurrentValue"
                          Items="@ModelInfos"
@@ -121,10 +121,10 @@
     }
     
     protected override bool TryParseValueFromString(string? value, 
-        out string? result, 
-        out string? validationErrorMessage)
+        out string result, 
+        out string validationErrorMessage)
     {
-        result = value;
+        result = value ?? string.Empty;
         validationErrorMessage = null!;
         return true;
     }

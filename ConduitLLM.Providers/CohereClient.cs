@@ -401,7 +401,7 @@ namespace ConduitLLM.Providers
             // Create the Cohere request
             var cohereRequest = new CohereChatRequest
             {
-                Model = request.Model ?? ProviderModelId,
+                Model = ProviderModelId,
                 Message = userMessage,
                 ChatHistory = history.Count > 0 ? history : null,
                 Temperature = (float?)request.Temperature,
