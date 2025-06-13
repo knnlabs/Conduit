@@ -417,17 +417,17 @@
     };
     
     private bool _isEnabled;
-    private string _cacheType = "Memory";
-    private int _maxCacheItems = 10000;
-    private int _defaultExpirationMinutes = 60;
-    private string _redisConnectionString = "localhost:6379";
-    private string _redisInstanceName = "conduitllm-cache";
-    private bool _includeModelInKey = true;
-    private bool _includeProviderInKey = true;
-    private bool _includeApiKeyInKey = false;
-    private bool _includeTemperatureInKey = true;
-    private bool _includeMaxTokensInKey = false;
-    private bool _includeTopPInKey = false;
+    private string _cacheType = string.Empty;
+    private int _maxCacheItems = 0;
+    private int _defaultExpirationMinutes = 0;
+    private string _redisConnectionString = string.Empty;
+    private string _redisInstanceName = string.Empty;
+    private bool _includeModelInKey;
+    private bool _includeProviderInKey;
+    private bool _includeApiKeyInKey;
+    private bool _includeTemperatureInKey;
+    private bool _includeMaxTokensInKey;
+    private bool _includeTopPInKey;
     private List<ModelCacheRule> _modelRules = new();
     
     // Redis connection state
@@ -487,55 +487,39 @@
             // First get current settings from the CacheStatusService for accurate runtime state
             var cacheStatus = await CacheStatusService.GetCacheStatusAsync();
             
-            // Default initialization from configuration as fallback
-            var cacheSection = Configuration.GetSection("Caching");
-            
-            // Now use cacheStatus as primary source, falling back to config values
+            // Use cacheStatus as the source of truth for all values
             _isEnabled = cacheStatus.IsEnabled; 
             _cacheType = cacheStatus.CacheType;
             
-            // These other values still come from configuration
-            _maxCacheItems = cacheSection?.GetValue<int>("MaxItems") ?? 10000;
-            _defaultExpirationMinutes = cacheSection?.GetValue<int>("DefaultExpirationMinutes") ?? 60;
-            _redisConnectionString = cacheSection?.GetValue<string>("RedisConnectionString") ?? "localhost:6379";
-            _redisInstanceName = cacheSection?.GetValue<string>("RedisInstanceName") ?? "conduitllm-cache";
-            _includeModelInKey = cacheSection?.GetValue<bool>("IncludeModelInKey") ?? true;
-            _includeProviderInKey = cacheSection?.GetValue<bool>("IncludeProviderInKey") ?? true;
-            _includeApiKeyInKey = cacheSection?.GetValue<bool>("IncludeApiKeyInKey") ?? false;
-            _includeTemperatureInKey = cacheSection?.GetValue<bool>("IncludeTemperatureInKey") ?? true;
-            _includeMaxTokensInKey = cacheSection?.GetValue<bool>("IncludeMaxTokensInKey") ?? false;
-            _includeTopPInKey = cacheSection?.GetValue<bool>("IncludeTopPInKey") ?? false;
-            
-            // If using Redis, get connection info from runtime
-            if (_cacheType == "Redis" && cacheStatus.RedisConnection != null)
+            // Load configuration from the database via CacheStatusService
+            // The CacheStatusService loads from the Admin API which is the source of truth
+            var globalSetting = await CacheStatusService.GetCacheConfigurationAsync();
+            if (globalSetting != null)
             {
-                _redisConnectionString = cacheSection?.GetValue<string>("RedisConnectionString") ?? "redis:6379";
-                _redisInstanceName = cacheStatus.RedisConnection.InstanceName;
+                // All values come from the stored configuration
+                _maxCacheItems = globalSetting.MaxCacheItems;
+                _defaultExpirationMinutes = globalSetting.DefaultExpirationMinutes;
+                _redisConnectionString = globalSetting.RedisConnectionString ?? string.Empty;
+                _redisInstanceName = globalSetting.RedisInstanceName ?? string.Empty;
+                _includeModelInKey = globalSetting.IncludeModelInKey;
+                _includeProviderInKey = globalSetting.IncludeProviderInKey;
+                _includeApiKeyInKey = globalSetting.IncludeApiKeyInKey;
+                _includeTemperatureInKey = globalSetting.IncludeTemperatureInKey;
+                _includeMaxTokensInKey = globalSetting.IncludeMaxTokensInKey;
+                _includeTopPInKey = globalSetting.IncludeTopPInKey;
+            }
+            else
+            {
+                // If no configuration exists, leave all values at their initialized defaults (empty/zero/false)
+                // The backend will create default configuration when first save is performed
             }
             
-            // Load model rules
+            // Load model rules from the stored configuration
             _modelRules = new List<ModelCacheRule>();
-            var rulesSection = cacheSection?.GetSection("ModelRules");
-            if (rulesSection != null)
-            {
-                foreach (var ruleSection in rulesSection.GetChildren())
-                {
-                    _modelRules.Add(new ModelCacheRule
-                    {
-                        ModelNamePattern = ruleSection.GetValue<string>("ModelNamePattern") ?? "",
-                        CacheBehavior = (CacheBehavior)ruleSection.GetValue<int>("CacheBehavior"),
-                        ExpirationMinutes = ruleSection.GetValue<int?>("ExpirationMinutes")
-                    });
-                }
-            };
+            // Model rules would come from the stored configuration if we extended GetCacheConfigurationAsync
+            // For now, initialize empty list
             
             await LoadCacheStatisticsAsync();
-            
-            // If Redis is selected, test the connection
-            if (_cacheType == "Redis" && _isEnabled && !string.IsNullOrEmpty(_redisConnectionString))
-            {
-                await TestRedisConnection();
-            }
         }
         catch (Exception ex)
         {

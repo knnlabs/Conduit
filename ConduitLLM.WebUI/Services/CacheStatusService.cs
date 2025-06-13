@@ -522,6 +522,55 @@ namespace ConduitLLM.WebUI.Services
             }
         }
 
+        /// <inheritdoc/>
+        public async Task<Models.CacheConfiguration?> GetCacheConfigurationAsync()
+        {
+            // Check if service is disposed
+            if (_isDisposed)
+                return null;
+
+            try
+            {
+                // Get cache configuration from the database via Admin API
+                var cacheSetting = await _globalSettingRepository.GetByKeyAsync(CACHE_CONFIG_KEY);
+                
+                if (cacheSetting != null)
+                {
+                    // Parse the stored configuration
+                    var config = JsonSerializer.Deserialize<CacheConfig>(cacheSetting.Value);
+                    
+                    if (config != null)
+                    {
+                        // Map internal config to public model
+                        return new Models.CacheConfiguration
+                        {
+                            IsEnabled = config.IsEnabled,
+                            CacheType = config.CacheType,
+                            DefaultExpirationMinutes = config.DefaultExpirationMinutes,
+                            MaxCacheItems = config.MaxCacheItems,
+                            RedisConnectionString = config.RedisConnectionString,
+                            RedisInstanceName = config.RedisInstanceName,
+                            IncludeModelInKey = config.IncludeModelInKey,
+                            IncludeProviderInKey = config.IncludeProviderInKey,
+                            IncludeApiKeyInKey = config.IncludeApiKeyInKey,
+                            IncludeTemperatureInKey = config.IncludeTemperatureInKey,
+                            IncludeMaxTokensInKey = config.IncludeMaxTokensInKey,
+                            IncludeTopPInKey = config.IncludeTopPInKey
+                        };
+                    }
+                }
+
+                // If no configuration exists, return null
+                // The UI should handle this case and use empty/zero defaults
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving cache configuration");
+                return null;
+            }
+        }
+
         /// <summary>
         /// Initializes the cache from configuration stored in the database
         /// </summary>

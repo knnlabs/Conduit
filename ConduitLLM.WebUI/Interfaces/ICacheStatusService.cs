@@ -102,6 +102,16 @@ namespace ConduitLLM.WebUI.Interfaces
         /// connection settings before applying them.
         /// </remarks>
         Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString);
+
+        /// <summary>
+        /// Gets the full cache configuration from the backend
+        /// </summary>
+        /// <returns>The cache configuration object or null if not configured</returns>
+        /// <remarks>
+        /// This method retrieves the complete cache configuration from the Admin API,
+        /// which is the authoritative source for all cache settings and defaults.
+        /// </remarks>
+        Task<CacheConfiguration?> GetCacheConfigurationAsync();
     }
 
     /// <summary>

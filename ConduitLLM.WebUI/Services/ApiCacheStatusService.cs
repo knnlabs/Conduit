@@ -387,6 +387,14 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Disposes of resources used by the service
         /// </summary>
+        /// <inheritdoc/>
+        public Task<CacheConfiguration?> GetCacheConfigurationAsync()
+        {
+            // In API mode, cache configuration is not available through this service
+            // The API manages its own cache configuration
+            return Task.FromResult<CacheConfiguration?>(null);
+        }
+
         public void Dispose()
         {
             if (_isDisposed)
