@@ -27,11 +27,19 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<List<AudioProviderConfig>> GetAllAsync()
         {
-            return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .OrderBy(c => c.ProviderCredential.ProviderName)
-                .ThenByDescending(c => c.RoutingPriority)
-                .ToListAsync();
+            try
+            {
+                return await _context.AudioProviderConfigs
+                    .Include(c => c.ProviderCredential)
+                    .OrderBy(c => c.ProviderCredential != null ? c.ProviderCredential.ProviderName : "")
+                    .ThenByDescending(c => c.RoutingPriority)
+                    .ToListAsync();
+            }
+            catch (Exception)
+            {
+                // Return empty list if database tables don't exist or there's a connection issue
+                return new List<AudioProviderConfig>();
+            }
         }
 
         /// <inheritdoc/>
