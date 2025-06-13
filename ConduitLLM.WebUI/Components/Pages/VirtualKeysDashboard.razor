@@ -17,34 +17,20 @@
 
 <div class="container container-xxl">
     <!-- Header Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="vkd-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-2">
-                            <i class="fa fa-chart-bar me-3"></i>Virtual Keys Dashboard
-                        </h1>
-                        <p class="mb-0 opacity-90">
-                            Monitor usage patterns, spending analytics, and budget allocation across all your virtual keys
-                        </p>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <div class="vkd-stats">
-                            <div class="stat-item">
-                                <i class="fa fa-key me-2"></i>
-                                <span class="small">@totalKeys Total Keys</span>
-                            </div>
-                            <div class="stat-item mt-2">
-                                <i class="fa fa-dollar-sign me-2"></i>
-                                <span class="small">$@totalSpend.ToString("N2") Total Spend</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <PageHeader Title="Virtual Keys Dashboard" 
+                Description="Monitor usage patterns, spending analytics, and budget allocation across all your virtual keys"
+                Icon="fa-chart-bar">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-key me-2"></i>
+                <span class="small">@totalKeys Total Keys</span>
             </div>
-        </div>
-    </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-dollar-sign me-2"></i>
+                <span class="small">$@totalSpend.ToString("N2") Total Spend</span>
+            </div>
+        </Statistics>
+    </PageHeader>
 
 
     @if (isLoading)
@@ -327,17 +313,6 @@
 
 <!-- Custom CSS Styling -->
 <style>
-    .vkd-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem !important;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-
-    .vkd-stats .stat-item {
-        display: inline-block;
-        margin-right: 1rem;
-        padding: 0.25rem 0;
-    }
 
     .vkd-stat-card {
         transition: all 0.3s ease;
