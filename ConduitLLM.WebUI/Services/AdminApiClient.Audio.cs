@@ -24,17 +24,17 @@ namespace ConduitLLM.WebUI.Services
         /// <returns>List of audio provider configurations</returns>
         public async Task<List<AudioProviderConfigDto>> GetAudioProvidersAsync()
         {
-            try
-            {
-                var response = await _httpClient.GetFromJsonAsync<List<AudioProviderConfigDto>>(
-                    "api/admin/audio/providers");
-                return response ?? new List<AudioProviderConfigDto>();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching audio providers");
-                throw;
-            }
+            var result = await ExecuteWithErrorHandlingAsync(
+                "GetAudioProviders",
+                async () =>
+                {
+                    var response = await _httpClient.GetFromJsonAsync<List<AudioProviderConfigDto>>(
+                        "api/admin/audio/providers");
+                    return response ?? new List<AudioProviderConfigDto>();
+                },
+                new List<AudioProviderConfigDto>());
+            
+            return result ?? new List<AudioProviderConfigDto>();
         }
 
         /// <summary>

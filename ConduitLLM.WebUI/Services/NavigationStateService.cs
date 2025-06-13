@@ -206,7 +206,18 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking audio usage prerequisites");
+                _logger.LogDebug(ex, "Error checking audio usage prerequisites - API may not be available");
+                
+                // Set a safe default state when audio API is not available
+                var fallbackState = new NavigationItemState
+                {
+                    IsEnabled = true, // Always enabled
+                    TooltipMessage = "Audio usage monitoring - configure audio providers to see prerequisites",
+                    RequiredConfigurationUrl = null,
+                    ShowIndicator = false
+                };
+                
+                UpdateState("/audio-usage", fallbackState);
             }
         }
 
