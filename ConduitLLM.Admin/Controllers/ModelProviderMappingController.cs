@@ -6,7 +6,9 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers;
 

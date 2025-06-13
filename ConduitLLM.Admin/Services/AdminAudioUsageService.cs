@@ -282,7 +282,7 @@ namespace ConduitLLM.Admin.Services
             {
                 "csv" => await GenerateCsvExport(logs),
                 "json" => await GenerateJsonExport(logs),
-                _ => throw new ArgumentException($"Unsupported export format: {format}")
+                _ => throw new ArgumentException("Unsupported export format", nameof(format))
             };
         }
 

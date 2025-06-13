@@ -45,8 +45,9 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.AuthenticationFailure,
                 Severity = SecurityEventSeverity.Medium,
-                Description = $"Authentication failed for virtual key from {ipAddress}" + 
-                             (reason != null ? $": {reason}" : ""),
+                Description = "Authentication failed for virtual key from " + 
+                             InputSanitizationMiddleware.SanitizeString(ipAddress) + 
+                             (reason != null ? ": " + InputSanitizationMiddleware.SanitizeString(reason) : ""),
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = additionalContext ?? new Dictionary<string, object>()
@@ -66,7 +67,7 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.AuthenticationSuccess,
                 Severity = SecurityEventSeverity.Low,
-                Description = $"Authentication successful for virtual key from {ipAddress}",
+                Description = "Authentication successful for virtual key from " + InputSanitizationMiddleware.SanitizeString(ipAddress),
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = additionalContext ?? new Dictionary<string, object>()
@@ -88,7 +89,8 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.RateLimitExceeded,
                 Severity = SecurityEventSeverity.Medium,
-                Description = $"Rate limit exceeded for {endpoint}: {limit} requests per {window.TotalSeconds}s",
+                Description = "Rate limit exceeded for " + InputSanitizationMiddleware.SanitizeString(endpoint) + 
+                             ": " + limit + " requests per " + window.TotalSeconds + "s",
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = new Dictionary<string, object>
@@ -132,7 +134,8 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.AuthorizationViolation,
                 Severity = SecurityEventSeverity.High,
-                Description = $"Unauthorized access attempt to {resource} for action {action}",
+                Description = "Unauthorized access attempt to " + InputSanitizationMiddleware.SanitizeString(resource) + 
+                             " for action " + InputSanitizationMiddleware.SanitizeString(action),
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = new Dictionary<string, object>
@@ -160,7 +163,8 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.IpFiltering,
                 Severity = severity,
-                Description = $"IP {ipAddress} was {action}: {reason}",
+                Description = "IP " + InputSanitizationMiddleware.SanitizeString(ipAddress) + 
+                             " was " + action.ToString() + ": " + InputSanitizationMiddleware.SanitizeString(reason),
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = new Dictionary<string, object>
@@ -189,7 +193,8 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.ValidationFailure,
                 Severity = SecurityEventSeverity.Low,
-                Description = $"Validation failed for {fieldName} at {endpoint}",
+                Description = "Validation failed for " + InputSanitizationMiddleware.SanitizeString(fieldName) + 
+                             " at " + InputSanitizationMiddleware.SanitizeString(endpoint),
                 VirtualKey = virtualKey,
                 IpAddress = ipAddress,
                 Context = new Dictionary<string, object>
@@ -214,7 +219,9 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.ApiKeyRotation,
                 Severity = SecurityEventSeverity.Low,
-                Description = $"API key rotated for {virtualKey} by {performedBy}: {reason}",
+                Description = "API key rotated for " + InputSanitizationMiddleware.SanitizeString(virtualKey) + 
+                             " by " + InputSanitizationMiddleware.SanitizeString(performedBy) + 
+                             ": " + InputSanitizationMiddleware.SanitizeString(reason),
                 VirtualKey = virtualKey,
                 Context = new Dictionary<string, object>
                 {
@@ -238,7 +245,8 @@ namespace ConduitLLM.Core.Services
             {
                 EventType = SecurityEventType.ConfigurationChange,
                 Severity = SecurityEventSeverity.Medium,
-                Description = $"Security setting '{setting}' changed by {changedBy}",
+                Description = "Security setting '" + InputSanitizationMiddleware.SanitizeString(setting) + 
+                             "' changed by " + InputSanitizationMiddleware.SanitizeString(changedBy),
                 Context = new Dictionary<string, object>
                 {
                     ["setting"] = setting,

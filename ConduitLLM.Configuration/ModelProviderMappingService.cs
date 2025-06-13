@@ -40,7 +40,8 @@ namespace ConduitLLM.Configuration
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    throw new InvalidOperationException($"Provider credentials not found for provider: {mapping.ProviderName}");
+                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
 
                 // Convert to entity and set the provider credential ID
@@ -142,14 +143,16 @@ namespace ConduitLLM.Configuration
                 var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
                 if (existingEntity == null)
                 {
-                    throw new InvalidOperationException($"Mapping not found for model alias: {mapping.ModelAlias}");
+                    _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.ModelAlias);
+                    throw new InvalidOperationException("Mapping not found for the specified model alias");
                 }
 
                 // Get the provider credential
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    throw new InvalidOperationException($"Provider credentials not found for provider: {mapping.ProviderName}");
+                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
 
                 // Update the entity
