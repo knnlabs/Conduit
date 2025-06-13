@@ -85,7 +85,10 @@ namespace ConduitLLM.Configuration.Data
                         "RequestLogs",
                         "VirtualKeySpendHistory",
                         "ProviderHealthRecords",
-                        "IpFilters"
+                        "IpFilters",
+                        "AudioProviderConfigs",
+                        "AudioCosts",
+                        "AudioUsageLogs"
                     };
 
                     if (!await AreTablesCreatedAsync(context, tablesToVerify))
@@ -612,6 +615,129 @@ namespace ConduitLLM.Configuration.Data
                     { "EndpointUrl", "TEXT NULL" },
                     { "TimestampUtc", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
                 };
+                // Add audio table definitions
+                if (_dbProvider == "postgres")
+                {
+                    definitions["AudioProviderConfigs"] = new Dictionary<string, string>
+                    {
+                        { "Id", "SERIAL PRIMARY KEY" },
+                        { "ProviderCredentialId", "INTEGER NOT NULL" },
+                        { "TranscriptionEnabled", "BOOLEAN NOT NULL DEFAULT FALSE" },
+                        { "DefaultTranscriptionModel", "VARCHAR(100) NULL" },
+                        { "TextToSpeechEnabled", "BOOLEAN NOT NULL DEFAULT FALSE" },
+                        { "DefaultTTSModel", "VARCHAR(100) NULL" },
+                        { "DefaultTTSVoice", "VARCHAR(100) NULL" },
+                        { "RealtimeEnabled", "BOOLEAN NOT NULL DEFAULT FALSE" },
+                        { "DefaultRealtimeModel", "VARCHAR(100) NULL" },
+                        { "RealtimeEndpoint", "VARCHAR(500) NULL" },
+                        { "CustomSettings", "TEXT NULL" },
+                        { "RoutingPriority", "INTEGER NOT NULL DEFAULT 0" },
+                        { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+
+                    definitions["AudioCosts"] = new Dictionary<string, string>
+                    {
+                        { "Id", "SERIAL PRIMARY KEY" },
+                        { "Provider", "VARCHAR(100) NOT NULL" },
+                        { "OperationType", "VARCHAR(50) NOT NULL" },
+                        { "Model", "VARCHAR(100) NULL" },
+                        { "CostUnit", "VARCHAR(50) NOT NULL" },
+                        { "CostPerUnit", "DECIMAL(10,6) NOT NULL" },
+                        { "MinimumCharge", "DECIMAL(10,6) NULL" },
+                        { "AdditionalFactors", "TEXT NULL" },
+                        { "IsActive", "BOOLEAN NOT NULL DEFAULT TRUE" },
+                        { "EffectiveFrom", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "EffectiveTo", "TIMESTAMP NULL" },
+                        { "CreatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "UpdatedAt", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+
+                    definitions["AudioUsageLogs"] = new Dictionary<string, string>
+                    {
+                        { "Id", "BIGSERIAL PRIMARY KEY" },
+                        { "VirtualKey", "VARCHAR(100) NOT NULL" },
+                        { "Provider", "VARCHAR(100) NOT NULL" },
+                        { "OperationType", "VARCHAR(50) NOT NULL" },
+                        { "Model", "VARCHAR(100) NULL" },
+                        { "RequestId", "VARCHAR(100) NULL" },
+                        { "SessionId", "VARCHAR(100) NULL" },
+                        { "DurationSeconds", "DOUBLE PRECISION NULL" },
+                        { "CharacterCount", "INTEGER NULL" },
+                        { "InputTokens", "INTEGER NULL" },
+                        { "OutputTokens", "INTEGER NULL" },
+                        { "Cost", "DECIMAL(10,6) NOT NULL DEFAULT 0" },
+                        { "Language", "VARCHAR(10) NULL" },
+                        { "Voice", "VARCHAR(100) NULL" },
+                        { "StatusCode", "INTEGER NULL" },
+                        { "ErrorMessage", "VARCHAR(500) NULL" },
+                        { "IpAddress", "VARCHAR(45) NULL" },
+                        { "UserAgent", "VARCHAR(500) NULL" },
+                        { "Metadata", "TEXT NULL" },
+                        { "Timestamp", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+                }
+                else // sqlite
+                {
+                    definitions["AudioProviderConfigs"] = new Dictionary<string, string>
+                    {
+                        { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
+                        { "ProviderCredentialId", "INTEGER NOT NULL" },
+                        { "TranscriptionEnabled", "INTEGER NOT NULL DEFAULT 0" },
+                        { "DefaultTranscriptionModel", "TEXT NULL" },
+                        { "TextToSpeechEnabled", "INTEGER NOT NULL DEFAULT 0" },
+                        { "DefaultTTSModel", "TEXT NULL" },
+                        { "DefaultTTSVoice", "TEXT NULL" },
+                        { "RealtimeEnabled", "INTEGER NOT NULL DEFAULT 0" },
+                        { "DefaultRealtimeModel", "TEXT NULL" },
+                        { "RealtimeEndpoint", "TEXT NULL" },
+                        { "CustomSettings", "TEXT NULL" },
+                        { "RoutingPriority", "INTEGER NOT NULL DEFAULT 0" },
+                        { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+
+                    definitions["AudioCosts"] = new Dictionary<string, string>
+                    {
+                        { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
+                        { "Provider", "TEXT NOT NULL" },
+                        { "OperationType", "TEXT NOT NULL" },
+                        { "Model", "TEXT NULL" },
+                        { "CostUnit", "TEXT NOT NULL" },
+                        { "CostPerUnit", "REAL NOT NULL" },
+                        { "MinimumCharge", "REAL NULL" },
+                        { "AdditionalFactors", "TEXT NULL" },
+                        { "IsActive", "INTEGER NOT NULL DEFAULT 1" },
+                        { "EffectiveFrom", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "EffectiveTo", "TEXT NULL" },
+                        { "CreatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" },
+                        { "UpdatedAt", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+
+                    definitions["AudioUsageLogs"] = new Dictionary<string, string>
+                    {
+                        { "Id", "INTEGER PRIMARY KEY AUTOINCREMENT" },
+                        { "VirtualKey", "TEXT NOT NULL" },
+                        { "Provider", "TEXT NOT NULL" },
+                        { "OperationType", "TEXT NOT NULL" },
+                        { "Model", "TEXT NULL" },
+                        { "RequestId", "TEXT NULL" },
+                        { "SessionId", "TEXT NULL" },
+                        { "DurationSeconds", "REAL NULL" },
+                        { "CharacterCount", "INTEGER NULL" },
+                        { "InputTokens", "INTEGER NULL" },
+                        { "OutputTokens", "INTEGER NULL" },
+                        { "Cost", "REAL NOT NULL DEFAULT 0" },
+                        { "Language", "TEXT NULL" },
+                        { "Voice", "TEXT NULL" },
+                        { "StatusCode", "INTEGER NULL" },
+                        { "ErrorMessage", "TEXT NULL" },
+                        { "IpAddress", "TEXT NULL" },
+                        { "UserAgent", "TEXT NULL" },
+                        { "Metadata", "TEXT NULL" },
+                        { "Timestamp", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" }
+                    };
+                }
             }
 
             // Add other table definitions as needed
