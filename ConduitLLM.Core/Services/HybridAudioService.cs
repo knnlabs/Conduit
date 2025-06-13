@@ -322,8 +322,9 @@ namespace ConduitLLM.Core.Services
                     // Try to create a completion to check availability
                     await _llmRouter.CreateChatCompletionAsync(testRequest, cancellationToken: cancellationToken);
                 }
-                catch
+                catch (Exception llmEx)
                 {
+                    _logger.LogWarning(llmEx, "LLM availability check failed");
                     return false;
                 }
 

@@ -25,17 +25,20 @@ namespace ConduitLLM.Http.Services
         private readonly IRealtimeMessageTranslator _translator;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IRealtimeConnectionManager _connectionManager;
+        private readonly IRealtimeUsageTracker _usageTracker;
         private readonly ILogger<RealtimeProxyService> _logger;
 
         public RealtimeProxyService(
             IRealtimeMessageTranslator translator,
             IVirtualKeyService virtualKeyService,
             IRealtimeConnectionManager connectionManager,
+            IRealtimeUsageTracker usageTracker,
             ILogger<RealtimeProxyService> logger)
         {
             _translator = translator ?? throw new ArgumentNullException(nameof(translator));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+            _usageTracker = usageTracker ?? throw new ArgumentNullException(nameof(usageTracker));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -82,6 +85,9 @@ namespace ConduitLLM.Http.Services
 
             try
             {
+                // Start usage tracking
+                await _usageTracker.StartTrackingAsync(connectionId, virtualKey.Id, model, provider ?? "default");
+
                 // Create the session
                 providerSession = await realtimeClient.CreateSessionAsync(sessionConfig, virtualKey.KeyHash, cancellationToken);
 
@@ -113,6 +119,22 @@ namespace ConduitLLM.Http.Services
             }
             finally
             {
+                try
+                {
+                    // Finalize usage tracking and update virtual key spend
+                    var connectionInfo = await _connectionManager.GetConnectionAsync(connectionId);
+                    var finalStats = connectionInfo?.Usage ?? new ConnectionUsageStats();
+                    var totalCost = await _usageTracker.FinalizeUsageAsync(connectionId, finalStats);
+                    
+                    _logger.LogInformation(
+                        "Session {ConnectionId} completed with total cost: ${Cost:F4}",
+                        connectionId, totalCost);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error finalizing usage for connection {ConnectionId}", connectionId);
+                }
+
                 // Ensure client WebSocket is closed
                 await CloseWebSocketAsync(clientWebSocket, "Proxy connection ended");
 
@@ -159,6 +181,10 @@ namespace ConduitLLM.Http.Services
                         };
 
                         await providerStream.SendAsync(audioFrame, cancellationToken);
+                        
+                        // Track input audio usage
+                        var audioDuration = audioFrame.AudioData.Length / (double)(audioFrame.SampleRate * audioFrame.Channels * 2); // 16-bit audio
+                        await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: true);
                     }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
@@ -187,6 +213,10 @@ namespace ConduitLLM.Http.Services
                                     };
 
                                     await providerStream.SendAsync(audioFrame, cancellationToken);
+                        
+                        // Track input audio usage
+                        var audioDuration = audioFrame.AudioData.Length / (double)(audioFrame.SampleRate * audioFrame.Channels * 2); // 16-bit audio
+                        await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: true);
                                 }
                                 // Handle other control messages as needed
                             }
@@ -234,8 +264,8 @@ namespace ConduitLLM.Http.Services
                             true,
                             cancellationToken);
 
-                        // Track usage if applicable
-                        // Note: Usage tracking would need to be implemented based on provider-specific events
+                        // Track usage based on response type
+                        await TrackResponseUsageAsync(connectionId, response, virtualKey);
                     }
                     catch (Exception ex)
                     {
@@ -372,6 +402,60 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling usage update for connection {ConnectionId}", connectionId);
+            }
+        }
+
+        private async Task TrackResponseUsageAsync(string connectionId, RealtimeResponse response, string virtualKey)
+        {
+            try
+            {
+                switch (response.EventType)
+                {
+                    case RealtimeEventType.AudioDelta:
+                        if (response.Audio != null && response.Audio.Data.Length > 0)
+                        {
+                            // Assume 24kHz, 1 channel, 16-bit audio for output
+                            var audioDuration = response.Audio.Data.Length / (24000.0 * 1 * 2);
+                            await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: false);
+                        }
+                        break;
+
+                    case RealtimeEventType.ResponseComplete:
+                        // Check if response contains usage information
+                        if (response.Usage != null)
+                        {
+                            var usage = new Usage
+                            {
+                                PromptTokens = (int)(response.Usage.InputTokens ?? 0),
+                                CompletionTokens = (int)(response.Usage.OutputTokens ?? 0),
+                                TotalTokens = (int)(response.Usage.TotalTokens ?? 0)
+                            };
+                            await _usageTracker.RecordTokenUsageAsync(connectionId, usage);
+                            
+                            // Track function calls if any
+                            if (response.Usage.FunctionCalls > 0)
+                            {
+                                // Record each function call
+                                for (int i = 0; i < response.Usage.FunctionCalls; i++)
+                                {
+                                    await _usageTracker.RecordFunctionCallAsync(connectionId);
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case RealtimeEventType.ToolCallRequest:
+                        // Track function call when it's requested
+                        if (response.ToolCall != null)
+                        {
+                            await _usageTracker.RecordFunctionCallAsync(connectionId, response.ToolCall.FunctionName);
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error tracking response usage for connection {ConnectionId}", connectionId);
             }
         }
 

@@ -176,3 +176,36 @@ internal record CohereStreamEndEvent : CohereStreamEventBase
 // Event: error (Uses CohereErrorResponse defined earlier)
 // The stream might just terminate with an HTTP error, or potentially send an error event.
 // Assuming standard HTTP error handling is primary for now.
+
+// --- Internal Models for Embeddings ---
+// See: https://docs.cohere.com/reference/embed
+
+internal record CohereEmbedRequest
+{
+    [JsonPropertyName("texts")]
+    public required List<string> Texts { get; init; }
+    
+    [JsonPropertyName("model")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Model { get; init; } // e.g., "embed-english-v3.0", "embed-multilingual-v3.0"
+    
+    [JsonPropertyName("input_type")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InputType { get; init; } // "search_document", "search_query", "classification", "clustering"
+    
+    [JsonPropertyName("truncate")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Truncate { get; init; } // "NONE", "START", "END"
+}
+
+internal record CohereEmbedResponse
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+    
+    [JsonPropertyName("embeddings")]
+    public required List<List<float>> Embeddings { get; init; }
+    
+    [JsonPropertyName("meta")]
+    public CohereApiMeta? Meta { get; init; }
+}

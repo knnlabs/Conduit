@@ -24,16 +24,19 @@ namespace ConduitLLM.Core.Services
         private readonly ConcurrentDictionary<string, List<AudioTrace>> _completedTraces = new();
         private readonly Timer _cleanupTimer;
         private readonly ActivitySource _activitySource;
+        private readonly ICorrelationContextService? _correlationService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AudioTracingService"/> class.
         /// </summary>
         public AudioTracingService(
             ILogger<AudioTracingService> logger,
-            IOptions<AudioTracingOptions> options)
+            IOptions<AudioTracingOptions> options,
+            ICorrelationContextService? correlationService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+            _correlationService = correlationService;
 
             // Initialize OpenTelemetry activity source
             _activitySource = new ActivitySource("ConduitLLM.Audio", "1.0.0");
@@ -76,6 +79,18 @@ namespace ConduitLLM.Core.Services
             trace.Tags["operation.type"] = operationType.ToString();
             trace.Tags["service.name"] = "conduit.audio";
             trace.Tags["service.version"] = "1.0.0";
+            
+            // Add correlation ID if available
+            if (_correlationService != null)
+            {
+                var correlationId = _correlationService.CorrelationId;
+                if (!string.IsNullOrEmpty(correlationId))
+                {
+                    trace.Tags["correlation.id"] = correlationId;
+                    activity.SetTag("correlation.id", correlationId);
+                    activity.SetBaggage("correlation.id", correlationId);
+                }
+            }
 
             _activeTraces[trace.TraceId] = trace;
 
@@ -546,6 +561,23 @@ namespace ConduitLLM.Core.Services
             if (Activity.TraceStateString != null)
             {
                 headers["tracestate"] = Activity.TraceStateString;
+            }
+
+            // Add correlation ID from activity baggage
+            var correlationId = Activity.GetBaggageItem("correlation.id");
+            if (!string.IsNullOrEmpty(correlationId))
+            {
+                headers["X-Correlation-ID"] = correlationId;
+                headers["X-Request-ID"] = correlationId;
+            }
+
+            // Add any other context baggage items
+            foreach (var baggage in Activity.Baggage)
+            {
+                if (baggage.Key.StartsWith("context.") && !string.IsNullOrEmpty(baggage.Value))
+                {
+                    headers[$"X-Context-{baggage.Key}"] = baggage.Value;
+                }
             }
 
             return headers;

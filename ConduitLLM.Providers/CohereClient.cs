@@ -301,14 +301,112 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc/>
-        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // The Cohere API does support embeddings but requires a separate implementation
-            // This could be implemented in the future as needed
-            throw new NotImplementedException("Embedding support for Cohere is not yet implemented");
+            // Validate input
+            if (request.Input == null)
+            {
+                throw new ValidationException("Input text is required for embeddings");
+            }
+
+            // Prepare the texts array
+            var texts = new List<string>();
+            if (request.Input is string singleText)
+            {
+                texts.Add(singleText);
+            }
+            else if (request.Input is IEnumerable<string> multipleTexts)
+            {
+                texts.AddRange(multipleTexts);
+            }
+            else
+            {
+                throw new ValidationException("Input must be a string or array of strings");
+            }
+
+            if (texts.Count == 0)
+            {
+                throw new ValidationException("At least one input text is required");
+            }
+
+            // Create the Cohere-specific request
+            var cohereRequest = new
+            {
+                texts = texts,
+                model = request.Model ?? "embed-english-v3.0", // Default Cohere embedding model
+                input_type = "search_document", // Can be "search_document", "search_query", "classification", "clustering"
+                truncate = "END" // Truncate at the end if text is too long
+            };
+
+            using var httpClient = CreateHttpClient(apiKey);
+            var requestJson = JsonSerializer.Serialize(cohereRequest, DefaultJsonOptions);
+            var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await httpClient.PostAsync("embed", content, cancellationToken);
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Handle error response
+                    Logger.LogError("Cohere API request failed with status code {StatusCode}. Response: {ErrorContent}",
+                        response.StatusCode, responseBody);
+                    throw new LLMCommunicationException(
+                        $"Cohere API request failed with status code {response.StatusCode}. Response: {responseBody}");
+                }
+
+                // Parse Cohere response
+                var cohereResponse = JsonSerializer.Deserialize<CohereEmbedResponse>(responseBody, DefaultJsonOptions);
+                if (cohereResponse?.Embeddings == null)
+                {
+                    throw new LLMCommunicationException(
+                        "Invalid response from Cohere API");
+                }
+
+                // Map to standard embedding response
+                var embeddingData = new List<EmbeddingData>();
+                for (int i = 0; i < cohereResponse.Embeddings.Count; i++)
+                {
+                    embeddingData.Add(new EmbeddingData
+                    {
+                        Object = "embedding",
+                        Embedding = cohereResponse.Embeddings[i],
+                        Index = i
+                    });
+                }
+
+                // Calculate token usage (Cohere provides this in meta)
+                var usage = new Usage
+                {
+                    PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0,
+                    CompletionTokens = 0, // Embeddings don't have completion tokens
+                    TotalTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? 0
+                };
+
+                return new EmbeddingResponse
+                {
+                    Object = "list",
+                    Data = embeddingData,
+                    Model = request.Model ?? "embed-english-v3.0",
+                    Usage = usage
+                };
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new LLMCommunicationException(
+                    $"Error communicating with Cohere API: {ex.Message}",
+                    ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                throw new LLMCommunicationException(
+                    "Request to Cohere API timed out",
+                    ex);
+            }
         }
 
         /// <inheritdoc/>

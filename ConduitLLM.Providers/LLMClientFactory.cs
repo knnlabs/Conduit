@@ -206,6 +206,20 @@ public class LLMClientFactory : ILLMClientFactory
                 client = new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory, defaultModels);
                 break;
 
+            case "googlecloud":
+            case "google-cloud":
+            case "gcp":
+                var googleCloudLogger = _loggerFactory.CreateLogger<GoogleCloudAudioClient>();
+                client = new GoogleCloudAudioClient(credentials, modelId, googleCloudLogger, _httpClientFactory, defaultModels);
+                break;
+
+            case "aws":
+            case "awstranscribe":
+            case "aws-transcribe":
+                var awsTranscribeLogger = _loggerFactory.CreateLogger<AWSTranscribeClient>();
+                client = new AWSTranscribeClient(credentials, modelId, awsTranscribeLogger, _httpClientFactory, defaultModels);
+                break;
+
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");
         }

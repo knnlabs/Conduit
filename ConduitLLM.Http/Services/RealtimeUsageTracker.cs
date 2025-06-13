@@ -54,6 +54,7 @@ namespace ConduitLLM.Http.Services
                 OutputAudioSeconds = 0,
                 InputTokens = 0,
                 OutputTokens = 0,
+                FunctionCalls = 0,
                 EstimatedCost = 0
             };
 
@@ -130,6 +131,30 @@ namespace ConduitLLM.Http.Services
             await Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Records a function call for billing purposes.
+        /// </summary>
+        /// <param name="connectionId">The connection identifier.</param>
+        /// <param name="functionName">Optional function name for logging.</param>
+        /// <returns>A task that completes when the function call is recorded.</returns>
+        public async Task RecordFunctionCallAsync(string connectionId, string? functionName = null)
+        {
+            if (!_sessions.TryGetValue(connectionId, out var session))
+            {
+                _logger.LogWarning("Attempted to track function call for unknown connection {ConnectionId}", connectionId);
+                return;
+            }
+
+            session.FunctionCalls++;
+            session.LastActivity = DateTime.UtcNow;
+
+            _logger.LogDebug(
+                "Tracked function call{FunctionName} for connection {ConnectionId}. Total calls: {TotalCalls}",
+                functionName != null ? $" '{functionName}'" : "", connectionId, session.FunctionCalls);
+
+            await Task.CompletedTask;
+        }
+
         public async Task<decimal> GetEstimatedCostAsync(string connectionId)
         {
             if (!_sessions.TryGetValue(connectionId, out var session))
@@ -170,6 +195,14 @@ namespace ConduitLLM.Http.Services
             {
                 var outputMinutes = (decimal)(session.OutputAudioSeconds / 60.0);
                 totalCost += outputMinutes * modelCost.OutputTokenCost; // 1 minute ≈ 1K tokens worth
+            }
+
+            // Add function call costs
+            // Assuming each function call costs approximately 100 tokens worth
+            if (session.FunctionCalls > 0)
+            {
+                var functionCallCost = (session.FunctionCalls * 100m / 1000m) * modelCost.OutputTokenCost;
+                totalCost += functionCallCost;
             }
 
             return totalCost;
@@ -225,7 +258,7 @@ namespace ConduitLLM.Http.Services
                 OutputAudioSeconds = session.OutputAudioSeconds,
                 InputTokens = (int)session.InputTokens,
                 OutputTokens = (int)session.OutputTokens,
-                FunctionCalls = 0, // TODO: Track function calls
+                FunctionCalls = session.FunctionCalls,
                 SessionDurationSeconds = duration.TotalSeconds,
                 StartedAt = session.StartTime,
                 EndedAt = null // Still active
@@ -240,7 +273,9 @@ namespace ConduitLLM.Http.Services
                     OutputAudioCost = (decimal)(session.OutputAudioSeconds / 60.0) * modelCost.OutputTokenCost,
                     TokenCost = (session.InputTokens / 1000m * modelCost.InputTokenCost) +
                                 (session.OutputTokens / 1000m * modelCost.OutputTokenCost),
-                    FunctionCallCost = 0,
+                    FunctionCallCost = session.FunctionCalls > 0 
+                        ? (session.FunctionCalls * 100m / 1000m) * modelCost.OutputTokenCost 
+                        : 0,
                     AdditionalFees = 0
                 };
             }
@@ -261,6 +296,7 @@ namespace ConduitLLM.Http.Services
             public double OutputAudioSeconds { get; set; }
             public long InputTokens { get; set; }
             public long OutputTokens { get; set; }
+            public int FunctionCalls { get; set; }
             public decimal EstimatedCost { get; set; }
         }
     }

@@ -6,10 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Http.Services;
+using RealtimeConnectionInfo = ConduitLLM.Core.Models.Realtime.ConnectionInfo;
 
 using Microsoft.Extensions.Logging;
 
@@ -19,43 +20,121 @@ using Xunit;
 
 namespace ConduitLLM.Tests.Http
 {
-    // TODO: These tests need to be rewritten to match the new RealtimeProxyService architecture
-    // The service now uses HandleConnectionAsync instead of StartProxyAsync and expects
-    // a VirtualKey entity instead of a string key
-    // Disabling for now to allow the build to succeed
-    /*
     public class RealtimeProxyServiceTests
     {
         private readonly Mock<IRealtimeMessageTranslator> _mockTranslator;
-        private readonly Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IRealtimeConnectionManager> _mockConnectionManager;
+        private readonly Mock<IAudioRouter> _mockAudioRouter;
+        private readonly Mock<IRealtimeUsageTracker> _mockUsageTracker;
         private readonly Mock<ILogger<RealtimeProxyService>> _mockLogger;
         private readonly RealtimeProxyService _proxyService;
 
         public RealtimeProxyServiceTests()
         {
             _mockTranslator = new Mock<IRealtimeMessageTranslator>();
-            _mockVirtualKeyService = new Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
-            _mockConnectionManager = new Mock<IRealtimeConnectionManager>();
+            _mockVirtualKeyService = new Mock<IVirtualKeyService>();
+            _mockUsageTracker = new Mock<IRealtimeUsageTracker>();
             _mockLogger = new Mock<ILogger<RealtimeProxyService>>();
+            
+            // Create a mock that implements both interfaces
+            var connectionManagerMock = new Mock<IRealtimeConnectionManager>();
+            connectionManagerMock.As<IAudioRouter>();
+            _mockConnectionManager = connectionManagerMock;
+            _mockAudioRouter = connectionManagerMock.As<IAudioRouter>();
             
             _proxyService = new RealtimeProxyService(
                 _mockTranslator.Object,
                 _mockVirtualKeyService.Object,
                 _mockConnectionManager.Object,
+                _mockUsageTracker.Object,
                 _mockLogger.Object);
         }
 
         [Fact]
-        public async Task HandleConnectionAsync_Should_Handle_Client_Disconnection_Gracefully()
+        public async Task HandleConnectionAsync_Should_Reject_Disabled_VirtualKey()
+        {
+            // Arrange
+            var mockClientSocket = new Mock<WebSocket>();
+            var virtualKey = new VirtualKey
+            {
+                Id = 1,
+                KeyHash = "test-key-hash",
+                IsEnabled = false // Disabled key
+            };
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _proxyService.HandleConnectionAsync(
+                    "test-connection-id",
+                    mockClientSocket.Object,
+                    virtualKey,
+                    "gpt-4o-realtime",
+                    null,
+                    CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task HandleConnectionAsync_Should_Reject_OverBudget_VirtualKey()
+        {
+            // Arrange
+            var mockClientSocket = new Mock<WebSocket>();
+            var virtualKey = new VirtualKey
+            {
+                Id = 1,
+                KeyHash = "test-key-hash",
+                IsEnabled = true,
+                MaxBudget = 100m,
+                CurrentSpend = 150m // Over budget
+            };
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                _proxyService.HandleConnectionAsync(
+                    "test-connection-id",
+                    mockClientSocket.Object,
+                    virtualKey,
+                    "gpt-4o-realtime",
+                    null,
+                    CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task HandleConnectionAsync_Should_Throw_When_No_Provider_Available()
+        {
+            // Arrange
+            var mockClientSocket = new Mock<WebSocket>();
+            var virtualKey = new VirtualKey
+            {
+                Id = 1,
+                KeyHash = "test-key-hash",
+                IsEnabled = true
+            };
+
+            // Setup audio router to return null (no provider available)
+            _mockAudioRouter.Setup(x => x.GetRealtimeClientAsync(
+                    It.IsAny<RealtimeSessionConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IRealtimeAudioClient?)null);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _proxyService.HandleConnectionAsync(
+                    "test-connection-id",
+                    mockClientSocket.Object,
+                    virtualKey,
+                    "gpt-4o-realtime",
+                    null,
+                    CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task HandleConnectionAsync_Should_Create_Session_With_Correct_Config()
         {
             // Arrange
             var mockClientSocket = new Mock<WebSocket>();
             mockClientSocket.Setup(x => x.State).Returns(WebSocketState.Open);
-            mockClientSocket.Setup(x => x.CloseStatus).Returns(WebSocketCloseStatus.NormalClosure);
-            
-            var mockProviderStream = new Mock<IAsyncDuplexStream<RealtimeAudioFrame, RealtimeResponse>>();
-            mockProviderStream.Setup(x => x.IsConnected).Returns(true);
             
             var virtualKey = new VirtualKey
             {
@@ -63,303 +142,196 @@ namespace ConduitLLM.Tests.Http
                 KeyHash = "test-key-hash",
                 IsEnabled = true
             };
-            
-            // Setup client socket to return close frame
-            mockClientSocket.SetupSequence(x => x.ReceiveAsync(
-                    It.IsAny<ArraySegment<byte>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new WebSocketReceiveResult(0, WebSocketMessageType.Close, true, WebSocketCloseStatus.NormalClosure, "Client disconnected"));
-            
-            // Act
-            await _proxyService.HandleConnectionAsync(
-                mockClientSocket.Object,
-                mockProviderStream.Object,
-                virtualKey,
-                CancellationToken.None);
-            
-            // Assert
-            mockProviderStream.Verify(x => x.CompleteAsync(), Times.Once);
-            _mockConnectionManager.Verify(x => x.RemoveConnection(It.IsAny<string>()), Times.Once);
-        }
 
-        [Fact]
-        public async Task HandleConnectionAsync_Should_Update_VirtualKey_Usage()
-        {
-            // Arrange
-            var mockClientSocket = new Mock<WebSocket>();
-            mockClientSocket.Setup(x => x.State).Returns(WebSocketState.Open);
-            
+            var mockRealtimeClient = new Mock<IRealtimeAudioClient>();
+            var mockProviderSession = new Mock<RealtimeSession>();
             var mockProviderStream = new Mock<IAsyncDuplexStream<RealtimeAudioFrame, RealtimeResponse>>();
-            mockProviderStream.Setup(x => x.IsConnected).Returns(true);
-            
-            var virtualKey = new VirtualKey
-            {
-                Id = 1,
-                KeyHash = "test-key-hash",
-                IsEnabled = true
-            };
-            
-            var usageResponse = new RealtimeResponse
-            {
-                EventType = RealtimeEventType.UsageUpdate,
-                Usage = new UsageUpdate
-                {
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    TotalCost = 0.015m
-                }
-            };
-            
-            // Setup provider stream to return usage update
-            mockProviderStream.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .Returns(async IAsyncEnumerable<RealtimeResponse> () =>
-                {
-                    yield return usageResponse;
-                    await Task.Delay(100); // Simulate some delay
-                });
-            
-            // Setup client to disconnect after receiving message
-            var messageJson = System.Text.Json.JsonSerializer.Serialize(new { type = "usage_update", usage = new { input_tokens = 100, output_tokens = 50 } });
-            var messageBytes = Encoding.UTF8.GetBytes(messageJson);
-            
+
+            RealtimeSessionConfig? capturedConfig = null;
+
+            // Setup audio router
+            _mockAudioRouter.Setup(x => x.GetRealtimeClientAsync(
+                    It.IsAny<RealtimeSessionConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<RealtimeSessionConfig, string, CancellationToken>((config, key, ct) => capturedConfig = config)
+                .ReturnsAsync(mockRealtimeClient.Object);
+
+            // Setup realtime client
+            mockRealtimeClient.Setup(x => x.CreateSessionAsync(
+                    It.IsAny<RealtimeSessionConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockProviderSession.Object);
+
+            mockRealtimeClient.Setup(x => x.StreamAudioAsync(
+                    It.IsAny<RealtimeSession>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(mockProviderStream.Object);
+
+            // Setup client socket to immediately close
             mockClientSocket.SetupSequence(x => x.ReceiveAsync(
                     It.IsAny<ArraySegment<byte>>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new WebSocketReceiveResult(0, WebSocketMessageType.Close, true, WebSocketCloseStatus.NormalClosure, "Done"));
-            
-            mockClientSocket.Setup(x => x.SendAsync(
-                    It.IsAny<ArraySegment<byte>>(),
-                    It.IsAny<WebSocketMessageType>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            
-            // Act
-            var connectionTask = _proxyService.HandleConnectionAsync(
-                mockClientSocket.Object,
-                mockProviderStream.Object,
-                virtualKey,
-                CancellationToken.None);
-            
-            // Give it time to process
-            await Task.Delay(200);
-            
-            // Assert
-            _mockVirtualKeyService.Verify(x => x.UpdateSpendAsync(
-                virtualKey.KeyHash,
-                It.Is<decimal>(d => d > 0)), 
-                Times.AtLeastOnce);
-        }
-
-        [Fact]
-        public void ParseUsageFromProviderMessage_Should_Extract_Usage_Info()
-        {
-            // Arrange
-            var providerMessage = @"{
-                ""type"": ""response.done"",
-                ""response"": {
-                    ""usage"": {
-                        ""total_tokens"": 150,
-                        ""input_tokens"": 100,
-                        ""output_tokens"": 50,
-                        ""input_token_details"": {
-                            ""cached_tokens"": 30,
-                            ""text_tokens"": 70
-                        },
-                        ""output_token_details"": {
-                            ""text_tokens"": 40,
-                            ""audio_tokens"": 10
-                        }
-                    }
-                }
-            }";
-
-            var testProxyService = new TestRealtimeProxyService(
-                _mockTranslator.Object,
-                _mockVirtualKeyService.Object,
-                _mockConnectionManager.Object,
-                _mockLogger.Object);
-
-            // Act
-            var usage = testProxyService.TestParseUsageFromProviderMessage(providerMessage);
-
-            // Assert
-            Assert.NotNull(usage);
-            Assert.Equal(150, usage.TotalTokens);
-            Assert.Equal(100, usage.InputTokens);
-            Assert.Equal(50, usage.OutputTokens);
-            Assert.NotNull(usage.InputTokenDetails);
-            Assert.Equal(30L, usage.InputTokenDetails["cached_tokens"]);
-            Assert.Equal(70L, usage.InputTokenDetails["text_tokens"]);
-            Assert.NotNull(usage.OutputTokenDetails);
-            Assert.Equal(40L, usage.OutputTokenDetails["text_tokens"]);
-            Assert.Equal(10L, usage.OutputTokenDetails["audio_tokens"]);
-        }
-
-        [Fact]
-        public void ParseUsageFromProviderMessage_Should_Return_Null_For_Invalid_Json()
-        {
-            // Arrange
-            var invalidMessage = "not json";
-            
-            var testProxyService = new TestRealtimeProxyService(
-                _mockTranslator.Object,
-                _mockVirtualKeyService.Object,
-                _mockConnectionManager.Object,
-                _mockLogger.Object);
-
-            // Act
-            var usage = testProxyService.TestParseUsageFromProviderMessage(invalidMessage);
-
-            // Assert
-            Assert.Null(usage);
-        }
-
-        [Fact]
-        public void ParseUsageFromProviderMessage_Should_Return_Null_For_Non_Usage_Message()
-        {
-            // Arrange
-            var nonUsageMessage = @"{
-                ""type"": ""audio.delta"",
-                ""delta"": ""some audio data""
-            }";
-            
-            var testProxyService = new TestRealtimeProxyService(
-                _mockTranslator.Object,
-                _mockVirtualKeyService.Object,
-                _mockConnectionManager.Object,
-                _mockLogger.Object);
-
-            // Act
-            var usage = testProxyService.TestParseUsageFromProviderMessage(nonUsageMessage);
-
-            // Assert
-            Assert.Null(usage);
-        }
-
-        [Fact]
-        public async Task Translator_Errors_Should_Be_Logged_But_Not_Stop_Proxy()
-        {
-            // Arrange
-            var mockClientSocket = new Mock<WebSocket>();
-            mockClientSocket.Setup(x => x.State).Returns(WebSocketState.Open);
-            
-            var mockProviderStream = new Mock<IAsyncDuplexStream<RealtimeAudioFrame, RealtimeResponse>>();
-            mockProviderStream.Setup(x => x.IsConnected).Returns(true);
-            
-            var virtualKey = new VirtualKey
-            {
-                Id = 1,
-                KeyHash = "test-key-hash",
-                IsEnabled = true
-            };
-            
-            // Setup translator to throw exception
-            _mockTranslator.Setup(x => x.TranslateToProviderAsync(It.IsAny<RealtimeMessage>()))
-                .ThrowsAsync(new InvalidOperationException("Translation error"));
-            
-            // Setup client to send a message then disconnect
-            var testMessage = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(new { type = "test" }));
-            
-            mockClientSocket.SetupSequence(x => x.ReceiveAsync(
-                    It.IsAny<ArraySegment<byte>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new WebSocketReceiveResult(testMessage.Length, WebSocketMessageType.Text, true))
                 .ReturnsAsync(new WebSocketReceiveResult(0, WebSocketMessageType.Close, true));
-            
+
             // Act
             await _proxyService.HandleConnectionAsync(
+                "test-connection-id",
                 mockClientSocket.Object,
-                mockProviderStream.Object,
                 virtualKey,
+                "gpt-4o-realtime",
+                null,
                 CancellationToken.None);
-            
+
             // Assert
-            // Verify that error was logged but proxy continued
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error translating")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.AtLeastOnce);
-            
-            // Verify connection was properly closed
-            mockProviderStream.Verify(x => x.CompleteAsync(), Times.Once);
+            Assert.NotNull(capturedConfig);
+            Assert.Equal("gpt-4o-realtime", capturedConfig.Model);
+            Assert.Equal("alloy", capturedConfig.Voice);
+            Assert.Equal("You are a helpful assistant.", capturedConfig.SystemPrompt);
         }
 
-        // Test helper class to expose protected methods
-        private class TestRealtimeProxyService : RealtimeProxyService
+        [Fact]
+        public async Task HandleConnectionAsync_Should_Close_Session_On_Client_Disconnect()
         {
-            public TestRealtimeProxyService(
-                IRealtimeMessageTranslator translator,
-                ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
-                IRealtimeConnectionManager connectionManager,
-                ILogger<RealtimeProxyService> logger)
-                : base(translator, virtualKeyService, connectionManager, logger)
+            // Arrange
+            var mockClientSocket = new Mock<WebSocket>();
+            mockClientSocket.Setup(x => x.State).Returns(WebSocketState.Open);
+            
+            var virtualKey = new VirtualKey
             {
-            }
+                Id = 1,
+                KeyHash = "test-key-hash",
+                IsEnabled = true
+            };
 
-            public async Task TestHandleUsageUpdate(string connectionId, string virtualKey, RealtimeUsageUpdate usage)
-            {
-                // TODO: Reimplement when interfaces are updated
-                await Task.CompletedTask;
-            }
+            var mockRealtimeClient = new Mock<IRealtimeAudioClient>();
+            var mockProviderSession = new Mock<RealtimeSession>();
+            var mockProviderStream = new Mock<IAsyncDuplexStream<RealtimeAudioFrame, RealtimeResponse>>();
 
-            public RealtimeUsageUpdate? TestParseUsageFromProviderMessage(string message)
+            // Setup audio router and realtime client
+            _mockAudioRouter.Setup(x => x.GetRealtimeClientAsync(
+                    It.IsAny<RealtimeSessionConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockRealtimeClient.Object);
+
+            mockRealtimeClient.Setup(x => x.CreateSessionAsync(
+                    It.IsAny<RealtimeSessionConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockProviderSession.Object);
+
+            mockRealtimeClient.Setup(x => x.StreamAudioAsync(
+                    It.IsAny<RealtimeSession>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(mockProviderStream.Object);
+
+            // Setup client socket to immediately close
+            mockClientSocket.SetupSequence(x => x.ReceiveAsync(
+                    It.IsAny<ArraySegment<byte>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new WebSocketReceiveResult(0, WebSocketMessageType.Close, true));
+
+            // Act
+            await _proxyService.HandleConnectionAsync(
+                "test-connection-id",
+                mockClientSocket.Object,
+                virtualKey,
+                "gpt-4o-realtime",
+                null,
+                CancellationToken.None);
+
+            // Assert
+            mockRealtimeClient.Verify(x => x.CloseSessionAsync(
+                mockProviderSession.Object,
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetConnectionStatusAsync_Should_Return_Null_For_Unknown_Connection()
+        {
+            // Arrange
+            _mockConnectionManager.Setup(x => x.GetConnectionAsync(It.IsAny<string>()))
+                .ReturnsAsync((RealtimeConnectionInfo?)null);
+
+            // Act
+            var status = await _proxyService.GetConnectionStatusAsync("unknown-connection-id");
+
+            // Assert
+            Assert.Null(status);
+        }
+
+        [Fact]
+        public async Task GetConnectionStatusAsync_Should_Return_Status_For_Known_Connection()
+        {
+            // Arrange
+            var connectionInfo = new RealtimeConnectionInfo
             {
-                // We'll simulate the parsing logic here since we can't access the private method
-                try
+                ConnectionId = "test-connection-id",
+                Provider = "openai",
+                Model = "gpt-4o-realtime",
+                ConnectedAt = DateTime.UtcNow.AddMinutes(-5),
+                LastActivity = DateTime.UtcNow.AddSeconds(-30),
+                Usage = new ConnectionUsageStats
                 {
-                    var json = System.Text.Json.JsonDocument.Parse(message);
-                    var root = json.RootElement;
-                    
-                    if (root.TryGetProperty("type", out var typeElement) && 
-                        typeElement.GetString() == "response.done" &&
-                        root.TryGetProperty("response", out var response) &&
-                        response.TryGetProperty("usage", out var usage))
-                    {
-                        var update = new RealtimeUsageUpdate();
-                        
-                        if (usage.TryGetProperty("total_tokens", out var totalTokens))
-                            update.TotalTokens = totalTokens.GetInt64();
-                            
-                        if (usage.TryGetProperty("input_tokens", out var inputTokens))
-                            update.InputTokens = inputTokens.GetInt64();
-                            
-                        if (usage.TryGetProperty("output_tokens", out var outputTokens))
-                            update.OutputTokens = outputTokens.GetInt64();
-                            
-                        if (usage.TryGetProperty("input_token_details", out var inputDetails))
-                        {
-                            update.InputTokenDetails = new Dictionary<string, object>();
-                            foreach (var prop in inputDetails.EnumerateObject())
-                            {
-                                update.InputTokenDetails[prop.Name] = prop.Value.GetInt64();
-                            }
-                        }
-                        
-                        if (usage.TryGetProperty("output_token_details", out var outputDetails))
-                        {
-                            update.OutputTokenDetails = new Dictionary<string, object>();
-                            foreach (var prop in outputDetails.EnumerateObject())
-                            {
-                                update.OutputTokenDetails[prop.Name] = prop.Value.GetInt64();
-                            }
-                        }
-                        
-                        return update;
-                    }
-                }
-                catch
-                {
-                    // Parsing error
-                }
-                
-                return null;
-            }
+                    MessagesSent = 10,
+                    MessagesReceived = 8,
+                    EstimatedCost = 1.5m
+                },
+                EstimatedCost = 1.5m
+            };
+
+            _mockConnectionManager.Setup(x => x.GetConnectionAsync("test-connection-id"))
+                .ReturnsAsync(connectionInfo);
+
+            // Act
+            var status = await _proxyService.GetConnectionStatusAsync("test-connection-id");
+
+            // Assert
+            Assert.NotNull(status);
+            Assert.Equal("test-connection-id", status.ConnectionId);
+            Assert.Equal("openai", status.Provider);
+            Assert.Equal("gpt-4o-realtime", status.Model);
+            Assert.Equal(1.5m, status.EstimatedCost);
+        }
+
+        [Fact]
+        public async Task CloseConnectionAsync_Should_Return_False_For_Unknown_Connection()
+        {
+            // Arrange
+            _mockConnectionManager.Setup(x => x.GetConnectionAsync(It.IsAny<string>()))
+                .ReturnsAsync((RealtimeConnectionInfo?)null);
+
+            // Act
+            var result = await _proxyService.CloseConnectionAsync("unknown-connection-id", "Test close");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CloseConnectionAsync_Should_Return_True_For_Known_Connection()
+        {
+            // Arrange
+            var connectionInfo = new RealtimeConnectionInfo
+            {
+                ConnectionId = "test-connection-id",
+                VirtualKey = "test-key"
+            };
+
+            _mockConnectionManager.Setup(x => x.GetConnectionAsync("test-connection-id"))
+                .ReturnsAsync(connectionInfo);
+
+            _mockConnectionManager.Setup(x => x.UnregisterConnectionAsync("test-connection-id"))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _proxyService.CloseConnectionAsync("test-connection-id", "Test close");
+
+            // Assert
+            Assert.True(result);
+            _mockConnectionManager.Verify(x => x.UnregisterConnectionAsync("test-connection-id"), Times.Once);
         }
     }
-    */
 }

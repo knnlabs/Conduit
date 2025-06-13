@@ -47,6 +47,14 @@ namespace ConduitLLM.Core.Interfaces
         Task RecordTokenUsageAsync(string connectionId, Usage usage);
 
         /// <summary>
+        /// Records a function call for billing purposes.
+        /// </summary>
+        /// <param name="connectionId">The connection identifier.</param>
+        /// <param name="functionName">Optional function name for logging.</param>
+        /// <returns>A task that completes when the function call is recorded.</returns>
+        Task RecordFunctionCallAsync(string connectionId, string? functionName = null);
+
+        /// <summary>
         /// Gets the current estimated cost for a session.
         /// </summary>
         /// <param name="connectionId">The connection identifier.</param>

@@ -225,60 +225,298 @@ namespace ConduitLLM.Providers
             };
         }
 
-        private Task<ChatCompletionResponse> CreateMetaLlamaChatCompletionAsync(
+        private async Task<ChatCompletionResponse> CreateMetaLlamaChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation for Meta Llama models through Bedrock
-            // This would follow a similar pattern to the Claude implementation above,
-            // but with Meta-specific request/response formats
+            // Map to Bedrock Llama format
+            var llamaRequest = new BedrockLlamaChatRequest
+            {
+                Prompt = BuildLlamaPrompt(request.Messages),
+                MaxGenLen = request.MaxTokens ?? 512,
+                Temperature = request.Temperature.HasValue ? (float)request.Temperature.Value : 0.7f,
+                TopP = request.TopP.HasValue ? (float)request.TopP.Value : 0.9f
+            };
 
-            // For now, throw not implemented exception
-            // In a complete implementation, this would be filled out
-            throw new NotImplementedException("Meta Llama models through Bedrock not yet implemented");
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(apiKey);
+            
+            string apiUrl = $"/model/{modelId}/invoke";
+            
+            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockLlamaChatRequest, BedrockLlamaChatResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                llamaRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(llamaRequest), apiKey),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                },
+                Logger,
+                cancellationToken
+            );
+
+            // Map to standard format
+            return new ChatCompletionResponse
+            {
+                Id = $"bedrock-{Guid.NewGuid()}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = modelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new ConduitLLM.Core.Models.Message
+                        {
+                            Role = "assistant",
+                            Content = bedrockResponse.Generation ?? string.Empty
+                        },
+                        FinishReason = MapLlamaStopReason(bedrockResponse.StopReason),
+                        Logprobs = null
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = bedrockResponse.PromptTokenCount ?? 0,
+                    CompletionTokens = bedrockResponse.GenerationTokenCount ?? 0,
+                    TotalTokens = (bedrockResponse.PromptTokenCount ?? 0) + 
+                                  (bedrockResponse.GenerationTokenCount ?? 0)
+                },
+                SystemFingerprint = null
+            };
         }
 
-        private Task<ChatCompletionResponse> CreateAmazonTitanChatCompletionAsync(
+        private async Task<ChatCompletionResponse> CreateAmazonTitanChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation for Amazon Titan models through Bedrock
-            // This would follow a similar pattern to the Claude implementation above,
-            // but with Titan-specific request/response formats
+            // Map to Bedrock Titan format
+            var titanRequest = new BedrockTitanChatRequest
+            {
+                InputText = BuildPrompt(request.Messages),
+                TextGenerationConfig = new BedrockTitanTextGenerationConfig
+                {
+                    MaxTokenCount = request.MaxTokens ?? 512,
+                    Temperature = request.Temperature.HasValue ? (float)request.Temperature.Value : 0.7f,
+                    TopP = request.TopP.HasValue ? (float)request.TopP.Value : 0.9f,
+                    StopSequences = request.Stop?.ToList()
+                }
+            };
 
-            // For now, throw not implemented exception
-            // In a complete implementation, this would be filled out
-            throw new NotImplementedException("Amazon Titan models through Bedrock not yet implemented");
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(apiKey);
+            
+            string apiUrl = $"/model/{modelId}/invoke";
+            
+            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockTitanChatRequest, BedrockTitanChatResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                titanRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(titanRequest), apiKey),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                },
+                Logger,
+                cancellationToken
+            );
+
+            // Get the first result
+            var result = bedrockResponse.Results?.FirstOrDefault();
+            var responseText = result?.OutputText ?? string.Empty;
+            var completionReason = result?.CompletionReason ?? "COMPLETE";
+
+            // Map to standard format
+            return new ChatCompletionResponse
+            {
+                Id = $"bedrock-{Guid.NewGuid()}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = modelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new ConduitLLM.Core.Models.Message
+                        {
+                            Role = "assistant",
+                            Content = responseText
+                        },
+                        FinishReason = MapTitanCompletionReason(completionReason),
+                        Logprobs = null
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = bedrockResponse.InputTextTokenCount ?? 0,
+                    CompletionTokens = result?.TokenCount ?? 0,
+                    TotalTokens = (bedrockResponse.InputTextTokenCount ?? 0) + (result?.TokenCount ?? 0)
+                },
+                SystemFingerprint = null
+            };
         }
 
-        private Task<ChatCompletionResponse> CreateCohereChatCompletionAsync(
+        private async Task<ChatCompletionResponse> CreateCohereChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation for Cohere models through Bedrock
-            // This would follow a similar pattern to the Claude implementation above,
-            // but with Cohere-specific request/response formats
+            // Map to Bedrock Cohere format
+            var cohereRequest = new BedrockCohereChatRequest
+            {
+                Prompt = BuildCoherePrompt(request.Messages),
+                MaxTokens = request.MaxTokens ?? 1024,
+                Temperature = request.Temperature.HasValue ? (float)request.Temperature.Value : 0.7f,
+                P = request.TopP.HasValue ? (float)request.TopP.Value : 0.9f,
+                K = 0, // Default top-k
+                StopSequences = request.Stop?.ToList(),
+                Stream = false
+            };
 
-            // For now, throw not implemented exception
-            // In a complete implementation, this would be filled out
-            throw new NotImplementedException("Cohere models through Bedrock not yet implemented");
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(apiKey);
+            
+            string apiUrl = $"/model/{modelId}/invoke";
+            
+            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockCohereChatRequest, BedrockCohereChatResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                cohereRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(cohereRequest), apiKey),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                },
+                Logger,
+                cancellationToken
+            );
+
+            // Map to standard format
+            return new ChatCompletionResponse
+            {
+                Id = bedrockResponse.GenerationId ?? $"bedrock-{Guid.NewGuid()}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = modelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new ConduitLLM.Core.Models.Message
+                        {
+                            Role = "assistant",
+                            Content = bedrockResponse.Text ?? string.Empty
+                        },
+                        FinishReason = MapCohereStopReason(bedrockResponse.FinishReason),
+                        Logprobs = null
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = bedrockResponse.Meta?.BilledUnits?.InputTokens ?? 0,
+                    CompletionTokens = bedrockResponse.Meta?.BilledUnits?.OutputTokens ?? 0,
+                    TotalTokens = (bedrockResponse.Meta?.BilledUnits?.InputTokens ?? 0) + 
+                                  (bedrockResponse.Meta?.BilledUnits?.OutputTokens ?? 0)
+                },
+                SystemFingerprint = null
+            };
         }
 
-        private Task<ChatCompletionResponse> CreateAI21ChatCompletionAsync(
+        private async Task<ChatCompletionResponse> CreateAI21ChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation for AI21 models through Bedrock
-            // This would follow a similar pattern to the Claude implementation above,
-            // but with AI21-specific request/response formats
+            // Map to Bedrock AI21 format
+            var ai21Request = new BedrockAI21ChatRequest
+            {
+                Prompt = BuildPrompt(request.Messages),
+                MaxTokens = request.MaxTokens ?? 1024,
+                Temperature = request.Temperature.HasValue ? (float)request.Temperature.Value : 0.7f,
+                TopP = request.TopP.HasValue ? (float)request.TopP.Value : 1.0f,
+                StopSequences = request.Stop?.ToList()
+            };
 
-            // For now, throw not implemented exception
-            // In a complete implementation, this would be filled out
-            throw new NotImplementedException("AI21 models through Bedrock not yet implemented");
+            // Add penalties if specified
+            if (request.FrequencyPenalty.HasValue)
+            {
+                ai21Request.CountPenalty = new BedrockAI21Penalty { Scale = (float)request.FrequencyPenalty.Value };
+            }
+            if (request.PresencePenalty.HasValue)
+            {
+                ai21Request.PresencePenalty = new BedrockAI21Penalty { Scale = (float)request.PresencePenalty.Value };
+            }
+
+            string modelId = request.Model ?? ProviderModelId;
+            using var client = CreateHttpClient(apiKey);
+            
+            string apiUrl = $"/model/{modelId}/invoke";
+            
+            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockAI21ChatRequest, BedrockAI21ChatResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                ai21Request,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(ai21Request), apiKey),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                },
+                Logger,
+                cancellationToken
+            );
+
+            // Get the first completion
+            var completion = bedrockResponse.Completions?.FirstOrDefault();
+            var responseText = completion?.Data?.Text ?? string.Empty;
+            var finishReason = completion?.FinishReason?.Reason ?? "stop";
+
+            // AI21 doesn't provide token counts in the response, so estimate them
+            var promptTokens = EstimateTokenCount(BuildPrompt(request.Messages));
+            var completionTokens = EstimateTokenCount(responseText);
+
+            // Map to standard format
+            return new ChatCompletionResponse
+            {
+                Id = bedrockResponse.Id ?? $"bedrock-{Guid.NewGuid()}",
+                Object = "chat.completion",
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Model = modelId,
+                Choices = new List<Choice>
+                {
+                    new Choice
+                    {
+                        Index = 0,
+                        Message = new ConduitLLM.Core.Models.Message
+                        {
+                            Role = "assistant",
+                            Content = responseText
+                        },
+                        FinishReason = MapAI21FinishReason(finishReason),
+                        Logprobs = null
+                    }
+                },
+                Usage = new Usage
+                {
+                    PromptTokens = promptTokens,
+                    CompletionTokens = completionTokens,
+                    TotalTokens = promptTokens + completionTokens
+                },
+                SystemFingerprint = null
+            };
         }
 
         /// <inheritdoc />
@@ -586,6 +824,169 @@ namespace ConduitLLM.Providers
             };
 
             return headers;
+        }
+
+        /// <summary>
+        /// Builds a simple prompt from messages for non-chat models.
+        /// </summary>
+        private string BuildPrompt(IEnumerable<ConduitLLM.Core.Models.Message> messages)
+        {
+            var promptBuilder = new StringBuilder();
+            
+            foreach (var message in messages)
+            {
+                var content = ContentHelper.GetContentAsString(message.Content);
+                
+                if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"System: {content}");
+                }
+                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"Human: {content}");
+                }
+                else if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"Assistant: {content}");
+                }
+            }
+            
+            // Add prompt for assistant response
+            promptBuilder.Append("Assistant:");
+            
+            return promptBuilder.ToString();
+        }
+        
+        /// <summary>
+        /// Builds a Llama-specific prompt format.
+        /// </summary>
+        private string BuildLlamaPrompt(IEnumerable<ConduitLLM.Core.Models.Message> messages)
+        {
+            var promptBuilder = new StringBuilder();
+            
+            // Llama format uses special tokens
+            promptBuilder.Append("<s>");
+            
+            foreach (var message in messages)
+            {
+                var content = ContentHelper.GetContentAsString(message.Content);
+                
+                if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($"[INST] <<SYS>>\n{content}\n<</SYS>>\n\n");
+                }
+                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($"{content} [/INST]");
+                }
+                else if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.Append($" {content} </s><s>[INST] ");
+                }
+            }
+            
+            return promptBuilder.ToString();
+        }
+        
+        /// <summary>
+        /// Builds a Cohere-specific prompt format.
+        /// </summary>
+        private string BuildCoherePrompt(IEnumerable<ConduitLLM.Core.Models.Message> messages)
+        {
+            var promptBuilder = new StringBuilder();
+            
+            foreach (var message in messages)
+            {
+                var content = ContentHelper.GetContentAsString(message.Content);
+                
+                if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"Instructions: {content}");
+                    promptBuilder.AppendLine();
+                }
+                else if (message.Role.Equals("user", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"User: {content}");
+                }
+                else if (message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase))
+                {
+                    promptBuilder.AppendLine($"Chatbot: {content}");
+                }
+            }
+            
+            // Add prompt for chatbot response
+            promptBuilder.Append("Chatbot:");
+            
+            return promptBuilder.ToString();
+        }
+        
+        /// <summary>
+        /// Maps Cohere stop reasons to standardized finish reasons.
+        /// </summary>
+        private string MapCohereStopReason(string? finishReason)
+        {
+            return finishReason?.ToUpperInvariant() switch
+            {
+                "COMPLETE" => "stop",
+                "MAX_TOKENS" => "length",
+                "ERROR" => "stop",
+                "ERROR_TOXIC" => "content_filter",
+                _ => "stop"
+            };
+        }
+        
+        /// <summary>
+        /// Maps Llama stop reasons to standardized finish reasons.
+        /// </summary>
+        private string MapLlamaStopReason(string? stopReason)
+        {
+            return stopReason?.ToLowerInvariant() switch
+            {
+                "stop" => "stop",
+                "length" => "length",
+                "max_length" => "length",
+                _ => "stop"
+            };
+        }
+        
+        /// <summary>
+        /// Maps Titan completion reasons to standardized finish reasons.
+        /// </summary>
+        private string MapTitanCompletionReason(string? completionReason)
+        {
+            return completionReason?.ToUpperInvariant() switch
+            {
+                "COMPLETE" => "stop",
+                "LENGTH" => "length",
+                "CONTENT_FILTERED" => "content_filter",
+                _ => "stop"
+            };
+        }
+        
+        /// <summary>
+        /// Maps AI21 finish reasons to standardized finish reasons.
+        /// </summary>
+        private string MapAI21FinishReason(string? finishReason)
+        {
+            return finishReason?.ToLowerInvariant() switch
+            {
+                "endoftext" => "stop",
+                "length" => "length",
+                "stop" => "stop",
+                _ => "stop"
+            };
+        }
+        
+        /// <summary>
+        /// Estimates token count for a text (rough approximation).
+        /// </summary>
+        private int EstimateTokenCount(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+            
+            // Rough estimate: 1 token per 4 characters
+            return (int)Math.Ceiling(text.Length / 4.0);
         }
 
         #endregion

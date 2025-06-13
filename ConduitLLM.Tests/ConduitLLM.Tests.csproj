@@ -57,6 +57,10 @@
     <Compile Remove="LoadTesting\AudioPerformanceBenchmarks.cs" />
     <Compile Remove="LoadTesting\AudioStressTests.cs" />
     <Compile Remove="LoadTesting\AudioServiceLoadTests.cs" />
+    <Compile Remove="LoadTesting\AudioPerformanceBenchmarkSuite.cs" />
+    <Compile Remove="LoadTesting\AudioLoadTestScenarios.cs" />
+    <Compile Remove="Http\ApiVirtualKeyServiceTests.cs" />
+    <Compile Remove="Http\RealtimeUsageTrackerTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

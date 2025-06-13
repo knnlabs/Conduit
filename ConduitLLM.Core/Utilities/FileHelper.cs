@@ -238,8 +238,12 @@ namespace ConduitLLM.Core.Utilities
             {
                 return File.Exists(filePath);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                // File.Exists can throw for invalid paths or security issues
+                // Return false instead of propagating the exception
+                // Logger is not available in this static method without changing the signature
+                System.Diagnostics.Debug.WriteLine($"Error checking file existence for '{filePath}': {ex.Message}");
                 return false;
             }
         }

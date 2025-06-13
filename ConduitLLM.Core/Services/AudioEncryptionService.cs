@@ -174,8 +174,9 @@ namespace ConduitLLM.Core.Services
                 var decrypted = await DecryptAudioAsync(encryptedData);
                 return decrypted != null && decrypted.Length > 0;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogDebug(ex, "Audio integrity validation failed - decryption unsuccessful");
                 return false;
             }
         }

@@ -967,6 +967,9 @@ namespace ConduitLLM.Providers
             catch
             {
                 // Property doesn't exist or couldn't be accessed
+                // This is expected behavior for optional properties, so we use Debug level
+                // Suppress logging for now since we're in a dynamic context
+                // This is expected behavior when optional properties don't exist
             }
 
             return defaultValue;
@@ -1118,7 +1121,7 @@ namespace ConduitLLM.Providers
                 catch (Exception ex)
                 {
                     // Log but continue with other tool calls
-                    Logger.LogWarning("Error mapping tool call: {Error}", ex.Message);
+                    Logger.LogWarning(ex, "Error mapping tool call");
                 }
             }
 
@@ -1171,7 +1174,7 @@ namespace ConduitLLM.Providers
                     catch (Exception ex)
                     {
                         // Log but don't fail on individual choice processing
-                        Logger.LogWarning("Error processing streaming choice: {Error}", ex.Message);
+                        Logger.LogWarning(ex, "Error processing streaming choice");
                     }
                 }
 
@@ -1231,7 +1234,7 @@ namespace ConduitLLM.Providers
                 catch (Exception ex)
                 {
                     // Log but don't fail
-                    Logger.LogWarning("Error processing tool call in stream: {Error}", ex.Message);
+                    Logger.LogWarning(ex, "Error processing tool call in stream");
                 }
             }
 

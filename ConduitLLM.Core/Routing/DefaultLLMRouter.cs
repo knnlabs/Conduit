@@ -886,14 +886,20 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <inheritdoc/>
-        public Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public async Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? routingStrategy = null,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation to be added
-            throw new NotImplementedException();
+            if (request.Model == null)
+            {
+                throw new ValidationException("Model must be specified for embedding requests");
+            }
+
+            // For now, just use the simple passthrough approach
+            var client = _clientFactory.GetClient(request.Model);
+            return await client.CreateEmbeddingAsync(request, apiKey, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -901,7 +907,7 @@ namespace ConduitLLM.Core.Routing
              CancellationToken cancellationToken = default)
         {
             // Construct ModelInfo list from the internal _modelDeployments dictionary
-            var modelInfos = _modelDeployments.Values
+            IReadOnlyList<ModelInfo> modelInfos = _modelDeployments.Values
                 .Where(d => d.IsEnabled) // Optionally filter only enabled deployments
                 .Select(deployment => new ModelInfo
                 {
@@ -912,8 +918,7 @@ namespace ConduitLLM.Core.Routing
                                             // Could potentially be fetched from client or config if needed
                                             // Object property defaults to "model" in ModelInfo class
                 })
-                .ToList()
-                .AsReadOnly(); // Convert to ReadOnlyList
+                .ToList();
 
             _logger.LogInformation("Retrieved {Count} available model details.", modelInfos.Count);
 

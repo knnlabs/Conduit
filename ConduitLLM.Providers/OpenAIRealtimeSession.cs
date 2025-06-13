@@ -150,7 +150,11 @@ namespace ConduitLLM.Providers
                     {
                         _receiveTask.Wait(TimeSpan.FromSeconds(5));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        // Log but don't throw - we're in Dispose
+                        _logger?.LogDebug(ex, "Exception while waiting for receive task to complete during disposal");
+                    }
                 }
 
                 if (_webSocket.State == WebSocketState.Open)
@@ -160,7 +164,11 @@ namespace ConduitLLM.Providers
                         _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposing", CancellationToken.None)
                             .Wait(TimeSpan.FromSeconds(5));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        // Log but don't throw - we're in Dispose
+                        _logger?.LogDebug(ex, "Exception while closing WebSocket during disposal");
+                    }
                 }
 
                 _webSocket.Dispose();

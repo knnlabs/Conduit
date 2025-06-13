@@ -86,6 +86,7 @@ namespace ConduitLLM.Core.Extensions
             services.AddSingleton<IAudioMetricsCollector, AudioMetricsCollector>();
             services.AddSingleton<IAudioAlertingService, AudioAlertingService>();
             services.AddSingleton<IAudioTracingService, AudioTracingService>();
+            services.AddSingleton<IAudioQualityTracker, AudioQualityTracker>();
             services.AddScoped<MonitoringAudioService>();
 
             // Register configuration options

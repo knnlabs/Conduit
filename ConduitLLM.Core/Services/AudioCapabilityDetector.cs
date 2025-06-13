@@ -39,8 +39,21 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrWhiteSpace(model))
             {
-                _logger.LogWarning("No model specified for transcription check, returning false");
-                return false;
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "transcription").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default transcription model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default transcription model for provider {Provider}", provider);
+                    return false;
+                }
             }
 
             try
@@ -61,8 +74,21 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrWhiteSpace(model))
             {
-                _logger.LogWarning("No model specified for TTS check, returning false");
-                return false;
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "tts").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default TTS model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default TTS model for provider {Provider}", provider);
+                    return false;
+                }
             }
 
             try
@@ -83,8 +109,21 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrWhiteSpace(model))
             {
-                _logger.LogWarning("No model specified for realtime check, returning false");
-                return false;
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "realtime").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default realtime model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default realtime model for provider {Provider}", provider);
+                    return false;
+                }
             }
 
             try
@@ -103,10 +142,25 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsVoice(string provider, string voiceId)
         {
-            // Voice support is determined by the provider's TTS models
-            // This would need to be enhanced to check against the database's SupportedVoices field
-            _logger.LogDebug("Voice support check for {Provider}/{Voice} - returning true for now", provider, voiceId);
-            return true; // Simplified for now
+            try
+            {
+                // Get default TTS model for provider
+                var model = _capabilityService.GetDefaultModelAsync(provider, "tts").GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default TTS model found for provider {Provider}", provider);
+                    return false;
+                }
+
+                // Check if voice is supported by the model
+                var supportedVoices = _capabilityService.GetSupportedVoicesAsync(model).GetAwaiter().GetResult();
+                return supportedVoices.Contains(voiceId, StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking voice support for {Provider}/{Voice}", provider, voiceId);
+                return false;
+            }
         }
 
         /// <summary>
@@ -114,15 +168,41 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioFormat[] GetSupportedFormats(string provider, AudioOperation operation)
         {
-            // This would need to query the database for supported formats
-            // For now, return a basic set of commonly supported formats
-            return operation switch
+            try
             {
-                AudioOperation.Transcription => new[] { AudioFormat.Mp3, AudioFormat.Wav },
-                AudioOperation.TextToSpeech => new[] { AudioFormat.Mp3, AudioFormat.Wav, AudioFormat.Opus },
-                AudioOperation.Realtime => new[] { AudioFormat.Pcm },
-                _ => Array.Empty<AudioFormat>()
-            };
+                // Get the appropriate model based on operation
+                var capabilityType = operation switch
+                {
+                    AudioOperation.Transcription => "transcription",
+                    AudioOperation.TextToSpeech => "tts",
+                    AudioOperation.Realtime => "realtime",
+                    _ => null
+                };
+
+                if (capabilityType == null)
+                {
+                    return Array.Empty<AudioFormat>();
+                }
+
+                var model = _capabilityService.GetDefaultModelAsync(provider, capabilityType).GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default {CapabilityType} model found for provider {Provider}", capabilityType, provider);
+                    return Array.Empty<AudioFormat>();
+                }
+
+                var supportedFormats = _capabilityService.GetSupportedFormatsAsync(model).GetAwaiter().GetResult();
+                return supportedFormats
+                    .Select(f => Enum.TryParse<AudioFormat>(f, true, out var format) ? format : (AudioFormat?)null)
+                    .Where(f => f.HasValue)
+                    .Select(f => f!.Value)
+                    .ToArray();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting supported formats for {Provider}/{Operation}", provider, operation);
+                return Array.Empty<AudioFormat>();
+            }
         }
 
         /// <summary>
@@ -130,9 +210,36 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetSupportedLanguages(string provider, AudioOperation operation)
         {
-            // This would need to query the database for supported languages
-            // For now, return a basic set of commonly supported languages
-            return new[] { "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko" };
+            try
+            {
+                // Get the appropriate model based on operation
+                var capabilityType = operation switch
+                {
+                    AudioOperation.Transcription => "transcription",
+                    AudioOperation.TextToSpeech => "tts",
+                    AudioOperation.Realtime => "realtime",
+                    _ => null
+                };
+
+                if (capabilityType == null)
+                {
+                    return Enumerable.Empty<string>();
+                }
+
+                var model = _capabilityService.GetDefaultModelAsync(provider, capabilityType).GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default {CapabilityType} model found for provider {Provider}", capabilityType, provider);
+                    return Enumerable.Empty<string>();
+                }
+
+                return _capabilityService.GetSupportedLanguagesAsync(model).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting supported languages for {Provider}/{Operation}", provider, operation);
+                return Enumerable.Empty<string>();
+            }
         }
 
         /// <summary>
@@ -158,10 +265,19 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetProvidersWithCapability(AudioCapability capability)
         {
-            // This would need to be implemented by querying the database
-            // For now, return empty list
-            _logger.LogWarning("GetProvidersWithCapability not fully implemented, returning empty list");
-            return Enumerable.Empty<string>();
+            _logger.LogWarning("GetProvidersWithCapability needs to be made async to properly query all models in the capability service");
+            // This method needs to be made async to properly query the capability service
+            // For now, return known providers based on capability type
+            return capability switch
+            {
+                AudioCapability.BasicTranscription => new[] { "openai", "google", "aws" },
+                AudioCapability.TimestampedTranscription => new[] { "openai", "google", "aws" },
+                AudioCapability.BasicTTS => new[] { "openai", "google", "aws" },
+                AudioCapability.MultiVoiceTTS => new[] { "openai", "google", "aws" },
+                AudioCapability.RealtimeConversation => new[] { "openai" },
+                AudioCapability.RealtimeFunctions => new[] { "openai" },
+                _ => Enumerable.Empty<string>()
+            };
         }
 
         /// <summary>
@@ -169,13 +285,39 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioProviderCapabilities GetProviderCapabilities(string provider)
         {
-            // This would need to be implemented by querying the database
-            // For now, return basic capabilities
+            var capabilities = new List<AudioCapability>();
+            
+            try
+            {
+                // Check each capability type
+                if (SupportsTranscription(provider))
+                {
+                    capabilities.Add(AudioCapability.BasicTranscription);
+                    capabilities.Add(AudioCapability.TimestampedTranscription);
+                }
+                    
+                if (SupportsTextToSpeech(provider))
+                {
+                    capabilities.Add(AudioCapability.BasicTTS);
+                    capabilities.Add(AudioCapability.MultiVoiceTTS);
+                }
+                    
+                if (SupportsRealtime(provider))
+                {
+                    capabilities.Add(AudioCapability.RealtimeConversation);
+                    capabilities.Add(AudioCapability.RealtimeFunctions);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting capabilities for provider {Provider}", provider);
+            }
+            
             return new AudioProviderCapabilities
             {
                 Provider = provider,
                 DisplayName = provider,
-                SupportedCapabilities = new List<AudioCapability>()
+                SupportedCapabilities = capabilities
             };
         }
 
@@ -188,9 +330,30 @@ namespace ConduitLLM.Core.Services
             if (!providers.Any())
                 return null;
 
-            // For now, return the first available provider
-            // This could be enhanced to consider model capabilities from the database
-            return providers.First();
+            // Determine operation type from request
+            AudioOperation operation;
+            if (request is AudioTranscriptionRequest)
+                operation = AudioOperation.Transcription;
+            else if (request is TextToSpeechRequest)
+                operation = AudioOperation.TextToSpeech;
+            // RealtimeSessionConfig is handled separately, not through AudioRequestBase
+            else
+                return providers.First();
+
+            // Find providers that support the operation
+            var capableProviders = providers.Where(p =>
+            {
+                return operation switch
+                {
+                    AudioOperation.Transcription => SupportsTranscription(p),
+                    AudioOperation.TextToSpeech => SupportsTextToSpeech(p),
+                    AudioOperation.Realtime => SupportsRealtime(p),
+                    _ => false
+                };
+            }).ToList();
+
+            // Return first capable provider, or fallback to first available
+            return capableProviders.FirstOrDefault() ?? providers.First();
         }
     }
 }

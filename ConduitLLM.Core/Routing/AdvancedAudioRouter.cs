@@ -517,8 +517,9 @@ namespace ConduitLLM.Core.Routing
 
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to check availability for provider {Provider}", provider);
                 return false;
             }
         }

@@ -22,15 +22,7 @@ namespace ConduitLLM.Core.Services
         private readonly IModelCapabilityService? _capabilityService;
         private readonly ILLMClientFactory _clientFactory;
 
-        // Fallback patterns for when capability service is not available
-        private static readonly Dictionary<string, List<string>> VisionCapableModelPatterns = new()
-        {
-            ["openai"] = new List<string> { "gpt-4-vision", "gpt-4-turbo", "gpt-4v", "gpt-4o" },
-            ["anthropic"] = new List<string> { "claude-3", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku" },
-            ["gemini"] = new List<string> { "gemini", "gemini-pro", "gemini-pro-vision" },
-            ["bedrock"] = new List<string> { "claude-3", "claude-3-haiku", "claude-3-sonnet", "claude-3-opus" },
-            ["vertexai"] = new List<string> { "gemini" }
-        };
+        // Removed hardcoded patterns - now using IModelCapabilityService for all capability detection
 
         /// <summary>
         /// Initializes a new instance of the ModelCapabilityDetector.
@@ -49,7 +41,7 @@ namespace ConduitLLM.Core.Services
 
             if (capabilityService == null)
             {
-                _logger.LogWarning("ModelCapabilityService not available, falling back to hardcoded patterns");
+                _logger.LogError("ModelCapabilityService not available - model capability detection will not function properly");
             }
         }
 
@@ -73,22 +65,12 @@ namespace ConduitLLM.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error checking vision capability for model {Model}, falling back to patterns", modelName);
+                    _logger.LogError(ex, "Error checking vision capability for model {Model}", modelName);
+                    return false;
                 }
             }
 
-            // Fallback to pattern matching
-            foreach (var patternGroup in VisionCapableModelPatterns)
-            {
-                foreach (var pattern in patternGroup.Value)
-                {
-                    if (modelName.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
-                }
-            }
-
+            _logger.LogWarning("Cannot check vision capability for model {Model} - ModelCapabilityService not available", modelName);
             return false;
         }
 
@@ -153,16 +135,10 @@ namespace ConduitLLM.Core.Services
         /// <returns>A collection of model names that support vision</returns>
         public IEnumerable<string> GetVisionCapableModels()
         {
-            // If capability service is available, this method would need to be async
-            // For now, return pattern-based models
-            var models = new List<string>();
-
-            foreach (var patternGroup in VisionCapableModelPatterns)
-            {
-                models.AddRange(patternGroup.Value);
-            }
-
-            return models.Distinct();
+            _logger.LogWarning("GetVisionCapableModels called - this method needs to be made async to properly query ModelCapabilityService");
+            // This method should be made async to properly query the capability service
+            // For now, return empty list when capability service is not available
+            return Enumerable.Empty<string>();
         }
 
         /// <summary>
