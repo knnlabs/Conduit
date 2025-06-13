@@ -65,4 +65,11 @@ public class ChatCompletionResponse
     [JsonPropertyName("seed")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Seed { get; set; }
+
+    /// <summary>
+    /// Performance metrics for this completion request.
+    /// </summary>
+    [JsonPropertyName("performance_metrics")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PerformanceMetrics? PerformanceMetrics { get; set; }
 }

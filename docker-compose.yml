@@ -45,6 +45,9 @@ services:
       CONDUIT_CACHE_TYPE: "Redis"
       CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+      Conduit__PerformanceTracking__Enabled: "true"
+      Conduit__PerformanceTracking__IncludeInResponse: "true"
+      Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
     ports:
       - "5000:8080"
     restart: on-failure

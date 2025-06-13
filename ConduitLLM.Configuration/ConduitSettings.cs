@@ -34,5 +34,10 @@ public class ConduitSettings
     /// </summary>
     public ProviderDefaultModels DefaultModels { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the performance tracking configuration.
+    /// </summary>
+    public PerformanceTrackingSettings PerformanceTracking { get; set; } = new();
+
     // Add other global settings as needed, e.g., logging configuration, global API key (if applicable).
 }

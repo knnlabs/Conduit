@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Interfaces;
 
@@ -29,8 +30,8 @@ public interface IConduitApiClient
     /// </summary>
     /// <param name="request">The chat completion request.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An async enumerable of chat completion chunks.</returns>
-    IAsyncEnumerable<ChatCompletionChunk> CreateStreamingChatCompletionAsync(
+    /// <returns>An async enumerable of streaming chat responses.</returns>
+    IAsyncEnumerable<StreamingChatResponse> CreateStreamingChatCompletionAsync(
         ChatCompletionRequest request,
         CancellationToken cancellationToken = default);
 

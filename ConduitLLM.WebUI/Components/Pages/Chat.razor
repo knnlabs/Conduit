@@ -5,6 +5,7 @@
 @using ConduitLLM.Configuration.DTOs
 @using Microsoft.AspNetCore.Components.Rendering
 @using ConduitLLM.WebUI.Components.Shared
+@using ConduitLLM.WebUI.Models
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
@@ -12,6 +13,7 @@
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
 @inject IJSRuntime JSRuntime
 @inject IToastService ToastService
+@inject ILogger<Chat> _logger
 @rendermode InteractiveServer
 
 <PageTitle>Chat Playground - ConduitLLM</PageTitle>
@@ -384,7 +386,7 @@
     private double topP = 1.0;
     private bool _streamResponse = true;
     private bool isLoading = false;
-    private List<Message> chatHistory = new();
+    private List<ChatMessage> chatHistory = new();
     private string? streamedResponse = null;
     private bool _autoScroll = true;
     private bool _showRawMessage = false;
@@ -439,7 +441,7 @@
         try
         {
             // Add user message to chat history
-            var userChatMessage = new Message { Role = "user", Content = userMessage, Timestamp = DateTime.Now };
+            var userChatMessage = new ChatMessage { Role = "user", Content = userMessage, Timestamp = DateTime.Now };
             chatHistory.Add(userChatMessage);
             
             // Add system message if provided
@@ -471,22 +473,49 @@
                 streamedResponse = null; // Reset the streamed response to null to show animated dots
                 
                 // Add assistant message to chat history
-                chatHistory.Add(new Message { Role = "assistant", Content = "", Timestamp = DateTime.Now });
+                var assistantMessage = new ChatMessage { Role = "assistant", Content = "", Timestamp = DateTime.Now };
+                chatHistory.Add(assistantMessage);
                 
-                await foreach (var chunk in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
+                PerformanceMetrics? finalMetrics = null;
+                
+                await foreach (var response in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
                 {
-                    ProcessStreamResponse(chunk);
+                    switch (response.EventType)
+                    {
+                        case "content":
+                            if (response.Chunk != null)
+                            {
+                                ProcessStreamResponse(response.Chunk);
+                            }
+                            break;
+                            
+                        case "metrics":
+                            // Could be used for real-time metrics display
+                            _logger.LogDebug("Received streaming metrics: {Metrics}", response.Metrics);
+                            break;
+                            
+                        case "metrics-final":
+                            finalMetrics = response.Metrics;
+                            _logger.LogInformation("Received final metrics: {Metrics}", finalMetrics);
+                            break;
+                            
+                        case "done":
+                            _logger.LogDebug("Stream completed");
+                            break;
+                            
+                        case "error":
+                            _logger.LogError("Stream error: {Error}", response.Error);
+                            ToastService.ShowError($"Stream error: {response.Error}");
+                            break;
+                    }
                 }
                 
                 // Final message is complete
                 if (!string.IsNullOrEmpty(streamedResponse))
                 {
-                    // Update the last message (assistant) with complete content
-                    var lastMessage = chatHistory.LastOrDefault();
-                    if (lastMessage != null && lastMessage.Role == "assistant")
-                    {
-                        lastMessage.Content = streamedResponse;
-                    }
+                    // Update the last message (assistant) with complete content and metrics
+                    assistantMessage.Content = streamedResponse;
+                    assistantMessage.PerformanceMetrics = finalMetrics;
                 }
             }
             else
@@ -497,11 +526,12 @@
                 if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
                 {
                     var assistantMessage = chatResponse.Choices[0].Message;
-                    chatHistory.Add(new Message
+                    chatHistory.Add(new ChatMessage
                     {
                         Role = assistantMessage.Role,
                         Content = assistantMessage.Content,
-                        Timestamp = DateTime.Now
+                        Timestamp = DateTime.Now,
+                        PerformanceMetrics = chatResponse.PerformanceMetrics
                     });
                 }
                 else

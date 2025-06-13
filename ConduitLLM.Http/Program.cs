@@ -11,6 +11,7 @@ using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Security;
@@ -33,6 +34,14 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
 });
 builder.Configuration.Sources.Clear();
+
+// Add appsettings files for development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+}
+
 builder.Configuration.AddEnvironmentVariables();
 
 // Database initialization strategy
@@ -125,6 +134,9 @@ builder.Services.AddHttpClient();
 // Add dependencies needed for the Conduit service
 builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.LLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
+
+// Add performance metrics service
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
 
 // Add required services for the router components
 builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
@@ -391,40 +403,85 @@ app.MapPost("/v1/chat/completions", async (
         else
         {
             logger.LogInformation("Handling streaming request.");
-            // Implement streaming response
+            
+            // Use enhanced SSE writer for performance metrics support
             var response = httpRequest.HttpContext.Response;
-            response.Headers["Content-Type"] = "text/event-stream";
-            response.Headers["Cache-Control"] = "no-cache";
-            response.Headers["Connection"] = "keep-alive";
+            var sseWriter = response.CreateEnhancedSSEWriter(jsonSerializerOptions);
+            
+            // Create metrics collector if performance tracking is enabled
+            var settings = httpRequest.HttpContext.RequestServices.GetRequiredService<IOptions<ConduitSettings>>().Value;
+            StreamingMetricsCollector? metricsCollector = null;
+            
+            if (settings.PerformanceTracking?.Enabled == true && settings.PerformanceTracking.TrackStreamingMetrics)
+            {
+                logger.LogInformation("Performance tracking enabled for streaming request");
+                var requestId = Guid.NewGuid().ToString();
+                response.Headers["X-Request-ID"] = requestId;
+                
+                // Get provider info for metrics from settings
+                var modelMapping = settings.ModelMappings?.FirstOrDefault(m => 
+                    string.Equals(m.ModelAlias, request.Model, StringComparison.OrdinalIgnoreCase));
+                var providerName = modelMapping?.ProviderName ?? "unknown";
+                
+                logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerName);
+                metricsCollector = new StreamingMetricsCollector(
+                    requestId,
+                    request.Model,
+                    providerName);
+            }
+            else
+            {
+                logger.LogInformation("Performance tracking disabled for streaming request. Enabled: {Enabled}, TrackStreaming: {TrackStreaming}", 
+                    settings.PerformanceTracking?.Enabled, 
+                    settings.PerformanceTracking?.TrackStreamingMetrics);
+            }
 
             try
             {
                 await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted))
                 {
-                    var json = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
-                    await response.WriteAsync($"data: {json}\n\n");
-                    await response.Body.FlushAsync();
+                    // Write content event
+                    await sseWriter.WriteContentEventAsync(chunk);
+                    
+                    // Track metrics if enabled
+                    if (metricsCollector != null && chunk?.Choices?.Count > 0)
+                    {
+                        var hasContent = chunk.Choices.Any(c => !string.IsNullOrEmpty(c.Delta?.Content));
+                        if (hasContent)
+                        {
+                            if (metricsCollector.GetMetrics().TimeToFirstTokenMs == null)
+                            {
+                                metricsCollector.RecordFirstToken();
+                            }
+                            else
+                            {
+                                metricsCollector.RecordToken();
+                            }
+                        }
+                        
+                        // Emit metrics periodically
+                        if (metricsCollector.ShouldEmitMetrics())
+                        {
+                            logger.LogDebug("Emitting streaming metrics");
+                            await sseWriter.WriteMetricsEventAsync(metricsCollector.GetMetrics());
+                        }
+                    }
+                }
+
+                // Write final metrics if tracking is enabled
+                if (metricsCollector != null)
+                {
+                    var finalMetrics = metricsCollector.GetFinalMetrics();
+                    await sseWriter.WriteFinalMetricsEventAsync(finalMetrics);
                 }
 
                 // Write [DONE] to signal the end of the stream
-                await response.WriteAsync("data: [DONE]\n\n");
-                await response.Body.FlushAsync();
+                await sseWriter.WriteDoneEventAsync();
             }
             catch (Exception streamEx)
             {
                 logger.LogError(streamEx, "Error in stream processing");
-                var errorJson = JsonSerializer.Serialize(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = streamEx.Message,
-                        Type = "server_error",
-                        Code = "streaming_error"
-                    }
-                }, jsonSerializerOptions);
-
-                await response.WriteAsync($"data: {errorJson}\n\n");
-                await response.Body.FlushAsync();
+                await sseWriter.WriteErrorEventAsync(streamEx.Message);
             }
 
             return Results.Empty;
