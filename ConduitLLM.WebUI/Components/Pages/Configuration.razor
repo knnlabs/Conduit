@@ -42,22 +42,22 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-link me-2 text-primary"></i>Proxy Base URL
                     </h5>
                 </div>
-                <div class="card-body">
-                    <div class="form-group mb-3">
-                        <label for="proxyBaseUrl">Conduit Proxy Base URL</label>
-                        <input type="text" class="form-control" id="proxyBaseUrl" 
+                <div class="card-body modern-card-body">
+                    <div class="modern-form-group mb-3">
+                        <label for="proxyBaseUrl" class="modern-form-label">Conduit Proxy Base URL</label>
+                        <input type="text" class="form-control modern-form-control" id="proxyBaseUrl" 
                                @bind="proxyBaseUrlInput"
                                placeholder="e.g., https://api.yourcompany.com/conduit" />
                         <small class="form-text text-muted">URL where your Conduit API is publicly accessible. Used for SDK clients.</small>
                     </div>
                     
-                    <button class="btn btn-primary shadow-sm mt-2" 
+                    <button class="btn btn-primary modern-btn modern-btn-primary mt-2" 
                             @onclick="SaveProxyUrl">
                         <i class="fa fa-save me-1"></i>Save
                     </button>
@@ -69,32 +69,32 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-5">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-5">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-refresh me-2 text-warning"></i>HTTP Retry Settings
                     </h5>
                 </div>
-                <div class="card-body">
-                    <div class="form-group mb-4">
-                        <label for="maxRetries">Maximum Retry Attempts</label>
-                        <input type="number" class="form-control" id="maxRetries" 
+                <div class="card-body modern-card-body">
+                    <div class="modern-form-group mb-4">
+                        <label for="maxRetries" class="modern-form-label">Maximum Retry Attempts</label>
+                        <input type="number" class="form-control modern-form-control" id="maxRetries" 
                                min="0" max="10"
                                @bind="httpRetryOptions.MaxRetries" />
                         <small class="form-text text-muted">Maximum number of times to retry HTTP requests on transient failures (0-10)</small>
                     </div>
                     
-                    <div class="form-group mb-4">
-                        <label for="initialDelay">Initial Delay (seconds)</label>
-                        <input type="number" class="form-control" id="initialDelay" 
+                    <div class="modern-form-group mb-4">
+                        <label for="initialDelay" class="modern-form-label">Initial Delay (seconds)</label>
+                        <input type="number" class="form-control modern-form-control" id="initialDelay" 
                                min="0" max="10"
                                @bind="httpRetryOptions.InitialDelaySeconds" />
                         <small class="form-text text-muted">Initial delay before first retry attempt</small>
                     </div>
                     
-                    <div class="form-group mb-4">
-                        <label for="maxDelay">Maximum Delay (seconds)</label>
-                        <input type="number" class="form-control" id="maxDelay" 
+                    <div class="modern-form-group mb-4">
+                        <label for="maxDelay" class="modern-form-label">Maximum Delay (seconds)</label>
+                        <input type="number" class="form-control modern-form-control" id="maxDelay" 
                                min="1" max="60"
                                @bind="httpRetryOptions.MaxDelaySeconds" />
                         <small class="form-text text-muted">Maximum delay cap for any retry attempt</small>
@@ -108,7 +108,7 @@
                         </label>
                     </div>
                     
-                    <button class="btn btn-primary mb-2" 
+                    <button class="btn btn-primary modern-btn modern-btn-primary mb-2" 
                             @onclick="async () => await SaveHttpRetryOptions()">
                         <i class="fa fa-save me-1"></i> Save Retry Settings
                     </button>
@@ -118,16 +118,16 @@
         </div>
         
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-5">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-5">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-clock-o me-2 text-danger"></i>HTTP Timeout Settings
                     </h5>
                 </div>
-                <div class="card-body">
-                    <div class="form-group mb-4">
-                        <label for="timeoutDuration">Timeout Duration (seconds)</label>
-                        <input type="number" class="form-control" id="timeoutDuration" 
+                <div class="card-body modern-card-body">
+                    <div class="modern-form-group mb-4">
+                        <label for="timeoutDuration" class="modern-form-label">Timeout Duration (seconds)</label>
+                        <input type="number" class="form-control modern-form-control" id="timeoutDuration" 
                                min="10" max="600"
                                @bind="httpTimeoutOptions.TimeoutSeconds" />
                         <small class="form-text text-muted">Maximum time to wait for HTTP requests to complete before timing out (10-600 seconds)</small>
@@ -144,7 +144,7 @@
                         </small>
                     </div>
                     
-                    <button class="btn btn-primary mb-2" 
+                    <button class="btn btn-primary modern-btn modern-btn-primary mb-2" 
                             @onclick="async () => await SaveHttpTimeoutOptions()">
                         <i class="fa fa-save me-1"></i> Save Timeout Settings
                     </button>
@@ -156,17 +156,17 @@
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-5">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-5">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Client Settings
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <p class="mb-3">
                         These settings control how ConduitLLM handles retry logic when communicating with LLM provider APIs.
                     </p>
-                    <div class="bg-light p-4 border rounded">
+                    <div class="modern-info-card p-4 rounded">
                         <div class="d-flex mb-3">
                             <i class="fa fa-refresh me-3 mt-1"></i>
                             <div>
@@ -192,24 +192,24 @@
                             </div>
                         </div>
                     </div>
-                    <div class="alert alert-info mt-3">
+                    <div class="alert modern-alert modern-alert-info mt-3">
                         These settings apply to all provider clients and provide resilience against temporary API outages and rate limiting.
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-5">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-5">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-info-circle me-2 text-info"></i>About HTTP Timeout Settings
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <p class="mb-3">
                         These settings control how ConduitLLM handles timeouts when communicating with LLM provider APIs.
                     </p>
-                    <div class="bg-light p-4 border rounded">
+                    <div class="modern-info-card p-4 rounded">
                         <div class="d-flex mb-3">
                             <i class="fa fa-hourglass-end me-3 mt-1"></i>
                             <div>
@@ -223,7 +223,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="alert alert-info mt-3">
+                    <div class="alert modern-alert modern-alert-info mt-3">
                         These settings apply to all provider clients and provide resilience against slow or unresponsive APIs.
                     </div>
                 </div>

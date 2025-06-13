@@ -21,7 +21,7 @@
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="vke-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+            <div class="vke-header bg-gradient-primary text-white rounded-3 p-4 mb-4">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <h1 class="h3 mb-2">
@@ -72,7 +72,7 @@
             <p class="text-muted mb-4 lead">
                 The requested virtual key could not be found or an error occurred while loading it.
             </p>
-            <button type="button" class="btn vke-btn-primary" @onclick="ReturnToList">
+            <button type="button" class="btn modern-btn-primary vke-btn-primary" @onclick="ReturnToList">
                 <i class="fa fa-arrow-left me-2"></i>Return to Virtual Keys
             </button>
         </div>
@@ -80,8 +80,8 @@
     else if (showCreatedKey)
     {
         <div class="vke-success-state">
-            <div class="card vke-success-card shadow-lg border-0 rounded-4">
-                <div class="card-header vke-success-header border-0">
+            <div class="card modern-card vke-success-card">
+                <div class="card-header modern-card-header vke-success-header">
                     <div class="row align-items-center">
                         <div class="col-auto">
                             <div class="vke-success-icon">
@@ -94,15 +94,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body modern-card-body p-4">
                     <div class="alert alert-success border-0 mb-4">
                         <h6 class="mb-3 fw-bold">
                             <i class="fa fa-key me-2"></i>Your New Virtual Key
                         </h6>
                         <p class="mb-3">Please save this key as it will only be shown once:</p>
                         <div class="d-flex align-items-center gap-2">
-                            <input type="text" readonly value="@createdKey" class="form-control vke-key-input" id="newKeyInput" />
-                            <button class="btn vke-btn-copy" @onclick="async () => await CopyKeyToClipboard()" title="Copy to clipboard">
+                            <input type="text" readonly value="@createdKey" class="form-control modern-form-control vke-key-input" id="newKeyInput" />
+                            <button class="btn modern-btn-success vke-btn-copy" @onclick="async () => await CopyKeyToClipboard()" title="Copy to clipboard">
                                 <i class="fa fa-copy"></i>
                             </button>
                         </div>
@@ -119,7 +119,7 @@
                     </div>
                     
                     <div class="text-center">
-                        <button type="button" class="btn vke-btn-primary btn-lg" @onclick="ReturnToList">
+                        <button type="button" class="btn modern-btn-primary vke-btn-primary btn-lg" @onclick="ReturnToList">
                             <i class="fa fa-arrow-left me-2"></i>Return to Virtual Keys List
                         </button>
                     </div>
@@ -136,35 +136,35 @@
                 <!-- Left Column -->
                 <div class="col-12 col-xl-6">
                     <!-- Key Details Card -->
-                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
-                        <div class="card-header vke-card-header border-0">
+                    <div class="card modern-card vke-card mb-4">
+                        <div class="card-header modern-card-header vke-card-header">
                             <h5 class="mb-0 fw-bold">
                                 <i class="fa fa-info-circle me-2 text-primary"></i>Key Details
                             </h5>
                         </div>
                         <div class="card-body p-4">
-                            <div class="mb-3">
-                                <label for="keyName" class="form-label fw-semibold">Key Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control vke-input" id="keyName" @bind="request!.KeyName" required placeholder="Enter a descriptive name" />
+                            <div class="modern-form-group mb-3">
+                                <label for="keyName" class="modern-form-label fw-semibold">Key Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control modern-form-control vke-input" id="keyName" @bind="request!.KeyName" required placeholder="Enter a descriptive name" />
                                 <ValidationMessage For="@(() => request!.KeyName)" />
                             </div>
                             
-                            <div class="mb-3">
-                                <label for="description" class="form-label fw-semibold">Description</label>
-                                <textarea class="form-control vke-textarea" id="description" @bind="description" rows="3" placeholder="Optional description for this key"></textarea>
+                            <div class="modern-form-group mb-3">
+                                <label for="description" class="modern-form-label fw-semibold">Description</label>
+                                <textarea class="form-control modern-form-control vke-textarea" id="description" @bind="description" rows="3" placeholder="Optional description for this key"></textarea>
                             </div>
                             
-                            <div class="mb-0">
-                                <label for="expiresAt" class="form-label fw-semibold">Expiration Date</label>
-                                <input type="datetime-local" class="form-control vke-input" id="expiresAt" @bind="request!.ExpiresAt" />
+                            <div class="modern-form-group mb-0">
+                                <label for="expiresAt" class="modern-form-label fw-semibold">Expiration Date</label>
+                                <input type="datetime-local" class="form-control modern-form-control vke-input" id="expiresAt" @bind="request!.ExpiresAt" />
                                 <div class="form-text">Leave empty for no expiration</div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Budget Configuration Card -->
-                    <div class="card vke-card shadow-lg border-0 rounded-4">
-                        <div class="card-header vke-card-header border-0">
+                    <div class="card modern-card vke-card">
+                        <div class="card-header modern-card-header vke-card-header">
                             <h5 class="mb-0 fw-bold">
                                 <i class="fa fa-dollar-sign me-2 text-success"></i>Budget Configuration
                             </h5>
@@ -183,25 +183,25 @@
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="text-muted">Next reset: @GetNextBudgetResetDate(request.BudgetDuration ?? "", budgetStartDate)</small>
-                                        <button type="button" class="btn btn-sm vke-btn-reset" @onclick="ResetCurrentSpend">
+                                        <button type="button" class="btn btn-sm modern-btn-warning vke-btn-reset" @onclick="ResetCurrentSpend">
                                             <i class="fa fa-sync-alt me-1"></i>Reset Spend
                                         </button>
                                     </div>
                                 </div>
                             }
                             
-                            <div class="mb-3">
-                                <label for="maxBudget" class="form-label fw-semibold">Maximum Budget ($)</label>
+                            <div class="modern-form-group mb-3">
+                                <label for="maxBudget" class="modern-form-label fw-semibold">Maximum Budget ($)</label>
                                 <div class="input-group">
                                     <span class="input-group-text vke-input-group-text">$</span>
-                                    <input type="number" class="form-control vke-input" id="maxBudget" @bind="request!.MaxBudget" min="0" step="0.01" placeholder="0.00" />
+                                    <input type="number" class="form-control modern-form-control vke-input" id="maxBudget" @bind="request!.MaxBudget" min="0" step="0.01" placeholder="0.00" />
                                 </div>
                                 <div class="form-text">Set to 0 for unlimited spending</div>
                             </div>
                             
-                            <div class="mb-0">
-                                <label for="budgetDuration" class="form-label fw-semibold">Budget Period</label>
-                                <select class="form-select vke-select" id="budgetDuration" @bind="request!.BudgetDuration">
+                            <div class="modern-form-group mb-0">
+                                <label for="budgetDuration" class="modern-form-label fw-semibold">Budget Period</label>
+                                <select class="form-select modern-form-select vke-select" id="budgetDuration" @bind="request!.BudgetDuration">
                                     <option value="">No Reset</option>
                                     <option value="daily">Daily</option>
                                     <option value="weekly">Weekly</option>
@@ -218,8 +218,8 @@
                 <!-- Right Column -->
                 <div class="col-12 col-xl-6">
                     <!-- Model Permissions Card -->
-                    <div class="card vke-card shadow-lg border-0 rounded-4 mb-4">
-                        <div class="card-header vke-card-header border-0">
+                    <div class="card modern-card vke-card mb-4">
+                        <div class="card-header modern-card-header vke-card-header">
                             <div class="d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0 fw-bold">
                                     <i class="fa fa-robot me-2 text-info"></i>Model Permissions
@@ -236,13 +236,13 @@
                                     <span class="input-group-text vke-input-group-text">
                                         <i class="fa fa-search"></i>
                                     </span>
-                                    <input type="text" class="form-control vke-search-input" @bind="modelSearchText" @bind:event="oninput" placeholder="Search models..." />
+                                    <input type="text" class="form-control modern-form-control vke-search-input" @bind="modelSearchText" @bind:event="oninput" placeholder="Search models..." />
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm vke-btn-outline" @onclick="SelectAllModels">
+                                    <button type="button" class="btn btn-sm modern-btn-outline-primary vke-btn-outline" @onclick="SelectAllModels">
                                         <i class="fa fa-check-square me-1"></i>Select All
                                     </button>
-                                    <button type="button" class="btn btn-sm vke-btn-outline" @onclick="ClearModelSelection">
+                                    <button type="button" class="btn btn-sm modern-btn-outline-secondary vke-btn-outline" @onclick="ClearModelSelection">
                                         <i class="fa fa-square me-1"></i>Clear All
                                     </button>
                                 </div>
@@ -313,31 +313,31 @@
                     </div>
                     
                     <!-- Rate Limiting Card -->
-                    <div class="card vke-card shadow-lg border-0 rounded-4">
-                        <div class="card-header vke-card-header border-0">
+                    <div class="card modern-card vke-card">
+                        <div class="card-header modern-card-header vke-card-header">
                             <h5 class="mb-0 fw-bold">
                                 <i class="fa fa-tachometer-alt me-2 text-warning"></i>Rate Limiting
                             </h5>
                         </div>
                         <div class="card-body p-4">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Requests Per Minute (RPM)</label>
+                            <div class="modern-form-group mb-3">
+                                <label class="modern-form-label fw-semibold">Requests Per Minute (RPM)</label>
                                 <div class="input-group">
                                     <span class="input-group-text vke-input-group-text">
                                         <i class="fa fa-clock"></i>
                                     </span>
-                                    <input type="number" class="form-control vke-input" @bind="request!.RateLimitRpm" min="0" placeholder="0" />
+                                    <input type="number" class="form-control modern-form-control vke-input" @bind="request!.RateLimitRpm" min="0" placeholder="0" />
                                 </div>
                                 <div class="form-text">Maximum requests allowed per minute (0 = no limit)</div>
                             </div>
                             
-                            <div class="mb-0">
-                                <label class="form-label fw-semibold">Requests Per Day (RPD)</label>
+                            <div class="modern-form-group mb-0">
+                                <label class="modern-form-label fw-semibold">Requests Per Day (RPD)</label>
                                 <div class="input-group">
                                     <span class="input-group-text vke-input-group-text">
                                         <i class="fa fa-calendar-day"></i>
                                     </span>
-                                    <input type="number" class="form-control vke-input" @bind="request!.RateLimitRpd" min="0" placeholder="0" />
+                                    <input type="number" class="form-control modern-form-control vke-input" @bind="request!.RateLimitRpd" min="0" placeholder="0" />
                                 </div>
                                 <div class="form-text">Maximum requests allowed per day (0 = no limit)</div>
                             </div>
@@ -348,7 +348,7 @@
             
             <!-- Action Buttons -->
             <div class="vke-actions d-flex gap-3 mt-4 pt-4 border-top">
-                <button type="submit" class="btn vke-btn-primary" disabled="@isSaving">
+                <button type="submit" class="btn modern-btn-primary vke-btn-primary" disabled="@isSaving">
                     @if (isSaving)
                     {
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -360,7 +360,7 @@
                         <span>@(Id.HasValue ? "Update Key" : "Create Key")</span>
                     }
                 </button>
-                <button type="button" class="btn vke-btn-secondary" @onclick="Cancel">
+                <button type="button" class="btn modern-btn-secondary vke-btn-secondary" @onclick="Cancel">
                     <i class="fa fa-times me-2"></i>Cancel
                 </button>
             </div>
@@ -368,13 +368,11 @@
     }
 </div>
 
-<!-- Custom CSS Styling (same as original) -->
+<!-- Custom CSS Styling -->
 <style>
-    /* All the same styles from the original component */
+    /* Page-specific styles for VirtualKeyEditToast */
     .vke-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 1rem !important;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
     }
 
     .vke-stats .stat-item {
@@ -383,17 +381,7 @@
         padding: 0.25rem 0;
     }
 
-    .vke-card {
-        border-radius: 1rem !important;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    }
-
-    .vke-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
-    }
+    /* Remove redundant card styling that's now in modern design system */
 
     .vke-card-header {
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
@@ -536,80 +524,21 @@
         border-radius: 6px;
     }
 
-    .vke-btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        padding: 0.625rem 1.5rem;
-        border-radius: 0.75rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-
-    .vke-btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-
-    .vke-btn-secondary {
-        background: #f3f4f6;
-        border: 2px solid #e5e7eb;
-        color: #4b5563;
-        padding: 0.625rem 1.5rem;
-        border-radius: 0.75rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .vke-btn-secondary:hover {
-        background: #e5e7eb;
-        border-color: #d1d5db;
-        transform: translateY(-1px);
-    }
-
-    .vke-btn-outline {
-        background: transparent;
-        border: 2px solid #e5e7eb;
-        color: #6b7280;
-        transition: all 0.3s ease;
-        border-radius: 0.5rem;
-    }
-
-    .vke-btn-outline:hover {
-        background: #f9fafb;
-        border-color: #d1d5db;
-        color: #4b5563;
-    }
-
+    /* Keep vke-specific button variations that differ from modern defaults */
     .vke-btn-copy {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-        color: white;
         padding: 0.625rem 1rem;
-        border-radius: 0.75rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
-
+    
     .vke-btn-copy:hover {
         transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
-
+    
     .vke-btn-reset {
-        background: #f59e0b;
-        border: none;
-        color: white;
         padding: 0.25rem 0.75rem;
-        border-radius: 0.5rem;
         font-size: 0.75rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
     }
-
+    
     .vke-btn-reset:hover {
-        background: #d97706;
         transform: scale(1.05);
     }
 

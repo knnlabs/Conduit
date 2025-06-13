@@ -203,16 +203,16 @@
                             Download Data
                         </button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (dashboardData.CostTrends() == null || !dashboardData.CostTrends().Any())
                         {
-                            <div class="alert alert-info">
+                            <div class="alert modern-alert modern-alert-info">
                                 No trend data available for the selected period.
                             </div>
                         }
                         else
                         {
-                            <div style="height: 300px; width: 100%;">
+                            <div class="chart-container">
                                 <canvas id="costTrendChart"></canvas>
                             </div>
                         }

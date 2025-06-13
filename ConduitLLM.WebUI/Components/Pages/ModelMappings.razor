@@ -42,13 +42,13 @@
     </PageHeader>
 
     <!-- Model Mappings Section -->
-    <div class="card shadow-sm border-0 mb-5">
-        <div class="card-header bg-light border-0">
+    <div class="card modern-card mb-5">
+        <div class="card-header modern-card-header">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fa fa-sitemap me-2 text-success"></i>Model Mappings
                 </h5>
-                <button class="btn btn-primary shadow-sm" 
+                <button class="btn btn-primary modern-btn modern-btn-primary" 
                         @onclick="AddMapping"
                         disabled="@(!providerCredentials?.Any() ?? true)">
                     <i class="fa fa-plus me-1"></i> Add Model Mapping
@@ -56,8 +56,8 @@
             </div>
         </div>
         
-        <div class="card-body">
-            <div class="alert alert-info border-0 shadow-sm mb-4">
+        <div class="card-body modern-card-body">
+            <div class="alert modern-alert modern-alert-info mb-4">
                 <i class="fa fa-info-circle me-2"></i>
                 <strong>Model Mappings:</strong> Create user-friendly aliases for your LLM models. 
                 For example, map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
@@ -76,7 +76,7 @@
                 
                 @if (!providerCredentials?.Any() ?? true)
                 {
-                    <div class="alert alert-warning border-0 shadow-sm mt-4">
+                    <div class="alert modern-alert modern-alert-warning mt-4">
                         <i class="fa fa-exclamation-triangle me-2"></i>
                         <strong>No Providers Configured:</strong> You need to configure at least one LLM provider before creating model mappings.
                         <a href="/llm-providers" class="alert-link ms-2">Configure Providers <i class="fa fa-arrow-right ms-1"></i></a>
@@ -85,9 +85,9 @@
             }
             else
             {
-                <div class="table-responsive mb-4">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                <div class="table-responsive modern-table-container mb-4">
+                    <table class="table modern-table table-hover align-middle">
+                        <thead class="modern-table-header">
                             <tr>
                                 <th class="border-0 fw-semibold">
                                     <i class="fa fa-tag me-2"></i>Model Alias
@@ -104,7 +104,7 @@
                         <tbody>
                             @foreach (var mapping in modelMappings.OrderBy(m => m.ModelId))
                             {
-                                <tr class="border-light">
+                                <tr class="modern-table-row">
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="model-icon bg-success-light rounded-circle p-2 me-3">
@@ -114,7 +114,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">@GetProviderNameById(mapping.ProviderId)</span>
+                                        <span class="badge modern-badge modern-badge-info">@GetProviderNameById(mapping.ProviderId)</span>
                                     </td>
                                     <td>
                                         <code class="text-muted">@mapping.ProviderModelId</code>
@@ -138,7 +138,7 @@
             
             @if (providerCredentials?.Any() ?? false)
             {
-                <button class="btn btn-primary shadow-sm" 
+                <button class="btn btn-primary modern-btn modern-btn-primary" 
                         @onclick="AddMapping">
                     <i class="fa fa-plus me-1"></i> Add Model Mapping
                 </button>
@@ -149,18 +149,18 @@
     <!-- Common Model Mappings Suggestions -->
     @if (modelMappings?.Any() != true && providerCredentials?.Any() == true)
     {
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-light border-0">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
                 <h5 class="mb-0">
                     <i class="fa fa-lightbulb me-2 text-warning"></i>Common Model Mapping Examples
                 </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body modern-card-body">
                 <p class="text-muted mb-4">Here are some common model mapping patterns you might want to use:</p>
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <div class="example-mapping border rounded p-3">
+                        <div class="example-mapping modern-info-card p-3">
                             <h6 class="mb-2"><i class="fa fa-robot me-2"></i>Generic Names</h6>
                             <ul class="list-unstyled mb-0">
                                 <li><code>gpt4</code> → <code>gpt-4-turbo-preview</code></li>
@@ -171,7 +171,7 @@
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="example-mapping border rounded p-3">
+                        <div class="example-mapping modern-info-card p-3">
                             <h6 class="mb-2"><i class="fa fa-layer-group me-2"></i>Use Case Aliases</h6>
                             <ul class="list-unstyled mb-0">
                                 <li><code>fast</code> → <code>gpt-3.5-turbo</code></li>
@@ -311,31 +311,10 @@
         background-color: rgba(25, 135, 84, 0.1);
     }
     
-    .example-mapping {
-        background-color: #f8f9fa;
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
-    
-    .example-mapping:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
     .example-mapping code {
         background-color: #e9ecef;
         padding: 2px 6px;
         border-radius: 3px;
         font-size: 0.875rem;
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
-    }
-    
-    .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
     }
 </style>

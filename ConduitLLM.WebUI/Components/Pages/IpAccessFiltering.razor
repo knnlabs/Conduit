@@ -42,13 +42,13 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- Global Settings Card -->
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-light border-0">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <h3 class="mb-0">
                             <i class="fa fa-cogs me-2 text-primary"></i>Global Settings
                         </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         <!-- IP Filtering Toggle -->
                         <ToggleCard Title="IP Filtering"
                                     EnabledDescription="IP filtering is active. Only allowed IP addresses can access the API."
@@ -63,7 +63,7 @@
                         <div class="mt-4">
                             <div class="row mb-3">
                                 <div class="col-12 col-md-6">
-                                    <div class="form-group">
+                                    <div class="modern-form-group">
                                         <div class="form-check form-switch ps-0">
                                             <label class="form-check-label mb-2" for="defaultAllowSwitch">
                                                 <strong>Default Allow</strong>
@@ -81,7 +81,7 @@
                                 </div>
 
                                 <div class="col-12 col-md-6">
-                                    <div class="form-group">
+                                    <div class="modern-form-group">
                                         <div class="form-check form-switch ps-0">
                                             <label class="form-check-label mb-2" for="bypassAdminUiSwitch">
                                                 <strong>Bypass for Admin UI</strong>
@@ -99,9 +99,9 @@
                                 </div>
                             </div>
                             
-                            <div class="form-group mb-3">
-                                <label for="excludedEndpoints"><strong>Excluded Endpoints</strong></label>
-                                <textarea class="form-control" id="excludedEndpoints" rows="3"
+                            <div class="modern-form-group mb-3">
+                                <label for="excludedEndpoints" class="modern-form-label"><strong>Excluded Endpoints</strong></label>
+                                <textarea class="form-control modern-form-control" id="excludedEndpoints" rows="3"
                                           @bind="_excludedEndpointsText"></textarea>
                                 <small class="form-text text-muted">
                                     List of endpoints excluded from IP filtering, one per line (e.g., /v1/health).
@@ -109,7 +109,7 @@
                             </div>
                             
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <button class="btn btn-primary shadow-sm" @onclick="SaveSettingsAsync">
+                                <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="SaveSettingsAsync">
                                     <i class="fa fa-save me-1"></i> Save Settings
                                 </button>
                             </div>
@@ -122,30 +122,30 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- IP Rules Card -->
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-light border-0">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="mb-0">
                                 <i class="fa fa-list me-2 text-success"></i>IP Filter Rules
                             </h3>
                             <div>
-                                <button class="btn btn-outline-secondary me-2 shadow-sm" @onclick="RefreshFiltersAsync">
+                                <button class="btn btn-outline-secondary me-2 modern-btn modern-btn-outline-secondary" @onclick="RefreshFiltersAsync">
                                     <i class="fa fa-refresh me-1"></i> Refresh
                                 </button>
-                                <button class="btn btn-primary shadow-sm" @onclick="() => ShowFilterModal(null)">
+                                <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="() => ShowFilterModal(null)">
                                     <i class="fa fa-plus me-1"></i> Add New Filter
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (!_filters.Any())
                         {
                             <EmptyState Title="No IP Filter Rules"
                                         Description="Create your first IP filter rule to control access"
                                         Icon="fa-shield">
                                 <ActionTemplate>
-                                    <button class="btn btn-primary" @onclick="() => ShowFilterModal(null)">
+                                    <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="() => ShowFilterModal(null)">
                                         <i class="fa fa-plus me-1"></i> Add Your First Filter Rule
                                     </button>
                                 </ActionTemplate>
@@ -154,8 +154,8 @@
                         else
                         {
                             <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
+                                <table class="table modern-table table-striped">
+                                    <thead class="modern-table-header">
                                         <tr>
                                             <th>Type</th>
                                             <th>IP Address/CIDR</th>
@@ -168,7 +168,7 @@
                                     <tbody>
                                         @foreach (var filter in _filters)
                                         {
-                                            <tr>
+                                            <tr class="modern-table-row">
                                                 <td>
                                                     <StatusBadge Status="@(filter.FilterType == IpFilterConstants.WHITELIST ? "Whitelist" : "Blacklist")"
                                                                  StatusType="@(filter.FilterType == IpFilterConstants.WHITELIST ? StatusBadge.StatusType.Success : StatusBadge.StatusType.Error)" />
@@ -182,11 +182,11 @@
                                                 <td>@filter.CreatedAt.ToLocalTime().ToString("g")</td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        <button class="btn btn-sm btn-outline-primary"
+                                                        <button class="btn btn-sm btn-outline-primary modern-btn modern-btn-outline-primary"
                                                                 @onclick="() => ShowFilterModal(filter)">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-danger"
+                                                        <button class="btn btn-sm btn-outline-danger modern-btn modern-btn-outline-danger"
                                                                 @onclick="() => ShowDeleteConfirmation(filter)">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
@@ -206,13 +206,13 @@
         <div class="row mb-4">
             <div class="col-12">
                 <!-- Information Card -->
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-light border-0">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <h3 class="mb-0">
                             <i class="fa fa-info-circle me-2 text-info"></i>About IP Filtering
                         </h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         <h5>How IP Filtering Works</h5>
                         <p>
                             IP filtering allows you to control which IP addresses can access your Conduit API endpoints.
@@ -252,17 +252,17 @@
                     @if (_editingFilter != null)
                     {
                         <div class="mb-3">
-                            <label for="filterType" class="form-label">Filter Type</label>
+                            <label for="filterType" class="modern-form-label">Filter Type</label>
                             @if (_editingFilter is CreateIpFilterDto createDto)
                             {
-                                <select class="form-select" id="filterType" @bind="createDto.FilterType">
+                                <select class="form-select modern-form-select" id="filterType" @bind="createDto.FilterType">
                                     <option value="@IpFilterConstants.WHITELIST">Whitelist (Allow)</option>
                                     <option value="@IpFilterConstants.BLACKLIST">Blacklist (Block)</option>
                                 </select>
                             }
                             else if (_editingFilter is UpdateIpFilterDto updateDto)
                             {
-                                <select class="form-select" id="filterType" @bind="updateDto.FilterType">
+                                <select class="form-select modern-form-select" id="filterType" @bind="updateDto.FilterType">
                                     <option value="@IpFilterConstants.WHITELIST">Whitelist (Allow)</option>
                                     <option value="@IpFilterConstants.BLACKLIST">Blacklist (Block)</option>
                                 </select>
@@ -274,16 +274,16 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="ipAddressOrCidr" class="form-label">IP Address or CIDR Subnet</label>
+                            <label for="ipAddressOrCidr" class="modern-form-label">IP Address or CIDR Subnet</label>
                             @if (_editingFilter is CreateIpFilterDto createDto1)
                             {
-                                <input type="text" class="form-control" id="ipAddressOrCidr"
+                                <input type="text" class="form-control modern-form-control" id="ipAddressOrCidr"
                                        @bind="createDto1.IpAddressOrCidr"
                                        placeholder="e.g., 192.168.1.1 or 192.168.1.0/24" />
                             }
                             else if (_editingFilter is UpdateIpFilterDto updateDto1)
                             {
-                                <input type="text" class="form-control" id="ipAddressOrCidr"
+                                <input type="text" class="form-control modern-form-control" id="ipAddressOrCidr"
                                        @bind="updateDto1.IpAddressOrCidr"
                                        placeholder="e.g., 192.168.1.1 or 192.168.1.0/24" />
                             }
@@ -297,16 +297,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="description" class="form-label">Description (Optional)</label>
+                            <label for="description" class="modern-form-label">Description (Optional)</label>
                             @if (_editingFilter is CreateIpFilterDto createDto2)
                             {
-                                <input type="text" class="form-control" id="description"
+                                <input type="text" class="form-control modern-form-control" id="description"
                                        @bind="createDto2.Description"
                                        placeholder="e.g., Office network" />
                             }
                             else if (_editingFilter is UpdateIpFilterDto updateDto2)
                             {
-                                <input type="text" class="form-control" id="description"
+                                <input type="text" class="form-control modern-form-control" id="description"
                                        @bind="updateDto2.Description"
                                        placeholder="e.g., Office network" />
                             }
@@ -328,8 +328,8 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveFilterAsync">Save</button>
+                    <button type="button" class="btn btn-secondary modern-btn modern-btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-primary modern-btn modern-btn-primary" @onclick="SaveFilterAsync">Save</button>
                 </div>
             </div>
         </div>
@@ -363,8 +363,8 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
-                    <button type="button" class="btn btn-danger" @onclick="DeleteFilterAsync">Delete</button>
+                    <button type="button" class="btn btn-secondary modern-btn modern-btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-danger modern-btn modern-btn-danger" @onclick="DeleteFilterAsync">Delete</button>
                 </div>
             </div>
         </div>
@@ -691,21 +691,9 @@
 }
 
 <style>
-    /* Page-specific styles not covered by components */
-    .card {
-        transition: all 0.2s ease;
-    }
+    /* Using modern design system for cards, tables, and hover effects */
     
-    .card:hover {
-        transform: translateY(-1px);
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-        font-weight: 600;
-    }
-    
+    /* Page-specific modal styles */
     .modal-dialog {
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }

@@ -32,13 +32,13 @@
 
     <div class="row">
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-cog me-2 text-info"></i>Provider Configuration
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     @if (isLoading)
                     {
                         <div class="d-flex justify-content-center py-4">
@@ -53,9 +53,9 @@
                             <DataAnnotationsValidator />
                             <ValidationSummary />
 
-                            <div class="form-group mb-4">
-                                <label for="audioProviderSelect">LLM Provider<span class="text-danger">*</span></label>
-                                <select class="form-select" id="audioProviderSelect" 
+                            <div class="modern-form-group mb-4">
+                                <label for="audioProviderSelect" class="modern-form-label">LLM Provider<span class="text-danger">*</span></label>
+                                <select class="form-select modern-form-select" id="audioProviderSelect" 
                                         @bind="currentAudioProvider.ProviderCredentialId"
                                         disabled="@(Id.HasValue)">
                                     <option value="0">-- Select Provider --</option>
@@ -80,9 +80,9 @@
                                         Enable Transcription
                                     </label>
                                 </div>
-                                <div class="form-group">
-                                    <label for="transcriptionModel">Default Transcription Model</label>
-                                    <input type="text" class="form-control" id="transcriptionModel" 
+                                <div class="modern-form-group">
+                                    <label for="transcriptionModel" class="modern-form-label">Default Transcription Model</label>
+                                    <input type="text" class="form-control modern-form-control" id="transcriptionModel" 
                                            @bind="currentAudioProvider.DefaultTranscriptionModel"
                                            placeholder="e.g., whisper-1"
                                            disabled="@(!currentAudioProvider.TranscriptionEnabled)" />
@@ -100,7 +100,7 @@
                                         Enable Text-to-Speech
                                     </label>
                                 </div>
-                                <div class="form-group mb-3">
+                                <div class="modern-form-group mb-3">
                                     <label for="ttsModel">Default TTS Model</label>
                                     <input type="text" class="form-control" id="ttsModel" 
                                            @bind="currentAudioProvider.DefaultTTSModel"
@@ -108,7 +108,7 @@
                                            disabled="@(!currentAudioProvider.TextToSpeechEnabled)" />
                                     <small class="form-text text-muted">The model to use for text-to-speech generation</small>
                                 </div>
-                                <div class="form-group">
+                                <div class="modern-form-group">
                                     <label for="ttsVoice">Default TTS Voice</label>
                                     <input type="text" class="form-control" id="ttsVoice" 
                                            @bind="currentAudioProvider.DefaultTTSVoice"
@@ -128,7 +128,7 @@
                                         Enable Real-time Audio
                                     </label>
                                 </div>
-                                <div class="form-group mb-3">
+                                <div class="modern-form-group mb-3">
                                     <label for="realtimeModel">Default Real-time Model</label>
                                     <input type="text" class="form-control" id="realtimeModel" 
                                            @bind="currentAudioProvider.DefaultRealtimeModel"
@@ -136,7 +136,7 @@
                                            disabled="@(!currentAudioProvider.RealtimeEnabled)" />
                                     <small class="form-text text-muted">The model to use for real-time audio processing</small>
                                 </div>
-                                <div class="form-group">
+                                <div class="modern-form-group">
                                     <label for="realtimeEndpoint">WebSocket Endpoint</label>
                                     <input type="text" class="form-control" id="realtimeEndpoint" 
                                            @bind="currentAudioProvider.RealtimeEndpoint"
@@ -147,7 +147,7 @@
                             </div>
 
                             <!-- Routing Priority -->
-                            <div class="form-group mb-4">
+                            <div class="modern-form-group mb-4">
                                 <label for="routingPriority">Routing Priority</label>
                                 <input type="number" class="form-control" id="routingPriority" 
                                        @bind="currentAudioProvider.RoutingPriority"
@@ -156,10 +156,10 @@
                             </div>
 
                             <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-outline-secondary me-2" @onclick="Cancel">
+                                <button type="button" class="btn btn-outline-secondary modern-btn modern-btn-secondary me-2" @onclick="Cancel">
                                     <i class="fa fa-times me-1"></i>Cancel
                                 </button>
-                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                <button type="submit" class="btn btn-primary modern-btn modern-btn-primary" disabled="@isSaving">
                                     @if (isSaving)
                                     {
                                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -179,13 +179,13 @@
 
         <!-- Help Panel -->
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-info-circle me-2 text-info"></i>Configuration Help
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <div class="mb-4">
                         <h6 class="text-muted mb-3">Audio Capabilities</h6>
                         <p class="small text-muted">
@@ -364,11 +364,4 @@
     }
 }
 
-<style>
-    .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-    }
-</style>
+<!-- Page-specific styles removed - using design system -->

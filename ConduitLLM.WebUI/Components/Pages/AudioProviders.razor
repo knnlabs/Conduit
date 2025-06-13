@@ -74,19 +74,13 @@
             
             @if (audioProviders == null)
             {
-                <div class="d-flex justify-content-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+                <LoadingSpinner Message="Loading audio providers..." />
             }
             else if (!audioProviders.Any())
             {
-                <div class="text-center py-5">
-                    <i class="fa fa-headphones fa-4x text-muted mb-4"></i>
-                    <h4 class="text-muted mb-3">No Audio Providers Configured</h4>
-                    <p class="text-muted mb-4">Configure audio capabilities for your existing LLM providers</p>
-                </div>
+                <EmptyState Title="No Audio Providers Configured"
+                            Description="Configure audio capabilities for your existing LLM providers"
+                            Icon="fa-headphones" />
             }
             else
             {
@@ -105,10 +99,10 @@
                         <tbody>
                             @foreach (var audioProvider in audioProviders)
                             {
-                                <tr>
+                                <tr class="modern-table-row">
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="provider-icon bg-info-light rounded-circle p-2 me-3">
+                                            <div class="provider-icon icon-container bg-info-light rounded-circle p-2 me-3">
                                                 <i class="fa fa-headphones text-info"></i>
                                             </div>
                                             <span class="fw-semibold">@audioProvider.ProviderName</span>
@@ -272,27 +266,14 @@
     }
 }
 
+<!-- Page-specific styles removed - using design system -->
 <style>
-    .stat-item {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 0.5rem 1rem;
-        display: inline-block;
-    }
-    
+    /* Keep only truly page-specific styles */
     .provider-icon {
         width: 40px;
         height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    
-    .bg-info-light {
-        background-color: rgba(13, 202, 240, 0.1);
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
     }
 </style>

@@ -10,7 +10,7 @@
 
 <PageTitle>System Information - ConduitLLM</PageTitle>
 
-<div class="container-fluid mt-4">
+<div class="container container-xxl">
     <PageHeader Title="System Information" 
                 Description="Monitor database status, LLM configuration, and system health"
                 Icon="fa-info-circle" />
@@ -18,10 +18,10 @@
     <div class="row">
         <!-- Database Information Card -->
         <div class="col-12 col-md-6">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Database Information</h5>
-                    <button class="btn btn-sm btn-primary" @onclick="RefreshDatabaseInfo" @onclick:preventDefault="true" aria-label="Refresh database information">
+                    <button class="btn btn-sm btn-primary modern-btn modern-btn-primary" @onclick="RefreshDatabaseInfo" @onclick:preventDefault="true" aria-label="Refresh database information">
                         @if (IsLoadingDatabase)
                         {
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -34,7 +34,7 @@
                         }
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     @if (IsLoading || IsLoadingDatabase)
                     {
                         <LoadingSpinner Message="Loading database information..." />
@@ -114,10 +114,10 @@
 
         <!-- LLM Configuration Card -->
         <div class="col-12 col-md-6">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">LLM Configuration</h5>
-                    <button class="btn btn-sm btn-primary" @onclick="RefreshLlmInfo" aria-label="Refresh LLM information">
+                    <button class="btn btn-sm btn-primary modern-btn modern-btn-primary" @onclick="RefreshLlmInfo" aria-label="Refresh LLM information">
                         @if (IsLoadingLlm)
                         {
                             <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -128,7 +128,7 @@
                         }
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     @if (IsLoading || IsLoadingLlm)
                     {
                         <LoadingSpinner Message="Loading LLM configuration..." />
@@ -158,7 +158,7 @@
                             <div class="mb-4">
                                 @foreach (var provider in Providers)
                                 {
-                                    <div class="d-flex align-items-center justify-content-between p-2 mb-1 border">
+                                    <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded modern-info-card">
                                         <div class="d-flex align-items-center">
                                             <i class="fa fa-cogs me-2 text-primary"></i>
                                             <span>@provider</span>
@@ -181,7 +181,7 @@
                             <div>
                                 @foreach (var model in Models)
                                 {
-                                    <div class="d-flex align-items-center justify-content-between p-2 mb-1 border">
+                                    <div class="d-flex align-items-center justify-content-between p-2 mb-1 rounded modern-info-card">
                                         <div class="d-flex align-items-center">
                                             <i class="fa fa-sitemap me-2 text-secondary"></i>
                                             <span>@model</span>

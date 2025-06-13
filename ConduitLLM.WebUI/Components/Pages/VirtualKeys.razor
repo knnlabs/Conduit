@@ -34,16 +34,16 @@
     
     
     <!-- Main Content Card -->
-    <div class="card vk-card shadow-lg border-0 rounded-4">
-        <div class="card-header vk-card-header d-flex justify-content-between align-items-center border-0 bg-white">
+    <div class="card modern-card">
+        <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold text-dark">
                 <i class="fa fa-list me-2 text-primary"></i>Virtual Keys
             </h5>
-            <a href="/virtualkeys/edit" class="btn btn-primary">
+            <a href="/virtualkeys/edit" class="btn btn-primary modern-btn modern-btn-primary">
                 <i class="fa fa-plus me-2"></i>Add Key
             </a>
         </div>
-        <div class="card-body p-4">
+        <div class="card-body modern-card-body">
             @if (virtualKeys == null)
             {
                 <LoadingSpinner Message="Loading virtual keys..." />
@@ -55,21 +55,21 @@
                             Icon="fa-key"
                             IconOpacity="opacity-75">
                     <ActionTemplate>
-                        <a href="/virtualkeys/edit" class="btn btn-primary btn-lg">
+                        <a href="/virtualkeys/edit" class="btn btn-primary modern-btn modern-btn-primary btn-lg">
                             <i class="fa fa-plus me-2"></i>Create Your First Key
                         </a>
                     </ActionTemplate>
                     <AdditionalContent>
-                        <div class="vk-info-card card border-0 shadow-sm bg-light mb-4">
-                            <div class="card-header bg-gradient-light border-0">
+                        <div class="card modern-card mb-4">
+                            <div class="card-header modern-card-header">
                                 <h6 class="mb-0 fw-bold text-primary">
                                     <i class="fa fa-lightbulb me-2"></i>About Virtual Keys
                                 </h6>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body modern-card-body">
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <div class="vk-feature d-flex align-items-start">
+                                        <div class="modern-feature d-flex align-items-start">
                                             <i class="fa fa-shield-alt text-success me-3 mt-1"></i>
                                             <div>
                                                 <strong>Secure API Access</strong>
@@ -78,7 +78,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="vk-feature d-flex align-items-start">
+                                        <div class="modern-feature d-flex align-items-start">
                                             <i class="fa fa-dollar-sign text-warning me-3 mt-1"></i>
                                             <div>
                                                 <strong>Cost Control</strong>
@@ -87,7 +87,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="vk-feature d-flex align-items-start">
+                                        <div class="modern-feature d-flex align-items-start">
                                             <i class="fa fa-filter text-info me-3 mt-1"></i>
                                             <div>
                                                 <strong>Model Restrictions</strong>
@@ -96,7 +96,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="vk-feature d-flex align-items-start">
+                                        <div class="modern-feature d-flex align-items-start">
                                             <i class="fa fa-clock text-danger me-3 mt-1"></i>
                                             <div>
                                                 <strong>Expiration Control</strong>
@@ -112,9 +112,9 @@
             }
             else
             {
-                <div class="table-responsive">
-                    <table class="table vk-table table-hover align-middle">
-                        <thead class="vk-table-header">
+                <div class="table-responsive modern-table-container">
+                    <table class="table modern-table table-hover align-middle">
+                        <thead class="modern-table-header">
                             <tr>
                                 <th class="border-0 fw-bold">Name</th>
                                 <th class="border-0 fw-bold">Status</th>
@@ -128,7 +128,7 @@
                         <tbody>
                             @foreach (var item in virtualKeys)
                             {
-                                <tr class="vk-table-row">
+                                <tr class="modern-table-row">
                                     <td class="border-0" data-label="Name">
                                         <div class="vk-key-name">
                                             <strong class="text-dark">@item.KeyName</strong>
@@ -137,19 +137,19 @@
                                     <td class="border-0" data-label="Status">
                                         @if (item.IsEnabled)
                                         {
-                                            <span class="badge vk-badge-success">
+                                            <span class="badge modern-badge modern-badge-success">
                                                 <i class="fa fa-check me-1"></i>Active
                                             </span>
                                         }
                                         else
                                         {
-                                            <span class="badge vk-badge-danger">
+                                            <span class="badge modern-badge modern-badge-danger">
                                                 <i class="fa fa-times me-1"></i>Disabled
                                             </span>
                                         }
                                         @if (item.ExpiresAt.HasValue && item.ExpiresAt.Value < DateTime.UtcNow)
                                         {
-                                            <span class="badge vk-badge-secondary ms-1">
+                                            <span class="badge bg-secondary ms-1">
                                                 <i class="fa fa-clock me-1"></i>Expired
                                             </span>
                                         }
@@ -172,8 +172,8 @@
                                                         _ => "bg-success"
                                                     };
                                                 }
-                                                <div class="progress vk-progress my-1">
-                                                    <div class="progress-bar @progressClass" role="progressbar" style="width: @percentage%" 
+                                                <div class="progress modern-progress my-1">
+                                                    <div class="progress-bar modern-progress-bar @progressClass" role="progressbar" style="width: @percentage%" 
                                                          aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
                                                 </div>
                                                 <small class="text-muted">@(item.BudgetDuration ?? "Total")</small>
@@ -224,13 +224,13 @@
                                     </td>
                                     <td class="border-0" data-label="Actions">
                                         <div class="btn-group btn-group-sm">
-                                            <a href="/virtualkeys/edit/@item.Id" class="btn vk-btn-outline-primary" title="Edit Key">
+                                            <a href="/virtualkeys/edit/@item.Id" class="btn btn-outline-primary" title="Edit Key">
                                                 <i class="fa fa-edit"></i>
                                             </a>
-                                            <button type="button" class="btn vk-btn-outline-warning" @onclick="() => ResetKeySpend(item.Id, item.KeyName)" title="Reset Spend">
+                                            <button type="button" class="btn btn-outline-warning" @onclick="() => ResetKeySpend(item.Id, item.KeyName)" title="Reset Spend">
                                                 <i class="fa fa-undo"></i>
                                             </button>
-                                            <button type="button" class="btn vk-btn-outline-danger" @onclick="() => DeleteVirtualKey(item.Id, item.KeyName)" title="Delete Key">
+                                            <button type="button" class="btn btn-outline-danger" @onclick="() => DeleteVirtualKey(item.Id, item.KeyName)" title="Delete Key">
                                                 <i class="fa fa-trash"></i>
                                             </button>
                                         </div>
@@ -245,92 +245,23 @@
     </div>
 </div>
 
-<!-- Custom CSS Styling -->
+<!-- Page-specific styles -->
 <style>
-    /* Keep only styles specific to this page that aren't covered by components */
-    .vk-card {
-        border-radius: 1rem !important;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-
-    .vk-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1) !important;
-    }
-
-    .vk-card-header {
-        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
-        padding: 1.5rem;
-    }
-
-    .vk-info-card {
-        margin: 2rem auto;
-        max-width: 600px;
-    }
-
-    .vk-feature {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-
-    .vk-feature:hover {
-        background-color: rgba(102, 126, 234, 0.05);
-    }
-
-    .vk-table-header {
-        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
-    }
-
-    .vk-table-header th {
-        color: #4a5568;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-size: 0.75rem;
-        padding: 1rem 0.75rem;
-    }
-
-    .vk-table-row {
-        transition: all 0.3s ease;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .vk-table-row:hover {
-        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
-        transform: translateX(2px);
-    }
-
-    .vk-table-row td {
-        padding: 1rem 0.75rem;
-        vertical-align: middle;
-    }
-
-    .vk-progress {
-        height: 8px;
-        border-radius: 0.5rem;
-        background-color: #f1f5f9;
-        overflow: hidden;
-    }
-
-    .vk-progress .progress-bar {
-        border-radius: 0.5rem;
-        transition: width 0.6s ease;
+    /* Keep only truly page-specific styles */
+    .vk-key-name {
+        font-weight: 600;
     }
 
     .vk-budget-display {
         min-width: 120px;
     }
 
-    .bg-gradient-light {
-        background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
-    }
-
-    @@media (max-width: 768px) {
-        .vk-table {
-            font-size: 0.875rem;
-        }
+    .vk-models-text {
+        max-width: 150px;
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 </style>
 

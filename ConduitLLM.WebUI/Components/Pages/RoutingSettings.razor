@@ -73,16 +73,16 @@ else
 
     <div class="row">
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-cogs me-2 text-primary"></i>Router Configuration
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <div class="mb-4">
-                        <label for="routingStrategy" class="form-label">Default Routing Strategy</label>
-                        <select id="routingStrategy" class="form-select" @bind="_config.DefaultRoutingStrategy">
+                        <label for="routingStrategy" class="modern-form-label">Default Routing Strategy</label>
+                        <select id="routingStrategy" class="form-select modern-form-select" @bind="_config.DefaultRoutingStrategy">
                             <option value="simple">Simple (Use first available model)</option>
                             <option value="random">Random (Random model selection)</option>
                             <option value="round-robin">Round Robin (Equal distribution)</option>
@@ -90,31 +90,31 @@ else
                     </div>
                     
                     <div class="mb-4">
-                        <label for="maxRetries" class="form-label">Maximum Retries</label>
-                        <input type="number" id="maxRetries" class="form-control" @bind="_config.MaxRetries" min="0" max="10" />
+                        <label for="maxRetries" class="modern-form-label">Maximum Retries</label>
+                        <input type="number" id="maxRetries" class="form-control modern-form-control" @bind="_config.MaxRetries" min="0" max="10" />
                     </div>
                     
                     <div class="mb-4">
-                        <label for="baseRetryDelay" class="form-label">Base Retry Delay (ms)</label>
-                        <input type="number" id="baseRetryDelay" class="form-control" @bind="_config.RetryBaseDelayMs" min="100" step="100" />
+                        <label for="baseRetryDelay" class="modern-form-label">Base Retry Delay (ms)</label>
+                        <input type="number" id="baseRetryDelay" class="form-control modern-form-control" @bind="_config.RetryBaseDelayMs" min="100" step="100" />
                     </div>
                     
                     <div class="mb-4">
-                        <label for="maxRetryDelay" class="form-label">Maximum Retry Delay (ms)</label>
-                        <input type="number" id="maxRetryDelay" class="form-control" @bind="_config.RetryMaxDelayMs" min="500" step="500" />
+                        <label for="maxRetryDelay" class="modern-form-label">Maximum Retry Delay (ms)</label>
+                        <input type="number" id="maxRetryDelay" class="form-control modern-form-control" @bind="_config.RetryMaxDelayMs" min="500" step="500" />
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="col-12 col-md-6">
-            <div class="card shadow-sm border-0 mb-4 h-100">
-                <div class="card-header bg-light border-0">
+            <div class="card modern-card mb-4 h-100">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">
                         <i class="fa fa-info-circle me-2 text-info"></i>Routing Strategies Explained
                     </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item">
                             <h6>Simple</h6>
@@ -139,31 +139,31 @@ else
     
     <div class="row mb-4">
         <div class="col-12 d-flex justify-content-end">
-            <button class="btn btn-primary shadow-sm" @onclick="async () => await SaveConfigurationAsync()">
+            <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="async () => await SaveConfigurationAsync()">
                 <i class="fa fa-save me-1"></i> Save Configuration
             </button>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-light border-0">
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="fa fa-server me-2 text-success"></i>Model Deployments
                 </h5>
-                <button class="btn btn-primary btn-sm shadow-sm" @onclick="AddNewDeploymentAsync">
+                <button class="btn btn-primary btn-sm modern-btn modern-btn-primary" @onclick="AddNewDeploymentAsync">
                     <i class="fa fa-plus me-1"></i> Add Deployment
                 </button>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body modern-card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
                 <EmptyState Title="No Model Deployments"
                             Description="Add deployments to enable routing between models"
                             Icon="fa-server">
                     <ActionTemplate>
-                        <button class="btn btn-primary" @onclick="AddNewDeploymentAsync">
+                        <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="AddNewDeploymentAsync">
                             <i class="fa fa-plus me-1"></i> Add Your First Deployment
                         </button>
                     </ActionTemplate>
@@ -172,8 +172,8 @@ else
             else
             {
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm">
-                        <thead>
+                    <table class="table modern-table table-hover table-sm">
+                        <thead class="modern-table-header">
                             <tr>
                                 <th>Model Name</th>
                                 <th>Provider</th>
@@ -186,7 +186,7 @@ else
                         <tbody>
                             @foreach (var deployment in _config.ModelDeployments)
                             {
-                                <tr>
+                                <tr class="modern-table-row">
                                     <td>@deployment.ModelName</td>
                                     <td>@deployment.ProviderName</td>
                                     <td>@deployment.Weight</td>
@@ -200,10 +200,10 @@ else
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" @onclick="() => EditDeploymentAsync(deployment)" title="Edit">
+                                            <button class="btn btn-outline-primary modern-btn modern-btn-outline-primary" @onclick="() => EditDeploymentAsync(deployment)" title="Edit">
                                                 <i class="fa fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-outline-danger" @onclick="() => DeleteDeploymentAsync(deployment)" title="Delete">
+                                            <button class="btn btn-outline-danger modern-btn modern-btn-outline-danger" @onclick="() => DeleteDeploymentAsync(deployment)" title="Delete">
                                                 <i class="fa fa-trash"></i>
                                             </button>
                                         </div>
@@ -217,16 +217,16 @@ else
         </div>
     </div>
     
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-light border-0">
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header">
             <h5 class="mb-0">
                 <i class="fa fa-shield me-2 text-warning"></i>Fallback Configurations
             </h5>
         </div>
-        <div class="card-body">
+        <div class="card-body modern-card-body">
             @if (_config.ModelDeployments.Count == 0)
             {
-                <div class="alert alert-warning border-0 shadow-sm">
+                <div class="alert alert-warning border-0">
                     <i class="fa fa-exclamation-triangle me-2"></i>
                     You need to add model deployments before configuring fallbacks.
                 </div>
@@ -234,7 +234,7 @@ else
             else
             {
                 <div class="mb-3">
-                    <button class="btn btn-outline-primary shadow-sm" @onclick="AddFallbackConfigAsync">
+                    <button class="btn btn-outline-primary modern-btn modern-btn-outline-primary" @onclick="AddFallbackConfigAsync">
                         <i class="fa fa-plus me-1"></i> Add Fallback Configuration
                     </button>
                 </div>
@@ -253,7 +253,7 @@ else
                             <tbody>
                                 @foreach (var fallback in _config.FallbackConfigurations)
                                 {
-                                    <tr>
+                                    <tr class="modern-table-row">
                                         <td>@GetModelDisplayName(fallback.PrimaryModelDeploymentId)</td>
                                         <td>
                                             @if (fallback.FallbackModelDeploymentIds.Count == 0)
@@ -274,10 +274,10 @@ else
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-primary" @onclick="() => EditFallbackAsync(fallback)" title="Edit">
+                                                <button class="btn btn-outline-primary modern-btn modern-btn-outline-primary" @onclick="() => EditFallbackAsync(fallback)" title="Edit">
                                                     <i class="fa fa-edit"></i>
                                                 </button>
-                                                <button class="btn btn-outline-danger" @onclick="() => DeleteFallbackAsync(fallback)" title="Delete">
+                                                <button class="btn btn-outline-danger modern-btn modern-btn-outline-danger" @onclick="() => DeleteFallbackAsync(fallback)" title="Delete">
                                                     <i class="fa fa-trash"></i>
                                                 </button>
                                             </div>
@@ -294,7 +294,7 @@ else
                                 Description="Fallbacks determine which models to use when a preferred model is unavailable."
                                 Icon="fa-shield">
                         <ActionTemplate>
-                            <button class="btn btn-outline-primary" @onclick="AddFallbackConfigAsync">
+                            <button class="btn btn-outline-primary modern-btn modern-btn-outline-primary" @onclick="AddFallbackConfigAsync">
                                 <i class="fa fa-plus me-1"></i> Add Fallback Configuration
                             </button>
                         </ActionTemplate>
@@ -318,8 +318,8 @@ else
                 <div class="modal-body">
                     <form>
                         <div class="mb-3">
-                            <label for="modelName" class="form-label">Model Name</label>
-                            <select id="modelName" class="form-select" @bind="_editingDeployment.ModelName" required>
+                            <label for="modelName" class="modern-form-label">Model Name</label>
+                            <select id="modelName" class="form-select modern-form-select" @bind="_editingDeployment.ModelName" required>
                                 <option value="">-- Select Model --</option>
                                 @foreach (var model in _availableModelMappings)
                                 {
@@ -329,8 +329,8 @@ else
                         </div>
                         
                         <div class="mb-3">
-                            <label for="providerName" class="form-label">Provider Name</label>
-                            <select id="providerName" class="form-select" @bind="_editingDeployment.ProviderName" required>
+                            <label for="providerName" class="modern-form-label">Provider Name</label>
+                            <select id="providerName" class="form-select modern-form-select" @bind="_editingDeployment.ProviderName" required>
                                 <option value="">-- Select Provider --</option>
                                 @foreach (var provider in _availableProviders)
                                 {
@@ -340,8 +340,8 @@ else
                         </div>
                         
                         <div class="mb-3">
-                            <label for="weight" class="form-label">Weight</label>
-                            <input type="number" id="weight" class="form-control" @bind="_editingDeployment.Weight" min="1" required />
+                            <label for="weight" class="modern-form-label">Weight</label>
+                            <input type="number" id="weight" class="form-control modern-form-control" @bind="_editingDeployment.Weight" min="1" required />
                         </div>
                         
                         <div class="form-check mb-3">
@@ -356,8 +356,8 @@ else
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDeploymentModal">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveDeploymentAsync">Save</button>
+                    <button type="button" class="btn btn-secondary modern-btn modern-btn-secondary" @onclick="CloseDeploymentModal">Cancel</button>
+                    <button type="button" class="btn btn-primary modern-btn modern-btn-primary" @onclick="SaveDeploymentAsync">Save</button>
                 </div>
             </div>
         </div>
@@ -377,8 +377,8 @@ else
                 <div class="modal-body">
                     <form>
                         <div class="mb-3">
-                            <label for="primaryModel" class="form-label">Primary Model</label>
-                            <select id="primaryModel" class="form-select" @bind="_editingFallback.PrimaryModelDeploymentId" required>
+                            <label for="primaryModel" class="modern-form-label">Primary Model</label>
+                            <select id="primaryModel" class="form-select modern-form-select" @bind="_editingFallback.PrimaryModelDeploymentId" required>
                                 <option value="">-- Select Primary Model --</option>
                                 @foreach (var model in _config.ModelDeployments)
                                 {
@@ -389,8 +389,8 @@ else
                         
                         <h6 class="mb-2">Fallback Models (in order)</h6>
                         
-                        <div class="card mb-3">
-                            <div class="card-body">
+                        <div class="card modern-card mb-3">
+                            <div class="card-body modern-card-body">
                                 @if (_editingFallback.FallbackModelDeploymentIds.Any())
                                 {
                                     <ul class="list-group list-group-flush">
@@ -401,7 +401,7 @@ else
                                             {
                                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                                     @model.ModelName (@model.ProviderName)
-                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFallbackModelAsync(fallbackId)">
+                                                    <button class="btn btn-sm btn-outline-danger modern-btn modern-btn-outline-danger" @onclick="() => RemoveFallbackModelAsync(fallbackId)">
                                                         <i class="fa fa-trash"></i>
                                                     </button>
                                                 </li>
@@ -418,7 +418,7 @@ else
                         
                         <div class="row mb-3">
                             <div class="col">
-                                <select class="form-select" @bind="_selectedFallbackModelId">
+                                <select class="form-select modern-form-select" @bind="_selectedFallbackModelId">
                                     <option value="">-- Add Fallback Model --</option>
                                     @foreach (var model in _config.ModelDeployments.Where(m => 
                                         m.Id.ToString() != _editingFallback.PrimaryModelDeploymentId && 
@@ -429,7 +429,7 @@ else
                                 </select>
                             </div>
                             <div class="col-auto">
-                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                <button type="button" class="btn btn-outline-primary btn-sm modern-btn modern-btn-outline-primary" 
                                         @onclick="AddFallbackModelAsync" 
                                         disabled="@(string.IsNullOrEmpty(_selectedFallbackModelId))">
                                     <i class="fa fa-plus me-1"></i> Add Model
@@ -439,8 +439,8 @@ else
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseFallbackModal">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveFallbackAsync">Save</button>
+                    <button type="button" class="btn btn-secondary modern-btn modern-btn-secondary" @onclick="CloseFallbackModal">Cancel</button>
+                    <button type="button" class="btn btn-primary modern-btn modern-btn-primary" @onclick="SaveFallbackAsync">Save</button>
                 </div>
             </div>
         </div>
@@ -984,21 +984,9 @@ else
 }
 
 <style>
-    /* Page-specific styles not covered by components */
-    .card {
-        transition: all 0.2s ease;
-    }
+    /* Using modern design system for cards, tables, and hover effects */
     
-    .card:hover {
-        transform: translateY(-1px);
-    }
-    
-    .table th {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-        font-weight: 600;
-    }
-    
+    /* Page-specific modal styles */
     .modal-dialog {
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }

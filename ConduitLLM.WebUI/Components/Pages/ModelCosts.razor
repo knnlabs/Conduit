@@ -209,44 +209,44 @@
             </div>
             <div class="modal-body">
                 <form>
-                    <div class="mb-3">
-                        <label for="modelIdPattern" class="form-label">Model ID Pattern</label>
-                        <input type="text" class="form-control" id="modelIdPattern" @bind="editingModelCost.ModelIdPattern" required />
+                    <div class="modern-form-group">
+                        <label for="modelIdPattern" class="modern-form-label">Model ID Pattern</label>
+                        <input type="text" class="form-control modern-form-control" id="modelIdPattern" @bind="editingModelCost.ModelIdPattern" required />
                         <div class="form-text">Examples: 'openai/gpt-4o' (exact match), 'anthropic/claude-3*' (wildcard), '*-embedding*' (multi-wildcard)</div>
                     </div>
                         
-                    <div class="mb-3">
-                        <label for="inputTokenCost" class="form-label">Input Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="inputTokenCost" class="modern-form-label">Input Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="inputTokenCost" @bind="inputTokenCostPerThousand" min="0" step="0.01" required />
+                            <input type="number" class="form-control modern-form-control" id="inputTokenCost" @bind="inputTokenCostPerThousand" min="0" step="0.01" required />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 input tokens</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="outputTokenCost" class="form-label">Output Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="outputTokenCost" class="modern-form-label">Output Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="outputTokenCost" @bind="outputTokenCostPerThousand" min="0" step="0.01" required />
+                            <input type="number" class="form-control modern-form-control" id="outputTokenCost" @bind="outputTokenCostPerThousand" min="0" step="0.01" required />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 output tokens</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="embeddingTokenCost" class="form-label">Embedding Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="embeddingTokenCost" class="modern-form-label">Embedding Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="embeddingTokenCost" @bind="embeddingTokenCostPerThousand" min="0" step="0.01" />
+                            <input type="number" class="form-control modern-form-control" id="embeddingTokenCost" @bind="embeddingTokenCostPerThousand" min="0" step="0.01" />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 embedding tokens (leave empty if not applicable)</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="imageCost" class="form-label">Image Cost ($ per image)</label>
+                    <div class="modern-form-group">
+                        <label for="imageCost" class="modern-form-label">Image Cost ($ per image)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="imageCost" @bind="editingModelCost.ImageCostPerImage" min="0" step="0.01" />
+                            <input type="number" class="form-control modern-form-control" id="imageCost" @bind="editingModelCost.ImageCostPerImage" min="0" step="0.01" />
                         </div>
                         <div class="form-text">Cost in USD per generated image (leave empty if not applicable)</div>
                     </div>
@@ -259,21 +259,21 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioCostPerMinute" class="form-label">Transcription Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioCostPerMinute" class="modern-form-label">Transcription Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioCostPerMinute" @bind="editingModelCost.AudioCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioCostPerMinute" @bind="editingModelCost.AudioCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for speech-to-text transcription per minute</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioCostPerKCharacters" class="form-label">TTS Cost ($ per 1K characters)</label>
+                            <div class="modern-form-group">
+                                <label for="audioCostPerKCharacters" class="modern-form-label">TTS Cost ($ per 1K characters)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioCostPerKCharacters" @bind="editingModelCost.AudioCostPerKCharacters" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioCostPerKCharacters" @bind="editingModelCost.AudioCostPerKCharacters" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for text-to-speech per 1,000 characters</div>
                             </div>
@@ -282,21 +282,21 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioInputCostPerMinute" class="form-label">Real-time Input Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioInputCostPerMinute" class="modern-form-label">Real-time Input Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioInputCostPerMinute" @bind="editingModelCost.AudioInputCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioInputCostPerMinute" @bind="editingModelCost.AudioInputCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for real-time audio input per minute</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioOutputCostPerMinute" class="form-label">Real-time Output Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioOutputCostPerMinute" class="modern-form-label">Real-time Output Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioOutputCostPerMinute" @bind="editingModelCost.AudioOutputCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioOutputCostPerMinute" @bind="editingModelCost.AudioOutputCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for real-time audio output per minute</div>
                             </div>
