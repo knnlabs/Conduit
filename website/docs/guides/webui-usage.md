@@ -132,6 +132,51 @@ Conduit includes a built-in chat interface for testing:
 3. Type a message and send it
 4. View the response and detailed request information
 
+## Design System
+
+The Web UI uses a unified design system with modern components:
+
+### Component Library
+
+- **Cards**: Consistent layout containers with hover effects
+- **Stat Cards**: Display metrics with trends and sparklines
+- **Action Buttons**: Primary and secondary action styles
+- **Toast Notifications**: Non-intrusive alerts and confirmations
+- **Modal Dialogs**: Responsive overlays for forms and confirmations
+- **Searchable Dropdowns**: Enhanced selection with filtering
+- **Loading States**: Consistent skeleton screens and spinners
+
+### Interactive Features
+
+#### Health Status Hovercards
+Hover over provider status indicators to see detailed health information:
+- Current status and uptime
+- Response time metrics
+- Recent error messages
+- Service-specific health checks
+
+#### Real-time Updates
+Many components update automatically:
+- Request counts and metrics
+- Provider health status
+- Cost calculations
+- Active session counts
+
+#### Enhanced Forms
+- Inline validation with helpful error messages
+- Auto-save for draft configurations
+- Keyboard navigation support
+- Accessible form controls
+
+### Audio Provider Management
+
+The Web UI includes specialized interfaces for audio services:
+
+1. Navigate to **Configuration > Audio Providers**
+2. Configure speech-to-text and text-to-speech providers
+3. Set routing priorities and fallback options
+4. Test audio configurations with sample files
+
 ## Customization
 
 ### Theme Settings
