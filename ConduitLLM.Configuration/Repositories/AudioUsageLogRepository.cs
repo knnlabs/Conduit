@@ -41,6 +41,13 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<PagedResult<AudioUsageLog>> GetPagedAsync(AudioUsageQueryDto query)
         {
+            // Ensure page size is within bounds (even though DTO validates this)
+            const int maxPageSize = 1000;
+            if (query.PageSize > maxPageSize)
+            {
+                query.PageSize = maxPageSize;
+            }
+
             var queryable = _context.AudioUsageLogs.AsQueryable();
 
             // Apply filters

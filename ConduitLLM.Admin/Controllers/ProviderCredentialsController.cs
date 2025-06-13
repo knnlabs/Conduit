@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -73,7 +74,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found {ProviderId}", id);
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
 
                 return Ok(credential);
@@ -102,7 +104,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential for '{providerName}' not found");
+                    _logger.LogWarning("Provider credential not found for provider {ProviderName}", providerName);
+                    return NotFound(new { error = "Provider credential not found", provider = providerName });
                 }
 
                 return Ok(credential);
@@ -198,7 +201,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for update {ProviderId}", id);
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
 
                 return NoContent();
@@ -227,7 +231,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for deletion {ProviderId}", id);
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
 
                 return NoContent();
@@ -256,7 +261,8 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for connection test {ProviderId}", id);
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
 
                 var result = await _providerCredentialService.TestProviderConnectionAsync(credential);

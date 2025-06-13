@@ -56,7 +56,8 @@ namespace ConduitLLM.Admin.Services
                 var existingCredential = await _providerCredentialRepository.GetByProviderNameAsync(providerCredential.ProviderName);
                 if (existingCredential != null)
                 {
-                    throw new InvalidOperationException($"A provider credential for '{providerCredential.ProviderName}' already exists");
+                    _logger.LogWarning("Provider credential already exists for provider {ProviderName}", providerCredential.ProviderName);
+                    throw new InvalidOperationException("A provider credential for this provider already exists");
                 }
 
                 // Convert DTO to entity
@@ -69,7 +70,8 @@ namespace ConduitLLM.Admin.Services
                 var createdCredential = await _providerCredentialRepository.GetByIdAsync(id);
                 if (createdCredential == null)
                 {
-                    throw new InvalidOperationException($"Failed to retrieve newly created provider credential with ID {id}");
+                    _logger.LogError("Failed to retrieve newly created provider credential {ProviderId}", id);
+                    throw new InvalidOperationException("Failed to retrieve newly created provider credential");
                 }
 
                 _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName);
@@ -200,7 +202,8 @@ namespace ConduitLLM.Admin.Services
                     var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
                     if (dbCredential == null)
                     {
-                        result.Message = $"Provider credential with ID {providerCredential.Id} not found";
+                        _logger.LogWarning("Provider credential not found {ProviderId}", providerCredential.Id);
+                        result.Message = "Provider credential not found";
                         result.ErrorDetails = "Provider not found in database";
                         return result;
                     }
@@ -441,12 +444,12 @@ namespace ConduitLLM.Admin.Services
 
                 try
                 {
-                    _logger.LogInformation("Checking OpenRouter auth endpoint: {Url}", authCheckUrl);
+                    _logger.LogInformation("Checking OpenRouter auth endpoint");
 
                     // Try the auth key endpoint first (if it exists)
                     var authResponse = await client.GetAsync(authCheckUrl);
 
-                    _logger.LogInformation("OpenRouter auth endpoint returned status: {Status}", authResponse.StatusCode);
+                    _logger.LogInformation("OpenRouter auth endpoint returned status {StatusCode}", (int)authResponse.StatusCode);
 
                     if (authResponse.StatusCode == HttpStatusCode.OK)
                     {
@@ -458,14 +461,14 @@ namespace ConduitLLM.Admin.Services
                              authResponse.StatusCode == HttpStatusCode.Forbidden)
                     {
                         // Clear authentication failure
-                        _logger.LogWarning("OpenRouter authentication failed with status: {Status}", authResponse.StatusCode);
+                        _logger.LogWarning("OpenRouter authentication failed with status {StatusCode}", (int)authResponse.StatusCode);
                         return false;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Auth endpoint might not exist, fall back to completion test
-                    _logger.LogInformation("OpenRouter auth endpoint check failed, falling back to completion test: {Error}", ex.Message);
+                    _logger.LogInformation("OpenRouter auth endpoint check failed, falling back to completion test");
                 }
 
                 // Fallback: Make a minimal generation request that will fail immediately if auth is invalid

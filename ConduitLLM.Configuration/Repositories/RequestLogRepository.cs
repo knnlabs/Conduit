@@ -145,6 +145,14 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
             }
 
+            // Add upper bound to prevent resource exhaustion
+            const int maxPageSize = 1000;
+            if (pageSize > maxPageSize)
+            {
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", pageSize, maxPageSize);
+                pageSize = maxPageSize;
+            }
+
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,9 @@ using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using CsvHelper;
+using CsvHelper.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -242,7 +246,7 @@ namespace ConduitLLM.Admin.Services
             var session = await sessionStore.GetSessionAsync(sessionId);
             if (session == null)
             {
-                _logger.LogWarning("Session {SessionId} not found", sessionId);
+                _logger.LogWarning("Session not found for termination {SessionId}", sessionId);
                 return false;
             }
 
@@ -257,7 +261,7 @@ namespace ConduitLLM.Admin.Services
 
             if (removed)
             {
-                _logger.LogInformation("Terminated session {SessionId}", sessionId);
+                _logger.LogInformation("Successfully terminated session {SessionId}", sessionId);
             }
 
             return removed;
@@ -358,17 +362,40 @@ namespace ConduitLLM.Admin.Services
 
         private async Task<string> GenerateCsvExport(List<Configuration.Entities.AudioUsageLog> logs)
         {
-            var csv = new StringBuilder();
-            csv.AppendLine("Timestamp,VirtualKey,Provider,Operation,Model,Duration,Cost,Status,Language,Voice");
+            using var stringWriter = new StringWriter();
+            using var csv = new CsvWriter(stringWriter, CultureInfo.InvariantCulture);
+            
+            // Write header
+            csv.WriteField("Timestamp");
+            csv.WriteField("VirtualKey");
+            csv.WriteField("Provider");
+            csv.WriteField("Operation");
+            csv.WriteField("Model");
+            csv.WriteField("Duration");
+            csv.WriteField("Cost");
+            csv.WriteField("Status");
+            csv.WriteField("Language");
+            csv.WriteField("Voice");
+            await csv.NextRecordAsync();
 
+            // Write data
             foreach (var log in logs.OrderBy(l => l.Timestamp))
             {
-                csv.AppendLine($"{log.Timestamp:yyyy-MM-dd HH:mm:ss},{log.VirtualKey},{log.Provider}," +
-                    $"{log.OperationType},{log.Model},{log.DurationSeconds},{log.Cost:F4}," +
-                    $"{log.StatusCode},{log.Language ?? "N/A"},{log.Voice ?? "N/A"}");
+                csv.WriteField(log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
+                csv.WriteField(log.VirtualKey);
+                csv.WriteField(log.Provider);
+                csv.WriteField(log.OperationType);
+                csv.WriteField(log.Model);
+                csv.WriteField(log.DurationSeconds);
+                csv.WriteField(log.Cost.ToString("F4"));
+                csv.WriteField(log.StatusCode);
+                csv.WriteField(log.Language ?? "N/A");
+                csv.WriteField(log.Voice ?? "N/A");
+                await csv.NextRecordAsync();
             }
 
-            return await Task.FromResult(csv.ToString());
+            await csv.FlushAsync();
+            return stringWriter.ToString();
         }
 
         private async Task<string> GenerateJsonExport(List<Configuration.Entities.AudioUsageLog> logs)
