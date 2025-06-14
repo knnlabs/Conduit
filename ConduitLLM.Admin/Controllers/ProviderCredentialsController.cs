@@ -301,7 +301,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", S(testRequest?.ProviderName));
+                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", S(testRequest?.ProviderName ?? "unknown"));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

@@ -11,6 +11,8 @@ using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -50,9 +52,9 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformationSecure(
+            _logger.LogInformation(
                 "Getting logs with filters - Page: {Page}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, HasModel: {HasModel}, HasVirtualKeyId: {HasVirtualKeyId}, HasStatus: {HasStatus}",
-                page, pageSize, startDate, endDate, !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
+                S(page), S(pageSize), S(startDate), S(endDate), !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
 
             // Validate page and pageSize
             if (page < 1) page = 1;

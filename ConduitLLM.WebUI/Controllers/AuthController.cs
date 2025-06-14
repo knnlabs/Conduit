@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.WebUI.Controllers
 {
     /// <summary>
@@ -75,7 +77,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 // If validation fails, log it
-                _logger.LogWarningSecure("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress?.ToString());
+                _logger.LogWarning("Invalid master key attempt from {IpAddress}", S(HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"));
                 return Unauthorized(new { message = "Invalid master key" });
             }
             catch (Exception ex)

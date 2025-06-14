@@ -1,0 +1,74 @@
+name: CodeQL Local Analysis
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ dev, master ]
+    paths:
+      - '**.cs'
+      - '**.csproj'
+      - '.github/workflows/codeql-local.yml'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    # Initializes CodeQL tools for scanning
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+        
+    # Build the project
+    - name: Build
+      run: dotnet build
+
+    # Perform CodeQL Analysis
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+        upload: false  # Don't upload to GitHub
+        output: codeql-results
+        
+    # Generate summary
+    - name: Generate Summary
+      if: always()
+      run: |
+        echo "## CodeQL Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -d codeql-results ]; then
+          echo "Results saved to: codeql-results/" >> $GITHUB_STEP_SUMMARY
+          find codeql-results -name "*.sarif" -exec echo "- {}" \; >> $GITHUB_STEP_SUMMARY
+        else
+          echo "No results found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    # Upload results as artifact
+    - name: Upload CodeQL Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results
+        path: codeql-results/
+        retention-days: 7
