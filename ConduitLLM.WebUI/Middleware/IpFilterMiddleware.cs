@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 
@@ -63,7 +64,7 @@ public class IpFilterMiddleware
             string path = context.Request.Path.Value ?? string.Empty;
             if (IsExcludedPath(path, settings.ExcludedEndpoints))
             {
-                _logger.LogDebug("Skipping IP filtering for excluded path: {Path}", path);
+                _logger.LogDebugSecure("Skipping IP filtering for excluded path: {Path}", path);
                 await _next(context);
                 return;
             }
@@ -71,7 +72,7 @@ public class IpFilterMiddleware
             // Skip filtering for admin UI access if configured
             if (settings.BypassForAdminUi && !path.StartsWith("/api/"))
             {
-                _logger.LogDebug("Skipping IP filtering for admin UI access: {Path}", path);
+                _logger.LogDebugSecure("Skipping IP filtering for admin UI access: {Path}", path);
                 await _next(context);
                 return;
             }
@@ -99,12 +100,12 @@ public class IpFilterMiddleware
             bool isAllowed = await CheckIpWithFallbackAsync(ipFilterService, clientIp, settings.DefaultAllow);
             if (isAllowed)
             {
-                _logger.LogDebug("IP {ClientIp} is allowed access", clientIp);
+                _logger.LogDebugSecure("IP {ClientIp} is allowed access", clientIp);
                 await _next(context);
             }
             else
             {
-                _logger.LogInformation("IP {ClientIp} is blocked from accessing {Path}", clientIp, path);
+                _logger.LogInformationSecure("IP {ClientIp} is blocked from accessing {Path}", clientIp, path);
                 await RespondWithForbidden(context, IpFilterConstants.ACCESS_DENIED_MESSAGE);
             }
         }
@@ -170,7 +171,7 @@ public class IpFilterMiddleware
         catch (Exception ex)
         {
             // Log the error
-            _logger.LogError(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}",
+            _logger.LogErrorSecure(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}",
                 clientIp, defaultAllow);
 
             // Fall back to the default allow setting

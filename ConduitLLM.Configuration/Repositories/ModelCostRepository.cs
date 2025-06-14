@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -87,7 +88,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {CostId}", id);
+                _logger.LogError(ex, "Error getting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -109,7 +110,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model {ModelName}", modelName);
+                _logger.LogError(ex, "Error getting model cost for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
                 throw;
             }
         }
@@ -131,7 +132,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", modelIdPattern);
+                _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", LogSanitizer.SanitizeObject(modelIdPattern));
                 throw;
             }
         }
@@ -199,7 +200,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (providerCredential == null)
                 {
-                    _logger.LogWarning("No provider credential found for provider {ProviderName}", providerName);
+                    _logger.LogWarning("No provider credential found for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
                     return new List<ModelCost>();
                 }
 
@@ -211,7 +212,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (!providerMappings.Any())
                 {
-                    _logger.LogInformation("No model mappings found for provider {ProviderName}", providerName);
+                    _logger.LogInformation("No model mappings found for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
                     return new List<ModelCost>();
                 }
 
@@ -266,7 +267,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
                 throw;
             }
         }
@@ -305,20 +306,20 @@ namespace ConduitLLM.Configuration.Repositories
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
                     _logger.LogError(ex, "Transaction rolled back while creating model cost for model '{ModelIdPattern}'",
-                        modelCost.ModelIdPattern);
+                        LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
                     throw;
                 }
             }
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating model cost for model '{ModelIdPattern}'",
-                    modelCost.ModelIdPattern);
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating model cost for model '{ModelIdPattern}'",
-                    modelCost.ModelIdPattern);
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
                 throw;
             }
         }
@@ -356,7 +357,7 @@ namespace ConduitLLM.Configuration.Repositories
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
 
-                    _logger.LogError(ex, "Concurrency error updating model cost with ID {CostId}", modelCost.Id);
+                    _logger.LogError(ex, "Concurrency error updating model cost with ID {CostId}", LogSanitizer.SanitizeObject(modelCost.Id));
 
                     // Handle concurrency issues by reloading and reapplying changes with a new transaction
                     try
@@ -384,7 +385,7 @@ namespace ConduitLLM.Configuration.Repositories
                     }
                     catch (Exception retryEx)
                     {
-                        _logger.LogError(retryEx, "Error during retry of model cost update with ID {CostId}", modelCost.Id);
+                        _logger.LogError(retryEx, "Error during retry of model cost update with ID {CostId}", LogSanitizer.SanitizeObject(modelCost.Id));
                         throw;
                     }
                 }
@@ -393,14 +394,14 @@ namespace ConduitLLM.Configuration.Repositories
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
                     _logger.LogError(ex, "Transaction rolled back while updating model cost with ID {CostId}",
-                        modelCost.Id);
+                        LogSanitizer.SanitizeObject(modelCost.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating model cost with ID {CostId}",
-                    modelCost.Id);
+                    LogSanitizer.SanitizeObject(modelCost.Id));
                 throw;
             }
         }
@@ -436,13 +437,13 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Transaction rolled back while deleting model cost with ID {CostId}", id);
+                    _logger.LogError(ex, "Transaction rolled back while deleting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {CostId}", id);
+                _logger.LogError(ex, "Error deleting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }

@@ -53,7 +53,7 @@ namespace ConduitLLM.Core.Data
             // If DATABASE_URL exists but doesn't match expected prefix, log and continue to SQLite fallback
             if (!string.IsNullOrEmpty(databaseUrl))
             {
-                logAction($"[DB] Invalid DATABASE_URL prefix: {databaseUrl}. Falling back to SQLite.");
+                logAction("[DB] Invalid DATABASE_URL prefix. Falling back to SQLite.");
             }
 
             // Check for custom SQLite path

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -45,7 +46,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential with ID {CredentialId}", id);
+                _logger.LogError(ex, "Error getting provider credential with ID {CredentialId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -67,7 +68,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting provider credential for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
                 throw;
             }
         }
@@ -117,13 +118,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating provider credential for provider '{ProviderName}'",
-                    providerCredential.ProviderName);
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderName));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating provider credential for provider '{ProviderName}'",
-                    providerCredential.ProviderName);
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderName));
                 throw;
             }
         }
@@ -153,7 +154,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateConcurrencyException ex)
             {
                 _logger.LogError(ex, "Concurrency error updating provider credential with ID {CredentialId}",
-                    providerCredential.Id);
+                    LogSanitizer.SanitizeObject(providerCredential.Id));
 
                 // Additional handling for concurrency issues could be implemented here
                 throw;
@@ -161,7 +162,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating provider credential with ID {CredentialId}",
-                    providerCredential.Id);
+                    LogSanitizer.SanitizeObject(providerCredential.Id));
                 throw;
             }
         }
@@ -185,7 +186,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider credential with ID {CredentialId}", id);
+                _logger.LogError(ex, "Error deleting provider credential with ID {CredentialId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }

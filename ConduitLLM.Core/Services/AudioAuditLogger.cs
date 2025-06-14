@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
@@ -180,7 +181,7 @@ namespace ConduitLLM.Core.Services
             {
                 // For now, just log the security notification
                 // In a real implementation, you would use a proper notification system
-                _logger.LogWarning(
+                _logger.LogWarningSecure(
                     "SECURITY NOTIFICATION - {Title}: {Message} | VirtualKey: {VirtualKey}",
                     title,
                     message,
@@ -190,7 +191,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(
+                _logger.LogErrorSecure(
                     ex,
                     "Failed to create security notification for key {VirtualKey}",
                     virtualKey);

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -84,7 +85,7 @@ namespace ConduitLLM.Http.Middleware
             var virtualKeyId = await _requestLogService.GetVirtualKeyIdFromKeyValueAsync(keyValue);
             if (virtualKeyId == null)
             {
-                _logger.LogWarning("Request with invalid virtual key: {KeyValue}", keyValue);
+                _logger.LogWarningSecure("Request with invalid virtual key: {KeyValue}", keyValue);
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync("Invalid virtual key");
                 return;

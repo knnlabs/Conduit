@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
@@ -148,9 +149,9 @@ namespace ConduitLLM.Http.Services
             session.FunctionCalls++;
             session.LastActivity = DateTime.UtcNow;
 
-            _logger.LogDebug(
-                "Tracked function call{FunctionName} for connection {ConnectionId}. Total calls: {TotalCalls}",
-                functionName != null ? $" '{functionName}'" : "", connectionId, session.FunctionCalls);
+            _logger.LogDebugSecure(
+                "Tracked function call {FunctionName} for connection {ConnectionId}. Total calls: {TotalCalls}",
+                functionName ?? "(unnamed)", connectionId, session.FunctionCalls);
 
             await Task.CompletedTask;
         }

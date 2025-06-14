@@ -12,6 +12,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
@@ -56,7 +57,7 @@ namespace ConduitLLM.Admin.Services
                 var existingCredential = await _providerCredentialRepository.GetByProviderNameAsync(providerCredential.ProviderName);
                 if (existingCredential != null)
                 {
-                    _logger.LogWarning("Provider credential already exists for provider {ProviderName}", providerCredential.ProviderName);
+                    _logger.LogWarningSecure("Provider credential already exists for provider {ProviderName}", providerCredential.ProviderName);
                     throw new InvalidOperationException("A provider credential for this provider already exists");
                 }
 
@@ -70,16 +71,16 @@ namespace ConduitLLM.Admin.Services
                 var createdCredential = await _providerCredentialRepository.GetByIdAsync(id);
                 if (createdCredential == null)
                 {
-                    _logger.LogError("Failed to retrieve newly created provider credential {ProviderId}", id);
+                    _logger.LogErrorSecure("Failed to retrieve newly created provider credential {ProviderId}", id);
                     throw new InvalidOperationException("Failed to retrieve newly created provider credential");
                 }
 
-                _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName);
+                _logger.LogInformationSecure("Created provider credential for '{ProviderName}'", providerCredential.ProviderName);
                 return createdCredential.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating provider credential for '{ProviderName}'", providerCredential.ProviderName);
+                _logger.LogErrorSecure(ex, "Error creating provider credential for '{ProviderName}'", providerCredential.ProviderName);
                 throw;
             }
         }
@@ -93,18 +94,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Deleted provider credential with ID {Id}", id);
+                    _logger.LogInformationSecure("Deleted provider credential with ID {Id}", id);
                 }
                 else
                 {
-                    _logger.LogWarning("Provider credential with ID {Id} not found for deletion", id);
+                    _logger.LogWarningSecure("Provider credential with ID {Id} not found for deletion", id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error deleting provider credential with ID {Id}", id);
                 throw;
             }
         }
@@ -119,7 +120,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all provider credentials");
+                _logger.LogErrorSecure(ex, "Error getting all provider credentials");
                 throw;
             }
         }
@@ -134,7 +135,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all provider names");
+                _logger.LogErrorSecure(ex, "Error getting all provider names");
                 throw;
             }
         }
@@ -149,7 +150,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error getting provider credential with ID {Id}", id);
                 throw;
             }
         }
@@ -169,7 +170,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", providerName);
+                _logger.LogErrorSecure(ex, "Error getting provider credential for '{ProviderName}'", providerName);
                 throw;
             }
         }
@@ -202,7 +203,7 @@ namespace ConduitLLM.Admin.Services
                     var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
                     if (dbCredential == null)
                     {
-                        _logger.LogWarning("Provider credential not found {ProviderId}", providerCredential.Id);
+                        _logger.LogWarningSecure("Provider credential not found {ProviderId}", providerCredential.Id);
                         result.Message = "Provider credential not found";
                         result.ErrorDetails = "Provider not found in database";
                         return result;
@@ -259,7 +260,7 @@ namespace ConduitLLM.Admin.Services
                     switch (providerName)
                     {
                         case "openrouter":
-                            _logger.LogInformation("Performing additional OpenRouter authentication check");
+                            _logger.LogInformationSecure("Performing additional OpenRouter authentication check");
 
                             var openRouterAuthSuccessful = await VerifyOpenRouterAuthenticationAsync(client, actualCredential);
 
@@ -271,12 +272,12 @@ namespace ConduitLLM.Admin.Services
                                 return result;
                             }
 
-                            _logger.LogInformation("OpenRouter authentication check passed");
+                            _logger.LogInformationSecure("OpenRouter authentication check passed");
                             break;
 
                         case "google":
                         case "gemini":
-                            _logger.LogInformation("Performing additional Google/Gemini authentication check");
+                            _logger.LogInformationSecure("Performing additional Google/Gemini authentication check");
 
                             var geminiAuthSuccessful = await VerifyGeminiAuthenticationAsync(client, actualCredential);
 
@@ -288,12 +289,12 @@ namespace ConduitLLM.Admin.Services
                                 return result;
                             }
 
-                            _logger.LogInformation("Google/Gemini authentication check passed");
+                            _logger.LogInformationSecure("Google/Gemini authentication check passed");
                             break;
 
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
-                            _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            _logger.LogInformationSecure("Skipping authentication check for Ollama (local service)");
                             break;
                     }
 
@@ -316,7 +317,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName);
+                _logger.LogErrorSecure(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName);
 
                 return new ProviderConnectionTestResultDto
                 {
@@ -343,7 +344,7 @@ namespace ConduitLLM.Admin.Services
                 var existingCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
                 if (existingCredential == null)
                 {
-                    _logger.LogWarning("Provider credential with ID {Id} not found", providerCredential.Id);
+                    _logger.LogWarningSecure("Provider credential with ID {Id} not found", providerCredential.Id);
                     return false;
                 }
 
@@ -355,18 +356,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Updated provider credential with ID {Id}", providerCredential.Id);
+                    _logger.LogInformationSecure("Updated provider credential with ID {Id}", providerCredential.Id);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to update provider credential with ID {Id}", providerCredential.Id);
+                    _logger.LogWarningSecure("Failed to update provider credential with ID {Id}", providerCredential.Id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider credential with ID {Id}", providerCredential.Id);
+                _logger.LogErrorSecure(ex, "Error updating provider credential with ID {Id}", providerCredential.Id);
                 throw;
             }
         }
@@ -444,31 +445,31 @@ namespace ConduitLLM.Admin.Services
 
                 try
                 {
-                    _logger.LogInformation("Checking OpenRouter auth endpoint");
+                    _logger.LogInformationSecure("Checking OpenRouter auth endpoint");
 
                     // Try the auth key endpoint first (if it exists)
                     var authResponse = await client.GetAsync(authCheckUrl);
 
-                    _logger.LogInformation("OpenRouter auth endpoint returned status {StatusCode}", (int)authResponse.StatusCode);
+                    _logger.LogInformationSecure("OpenRouter auth endpoint returned status {StatusCode}", (int)authResponse.StatusCode);
 
                     if (authResponse.StatusCode == HttpStatusCode.OK)
                     {
                         // If the auth endpoint exists and returns OK, we're authenticated
-                        _logger.LogInformation("OpenRouter authentication successful via auth endpoint");
+                        _logger.LogInformationSecure("OpenRouter authentication successful via auth endpoint");
                         return true;
                     }
                     else if (authResponse.StatusCode == HttpStatusCode.Unauthorized ||
                              authResponse.StatusCode == HttpStatusCode.Forbidden)
                     {
                         // Clear authentication failure
-                        _logger.LogWarning("OpenRouter authentication failed with status {StatusCode}", (int)authResponse.StatusCode);
+                        _logger.LogWarningSecure("OpenRouter authentication failed with status {StatusCode}", (int)authResponse.StatusCode);
                         return false;
                     }
                 }
                 catch (Exception)
                 {
                     // Auth endpoint might not exist, fall back to completion test
-                    _logger.LogInformation("OpenRouter auth endpoint check failed, falling back to completion test");
+                    _logger.LogInformationSecure("OpenRouter auth endpoint check failed, falling back to completion test");
                 }
 
                 // Fallback: Make a minimal generation request that will fail immediately if auth is invalid
@@ -511,7 +512,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error verifying OpenRouter authentication");
+                _logger.LogWarningSecure(ex, "Error verifying OpenRouter authentication");
                 // If we can't verify, assume it's invalid to be safe
                 return false;
             }
@@ -543,7 +544,7 @@ namespace ConduitLLM.Admin.Services
 
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    _logger.LogInformation("Google Gemini authentication successful");
+                    _logger.LogInformationSecure("Google Gemini authentication successful");
                     return true;
                 }
                 else if (response.StatusCode == HttpStatusCode.Unauthorized ||
@@ -551,18 +552,18 @@ namespace ConduitLLM.Admin.Services
                          response.StatusCode == HttpStatusCode.BadRequest) // Gemini returns 400 for invalid keys
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogWarning("Google Gemini authentication failed: {Status} - {Content}",
+                    _logger.LogWarningSecure("Google Gemini authentication failed: {Status} - {Content}",
                         response.StatusCode, responseContent);
                     return false;
                 }
 
                 // If we get another status, log it but assume auth is ok
-                _logger.LogInformation("Google Gemini returned unexpected status: {Status}", response.StatusCode);
+                _logger.LogInformationSecure("Google Gemini returned unexpected status: {Status}", response.StatusCode);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error verifying Google Gemini authentication");
+                _logger.LogWarningSecure(ex, "Error verifying Google Gemini authentication");
                 return false;
             }
         }

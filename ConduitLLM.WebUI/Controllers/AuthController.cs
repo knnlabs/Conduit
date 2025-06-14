@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 
@@ -74,7 +75,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 // If validation fails, log it
-                _logger.LogWarning("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress);
+                _logger.LogWarningSecure("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress?.ToString());
                 return Unauthorized(new { message = "Invalid master key" });
             }
             catch (Exception ex)

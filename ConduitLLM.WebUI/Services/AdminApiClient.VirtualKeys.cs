@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 
 using Microsoft.Extensions.Logging;
@@ -133,7 +134,7 @@ namespace ConduitLLM.WebUI.Services
 
             if (response == null)
             {
-                _logger.LogError("Failed to create virtual key with name: {Name}", request.KeyName);
+                _logger.LogErrorSecure("Failed to create virtual key with name: {Name}", request.KeyName);
                 throw new InvalidOperationException($"Failed to create virtual key: {request.KeyName}");
             }
 

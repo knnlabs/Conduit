@@ -8,6 +8,8 @@ using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -51,7 +53,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all model costs");
+                _logger.LogErrorSecure(ex, "Error getting all model costs");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -80,7 +82,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error getting model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -102,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
+                _logger.LogErrorSecure(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -131,7 +133,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", pattern);
+                _logger.LogErrorSecure(ex, "Error getting model cost with pattern '{Pattern}'", pattern);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -159,12 +161,12 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when creating model cost");
+                _logger.LogWarningSecure(ex, "Invalid operation when creating model cost");
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost");
+                _logger.LogErrorSecure(ex, "Error creating model cost");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -206,12 +208,12 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when updating model cost");
+                _logger.LogWarningSecure(ex, "Invalid operation when updating model cost");
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error updating model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -240,7 +242,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error deleting model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -271,7 +273,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost overview for period {StartDate} to {EndDate}",
+                _logger.LogErrorSecure(ex, "Error getting model cost overview for period {StartDate} to {EndDate}",
                     startDate, endDate);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
@@ -300,7 +302,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing model costs");
+                _logger.LogErrorSecure(ex, "Error importing model costs");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

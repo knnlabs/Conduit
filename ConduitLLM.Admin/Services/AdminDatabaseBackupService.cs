@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -54,7 +55,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Creating database backup");
+            _logger.LogInformationSecure("Creating database backup");
 
             // Get database provider
             var providerName = _dbContext.GetDatabase().ProviderName;
@@ -70,7 +71,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError(errorMessage);
+                _logger.LogErrorSecure(errorMessage);
                 return new BackupResult
                 {
                     Success = false,
@@ -80,7 +81,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating database backup");
+            _logger.LogErrorSecure(ex, "Error creating database backup");
             return new BackupResult
             {
                 Success = false,
@@ -94,7 +95,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Getting list of database backups");
+            _logger.LogInformationSecure("Getting list of database backups");
 
             var backupFiles = Directory.GetFiles(_backupDirectory, "*.zip")
                 .Select(f => new FileInfo(f))
@@ -114,7 +115,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting list of database backups");
+            _logger.LogErrorSecure(ex, "Error getting list of database backups");
             return new List<BackupInfo>();
         }
     }
@@ -124,7 +125,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Restoring database backup: {BackupId}", backupId);
+            _logger.LogInformationSecure("Restoring database backup: {BackupId}", backupId);
 
             // Find the backup file
             var backupFile = Directory.GetFiles(_backupDirectory, "*.zip")
@@ -133,7 +134,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             if (backupFile == null)
             {
                 var errorMessage = $"Backup file not found: {backupId}";
-                _logger.LogError(errorMessage);
+                _logger.LogErrorSecure(errorMessage);
                 return new RestoreResult
                 {
                     Success = false,
@@ -155,7 +156,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError(errorMessage);
+                _logger.LogErrorSecure(errorMessage);
                 return new RestoreResult
                 {
                     Success = false,
@@ -165,7 +166,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring database backup: {BackupId}", backupId);
+            _logger.LogErrorSecure(ex, "Error restoring database backup: {BackupId}", backupId);
             return new RestoreResult
             {
                 Success = false,
@@ -179,7 +180,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Downloading database backup: {BackupId}", backupId);
+            _logger.LogInformationSecure("Downloading database backup: {BackupId}", backupId);
 
             // Find the backup file
             var backupFile = Directory.GetFiles(_backupDirectory, "*.zip")
@@ -187,7 +188,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (backupFile == null)
             {
-                _logger.LogError("Backup file not found: {BackupId}", backupId);
+                _logger.LogErrorSecure("Backup file not found: {BackupId}", backupId);
                 return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
             }
 
@@ -201,7 +202,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId);
+            _logger.LogErrorSecure(ex, "Error downloading database backup: {BackupId}", backupId);
             return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
         }
     }
@@ -273,7 +274,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating SQLite database backup");
+            _logger.LogErrorSecure(ex, "Error creating SQLite database backup");
             return new BackupResult
             {
                 Success = false,
@@ -331,7 +332,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (pgDumpProcess.ExitCode != 0)
             {
-                _logger.LogError("pg_dump error: {Error}", error);
+                _logger.LogErrorSecure("pg_dump error: {Error}", error);
                 return new BackupResult
                 {
                     Success = false,
@@ -375,7 +376,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating PostgreSQL database backup");
+            _logger.LogErrorSecure(ex, "Error creating PostgreSQL database backup");
             return new BackupResult
             {
                 Success = false,
@@ -475,7 +476,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring SQLite database backup");
+            _logger.LogErrorSecure(ex, "Error restoring SQLite database backup");
             return new RestoreResult
             {
                 Success = false,
@@ -591,7 +592,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
                 if (psqlProcess.ExitCode != 0)
                 {
-                    _logger.LogError("psql error: {Error}", error);
+                    _logger.LogErrorSecure("psql error: {Error}", error);
                     return new RestoreResult
                     {
                         Success = false,
@@ -615,7 +616,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring PostgreSQL database backup");
+            _logger.LogErrorSecure(ex, "Error restoring PostgreSQL database backup");
             return new RestoreResult
             {
                 Success = false,

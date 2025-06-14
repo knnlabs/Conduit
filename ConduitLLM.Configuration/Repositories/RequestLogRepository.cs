@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -46,7 +47,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting request log with ID {LogId}", id);
+                _logger.LogError(ex, "Error getting request log with ID {LogId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -83,7 +84,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", virtualKeyId);
+                _logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", LogSanitizer.SanitizeObject(virtualKeyId));
                 throw;
             }
         }
@@ -103,7 +104,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting request logs for date range {StartDate} to {EndDate}",
-                    startDate, endDate);
+                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
                 throw;
             }
         }
@@ -127,7 +128,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting request logs for model {ModelName}", modelName);
+                _logger.LogError(ex, "Error getting request logs for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
                 throw;
             }
         }
@@ -149,7 +150,7 @@ namespace ConduitLLM.Configuration.Repositories
             const int maxPageSize = 1000;
             if (pageSize > maxPageSize)
             {
-                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", pageSize, maxPageSize);
+                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
                 pageSize = maxPageSize;
             }
 
@@ -173,7 +174,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting paginated request logs for page {PageNumber}, size {PageSize}",
-                    pageNumber, pageSize);
+                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
                 throw;
             }
         }
@@ -203,13 +204,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating request log for endpoint '{RequestPath}'",
-                    requestLog.RequestPath ?? "unknown");
+                    LogSanitizer.SanitizeObject(requestLog.RequestPath ?? "unknown"));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating request log for endpoint '{RequestPath}'",
-                    requestLog.RequestPath ?? "unknown");
+                    LogSanitizer.SanitizeObject(requestLog.RequestPath ?? "unknown"));
                 throw;
             }
         }
@@ -234,7 +235,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex, "Concurrency error updating request log with ID {LogId}", requestLog.Id);
+                _logger.LogError(ex, "Concurrency error updating request log with ID {LogId}", LogSanitizer.SanitizeObject(requestLog.Id));
 
                 // Handle concurrency issues by reloading and reapplying changes if needed
                 try
@@ -255,14 +256,14 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 catch (Exception retryEx)
                 {
-                    _logger.LogError(retryEx, "Error during retry of request log update with ID {LogId}", requestLog.Id);
+                    _logger.LogError(retryEx, "Error during retry of request log update with ID {LogId}", LogSanitizer.SanitizeObject(requestLog.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating request log with ID {LogId}",
-                    requestLog.Id);
+                    LogSanitizer.SanitizeObject(requestLog.Id));
                 throw;
             }
         }
@@ -286,7 +287,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting request log with ID {LogId}", id);
+                _logger.LogError(ex, "Error deleting request log with ID {LogId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -339,7 +340,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting usage statistics for date range {StartDate} to {EndDate}",
-                    startDate, endDate);
+                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
                 throw;
             }
         }

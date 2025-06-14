@@ -7,6 +7,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
@@ -49,7 +50,7 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformation(
+            _logger.LogInformationSecure(
                 "Getting logs with filters - Page: {Page}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, HasModel: {HasModel}, HasVirtualKeyId: {HasVirtualKeyId}, HasStatus: {HasStatus}",
                 page, pageSize, startDate, endDate, !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
 
@@ -108,7 +109,7 @@ public class AdminLogService : IAdminLogService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting logs");
+            _logger.LogErrorSecure(ex, "Error getting logs");
 
             // Return empty result on error
             return new PagedResult<LogRequestDto>
@@ -127,12 +128,12 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformation("Getting log with ID: {LogId}", id);
+            _logger.LogInformationSecure("Getting log with ID: {LogId}", id);
 
             var log = await _requestLogRepository.GetByIdAsync(id);
             if (log == null)
             {
-                _logger.LogWarning("Log with ID {LogId} not found", id);
+                _logger.LogWarningSecure("Log with ID {LogId} not found", id);
                 return null;
             }
 
@@ -140,7 +141,7 @@ public class AdminLogService : IAdminLogService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting log with ID {LogId}", id);
+            _logger.LogErrorSecure(ex, "Error getting log with ID {LogId}", id);
             return null;
         }
     }
@@ -153,7 +154,7 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformation("Getting logs summary with timeframe: {Timeframe}", timeframe);
+            _logger.LogInformationSecure("Getting logs summary with timeframe: {Timeframe}", timeframe);
 
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch
@@ -265,7 +266,7 @@ public class AdminLogService : IAdminLogService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting logs summary");
+            _logger.LogErrorSecure(ex, "Error getting logs summary");
 
             // Return empty summary on error
             return new LogsSummaryDto
@@ -383,7 +384,7 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformation("Getting distinct models from request logs");
+            _logger.LogInformationSecure("Getting distinct models from request logs");
 
             // Get all logs to extract distinct model names
             var logs = await _requestLogRepository.GetAllAsync();
@@ -395,12 +396,12 @@ public class AdminLogService : IAdminLogService
                 .OrderBy(m => m)
                 .ToList();
 
-            _logger.LogInformation("Found {Count} distinct models", distinctModels.Count);
+            _logger.LogInformationSecure("Found {Count} distinct models", distinctModels.Count);
             return distinctModels;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting distinct models");
+            _logger.LogErrorSecure(ex, "Error getting distinct models");
             return Enumerable.Empty<string>();
         }
     }
