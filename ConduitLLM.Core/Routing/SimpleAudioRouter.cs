@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing
 {
@@ -49,7 +51,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get available providers
                 var providers = GetAvailableProviders();
-                
+
                 // Find providers that support transcription
                 var transcriptionProviders = providers
                     .Where(p => _capabilityDetector.SupportsTranscription(p))
@@ -70,7 +72,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get the client
                 var client = _clientFactory.GetClientByProvider(selectedProvider);
-                
+
                 // Verify it implements audio interface
                 if (client is IAudioTranscriptionClient audioClient)
                 {
@@ -105,7 +107,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get available providers
                 var providers = GetAvailableProviders();
-                
+
                 // Find providers that support TTS and the requested voice
                 var ttsProviders = providers
                     .Where(p => _capabilityDetector.SupportsTextToSpeech(p))
@@ -127,7 +129,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get the client
                 var client = _clientFactory.GetClientByProvider(selectedProvider);
-                
+
                 // Verify it implements audio interface
                 if (client is ITextToSpeechClient ttsClient)
                 {
@@ -162,7 +164,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get available providers
                 var providers = GetAvailableProviders();
-                
+
                 // Find providers that support real-time
                 var realtimeProviders = providers
                     .Where(p => _capabilityDetector.SupportsRealtime(p))
@@ -179,7 +181,7 @@ namespace ConduitLLM.Core.Routing
 
                 // Get the client
                 var client = _clientFactory.GetClientByProvider(selectedProvider);
-                
+
                 // Verify it implements real-time interface
                 if (client is IRealtimeAudioClient realtimeClient)
                 {
@@ -204,7 +206,7 @@ namespace ConduitLLM.Core.Routing
             var providers = GetAvailableProviders()
                 .Where(p => _capabilityDetector.SupportsTranscription(p))
                 .ToList();
-            
+
             return Task.FromResult(providers);
         }
 
@@ -215,7 +217,7 @@ namespace ConduitLLM.Core.Routing
             var providers = GetAvailableProviders()
                 .Where(p => _capabilityDetector.SupportsTextToSpeech(p))
                 .ToList();
-            
+
             return Task.FromResult(providers);
         }
 
@@ -226,7 +228,7 @@ namespace ConduitLLM.Core.Routing
             var providers = GetAvailableProviders()
                 .Where(p => _capabilityDetector.SupportsRealtime(p))
                 .ToList();
-            
+
             return Task.FromResult(providers);
         }
 

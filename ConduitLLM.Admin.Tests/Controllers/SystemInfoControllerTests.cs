@@ -1,13 +1,17 @@
-using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Admin.Interfaces;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Xunit;
+
+using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using Xunit;
 
 namespace ConduitLLM.Admin.Tests.Controllers
 {
@@ -65,7 +69,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
             var returnValue = Assert.IsType<SystemInfoDto>(okResult.Value);
-            
+
             Assert.Equal("1.0.0", returnValue.Version.AppVersion);
             Assert.Equal(new DateTime(2023, 5, 1), returnValue.Version.BuildDate);
             Assert.Equal("Linux 5.10.0", returnValue.OperatingSystem.Description);
@@ -133,7 +137,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
             var returnValue = Assert.IsType<HealthStatusDto>(okResult.Value);
-            
+
             Assert.Equal("Healthy", returnValue.Status);
             Assert.Equal(2, returnValue.Components.Count);
             Assert.True(returnValue.Components.ContainsKey("Database"));

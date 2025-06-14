@@ -1,0 +1,249 @@
+# Prometheus alerting rules for Conduit Audio Services
+groups:
+  - name: audio_service_alerts
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: AudioServiceHighErrorRate
+        expr: |
+          (
+            sum(rate(audio_operations_failed_total[5m])) /
+            sum(rate(audio_operations_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High error rate in audio service"
+          description: "Audio service error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-service-errors"
+
+      - alert: AudioServiceCriticalErrorRate
+        expr: |
+          (
+            sum(rate(audio_operations_failed_total[5m])) /
+            sum(rate(audio_operations_total[5m]))
+          ) > 0.15
+        for: 3m
+        labels:
+          severity: critical
+          service: audio
+          pager: true
+        annotations:
+          summary: "Critical error rate in audio service"
+          description: "Audio service error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-service-errors"
+
+      # High Latency Alerts
+      - alert: AudioServiceHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(audio_request_duration_seconds_bucket[5m])) by (le, operation_type)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High latency in audio service"
+          description: "P95 latency for {{ $labels.operation_type }} is {{ $value }}s"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-service-latency"
+
+      - alert: AudioServiceCriticalLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(audio_request_duration_seconds_bucket[5m])) by (le, operation_type)
+          ) > 10
+        for: 3m
+        labels:
+          severity: critical
+          service: audio
+          pager: true
+        annotations:
+          summary: "Critical latency in audio service"
+          description: "P95 latency for {{ $labels.operation_type }} is {{ $value }}s"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-service-latency"
+
+      # Connection Pool Alerts
+      - alert: AudioConnectionPoolExhausted
+        expr: |
+          audio_connection_pool_exhausted_total > 10
+        for: 2m
+        labels:
+          severity: critical
+          service: audio
+          pager: true
+        annotations:
+          summary: "Audio connection pool is exhausted"
+          description: "Connection pool has been exhausted {{ $value }} times"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-connection-pool"
+
+      - alert: AudioConnectionPoolHighUtilization
+        expr: |
+          (
+            audio_connection_pool_active_connections /
+            audio_connection_pool_total_connections
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High connection pool utilization"
+          description: "Connection pool is {{ $value | humanizePercentage }} utilized"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-connection-pool"
+
+      # Provider Health Alerts
+      - alert: AudioProviderDown
+        expr: |
+          up{job="audio-provider-health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: audio
+          pager: true
+        annotations:
+          summary: "Audio provider {{ $labels.provider }} is down"
+          description: "Provider {{ $labels.provider }} has been down for 2 minutes"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-provider-down"
+
+      - alert: AudioProviderDegraded
+        expr: |
+          audio_provider_health_status{status="degraded"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "Audio provider {{ $labels.provider }} is degraded"
+          description: "Provider {{ $labels.provider }} has been in degraded state for 10 minutes"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-provider-degraded"
+
+      # Cache Performance Alerts
+      - alert: AudioCacheLowHitRate
+        expr: |
+          (
+            sum(rate(audio_cache_hits_total[5m])) /
+            sum(rate(audio_cache_requests_total[5m]))
+          ) < 0.3
+        for: 10m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "Low audio cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-cache-performance"
+
+      # Resource Usage Alerts
+      - alert: AudioServiceHighMemoryUsage
+        expr: |
+          audio_memory_usage_bytes / audio_memory_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High memory usage in audio service"
+          description: "Memory usage is {{ $value | humanizePercentage }} of limit"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-memory-usage"
+
+      - alert: AudioServiceHighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="audio-service"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High CPU usage in audio service"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-cpu-usage"
+
+      # Quality Alerts
+      - alert: AudioTranscriptionLowConfidence
+        expr: |
+          audio_transcription_confidence_score < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "Low transcription confidence scores"
+          description: "Average confidence score is {{ $value }} for provider {{ $labels.provider }}"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-quality-issues"
+
+      # Rate Limiting Alerts
+      - alert: AudioServiceRateLimitExceeded
+        expr: |
+          sum(rate(audio_rate_limit_exceeded_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High rate of rate limit violations"
+          description: "{{ $value }} requests per second are being rate limited"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-rate-limiting"
+
+      # Realtime Session Alerts
+      - alert: AudioRealtimeSessionsHigh
+        expr: |
+          audio_realtime_active_sessions > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: audio
+        annotations:
+          summary: "High number of active realtime sessions"
+          description: "{{ $value }} active realtime sessions"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-realtime-sessions"
+
+      - alert: AudioRealtimeSessionFailures
+        expr: |
+          rate(audio_realtime_session_errors_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          service: audio
+          pager: true
+        annotations:
+          summary: "High rate of realtime session failures"
+          description: "{{ $value }} realtime session failures per second"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-realtime-errors"
+
+  - name: audio_sla_alerts
+    interval: 60s
+    rules:
+      # SLA Violation Alerts
+      - alert: AudioServiceSLAViolation
+        expr: |
+          (
+            sum(rate(audio_operations_total[1h])) -
+            sum(rate(audio_operations_failed_total[1h]))
+          ) / sum(rate(audio_operations_total[1h])) < 0.995
+        for: 5m
+        labels:
+          severity: critical
+          service: audio
+          sla: true
+          pager: true
+        annotations:
+          summary: "Audio service SLA violation"
+          description: "Service availability is {{ $value | humanizePercentage }}, below 99.5% SLA"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-sla-violation"
+
+      # Capacity Planning Alerts
+      - alert: AudioServiceCapacityWarning
+        expr: |
+          predict_linear(audio_operations_total[1h], 3600) > 100000
+        for: 10m
+        labels:
+          severity: info
+          service: audio
+          capacity: true
+        annotations:
+          summary: "Audio service approaching capacity limits"
+          description: "Predicted to reach {{ $value }} operations in the next hour"
+          runbook_url: "https://docs.conduit.io/runbooks/audio-capacity-planning"

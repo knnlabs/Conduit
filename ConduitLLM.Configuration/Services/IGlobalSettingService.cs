@@ -13,7 +13,7 @@ namespace ConduitLLM.Configuration.Services
         /// <param name="key">The setting key</param>
         /// <returns>The setting value, or null if not found</returns>
         Task<string?> GetSettingAsync(string key);
-        
+
         /// <summary>
         /// Sets a setting value
         /// </summary>

@@ -44,7 +44,7 @@ public class NotificationService
         }
 
         _logger.LogInformation("New notification: [{Type}] {Message}", type, message);
-        
+
         // Trigger the notification event for real-time updates
         OnNotification?.Invoke();
     }
@@ -54,10 +54,10 @@ public class NotificationService
     /// </summary>
     public void AddKeyValidationFailure(string keyPrefix, string reason, string? model = null)
     {
-        var details = string.IsNullOrEmpty(model) 
-            ? $"Validation failed: {reason}" 
+        var details = string.IsNullOrEmpty(model)
+            ? $"Validation failed: {reason}"
             : $"Validation failed for model '{model}': {reason}";
-            
+
         AddNotification(
             NotificationType.VirtualKeyValidation,
             $"Virtual Key validation failed: {reason}",

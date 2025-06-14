@@ -18,15 +18,15 @@ namespace ConduitLLM.Configuration.Services
         private readonly INotificationRepository _notificationRepository;
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly ILogger<NotificationService> _logger;
-        
+
         // Budget warning thresholds
         private const decimal WarningThreshold = 0.75m; // 75%
         private const decimal CriticalThreshold = 0.90m; // 90%
-        
+
         // Expiration warning thresholds in days
         private const int ExpirationWarningDays = 7;
         private const int ExpirationCriticalDays = 1;
-        
+
         /// <summary>
         /// Initializes a new instance of the NotificationService
         /// </summary>
@@ -42,7 +42,7 @@ namespace ConduitLLM.Configuration.Services
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <summary>
         /// Checks all virtual keys for budget limits and creates notifications as needed
         /// </summary>
@@ -53,12 +53,12 @@ namespace ConduitLLM.Configuration.Services
                 var keys = (await _virtualKeyRepository.GetAllAsync())
                     .Where(k => k.IsEnabled && k.MaxBudget.HasValue && k.MaxBudget > 0)
                     .ToList();
-                    
+
                 foreach (var key in keys)
                 {
                     // Safely access MaxBudget since we've filtered for non-null values above
                     decimal usagePercentage = key.CurrentSpend / key.MaxBudget!.Value;
-                    
+
                     // Check if we should notify based on threshold
                     if (usagePercentage >= CriticalThreshold)
                     {
@@ -76,7 +76,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Checks all virtual keys for approaching expiration and creates notifications as needed
         /// </summary>
@@ -86,17 +86,17 @@ namespace ConduitLLM.Configuration.Services
             {
                 var now = DateTime.UtcNow;
                 var warningDate = now.AddDays(ExpirationWarningDays);
-                
+
                 var keys = (await _virtualKeyRepository.GetAllAsync())
                     .Where(k => k.IsEnabled && k.ExpiresAt.HasValue)
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt <= warningDate)
                     .ToList();
-                    
+
                 foreach (var key in keys)
                 {
                     // ExpiresAt is guaranteed to have a value based on the query above
                     DateTime expiryDate = key.ExpiresAt!.Value;
-                    
+
                     if (expiryDate <= now)
                     {
                         // Already expired
@@ -122,7 +122,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Creates a budget warning notification for a virtual key
         /// </summary>
@@ -137,16 +137,16 @@ namespace ConduitLLM.Configuration.Services
                     .Where(n => n.Type == NotificationType.BudgetWarning)
                     .Where(n => !n.IsRead)
                     .FirstOrDefault();
-                    
+
                 string message = $"Virtual key '{key.KeyName}' has reached {percentage:P0} of its budget ({key.CurrentSpend:C2} / {key.MaxBudget:C2})";
-                    
+
                 if (existingNotification != null)
                 {
                     // Update existing notification
                     existingNotification.Message = message;
                     existingNotification.Severity = severity;
                     existingNotification.CreatedAt = DateTime.UtcNow;
-                    
+
                     await _notificationRepository.UpdateAsync(existingNotification);
                 }
                 else
@@ -161,7 +161,7 @@ namespace ConduitLLM.Configuration.Services
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
                     };
-                    
+
                     await _notificationRepository.CreateAsync(notification);
                 }
             }
@@ -171,7 +171,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Creates an expiration warning notification for a virtual key
         /// </summary>
@@ -186,7 +186,7 @@ namespace ConduitLLM.Configuration.Services
                     .Where(n => n.Type == NotificationType.ExpirationWarning)
                     .Where(n => !n.IsRead)
                     .FirstOrDefault();
-                    
+
                 string message;
                 if (daysLeft <= 0)
                 {
@@ -200,14 +200,14 @@ namespace ConduitLLM.Configuration.Services
                 {
                     message = $"Virtual key '{key.KeyName}' will expire in {(int)daysLeft} day{((int)daysLeft != 1 ? "s" : "")}";
                 }
-                    
+
                 if (existingNotification != null)
                 {
                     // Update existing notification
                     existingNotification.Message = message;
                     existingNotification.Severity = severity;
                     existingNotification.CreatedAt = DateTime.UtcNow;
-                    
+
                     await _notificationRepository.UpdateAsync(existingNotification);
                 }
                 else
@@ -222,7 +222,7 @@ namespace ConduitLLM.Configuration.Services
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
                     };
-                    
+
                     await _notificationRepository.CreateAsync(notification);
                 }
             }
@@ -232,7 +232,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Marks a notification as read
         /// </summary>
@@ -249,7 +249,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Marks all notifications for a virtual key as read
         /// </summary>
@@ -261,7 +261,7 @@ namespace ConduitLLM.Configuration.Services
                 var notifications = (await _notificationRepository.GetAllAsync())
                     .Where(n => n.VirtualKeyId == virtualKeyId && !n.IsRead)
                     .ToList();
-                    
+
                 foreach (var notification in notifications)
                 {
                     notification.IsRead = true;
@@ -274,7 +274,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Gets all unread notifications for a virtual key
         /// </summary>

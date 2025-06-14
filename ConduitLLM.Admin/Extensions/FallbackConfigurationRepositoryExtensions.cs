@@ -1,10 +1,11 @@
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
-using ConduitLLM.Core.Models.Routing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Models.Routing;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -32,10 +33,10 @@ namespace ConduitLLM.Admin.Extensions
                     .Select(m => m.ModelDeploymentId.ToString())
                     .ToList()
             };
-            
+
             return model;
         }
-        
+
         /// <summary>
         /// Saves a FallbackConfiguration model to the repository
         /// </summary>
@@ -43,7 +44,7 @@ namespace ConduitLLM.Admin.Extensions
         /// <param name="config">The configuration to save</param>
         /// <returns>A task representing the asynchronous operation</returns>
         public static async Task SaveAsync(
-            this IFallbackConfigurationRepository repository, 
+            this IFallbackConfigurationRepository repository,
             FallbackConfiguration config)
         {
             // Parse the GUID from the string
@@ -51,11 +52,11 @@ namespace ConduitLLM.Admin.Extensions
             {
                 throw new ArgumentException($"Invalid primary model ID: {config.PrimaryModelDeploymentId}");
             }
-            
+
             // Check if a configuration for this primary model already exists
             var allConfigs = await repository.GetAllAsync();
             var existingConfig = allConfigs.FirstOrDefault(c => c.PrimaryModelDeploymentId == primaryModelGuid);
-            
+
             if (existingConfig == null)
             {
                 // Create new configuration
@@ -65,7 +66,7 @@ namespace ConduitLLM.Admin.Extensions
                     IsActive = true,
                     Name = $"Fallback for {config.PrimaryModelDeploymentId}"
                 };
-                
+
                 await repository.CreateAsync(entity);
             }
             else
@@ -73,7 +74,7 @@ namespace ConduitLLM.Admin.Extensions
                 // Update existing configuration
                 await repository.UpdateAsync(existingConfig);
             }
-            
+
             // Note: This is a simplified implementation - in a real application,
             // you would also need to handle the fallback mappings
         }

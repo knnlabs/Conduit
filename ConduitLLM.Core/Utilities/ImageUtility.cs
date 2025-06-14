@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -16,7 +16,7 @@ namespace ConduitLLM.Core.Utilities
     {
         // Constants for image validation
         private const int MaxImageFileSizeBytes = 20 * 1024 * 1024; // 20MB default
-        
+
         private static readonly Dictionary<string, byte[]> ImageSignatures = new Dictionary<string, byte[]>
         {
             ["image/jpeg"] = new byte[] { 0xFF, 0xD8, 0xFF },
@@ -25,7 +25,7 @@ namespace ConduitLLM.Core.Utilities
             ["image/webp"] = Encoding.ASCII.GetBytes("RIFF\0\0\0\0WEBP"),
             ["image/bmp"] = new byte[] { 0x42, 0x4D }
         };
-        
+
         private static readonly string[] SupportedMimeTypes = new[]
         {
             "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
@@ -41,21 +41,21 @@ namespace ConduitLLM.Core.Utilities
         public static bool ValidateImage(byte[] imageData, out string errorMessage, int maxSizeBytes = MaxImageFileSizeBytes)
         {
             errorMessage = string.Empty;
-            
+
             // Check if image data is null or empty
             if (imageData == null || imageData.Length == 0)
             {
                 errorMessage = "Image data is null or empty";
                 return false;
             }
-            
+
             // Check size limit
             if (imageData.Length > maxSizeBytes)
             {
                 errorMessage = $"Image size ({imageData.Length / (1024 * 1024)}MB) exceeds the maximum allowed size ({maxSizeBytes / (1024 * 1024)}MB)";
                 return false;
             }
-            
+
             // Check format signature
             string? detectedMimeType = DetectMimeType(imageData);
             if (detectedMimeType == null)
@@ -63,10 +63,10 @@ namespace ConduitLLM.Core.Utilities
                 errorMessage = "Unknown or unsupported image format";
                 return false;
             }
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// Detects the MIME type of an image from its binary data by examining file signatures.
         /// </summary>
@@ -76,7 +76,7 @@ namespace ConduitLLM.Core.Utilities
         {
             if (imageData == null || imageData.Length < 2)
                 return null;
-                
+
             foreach (var signature in ImageSignatures)
             {
                 if (StartsWithSignature(imageData, signature.Value))
@@ -84,10 +84,10 @@ namespace ConduitLLM.Core.Utilities
                     return signature.Key;
                 }
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Converts image bytes to a base64 data URL with the correct MIME type.
         /// </summary>
@@ -98,10 +98,10 @@ namespace ConduitLLM.Core.Utilities
         {
             // Auto-detect MIME type if not provided
             mimeType ??= DetectMimeType(imageData) ?? "application/octet-stream";
-            
+
             return $"data:{mimeType};base64,{Convert.ToBase64String(imageData)}";
         }
-        
+
         /// <summary>
         /// Calculates a hash of the image data for caching or comparison purposes.
         /// </summary>
@@ -113,7 +113,7 @@ namespace ConduitLLM.Core.Utilities
             byte[] hashBytes = sha256.ComputeHash(imageData);
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
-        
+
         /// <summary>
         /// Validates a URL for security purposes.
         /// </summary>
@@ -124,19 +124,19 @@ namespace ConduitLLM.Core.Utilities
         {
             if (string.IsNullOrEmpty(url))
                 return false;
-                
+
             // Data URLs are always valid
             if (url.StartsWith("data:image/"))
                 return true;
-                
+
             // Check if it's a valid URI
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
                 return false;
-                
+
             // Only allow HTTP and HTTPS
             if (uri.Scheme != "http" && uri.Scheme != "https")
                 return false;
-                
+
             // If allowed domains are specified, check against them
             if (allowedDomains != null)
             {
@@ -149,14 +149,14 @@ namespace ConduitLLM.Core.Utilities
                         break;
                     }
                 }
-                
+
                 if (!domainAllowed)
                     return false;
             }
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// Extracts image data from a base64 data URL.
         /// </summary>
@@ -166,27 +166,27 @@ namespace ConduitLLM.Core.Utilities
         public static byte[]? ExtractImageDataFromDataUrl(string dataUrl, out string? mimeType)
         {
             mimeType = null;
-            
+
             if (!dataUrl.StartsWith("data:"))
                 return null;
-                
+
             int mimeTypeStart = dataUrl.IndexOf(':') + 1;
             int mimeTypeEnd = dataUrl.IndexOf(';', mimeTypeStart);
-            
+
             if (mimeTypeEnd < 0)
                 return null;
-                
+
             mimeType = dataUrl.Substring(mimeTypeStart, mimeTypeEnd - mimeTypeStart);
-            
+
             if (!mimeType.StartsWith("image/"))
                 return null;
-                
+
             if (!dataUrl.Substring(mimeTypeEnd + 1).StartsWith("base64,"))
                 return null;
-                
+
             int dataStart = dataUrl.IndexOf("base64,") + 7;
             string base64Data = dataUrl.Substring(dataStart);
-            
+
             try
             {
                 return Convert.FromBase64String(base64Data);
@@ -196,7 +196,7 @@ namespace ConduitLLM.Core.Utilities
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Downloads an image from a URL asynchronously.
         /// </summary>
@@ -206,19 +206,19 @@ namespace ConduitLLM.Core.Utilities
         {
             if (string.IsNullOrEmpty(url))
                 throw new ArgumentException("URL cannot be null or empty", nameof(url));
-                
+
             if (url.StartsWith("data:"))
             {
                 byte[]? imageData = ExtractImageDataFromDataUrl(url, out _);
                 if (imageData == null)
                     throw new ArgumentException("Invalid data URL format", nameof(url));
-                    
+
                 return imageData;
             }
-            
+
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(30); // Set a reasonable timeout
-            
+
             try
             {
                 return await httpClient.GetByteArrayAsync(url);
@@ -228,7 +228,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new IOException($"Failed to download image from URL: {ex.Message}", ex);
             }
         }
-        
+
         /// <summary>
         /// Determines if two byte arrays have the same contents.
         /// </summary>
@@ -236,13 +236,13 @@ namespace ConduitLLM.Core.Utilities
         {
             if (data.Length < signature.Length)
                 return false;
-                
+
             for (int i = 0; i < signature.Length; i++)
             {
                 if (signature[i] != 0 && data[i] != signature[i])
                     return false;
             }
-            
+
             return true;
         }
     }

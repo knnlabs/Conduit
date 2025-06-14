@@ -1,8 +1,12 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Core.Extensions;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -55,12 +59,12 @@ public class VirtualKeysController : ControllerBase
         }
         catch (DbUpdateException dbEx)
         {
-            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", request.KeyName);
+            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", S(request.KeyName));
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while saving the key. It might violate a unique constraint (e.g., duplicate name)." });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", request.KeyName);
+            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", S(request.KeyName));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -110,7 +114,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -147,7 +151,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -177,7 +181,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -207,7 +211,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -270,7 +274,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating spend for virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error updating spend for virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -300,7 +304,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking budget for virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error checking budget for virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -328,8 +332,38 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting validation info for virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error getting validation info for virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
+    /// <summary>
+    /// Performs maintenance tasks on all virtual keys
+    /// </summary>
+    /// <remarks>
+    /// This endpoint performs the following maintenance tasks:
+    /// - Resets budgets for keys with expired budget periods (daily/monthly)
+    /// - Disables keys that have passed their expiration date
+    /// This is typically called by a background service.
+    /// </remarks>
+    /// <returns>No content if successful</returns>
+    [HttpPost("maintenance")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> PerformMaintenance()
+    {
+        try
+        {
+            await _virtualKeyService.PerformMaintenanceAsync();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error performing virtual key maintenance");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred during maintenance.");
         }
     }
 }

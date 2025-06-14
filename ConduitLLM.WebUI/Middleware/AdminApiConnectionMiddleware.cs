@@ -1,8 +1,10 @@
 using System;
 using System.Threading.Tasks;
+
+using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.Middleware
 {
@@ -39,7 +41,7 @@ namespace ConduitLLM.WebUI.Middleware
         {
             // Check if we're accessing an API endpoint or static file - skip health check for these
             var path = context.Request.Path.ToString().ToLowerInvariant();
-            if (path.StartsWith("/api/") || 
+            if (path.StartsWith("/api/") ||
                 path.Contains(".") || // Static files usually have extensions
                 path.StartsWith("/_") || // Blazor resources
                 path == "/favicon.ico")
@@ -54,13 +56,13 @@ namespace ConduitLLM.WebUI.Middleware
             {
                 // Get the health service connection details
                 var connectionDetails = healthService.GetConnectionDetails();
-                var hasAuthError = connectionDetails.LastErrorMessage.Contains("authentication") || 
+                var hasAuthError = connectionDetails.LastErrorMessage.Contains("authentication") ||
                                  connectionDetails.LastErrorMessage.Contains("Unauthorized") ||
                                  connectionDetails.LastErrorMessage.Contains("Forbidden");
-                
+
                 // Store the original path so we can redirect back after the connection is restored
                 context.Items["OriginalPath"] = context.Request.Path;
-                
+
                 // Redirect to appropriate error page based on the error type
                 if (hasAuthError)
                 {

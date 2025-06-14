@@ -1,8 +1,10 @@
-using ConduitLLM.WebUI.Interfaces;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.WebUI.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Tests.Services.Stubs
 {
@@ -13,7 +15,7 @@ namespace ConduitLLM.Tests.Services.Stubs
     {
         private readonly IAdminApiClient _adminApiClient;
         private readonly ILogger<StubDatabaseBackupServiceAdapter> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the StubDatabaseBackupServiceAdapter class
         /// </summary>
@@ -26,31 +28,31 @@ namespace ConduitLLM.Tests.Services.Stubs
             _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <inheritdoc />
         public Task<byte[]> CreateBackupAsync()
         {
             return Task.FromResult(new byte[0]);
         }
-        
+
         /// <inheritdoc />
         public Task<bool> RestoreFromBackupAsync(byte[] backupData)
         {
             return Task.FromResult(false);
         }
-        
+
         /// <inheritdoc />
         public Task<bool> ValidateBackupAsync(byte[] backupData)
         {
             return Task.FromResult(backupData.Length > 0);
         }
-        
+
         /// <inheritdoc />
         public string GetDatabaseProvider()
         {
             return "sqlite";
         }
-        
+
         /// <summary>
         /// Backup database to a file path (for tests)
         /// </summary>
@@ -67,7 +69,7 @@ namespace ConduitLLM.Tests.Services.Stubs
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Restore database from a file path (for tests)
         /// </summary>
@@ -77,7 +79,7 @@ namespace ConduitLLM.Tests.Services.Stubs
             {
                 // Add await to make this properly async
                 await Task.CompletedTask;
-                
+
                 // Stub implementation 
                 return false; // Currently not implemented in the Admin API
             }
@@ -87,7 +89,7 @@ namespace ConduitLLM.Tests.Services.Stubs
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Get available database backups (for tests)
         /// </summary>
@@ -97,7 +99,7 @@ namespace ConduitLLM.Tests.Services.Stubs
             {
                 // Add await to make this properly async
                 await Task.CompletedTask;
-                
+
                 // Return empty list as this functionality is not directly exposed by the Admin API
                 return new List<string>();
             }

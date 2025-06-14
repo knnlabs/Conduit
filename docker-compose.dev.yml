@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  webui-dev:
+    build:
+      context: .
+      dockerfile: ConduitLLM.WebUI/Dockerfile
+      target: build  # Stop at build stage for development
+    container_name: conduit-webui-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - DOTNET_USE_POLLING_FILE_WATCHER=true  # Enable file watching in container
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft.AspNetCore.Components=Debug
+      - DetailedErrors=true
+      - AdminApiUrl=http://admin:8080  # Point to admin container
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
+      - ConnectionStrings__RedisConnection=redis:6379
+    volumes:
+      # Mount source code for hot reload
+      - ./ConduitLLM.WebUI:/src/ConduitLLM.WebUI
+      - ./ConduitLLM.Configuration:/src/ConduitLLM.Configuration
+      - ./ConduitLLM.Core:/src/ConduitLLM.Core
+      - ./ConduitLLM.Providers:/src/ConduitLLM.Providers
+      # Exclude bin and obj directories
+      - /src/ConduitLLM.WebUI/bin
+      - /src/ConduitLLM.WebUI/obj
+      - /src/ConduitLLM.Configuration/bin
+      - /src/ConduitLLM.Configuration/obj
+      - /src/ConduitLLM.Core/bin
+      - /src/ConduitLLM.Core/obj
+      - /src/ConduitLLM.Providers/bin
+      - /src/ConduitLLM.Providers/obj
+    ports:
+      - "5001:8080"
+      - "5051:5051"  # Remote debugger port
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    command: ["dotnet", "watch", "run", "--project", "ConduitLLM.WebUI", "--no-restore"]
+    stdin_open: true
+    tty: true
+    networks:
+      - conduit-network
+
+  # Include other services from main docker-compose.yml
+  postgres:
+    image: postgres:16
+    container_name: conduit-postgres-dev
+    environment:
+      POSTGRES_USER: conduitllm
+      POSTGRES_PASSWORD: conduitllm
+      POSTGRES_DB: conduitllm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conduitllm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conduit-network
+
+  redis:
+    image: redis:alpine
+    container_name: conduit-redis-dev
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conduit-network
+
+  admin:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Admin/Dockerfile
+    container_name: conduit-admin-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
+      - ConnectionStrings__RedisConnection=redis:6379
+      - MasterKey=${CONDUIT_MASTER_KEY:-development-key-change-me}
+    ports:
+      - "5002:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conduit-network
+
+  api:
+    build:
+      context: .
+      dockerfile: ConduitLLM.Http/Dockerfile
+    container_name: conduit-api-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
+      - ConnectionStrings__RedisConnection=redis:6379
+      - AdminApiUrl=http://admin:8080
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conduit-network
+
+volumes:
+  postgres-data-dev:
+
+networks:
+  conduit-network:
+    driver: bridge

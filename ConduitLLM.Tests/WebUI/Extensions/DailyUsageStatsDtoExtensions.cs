@@ -34,7 +34,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
                 });
             });
         }
-        
+
         /// <summary>
         /// Converts Configuration DetailedCostDataDto to WebUI DetailedCostDataDto
         /// </summary>

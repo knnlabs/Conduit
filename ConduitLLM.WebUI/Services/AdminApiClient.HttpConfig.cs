@@ -16,7 +16,7 @@ namespace ConduitLLM.WebUI.Services
                 return null;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task SetSettingAsync(string key, string value)
         {
@@ -34,7 +34,7 @@ namespace ConduitLLM.WebUI.Services
                 throw;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<bool> InitializeHttpTimeoutConfigurationAsync()
         {
@@ -42,11 +42,11 @@ namespace ConduitLLM.WebUI.Services
             {
                 // We'll initialize with default values
                 var defaultOptions = new ConduitLLM.Providers.Configuration.TimeoutOptions();
-                
+
                 // Save to global settings via by-key endpoint
-                await SetSettingAsync("Conduit:HttpTimeout:TimeoutSeconds", defaultOptions.TimeoutSeconds.ToString());
-                await SetSettingAsync("Conduit:HttpTimeout:EnableTimeoutLogging", defaultOptions.EnableTimeoutLogging.ToString());
-                
+                await SetSettingAsync("HttpTimeout:TimeoutSeconds", defaultOptions.TimeoutSeconds.ToString());
+                await SetSettingAsync("HttpTimeout:EnableTimeoutLogging", defaultOptions.EnableTimeoutLogging.ToString());
+
                 return true;
             }
             catch (Exception ex)
@@ -55,7 +55,7 @@ namespace ConduitLLM.WebUI.Services
                 return false;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<bool> InitializeHttpRetryConfigurationAsync()
         {
@@ -63,13 +63,13 @@ namespace ConduitLLM.WebUI.Services
             {
                 // We'll initialize with default values
                 var defaultOptions = new ConduitLLM.Providers.Configuration.RetryOptions();
-                
+
                 // Save to global settings via by-key endpoint
-                await SetSettingAsync("Conduit:HttpRetry:MaxRetries", defaultOptions.MaxRetries.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:InitialDelaySeconds", defaultOptions.InitialDelaySeconds.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:MaxDelaySeconds", defaultOptions.MaxDelaySeconds.ToString());
-                await SetSettingAsync("Conduit:HttpRetry:EnableRetryLogging", defaultOptions.EnableRetryLogging.ToString());
-                
+                await SetSettingAsync("HttpRetry:MaxRetries", defaultOptions.MaxRetries.ToString());
+                await SetSettingAsync("HttpRetry:InitialDelaySeconds", defaultOptions.InitialDelaySeconds.ToString());
+                await SetSettingAsync("HttpRetry:MaxDelaySeconds", defaultOptions.MaxDelaySeconds.ToString());
+                await SetSettingAsync("HttpRetry:EnableRetryLogging", defaultOptions.EnableRetryLogging.ToString());
+
                 return true;
             }
             catch (Exception ex)
@@ -78,7 +78,7 @@ namespace ConduitLLM.WebUI.Services
                 return false;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task<string?> GetMasterKeyHashAsync()
         {
@@ -121,7 +121,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Get the algorithm
                 var algorithm = await GetMasterKeyHashAlgorithmAsync() ?? "SHA256";
-                
+
                 // Hash the key
                 string hash;
                 using (var sha = System.Security.Cryptography.SHA256.Create())
@@ -130,7 +130,7 @@ namespace ConduitLLM.WebUI.Services
                     var hashBytes = sha.ComputeHash(bytes);
                     hash = Convert.ToBase64String(hashBytes);
                 }
-                
+
                 // Save the hash
                 await SetSettingAsync("MasterKeyHash", hash);
                 await SetSettingAsync("MasterKeyHashAlgorithm", algorithm);
@@ -150,24 +150,24 @@ namespace ConduitLLM.WebUI.Services
                 var checkIntervalStr = await GetSettingAsync("Conduit:ProviderHealth:DefaultCheckIntervalMinutes");
                 var retentionDaysStr = await GetSettingAsync("Conduit:ProviderHealth:DetailedRecordRetentionDays");
                 var enabledStr = await GetSettingAsync("Conduit:ProviderHealth:Enabled");
-                
+
                 var options = new ConduitLLM.Configuration.Options.ProviderHealthOptions();
-                
+
                 if (!string.IsNullOrEmpty(checkIntervalStr) && int.TryParse(checkIntervalStr, out var checkInterval))
                 {
                     options.DefaultCheckIntervalMinutes = checkInterval;
                 }
-                
+
                 if (!string.IsNullOrEmpty(retentionDaysStr) && int.TryParse(retentionDaysStr, out var retentionDays))
                 {
                     options.DetailedRecordRetentionDays = retentionDays;
                 }
-                
+
                 if (!string.IsNullOrEmpty(enabledStr) && bool.TryParse(enabledStr, out var enabled))
                 {
                     options.Enabled = enabled;
                 }
-                
+
                 return options;
             }
             catch (Exception ex)

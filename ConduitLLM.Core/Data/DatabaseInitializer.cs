@@ -1,10 +1,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using Polly;
 using Polly.Retry;
 
@@ -35,13 +38,13 @@ namespace ConduitLLM.Core.Data
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _connectionStringManager = connectionStringManager ?? throw new ArgumentNullException(nameof(connectionStringManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Create a retry policy for database operations
             _retryPolicy = Policy
                 .Handle<Exception>()
                 .WaitAndRetryAsync(
                     retryCount: DatabaseConstants.MAX_RETRY_COUNT,
-                    sleepDurationProvider: retryAttempt => 
+                    sleepDurationProvider: retryAttempt =>
                         TimeSpan.FromSeconds(Math.Pow(2, retryAttempt) * DatabaseConstants.RETRY_CONNECTION_TIMEOUT_SECONDS),
                     onRetry: (exception, timeSpan, attempt, context) =>
                     {
@@ -62,7 +65,7 @@ namespace ConduitLLM.Core.Data
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                    
+
                     if (ensureCreated)
                     {
                         _logger.LogInformation("Ensuring database exists");
@@ -110,7 +113,7 @@ namespace ConduitLLM.Core.Data
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
                     using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-                    
+
                     _logger.LogInformation("Applying database migrations");
                     await context.Database.MigrateAsync(cancellationToken);
                     _logger.LogInformation("Database migrations applied successfully");

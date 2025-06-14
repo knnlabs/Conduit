@@ -117,7 +117,7 @@ namespace ConduitLLM.Core.Services
 
             if (_router is DefaultLLMRouter defaultRouter)
             {
-                _logger.LogInformation("Initializing router with {ModelCount} model deployments", 
+                _logger.LogInformation("Initializing router with {ModelCount} model deployments",
                     config.ModelDeployments?.Count ?? 0);
                 defaultRouter.Initialize(config);
             }
@@ -175,7 +175,7 @@ namespace ConduitLLM.Core.Services
             }
 
             await _repository.SaveRouterConfigAsync(config, cancellationToken);
-            
+
             if (_router is DefaultLLMRouter defaultRouter)
             {
                 defaultRouter.Initialize(config);
@@ -220,15 +220,15 @@ namespace ConduitLLM.Core.Services
             }
 
             // Remove existing deployment with the same name if present
-            config.ModelDeployments.RemoveAll(m => 
+            config.ModelDeployments.RemoveAll(m =>
                 m.DeploymentName.Equals(deployment.DeploymentName, StringComparison.OrdinalIgnoreCase));
-            
+
             // Add the new deployment
             config.ModelDeployments.Add(deployment);
-            
+
             // Save the updated config
             await _repository.SaveRouterConfigAsync(config, cancellationToken);
-            
+
             // Update the router
             if (_router is DefaultLLMRouter defaultRouter)
             {
@@ -289,14 +289,14 @@ namespace ConduitLLM.Core.Services
             }
 
             // Remove the deployment
-            int removed = config.ModelDeployments.RemoveAll(m => 
+            int removed = config.ModelDeployments.RemoveAll(m =>
                 m.DeploymentName.Equals(deploymentName, StringComparison.OrdinalIgnoreCase));
-            
+
             if (removed > 0)
             {
                 // Save the updated config
                 await _repository.SaveRouterConfigAsync(config, cancellationToken);
-                
+
                 // Update the router
                 if (_router is DefaultLLMRouter defaultRouter)
                 {
@@ -375,10 +375,10 @@ namespace ConduitLLM.Core.Services
                 // Set the fallbacks
                 config.Fallbacks[primaryModel] = fallbacks;
             }
-            
+
             // Save the updated config
             await _repository.SaveRouterConfigAsync(config, cancellationToken);
-            
+
             // Update the router
             if (_router is DefaultLLMRouter defaultRouter)
             {
@@ -458,7 +458,7 @@ namespace ConduitLLM.Core.Services
             }
 
             _router.UpdateModelHealth(deploymentName, isHealthy);
-            _logger.LogInformation("Updated model {DeploymentName} health status to {IsHealthy}", 
+            _logger.LogInformation("Updated model {DeploymentName} health status to {IsHealthy}",
                 deploymentName, isHealthy);
         }
 

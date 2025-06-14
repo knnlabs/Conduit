@@ -18,7 +18,7 @@ namespace ConduitLLM.Configuration.Services
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly ILogger<VirtualKeyMaintenanceService> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the VirtualKeyMaintenanceService
         /// </summary>
@@ -34,7 +34,7 @@ namespace ConduitLLM.Configuration.Services
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <summary>
         /// Processes budget resets for all virtual keys
         /// </summary>
@@ -43,47 +43,47 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 var now = DateTime.UtcNow;
-                
+
                 // Get all active keys with budget durations
                 var allKeys = await _virtualKeyRepository.GetAllAsync();
                 var keysToCheck = allKeys
                     .Where(k => k.IsEnabled)
                     .Where(k => !string.IsNullOrEmpty(k.BudgetDuration))
                     .ToList();
-                    
+
                 if (!keysToCheck.Any())
                 {
                     return;
                 }
-                
+
                 var keysToReset = new List<VirtualKey>();
                 var spendHistory = new List<VirtualKeySpendHistory>();
-                
+
                 // Determine which keys need resetting
                 foreach (var key in keysToCheck)
                 {
                     bool shouldReset = false;
-                    
+
                     switch (key.BudgetDuration?.ToLower())
                     {
                         case "daily":
                             // Reset if the day has changed
                             shouldReset = key.BudgetStartDate?.Date < now.Date;
                             break;
-                            
+
                         case "monthly":
                             // Reset if the month or year has changed
-                            shouldReset = key.BudgetStartDate?.Month != now.Month || 
+                            shouldReset = key.BudgetStartDate?.Month != now.Month ||
                                         key.BudgetStartDate?.Year != now.Year;
                             break;
-                        
-                        // Add more budget periods as needed
+
+                            // Add more budget periods as needed
                     }
-                    
+
                     if (shouldReset)
                     {
                         keysToReset.Add(key);
-                        
+
                         // Create history record
                         spendHistory.Add(new VirtualKeySpendHistory
                         {
@@ -93,20 +93,20 @@ namespace ConduitLLM.Configuration.Services
                         });
                     }
                 }
-                
+
                 if (!keysToReset.Any())
                 {
                     return;
                 }
-                
+
                 _logger.LogInformation("Processing budget resets for {Count} virtual keys", keysToReset.Count);
-                
+
                 // Add spend history records
                 foreach (var history in spendHistory)
                 {
                     await _spendHistoryRepository.CreateAsync(history);
                 }
-                
+
                 // Update keys to reset spending
                 foreach (var key in keysToReset)
                 {
@@ -114,10 +114,10 @@ namespace ConduitLLM.Configuration.Services
                     key.CurrentSpend = 0;
                     key.BudgetStartDate = now;
                     key.UpdatedAt = now;
-                    
+
                     await _virtualKeyRepository.UpdateAsync(key);
                 }
-                
+
                 _logger.LogInformation("Successfully processed budget resets for {Count} virtual keys", keysToReset.Count);
             }
             catch (Exception ex)
@@ -126,7 +126,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Disables all expired virtual keys
         /// </summary>
@@ -135,30 +135,30 @@ namespace ConduitLLM.Configuration.Services
             try
             {
                 var now = DateTime.UtcNow;
-                
+
                 // Get all active keys with expiration dates that have passed
                 var allKeys = await _virtualKeyRepository.GetAllAsync();
                 var expiredKeys = allKeys
                     .Where(k => k.IsEnabled)
                     .Where(k => k.ExpiresAt.HasValue && k.ExpiresAt.Value < now)
                     .ToList();
-                    
+
                 if (!expiredKeys.Any())
                 {
                     return;
                 }
-                
+
                 _logger.LogInformation("Disabling {Count} expired virtual keys", expiredKeys.Count);
-                
+
                 // Update keys to disable them
                 foreach (var key in expiredKeys)
                 {
                     key.IsEnabled = false;
                     key.UpdatedAt = now;
-                    
+
                     await _virtualKeyRepository.UpdateAsync(key);
                 }
-                
+
                 _logger.LogInformation("Successfully disabled {Count} expired virtual keys", expiredKeys.Count);
             }
             catch (Exception ex)
@@ -167,7 +167,7 @@ namespace ConduitLLM.Configuration.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Checks keys approaching budget limits and returns their IDs
         /// </summary>
@@ -179,7 +179,7 @@ namespace ConduitLLM.Configuration.Services
             {
                 // Convert percentage to decimal (e.g., 90% -> 0.9)
                 decimal thresholdDecimal = thresholdPercentage / 100m;
-                
+
                 // Get all active keys with budget limits
                 var allKeys = await _virtualKeyRepository.GetAllAsync();
                 return allKeys

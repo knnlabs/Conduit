@@ -10,7 +10,7 @@ public interface IAdminSystemInfoService
     /// </summary>
     /// <returns>System information details</returns>
     Task<SystemInfoDto> GetSystemInfoAsync();
-    
+
     /// <summary>
     /// Gets system health status
     /// </summary>
@@ -27,22 +27,22 @@ public class SystemInfoDto
     /// ConduitLLM version information
     /// </summary>
     public VersionInfo Version { get; set; } = new();
-    
+
     /// <summary>
     /// Operating system information
     /// </summary>
     public OsInfo OperatingSystem { get; set; } = new();
-    
+
     /// <summary>
     /// Database information
     /// </summary>
     public DatabaseInfo Database { get; set; } = new();
-    
+
     /// <summary>
     /// Runtime information
     /// </summary>
     public RuntimeInfo Runtime { get; set; } = new();
-    
+
     /// <summary>
     /// Record counts from database tables
     /// </summary>
@@ -58,7 +58,7 @@ public class VersionInfo
     /// Application version
     /// </summary>
     public string AppVersion { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Build date
     /// </summary>
@@ -74,7 +74,7 @@ public class OsInfo
     /// Operating system description
     /// </summary>
     public string Description { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Process architecture
     /// </summary>
@@ -90,32 +90,32 @@ public class DatabaseInfo
     /// Database provider name
     /// </summary>
     public string Provider { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Database version
     /// </summary>
     public string Version { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Connection status
     /// </summary>
     public bool Connected { get; set; }
-    
+
     /// <summary>
     /// Masked connection string
     /// </summary>
     public string ConnectionString { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Database file location (for file-based databases)
     /// </summary>
     public string Location { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Database size
     /// </summary>
     public string Size { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Number of tables in the database
     /// </summary>
@@ -131,12 +131,12 @@ public class RuntimeInfo
     /// .NET runtime version
     /// </summary>
     public string RuntimeVersion { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Process start time
     /// </summary>
     public DateTime StartTime { get; set; }
-    
+
     /// <summary>
     /// Total process uptime
     /// </summary>
@@ -152,7 +152,7 @@ public class HealthStatusDto
     /// Overall system status
     /// </summary>
     public string Status { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Individual component health statuses
     /// </summary>
@@ -168,12 +168,12 @@ public class ComponentHealth
     /// Component status
     /// </summary>
     public string Status { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Component description
     /// </summary>
     public string Description { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Additional health details
     /// </summary>
@@ -189,22 +189,22 @@ public class RecordCountsDto
     /// Number of virtual keys
     /// </summary>
     public int VirtualKeys { get; set; }
-    
+
     /// <summary>
     /// Number of request logs
     /// </summary>
     public int Requests { get; set; }
-    
+
     /// <summary>
     /// Number of global settings
     /// </summary>
     public int Settings { get; set; }
-    
+
     /// <summary>
     /// Number of provider credentials
     /// </summary>
     public int Providers { get; set; }
-    
+
     /// <summary>
     /// Number of model provider mappings
     /// </summary>

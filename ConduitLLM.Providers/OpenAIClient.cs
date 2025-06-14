@@ -10,12 +10,15 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
+
 using OpenAIModels = ConduitLLM.Providers.InternalModels.OpenAIModels;
 
 namespace ConduitLLM.Providers
@@ -30,7 +33,7 @@ namespace ConduitLLM.Providers
     /// It supports both OpenAI's standard API endpoint structure and Azure OpenAI's deployment-based
     /// endpoints, with automatic URL and authentication format selection based on the provider name.
     /// </remarks>
-    public class OpenAIClient : OpenAICompatibleClient, 
+    public class OpenAIClient : OpenAICompatibleClient,
         Core.Interfaces.IAudioTranscriptionClient,
         Core.Interfaces.ITextToSpeechClient,
         Core.Interfaces.IRealtimeAudioClient
@@ -42,12 +45,12 @@ namespace ConduitLLM.Providers
             {
                 public const string DefaultOpenAIApiBase = "https://api.openai.com/v1";
             }
-            
+
             public static class ApiVersions
             {
                 public const string DefaultAzureApiVersion = "2024-02-01";
             }
-            
+
             public static class Endpoints
             {
                 public const string ChatCompletions = "/chat/completions";
@@ -59,7 +62,7 @@ namespace ConduitLLM.Providers
                 public const string AudioSpeech = "/audio/speech";
             }
         }
-        
+
         private readonly bool _isAzure;
 
         /// <summary>
@@ -73,10 +76,11 @@ namespace ConduitLLM.Providers
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
         public OpenAIClient(
-            ProviderCredentials credentials, 
-            string providerModelId, 
+            ProviderCredentials credentials,
+            string providerModelId,
             ILogger<OpenAIClient> logger,
-            IHttpClientFactory httpClientFactory, 
+            IHttpClientFactory httpClientFactory,
+            ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
                 credentials,
@@ -84,10 +88,11 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 providerName ?? credentials.ProviderName ?? "openai",
-                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderName ?? "openai"))
+                DetermineBaseUrl(credentials, providerName ?? credentials.ProviderName ?? "openai"),
+                defaultModels)
         {
             _isAzure = (providerName ?? credentials.ProviderName ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
-            
+
             // Specific validation for Azure credentials
             if (_isAzure && string.IsNullOrWhiteSpace(credentials.ApiBase))
             {
@@ -105,10 +110,10 @@ namespace ConduitLLM.Providers
             {
                 return credentials.ApiBase ?? "";
             }
-            
+
             // For standard OpenAI or compatible providers
-            return string.IsNullOrWhiteSpace(credentials.ApiBase) 
-                ? Constants.Urls.DefaultOpenAIApiBase 
+            return string.IsNullOrWhiteSpace(credentials.ApiBase)
+                ? Constants.Urls.DefaultOpenAIApiBase
                 : credentials.ApiBase.TrimEnd('/');
         }
 
@@ -120,7 +125,7 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            
+
             // Different authentication method for Azure vs. standard OpenAI
             if (_isAzure)
             {
@@ -139,13 +144,13 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
-                    ? Credentials.ApiVersion 
+                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
+                    ? Credentials.ApiVersion
                     : Constants.ApiVersions.DefaultAzureApiVersion;
-                
+
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/chat/completions?api-version={apiVersion}";
             }
-            
+
             return $"{BaseUrl}{Constants.Endpoints.ChatCompletions}";
         }
 
@@ -156,13 +161,13 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
-                    ? Credentials.ApiVersion 
+                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
+                    ? Credentials.ApiVersion
                     : Constants.ApiVersions.DefaultAzureApiVersion;
-                
+
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments?api-version={apiVersion}";
             }
-            
+
             return $"{BaseUrl}{Constants.Endpoints.Models}";
         }
 
@@ -173,13 +178,13 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
-                    ? Credentials.ApiVersion 
+                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
+                    ? Credentials.ApiVersion
                     : Constants.ApiVersions.DefaultAzureApiVersion;
-                
+
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/embeddings?api-version={apiVersion}";
             }
-            
+
             return $"{BaseUrl}{Constants.Endpoints.Embeddings}";
         }
 
@@ -190,13 +195,13 @@ namespace ConduitLLM.Providers
         {
             if (_isAzure)
             {
-                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
-                    ? Credentials.ApiVersion 
+                string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
+                    ? Credentials.ApiVersion
                     : Constants.ApiVersions.DefaultAzureApiVersion;
-                
+
                 return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/images/generations?api-version={apiVersion}";
             }
-            
+
             return $"{BaseUrl}{Constants.Endpoints.ImageGenerations}";
         }
 
@@ -211,15 +216,15 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "TranscribeAudio");
-            
+
             using var client = CreateHttpClient(apiKey);
-            
+
             var endpoint = _isAzure
                 ? GetAzureAudioEndpoint("transcriptions")
                 : $"{BaseUrl}{Constants.Endpoints.AudioTranscriptions}";
 
             using var content = new MultipartFormDataContent();
-            
+
             // Add audio file
             if (request.AudioData != null)
             {
@@ -231,27 +236,28 @@ namespace ConduitLLM.Providers
             {
                 throw new NotSupportedException("URL-based audio transcription is not supported by OpenAI API. Please provide audio data directly.");
             }
-            
-            // Add model
-            content.Add(new StringContent(request.Model ?? "whisper-1"), "model");
-            
+
+            // Add model - use configuration or fallback to whisper-1
+            var defaultTranscriptionModel = GetDefaultTranscriptionModel();
+            content.Add(new StringContent(request.Model ?? defaultTranscriptionModel), "model");
+
             // Add optional parameters
             if (!string.IsNullOrWhiteSpace(request.Language))
                 content.Add(new StringContent(request.Language), "language");
-            
+
             if (!string.IsNullOrWhiteSpace(request.Prompt))
                 content.Add(new StringContent(request.Prompt), "prompt");
-            
+
             if (request.Temperature.HasValue)
                 content.Add(new StringContent(request.Temperature.Value.ToString()), "temperature");
-            
+
             if (request.ResponseFormat.HasValue)
                 content.Add(new StringContent(request.ResponseFormat.Value.ToString().ToLowerInvariant()), "response_format");
 
             return await ExecuteApiRequestAsync(async () =>
             {
                 var response = await client.PostAsync(endpoint, content, cancellationToken);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await ReadErrorContentAsync(response, cancellationToken);
@@ -260,9 +266,9 @@ namespace ConduitLLM.Providers
                         response.StatusCode,
                         ProviderName);
                 }
-                
+
                 var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-                
+
                 // Handle different response formats
                 if (request.ResponseFormat == TranscriptionFormat.Text ||
                     request.ResponseFormat == TranscriptionFormat.Srt ||
@@ -271,13 +277,13 @@ namespace ConduitLLM.Providers
                     return new AudioTranscriptionResponse
                     {
                         Text = responseText,
-                        Model = request.Model ?? "whisper-1"
+                        Model = request.Model ?? GetDefaultTranscriptionModel()
                     };
                 }
-                
+
                 // Default JSON response
                 var jsonResponse = JsonSerializer.Deserialize<OpenAIModels.TranscriptionResponse>(responseText, DefaultJsonOptions);
-                
+
                 return new AudioTranscriptionResponse
                 {
                     Text = jsonResponse?.Text ?? string.Empty,
@@ -310,16 +316,16 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateSpeech");
-            
+
             using var client = CreateHttpClient(apiKey);
-            
+
             var endpoint = _isAzure
                 ? GetAzureAudioEndpoint("speech")
                 : $"{BaseUrl}{Constants.Endpoints.AudioSpeech}";
 
             var openAIRequest = new OpenAIModels.TextToSpeechRequest
             {
-                Model = request.Model ?? "tts-1",
+                Model = request.Model ?? GetDefaultTextToSpeechModel(),
                 Input = request.Input,
                 Voice = request.Voice,
                 ResponseFormat = MapAudioFormat(request.ResponseFormat),
@@ -333,7 +339,7 @@ namespace ConduitLLM.Providers
             return await ExecuteApiRequestAsync(async () =>
             {
                 var response = await client.PostAsync(endpoint, content, cancellationToken);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await ReadErrorContentAsync(response, cancellationToken);
@@ -342,15 +348,15 @@ namespace ConduitLLM.Providers
                         response.StatusCode,
                         ProviderName);
                 }
-                
+
                 var audioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-                
+
                 return new TextToSpeechResponse
                 {
                     AudioData = audioData,
                     Format = request.ResponseFormat?.ToString().ToLowerInvariant() ?? "mp3",
                     VoiceUsed = request.Voice,
-                    ModelUsed = request.Model ?? "tts-1",
+                    ModelUsed = request.Model ?? GetDefaultTextToSpeechModel(),
                     CharacterCount = request.Input.Length
                 };
             }, "CreateSpeech", cancellationToken);
@@ -366,25 +372,25 @@ namespace ConduitLLM.Providers
         {
             // OpenAI API doesn't support streaming TTS yet, so we'll get the full response and chunk it
             var response = await CreateSpeechAsync(request, apiKey, cancellationToken);
-            
+
             // Simulate streaming by chunking the response
             const int chunkSize = 4096; // 4KB chunks
             var totalChunks = (int)Math.Ceiling((double)response.AudioData.Length / chunkSize);
-            
+
             for (int i = 0; i < totalChunks; i++)
             {
                 var offset = i * chunkSize;
                 var length = Math.Min(chunkSize, response.AudioData.Length - offset);
                 var chunkData = new byte[length];
                 Array.Copy(response.AudioData, offset, chunkData, 0, length);
-                
+
                 yield return new AudioChunk
                 {
                     Data = chunkData,
                     ChunkIndex = i,
                     IsFinal = i == totalChunks - 1
                 };
-                
+
                 // Small delay to simulate streaming
                 await Task.Delay(10, cancellationToken);
             }
@@ -399,7 +405,7 @@ namespace ConduitLLM.Providers
         {
             // OpenAI has a fixed set of voices, return them directly
             await Task.CompletedTask; // Async method signature requirement
-            
+
             return new List<VoiceInfo>
             {
                 new VoiceInfo
@@ -518,10 +524,10 @@ namespace ConduitLLM.Providers
         /// </summary>
         private string GetAzureAudioEndpoint(string operation)
         {
-            string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion) 
-                ? Credentials.ApiVersion 
+            string apiVersion = !string.IsNullOrWhiteSpace(Credentials.ApiVersion)
+                ? Credentials.ApiVersion
                 : Constants.ApiVersions.DefaultAzureApiVersion;
-            
+
             return $"{BaseUrl.TrimEnd('/')}/openai/deployments/{ProviderModelId}/audio/{operation}?api-version={apiVersion}";
         }
 
@@ -531,7 +537,7 @@ namespace ConduitLLM.Providers
         private static string? MapAudioFormat(AudioFormat? format)
         {
             if (!format.HasValue) return null;
-            
+
             return format.Value switch
             {
                 AudioFormat.Mp3 => "mp3",
@@ -545,7 +551,7 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
-        
+
         /// <summary>
         /// Maps the Azure OpenAI response format to the standard models list.
         /// </summary>
@@ -560,7 +566,7 @@ namespace ConduitLLM.Providers
                 {
                     using var client = CreateHttpClient(apiKey);
                     var endpoint = GetModelsEndpoint();
-                    
+
                     var response = await ConduitLLM.Core.Utilities.HttpClientHelper.SendJsonRequestAsync<object, AzureOpenAIModels.ListDeploymentsResponse>(
                         client,
                         HttpMethod.Get,
@@ -571,23 +577,25 @@ namespace ConduitLLM.Providers
                         DefaultJsonOptions,
                         Logger,
                         cancellationToken);
-                    
+
                     return response.Data
-                        .Select(m => {
+                        .Select(m =>
+                        {
                             var model = ExtendedModelInfo.Create(m.DeploymentId, ProviderName, m.DeploymentId)
                                 .WithName(m.Model ?? m.DeploymentId)
-                                .WithCapabilities(new ModelCapabilities {
+                                .WithCapabilities(new ModelCapabilities
+                                {
                                     Chat = true,
                                     TextGeneration = true
                                 });
-                                
+
                             // Can't add custom properties directly, but they'll be ignored anyway
                             return model;
                         })
                         .ToList();
                 }, "GetModels", cancellationToken);
             }
-            
+
             // Use the base implementation for standard OpenAI
             return await base.GetModelsAsync(apiKey, cancellationToken);
         }
@@ -602,12 +610,13 @@ namespace ConduitLLM.Providers
         {
             // OpenAI Realtime API uses WebSocket connection
             var wsUrl = BaseUrl.Replace("https://", "wss://").Replace("http://", "ws://");
-            wsUrl = $"{wsUrl}/realtime?model={config.Model ?? "gpt-4o-realtime-preview"}";
-            
+            var defaultRealtimeModel = GetDefaultRealtimeModel();
+            wsUrl = $"{wsUrl}/realtime?model={config.Model ?? defaultRealtimeModel}";
+
             var effectiveApiKey = apiKey ?? Credentials.ApiKey ?? throw new InvalidOperationException("API key is required");
             var session = new OpenAIRealtimeSession(wsUrl, effectiveApiKey, config, Logger);
             await session.ConnectAsync(cancellationToken);
-            
+
             return session;
         }
 
@@ -666,7 +675,7 @@ namespace ConduitLLM.Providers
             if (session is not OpenAIRealtimeSession openAISession)
                 throw new InvalidOperationException("Session must be created by this client");
 
-            return new OpenAIRealtimeStream(openAISession, Logger as ILogger<OpenAIClient> ?? 
+            return new OpenAIRealtimeStream(openAISession, Logger as ILogger<OpenAIClient> ??
                 throw new InvalidOperationException("Logger must be ILogger<OpenAIClient>"));
         }
 
@@ -775,7 +784,7 @@ namespace ConduitLLM.Providers
                         ["type"] = "input_audio_buffer.append",
                         ["audio"] = Convert.ToBase64String(item.AudioData)
                     };
-                    
+
                     var json = JsonSerializer.Serialize(providerMessage, DefaultJsonOptions);
                     await _session.SendRawMessageAsync(json, cancellationToken);
                 }
@@ -797,7 +806,7 @@ namespace ConduitLLM.Providers
                 {
                     ["type"] = "input_audio_buffer.commit"
                 };
-                
+
                 var json = JsonSerializer.Serialize(providerMessage, DefaultJsonOptions);
                 await _session.SendRawMessageAsync(json, CancellationToken.None);
             }
@@ -807,7 +816,7 @@ namespace ConduitLLM.Providers
                 // The translator should have already converted to RealtimeResponse
                 if (message is RealtimeResponse response)
                     return response;
-                
+
                 // If not, we have an unexpected message type
                 _logger.LogWarning("Received unexpected message type: {Type}", message.GetType().Name);
                 return null;
@@ -815,8 +824,78 @@ namespace ConduitLLM.Providers
         }
 
         #endregion
+
+        #region Configuration Helpers
+
+        /// <summary>
+        /// Gets the default transcription model from configuration or falls back to whisper-1.
+        /// </summary>
+        private string GetDefaultTranscriptionModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Audio?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TranscriptionModel;
+
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+
+            // Check global default
+            var globalDefault = DefaultModels?.Audio?.DefaultTranscriptionModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+
+            // TODO: When ModelCapabilityService is available in providers, use:
+            // var defaultModel = await _capabilityService.GetDefaultModelAsync("openai", "transcription");
+
+            // Fallback to hardcoded default for backward compatibility
+            return "whisper-1";
+        }
+
+        /// <summary>
+        /// Gets the default text-to-speech model from configuration or falls back to tts-1.
+        /// </summary>
+        private string GetDefaultTextToSpeechModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Audio?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant())?.TextToSpeechModel;
+
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+
+            // Check global default
+            var globalDefault = DefaultModels?.Audio?.DefaultTextToSpeechModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+
+            // Fallback to hardcoded default for backward compatibility
+            return "tts-1";
+        }
+
+        /// <summary>
+        /// Gets the default realtime model from configuration or falls back to gpt-4o-realtime-preview.
+        /// </summary>
+        private string GetDefaultRealtimeModel()
+        {
+            // Check provider-specific override first
+            var providerOverride = DefaultModels?.Realtime?.ProviderOverrides
+                ?.GetValueOrDefault(ProviderName.ToLowerInvariant());
+
+            if (!string.IsNullOrWhiteSpace(providerOverride))
+                return providerOverride;
+
+            // Check global default
+            var globalDefault = DefaultModels?.Realtime?.DefaultRealtimeModel;
+            if (!string.IsNullOrWhiteSpace(globalDefault))
+                return globalDefault;
+
+            // Fallback to hardcoded default for backward compatibility
+            return "gpt-4o-realtime-preview";
+        }
+
+        #endregion
     }
-    
+
     // Azure-specific model response structures
     namespace AzureOpenAIModels
     {
@@ -825,21 +904,21 @@ namespace ConduitLLM.Providers
             [JsonPropertyName("data")]
             public List<DeploymentInfo> Data { get; set; } = new();
         }
-        
+
         public class DeploymentInfo
         {
             [JsonPropertyName("id")]
             public string Id { get; set; } = string.Empty;
-            
+
             [JsonPropertyName("model")]
             public string Model { get; set; } = string.Empty;
-            
+
             [JsonPropertyName("deploymentId")]
             public string DeploymentId { get; set; } = string.Empty;
-            
+
             [JsonPropertyName("status")]
             public string Status { get; set; } = string.Empty;
-            
+
             [JsonPropertyName("provisioningState")]
             public string ProvisioningState { get; set; } = string.Empty;
         }

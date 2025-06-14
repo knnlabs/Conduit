@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -90,16 +92,16 @@ namespace ConduitLLM.Configuration.Repositories
         {
             cost.CreatedAt = DateTime.UtcNow;
             cost.UpdatedAt = DateTime.UtcNow;
-            
+
             // Deactivate previous costs if this is replacing an existing one
             if (cost.IsActive)
             {
                 await DeactivatePreviousCostsAsync(cost.Provider, cost.OperationType, cost.Model);
             }
-            
+
             _context.AudioCosts.Add(cost);
             await _context.SaveChangesAsync();
-            
+
             return cost;
         }
 
@@ -107,10 +109,10 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<AudioCost> UpdateAsync(AudioCost cost)
         {
             cost.UpdatedAt = DateTime.UtcNow;
-            
+
             _context.AudioCosts.Update(cost);
             await _context.SaveChangesAsync();
-            
+
             return cost;
         }
 
@@ -123,7 +125,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             _context.AudioCosts.Remove(cost);
             await _context.SaveChangesAsync();
-            
+
             return true;
         }
 

@@ -1,8 +1,12 @@
 using System;
+
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Constants;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Data
@@ -57,7 +61,7 @@ namespace ConduitLLM.Tests.Data
                 Assert.Equal(DatabaseConstants.SQLITE_PROVIDER, providerName);
                 // Accept either default database name or test database name
                 Assert.True(
-                    connectionStringValue.Contains("Data Source=ConduitConfig.db") || 
+                    connectionStringValue.Contains("Data Source=ConduitConfig.db") ||
                     connectionStringValue.Contains("Data Source=test_sqlite.db"),
                     $"Connection string '{connectionStringValue}' does not contain expected database name");
             }
@@ -175,7 +179,7 @@ namespace ConduitLLM.Tests.Data
             var connStr = "Host=localhost;Port=5432"; // Missing database, username, and password
 
             // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => 
+            Assert.Throws<InvalidOperationException>(() =>
                 _connectionStringManager.ValidateConnectionString(DatabaseConstants.POSTGRES_PROVIDER, connStr));
         }
 
@@ -196,7 +200,7 @@ namespace ConduitLLM.Tests.Data
             var connStr = "Invalid=Connection;String=Value";
 
             // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => 
+            Assert.Throws<InvalidOperationException>(() =>
                 _connectionStringManager.ValidateConnectionString(DatabaseConstants.SQLITE_PROVIDER, connStr));
         }
 
@@ -207,7 +211,7 @@ namespace ConduitLLM.Tests.Data
             var connStr = "Data Source=test.db";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => 
+            Assert.Throws<ArgumentException>(() =>
                 _connectionStringManager.ValidateConnectionString("unsupported", connStr));
         }
     }

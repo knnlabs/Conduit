@@ -2,11 +2,15 @@ using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.Translators;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Providers
@@ -16,7 +20,7 @@ namespace ConduitLLM.Tests.Providers
         private readonly Mock<ILogger<OpenAIRealtimeTranslatorV2>> _mockOpenAILogger;
         private readonly Mock<ILogger<UltravoxRealtimeTranslator>> _mockUltravoxLogger;
         private readonly Mock<ILogger<ElevenLabsRealtimeTranslator>> _mockElevenLabsLogger;
-        
+
         public RealtimeTranslatorTests()
         {
             _mockOpenAILogger = new Mock<ILogger<OpenAIRealtimeTranslatorV2>>();
@@ -232,10 +236,10 @@ namespace ConduitLLM.Tests.Providers
             var mockServiceProvider = new Mock<IServiceProvider>();
             var mockLogger = new Mock<ILogger<RealtimeMessageTranslatorFactory>>();
             var mockTranslatorLogger = new Mock<ILogger<OpenAIRealtimeTranslatorV2>>();
-            
+
             mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<OpenAIRealtimeTranslatorV2>)))
                 .Returns(mockTranslatorLogger.Object);
-                
+
             var factory = new RealtimeMessageTranslatorFactory(mockServiceProvider.Object, mockLogger.Object);
 
             // Act
@@ -253,10 +257,10 @@ namespace ConduitLLM.Tests.Providers
             var mockServiceProvider = new Mock<IServiceProvider>();
             var mockLogger = new Mock<ILogger<RealtimeMessageTranslatorFactory>>();
             var mockTranslatorLogger = new Mock<ILogger<UltravoxRealtimeTranslator>>();
-            
+
             mockServiceProvider.Setup(sp => sp.GetService(typeof(ILogger<UltravoxRealtimeTranslator>)))
                 .Returns(mockTranslatorLogger.Object);
-                
+
             var factory = new RealtimeMessageTranslatorFactory(mockServiceProvider.Object, mockLogger.Object);
 
             // Act

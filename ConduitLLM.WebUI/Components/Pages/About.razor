@@ -9,17 +9,17 @@
 
 <PageTitle>About ConduitLLM</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <h3 class="mb-2">About ConduitLLM</h3>
     <h6 class="mb-4">A unified .NET client library for interacting with various LLM providers</h6>
 
     <div class="row">
         <div class="col-12 col-md-7">
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header">
                     <h5 class="m-0">Project Overview</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <p>
                         ConduitLLM provides a unified interface to interact with multiple LLM providers, simplifying integration 
                         and management of AI capabilities in your applications.
@@ -56,10 +56,10 @@
         </div>
 
         <div class="col-12 col-md-5">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card modern-card mb-4">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                     <h5 class="m-0">Project Components</h5>
-                    <button class="btn btn-sm btn-outline-primary" @onclick="CheckForUpdates" disabled="@_checkingForUpdates">
+                    <button class="btn btn-sm btn-outline-primary modern-btn" @onclick="CheckForUpdates" disabled="@_checkingForUpdates">
                         @if (_checkingForUpdates)
                         {
                             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -72,10 +72,10 @@
                         }
                     </button>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead>
+                <div class="card-body modern-card-body">
+                    <div class="table-responsive modern-table-container">
+                        <table class="table table-sm modern-table table-hover">
+                            <thead class="modern-table-header">
                                 <tr>
                                     <th>Component</th>
                                     <th>Version</th>
@@ -84,7 +84,7 @@
                             <tbody>
                                 @foreach (var component in ProjectVersions)
                                 {
-                                    <tr>
+                                    <tr class="modern-table-row">
                                         <td>@component.Key</td>
                                         <td><code>@component.Value</code></td>
                                     </tr>
@@ -102,11 +102,11 @@
         </div>
     </div>
 
-    <div class="card mb-6">
-        <div class="card-header">
+    <div class="card modern-card mb-6">
+        <div class="card-header modern-card-header">
             <h5 class="m-0">Architecture</h5>
         </div>
-        <div class="card-body">
+        <div class="card-body modern-card-body">
             <div class="row">
                 <div class="col-12 col-md-6">
                     <h6 class="mb-2">Core Components</h6>

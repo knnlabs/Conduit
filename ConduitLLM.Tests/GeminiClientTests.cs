@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -16,7 +17,6 @@ using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks; // For Gemini DTOs
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Contrib.HttpClient;
@@ -129,7 +129,7 @@ public class GeminiClientTests
         Assert.Equal(request.Model, response.Model); // Should return original alias
         Assert.Equal(expectedResponseDto.Candidates[0].Content.Parts[0].Text, response.Choices[0].Message.Content);
         Assert.NotNull(response.Usage);
-        
+
         // Ensure the Usage object is not null before comparing values
         Assert.NotNull(expectedResponseDto.Usage);
         Assert.Equal(expectedResponseDto.Usage.PromptTokenCount, response.Usage?.PromptTokens);
@@ -184,7 +184,7 @@ public class GeminiClientTests
         _handlerMock.VerifyRequest(HttpMethod.Post, expectedUri, Times.Once());
     }
 
-     [Fact(Skip = "Test expects specific error message that doesn't match implementation")]
+    [Fact(Skip = "Test expects specific error message that doesn't match implementation")]
     public async Task CreateChatCompletionAsync_HttpRequestException_ThrowsLLMCommunicationException()
     {
         // Arrange
@@ -229,7 +229,7 @@ public class GeminiClientTests
         Assert.Contains("The last message must be from the 'user'", ex.InnerException?.Message);
     }
 
-     [Fact(Skip = "Test expects specific error message that doesn't match implementation")]
+    [Fact(Skip = "Test expects specific error message that doesn't match implementation")]
     public async Task CreateChatCompletionAsync_BlockedBySafety_ThrowsLLMCommunicationException()
     {
         // Arrange
@@ -239,12 +239,12 @@ public class GeminiClientTests
         // Simulate response where candidate finishReason is SAFETY
         var blockedResponseDto = new TestHelpers.Mocks.GeminiGenerateContentResponse
         {
-             Candidates = new List<TestHelpers.Mocks.GeminiCandidate>
+            Candidates = new List<TestHelpers.Mocks.GeminiCandidate>
             {
                 new TestHelpers.Mocks.GeminiCandidate { Index = 0, FinishReason = "SAFETY", Content = new TestHelpers.Mocks.GeminiContent() } // Empty content instead of null
             },
-             // Prompt feedback might also indicate blocking
-             PromptFeedback = new TestHelpers.Mocks.GeminiPromptFeedback { BlockReason = "SAFETY" }
+            // Prompt feedback might also indicate blocking
+            PromptFeedback = new TestHelpers.Mocks.GeminiPromptFeedback { BlockReason = "SAFETY" }
         };
 
         _handlerMock.SetupRequest(HttpMethod.Post, expectedUri)
@@ -301,9 +301,9 @@ public class GeminiClientTests
         var request = new ChatCompletionRequest
         {
             Model = "gemini-alias",
-            Messages = new List<Message> 
-            { 
-                new Message { Role = MessageRole.User, Content = "Hello Gemini!" } 
+            Messages = new List<Message>
+            {
+                new Message { Role = MessageRole.User, Content = "Hello Gemini!" }
             },
             Temperature = 0.7,
             MaxTokens = 100,
@@ -368,9 +368,9 @@ public class GeminiClientTests
         var request = new ChatCompletionRequest
         {
             Model = "gemini-alias",
-            Messages = new List<Message> 
-            { 
-                new Message { Role = MessageRole.User, Content = "Hello Gemini!" } 
+            Messages = new List<Message>
+            {
+                new Message { Role = MessageRole.User, Content = "Hello Gemini!" }
             },
             Temperature = 0.7,
             MaxTokens = 100,
@@ -400,7 +400,7 @@ public class GeminiClientTests
         {
             await foreach (var chunk in client.StreamChatCompletionAsync(request, cancellationToken: CancellationToken.None))
             {
-                 receivedChunks.Add(chunk); // Collect valid chunks
+                receivedChunks.Add(chunk); // Collect valid chunks
             }
         });
 
@@ -491,7 +491,7 @@ public class GeminiClientTests
         _handlerMock.VerifyRequest(HttpMethod.Get, expectedUri, Times.Once());
     }
 
-     [Fact]
+    [Fact]
     public void ListModelsAsync_MissingApiKey_ThrowsConfigurationException()
     {
         // Arrange
@@ -500,9 +500,9 @@ public class GeminiClientTests
 
         // Act & Assert
         // Exception should be thrown during client construction
-         var ex = Assert.Throws<ConfigurationException>(() =>
-            new GeminiClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object));
-         Assert.Contains("API key is missing for provider 'Gemini'", ex.Message);
+        var ex = Assert.Throws<ConfigurationException>(() =>
+           new GeminiClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object));
+        Assert.Contains("API key is missing for provider 'Gemini'", ex.Message);
 
         // If constructor allowed null key, the exception would happen during the call:
         // var client = new GeminiClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object);

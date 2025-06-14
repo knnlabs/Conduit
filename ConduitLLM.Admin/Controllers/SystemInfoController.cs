@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ public class SystemInfoController : ControllerBase
 {
     private readonly IAdminSystemInfoService _systemInfoService;
     private readonly ILogger<SystemInfoController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the SystemInfoController
     /// </summary>
@@ -27,7 +28,7 @@ public class SystemInfoController : ControllerBase
         _systemInfoService = systemInfoService ?? throw new ArgumentNullException(nameof(systemInfoService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets system information
     /// </summary>
@@ -48,7 +49,7 @@ public class SystemInfoController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets health status
     /// </summary>

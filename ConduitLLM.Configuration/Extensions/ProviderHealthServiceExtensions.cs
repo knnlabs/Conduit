@@ -1,6 +1,8 @@
 using System;
+
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,10 +26,10 @@ namespace ConduitLLM.Configuration.Extensions
             // Register the options
             services.Configure<ProviderHealthOptions>(
                 configuration.GetSection(ProviderHealthOptions.SectionName));
-            
+
             // Register the repository
             services.AddScoped<IProviderHealthRepository, ProviderHealthRepository>();
-            
+
             return services;
         }
     }

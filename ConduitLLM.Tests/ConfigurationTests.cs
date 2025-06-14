@@ -88,7 +88,7 @@ public class ConfigurationTests
         Assert.Empty(settings.ProviderCredentials); // Defaults to empty list
     }
 
-     [Fact]
+    [Fact]
     public void Bind_ConduitSettings_PartialConfiguration_PopulatesAvailable()
     {
         // Arrange

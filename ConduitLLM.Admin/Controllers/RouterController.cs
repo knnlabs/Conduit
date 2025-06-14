@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Models.Routing;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,7 @@ public class RouterController : ControllerBase
 {
     private readonly IAdminRouterService _routerService;
     private readonly ILogger<RouterController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the RouterController
     /// </summary>
@@ -28,7 +29,7 @@ public class RouterController : ControllerBase
         _routerService = routerService ?? throw new ArgumentNullException(nameof(routerService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets the current router configuration
     /// </summary>
@@ -49,7 +50,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving router configuration");
         }
     }
-    
+
     /// <summary>
     /// Updates the router configuration
     /// </summary>
@@ -87,7 +88,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Error updating router configuration");
         }
     }
-    
+
     /// <summary>
     /// Gets all model deployments
     /// </summary>
@@ -108,7 +109,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving model deployments");
         }
     }
-    
+
     /// <summary>
     /// Gets a specific model deployment
     /// </summary>
@@ -135,7 +136,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, $"Error retrieving model deployment '{deploymentName}'");
         }
     }
-    
+
     /// <summary>
     /// Creates or updates a model deployment
     /// </summary>
@@ -183,7 +184,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Error saving model deployment");
         }
     }
-    
+
     /// <summary>
     /// Deletes a model deployment
     /// </summary>
@@ -216,7 +217,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting model deployment '{deploymentName}'");
         }
     }
-    
+
     /// <summary>
     /// Gets all fallback configurations
     /// </summary>
@@ -237,7 +238,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving fallback configurations");
         }
     }
-    
+
     /// <summary>
     /// Sets a fallback configuration
     /// </summary>
@@ -281,7 +282,7 @@ public class RouterController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, $"Error setting fallback configuration for model '{primaryModel}'");
         }
     }
-    
+
     /// <summary>
     /// Removes a fallback configuration
     /// </summary>

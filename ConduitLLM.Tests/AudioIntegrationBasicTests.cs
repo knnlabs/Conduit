@@ -1,7 +1,14 @@
 using System.Text;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Services;
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests;
@@ -15,7 +22,11 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_SupportsOpenAITranscription()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        capabilityServiceMock.Setup(x => x.SupportsAudioTranscriptionAsync("whisper-1"))
+            .ReturnsAsync(true);
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supports = detector.SupportsTranscription("openai", "whisper-1");
@@ -28,7 +39,11 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_SupportsOpenAITextToSpeech()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        capabilityServiceMock.Setup(x => x.SupportsTextToSpeechAsync("tts-1"))
+            .ReturnsAsync(true);
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supports = detector.SupportsTextToSpeech("openai", "tts-1");
@@ -41,7 +56,9 @@ public class AudioIntegrationBasicTests
     public void AudioCapabilityDetector_DoesNotSupportUnknownProvider()
     {
         // Arrange
-        var detector = new AudioCapabilityDetector();
+        var loggerMock = new Mock<ILogger<AudioCapabilityDetector>>();
+        var capabilityServiceMock = new Mock<IModelCapabilityService>();
+        var detector = new AudioCapabilityDetector(loggerMock.Object, capabilityServiceMock.Object);
 
         // Act
         var supportsTranscription = detector.SupportsTranscription("unknown-provider");

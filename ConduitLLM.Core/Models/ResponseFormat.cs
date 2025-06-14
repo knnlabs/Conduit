@@ -27,12 +27,12 @@ namespace ConduitLLM.Core.Models
         /// </remarks>
         [JsonPropertyName("type")]
         public string? Type { get; set; }
-        
+
         /// <summary>
         /// Creates a new instance of the ResponseFormat class with default values.
         /// </summary>
         public ResponseFormat() { }
-        
+
         /// <summary>
         /// Creates a new instance of the ResponseFormat class with the specified type.
         /// </summary>
@@ -41,7 +41,7 @@ namespace ConduitLLM.Core.Models
         {
             Type = type;
         }
-        
+
         /// <summary>
         /// Creates a new ResponseFormat configured for JSON output.
         /// </summary>
@@ -50,7 +50,7 @@ namespace ConduitLLM.Core.Models
         {
             return new ResponseFormat("json_object");
         }
-        
+
         /// <summary>
         /// Creates a new ResponseFormat configured for plain text output.
         /// </summary>

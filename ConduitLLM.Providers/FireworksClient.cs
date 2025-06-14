@@ -4,11 +4,12 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -29,7 +30,7 @@ namespace ConduitLLM.Providers
     {
         // Default base URL for Fireworks API
         private const string DefaultFireworksApiBase = "https://api.fireworks.ai/inference/v1";
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="FireworksClient"/> class.
         /// </summary>
@@ -37,21 +38,24 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model identifier to use (e.g., accounts/fireworks/models/llama-v3-8b-instruct).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public FireworksClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 credentials,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Fireworks",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultFireworksApiBase : credentials.ApiBase)
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultFireworksApiBase : credentials.ApiBase,
+                defaultModels)
         {
         }
-        
+
         /// <summary>
         /// Configures the HTTP client with Fireworks-specific settings.
         /// </summary>
@@ -61,14 +65,14 @@ namespace ConduitLLM.Providers
         {
             // Call base implementation to set standard headers
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Fireworks uses OpenAI-compatible Authentication with Bearer token
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            
+
             // Set any Fireworks-specific headers if needed
             // client.DefaultRequestHeaders.Add("Fireworks-Version", "2023-12-01");
         }
-        
+
         /// <summary>
         /// Gets a fallback list of models for Fireworks.
         /// </summary>
@@ -159,21 +163,21 @@ namespace ConduitLLM.Providers
                     })
             };
         }
-        
+
         /// <summary>
         /// Validates credentials for Fireworks.
         /// </summary>
         protected override void ValidateCredentials()
         {
             base.ValidateCredentials();
-            
+
             // Fireworks requires an API key
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
                 throw new Core.Exceptions.ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
         }
-        
+
         /// <summary>
         /// Creates embeddings using Fireworks API.
         /// </summary>
@@ -190,18 +194,11 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Add a specific warning for model selection
-            if (string.IsNullOrEmpty(request.Model))
-            {
-                // Suggest a default embedding model if none specified
-                Logger.LogInformation("No embedding model specified for Fireworks. Setting default to 'nomic-embed-text'");
-                request.Model = "nomic-embed-text";
-            }
-            
             // Use the base implementation for the actual API call
+            // The model should come from the request or the model mapping system, not be hardcoded
             return await base.CreateEmbeddingAsync(request, apiKey, cancellationToken);
         }
-        
+
         /// <summary>
         /// Creates images using Fireworks API.
         /// </summary>

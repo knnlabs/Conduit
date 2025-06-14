@@ -25,7 +25,7 @@ public static class IpAddressValidator
         // Check if it's a valid IP address format
         return IPAddress.TryParse(ipAddress, out _);
     }
-    
+
     /// <summary>
     /// Validates that a string is a valid CIDR notation (IP address with subnet prefix)
     /// </summary>
@@ -59,7 +59,7 @@ public static class IpAddressValidator
 
         return false;
     }
-    
+
     /// <summary>
     /// Checks if an IP address is contained within a CIDR subnet
     /// </summary>
@@ -111,7 +111,7 @@ public static class IpAddressValidator
 
         return true;
     }
-    
+
     /// <summary>
     /// Standardizes an IP address or CIDR string for consistent storage and comparison
     /// </summary>
@@ -121,24 +121,24 @@ public static class IpAddressValidator
     {
         if (string.IsNullOrWhiteSpace(ipAddressOrCidr))
             return ipAddressOrCidr;
-            
+
         // Handle CIDR notation
         if (ipAddressOrCidr.Contains('/'))
         {
             if (!IsValidCidr(ipAddressOrCidr))
                 return ipAddressOrCidr;
-                
+
             var parts = ipAddressOrCidr.Split('/');
             var ipAddress = IPAddress.Parse(parts[0]);
             var prefixLength = int.Parse(parts[1]);
-            
+
             return $"{ipAddress}/{prefixLength}";
         }
-        
+
         // Handle plain IP address
         if (!IsValidIpAddress(ipAddressOrCidr))
             return ipAddressOrCidr;
-            
+
         return IPAddress.Parse(ipAddressOrCidr).ToString();
     }
 }

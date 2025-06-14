@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Configuration.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -39,7 +39,7 @@ namespace ConduitLLM.Configuration
         /// Database set for virtual key spend history
         /// </summary>
         public virtual DbSet<VirtualKeySpendHistory> VirtualKeySpendHistory { get; set; } = null!;
-        
+
         /// <summary>
         /// Database set for virtual key spend history (alias for backward compatibility)
         /// </summary>
@@ -74,7 +74,7 @@ namespace ConduitLLM.Configuration
         /// Database set for router configurations
         /// </summary>
         public virtual DbSet<RouterConfigEntity> RouterConfigurations { get; set; } = null!;
-        
+
         /// <summary>
         /// Database set for router configurations (alias for backward compatibility)
         /// </summary>
@@ -139,19 +139,19 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<VirtualKey>(entity =>
             {
                 entity.HasIndex(e => e.KeyHash).IsUnique();
-                
+
                 // Configure navigation property for RequestLogs
                 entity.HasMany(e => e.RequestLogs)
                       .WithOne(e => e.VirtualKey)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
-                
+
                 // Configure navigation property for SpendHistory
                 entity.HasMany(e => e.SpendHistory)
                       .WithOne(e => e.VirtualKey)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
-                
+
                 // Configure navigation property for Notifications
                 entity.HasMany(e => e.Notifications)
                       .WithOne(e => e.VirtualKey)
@@ -164,7 +164,7 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasIndex(e => e.Key).IsUnique();
             });
-            
+
             // Configure RequestLog entity
             modelBuilder.Entity<RequestLog>(entity =>
             {
@@ -180,7 +180,7 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ModelIdPattern)
                       .IsUnique(false); // Patterns might not be unique if we allow overlaps
             });
-            
+
             // Configure VirtualKeySpendHistory entity
             modelBuilder.Entity<VirtualKeySpendHistory>(entity =>
             {
@@ -199,19 +199,19 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<RouterConfigEntity>(entity =>
             {
                 entity.HasIndex(e => e.LastUpdated);
-                
+
                 // Configure relationships with model deployments and fallback configurations
                 entity.HasMany(e => e.ModelDeployments)
                       .WithOne(e => e.RouterConfig)
                       .HasForeignKey(e => e.RouterConfigId)
                       .OnDelete(DeleteBehavior.Cascade);
-                      
+
                 entity.HasMany(e => e.FallbackConfigurations)
                       .WithOne(e => e.RouterConfig)
                       .HasForeignKey(e => e.RouterConfigId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
-            
+
             modelBuilder.Entity<ModelDeploymentEntity>(entity =>
             {
                 entity.HasIndex(e => e.ModelName);
@@ -219,18 +219,18 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.IsEnabled);
                 entity.HasIndex(e => e.IsHealthy);
             });
-            
+
             modelBuilder.Entity<FallbackConfigurationEntity>(entity =>
             {
                 entity.HasIndex(e => e.PrimaryModelDeploymentId);
-                
+
                 // Configure relationship with fallback model mappings
                 entity.HasMany(e => e.FallbackMappings)
                       .WithOne(e => e.FallbackConfiguration)
                       .HasForeignKey(e => e.FallbackConfigurationId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
-            
+
             modelBuilder.Entity<FallbackModelMappingEntity>(entity =>
             {
                 entity.HasIndex(e => new { e.FallbackConfigurationId, e.Order }).IsUnique();
@@ -266,7 +266,7 @@ namespace ConduitLLM.Configuration
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.ProviderCredentialId);
-                
+
                 entity.HasOne(e => e.ProviderCredential)
                       .WithOne()
                       .HasForeignKey<AudioProviderConfig>(e => e.ProviderCredentialId)

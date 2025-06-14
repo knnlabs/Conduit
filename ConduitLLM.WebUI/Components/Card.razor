@@ -1,0 +1,160 @@
+<div class="card @GetCardClasses()" style="@GetCardStyles()">
+    @if (ShowHeader && (HeaderContent != null || !string.IsNullOrEmpty(Title)))
+    {
+        <div class="card-header @(NoBorder ? "border-0" : "")">
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+            else if (!string.IsNullOrEmpty(Title))
+            {
+                <h5 class="mb-0 fw-bold">@Title</h5>
+            }
+        </div>
+    }
+    
+    <div class="card-body @BodyCssClass" style="@BodyStyle">
+        @BodyContent
+    </div>
+    
+    @if (FooterContent != null)
+    {
+        <div class="card-footer @(NoBorder ? "border-0" : "")">
+            @FooterContent
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the card title. Only used if HeaderContent is not provided.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether to show a shadow on the card.
+    /// </summary>
+    [Parameter] public bool ShowShadow { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets the shadow size. Options: Small, Regular, Large.
+    /// </summary>
+    [Parameter] public ShadowSize Shadow { get; set; } = ShadowSize.Large;
+    
+    /// <summary>
+    /// Gets or sets whether the card has no border.
+    /// </summary>
+    [Parameter] public bool NoBorder { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets whether the card has rounded corners.
+    /// </summary>
+    [Parameter] public bool IsRounded { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets the rounded corner size.
+    /// </summary>
+    [Parameter] public int RoundedSize { get; set; } = 4;
+    
+    /// <summary>
+    /// Gets or sets whether to show the header section.
+    /// </summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    
+    /// <summary>
+    /// Gets or sets additional CSS classes for the card.
+    /// </summary>
+    [Parameter] public string? CssClass { get; set; }
+    
+    /// <summary>
+    /// Gets or sets additional CSS classes for the card body.
+    /// </summary>
+    [Parameter] public string? BodyCssClass { get; set; }
+    
+    /// <summary>
+    /// Gets or sets additional inline styles for the card.
+    /// </summary>
+    [Parameter] public string? Style { get; set; }
+    
+    /// <summary>
+    /// Gets or sets additional inline styles for the card body.
+    /// </summary>
+    [Parameter] public string? BodyStyle { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the header content.
+    /// </summary>
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the body content.
+    /// </summary>
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the footer content.
+    /// </summary>
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the card should fill its container height.
+    /// </summary>
+    [Parameter] public bool FillHeight { get; set; }
+
+    private string GetCardClasses()
+    {
+        var classes = new List<string>();
+        
+        if (ShowShadow)
+        {
+            classes.Add(Shadow switch
+            {
+                ShadowSize.Small => "shadow-sm",
+                ShadowSize.Regular => "shadow",
+                ShadowSize.Large => "shadow-lg",
+                _ => "shadow-lg"
+            });
+        }
+        
+        if (NoBorder)
+        {
+            classes.Add("border-0");
+        }
+        
+        if (IsRounded)
+        {
+            classes.Add($"rounded-{RoundedSize}");
+        }
+        
+        if (FillHeight)
+        {
+            classes.Add("h-100");
+        }
+        
+        if (!string.IsNullOrEmpty(CssClass))
+        {
+            classes.Add(CssClass);
+        }
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetCardStyles()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Style))
+        {
+            styles.Add(Style);
+        }
+        
+        return string.Join("; ", styles);
+    }
+
+    public enum ShadowSize
+    {
+        Small,
+        Regular,
+        Large
+    }
+}

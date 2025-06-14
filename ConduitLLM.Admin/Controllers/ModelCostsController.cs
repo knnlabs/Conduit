@@ -1,11 +1,17 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Extensions;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -49,7 +55,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all model costs");
+                _logger.LogErrorSecure(ex, "Error getting all model costs");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -68,17 +74,17 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var modelCost = await _modelCostService.GetModelCostByIdAsync(id);
-                
+
                 if (modelCost == null)
                 {
                     return NotFound($"Model cost with ID {id} not found");
                 }
-                
+
                 return Ok(modelCost);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error getting model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -100,7 +106,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
+                _logger.LogErrorSecure(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -119,17 +125,17 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var modelCost = await _modelCostService.GetModelCostByPatternAsync(pattern);
-                
+
                 if (modelCost == null)
                 {
                     return NotFound($"Model cost with pattern '{pattern}' not found");
                 }
-                
+
                 return Ok(modelCost);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", pattern);
+                _logger.LogErrorSecure(ex, "Error getting model cost with pattern '{Pattern}'", pattern);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -149,7 +155,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdModelCost = await _modelCostService.CreateModelCostAsync(modelCost);
@@ -157,12 +163,12 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when creating model cost");
+                _logger.LogWarningSecure(ex, "Invalid operation when creating model cost");
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost");
+                _logger.LogErrorSecure(ex, "Error creating model cost");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -184,32 +190,32 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             // Ensure ID in route matches ID in body
             if (id != modelCost.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
-            
+
             try
             {
                 var success = await _modelCostService.UpdateModelCostAsync(modelCost);
-                
+
                 if (!success)
                 {
                     return NotFound($"Model cost with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation when updating model cost");
+                _logger.LogWarningSecure(ex, "Invalid operation when updating model cost");
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error updating model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -228,17 +234,17 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _modelCostService.DeleteModelCostAsync(id);
-                
+
                 if (!success)
                 {
                     return NotFound($"Model cost with ID {id} not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {Id}", id);
+                _logger.LogErrorSecure(ex, "Error deleting model cost with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -261,7 +267,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("Start date cannot be after end date");
             }
-            
+
             try
             {
                 var overview = await _modelCostService.GetModelCostOverviewAsync(startDate, endDate);
@@ -269,7 +275,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost overview for period {StartDate} to {EndDate}", 
+                _logger.LogErrorSecure(ex, "Error getting model cost overview for period {StartDate} to {EndDate}",
                     startDate, endDate);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
@@ -290,7 +296,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("No model costs provided for import");
             }
-            
+
             try
             {
                 var importedCount = await _modelCostService.ImportModelCostsAsync(modelCosts);
@@ -298,7 +304,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing model costs");
+                _logger.LogErrorSecure(ex, "Error importing model costs");
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

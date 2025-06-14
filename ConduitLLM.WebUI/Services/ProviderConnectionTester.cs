@@ -3,10 +3,11 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Extensions;
-using ConduitLLM.WebUI.Models;
 using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -54,14 +55,14 @@ namespace ConduitLLM.WebUI.Services
                         ErrorCategory = "Configuration"
                     };
                 }
-                
+
                 return await providerStatusService.CheckProviderStatusAsync(credentialsDto, cancellationToken);
             }
             catch (Exception ex)
             {
                 string errorMsg = ex.Message;
                 string errorCategory = "Unknown";
-                
+
                 if (ex is TaskCanceledException)
                 {
                     errorMsg = "Connection timeout";
@@ -70,7 +71,7 @@ namespace ConduitLLM.WebUI.Services
                 else if (ex is HttpRequestException httpEx)
                 {
                     errorCategory = "Network";
-                    
+
                     if (httpEx.Data.Contains("Body"))
                     {
                         var body = httpEx.Data["Body"]?.ToString();
@@ -81,7 +82,7 @@ namespace ConduitLLM.WebUI.Services
                 else if (ex.InnerException is HttpRequestException innerHttpEx)
                 {
                     errorCategory = "Network";
-                    
+
                     if (innerHttpEx.Data.Contains("Body"))
                     {
                         var body = innerHttpEx.Data["Body"]?.ToString();
@@ -89,7 +90,7 @@ namespace ConduitLLM.WebUI.Services
                             errorMsg = ExtractUserFriendlyError(body);
                     }
                 }
-                
+
                 return new ProviderStatus
                 {
                     Status = ProviderStatus.StatusType.Offline,
@@ -111,7 +112,7 @@ namespace ConduitLLM.WebUI.Services
             try
             {
                 using var doc = JsonDocument.Parse(errorContent);
-                
+
                 // Common OpenAI/Azure OpenAI pattern
                 if (doc.RootElement.TryGetProperty("error", out var errorObj))
                 {
@@ -119,16 +120,16 @@ namespace ConduitLLM.WebUI.Services
                     {
                         return messageProp.GetString() ?? errorContent;
                     }
-                    
+
                     // If it's a string, use it directly
                     if (errorObj.ValueKind == JsonValueKind.String)
                     {
                         return errorObj.GetString() ?? errorContent;
                     }
                 }
-                
+
                 // Anthropic pattern
-                if (doc.RootElement.TryGetProperty("type", out var typeObj) && 
+                if (doc.RootElement.TryGetProperty("type", out var typeObj) &&
                     doc.RootElement.TryGetProperty("message", out var messageObj))
                 {
                     string type = typeObj.GetString() ?? "error";

@@ -113,6 +113,11 @@ namespace ConduitLLM.Core.Models.Audio
         /// Session update confirmation.
         /// </summary>
         public SessionUpdateResult? SessionUpdate { get; set; }
+
+        /// <summary>
+        /// Usage information for billing purposes.
+        /// </summary>
+        public RealtimeUsageInfo? Usage { get; set; }
     }
 
     /// <summary>
@@ -173,7 +178,12 @@ namespace ConduitLLM.Core.Models.Audio
         /// <summary>
         /// User interrupted the AI.
         /// </summary>
-        Interrupted
+        Interrupted,
+
+        /// <summary>
+        /// Response has been completed.
+        /// </summary>
+        ResponseComplete
     }
 
     /// <summary>
@@ -507,4 +517,39 @@ namespace ConduitLLM.Core.Models.Audio
         public bool SupportsCustomParameters { get; set; }
     }
 
+    /// <summary>
+    /// Usage information for real-time sessions.
+    /// </summary>
+    public class RealtimeUsageInfo
+    {
+        /// <summary>
+        /// Total tokens used.
+        /// </summary>
+        public long? TotalTokens { get; set; }
+
+        /// <summary>
+        /// Input tokens used.
+        /// </summary>
+        public long? InputTokens { get; set; }
+
+        /// <summary>
+        /// Output tokens used.
+        /// </summary>
+        public long? OutputTokens { get; set; }
+
+        /// <summary>
+        /// Input audio seconds.
+        /// </summary>
+        public double? InputAudioSeconds { get; set; }
+
+        /// <summary>
+        /// Output audio seconds.
+        /// </summary>
+        public double? OutputAudioSeconds { get; set; }
+
+        /// <summary>
+        /// Number of function calls made.
+        /// </summary>
+        public int? FunctionCalls { get; set; }
+    }
 }

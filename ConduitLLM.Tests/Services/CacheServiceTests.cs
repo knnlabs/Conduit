@@ -26,14 +26,14 @@ namespace ConduitLLM.Tests.Services
         {
             // Create a real MemoryCache for testing since mocking Set extension method is problematic
             _memoryCache = new MemoryCache(new MemoryCacheOptions());
-            
+
             // Still create a mock for verification purposes where needed
             _memoryCacheMock = new Mock<IMemoryCache>();
-            
+
             // For TryGetValue we can use mock to track calls
             _memoryCacheMock
                 .Setup(m => m.TryGetValue(It.IsAny<object>(), out It.Ref<object?>.IsAny))
-                .Returns(new TryGetValueCallback((object key, out object? value) => 
+                .Returns(new TryGetValueCallback((object key, out object? value) =>
                 {
                     return _memoryCache.TryGetValue(key, out value!);
                 }));
@@ -83,7 +83,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             string key = "nonExistentKey";
-            
+
             // Make sure the key doesn't exist
             _memoryCache.Remove(key);
 
@@ -134,7 +134,7 @@ namespace ConduitLLM.Tests.Services
             string key = "testKey";
             string expectedValue = "testValue";
             _memoryCache.Set(key, expectedValue);
-            
+
             // Verify it's in the cache initially
             Assert.Equal(expectedValue, _memoryCache.Get<string>(key));
 
@@ -154,11 +154,11 @@ namespace ConduitLLM.Tests.Services
             string expectedValue = "testValue";
             _memoryCache.Set(key, expectedValue);
             int factoryCallCount = 0;
-            
+
             // Act
             var result = await _cacheService.GetOrCreateAsync<string>(
-                key, 
-                () => 
+                key,
+                () =>
                 {
                     factoryCallCount++;
                     return Task.FromResult("factoryValue");
@@ -177,13 +177,13 @@ namespace ConduitLLM.Tests.Services
             string key = "nonExistentKey";
             string factoryValue = "newValue";
             _memoryCache.Remove(key); // Ensure key doesn't exist
-            
+
             var absoluteExpiration = TimeSpan.FromMinutes(10);
             var slidingExpiration = TimeSpan.FromMinutes(5);
 
             // Act
             var result = await _cacheService.GetOrCreateAsync<string>(
-                key, 
+                key,
                 () => Task.FromResult(factoryValue),
                 absoluteExpiration,
                 slidingExpiration);
@@ -201,7 +201,7 @@ namespace ConduitLLM.Tests.Services
 
             // Act & Assert - Should not throw
             _cacheService.RemoveByPrefix(prefix);
-            
+
             // No real way to verify behavior since it's not implemented
         }
     }

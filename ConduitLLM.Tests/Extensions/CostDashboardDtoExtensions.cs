@@ -15,7 +15,7 @@ namespace ConduitLLM.Tests.Extensions
             // CostTrendDataDto no longer has RequestCount, return 0 for compatibility
             return 0;
         }
-        
+
         /// <summary>
         /// Gets the model name from a model cost DTO (compatibility method)
         /// </summary>
@@ -23,7 +23,7 @@ namespace ConduitLLM.Tests.Extensions
         {
             return modelCostData.Model;
         }
-        
+
         /// <summary>
         /// Gets the request count from a model cost DTO (compatibility method)
         /// </summary>

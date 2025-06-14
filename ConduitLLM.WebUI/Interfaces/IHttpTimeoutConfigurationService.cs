@@ -1,5 +1,6 @@
-using ConduitLLM.Providers.Configuration;
 using System.Threading.Tasks;
+
+using ConduitLLM.Providers.Configuration;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -14,7 +15,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="timeoutOptions">The timeout options to save</param>
         /// <returns>A task representing the asynchronous operation</returns>
         Task UpdateTimeoutConfigurationAsync(TimeoutOptions timeoutOptions);
-        
+
         /// <summary>
         /// Loads HTTP timeout settings from the database into the application options
         /// </summary>

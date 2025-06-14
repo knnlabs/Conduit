@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -15,7 +16,6 @@ using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Protected;
@@ -108,10 +108,10 @@ public class GroqClientTests
         var request = CreateTestRequest("groq-llama3");
         var modelId = "llama3-70b-8192";
         var expectedResponse = CreateSuccessGroqResponse(modelId);
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -124,16 +124,16 @@ public class GroqClientTests
 
         // Act
         var response = await client.CreateChatCompletionAsync(request);
-        
+
         // Assert with proper null checking
         Assert.NotNull(response);
         Assert.NotNull(response.Model);
         Assert.NotNull(response.Choices);
         Assert.True(response.Choices?.Count > 0, "Response choices should not be empty");
-        
+
         var firstChoice = response.Choices?[0];
         Assert.NotNull(firstChoice);
-        
+
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
@@ -144,11 +144,11 @@ public class GroqClientTests
         string contentStr = message?.Content?.ToString() ?? string.Empty;
         Assert.NotEmpty(contentStr);
         Assert.Contains("Groq", contentStr, StringComparison.OrdinalIgnoreCase);
-        
+
         Assert.NotNull(response.Usage);
         // The implementation might not set total tokens in the same way as our mock
         // Just check that Usage is not null rather than expecting specific values
-        
+
         _handlerMock.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
@@ -165,8 +165,8 @@ public class GroqClientTests
         // Inject a rate limit error in the error response
         var errorResponse = new { error = new { message = "Rate limit exceeded", type = "rate_limit_error", code = "rate_limit_exceeded" } };
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.Is<HttpRequestMessage>(req => req != null), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.Is<HttpRequestMessage>(req => req != null),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -186,10 +186,10 @@ public class GroqClientTests
         // Arrange
         var request = CreateTestRequest("groq-llama3");
         var modelId = "llama3-70b-8192";
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -198,7 +198,7 @@ public class GroqClientTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
             () => client.CreateChatCompletionAsync(request, cancellationToken: CancellationToken.None));
-        
+
         Assert.Contains("Connection refused", exception.Message);
     }
 
@@ -218,8 +218,8 @@ public class GroqClientTests
         };
 
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri != null && req.RequestUri.ToString().Contains("/models")), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri != null && req.RequestUri.ToString().Contains("/models")),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -237,13 +237,13 @@ public class GroqClientTests
         Assert.NotNull(models);
         Assert.NotEmpty(models);
         Assert.Contains("llama3-70b-8192", models);
-        
+
         _handlerMock.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            MoqIt.Is<HttpRequestMessage>(req => 
+            MoqIt.Is<HttpRequestMessage>(req =>
                 req != null &&
-                req.Method == HttpMethod.Get && 
+                req.Method == HttpMethod.Get &&
                 req.RequestUri != null &&
                 req.RequestUri.ToString().Contains("/models")),
             MoqIt.IsAny<CancellationToken>());
@@ -254,10 +254,10 @@ public class GroqClientTests
     {
         // Arrange
         var modelId = "llama3-70b-8192";
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 

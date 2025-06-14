@@ -2,48 +2,49 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Provides detection and validation of model capabilities, particularly for
     /// specialized features like vision/multimodal support.
+    /// Now uses IModelCapabilityService for database-driven capability detection.
     /// </summary>
     public class ModelCapabilityDetector : IModelCapabilityDetector
     {
         private readonly ILogger<ModelCapabilityDetector> _logger;
+        private readonly IModelCapabilityService? _capabilityService;
         private readonly ILLMClientFactory _clientFactory;
-        
-        // Vision-capable model name patterns for common providers
-        private static readonly Dictionary<string, List<string>> VisionCapableModelPatterns = new()
-        {
-            ["openai"] = new List<string> { "gpt-4-vision", "gpt-4-turbo", "gpt-4v", "gpt-4o" },
-            ["anthropic"] = new List<string> { "claude-3", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku" },
-            ["gemini"] = new List<string> { "gemini", "gemini-pro", "gemini-pro-vision" },
-            ["bedrock"] = new List<string> { "claude-3", "claude-3-haiku", "claude-3-sonnet", "claude-3-opus" },
-            ["vertexai"] = new List<string> { "gemini" }
-        };
-        
-        // Cache of models with vision capability
-        private HashSet<string> _visionCapableModels = new(StringComparer.OrdinalIgnoreCase);
-        private bool _hasInitializedCapabilityCache = false;
-        
+
+        // Removed hardcoded patterns - now using IModelCapabilityService for all capability detection
+
         /// <summary>
         /// Initializes a new instance of the ModelCapabilityDetector.
         /// </summary>
         /// <param name="logger">Logger for diagnostics information</param>
+        /// <param name="capabilityService">Service for retrieving model capabilities from configuration</param>
         /// <param name="clientFactory">Factory for creating LLM clients</param>
         public ModelCapabilityDetector(
             ILogger<ModelCapabilityDetector> logger,
+            IModelCapabilityService? capabilityService,
             ILLMClientFactory clientFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityService = capabilityService;
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+
+            if (capabilityService == null)
+            {
+                _logger.LogError("ModelCapabilityService not available - model capability detection will not function properly");
+            }
         }
-        
+
         /// <summary>
         /// Determines if a model has vision (image processing) capabilities.
         /// </summary>
@@ -53,30 +54,26 @@ namespace ConduitLLM.Core.Services
         {
             if (string.IsNullOrEmpty(modelName))
                 return false;
-                
-            InitializeCapabilityCacheIfNeeded();
-            
-            // If we have exact model in our cache, use that information
-            if (_visionCapableModels.Contains(modelName))
-                return true;
-                
-            // Otherwise check if the model matches any pattern
-            foreach (var patternGroup in VisionCapableModelPatterns)
+
+            // Use capability service if available
+            if (_capabilityService != null)
             {
-                foreach (var pattern in patternGroup.Value)
+                try
                 {
-                    if (modelName.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Cache the result for future checks
-                        _visionCapableModels.Add(modelName);
-                        return true;
-                    }
+                    var hasVision = _capabilityService.SupportsVisionAsync(modelName).GetAwaiter().GetResult();
+                    return hasVision;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking vision capability for model {Model}", modelName);
+                    return false;
                 }
             }
-            
+
+            _logger.LogWarning("Cannot check vision capability for model {Model} - ModelCapabilityService not available", modelName);
             return false;
         }
-        
+
         /// <summary>
         /// Determines if a chat completion request contains image content that 
         /// requires a vision-capable model.
@@ -87,12 +84,12 @@ namespace ConduitLLM.Core.Services
         {
             if (request?.Messages == null || !request.Messages.Any())
                 return false;
-                
+
             foreach (var message in request.Messages)
             {
                 if (message.Content == null)
                     continue;
-                    
+
                 // Check for content that is not a string (likely multimodal)
                 if (message.Content is not string)
                 {
@@ -119,7 +116,7 @@ namespace ConduitLLM.Core.Services
                         {
                             if (part is ImageUrlContentPart)
                                 return true;
-                                
+
                             // Try to extract type property dynamically
                             var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
                             if (type == "image_url")
@@ -128,20 +125,22 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Gets a list of all available models that support vision capabilities.
         /// </summary>
         /// <returns>A collection of model names that support vision</returns>
         public IEnumerable<string> GetVisionCapableModels()
         {
-            InitializeCapabilityCacheIfNeeded();
-            return _visionCapableModels.ToList();
+            _logger.LogWarning("GetVisionCapableModels called - this method needs to be made async to properly query ModelCapabilityService");
+            // This method should be made async to properly query the capability service
+            // For now, return empty list when capability service is not available
+            return Enumerable.Empty<string>();
         }
-        
+
         /// <summary>
         /// Validates that a request can be processed by the specified model.
         /// </summary>
@@ -152,60 +151,27 @@ namespace ConduitLLM.Core.Services
         public bool ValidateRequestForModel(ChatCompletionRequest request, string modelName, out string errorMessage)
         {
             errorMessage = string.Empty;
-            
+
             if (request == null)
             {
                 errorMessage = "Request cannot be null";
                 return false;
             }
-            
+
             if (string.IsNullOrEmpty(modelName))
             {
                 errorMessage = "Model name cannot be null or empty";
                 return false;
             }
-            
+
             // Check if request contains images but model doesn't support vision
             if (ContainsImageContent(request) && !HasVisionCapability(modelName))
             {
                 errorMessage = $"Model '{modelName}' does not support vision/image inputs";
                 return false;
             }
-            
+
             return true;
-        }
-        
-        /// <summary>
-        /// Initializes the capability cache by querying models from the client factory.
-        /// </summary>
-        private void InitializeCapabilityCacheIfNeeded()
-        {
-            if (_hasInitializedCapabilityCache)
-                return;
-                
-            try
-            {
-                // Since we can't directly get models with capabilities from the factory,
-                // we'll rely on our pattern matching
-                _logger.LogInformation("Initializing vision capability cache based on pattern matching");
-                
-                // Add models based on pattern matching
-                foreach (var patternGroup in VisionCapableModelPatterns)
-                {
-                    foreach (var pattern in patternGroup.Value)
-                    {
-                        _visionCapableModels.Add(pattern);
-                        _logger.LogDebug("Added vision-capable model pattern: {Pattern}", pattern);
-                    }
-                }
-                
-                _hasInitializedCapabilityCache = true;
-                _logger.LogInformation("Initialized vision capability cache with {Count} models", _visionCapableModels.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to initialize vision capability cache");
-            }
         }
     }
 }

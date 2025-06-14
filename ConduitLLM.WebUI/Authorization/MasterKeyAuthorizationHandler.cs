@@ -47,11 +47,11 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
     /// <param name="logger">The logger for recording diagnostic information.</param>
     public MasterKeyAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
-        IServiceProvider serviceProvider, 
+        IServiceProvider serviceProvider,
         ILogger<MasterKeyAuthorizationHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _serviceProvider = serviceProvider; 
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 

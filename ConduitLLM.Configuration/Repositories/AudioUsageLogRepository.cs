@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -29,34 +31,41 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<AudioUsageLog> CreateAsync(AudioUsageLog log)
         {
             log.Timestamp = DateTime.UtcNow;
-            
+
             _context.AudioUsageLogs.Add(log);
             await _context.SaveChangesAsync();
-            
+
             return log;
         }
 
         /// <inheritdoc/>
         public async Task<PagedResult<AudioUsageLog>> GetPagedAsync(AudioUsageQueryDto query)
         {
+            // Ensure page size is within bounds (even though DTO validates this)
+            const int maxPageSize = 1000;
+            if (query.PageSize > maxPageSize)
+            {
+                query.PageSize = maxPageSize;
+            }
+
             var queryable = _context.AudioUsageLogs.AsQueryable();
 
             // Apply filters
             if (!string.IsNullOrEmpty(query.VirtualKey))
                 queryable = queryable.Where(l => l.VirtualKey == query.VirtualKey);
-            
+
             if (!string.IsNullOrEmpty(query.Provider))
                 queryable = queryable.Where(l => l.Provider.ToLower() == query.Provider.ToLower());
-            
+
             if (!string.IsNullOrEmpty(query.OperationType))
                 queryable = queryable.Where(l => l.OperationType.ToLower() == query.OperationType.ToLower());
-            
+
             if (query.StartDate.HasValue)
                 queryable = queryable.Where(l => l.Timestamp >= query.StartDate.Value);
-            
+
             if (query.EndDate.HasValue)
                 queryable = queryable.Where(l => l.Timestamp <= query.EndDate.Value);
-            
+
             if (query.OnlyErrors)
                 queryable = queryable.Where(l => l.StatusCode == null || l.StatusCode >= 400);
 
@@ -88,7 +97,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             if (!string.IsNullOrEmpty(virtualKey))
                 query = query.Where(l => l.VirtualKey == virtualKey);
-            
+
             if (!string.IsNullOrEmpty(provider))
                 query = query.Where(l => l.Provider.ToLower() == provider.ToLower());
 
@@ -110,10 +119,10 @@ namespace ConduitLLM.Configuration.Repositories
 
             // Get operation breakdown
             summary.OperationBreakdown = await GetOperationBreakdownAsync(startDate, endDate, virtualKey);
-            
+
             // Get provider breakdown
             summary.ProviderBreakdown = await GetProviderBreakdownAsync(startDate, endDate, virtualKey);
-            
+
             // Get virtual key breakdown (if not filtering by a specific key)
             if (string.IsNullOrEmpty(virtualKey))
             {
@@ -130,7 +139,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             if (startDate.HasValue)
                 query = query.Where(l => l.Timestamp >= startDate.Value);
-            
+
             if (endDate.HasValue)
                 query = query.Where(l => l.Timestamp <= endDate.Value);
 
@@ -144,7 +153,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             if (startDate.HasValue)
                 query = query.Where(l => l.Timestamp >= startDate.Value);
-            
+
             if (endDate.HasValue)
                 query = query.Where(l => l.Timestamp <= endDate.Value);
 

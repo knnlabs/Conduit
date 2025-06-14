@@ -11,7 +11,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Whether the budget was reset
         /// </summary>
         public bool WasReset { get; set; }
-        
+
         /// <summary>
         /// The new budget start date if reset was performed
         /// </summary>

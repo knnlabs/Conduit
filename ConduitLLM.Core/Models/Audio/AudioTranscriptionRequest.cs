@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Core.Models.Audio
@@ -94,6 +95,25 @@ namespace ConduitLLM.Core.Models.Audio
         /// Default is typically "json" with full metadata.
         /// </remarks>
         public TranscriptionFormat? ResponseFormat { get; set; }
+
+        /// <summary>
+        /// The minimum quality score required for provider selection.
+        /// </summary>
+        /// <remarks>
+        /// Used by quality-based routing strategies. Range: 0-100.
+        /// Higher values may limit provider options but ensure better quality.
+        /// </remarks>
+        [Range(0, 100)]
+        public double? RequiredQuality { get; set; }
+
+        /// <summary>
+        /// Whether to enable streaming for the transcription.
+        /// </summary>
+        /// <remarks>
+        /// When true, the transcription service will stream partial results
+        /// as they become available. Not all providers support streaming.
+        /// </remarks>
+        public bool EnableStreaming { get; set; } = false;
 
         /// <summary>
         /// The level of timestamp detail to include in the response.

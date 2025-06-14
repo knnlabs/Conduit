@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+
 using ConduitLLM.Core.Models.Routing;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.Core.Routing.Strategies;
+
+using Xunit;
+
 using CoreFactory = ConduitLLM.Core.Routing.ModelSelectionStrategyFactory;
 using CoreRoutingStrategy = ConduitLLM.Core.Routing.RoutingStrategy;
-using Xunit;
 
 namespace ConduitLLM.Tests.Routing
 {
@@ -92,7 +95,7 @@ namespace ConduitLLM.Tests.Routing
             var roundRobinStrategy = CoreFactory.GetStrategy("roundrobin");
             var randomStrategy = CoreFactory.GetStrategy("random");
             var leastUsedStrategy = CoreFactory.GetStrategy("leastused");
-            
+
             // Assert
             Assert.IsType<SimpleModelSelectionStrategy>(simpleStrategy);
             Assert.IsType<RoundRobinModelSelectionStrategy>(roundRobinStrategy);
@@ -108,7 +111,7 @@ namespace ConduitLLM.Tests.Routing
             var roundRobinStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.RoundRobin);
             var randomStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.Random);
             var leastUsedStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.LeastUsed);
-            
+
             // Assert
             Assert.IsType<SimpleModelSelectionStrategy>(simpleStrategy);
             Assert.IsType<RoundRobinModelSelectionStrategy>(roundRobinStrategy);

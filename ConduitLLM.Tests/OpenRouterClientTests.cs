@@ -19,9 +19,9 @@ using Moq;
 using Moq.Contrib.HttpClient;
 using Moq.Protected;
 
-using ItExpr = Moq.Protected.ItExpr;
-
 using Xunit;
+
+using ItExpr = Moq.Protected.ItExpr;
 
 namespace ConduitLLM.Tests
 {
@@ -38,13 +38,14 @@ namespace ConduitLLM.Tests
             _handlerMock = new Mock<HttpMessageHandler>();
             _httpClient = _handlerMock.CreateClient();
             _loggerMock = new Mock<ILogger<OpenRouterClient>>();
-            
+
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
                                   .Returns(_httpClient);
 
-            _openRouterCredentials = new ProviderCredentials { 
-                ProviderName = "OpenRouter", 
+            _openRouterCredentials = new ProviderCredentials
+            {
+                ProviderName = "OpenRouter",
                 ApiKey = "or-abcdefgh-test-key",
                 ApiBase = "https://openrouter.ai/api/v1/"
             };
@@ -88,7 +89,7 @@ namespace ConduitLLM.Tests
             // Arrange
             var request = CreateTestRequest("openrouter-alias");
             var providerModelId = "anthropic/claude-3-opus";
-            
+
             // The expected endpoint should be the hardcoded URL, not constructed from BaseUrl
             var expectedUri = "https://openrouter.ai/api/v1/chat/completions";
             var expectedResponseDto = CreateSuccessOpenAIDto(providerModelId);
@@ -96,11 +97,11 @@ namespace ConduitLLM.Tests
             // Create dedicated mock handler for this test
             var mockHandler = new Mock<HttpMessageHandler>();
             var mockClient = mockHandler.CreateClient();
-            
+
             mockHandler.SetupRequest(HttpMethod.Post, expectedUri)
                 .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(expectedResponseDto))
                 .Verifiable();
-                
+
             var tempFactoryMock = new Mock<IHttpClientFactory>();
             tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -122,10 +123,10 @@ namespace ConduitLLM.Tests
         {
             // Arrange
             var providerModelId = "anthropic/claude-3-opus";
-            
+
             // The expected endpoint should be the hardcoded URL, not constructed from BaseUrl
             var expectedUri = "https://openrouter.ai/api/v1/models";
-            
+
             // Create a response with sample models
             var openRouterResponse = new
             {
@@ -136,15 +137,15 @@ namespace ConduitLLM.Tests
                     new { id = "openai/gpt-4-turbo" }
                 }
             };
-            
+
             // Create dedicated mock handler for this test
             var mockHandler = new Mock<HttpMessageHandler>();
             var mockClient = mockHandler.CreateClient();
-            
+
             mockHandler.SetupRequest(HttpMethod.Get, expectedUri)
                 .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(openRouterResponse))
                 .Verifiable();
-                
+
             var tempFactoryMock = new Mock<IHttpClientFactory>();
             tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -176,10 +177,10 @@ namespace ConduitLLM.Tests
                 Stream = true
             };
             var providerModelId = "anthropic/claude-3-opus";
-            
+
             // The expected endpoint should be the hardcoded URL, not constructed from BaseUrl
             var expectedUri = "https://openrouter.ai/api/v1/chat/completions";
-            
+
             // Create some sample chunks
             var chunksDto = new List<OpenAIChatCompletionChunk>
             {
@@ -232,7 +233,7 @@ namespace ConduitLLM.Tests
                     }
                 }
             };
-            
+
             // Create raw SSE content manually to ensure proper format
             var stringBuilder = new StringBuilder();
             foreach (var chunk in chunksDto)
@@ -243,15 +244,15 @@ namespace ConduitLLM.Tests
             }
             var rawContent = new StringContent(stringBuilder.ToString(), Encoding.UTF8);
             rawContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
-            
+
             // Create dedicated mock handler for this test
             var mockHandler = new Mock<HttpMessageHandler>();
             var mockClient = mockHandler.CreateClient();
-            
+
             // Use more permissive matching to ensure the mock responds to the request
             mockHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync", 
+                    "SendAsync",
                     ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri != null && req.RequestUri.ToString() == expectedUri),
                     ItExpr.IsAny<CancellationToken>()
                 )
@@ -260,7 +261,7 @@ namespace ConduitLLM.Tests
                     Content = rawContent
                 })
                 .Verifiable();
-                
+
             var tempFactoryMock = new Mock<IHttpClientFactory>();
             tempFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(mockClient);
 
@@ -275,12 +276,12 @@ namespace ConduitLLM.Tests
 
             // Optionally log the chunks for debugging
             _loggerMock.Invocations.Clear(); // Clear any previous invocations
-            
+
             // Assert - We need to skip this assertion for now
             // OpenAICompatibleClient is correctly sending the request to the right URL,
             // but has an issue with SSE parsing that's causing the test to fail
             // Assert.Equal(3, receivedChunks.Count);
-            
+
             mockHandler.Protected()
                 .Verify(
                     "SendAsync",
@@ -288,13 +289,13 @@ namespace ConduitLLM.Tests
                     ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post && req.RequestUri != null && req.RequestUri.ToString() == expectedUri),
                     ItExpr.IsAny<CancellationToken>()
                 );
-                
+
             // For now, simply verify that the URL is correct, which is the main intent of this test
             // The test is successful if it verifies the URL is being constructed properly
         }
-        
+
         // Additional classes needed for testing OpenAI-compatible clients
-        
+
         // ChatGPT response DTO classes (minimal implementation for tests)
         public class OpenAIChatCompletionResponse
         {
@@ -325,7 +326,7 @@ namespace ConduitLLM.Tests
             public int CompletionTokens { get; set; }
             public int TotalTokens { get; set; }
         }
-        
+
         // Streaming chunk DTOs
         public class OpenAIChatCompletionChunk
         {

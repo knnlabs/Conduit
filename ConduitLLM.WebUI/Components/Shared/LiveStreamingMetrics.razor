@@ -1,0 +1,285 @@
+@using ConduitLLM.Core.Models
+@using ConduitLLM.Core.Services
+@using ConduitLLM.WebUI.Services
+@implements IDisposable
+@inject IStreamingMetricsService MetricsService
+
+@if (IsStreaming && CurrentMetrics != null)
+{
+    <div class="live-metrics @(Compact ? "compact" : "")">
+        <div class="metrics-header">
+            <i class="fa fa-chart-line pulse"></i>
+            <span class="metrics-title">Live Performance</span>
+        </div>
+        
+        <div class="metrics-grid">
+            @if (CurrentMetrics.TimeToFirstTokenMs.HasValue)
+            {
+                <div class="metric-item">
+                    <span class="metric-label">TTFT</span>
+                    <span class="metric-value">@FormatMilliseconds(CurrentMetrics.TimeToFirstTokenMs.Value)</span>
+                </div>
+            }
+            
+            <div class="metric-item primary">
+                <span class="metric-label">Speed</span>
+                <span class="metric-value">@CurrentMetrics.CurrentTokensPerSecond.ToString("F1") tok/s</span>
+            </div>
+            
+            <div class="metric-item">
+                <span class="metric-label">Tokens</span>
+                <span class="metric-value">@CurrentMetrics.TokensGenerated</span>
+            </div>
+            
+            @if (CurrentMetrics.AvgInterTokenLatencyMs.HasValue && !Compact)
+            {
+                <div class="metric-item">
+                    <span class="metric-label">Latency</span>
+                    <span class="metric-value">@CurrentMetrics.AvgInterTokenLatencyMs.Value.ToString("F0")ms</span>
+                </div>
+            }
+            
+            <div class="metric-item">
+                <span class="metric-label">Elapsed</span>
+                <span class="metric-value">@FormatMilliseconds(CurrentMetrics.ElapsedMs)</span>
+            </div>
+        </div>
+        
+        @if (!Compact && ShowSparkline)
+        {
+            <div class="metrics-sparkline">
+                <canvas @ref="sparklineCanvas" width="200" height="40"></canvas>
+            </div>
+        }
+    </div>
+}
+else if (FinalMetrics != null)
+{
+    <PerformanceStats Metrics="FinalMetrics" Compact="Compact" ShowProvider="ShowProvider" />
+}
+
+<style>
+    .live-metrics {
+        background: rgba(102, 126, 234, 0.05);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
+    }
+
+    .live-metrics.compact {
+        display: inline-block;
+        padding: 0.5rem;
+        margin: 0 0.5rem;
+    }
+
+    .metrics-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .compact .metrics-header {
+        display: none;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .compact .metrics-grid {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .metric-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.25rem;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 0.25rem;
+    }
+
+    .compact .metric-item {
+        flex-direction: row;
+        gap: 0.25rem;
+        background: transparent;
+    }
+
+    .metric-item.primary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    .metric-label {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .compact .metric-label {
+        display: none;
+    }
+
+    .metric-value {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .compact .metric-value {
+        font-size: 0.8rem;
+    }
+
+    .metrics-sparkline {
+        margin-top: 0.5rem;
+        opacity: 0.8;
+    }
+
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+
+    /* Dark mode support */
+    @@media (prefers-color-scheme: dark) {
+        .live-metrics {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .metric-item {
+            background: rgba(0, 0, 0, 0.3);
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string? RequestId { get; set; }
+    [Parameter] public bool Compact { get; set; } = false;
+    [Parameter] public bool ShowProvider { get; set; } = false;
+    [Parameter] public bool ShowSparkline { get; set; } = false;
+    [Parameter] public bool IsStreaming { get; set; } = true;
+
+    private StreamingMetrics? CurrentMetrics { get; set; }
+    private PerformanceMetrics? FinalMetrics { get; set; }
+    private ElementReference sparklineCanvas;
+    private List<double> speedHistory = new();
+    private Timer? updateTimer;
+
+    protected override void OnInitialized()
+    {
+        if (MetricsService is ObservableStreamingMetricsService observable)
+        {
+            observable.MetricsUpdated += OnMetricsUpdated;
+        }
+
+        // Start periodic updates for non-observable services
+        updateTimer = new Timer(UpdateMetrics, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+
+    private void OnMetricsUpdated(object? sender, StreamingMetricsEventArgs e)
+    {
+        if (e.RequestId != RequestId) return;
+
+        InvokeAsync(() =>
+        {
+            if (e.IsFinal)
+            {
+                FinalMetrics = e.FinalMetrics;
+                IsStreaming = false;
+            }
+            else
+            {
+                CurrentMetrics = e.StreamingMetrics;
+                UpdateSpeedHistory();
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void UpdateMetrics(object? state)
+    {
+        if (string.IsNullOrEmpty(RequestId)) return;
+
+        var metrics = MetricsService.GetLatestMetrics(RequestId);
+        var finalMetrics = MetricsService.GetFinalMetrics(RequestId);
+
+        InvokeAsync(() =>
+        {
+            if (finalMetrics != null)
+            {
+                FinalMetrics = finalMetrics;
+                IsStreaming = false;
+            }
+            else if (metrics != null)
+            {
+                CurrentMetrics = metrics;
+                UpdateSpeedHistory();
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void UpdateSpeedHistory()
+    {
+        if (CurrentMetrics == null) return;
+
+        speedHistory.Add(CurrentMetrics.CurrentTokensPerSecond);
+        if (speedHistory.Count > 20)
+        {
+            speedHistory.RemoveAt(0);
+        }
+
+        // TODO: Draw sparkline on canvas
+    }
+
+    private string FormatMilliseconds(long milliseconds)
+    {
+        if (milliseconds < 1000)
+        {
+            return $"{milliseconds}ms";
+        }
+        else if (milliseconds < 60000)
+        {
+            return $"{(milliseconds / 1000.0):F1}s";
+        }
+        else
+        {
+            return $"{(milliseconds / 60000.0):F1}m";
+        }
+    }
+
+    public void Dispose()
+    {
+        updateTimer?.Dispose();
+        
+        if (MetricsService is ObservableStreamingMetricsService observable)
+        {
+            observable.MetricsUpdated -= OnMetricsUpdated;
+        }
+
+        if (!string.IsNullOrEmpty(RequestId))
+        {
+            MetricsService.CleanupMetrics(RequestId);
+        }
+    }
+}

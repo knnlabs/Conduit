@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.Extensions
@@ -20,7 +21,7 @@ namespace ConduitLLM.WebUI.Extensions
             {
                 throw new System.ArgumentNullException(nameof(client));
             }
-            
+
             // There's no direct method for this in the new API, so we return an empty list
             // The UI should handle this appropriately
             await Task.CompletedTask; // This ensures the method is actually async
@@ -40,16 +41,16 @@ namespace ConduitLLM.WebUI.Extensions
             {
                 throw new System.ArgumentNullException(nameof(client));
             }
-            
+
             // Log warning about using deprecated functionality
             System.Diagnostics.Debug.WriteLine($"Warning: RestoreDatabaseAsync is not supported in the Admin API implementation.");
-            
+
             // The new API doesn't have a direct restore method
             // This is a stub for backward compatibility
             await Task.CompletedTask; // This ensures the method is actually async
             return false;
         }
-        
+
         /// <summary>
         /// Backs up the database to a specified path (compatibility method)
         /// </summary>

@@ -41,7 +41,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
             {
                 // Get the configured master key
                 string? masterKey = _configuration[MASTER_KEY_CONFIG_KEY];
-                
+
                 if (string.IsNullOrEmpty(masterKey))
                 {
                     _logger.LogWarning("Master key is not configured");
@@ -58,7 +58,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                         return Task.CompletedTask;
                     }
                 }
-                
+
                 // Fallback: Check for X-Master-Key header for backward compatibility
                 if (httpContext.Request.Headers.TryGetValue("X-Master-Key", out var legacyKey))
                 {

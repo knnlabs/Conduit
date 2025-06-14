@@ -1,4 +1,3 @@
-using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -6,11 +5,13 @@ using System.Threading.Tasks;
 using ConduitLLM.Tests.Services.Stubs;
 // Import WebUI extensions
 using ConduitLLM.WebUI.Extensions;
+using ConduitLLM.WebUI.Interfaces;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -33,11 +34,11 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             string backupPath = "/tmp/backup.db";
-            
+
             // Setup create database backup as the fallback
             _mockAdminApiClient.Setup(api => api.CreateDatabaseBackupAsync())
                 .Returns(Task.FromResult(true));
-            
+
             // Act
             var result = await _service.BackupDatabaseAsync(backupPath);
 
@@ -52,11 +53,11 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             string backupPath = "/tmp/backup.db";
-            
+
             // Setup the exception on the method called by the extension
             _mockAdminApiClient.Setup(api => api.CreateDatabaseBackupAsync())
                 .Throws(new Exception("Test exception"));
-            
+
             // Act
             var result = await _service.BackupDatabaseAsync(backupPath);
 
@@ -77,7 +78,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             string backupPath = "/tmp/backup.db";
-            
+
             // Act - we can't mock the extension method directly
             // The implementation always returns false, so the test should be updated to expect false
             var result = await _service.RestoreDatabaseAsync(backupPath);
@@ -92,17 +93,17 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             string backupPath = "/tmp/backup.db";
-            
+
             // Use a custom implementation that always throws
             var mockClient = new Mock<IAdminApiClient>();
             var logger = new Mock<ILogger<StubDatabaseBackupServiceAdapter>>();
-            
+
             // Create a test service with a throwing helper
             var throwingService = new ThrowingDatabaseBackupServiceAdapter(mockClient.Object, logger.Object);
-            
+
             // Act
             var result = await throwingService.RestoreDatabaseAsync(backupPath);
-            
+
             // Assert
             Assert.False(result);
             logger.Verify(
@@ -114,20 +115,20 @@ namespace ConduitLLM.Tests.Services
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
-        
+
         // Helper class for testing exception handling
         private class ThrowingDatabaseBackupServiceAdapter : StubDatabaseBackupServiceAdapter
         {
             private readonly ILogger<StubDatabaseBackupServiceAdapter> _logger;
-            
+
             public ThrowingDatabaseBackupServiceAdapter(
-                IAdminApiClient adminApiClient, 
-                ILogger<StubDatabaseBackupServiceAdapter> logger) 
+                IAdminApiClient adminApiClient,
+                ILogger<StubDatabaseBackupServiceAdapter> logger)
                 : base(adminApiClient, logger)
             {
                 _logger = logger;
             }
-            
+
             public override async Task<bool> RestoreDatabaseAsync(string backupPath)
             {
                 try
@@ -149,7 +150,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange - since the extension method returns an empty list, we can't really test this
             // The implementation of AdminApiClientDatabaseExtensions.GetAvailableDatabaseBackupsAsync always returns an empty list
-            
+
             // Act
             var result = await _service.GetAvailableBackupsAsync();
 
@@ -163,7 +164,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             // Setup exception on any method that might be called
-            
+
             // Act
             var result = await _service.GetAvailableBackupsAsync();
 

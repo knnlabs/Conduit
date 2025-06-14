@@ -1,12 +1,14 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -24,27 +26,27 @@ namespace ConduitLLM.Admin.Controllers
             /// The status type
             /// </summary>
             public StatusType Status { get; set; }
-            
+
             /// <summary>
             /// A descriptive message about the status
             /// </summary>
             public string? StatusMessage { get; set; }
-            
+
             /// <summary>
             /// The response time in milliseconds
             /// </summary>
             public double ResponseTimeMs { get; set; }
-            
+
             /// <summary>
             /// When the status was last checked
             /// </summary>
             public DateTime LastCheckedUtc { get; set; }
-            
+
             /// <summary>
             /// Error category if the provider is offline
             /// </summary>
             public string? ErrorCategory { get; set; }
-            
+
             /// <summary>
             /// Status types for providers
             /// </summary>
@@ -54,12 +56,12 @@ namespace ConduitLLM.Admin.Controllers
                 /// Provider is online and responsive
                 /// </summary>
                 Online,
-                
+
                 /// <summary>
                 /// Provider is offline or unresponsive
                 /// </summary>
                 Offline,
-                
+
                 /// <summary>
                 /// Provider status is unknown
                 /// </summary>
@@ -77,7 +79,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IAdminProviderHealthService _providerHealthService;
         private readonly ILogger<ProviderHealthController> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the ProviderHealthController
         /// </summary>
@@ -90,7 +92,7 @@ namespace ConduitLLM.Admin.Controllers
             _providerHealthService = providerHealthService ?? throw new ArgumentNullException(nameof(providerHealthService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <summary>
         /// Gets health configurations for all providers
         /// </summary>
@@ -111,7 +113,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets health configuration for a specific provider
         /// </summary>
@@ -126,12 +128,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var configuration = await _providerHealthService.GetConfigurationByProviderNameAsync(providerName);
-                
+
                 if (configuration == null)
                 {
                     return NotFound($"Provider health configuration not found for provider '{providerName}'");
                 }
-                
+
                 return Ok(configuration);
             }
             catch (Exception ex)
@@ -140,7 +142,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Creates a new provider health configuration
         /// </summary>
@@ -156,7 +158,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdConfiguration = await _providerHealthService.CreateConfigurationAsync(configuration);
@@ -176,7 +178,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Updates a provider health configuration
         /// </summary>
@@ -193,16 +195,16 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var success = await _providerHealthService.UpdateConfigurationAsync(configuration);
-                
+
                 if (!success)
                 {
                     return NotFound($"Provider health configuration not found for provider");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -211,7 +213,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets the latest health status for all providers
         /// </summary>
@@ -232,7 +234,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets the latest health status for a specific provider
         /// </summary>
@@ -247,12 +249,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var status = await _providerHealthService.GetLatestStatusAsync(providerName);
-                
+
                 if (status == null)
                 {
                     return NotFound($"Health status not found for provider '{providerName}'");
                 }
-                
+
                 return Ok(status);
             }
             catch (Exception ex)
@@ -261,7 +263,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets health status history for a provider
         /// </summary>
@@ -282,12 +284,12 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("Hours must be greater than zero");
             }
-            
+
             if (limit <= 0)
             {
                 return BadRequest("Limit must be greater than zero");
             }
-            
+
             try
             {
                 var history = await _providerHealthService.GetStatusHistoryAsync(providerName, hours, limit);
@@ -299,7 +301,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets health summary for all providers
         /// </summary>
@@ -315,7 +317,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("Hours must be greater than zero");
             }
-            
+
             try
             {
                 var summary = await _providerHealthService.GetHealthSummaryAsync(hours);
@@ -327,7 +329,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets health statistics across all providers
         /// </summary>
@@ -343,7 +345,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("Hours must be greater than zero");
             }
-            
+
             try
             {
                 var statistics = await _providerHealthService.GetHealthStatisticsAsync(hours);
@@ -355,7 +357,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Triggers an immediate health check for a provider
         /// </summary>
@@ -383,7 +385,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Purges health records older than the specified time
         /// </summary>
@@ -399,7 +401,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest("Days must be greater than zero");
             }
-            
+
             try
             {
                 var purgedCount = await _providerHealthService.PurgeOldRecordsAsync(days);
@@ -425,7 +427,7 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 IEnumerable<ProviderHealthRecordDto> records;
-                
+
                 if (string.IsNullOrEmpty(providerName))
                 {
                     records = await _providerHealthService.GetAllRecordsAsync();
@@ -435,7 +437,7 @@ namespace ConduitLLM.Admin.Controllers
                     var history = await _providerHealthService.GetStatusHistoryAsync(providerName, 24 * 30, 1000); // 30 days, 1000 records max
                     records = history;
                 }
-                
+
                 return Ok(records);
             }
             catch (Exception ex)
@@ -444,7 +446,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets provider status for all providers that have been checked
         /// </summary>
@@ -457,7 +459,7 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var statuses = await _providerHealthService.GetAllLatestStatusesAsync();
-                
+
                 // Convert to a dictionary of provider name to status model
                 var result = statuses.ToDictionary(
                     kvp => kvp.Key,
@@ -470,7 +472,7 @@ namespace ConduitLLM.Admin.Controllers
                         ErrorCategory = kvp.Value.ErrorCategory
                     }
                 );
-                
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -479,7 +481,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets provider status for a specific provider
         /// </summary>
@@ -494,12 +496,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var statusRecord = await _providerHealthService.GetLatestStatusAsync(providerName);
-                
+
                 if (statusRecord == null)
                 {
                     return NotFound($"No status found for provider '{providerName}'");
                 }
-                
+
                 var status = new Models.ProviderStatus
                 {
                     Status = statusRecord.IsOnline ? Models.ProviderStatus.StatusType.Online : Models.ProviderStatus.StatusType.Offline,
@@ -508,7 +510,7 @@ namespace ConduitLLM.Admin.Controllers
                     LastCheckedUtc = statusRecord.TimestampUtc,
                     ErrorCategory = statusRecord.ErrorCategory
                 };
-                
+
                 return Ok(status);
             }
             catch (Exception ex)

@@ -27,41 +27,41 @@ namespace ConduitLLM.WebUI.Models
             /// </summary>
             Unknown = 2
         }
-        
+
         /// <summary>
         /// The status of the provider
         /// </summary>
         public StatusType Status { get; set; } = StatusType.Unknown;
-        
+
         /// <summary>
         /// Whether the provider is online (maintained for compatibility)
         /// </summary>
-        public bool IsOnline 
-        { 
+        public bool IsOnline
+        {
             get => Status == StatusType.Online;
             set => Status = value ? StatusType.Online : StatusType.Offline;
         }
-        
+
         /// <summary>
         /// The status message for the provider
         /// </summary>
         public string StatusMessage { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// When the status was last checked
         /// </summary>
         public DateTime LastCheckedUtc { get; set; } = DateTime.UtcNow;
-        
+
         /// <summary>
         /// The response time of the health check in milliseconds
         /// </summary>
         public double ResponseTimeMs { get; set; }
-        
+
         /// <summary>
         /// The category of error if the provider is offline
         /// </summary>
         public string? ErrorCategory { get; set; }
-        
+
         /// <summary>
         /// The endpoint URL that was checked
         /// </summary>

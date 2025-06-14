@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -95,37 +97,37 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamps
                 fallbackConfig.CreatedAt = DateTime.UtcNow;
                 fallbackConfig.UpdatedAt = DateTime.UtcNow;
-                
+
                 if (fallbackConfig.IsActive)
                 {
                     // Deactivate all other configs
                     var activeConfigs = await dbContext.FallbackConfigurations
                         .Where(f => f.IsActive)
                         .ToListAsync(cancellationToken);
-                        
+
                     foreach (var config in activeConfigs)
                     {
                         config.IsActive = false;
                     }
                 }
-                
+
                 dbContext.FallbackConfigurations.Add(fallbackConfig);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return fallbackConfig.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating fallback configuration '{ConfigName}'", 
+                _logger.LogError(ex, "Database error creating fallback configuration '{ConfigName}'",
                     fallbackConfig.Name);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating fallback configuration '{ConfigName}'", 
+                _logger.LogError(ex, "Error creating fallback configuration '{ConfigName}'",
                     fallbackConfig.Name);
                 throw;
             }
@@ -142,30 +144,30 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set updated timestamp
                 fallbackConfig.UpdatedAt = DateTime.UtcNow;
-                
+
                 if (fallbackConfig.IsActive)
                 {
                     // Deactivate all other configs
                     var activeConfigs = await dbContext.FallbackConfigurations
                         .Where(f => f.IsActive && f.Id != fallbackConfig.Id)
                         .ToListAsync(cancellationToken);
-                        
+
                     foreach (var config in activeConfigs)
                     {
                         config.IsActive = false;
                     }
                 }
-                
+
                 dbContext.FallbackConfigurations.Update(fallbackConfig);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating fallback configuration with ID {ConfigId}", 
+                _logger.LogError(ex, "Error updating fallback configuration with ID {ConfigId}",
                     fallbackConfig.Id);
                 throw;
             }
@@ -177,13 +179,13 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 var fallbackConfig = await dbContext.FallbackConfigurations.FindAsync(new object[] { id }, cancellationToken);
                 if (fallbackConfig == null)
                 {
                     return false;
                 }
-                
+
                 // Deactivate all configs
                 var configs = await dbContext.FallbackConfigurations.ToListAsync(cancellationToken);
                 foreach (var config in configs)
@@ -191,7 +193,7 @@ namespace ConduitLLM.Configuration.Repositories
                     config.IsActive = (config.Id == id);
                     config.UpdatedAt = DateTime.UtcNow;
                 }
-                
+
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
@@ -209,29 +211,29 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var fallbackConfig = await dbContext.FallbackConfigurations.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (fallbackConfig == null)
                 {
                     return false;
                 }
-                
+
                 if (fallbackConfig.IsActive)
                 {
                     _logger.LogWarning("Attempting to delete active fallback configuration {ConfigId}", id);
                     // You might want to prevent this or activate another config
                 }
-                
+
                 // Check for related mappings
                 var mappings = await dbContext.FallbackModelMappings
                     .Where(m => m.FallbackConfigurationId == id)
                     .ToListAsync(cancellationToken);
-                    
+
                 if (mappings.Any())
                 {
                     // Remove related mappings if there are any
                     dbContext.FallbackModelMappings.RemoveRange(mappings);
                 }
-                
+
                 dbContext.FallbackConfigurations.Remove(fallbackConfig);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;

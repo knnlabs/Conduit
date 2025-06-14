@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model cost entity or null if not found</returns>
         Task<ModelCost?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a model cost by model name
         /// </summary>
@@ -24,7 +25,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model cost entity or null if not found</returns>
         Task<ModelCost?> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a model cost by model ID pattern
         /// </summary>
@@ -32,14 +33,14 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model cost entity or null if not found</returns>
         Task<ModelCost?> GetByModelIdPatternAsync(string modelIdPattern, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all model costs
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all model costs</returns>
         Task<List<ModelCost>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all model costs for a specific provider
         /// </summary>
@@ -47,7 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model costs for the specified provider</returns>
         Task<List<ModelCost>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new model cost
         /// </summary>
@@ -55,7 +56,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created model cost</returns>
         Task<int> CreateAsync(ModelCost modelCost, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a model cost
         /// </summary>
@@ -63,7 +64,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(ModelCost modelCost, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a model cost
         /// </summary>

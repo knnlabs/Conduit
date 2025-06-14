@@ -14,6 +14,8 @@
     <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
     <PackageReference Include="AWSSDK.BedrockRuntime" Version="4.0.0.4" />
+    <PackageReference Include="AWSSDK.TranscribeService" Version="4.0.0.4" />
+    <PackageReference Include="AWSSDK.Polly" Version="4.0.0.4" />
   </ItemGroup>
 
   <PropertyGroup>

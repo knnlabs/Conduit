@@ -11,13 +11,13 @@ public class TimeoutOptions
     /// The configuration section name for timeout settings
     /// </summary>
     public const string SectionName = "HttpTimeout";
-    
+
     /// <summary>
     /// Default timeout duration in seconds for HTTP requests (default: 100 seconds)
     /// </summary>
     [Range(1, 600)]
     public int TimeoutSeconds { get; set; } = 100;
-    
+
     /// <summary>
     /// Whether to enable timeout logging (default: true)
     /// </summary>

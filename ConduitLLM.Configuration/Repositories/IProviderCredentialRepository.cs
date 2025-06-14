@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The provider credential entity or null if not found</returns>
         Task<ProviderCredential?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a provider credential by provider name
         /// </summary>
@@ -24,14 +25,14 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The provider credential entity or null if not found</returns>
         Task<ProviderCredential?> GetByProviderNameAsync(string providerName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all provider credentials
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all provider credentials</returns>
         Task<List<ProviderCredential>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new provider credential
         /// </summary>
@@ -39,7 +40,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created provider credential</returns>
         Task<int> CreateAsync(ProviderCredential providerCredential, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a provider credential
         /// </summary>
@@ -47,7 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(ProviderCredential providerCredential, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a provider credential
         /// </summary>

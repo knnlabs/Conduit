@@ -1,6 +1,8 @@
 using System.Net;
+
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services;
@@ -11,7 +13,7 @@ namespace ConduitLLM.WebUI.Services;
 public class IpFilterMatcher
 {
     private readonly ILogger<IpFilterMatcher> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="IpFilterMatcher"/> class
     /// </summary>
@@ -20,7 +22,7 @@ public class IpFilterMatcher
     {
         _logger = logger;
     }
-    
+
     /// <summary>
     /// Determines if an IP address is allowed based on the provided filter rules
     /// </summary>
@@ -35,13 +37,13 @@ public class IpFilterMatcher
             _logger.LogWarning("Invalid IP address format: {IpAddress}", ipAddress);
             return defaultAllow;
         }
-        
+
         if (filters == null || !filters.Any())
         {
             _logger.LogDebug("No IP filters defined, using default allow setting: {DefaultAllow}", defaultAllow);
             return defaultAllow;
         }
-        
+
         // Only consider enabled filters
         var enabledFilters = filters.Where(f => f.IsEnabled).ToList();
         if (!enabledFilters.Any())
@@ -49,7 +51,7 @@ public class IpFilterMatcher
             _logger.LogDebug("No enabled IP filters found, using default allow setting: {DefaultAllow}", defaultAllow);
             return defaultAllow;
         }
-        
+
         // Check whitelist filters first - if IP is in any whitelist, allow access
         var whitelists = enabledFilters.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList();
         if (whitelists.Any() && IsIpInAnyFilter(ipAddress, whitelists))
@@ -57,7 +59,7 @@ public class IpFilterMatcher
             _logger.LogDebug("IP {IpAddress} matched a whitelist filter, allowing access", ipAddress);
             return true;
         }
-        
+
         // Check blacklist filters - if IP is in any blacklist, deny access
         var blacklists = enabledFilters.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList();
         if (blacklists.Any() && IsIpInAnyFilter(ipAddress, blacklists))
@@ -65,20 +67,20 @@ public class IpFilterMatcher
             _logger.LogInformation("IP {IpAddress} matched a blacklist filter, denying access", ipAddress);
             return false;
         }
-        
+
         // If we have whitelists but the IP didn't match any, deny access
         if (whitelists.Any())
         {
             _logger.LogInformation("IP {IpAddress} did not match any whitelist filter, denying access", ipAddress);
             return false;
         }
-        
+
         // No matching whitelist or blacklist rules
-        _logger.LogDebug("IP {IpAddress} did not match any filter rules, using default allow setting: {DefaultAllow}", 
+        _logger.LogDebug("IP {IpAddress} did not match any filter rules, using default allow setting: {DefaultAllow}",
             ipAddress, defaultAllow);
         return defaultAllow;
     }
-    
+
     private bool IsIpInAnyFilter(string ipAddress, IEnumerable<IpFilterEntity> filters)
     {
         foreach (var filter in filters)
@@ -90,17 +92,17 @@ public class IpFilterMatcher
                 {
                     return true;
                 }
-                
+
                 continue;
             }
-            
+
             // CIDR subnet match
             if (IpAddressValidator.IsIpInCidrRange(ipAddress, filter.IpAddressOrCidr))
             {
                 return true;
             }
         }
-        
+
         return false;
     }
 }

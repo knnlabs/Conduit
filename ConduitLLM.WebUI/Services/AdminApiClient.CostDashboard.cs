@@ -1,10 +1,11 @@
-using ConduitLLM.Configuration.DTOs.Costs;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
-using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.DTOs.Costs;
+using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -14,15 +15,15 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         async Task<CostDashboardDto> ICostDashboardService.GetDashboardDataAsync(
-            DateTime? startDate, 
-            DateTime? endDate, 
-            int? virtualKeyId, 
+            DateTime? startDate,
+            DateTime? endDate,
+            int? virtualKeyId,
             string? modelName)
         {
             try
             {
                 var result = await GetCostDashboardAsync(startDate, endDate, virtualKeyId, modelName);
-                
+
                 if (result == null)
                 {
                     _logger.LogWarning("No cost dashboard data found for the specified period and filters");
@@ -40,13 +41,13 @@ namespace ConduitLLM.WebUI.Services
                         TopVirtualKeysBySpend = new List<DetailedCostDataDto>()
                     };
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving cost dashboard data");
-                
+
                 // Return an empty dashboard rather than null
                 return new CostDashboardDto
                 {
@@ -96,21 +97,21 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         async Task<List<DetailedCostDataDto>> ICostDashboardService.GetDetailedCostDataAsync(
-            DateTime? startDate, 
-            DateTime? endDate, 
-            int? virtualKeyId, 
+            DateTime? startDate,
+            DateTime? endDate,
+            int? virtualKeyId,
             string? modelName)
         {
             try
             {
                 var webUiResult = await GetDetailedCostDataAsync(startDate, endDate, virtualKeyId, modelName);
-                
+
                 if (webUiResult == null)
                 {
                     _logger.LogWarning("No detailed cost data found for the specified period and filters");
                     return new List<DetailedCostDataDto>();
                 }
-                
+
                 // Convert WebUI DTOs to Configuration DTOs if needed
                 var detailedCostData = new List<DetailedCostDataDto>();
                 foreach (var item in webUiResult)
@@ -122,7 +123,7 @@ namespace ConduitLLM.WebUI.Services
                         Percentage = item.Percentage
                     });
                 }
-                
+
                 return detailedCostData;
             }
             catch (Exception ex)

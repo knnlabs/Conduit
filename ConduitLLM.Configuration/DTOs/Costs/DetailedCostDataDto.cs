@@ -9,12 +9,12 @@ namespace ConduitLLM.Configuration.DTOs.Costs
         /// Name (model, provider, key name, etc.)
         /// </summary>
         public string Name { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Total cost
         /// </summary>
         public decimal Cost { get; set; }
-        
+
         /// <summary>
         /// Percentage of total cost
         /// </summary>

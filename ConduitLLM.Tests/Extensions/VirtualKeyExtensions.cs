@@ -14,7 +14,7 @@ namespace ConduitLLM.Tests.Extensions
         {
             return virtualKey.KeyName;
         }
-        
+
         /// <summary>
         /// Gets whether the virtual key is active (compatibility property for IsEnabled)
         /// </summary>
@@ -22,7 +22,7 @@ namespace ConduitLLM.Tests.Extensions
         {
             return virtualKey.IsEnabled;
         }
-        
+
         /// <summary>
         /// Gets the usage limit of the virtual key (compatibility property for MaxBudget)
         /// </summary>
@@ -30,7 +30,7 @@ namespace ConduitLLM.Tests.Extensions
         {
             return virtualKey.MaxBudget;
         }
-        
+
         /// <summary>
         /// Gets the rate limit of the virtual key (compatibility property for RateLimitRpm)
         /// </summary>

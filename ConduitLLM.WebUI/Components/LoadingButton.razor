@@ -1,0 +1,68 @@
+<button type="@ButtonType" 
+        class="btn @CssClass" 
+        @onclick="HandleClick"
+        disabled="@(IsLoading || IsDisabled)">
+    @if (IsLoading)
+    {
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        <span>@LoadingText</span>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(IconClass))
+        {
+            <i class="@IconClass me-2"></i>
+        }
+        <span>@Text</span>
+    }
+</button>
+
+@code {
+    /// <summary>
+    /// Gets or sets the button text.
+    /// </summary>
+    [Parameter] public string Text { get; set; } = "Submit";
+    
+    /// <summary>
+    /// Gets or sets the loading text.
+    /// </summary>
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    
+    /// <summary>
+    /// Gets or sets whether the button is in loading state.
+    /// </summary>
+    [Parameter] public bool IsLoading { get; set; }
+    
+    /// <summary>
+    /// Gets or sets whether the button is disabled.
+    /// </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the button type attribute.
+    /// </summary>
+    [Parameter] public string ButtonType { get; set; } = "button";
+    
+    /// <summary>
+    /// Gets or sets the CSS class for the button.
+    /// </summary>
+    [Parameter] public string CssClass { get; set; } = "btn-primary";
+    
+    /// <summary>
+    /// Gets or sets the icon CSS class.
+    /// </summary>
+    [Parameter] public string? IconClass { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the click event callback.
+    /// </summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private async Task HandleClick(MouseEventArgs args)
+    {
+        if (!IsLoading && !IsDisabled && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(args);
+        }
+    }
+}

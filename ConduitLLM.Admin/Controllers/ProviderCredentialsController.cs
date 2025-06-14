@@ -1,11 +1,17 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Extensions;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -68,17 +74,18 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByIdAsync(id);
-                
+
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found {ProviderId}", S(id));
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
-                
+
                 return Ok(credential);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential with ID {Id}", id);
+                _logger.LogError(ex, "Error getting provider credential with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -97,17 +104,18 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByNameAsync(providerName);
-                
+
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential for '{providerName}' not found");
+                    _logger.LogWarning("Provider credential not found for provider {ProviderName}", S(providerName));
+                    return NotFound(new { error = "Provider credential not found", provider = providerName });
                 }
-                
+
                 return Ok(credential);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", providerName);
+                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", S(providerName));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -148,7 +156,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdCredential = await _providerCredentialService.CreateProviderCredentialAsync(credential);
@@ -183,27 +191,28 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             // Ensure ID in route matches ID in body
             if (id != credential.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
-            
+
             try
             {
                 var success = await _providerCredentialService.UpdateProviderCredentialAsync(credential);
-                
+
                 if (!success)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for update {ProviderId}", S(id));
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider credential with ID {Id}", id);
+                _logger.LogError(ex, "Error updating provider credential with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -222,17 +231,18 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _providerCredentialService.DeleteProviderCredentialAsync(id);
-                
+
                 if (!success)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for deletion {ProviderId}", S(id));
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", id);
+                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -243,7 +253,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="id">The ID of the provider credential to test</param>
         /// <returns>The test result</returns>
         [HttpPost("test/{id}")]
-        [ProducesResponseType(typeof(ProviderConnectionTestResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> TestProviderConnection(int id)
@@ -251,18 +261,47 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var credential = await _providerCredentialService.GetProviderCredentialByIdAsync(id);
-                
+
                 if (credential == null)
                 {
-                    return NotFound($"Provider credential with ID {id} not found");
+                    _logger.LogWarning("Provider credential not found for connection test {ProviderId}", S(id));
+                    return NotFound(new { error = "Provider credential not found", id = id });
                 }
-                
+
                 var result = await _providerCredentialService.TestProviderConnectionAsync(credential);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection for provider credential with ID {Id}", id);
+                _logger.LogError(ex, "Error testing connection for provider credential with ID {Id}", S(id));
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+            }
+        }
+
+        /// <summary>
+        /// Tests a provider connection without saving credentials
+        /// </summary>
+        /// <param name="testRequest">The provider credentials to test</param>
+        /// <returns>The test result</returns>
+        [HttpPost("test")]
+        [ProducesResponseType(typeof(ProviderConnectionTestResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TestProviderConnectionWithCredentials([FromBody] ProviderCredentialDto testRequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var result = await _providerCredentialService.TestProviderConnectionAsync(testRequest);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", S(testRequest?.ProviderName ?? "unknown"));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
@@ -15,7 +16,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="modelName">The name of the model to check</param>
         /// <returns>True if the model supports vision input, false otherwise</returns>
         bool HasVisionCapability(string modelName);
-        
+
         /// <summary>
         /// Determines if a chat completion request contains image content that 
         /// requires a vision-capable model.
@@ -23,13 +24,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="request">The chat completion request to check</param>
         /// <returns>True if the request contains image content, false otherwise</returns>
         bool ContainsImageContent(ChatCompletionRequest request);
-        
+
         /// <summary>
         /// Gets a list of all available models that support vision capabilities.
         /// </summary>
         /// <returns>A collection of model names that support vision</returns>
         IEnumerable<string> GetVisionCapableModels();
-        
+
         /// <summary>
         /// Validates that a request can be processed by the specified model.
         /// </summary>

@@ -1,0 +1,157 @@
+@using ConduitLLM.Core.Models
+
+@if (Metrics != null)
+{
+    <div class="performance-stats @(Compact ? "compact" : "")">
+        <div class="stat-item primary">
+            <i class="fa fa-tachometer-alt"></i>
+            <span class="stat-value">@FormatTokensPerSecond(Metrics.TokensPerSecond)</span>
+            <span class="stat-label">tokens/s</span>
+        </div>
+
+        @if (!Compact)
+        {
+            <div class="stat-item">
+                <i class="fa fa-clock"></i>
+                <span class="stat-value">@FormatMilliseconds(Metrics.TotalLatencyMs)</span>
+                <span class="stat-label">total</span>
+            </div>
+
+            @if (Metrics.TimeToFirstTokenMs.HasValue && Metrics.Streaming)
+            {
+                <div class="stat-item">
+                    <i class="fa fa-bolt"></i>
+                    <span class="stat-value">@FormatMilliseconds(Metrics.TimeToFirstTokenMs.Value)</span>
+                    <span class="stat-label">TTFT</span>
+                </div>
+            }
+
+            @if (ShowProvider)
+            {
+                <div class="stat-item">
+                    <i class="fa fa-server"></i>
+                    <span class="stat-value">@Metrics.Provider</span>
+                </div>
+            }
+
+            @if (Metrics.RetryAttempts > 0)
+            {
+                <div class="stat-item warning">
+                    <i class="fa fa-redo"></i>
+                    <span class="stat-value">@Metrics.RetryAttempts</span>
+                    <span class="stat-label">retries</span>
+                </div>
+            }
+        }
+    </div>
+}
+
+<style>
+    .performance-stats {
+        display: inline-flex;
+        gap: 1rem;
+        align-items: center;
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-left: 1rem;
+    }
+
+    .performance-stats.compact {
+        gap: 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 0.25rem;
+        white-space: nowrap;
+    }
+
+    .stat-item.primary {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        font-weight: 500;
+    }
+
+    .stat-item.warning {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .stat-item i {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .stat-value {
+        font-weight: 600;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-left: 0.125rem;
+    }
+
+    /* Dark mode support */
+    @@media (prefers-color-scheme: dark) {
+        .performance-stats {
+            color: #adb5bd;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-item.primary {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .stat-item.warning {
+            background: rgba(255, 193, 7, 0.2);
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The performance metrics to display.
+    /// </summary>
+    [Parameter] public PerformanceMetrics? Metrics { get; set; }
+
+    /// <summary>
+    /// Whether to show the component in compact mode.
+    /// </summary>
+    [Parameter] public bool Compact { get; set; } = false;
+
+    /// <summary>
+    /// Whether to show the provider name.
+    /// </summary>
+    [Parameter] public bool ShowProvider { get; set; } = false;
+
+    private string FormatTokensPerSecond(double? tokensPerSecond)
+    {
+        if (!tokensPerSecond.HasValue) return "--";
+        return tokensPerSecond.Value.ToString("F1");
+    }
+
+    private string FormatMilliseconds(long milliseconds)
+    {
+        if (milliseconds < 1000)
+        {
+            return $"{milliseconds}ms";
+        }
+        else if (milliseconds < 60000)
+        {
+            return $"{(milliseconds / 1000.0):F1}s";
+        }
+        else
+        {
+            return $"{(milliseconds / 60000.0):F1}m";
+        }
+    }
+}

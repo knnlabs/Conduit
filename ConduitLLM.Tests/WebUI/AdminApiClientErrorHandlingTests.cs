@@ -1,15 +1,17 @@
+using System.Net;
+using System.Text.Json;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Moq;
 using Moq.Protected;
-using System.Net;
-using System.Text.Json;
-
 // Alias to avoid ambiguity
 using ItProtected = Moq.Protected.ItExpr;
 
@@ -74,7 +76,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -101,7 +103,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -134,7 +136,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -167,7 +169,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -200,7 +202,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -233,7 +235,7 @@ namespace ConduitLLM.Tests.WebUI
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error retrieving virtual keys")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString() != null && v.ToString()!.Contains("Error retrieving virtual keys")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -269,7 +271,7 @@ namespace ConduitLLM.Tests.WebUI
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Never);
         }
 
@@ -277,7 +279,7 @@ namespace ConduitLLM.Tests.WebUI
         public async Task ApiClient_SetsHeadersCorrectly()
         {
             // Arrange
-            HttpRequestMessage capturedRequest = null;
+            HttpRequestMessage? capturedRequest = null;
 
             _handlerMock.Protected()
                 .Setup<Task<HttpResponseMessage>>(
@@ -305,7 +307,7 @@ namespace ConduitLLM.Tests.WebUI
         public async Task ApiClient_ConstructsUrlsCorrectly()
         {
             // Arrange
-            HttpRequestMessage capturedRequest = null;
+            HttpRequestMessage? capturedRequest = null;
 
             _handlerMock.Protected()
                 .Setup<Task<HttpResponseMessage>>(
@@ -332,7 +334,7 @@ namespace ConduitLLM.Tests.WebUI
         public async Task ApiClient_HandlesUriEscaping()
         {
             // Arrange
-            HttpRequestMessage capturedRequest = null;
+            HttpRequestMessage? capturedRequest = null;
 
             _handlerMock.Protected()
                 .Setup<Task<HttpResponseMessage>>(

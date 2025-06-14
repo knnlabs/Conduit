@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models.Audio;
 
 namespace ConduitLLM.Core.Interfaces
@@ -183,6 +184,31 @@ namespace ConduitLLM.Core.Interfaces
         /// Average routing decision time in milliseconds.
         /// </summary>
         public double AverageRoutingTimeMs { get; set; }
+
+        /// <summary>
+        /// Provider name (for single-provider statistics).
+        /// </summary>
+        public string? Provider { get; set; }
+
+        /// <summary>
+        /// Total number of requests processed.
+        /// </summary>
+        public int TotalRequests { get; set; }
+
+        /// <summary>
+        /// Overall success rate (0-1).
+        /// </summary>
+        public double SuccessRate { get; set; }
+
+        /// <summary>
+        /// Average latency across all operations.
+        /// </summary>
+        public double AverageLatencyMs { get; set; }
+
+        /// <summary>
+        /// When the statistics were last updated.
+        /// </summary>
+        public DateTime LastUpdated { get; set; }
     }
 
     /// <summary>

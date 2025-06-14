@@ -22,19 +22,19 @@ namespace ConduitLLM.WebUI.Interfaces
             DateTime? endDate,
             int? virtualKeyId = null,
             string? modelName = null);
-            
+
         /// <summary>
         /// Gets a list of available virtual keys
         /// </summary>
         /// <returns>List of virtual keys</returns>
         Task<List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>> GetVirtualKeysAsync();
-        
+
         /// <summary>
         /// Gets a list of available models
         /// </summary>
         /// <returns>List of model names</returns>
         Task<List<string>> GetAvailableModelsAsync();
-        
+
         /// <summary>
         /// Gets detailed cost data for export
         /// </summary>

@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.WebUI.Models;
 using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Models;
 using ConduitLLM.WebUI.Options;
 
 using Microsoft.Extensions.Options;
@@ -24,7 +24,7 @@ public class VirtualKeyMaintenanceService : BackgroundService
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
-        
+
         // Get check interval from configuration, default to 1 hour
         var intervalMinutes = configuration.GetValue<int>("VirtualKeyMaintenance:CheckIntervalMinutes", 60);
         _checkInterval = TimeSpan.FromMinutes(intervalMinutes);
@@ -39,9 +39,9 @@ public class VirtualKeyMaintenanceService : BackgroundService
             while (!stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Running virtual key maintenance tasks");
-                
+
                 await ProcessVirtualKeyMaintenance(stoppingToken);
-                
+
                 await Task.Delay(_checkInterval, stoppingToken);
             }
         }
@@ -63,14 +63,15 @@ public class VirtualKeyMaintenanceService : BackgroundService
         {
             // Create a new scope for operations
             using var scope = _serviceProvider.CreateScope();
-            
+
             // Use IVirtualKeyService interface
             var virtualKeyService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<NotificationService>();
 
             _logger.LogInformation("Running virtual key maintenance using Admin API service");
-            
-            try {
+
+            try
+            {
                 // Use the service adapter for all maintenance tasks
                 await virtualKeyService.PerformMaintenanceAsync();
                 _logger.LogInformation("Virtual key maintenance completed successfully via Admin API");

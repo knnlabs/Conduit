@@ -1,12 +1,14 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -15,7 +17,7 @@ namespace ConduitLLM.Admin.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/audio")]
-    [Authorize(Policy = "MasterKeyAuth")]
+    [Authorize(Policy = "MasterKeyPolicy")]
     public class AudioConfigurationController : ControllerBase
     {
         private readonly IAdminAudioProviderService _providerService;
@@ -352,7 +354,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="endDate">End date (optional)</param>
         /// <response code="200">Returns usage data for the key</response>
         [HttpGet("usage/by-key/{virtualKey}")]
-        [ProducesResponseType(typeof(AudioKeyUsageDto), 200)]
+        [ProducesResponseType(typeof(Interfaces.AudioKeyUsageDto), 200)]
         public async Task<IActionResult> GetUsageByKey(
             string virtualKey,
             [FromQuery] DateTime? startDate = null,
@@ -370,7 +372,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="endDate">End date (optional)</param>
         /// <response code="200">Returns usage data for the provider</response>
         [HttpGet("usage/by-provider/{provider}")]
-        [ProducesResponseType(typeof(AudioProviderUsageDto), 200)]
+        [ProducesResponseType(typeof(Interfaces.AudioProviderUsageDto), 200)]
         public async Task<IActionResult> GetUsageByProvider(
             string provider,
             [FromQuery] DateTime? startDate = null,

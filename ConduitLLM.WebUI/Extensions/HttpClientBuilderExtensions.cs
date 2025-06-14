@@ -1,8 +1,11 @@
 using System;
+
+using ConduitLLM.WebUI.Services.Resilience;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Polly;
-using ConduitLLM.WebUI.Services.Resilience;
 
 namespace ConduitLLM.WebUI.Extensions
 {
@@ -25,7 +28,7 @@ namespace ConduitLLM.WebUI.Extensions
                 .AddPolicyHandler((services, request) =>
                 {
                     var logger = services.GetRequiredService<ILogger<IHttpClientBuilder>>();
-                    
+
                     // Use different policies based on HTTP method
                     if (request.Method == HttpMethod.Get)
                     {

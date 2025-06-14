@@ -24,7 +24,7 @@ public class Usage
     /// </summary>
     [JsonPropertyName("total_tokens")]
     public required int TotalTokens { get; set; }
-    
+
     /// <summary>
     /// Number of images generated (used for image generation requests).
     /// </summary>

@@ -9,7 +9,7 @@ public static class VirtualKeyConstants
     /// Standard prefix for all virtual keys
     /// </summary>
     public const string KeyPrefix = "condt_";
-    
+
     /// <summary>
     /// Default budget periods for virtual keys
     /// </summary>
@@ -19,7 +19,7 @@ public static class VirtualKeyConstants
         public const string Monthly = "Monthly";
         public const string Daily = "Daily";
     }
-    
+
     /// <summary>
     /// Threshold percentages for budget warnings
     /// </summary>

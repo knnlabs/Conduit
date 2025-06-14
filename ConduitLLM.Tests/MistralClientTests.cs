@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -15,7 +16,6 @@ using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Protected;
@@ -101,7 +101,7 @@ public class MistralClientTests
         // Arrange
         var request = CreateTestRequest("mistral-medium");
         var modelId = "mistral-medium";
-        
+
         // Create a response that exactly matches the expected JSON structure
         // Use a string-based JSON to avoid serialization issues with anonymous types
         var jsonResponse = @"{
@@ -125,13 +125,13 @@ public class MistralClientTests
                 ""total_tokens"": 25
             }
         }";
-        
+
         // Use StringContent directly to avoid any serialization/deserialization issues
         var content = new StringContent(jsonResponse, System.Text.Encoding.UTF8, "application/json");
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -144,15 +144,15 @@ public class MistralClientTests
 
         // Act
         var response = await client.CreateChatCompletionAsync(request);
-        
+
         // Assert with proper null checking
         Assert.NotNull(response);
         Assert.NotNull(response.Choices);
         Assert.True(response.Choices?.Count > 0, "Response choices should not be empty");
-        
+
         var firstChoice = response.Choices?[0];
         Assert.NotNull(firstChoice);
-        
+
         var message = firstChoice?.Message;
         Assert.NotNull(message);
         Assert.Equal("assistant", message?.Role);
@@ -161,9 +161,9 @@ public class MistralClientTests
         string contentStr = message?.Content?.ToString() ?? string.Empty;
         Assert.NotEmpty(contentStr);
         Assert.Contains("Mistral AI", contentStr, StringComparison.OrdinalIgnoreCase);
-        
+
         Assert.NotNull(response.Usage);
-        
+
         _handlerMock.Protected().Verify(
             "SendAsync",
             Times.AtLeastOnce(),
@@ -177,12 +177,12 @@ public class MistralClientTests
         // Arrange
         var request = CreateTestRequest("mistral-medium");
         var modelId = "mistral-medium";
-        
+
         var errorResponse = new { error = new { message = "Invalid API key", type = "authentication_error", code = "invalid_api_key" } };
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -195,7 +195,7 @@ public class MistralClientTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
             () => client.CreateChatCompletionAsync(request));
-        
+
         // The actual implementation may return different error messages than what we mock
         // Just verify we get an exception with some error message
         Assert.NotNull(exception);
@@ -208,10 +208,10 @@ public class MistralClientTests
         // Arrange
         var request = CreateTestRequest("mistral-medium");
         var modelId = "mistral-medium";
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -220,7 +220,7 @@ public class MistralClientTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
             () => client.CreateChatCompletionAsync(request));
-        
+
         Assert.Contains("Connection refused", exception.Message);
     }
 
@@ -238,10 +238,10 @@ public class MistralClientTests
                 new { id = "mistral-large-latest" }
             }
         };
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri != null && req.RequestUri.ToString().Contains("/models")), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Get && req.RequestUri != null && req.RequestUri.ToString().Contains("/models")),
                 MoqIt.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -260,13 +260,13 @@ public class MistralClientTests
         Assert.NotEmpty(models);
         // The client's fallback model list now uses 'mistral-medium' not 'mistral-medium-latest'
         Assert.Contains(models, model => model.Contains("mistral") && model.Contains("medium"));
-        
+
         _handlerMock.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            MoqIt.Is<HttpRequestMessage>(req => 
+            MoqIt.Is<HttpRequestMessage>(req =>
                 req != null &&
-                req.Method == HttpMethod.Get && 
+                req.Method == HttpMethod.Get &&
                 req.RequestUri != null &&
                 req.RequestUri.ToString().Contains("/models")),
             MoqIt.IsAny<CancellationToken>());
@@ -277,10 +277,10 @@ public class MistralClientTests
     {
         // Arrange
         var modelId = "mistral-medium";
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                MoqIt.IsAny<HttpRequestMessage>(), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                MoqIt.IsAny<HttpRequestMessage>(),
                 MoqIt.IsAny<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
