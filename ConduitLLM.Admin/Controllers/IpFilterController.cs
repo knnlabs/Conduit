@@ -1,8 +1,11 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.IpFilter;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -89,14 +92,14 @@ public class IpFilterController : ControllerBase
 
             if (filter == null)
             {
-                return NotFound($"IP filter with ID {id} not found");
+                return NotFound($"IP filter with ID {S(id)} not found");
             }
 
             return Ok(filter);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting IP filter with ID {Id}", id);
+            _logger.LogError(ex, "Error getting IP filter with ID {Id}", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -183,7 +186,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {Id}", id);
+            _logger.LogError(ex, "Error updating IP filter with ID {Id}", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -220,7 +223,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", id);
+            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -307,7 +310,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking IP address {IpAddress}", ipAddress);
+            _logger.LogError(ex, "Error checking IP address {IpAddress}", S(ipAddress));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

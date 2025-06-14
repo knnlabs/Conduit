@@ -1,7 +1,10 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers;
 
@@ -112,7 +115,7 @@ public class DatabaseBackupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring database backup");
+            _logger.LogError(ex, "Error restoring database backup {BackupId}", S(backupId));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -134,7 +137,7 @@ public class DatabaseBackupController : ControllerBase
 
             if (result == null)
             {
-                return NotFound($"Backup with ID {backupId} not found");
+                return NotFound($"Backup with ID {S(backupId)} not found");
             }
 
             var (fileStream, contentType, fileName) = result.Value;
@@ -143,7 +146,7 @@ public class DatabaseBackupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading database backup");
+            _logger.LogError(ex, "Error downloading database backup {BackupId}", S(backupId));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

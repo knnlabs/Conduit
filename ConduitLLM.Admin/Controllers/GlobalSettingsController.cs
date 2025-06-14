@@ -4,9 +4,12 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -72,14 +75,14 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (setting == null)
                 {
-                    return NotFound($"Global setting with ID {id} not found");
+                    return NotFound($"Global setting with ID {S(id)} not found");
                 }
 
                 return Ok(setting);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with ID {Id}", id);
+                _logger.LogError(ex, "Error getting global setting with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -101,14 +104,14 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (setting == null)
                 {
-                    return NotFound($"Global setting with key '{key}' not found");
+                    return NotFound($"Global setting with key '{S(key)}' not found");
                 }
 
                 return Ok(setting);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {Key}", key);
+                _logger.LogError(ex, "Error getting global setting with key {Key}", S(key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -176,14 +179,14 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Global setting with ID {id} not found");
+                    return NotFound($"Global setting with ID {S(id)} not found");
                 }
 
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with ID {Id}", id);
+                _logger.LogError(ex, "Error updating global setting with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -217,7 +220,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with key {Key}", setting.Key);
+                _logger.LogError(ex, "Error updating global setting with key {Key}", S(setting.Key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -239,14 +242,14 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Global setting with ID {id} not found");
+                    return NotFound($"Global setting with ID {S(id)} not found");
                 }
 
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with ID {Id}", id);
+                _logger.LogError(ex, "Error deleting global setting with ID {Id}", S(id));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -268,14 +271,14 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Global setting with key '{key}' not found");
+                    return NotFound($"Global setting with key '{S(key)}' not found");
                 }
 
                 return NoContent();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {Key}", key);
+                _logger.LogError(ex, "Error deleting global setting with key {Key}", S(key));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
