@@ -87,14 +87,8 @@ namespace ConduitLLM.Http
             // Add production audio services
             services.AddProductionAudioServices(Configuration);
 
-            // Add health checks
-            services.AddHealthChecks()
-                .AddAudioHealthChecks(Configuration);
-                // Commented out - ApplicationDbContext not defined
-                // .AddDbContextCheck<ApplicationDbContext>(
-                //     name: "database",
-                //     failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
-                //     tags: new[] { "db", "sql", "ready" });
+            // Health checks are registered in Program.cs via AddConduitHealthChecks
+            // Audio-specific health checks should be added there as well to avoid duplicate registrations
 
             // Add distributed tracing
             services.AddOpenTelemetry()

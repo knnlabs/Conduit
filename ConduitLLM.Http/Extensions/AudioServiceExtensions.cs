@@ -137,24 +137,8 @@ namespace ConduitLLM.Http.Extensions
             // Add Prometheus metrics endpoint
             app.UseMiddleware<PrometheusMetricsMiddleware>();
             
-            // Map health check endpoints
-            app.UseHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-            {
-                Predicate = check => check.Tags.Contains("live"),
-                ResponseWriter = HealthCheckResponseWriter.WriteResponse
-            });
-            
-            app.UseHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-            {
-                Predicate = check => check.Tags.Contains("ready"),
-                ResponseWriter = HealthCheckResponseWriter.WriteResponse
-            });
-            
-            app.UseHealthChecks("/health/providers", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-            {
-                Predicate = check => check.Tags.Contains("provider"),
-                ResponseWriter = HealthCheckResponseWriter.WriteResponse
-            });
+            // Health check endpoints are mapped in Program.cs via MapConduitHealthChecks()
+            // to avoid duplicate endpoint registrations
             
             return app;
         }

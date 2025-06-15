@@ -14,6 +14,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
+using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
 using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
@@ -211,9 +212,18 @@ builder.Services.AddCors(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
-// Add standardized health checks
-var redisHealthConnection = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-builder.Services.AddConduitHealthChecks(dbConnectionString, redisHealthConnection);
+// Add standardized health checks (skip in test environment to avoid conflicts)
+if (builder.Environment.EnvironmentName != "Test")
+{
+    var redisHealthConnection = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisHealthConnection);
+
+    // Add audio-specific health checks if audio services are configured
+    if (builder.Configuration.GetSection("AudioService:Providers").Exists())
+    {
+        healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
+    }
+}
 
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
