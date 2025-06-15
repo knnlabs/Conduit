@@ -92,8 +92,12 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<AudioUsageSummaryDto> GetUsageSummaryAsync(DateTime startDate, DateTime endDate, string? virtualKey = null, string? provider = null)
         {
+            // Ensure dates are in UTC for PostgreSQL
+            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            
             var query = _context.AudioUsageLogs
-                .Where(l => l.Timestamp >= startDate && l.Timestamp <= endDate);
+                .Where(l => l.Timestamp >= utcStartDate && l.Timestamp <= utcEndDate);
 
             if (!string.IsNullOrEmpty(virtualKey))
                 query = query.Where(l => l.VirtualKey == virtualKey);
@@ -105,8 +109,8 @@ namespace ConduitLLM.Configuration.Repositories
 
             var summary = new AudioUsageSummaryDto
             {
-                StartDate = startDate,
-                EndDate = endDate,
+                StartDate = utcStartDate,
+                EndDate = utcEndDate,
                 TotalOperations = logs.Count,
                 SuccessfulOperations = logs.Count(l => l.StatusCode == null || (l.StatusCode >= 200 && l.StatusCode < 300)),
                 FailedOperations = logs.Count(l => l.StatusCode >= 400),
@@ -172,18 +176,26 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<decimal> GetTotalCostAsync(string virtualKey, DateTime startDate, DateTime endDate)
         {
+            // Ensure dates are in UTC for PostgreSQL
+            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            
             return await _context.AudioUsageLogs
                 .Where(l => l.VirtualKey == virtualKey &&
-                           l.Timestamp >= startDate &&
-                           l.Timestamp <= endDate)
+                           l.Timestamp >= utcStartDate &&
+                           l.Timestamp <= utcEndDate)
                 .SumAsync(l => l.Cost);
         }
 
         /// <inheritdoc/>
         public async Task<List<OperationTypeBreakdown>> GetOperationBreakdownAsync(DateTime startDate, DateTime endDate, string? virtualKey = null)
         {
+            // Ensure dates are in UTC for PostgreSQL
+            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            
             var query = _context.AudioUsageLogs
-                .Where(l => l.Timestamp >= startDate && l.Timestamp <= endDate);
+                .Where(l => l.Timestamp >= utcStartDate && l.Timestamp <= utcEndDate);
 
             if (!string.IsNullOrEmpty(virtualKey))
                 query = query.Where(l => l.VirtualKey == virtualKey);
@@ -206,8 +218,12 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<List<ProviderBreakdown>> GetProviderBreakdownAsync(DateTime startDate, DateTime endDate, string? virtualKey = null)
         {
+            // Ensure dates are in UTC for PostgreSQL
+            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            
             var query = _context.AudioUsageLogs
-                .Where(l => l.Timestamp >= startDate && l.Timestamp <= endDate);
+                .Where(l => l.Timestamp >= utcStartDate && l.Timestamp <= utcEndDate);
 
             if (!string.IsNullOrEmpty(virtualKey))
                 query = query.Where(l => l.VirtualKey == virtualKey);
