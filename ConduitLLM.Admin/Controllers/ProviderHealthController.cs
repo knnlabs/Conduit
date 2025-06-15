@@ -131,7 +131,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (configuration == null)
                 {
-                    return NotFound($"Provider health configuration not found for provider '{providerName}'");
+                    return NotFound("Provider health configuration not found");
                 }
 
                 return Ok(configuration);
@@ -252,7 +252,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (status == null)
                 {
-                    return NotFound($"Health status not found for provider '{providerName}'");
+                    return NotFound("Health status not found");
                 }
 
                 return Ok(status);
@@ -499,7 +499,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (statusRecord == null)
                 {
-                    return NotFound($"No status found for provider '{providerName}'");
+                    return NotFound("Provider status not found");
                 }
 
                 var status = new Models.ProviderStatus

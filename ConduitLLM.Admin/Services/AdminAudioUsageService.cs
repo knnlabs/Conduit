@@ -139,7 +139,7 @@ namespace ConduitLLM.Admin.Services
 
             if (sessionStore == null)
             {
-                _logger.LogWarningSecure("Real-time session store not available");
+                _logger.LogWarning("Real-time session store not available");
                 return new RealtimeSessionMetricsDto
                 {
                     ActiveSessions = 0,
@@ -206,7 +206,7 @@ namespace ConduitLLM.Admin.Services
 
             if (sessionStore == null)
             {
-                _logger.LogWarningSecure("Real-time session store not available");
+                _logger.LogWarning("Real-time session store not available");
                 return new List<RealtimeSessionDto>();
             }
 
@@ -223,7 +223,7 @@ namespace ConduitLLM.Admin.Services
 
             if (sessionStore == null)
             {
-                _logger.LogWarningSecure("Real-time session store not available");
+                _logger.LogWarning("Real-time session store not available");
                 return null;
             }
 
@@ -240,14 +240,14 @@ namespace ConduitLLM.Admin.Services
 
             if (sessionStore == null)
             {
-                _logger.LogWarningSecure("Real-time session store not available");
+                _logger.LogWarning("Real-time session store not available");
                 return false;
             }
 
             var session = await sessionStore.GetSessionAsync(sessionId);
             if (session == null)
             {
-                _logger.LogWarningSecure("Session not found for termination {SessionId}", sessionId);
+                _logger.LogWarning("Session not found for termination {SessionId}", sessionId);
                 return false;
             }
 
@@ -262,7 +262,7 @@ namespace ConduitLLM.Admin.Services
 
             if (removed)
             {
-                _logger.LogInformationSecure("Successfully terminated session {SessionId}", sessionId);
+                _logger.LogInformation("Successfully terminated session {SessionId}", sessionId);
             }
 
             return removed;
@@ -293,7 +293,7 @@ namespace ConduitLLM.Admin.Services
             var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
             var deletedCount = await _repository.DeleteOldLogsAsync(cutoffDate);
 
-            _logger.LogInformationSecure("Cleaned up {Count} audio usage logs older than {Date}",
+            _logger.LogInformation("Cleaned up {Count} audio usage logs older than {Date}",
                 deletedCount, cutoffDate);
 
             return deletedCount;

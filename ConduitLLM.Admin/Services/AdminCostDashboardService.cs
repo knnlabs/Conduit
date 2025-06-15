@@ -46,7 +46,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformationSecure("Getting cost summary with timeframe: {Timeframe}", timeframe);
+            _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", timeframe);
 
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch
@@ -178,7 +178,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error getting cost summary");
+            _logger.LogError(ex, "Error getting cost summary");
 
             // Return empty summary on error
             return new CostDashboardDto
@@ -205,7 +205,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformationSecure("Getting cost trends with period: {Period}", period);
+            _logger.LogInformation("Getting cost trends with period: {Period}", period);
 
             // Normalize period (case-insensitive)
             period = period.ToLower() switch
@@ -245,7 +245,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error getting cost trends");
+            _logger.LogError(ex, "Error getting cost trends");
 
             // Return empty trends on error
             return new CostTrendDto
@@ -265,7 +265,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformationSecure("Getting model costs");
+            _logger.LogInformation("Getting model costs");
 
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
@@ -324,7 +324,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error getting model costs");
+            _logger.LogError(ex, "Error getting model costs");
             return new List<ModelCostDataDto>();
         }
     }
@@ -336,7 +336,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformationSecure("Getting virtual key costs");
+            _logger.LogInformation("Getting virtual key costs");
 
             // Use default dates if not provided
             startDate ??= DateTime.UtcNow.AddDays(-30);
@@ -385,7 +385,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error getting virtual key costs");
+            _logger.LogError(ex, "Error getting virtual key costs");
             return new List<VirtualKeyCostDataDto>();
         }
     }

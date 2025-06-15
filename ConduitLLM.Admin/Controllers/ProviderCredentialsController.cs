@@ -78,7 +78,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (credential == null)
                 {
                     _logger.LogWarning("Provider credential not found {ProviderId}", S(id));
-                    return NotFound(new { error = "Provider credential not found", id = id });
+                    return NotFound(new { error = "Provider credential not found" });
                 }
 
                 return Ok(credential);
@@ -108,7 +108,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (credential == null)
                 {
                     _logger.LogWarning("Provider credential not found for provider {ProviderName}", S(providerName));
-                    return NotFound(new { error = "Provider credential not found", provider = providerName });
+                    return NotFound(new { error = "Provider credential not found" });
                 }
 
                 return Ok(credential);
@@ -205,7 +205,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (!success)
                 {
                     _logger.LogWarning("Provider credential not found for update {ProviderId}", S(id));
-                    return NotFound(new { error = "Provider credential not found", id = id });
+                    return NotFound(new { error = "Provider credential not found" });
                 }
 
                 return NoContent();
@@ -235,7 +235,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (!success)
                 {
                     _logger.LogWarning("Provider credential not found for deletion {ProviderId}", S(id));
-                    return NotFound(new { error = "Provider credential not found", id = id });
+                    return NotFound(new { error = "Provider credential not found" });
                 }
 
                 return NoContent();
@@ -265,7 +265,7 @@ namespace ConduitLLM.Admin.Controllers
                 if (credential == null)
                 {
                     _logger.LogWarning("Provider credential not found for connection test {ProviderId}", S(id));
-                    return NotFound(new { error = "Provider credential not found", id = id });
+                    return NotFound(new { error = "Provider credential not found" });
                 }
 
                 var result = await _providerCredentialService.TestProviderConnectionAsync(credential);

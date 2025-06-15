@@ -137,7 +137,7 @@ public class DatabaseBackupController : ControllerBase
 
             if (result == null)
             {
-                return NotFound($"Backup with ID {S(backupId)} not found");
+                return NotFound("Backup not found");
             }
 
             var (fileStream, contentType, fileName) = result.Value;

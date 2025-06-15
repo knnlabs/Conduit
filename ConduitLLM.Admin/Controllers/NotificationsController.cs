@@ -93,7 +93,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (notification == null)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
 
                 return Ok(notification);
@@ -168,7 +168,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
 
                 return NoContent();
@@ -197,7 +197,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
 
                 return NoContent();
@@ -247,7 +247,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
 
                 return NoContent();

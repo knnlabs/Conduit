@@ -14,7 +14,9 @@ namespace ConduitLLM.Tests.Core.Extensions
         public void S_String_RemovesDangerousCharacters(string? input, string? expected)
         {
             // Act
+            #pragma warning disable CS8604 // Possible null reference argument.
             var result = LoggingSanitizer.S(input);
+            #pragma warning restore CS8604 // Possible null reference argument.
 
             // Assert
             Assert.Equal(expected, result);
@@ -30,7 +32,8 @@ namespace ConduitLLM.Tests.Core.Extensions
             var result = LoggingSanitizer.S(longInput);
 
             // Assert
-            Assert.Equal(1000, result.Length);
+            Assert.NotNull(result);
+            Assert.Equal(1000, result!.Length);
             Assert.Equal(new string('a', 1000), result);
         }
 
@@ -38,7 +41,11 @@ namespace ConduitLLM.Tests.Core.Extensions
         public void S_Object_HandlesNull()
         {
             // Act
-            var result = LoggingSanitizer.S((object)null);
+            #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+            var result = LoggingSanitizer.S((object)null!);
+            #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
+            #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
             // Assert
             Assert.Null(result);

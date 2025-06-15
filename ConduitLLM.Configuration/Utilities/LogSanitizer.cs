@@ -47,7 +47,7 @@ namespace ConduitLLM.Configuration.Utilities
         /// </summary>
         /// <param name="value">The value to sanitize.</param>
         /// <returns>The sanitized value.</returns>
-        public static object SanitizeObject(object value)
+        public static object? SanitizeObject(object? value)
         {
             if (value == null)
             {

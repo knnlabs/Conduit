@@ -117,7 +117,7 @@ public class LogsController : ControllerBase
 
             if (log == null)
             {
-                return NotFound($"Log with ID {id} not found");
+                return NotFound("Log entry not found");
             }
 
             return Ok(log);

@@ -126,14 +126,14 @@ public class RouterController : ControllerBase
             var deployment = await _routerService.GetModelDeploymentAsync(deploymentName);
             if (deployment == null)
             {
-                return NotFound($"Deployment '{deploymentName}' not found");
+                return NotFound("Deployment not found");
             }
             return Ok(deployment);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", deploymentName);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"Error retrieving model deployment '{deploymentName}'");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving model deployment");
         }
     }
 
@@ -204,17 +204,17 @@ public class RouterController : ControllerBase
             bool success = await _routerService.DeleteModelDeploymentAsync(deploymentName);
             if (success)
             {
-                return Ok($"Deployment '{deploymentName}' deleted successfully");
+                return Ok("Deployment deleted successfully");
             }
             else
             {
-                return NotFound($"Deployment '{deploymentName}' not found");
+                return NotFound("Deployment not found");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", deploymentName);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting model deployment '{deploymentName}'");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Error deleting model deployment");
         }
     }
 
@@ -302,17 +302,17 @@ public class RouterController : ControllerBase
             bool success = await _routerService.RemoveFallbackConfigurationAsync(primaryModel);
             if (success)
             {
-                return Ok($"Fallback configuration for model '{primaryModel}' removed successfully");
+                return Ok("Fallback configuration removed successfully");
             }
             else
             {
-                return NotFound($"Fallback configuration for model '{primaryModel}' not found");
+                return NotFound("Fallback configuration not found");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", primaryModel);
-            return StatusCode(StatusCodes.Status500InternalServerError, $"Error removing fallback configuration for model '{primaryModel}'");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Error removing fallback configuration");
         }
     }
 }

@@ -54,7 +54,7 @@ public class AdminLogService : IAdminLogService
         {
             _logger.LogInformation(
                 "Getting logs with filters - Page: {Page}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, HasModel: {HasModel}, HasVirtualKeyId: {HasVirtualKeyId}, HasStatus: {HasStatus}",
-                S(page), S(pageSize), S(startDate), S(endDate), !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
+                S(page), S(pageSize), startDate.HasValue ? S(startDate.Value) : "null", endDate.HasValue ? S(endDate.Value) : "null", !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
 
             // Validate page and pageSize
             if (page < 1) page = 1;

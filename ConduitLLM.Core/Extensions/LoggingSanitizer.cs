@@ -20,7 +20,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="value">The value to sanitize.</param>
         /// <returns>The sanitized value.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static object S(object value)
+        public static object? S(object? value)
         {
             if (value == null) return null;
             
@@ -48,7 +48,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="value">The string to sanitize.</param>
         /// <returns>The sanitized string.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string S(string value)
+        public static string? S(string? value)
         {
             if (string.IsNullOrEmpty(value)) return value;
             

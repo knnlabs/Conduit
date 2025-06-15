@@ -92,7 +92,7 @@ public class IpFilterController : ControllerBase
 
             if (filter == null)
             {
-                return NotFound($"IP filter with ID {S(id)} not found");
+                return NotFound("IP filter not found");
             }
 
             return Ok(filter);

@@ -17,7 +17,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="logger">The logger instance.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogDebugSecure(this ILogger logger, string message, params object[] args)
+        public static void LogDebugSecure(this ILogger logger, string message, params object?[] args)
         {
             logger.LogDebug(message, SanitizeArgs(args));
         }
@@ -28,7 +28,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="logger">The logger instance.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogInformationSecure(this ILogger logger, string message, params object[] args)
+        public static void LogInformationSecure(this ILogger logger, string message, params object?[] args)
         {
             logger.LogInformation(message, SanitizeArgs(args));
         }
@@ -39,7 +39,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="logger">The logger instance.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogWarningSecure(this ILogger logger, string message, params object[] args)
+        public static void LogWarningSecure(this ILogger logger, string message, params object?[] args)
         {
             logger.LogWarning(message, SanitizeArgs(args));
         }
@@ -51,7 +51,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="exception">The exception to log.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogWarningSecure(this ILogger logger, Exception exception, string message, params object[] args)
+        public static void LogWarningSecure(this ILogger logger, Exception exception, string message, params object?[] args)
         {
             logger.LogWarning(exception, message, SanitizeArgs(args));
         }
@@ -63,7 +63,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="exception">The exception to log.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogErrorSecure(this ILogger logger, Exception exception, string message, params object[] args)
+        public static void LogErrorSecure(this ILogger logger, Exception exception, string message, params object?[] args)
         {
             logger.LogError(exception, message, SanitizeArgs(args));
         }
@@ -74,7 +74,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="logger">The logger instance.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogErrorSecure(this ILogger logger, string message, params object[] args)
+        public static void LogErrorSecure(this ILogger logger, string message, params object?[] args)
         {
             logger.LogError(message, SanitizeArgs(args));
         }
@@ -86,7 +86,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="exception">The exception to log.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogCriticalSecure(this ILogger logger, Exception exception, string message, params object[] args)
+        public static void LogCriticalSecure(this ILogger logger, Exception exception, string message, params object?[] args)
         {
             logger.LogCritical(exception, message, SanitizeArgs(args));
         }
@@ -97,7 +97,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="logger">The logger instance.</param>
         /// <param name="message">The log message template.</param>
         /// <param name="args">The arguments to be sanitized and logged.</param>
-        public static void LogCriticalSecure(this ILogger logger, string message, params object[] args)
+        public static void LogCriticalSecure(this ILogger logger, string message, params object?[] args)
         {
             logger.LogCritical(message, SanitizeArgs(args));
         }
@@ -107,7 +107,7 @@ namespace ConduitLLM.Core.Extensions
         /// </summary>
         /// <param name="value">The value to sanitize.</param>
         /// <returns>The sanitized value.</returns>
-        public static object SanitizeForLogging(object value)
+        public static object? SanitizeForLogging(object? value)
         {
             if (value == null)
             {
@@ -135,14 +135,14 @@ namespace ConduitLLM.Core.Extensions
             return value;
         }
 
-        private static object[] SanitizeArgs(object[] args)
+        private static object?[] SanitizeArgs(object?[] args)
         {
             if (args == null || args.Length == 0)
             {
-                return args;
+                return args ?? Array.Empty<object?>();
             }
 
-            var sanitizedArgs = new object[args.Length];
+            var sanitizedArgs = new object?[args.Length];
             for (int i = 0; i < args.Length; i++)
             {
                 sanitizedArgs[i] = SanitizeForLogging(args[i]);

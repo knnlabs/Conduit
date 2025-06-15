@@ -74,7 +74,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound($"Model provider mapping with ID {id} not found");
+                return NotFound("Model provider mapping not found");
             }
 
             return Ok(mapping);
@@ -103,7 +103,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (mapping == null)
             {
-                return NotFound($"No mapping found for model ID '{modelId}'");
+                return NotFound("Model provider mapping not found");
             }
 
             return Ok(mapping);
@@ -187,7 +187,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (!success)
             {
-                return NotFound($"Model provider mapping with ID {id} not found or provider doesn't exist");
+                return NotFound("Model provider mapping not found");
             }
 
             return NoContent();
@@ -219,7 +219,7 @@ public class ModelProviderMappingController : ControllerBase
 
             if (!success)
             {
-                return NotFound($"Model provider mapping with ID {id} not found");
+                return NotFound("Model provider mapping not found");
             }
 
             return NoContent();
