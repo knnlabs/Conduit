@@ -50,6 +50,11 @@ public class LLMClientFactoryTests
                 new() { ProviderName = "Mistral", ApiKey = "mistral-key", ApiBase = "https://api.mistral.ai/v1" },
                 // No credentials for NoCredsProvider
                 new() { ProviderName = "UnsupportedProvider", ApiKey = "unsupported-key" } // Creds exist, but provider is unsupported
+            },
+            // Disable performance tracking for tests that check specific client types
+            PerformanceTracking = new PerformanceTrackingSettings
+            {
+                Enabled = false
             }
         };
 

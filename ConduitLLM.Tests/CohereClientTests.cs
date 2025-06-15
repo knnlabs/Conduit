@@ -294,22 +294,50 @@ namespace ConduitLLM.Tests
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_NotImplemented_ThrowsNotImplementedException()
+        public async Task CreateEmbeddingAsync_Success()
         {
             // Arrange
-            var providerModelId = "command-r";
-            var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
-            var client = new CohereClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
+            var providerModelId = "embed-english-v3.0";
             var embeddingRequest = new ConduitLLM.Core.Models.EmbeddingRequest
             {
-                Model = "command-r",
+                Model = "embed-model",
                 Input = new[] { "Test text" },
                 EncodingFormat = "float"
             };
+            
+            var expectedUrl = $"{DefaultApiBase}/embed";
+            var cohereResponse = new
+            {
+                embeddings = new List<List<double>> { new List<double> { 0.1, 0.2, 0.3 } },
+                id = "embed-123",
+                meta = new { billed_units = new { input_tokens = 3 } }
+            };
 
-            // Act & Assert
-            await Assert.ThrowsAsync<NotImplementedException>(() =>
-                client.CreateEmbeddingAsync(embeddingRequest));
+            _handlerMock.SetupRequest(HttpMethod.Post, expectedUrl)
+                .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(cohereResponse))
+                .Verifiable();
+
+            var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
+            var client = new CohereClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
+
+            // Act
+            var response = await client.CreateEmbeddingAsync(embeddingRequest);
+
+            // Assert
+            Assert.NotNull(response);
+            Assert.Single(response.Data);
+            Assert.Equal(3, response.Data[0].Embedding.Count);
+            Assert.Equal(0.1, response.Data[0].Embedding[0], 0.0001);
+            Assert.Equal(0.2, response.Data[0].Embedding[1], 0.0001);
+            Assert.Equal(0.3, response.Data[0].Embedding[2], 0.0001);
+            Assert.Equal(3, response.Usage.TotalTokens);
+
+            // Verify request was sent
+            _handlerMock.Protected()
+                .Verify("SendAsync", Times.Once(), Moq.Protected.ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri != null && req.RequestUri.ToString() == expectedUrl),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>());
         }
 
         [Fact]

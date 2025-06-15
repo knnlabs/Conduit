@@ -117,6 +117,10 @@ namespace ConduitLLM.Tests.Http.Middleware
             var context = new DefaultHttpContext();
             context.Request.Headers["X-Correlation-ID"] = correlationId;
 
+            // Create an activity for the test
+            using var activity = new Activity("TestActivity");
+            activity.Start();
+
             Activity? activityDuringMiddleware = null;
             _mockNext.Setup(next => next(It.IsAny<HttpContext>()))
                 .Callback<HttpContext>(_ =>
