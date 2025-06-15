@@ -1,13 +1,7 @@
-name: CodeQL Local Analysis
+name: CodeQL Local Analysis (DEPRECATED - Use build-and-release.yml)
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [ dev, master ]
-    paths:
-      - '**.cs'
-      - '**.csproj'
-      - '.github/workflows/codeql-local.yml'
+  workflow_dispatch: # Only manual trigger now
 
 jobs:
   analyze:
