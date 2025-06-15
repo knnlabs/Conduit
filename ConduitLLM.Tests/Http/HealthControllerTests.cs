@@ -7,6 +7,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Tests.TestUtilities;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -21,11 +23,11 @@ namespace ConduitLLM.Tests.Http
     /// Tests for the standardized health check middleware implementation.
     /// Note: The HealthController has been removed in favor of ASP.NET Core Health Checks middleware.
     /// </summary>
-    public class HealthControllerTests : IClassFixture<WebApplicationFactory<Program>>
+    public class HealthControllerTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
 
-        public HealthControllerTests(WebApplicationFactory<Program> factory)
+        public HealthControllerTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
         }
@@ -39,6 +41,13 @@ namespace ConduitLLM.Tests.Http
                 builder.UseEnvironment("Test");
                 builder.ConfigureTestServices(services =>
                 {
+                    // Clear existing health check registrations
+                    var healthCheckServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(HealthCheckService));
+                    if (healthCheckServiceDescriptor != null)
+                    {
+                        services.Remove(healthCheckServiceDescriptor);
+                    }
+                    
                     // Override health checks for testing
                     services.AddHealthChecks()
                         .AddCheck("test_database", new TestHealthCheck(HealthStatus.Healthy, "Test database is healthy"))

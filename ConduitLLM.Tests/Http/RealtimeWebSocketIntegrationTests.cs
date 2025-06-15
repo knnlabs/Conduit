@@ -12,6 +12,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
 using ConduitLLM.Http.Services;
+using ConduitLLM.Tests.TestUtilities;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -40,15 +41,15 @@ namespace ConduitLLM.Tests.Http
     /// The tests have been updated to match the current API architecture and will
     /// work once the infrastructure requirements are met.
     /// </remarks>
-    public class RealtimeWebSocketIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+    public class RealtimeWebSocketIntegrationTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
         private readonly Mock<IRealtimeAudioClient> _mockRealtimeClient;
         private readonly Mock<IAudioRouter> _mockAudioRouter;
         private readonly Mock<IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<IRealtimeConnectionManager> _mockConnectionManager;
 
-        public RealtimeWebSocketIntegrationTests(WebApplicationFactory<Program> factory)
+        public RealtimeWebSocketIntegrationTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _mockRealtimeClient = new Mock<IRealtimeAudioClient>();

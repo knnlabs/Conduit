@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Tests.TestUtilities;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 
@@ -22,26 +23,14 @@ namespace ConduitLLM.Tests.Integration
     /// <summary>
     /// Integration tests for Admin API mode functionality
     /// </summary>
-    public class AdminApiIntegrationTests : IClassFixture<WebApplicationFactory<ConduitLLM.Admin.Program>>
+    public class AdminApiIntegrationTests : IClassFixture<AdminApiTestFactory>
     {
-        private readonly WebApplicationFactory<ConduitLLM.Admin.Program> _adminFactory;
+        private readonly AdminApiTestFactory _adminFactory;
         private readonly HttpClient _adminHttpClient;
 
-        public AdminApiIntegrationTests(WebApplicationFactory<ConduitLLM.Admin.Program> adminFactory)
+        public AdminApiIntegrationTests(AdminApiTestFactory adminFactory)
         {
-            _adminFactory = adminFactory
-                .WithWebHostBuilder(builder =>
-                {
-                    builder.ConfigureAppConfiguration((context, config) =>
-                    {
-                        // Add test configuration with master key
-                        config.AddInMemoryCollection(new Dictionary<string, string?>
-                        {
-                            { "AdminApi:MasterKey", "test-master-key" },
-                            { "ConnectionStrings:ConfigurationDb", "Data Source=:memory:" }
-                        });
-                    });
-                });
+            _adminFactory = adminFactory;
             _adminHttpClient = _adminFactory.CreateClient();
         }
 

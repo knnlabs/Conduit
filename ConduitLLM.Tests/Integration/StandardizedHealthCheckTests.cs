@@ -7,6 +7,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using ConduitLLM.Tests.TestUtilities;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -17,11 +19,11 @@ using Xunit;
 
 namespace ConduitLLM.Tests.Integration
 {
-    public class StandardizedHealthCheckTests : IClassFixture<WebApplicationFactory<Program>>
+    public class StandardizedHealthCheckTests : IClassFixture<TestWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly TestWebApplicationFactory<Program> _factory;
 
-        public StandardizedHealthCheckTests(WebApplicationFactory<Program> factory)
+        public StandardizedHealthCheckTests(TestWebApplicationFactory<Program> factory)
         {
             _factory = factory;
         }
@@ -30,7 +32,17 @@ namespace ConduitLLM.Tests.Integration
         public async Task HealthEndpoint_ReturnsOk_WhenApplicationIsHealthy()
         {
             // Arrange
-            var client = _factory.CreateClient();
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    // Override health checks with test implementations
+                    services.AddHealthChecks()
+                        .AddCheck("database", new TestHealthCheck(HealthStatus.Healthy, "Test database is healthy"), tags: new[] { "db", "ready" })
+                        .AddCheck("providers", new TestHealthCheck(HealthStatus.Healthy, "Test providers are healthy"), tags: new[] { "providers", "ready" })
+                        .AddCheck("redis", new TestHealthCheck(HealthStatus.Healthy, "Test Redis is healthy"), tags: new[] { "cache", "ready" });
+                });
+            }).CreateClient();
 
             // Act
             var response = await client.GetAsync("/health");
