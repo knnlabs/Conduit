@@ -197,15 +197,28 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                         {
                             // Get database size
                             var dbName = ExtractDatabaseNameFromConnectionString(connectionString);
-                            command.CommandText = $"SELECT pg_database_size('{dbName}')";
-                            var sizeResult = await command.ExecuteScalarAsync();
-                            if (sizeResult != null && long.TryParse(sizeResult.ToString(), out long sizeInBytes))
+                            // Validate database name to prevent SQL injection
+                            if (!IsValidDatabaseName(dbName))
                             {
-                                info.Size = FormatFileSize(sizeInBytes);
+                                info.Size = "Invalid database name";
                             }
                             else
                             {
-                                info.Size = "Unknown";
+                                // Use quote_ident to safely escape the database name
+                                command.CommandText = "SELECT pg_database_size(quote_ident(@dbName))";
+                                var parameter = command.CreateParameter();
+                                parameter.ParameterName = "@dbName";
+                                parameter.Value = dbName;
+                                command.Parameters.Add(parameter);
+                                var sizeResult = await command.ExecuteScalarAsync();
+                                if (sizeResult != null && long.TryParse(sizeResult.ToString(), out long sizeInBytes))
+                                {
+                                    info.Size = FormatFileSize(sizeInBytes);
+                                }
+                                else
+                                {
+                                    info.Size = "Unknown";
+                                }
                             }
                         }
 
@@ -426,6 +439,16 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         }
 
         return "";
+    }
+
+    private bool IsValidDatabaseName(string dbName)
+    {
+        if (string.IsNullOrWhiteSpace(dbName))
+            return false;
+
+        // Database names in PostgreSQL can contain letters, numbers, underscores, and hyphens
+        // They cannot contain quotes, semicolons, or other special characters that could be used for SQL injection
+        return System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-zA-Z0-9_\-]+$");
     }
 
     private string FormatFileSize(long bytes)

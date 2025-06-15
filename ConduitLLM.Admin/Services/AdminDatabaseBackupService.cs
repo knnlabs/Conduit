@@ -11,6 +11,8 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Hosting;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -125,7 +127,19 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformationSecure("Restoring database backup: {BackupId}", backupId);
+            _logger.LogInformationSecure("Restoring database backup: {BackupId}", S(backupId));
+
+            // Validate backup ID to prevent path traversal
+            if (!IsValidBackupId(backupId))
+            {
+                var errorMessage = "Invalid backup ID format";
+                _logger.LogErrorSecure("Invalid backup ID format: {BackupId}", S(backupId));
+                return new RestoreResult
+                {
+                    Success = false,
+                    ErrorMessage = errorMessage
+                };
+            }
 
             // Find the backup file
             var backupFile = Directory.GetFiles(_backupDirectory, "*.zip")
@@ -166,7 +180,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error restoring database backup: {BackupId}", backupId);
+            _logger.LogErrorSecure(ex, "Error restoring database backup: {BackupId}", S(backupId));
             return new RestoreResult
             {
                 Success = false,
@@ -180,7 +194,14 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformationSecure("Downloading database backup: {BackupId}", backupId);
+            _logger.LogInformationSecure("Downloading database backup: {BackupId}", S(backupId));
+
+            // Validate backup ID to prevent path traversal
+            if (!IsValidBackupId(backupId))
+            {
+                _logger.LogErrorSecure("Invalid backup ID format for download: {BackupId}", S(backupId));
+                return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
+            }
 
             // Find the backup file
             var backupFile = Directory.GetFiles(_backupDirectory, "*.zip")
@@ -188,7 +209,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (backupFile == null)
             {
-                _logger.LogErrorSecure("Backup file not found: {BackupId}", backupId);
+                _logger.LogErrorSecure("Backup file not found: {BackupId}", S(backupId));
                 return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
             }
 
@@ -202,7 +223,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error downloading database backup: {BackupId}", backupId);
+            _logger.LogErrorSecure(ex, "Error downloading database backup: {BackupId}", S(backupId));
             return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
         }
     }
@@ -314,7 +335,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "pg_dump",
-                    Arguments = $"-h {connectionParams["host"]} -p {connectionParams["port"]} -U {connectionParams["user"]} -d {connectionParams["database"]} -F p -f \"{sqlBackupFilePath}\"",
+                    Arguments = $"-h {EscapeShellArgument(connectionParams["host"])} -p {EscapeShellArgument(connectionParams["port"])} -U {EscapeShellArgument(connectionParams["user"])} -d {EscapeShellArgument(connectionParams["database"])} -F p -f {EscapeShellArgument(sqlBackupFilePath)}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -574,7 +595,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
                     StartInfo = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = "psql",
-                        Arguments = $"-h {connectionParams["host"]} -p {connectionParams["port"]} -U {connectionParams["user"]} -d {connectionParams["database"]} -f \"{sqlFilePath}\"",
+                        Arguments = $"-h {EscapeShellArgument(connectionParams["host"])} -p {EscapeShellArgument(connectionParams["port"])} -U {EscapeShellArgument(connectionParams["user"])} -d {EscapeShellArgument(connectionParams["database"])} -f {EscapeShellArgument(sqlFilePath)}",
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
@@ -701,5 +722,25 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
 
         return $"{size:0.##} {units[unitIndex]}";
+    }
+
+    private bool IsValidBackupId(string backupId)
+    {
+        if (string.IsNullOrWhiteSpace(backupId))
+            return false;
+
+        // Backup IDs should only contain alphanumeric characters, underscores, and hyphens
+        // This prevents path traversal attacks
+        return System.Text.RegularExpressions.Regex.IsMatch(backupId, @"^[a-zA-Z0-9_\-]+$");
+    }
+
+    private string EscapeShellArgument(string arg)
+    {
+        if (string.IsNullOrEmpty(arg))
+            return "\"\"";
+
+        // For Windows and Unix, wrap in quotes and escape internal quotes
+        // This prevents command injection by ensuring special characters are treated as literals
+        return $"\"{arg.Replace("\"", "\\\"")}\"";
     }
 }
