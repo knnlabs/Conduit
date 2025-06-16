@@ -58,7 +58,7 @@ namespace ConduitLLM.Http.Controllers
             try
             {
                 _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})",
-                    S(providerName), forceRefresh);
+                    providerName.Replace(Environment.NewLine, ""), forceRefresh);
 
                 // Get the provider credentials from the database
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
@@ -69,13 +69,13 @@ namespace ConduitLLM.Http.Controllers
 
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider '{ProviderName}' not found", S(providerName));
+                    _logger.LogWarning("Provider '{ProviderName}' not found", providerName.Replace(Environment.NewLine, ""));
                     return NotFound(new { error = $"Provider '{providerName}' not found" });
                 }
 
                 if (string.IsNullOrEmpty(provider.ApiKey))
                 {
-                    _logger.LogWarning("API key missing for provider '{ProviderName}'", S(providerName));
+                    _logger.LogWarning("API key missing for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "API key is required to retrieve models" });
                 }
 
@@ -97,13 +97,13 @@ namespace ConduitLLM.Http.Controllers
                     .ToList();
 
                 _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}",
-                    sortedModels.Count, S(providerName));
+                    sortedModels.Count, providerName.Replace(Environment.NewLine, ""));
 
                 return Ok(sortedModels);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", S(providerName));
+                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 return StatusCode(500, new { error = $"Failed to retrieve models: {ex.Message}" });
             }
         }

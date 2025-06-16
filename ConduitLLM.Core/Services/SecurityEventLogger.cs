@@ -369,7 +369,7 @@ namespace ConduitLLM.Core.Services
 
             _logger.Log(logLevel, 
                 "Security Event: {EventType} - {Description} [VirtualKey: {VirtualKey}, IP: {IpAddress}]",
-                evt.EventType, evt.Description, evt.VirtualKey ?? "N/A", evt.IpAddress ?? "N/A");
+                evt.EventType, evt.Description.Replace(Environment.NewLine, ""), (evt.VirtualKey ?? "N/A").Replace(Environment.NewLine, ""), evt.IpAddress ?? "N/A");
         }
     }
 }

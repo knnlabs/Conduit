@@ -34,13 +34,13 @@ namespace ConduitLLM.Configuration
 
             try
             {
-                _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias);
+_logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
 
                 // Get the provider credential
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
                     throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
 
@@ -59,7 +59,7 @@ namespace ConduitLLM.Configuration
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}", mapping.ModelAlias);
+_logger.LogError(ex, "Error adding mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), mapping.ModelAlias.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -117,13 +117,13 @@ namespace ConduitLLM.Configuration
 
             try
             {
-                _logger.LogInformation("Getting mapping by model alias: {ModelAlias}", modelAlias);
+_logger.LogInformation("Getting mapping by model alias: {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
                 var entity = await _repository.GetByModelNameAsync(modelAlias);
                 return ModelProviderMappingMapper.ToDto(entity);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}", modelAlias);
+_logger.LogError(ex, "Error getting mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -137,13 +137,13 @@ namespace ConduitLLM.Configuration
 
             try
             {
-                _logger.LogInformation("Updating mapping: {ModelAlias}", mapping.ModelAlias);
+_logger.LogInformation("Updating mapping: {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
 
                 // Get the existing entity
                 var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
                 if (existingEntity == null)
                 {
-                    _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.ModelAlias);
+_logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
                     throw new InvalidOperationException("Mapping not found for the specified model alias");
                 }
 
@@ -151,7 +151,7 @@ namespace ConduitLLM.Configuration
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+_logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
                     throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
 
@@ -170,7 +170,7 @@ namespace ConduitLLM.Configuration
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}", mapping.ModelAlias);
+_logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Replace(Environment.NewLine, ""), mapping.ModelAlias.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

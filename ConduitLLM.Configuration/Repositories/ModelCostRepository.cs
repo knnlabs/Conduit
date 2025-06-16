@@ -132,7 +132,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", LogSanitizer.SanitizeObject(modelIdPattern));
+_logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", modelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -200,7 +200,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (providerCredential == null)
                 {
-                    _logger.LogWarning("No provider credential found for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
+_logger.LogWarning("No provider credential found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                     return new List<ModelCost>();
                 }
 
@@ -212,7 +212,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (!providerMappings.Any())
                 {
-                    _logger.LogInformation("No model mappings found for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
+_logger.LogInformation("No model mappings found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                     return new List<ModelCost>();
                 }
 
@@ -267,7 +267,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
+_logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -306,20 +306,20 @@ namespace ConduitLLM.Configuration.Repositories
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
                     _logger.LogError(ex, "Transaction rolled back while creating model cost for model '{ModelIdPattern}'",
-                        LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
+                        LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                     throw;
                 }
             }
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating model cost for model '{ModelIdPattern}'",
-                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating model cost for model '{ModelIdPattern}'",
-                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern));
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                 throw;
             }
         }

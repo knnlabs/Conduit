@@ -81,9 +81,9 @@ namespace ConduitLLM.Http.Middleware
                     activity.SetTag("correlation.id", correlationId);
                 }
 
-                _logger.LogDebug(
-                    "Processing request with correlation ID: {CorrelationId}, Path: {Path}",
-                    correlationId, context.Request.Path);
+                _logger.LogDebug("Processing request with correlation ID: {CorrelationId}, Path: {Path}",
+                correlationId,
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""));
 
                 try
                 {
@@ -91,9 +91,9 @@ namespace ConduitLLM.Http.Middleware
                 }
                 finally
                 {
-                    _logger.LogDebug(
-                        "Completed request with correlation ID: {CorrelationId}, Status: {StatusCode}",
-                        correlationId, context.Response.StatusCode);
+                    _logger.LogDebug("Completed request with correlation ID: {CorrelationId}, Status: {StatusCode}",
+                correlationId,
+                context.Response.StatusCode);
                 }
             }
         }
@@ -108,9 +108,9 @@ namespace ConduitLLM.Http.Middleware
                     var correlationId = values.FirstOrDefault();
                     if (!string.IsNullOrWhiteSpace(correlationId))
                     {
-                        _logger.LogDebug(
-                            "Using incoming correlation ID from header {HeaderName}: {CorrelationId}",
-                            headerName, correlationId);
+                        _logger.LogDebug("Using incoming correlation ID from header {HeaderName}: {CorrelationId}",
+                headerName.Replace(Environment.NewLine, ""),
+                correlationId);
                         return correlationId;
                     }
                 }
@@ -124,9 +124,8 @@ namespace ConduitLLM.Http.Middleware
                 {
                     // Use the trace ID portion
                     var traceId = parts[1];
-                    _logger.LogDebug(
-                        "Using trace ID from traceparent header as correlation ID: {CorrelationId}",
-                        traceId);
+                    _logger.LogDebug("Using trace ID from traceparent header as correlation ID: {CorrelationId}",
+                traceId);
                     return traceId;
                 }
             }
@@ -136,16 +135,14 @@ namespace ConduitLLM.Http.Middleware
             if (currentActivity != null && currentActivity.TraceId != default)
             {
                 var activityTraceId = currentActivity.TraceId.ToString();
-                _logger.LogDebug(
-                    "Using Activity trace ID as correlation ID: {CorrelationId}",
-                    activityTraceId);
+                _logger.LogDebug("Using Activity trace ID as correlation ID: {CorrelationId}",
+                activityTraceId);
                 return activityTraceId;
             }
 
             // Generate a new correlation ID
             var newCorrelationId = GenerateCorrelationId();
-            _logger.LogDebug(
-                "Generated new correlation ID: {CorrelationId}",
+            _logger.LogDebug("Generated new correlation ID: {CorrelationId}",
                 newCorrelationId);
             return newCorrelationId;
         }

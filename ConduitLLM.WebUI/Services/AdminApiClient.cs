@@ -301,7 +301,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving global setting with key {Key} from Admin API", key);
+_logger.LogError(ex, "Error retrieving global setting with key {Key} from Admin API".Replace(Environment.NewLine, ""), key.Replace(Environment.NewLine, ""));
                 return null;
             }
         }
@@ -332,7 +332,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting global setting with key {Key} in Admin API", setting.Key);
+_logger.LogError(ex, "Error upserting global setting with key {Key} in Admin API".Replace(Environment.NewLine, ""), setting.Key.Replace(Environment.NewLine, ""));
                 return null;
             }
         }
@@ -348,7 +348,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin API", key);
+_logger.LogError(ex, "Error deleting global setting with key {Key} from Admin API".Replace(Environment.NewLine, ""), key.Replace(Environment.NewLine, ""));
                 return false;
             }
         }
@@ -1504,7 +1504,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving model deployment for model {ModelName} from Admin API", modelName);
+_logger.LogError(ex, "Error retrieving model deployment for model {ModelName} from Admin API".Replace(Environment.NewLine, ""), modelName.Replace(Environment.NewLine, ""));
                 return null;
             }
         }
@@ -1534,7 +1534,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model deployment for model {ModelName} from Admin API", modelName);
+_logger.LogError(ex, "Error deleting model deployment for model {ModelName} from Admin API".Replace(Environment.NewLine, ""), modelName.Replace(Environment.NewLine, ""));
                 return false;
             }
         }
@@ -1582,7 +1582,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing fallback configuration for model {ModelName} from Admin API", modelName);
+_logger.LogError(ex, "Error removing fallback configuration for model {ModelName} from Admin API".Replace(Environment.NewLine, ""), modelName.Replace(Environment.NewLine, ""));
                 return false;
             }
         }

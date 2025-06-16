@@ -100,7 +100,8 @@ namespace ConduitLLM.Admin.Services
 
             var created = await _repository.CreateAsync(config);
             _logger.LogInformation("Created audio provider configuration {Id} for provider {Provider}",
-                created.Id, credential.ProviderName);
+                created.Id.ToString().Replace(Environment.NewLine, ""),
+                credential.ProviderName.Replace(Environment.NewLine, ""));
 
             return MapToDto(created);
         }
@@ -127,7 +128,8 @@ namespace ConduitLLM.Admin.Services
             config.RoutingPriority = dto.RoutingPriority;
 
             var updated = await _repository.UpdateAsync(config);
-            _logger.LogInformation("Updated audio provider configuration {Id}", id);
+            _logger.LogInformation("Updated audio provider configuration {Id}",
+                id);
 
             return MapToDto(updated);
         }
@@ -138,7 +140,8 @@ namespace ConduitLLM.Admin.Services
             var deleted = await _repository.DeleteAsync(id);
             if (deleted)
             {
-                _logger.LogInformation("Deleted audio provider configuration {Id}", id);
+                _logger.LogInformation("Deleted audio provider configuration {Id}",
+                id);
             }
             return deleted;
         }
@@ -260,8 +263,10 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing audio provider {Id} for operation {Operation}",
-                    id, operationType);
+                _logger.LogError(ex,
+                "Error testing audio provider {Id} for operation {Operation}",
+                id,
+                operationType.Replace(Environment.NewLine, ""));
                 result.Success = false;
                 result.Message = $"Test failed: {ex.Message}";
             }

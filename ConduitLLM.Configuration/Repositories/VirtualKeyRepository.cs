@@ -148,12 +148,12 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating virtual key '{KeyName}'", LogSanitizer.SanitizeObject(virtualKey.KeyName));
+_logger.LogError(ex, "Database error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating virtual key '{KeyName}'", LogSanitizer.SanitizeObject(virtualKey.KeyName));
+_logger.LogError(ex, "Error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

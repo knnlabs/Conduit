@@ -59,9 +59,10 @@ namespace ConduitLLM.Core.Services
                     Interlocked.Increment(ref bucket.CacheHits);
                 }
 
-                _logger.LogDebug(
-                    "Recorded transcription metric: Provider={Provider}, Duration={Duration}ms, Success={Success}",
-                    metric.Provider, metric.DurationMs, metric.Success);
+                _logger.LogDebug("Recorded transcription metric: Provider={Provider}, Duration={Duration}ms, Success={Success}",
+                metric.Provider.Replace(Environment.NewLine, ""),
+                metric.DurationMs,
+                metric.Success);
 
                 // Check for anomalies
                 if (metric.DurationMs > _options.TranscriptionLatencyThreshold)
@@ -75,7 +76,8 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording transcription metric");
+                _logger.LogError(ex,
+                "Error recording transcription metric");
                 return Task.CompletedTask;
             }
         }
@@ -100,15 +102,17 @@ namespace ConduitLLM.Core.Services
                     Interlocked.Increment(ref bucket.CdnUploads);
                 }
 
-                _logger.LogDebug(
-                    "Recorded TTS metric: Provider={Provider}, Voice={Voice}, Duration={Duration}ms",
-                    metric.Provider, metric.Voice, metric.DurationMs);
+                _logger.LogDebug("Recorded TTS metric: Provider={Provider}, Voice={Voice}, Duration={Duration}ms",
+                metric.Provider.Replace(Environment.NewLine, ""),
+                metric.Voice.Replace(Environment.NewLine, ""),
+                metric.DurationMs);
 
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording TTS metric");
+                _logger.LogError(ex,
+                "Error recording TTS metric");
                 return Task.CompletedTask;
             }
         }
@@ -127,9 +131,10 @@ namespace ConduitLLM.Core.Services
                 Interlocked.Add(ref bucket.TotalRealtimeSeconds, (long)metric.SessionDurationSeconds);
                 Interlocked.Add(ref bucket.TotalRealtimeTurns, metric.TurnCount);
 
-                _logger.LogDebug(
-                    "Recorded realtime metric: Provider={Provider}, Session={SessionId}, Duration={Duration}s",
-                    metric.Provider, metric.SessionId, metric.SessionDurationSeconds);
+                _logger.LogDebug("Recorded realtime metric: Provider={Provider}, Session={SessionId}, Duration={Duration}s",
+                metric.Provider.Replace(Environment.NewLine, ""),
+                metric.SessionId,
+                metric.SessionDurationSeconds);
 
                 // Check for high latency
                 if (metric.AverageLatencyMs > _options.RealtimeLatencyThreshold)
@@ -143,7 +148,8 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording realtime metric");
+                _logger.LogError(ex,
+                "Error recording realtime metric");
                 return Task.CompletedTask;
             }
         }
@@ -160,15 +166,17 @@ namespace ConduitLLM.Core.Services
                 // Track routing decisions
                 bucket.TrackRoutingDecision(metric.SelectedProvider, metric.RoutingStrategy);
 
-                _logger.LogDebug(
-                    "Recorded routing metric: Operation={Operation}, Provider={Provider}, Strategy={Strategy}",
-                    metric.Operation, metric.SelectedProvider, metric.RoutingStrategy);
+                _logger.LogDebug("Recorded routing metric: Operation={Operation}, Provider={Provider}, Strategy={Strategy}",
+                metric.Operation.ToString(),
+                metric.SelectedProvider.Replace(Environment.NewLine, ""),
+                metric.RoutingStrategy.Replace(Environment.NewLine, ""));
 
                 return Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording routing metric");
+                _logger.LogError(ex,
+                "Error recording routing metric");
                 return Task.CompletedTask;
             }
         }
@@ -185,9 +193,10 @@ namespace ConduitLLM.Core.Services
                 // Update provider statistics
                 bucket.UpdateProviderHealth(metric.Provider, metric.IsHealthy, metric.ErrorRate);
 
-                _logger.LogDebug(
-                    "Recorded provider health: Provider={Provider}, Healthy={Healthy}, ErrorRate={ErrorRate}%",
-                    metric.Provider, metric.IsHealthy, metric.ErrorRate * 100);
+                _logger.LogDebug("Recorded provider health: Provider={Provider}, Healthy={Healthy}, ErrorRate={ErrorRate}%",
+                metric.Provider.Replace(Environment.NewLine, ""),
+                metric.IsHealthy,
+                metric.ErrorRate * 100);
 
                 // Alert on provider issues
                 if (!metric.IsHealthy && _alertingService != null)
@@ -203,7 +212,8 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording provider health metric");
+                _logger.LogError(ex,
+                "Error recording provider health metric");
                 return Task.CompletedTask;
             }
         }
@@ -325,11 +335,13 @@ namespace ConduitLLM.Core.Services
                     _metricsBuckets.TryRemove(key, out _);
                 }
 
-                _logger.LogDebug("Cleaned up {Count} old metric buckets", keysToRemove.Count);
+                _logger.LogDebug("Cleaned up {Count} old metric buckets",
+                keysToRemove.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during metrics aggregation");
+                _logger.LogError(ex,
+                "Error during metrics aggregation");
             }
             finally
             {

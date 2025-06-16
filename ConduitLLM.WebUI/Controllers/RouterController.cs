@@ -116,7 +116,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", S(deploymentName));
+                _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
                 return StatusCode(500, $"Error retrieving model deployment '{deploymentName}'");
             }
         }
@@ -183,7 +183,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", S(deploymentName));
+                _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
                 return StatusCode(500, $"Error deleting model deployment '{deploymentName}'");
             }
         }
@@ -237,7 +237,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}", S(primaryModel));
+                _logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}", primaryModel.Replace(Environment.NewLine, ""));
                 return StatusCode(500, $"Error setting fallback configuration for model '{primaryModel}'");
             }
         }
@@ -263,7 +263,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", S(primaryModel));
+                _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", primaryModel.Replace(Environment.NewLine, ""));
                 return StatusCode(500, $"Error removing fallback configuration for model '{primaryModel}'");
             }
         }

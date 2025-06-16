@@ -54,17 +54,17 @@ namespace ConduitLLM.Core.Routing
                         // Check if the client supports audio transcription
                         if (client is IAudioTranscriptionClient audioClient)
                         {
-                            _logger.LogDebug("Found audio transcription client for model {Model}", request.Model);
+_logger.LogDebug("Found audio transcription client for model {Model}", request.Model.Replace(Environment.NewLine, ""));
                             return audioClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support audio transcription", request.Model);
+_logger.LogWarning("Client for model {Model} does not support audio transcription", request.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", request.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), request.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 
@@ -118,17 +118,17 @@ namespace ConduitLLM.Core.Routing
                         // Check if the client supports text-to-speech
                         if (client is ITextToSpeechClient ttsClient)
                         {
-                            _logger.LogDebug("Found text-to-speech client for model {Model}", request.Model);
+_logger.LogDebug("Found text-to-speech client for model {Model}", request.Model.Replace(Environment.NewLine, ""));
                             return ttsClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support text-to-speech", request.Model);
+_logger.LogWarning("Client for model {Model} does not support text-to-speech", request.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", request.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), request.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 
@@ -149,7 +149,7 @@ namespace ConduitLLM.Core.Routing
                                 var voices = await ttsClient.ListVoicesAsync(virtualKey, cancellationToken);
                                 if (voices.Any(v => v.VoiceId == request.Voice || v.Name == request.Voice))
                                 {
-                                    _logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider, request.Voice);
+_logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider.Replace(Environment.NewLine, ""), request.Voice.Replace(Environment.NewLine, ""));
                                     return ttsClient;
                                 }
                             }
@@ -209,17 +209,17 @@ namespace ConduitLLM.Core.Routing
                         // Check if the client supports real-time audio
                         if (client is IRealtimeAudioClient realtimeClient)
                         {
-                            _logger.LogDebug("Found real-time audio client for model {Model}", config.Model);
+_logger.LogDebug("Found real-time audio client for model {Model}", config.Model.Replace(Environment.NewLine, ""));
                             return realtimeClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support real-time audio", config.Model);
+_logger.LogWarning("Client for model {Model} does not support real-time audio", config.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", config.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), config.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 

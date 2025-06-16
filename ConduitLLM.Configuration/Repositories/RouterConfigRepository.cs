@@ -124,13 +124,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating router configuration '{ConfigName}'",
-                    S(routerConfig.Name));
+                    routerConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating router configuration '{ConfigName}'",
-                    S(routerConfig.Name));
+                    routerConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

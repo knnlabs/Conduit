@@ -116,7 +116,7 @@ namespace ConduitLLM.Core.Routing
 
                 if (!ttsProviders.Any())
                 {
-                    _logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voice);
+_logger.LogWarning("No TTS providers available for voice: {Voice}", request.Voice.Replace(Environment.NewLine, ""));
                     return null;
                 }
 

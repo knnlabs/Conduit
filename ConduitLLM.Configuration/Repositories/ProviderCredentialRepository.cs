@@ -68,7 +68,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for provider {ProviderName}", LogSanitizer.SanitizeObject(providerName));
+_logger.LogError(ex, "Error getting provider credential for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -118,13 +118,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating provider credential for provider '{ProviderName}'",
-                    LogSanitizer.SanitizeObject(providerCredential.ProviderName));
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderName.Replace(Environment.NewLine, "")));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating provider credential for provider '{ProviderName}'",
-                    LogSanitizer.SanitizeObject(providerCredential.ProviderName));
+                    LogSanitizer.SanitizeObject(providerCredential.ProviderName.Replace(Environment.NewLine, "")));
                 throw;
             }
         }

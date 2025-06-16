@@ -63,9 +63,11 @@ namespace ConduitLLM.Core.Middleware
         {
             // Log the exception with full details
             var traceId = context.TraceIdentifier;
-            _logger.LogError(exception, 
+            _logger.LogError(exception,
                 "Unhandled exception occurred {TraceId} {Method} {Path}",
-                traceId, context.Request.Method, context.Request.Path);
+                traceId,
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""));
 
             // Determine the response based on exception type
             var (statusCode, errorResponse) = GetErrorResponse(exception, traceId);

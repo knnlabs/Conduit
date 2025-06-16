@@ -70,12 +70,12 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
                 }
 
-                _logger.LogInformation("Created model cost with pattern '{Pattern}'", S(modelCost.ModelIdPattern));
+                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", S(modelCost.ModelIdPattern));
+                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -89,18 +89,22 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Deleted model cost with ID {Id}", S(id));
+                    _logger.LogInformation("Deleted model cost with ID {Id}",
+                id);
                 }
                 else
                 {
-                    _logger.LogWarning("Model cost with ID {Id} not found for deletion", S(id));
+                    _logger.LogWarning("Model cost with ID {Id} not found for deletion",
+                id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {Id}", S(id));
+                _logger.LogError(ex,
+                "Error deleting model cost with ID {Id}",
+                id);
                 throw;
             }
         }
@@ -115,7 +119,8 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all model costs");
+                _logger.LogError(ex,
+                "Error getting all model costs");
                 throw;
             }
         }
@@ -130,7 +135,9 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {Id}", S(id));
+                _logger.LogError(ex,
+                "Error getting model cost with ID {Id}",
+                id);
                 throw;
             }
         }
@@ -150,7 +157,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", S(modelIdPattern));
+                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -191,8 +198,10 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost overview for period {StartDate} to {EndDate}",
-                    S(startDate), S(endDate));
+                _logger.LogError(ex,
+                "Error getting model cost overview for period {StartDate} to {EndDate}",
+                startDate,
+                endDate);
                 throw;
             }
         }
@@ -212,7 +221,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", S(providerName));
+                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -269,18 +278,21 @@ namespace ConduitLLM.Admin.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error importing model cost with pattern '{Pattern}'",
-                            modelCost.ModelIdPattern);
+                        _logger.LogWarning(ex,
+                "Error importing model cost with pattern '{Pattern}'",
+                modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                         // Continue with next model cost
                     }
                 }
 
-                _logger.LogInformation("Imported {Count} model costs", importedCount);
+                _logger.LogInformation("Imported {Count} model costs",
+                importedCount);
                 return importedCount;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing model costs");
+                _logger.LogError(ex,
+                "Error importing model costs");
                 throw;
             }
         }
@@ -299,7 +311,8 @@ namespace ConduitLLM.Admin.Services
                 var existingModelCost = await _modelCostRepository.GetByIdAsync(modelCost.Id);
                 if (existingModelCost == null)
                 {
-                    _logger.LogWarning("Model cost with ID {Id} not found", modelCost.Id);
+                    _logger.LogWarning("Model cost with ID {Id} not found",
+                modelCost.Id);
                     return false;
                 }
 
@@ -321,18 +334,22 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Updated model cost with ID {Id}", modelCost.Id);
+                    _logger.LogInformation("Updated model cost with ID {Id}",
+                modelCost.Id);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to update model cost with ID {Id}", modelCost.Id);
+                    _logger.LogWarning("Failed to update model cost with ID {Id}",
+                modelCost.Id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model cost with ID {Id}", modelCost.Id);
+                _logger.LogError(ex,
+                "Error updating model cost with ID {Id}",
+                modelCost.Id);
                 throw;
             }
         }

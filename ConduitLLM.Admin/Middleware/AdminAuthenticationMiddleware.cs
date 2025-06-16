@@ -66,7 +66,7 @@ public class AdminAuthenticationMiddleware
 
         if (!context.Request.Headers.TryGetValue(MASTER_KEY_HEADER, out var providedKey))
         {
-            _logger.LogWarning("No API key provided for {Path}", context.Request.Path);
+_logger.LogWarning("No API key provided for {Path}", context.Request.Path.ToString().Replace(Environment.NewLine, ""));
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "API key is required" });
             return;
@@ -74,7 +74,7 @@ public class AdminAuthenticationMiddleware
 
         if (providedKey != masterKey)
         {
-            _logger.LogWarning("Invalid API key provided for {Path}", context.Request.Path);
+_logger.LogWarning("Invalid API key provided for {Path}", context.Request.Path.ToString().Replace(Environment.NewLine, ""));
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "Invalid API key" });
             return;

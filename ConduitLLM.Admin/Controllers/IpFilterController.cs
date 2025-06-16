@@ -99,7 +99,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting IP filter with ID {Id}", S(id));
+            _logger.LogError(ex, "Error getting IP filter with ID {Id}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -186,7 +186,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {Id}", S(id));
+            _logger.LogError(ex, "Error updating IP filter with ID {Id}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -223,7 +223,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", S(id));
+            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -310,7 +310,7 @@ public class IpFilterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking IP address {IpAddress}", S(ipAddress));
+            _logger.LogError(ex, "Error checking IP address {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

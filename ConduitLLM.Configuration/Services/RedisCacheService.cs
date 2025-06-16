@@ -68,7 +68,7 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving item from Redis cache with key {Key}", key);
+_logger.LogError(ex, "Error retrieving item from Redis cache with key {Key}".Replace(Environment.NewLine, ""), key.Replace(Environment.NewLine, ""));
                 return default;
             }
         }
@@ -95,7 +95,7 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting item in Redis cache with key {Key}", key);
+_logger.LogError(ex, "Error setting item in Redis cache with key {Key}".Replace(Environment.NewLine, ""), key.Replace(Environment.NewLine, ""));
             }
         }
 
@@ -108,7 +108,7 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing item from Redis cache with key {Key}", key);
+_logger.LogError(ex, "Error removing item from Redis cache with key {Key}".Replace(Environment.NewLine, ""), key.Replace(Environment.NewLine, ""));
             }
         }
 

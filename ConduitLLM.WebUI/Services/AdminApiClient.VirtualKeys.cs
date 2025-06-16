@@ -134,7 +134,7 @@ namespace ConduitLLM.WebUI.Services
 
             if (response == null)
             {
-                _logger.LogErrorSecure("Failed to create virtual key with name: {Name}", request.KeyName);
+_logger.LogErrorSecure("Failed to create virtual key with name: {Name}", request.KeyName.Replace(Environment.NewLine, ""));
                 throw new InvalidOperationException($"Failed to create virtual key: {request.KeyName}");
             }
 

@@ -77,7 +77,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 // If validation fails, log it
-                _logger.LogWarning("Invalid master key attempt from {IpAddress}", S(HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"));
+                _logger.LogWarning("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
                 return Unauthorized(new { message = "Invalid master key" });
             }
             catch (Exception ex)

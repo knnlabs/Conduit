@@ -35,7 +35,7 @@ public class AdminRequestTrackingMiddleware
 
         try
         {
-            _logger.LogInformation("Admin API Request: {Method} {Path} started", requestMethod, requestPath);
+_logger.LogInformation("Admin API Request: {Method} {Path} started", requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""));
 
             // Call the next middleware in the pipeline
             await _next(context);
@@ -44,7 +44,7 @@ public class AdminRequestTrackingMiddleware
 
             _logger.LogInformation(
                 "Admin API Request: {Method} {Path} completed with status {StatusCode} in {ElapsedMs}ms",
-                requestMethod, requestPath, context.Response.StatusCode, stopwatch.ElapsedMilliseconds);
+                requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""), context.Response.StatusCode, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -53,7 +53,7 @@ public class AdminRequestTrackingMiddleware
             _logger.LogError(
                 ex,
                 "Admin API Request: {Method} {Path} failed after {ElapsedMs}ms",
-                requestMethod, requestPath, stopwatch.ElapsedMilliseconds);
+                requestMethod.Replace(Environment.NewLine, ""), requestPath.ToString().Replace(Environment.NewLine, ""), stopwatch.ElapsedMilliseconds);
 
             // Re-throw the exception to be handled by the exception handler middleware
             throw;

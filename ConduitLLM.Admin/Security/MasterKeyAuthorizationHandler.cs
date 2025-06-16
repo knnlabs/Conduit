@@ -69,7 +69,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                     }
                 }
 
-                _logger.LogWarning("Invalid master key provided for {Path}", httpContext.Request.Path);
+_logger.LogWarning("Invalid master key provided for {Path}", httpContext.Request.Path.ToString().Replace(Environment.NewLine, ""));
             }
             else
             {

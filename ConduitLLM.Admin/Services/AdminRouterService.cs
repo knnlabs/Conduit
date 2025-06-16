@@ -85,7 +85,7 @@ public class AdminRouterService : IAdminRouterService
     /// <inheritdoc />
     public Task<ModelDeployment?> GetModelDeploymentAsync(string deploymentName)
     {
-        _logger.LogInformation("Getting model deployment: {DeploymentName}", deploymentName);
+_logger.LogInformation("Getting model deployment: {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
         // Return null for now
         return Task.FromResult<ModelDeployment?>(null);
     }
@@ -95,7 +95,7 @@ public class AdminRouterService : IAdminRouterService
     {
         try
         {
-            _logger.LogInformation("Saving model deployment: {DeploymentName}", deployment.DeploymentName);
+_logger.LogInformation("Saving model deployment: {DeploymentName}", deployment.DeploymentName.Replace(Environment.NewLine, ""));
 
             if (deployment == null || string.IsNullOrWhiteSpace(deployment.DeploymentName))
             {
@@ -109,7 +109,7 @@ public class AdminRouterService : IAdminRouterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving model deployment: {DeploymentName}", deployment?.DeploymentName);
+_logger.LogError(ex, "Error saving model deployment: {DeploymentName}".Replace(Environment.NewLine, ""), deployment?.DeploymentName?.Replace(Environment.NewLine, "") ?? "");
             return Task.FromResult(false);
         }
     }
@@ -119,14 +119,14 @@ public class AdminRouterService : IAdminRouterService
     {
         try
         {
-            _logger.LogInformation("Deleting model deployment: {DeploymentName}", deploymentName);
+_logger.LogInformation("Deleting model deployment: {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
 
             // This would normally check if the deployment exists and then delete it
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting model deployment: {DeploymentName}", deploymentName);
+_logger.LogError(ex, "Error deleting model deployment: {DeploymentName}".Replace(Environment.NewLine, ""), deploymentName.Replace(Environment.NewLine, ""));
             return Task.FromResult(false);
         }
     }
@@ -155,7 +155,7 @@ public class AdminRouterService : IAdminRouterService
     {
         try
         {
-            _logger.LogInformation("Setting fallback configuration for model: {PrimaryModel}", primaryModel);
+_logger.LogInformation("Setting fallback configuration for model: {PrimaryModel}", primaryModel.Replace(Environment.NewLine, ""));
 
             if (string.IsNullOrWhiteSpace(primaryModel) || fallbackModels == null || !fallbackModels.Any())
             {
@@ -177,7 +177,7 @@ public class AdminRouterService : IAdminRouterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting fallback configuration for model: {PrimaryModel}", primaryModel);
+_logger.LogError(ex, "Error setting fallback configuration for model: {PrimaryModel}".Replace(Environment.NewLine, ""), primaryModel.Replace(Environment.NewLine, ""));
             return false;
         }
     }
@@ -187,7 +187,7 @@ public class AdminRouterService : IAdminRouterService
     {
         try
         {
-            _logger.LogInformation("Removing fallback configuration for model: {PrimaryModel}", primaryModel);
+_logger.LogInformation("Removing fallback configuration for model: {PrimaryModel}", primaryModel.Replace(Environment.NewLine, ""));
 
             // Find the configuration for this primary model
             var allConfigs = await _fallbackConfigRepository.GetAllAsync();
@@ -202,7 +202,7 @@ public class AdminRouterService : IAdminRouterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing fallback configuration for model: {PrimaryModel}", primaryModel);
+_logger.LogError(ex, "Error removing fallback configuration for model: {PrimaryModel}".Replace(Environment.NewLine, ""), primaryModel.Replace(Environment.NewLine, ""));
             return false;
         }
     }

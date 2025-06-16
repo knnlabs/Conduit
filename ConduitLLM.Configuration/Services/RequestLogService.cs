@@ -202,8 +202,11 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
-                    request.VirtualKeyId, request.ModelName, request.RequestType);
+                _logger.LogError(ex,
+                "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
+                request.VirtualKeyId,
+                request.ModelName.Replace(Environment.NewLine, ""),
+                request.RequestType.Replace(Environment.NewLine, ""));
 
                 if (transaction != null)
                 {
@@ -401,7 +404,8 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving distinct model names from request logs");
+                _logger.LogError(ex,
+                "Error retrieving distinct model names from request logs");
                 throw;
             }
         }

@@ -132,7 +132,7 @@ public class RouterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", deploymentName);
+_logger.LogError(ex, "Error retrieving model deployment {DeploymentName}".Replace(Environment.NewLine, ""), deploymentName.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "Error retrieving model deployment");
         }
     }
@@ -213,7 +213,7 @@ public class RouterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", deploymentName);
+_logger.LogError(ex, "Error deleting model deployment {DeploymentName}".Replace(Environment.NewLine, ""), deploymentName.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "Error deleting model deployment");
         }
     }
@@ -278,7 +278,7 @@ public class RouterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}", primaryModel);
+_logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}".Replace(Environment.NewLine, ""), primaryModel.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, $"Error setting fallback configuration for model '{primaryModel}'");
         }
     }
@@ -311,7 +311,7 @@ public class RouterController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", primaryModel);
+_logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}".Replace(Environment.NewLine, ""), primaryModel.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "Error removing fallback configuration");
         }
     }

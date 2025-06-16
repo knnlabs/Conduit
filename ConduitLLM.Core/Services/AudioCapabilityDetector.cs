@@ -158,7 +158,7 @@ namespace ConduitLLM.Core.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking voice support for {Provider}/{Voice}", provider, voiceId);
+_logger.LogError(ex, "Error checking voice support for {Provider}/{Voice}", provider.Replace(Environment.NewLine, ""), voiceId.Replace(Environment.NewLine, ""));
                 return false;
             }
         }

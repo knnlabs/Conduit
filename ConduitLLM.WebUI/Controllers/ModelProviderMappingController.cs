@@ -91,7 +91,7 @@ namespace ConduitLLM.WebUI.Controllers
 
                 if (mapping == null)
                 {
-                    _logger.LogWarning("Model provider mapping not found {MappingId}", S(id));
+                    _logger.LogWarning("Model provider mapping not found {MappingId}", id);
                     return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
 
@@ -99,7 +99,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mapping with ID {Id}", S(id));
+                _logger.LogError(ex, "Error getting model provider mapping with ID {Id}", id);
                 return StatusCode(500, "An error occurred while retrieving the model provider mapping");
             }
         }
@@ -121,7 +121,7 @@ namespace ConduitLLM.WebUI.Controllers
 
                 if (mapping == null)
                 {
-                    _logger.LogWarning("No mapping found for model alias {ModelAlias}", S(modelAlias));
+                    _logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
                     return NotFound(new { error = "No mapping found for model alias", modelAlias = modelAlias });
                 }
 
@@ -129,7 +129,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mapping for alias {ModelAlias}", S(modelAlias));
+                _logger.LogError(ex, "Error getting model provider mapping for alias {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
                 return StatusCode(500, "An error occurred while retrieving the model provider mapping");
             }
         }
@@ -156,7 +156,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", S(mapping.ProviderName));
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "Provider does not exist", provider = mapping.ProviderName });
                 }
 
@@ -164,7 +164,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var existingMapping = await _mappingService.GetMappingByModelAliasAsync(mapping.ModelAlias);
                 if (existingMapping != null)
                 {
-                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", S(mapping.ModelAlias));
+                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "A mapping for this model alias already exists", modelAlias = mapping.ModelAlias });
                 }
 
@@ -176,7 +176,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", S(mapping.ModelAlias));
+                _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
                 return StatusCode(500, "An error occurred while creating the model provider mapping");
             }
         }
@@ -205,7 +205,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var existingMapping = await _mappingService.GetMappingByIdAsync(id);
                 if (existingMapping == null)
                 {
-                    _logger.LogWarning("Model provider mapping not found for update {MappingId}", S(id));
+                    _logger.LogWarning("Model provider mapping not found for update {MappingId}", id);
                     return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
 
@@ -213,7 +213,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider does not exist {ProviderName}", S(mapping.ProviderName));
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "Provider does not exist", provider = mapping.ProviderName });
                 }
 
@@ -224,7 +224,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model provider mapping with ID {Id}", S(id));
+                _logger.LogError(ex, "Error updating model provider mapping with ID {Id}", id);
                 return StatusCode(500, "An error occurred while updating the model provider mapping");
             }
         }
@@ -246,7 +246,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var existingMapping = await _mappingService.GetMappingByIdAsync(id);
                 if (existingMapping == null)
                 {
-                    _logger.LogWarning("Model provider mapping not found for deletion {MappingId}", S(id));
+                    _logger.LogWarning("Model provider mapping not found for deletion {MappingId}", id);
                     return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
 
@@ -256,7 +256,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model provider mapping with ID {Id}", S(id));
+                _logger.LogError(ex, "Error deleting model provider mapping with ID {Id}", id);
                 return StatusCode(500, "An error occurred while deleting the model provider mapping");
             }
         }

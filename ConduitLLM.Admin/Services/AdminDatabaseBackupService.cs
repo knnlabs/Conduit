@@ -73,7 +73,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError("{ErrorMessage}", S(errorMessage));
+                _logger.LogError("{ErrorMessage}", errorMessage.Replace(Environment.NewLine, ""));
                 return new BackupResult
                 {
                     Success = false,
@@ -127,13 +127,13 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Restoring database backup: {BackupId}", S(backupId));
+_logger.LogInformation("Restoring database backup: {BackupId}", backupId.Replace(Environment.NewLine, ""));
 
             // Validate backup ID to prevent path traversal
             if (!IsValidBackupId(backupId))
             {
                 var errorMessage = "Invalid backup ID format";
-                _logger.LogError("Invalid backup ID format: {BackupId}", S(backupId));
+_logger.LogError("Invalid backup ID format: {BackupId}", backupId.Replace(Environment.NewLine, ""));
                 return new RestoreResult
                 {
                     Success = false,
@@ -148,7 +148,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             if (backupFile == null)
             {
                 var errorMessage = $"Backup file not found: {backupId}";
-                _logger.LogError("{ErrorMessage}", S(errorMessage));
+                _logger.LogError("{ErrorMessage}", errorMessage.Replace(Environment.NewLine, ""));
                 return new RestoreResult
                 {
                     Success = false,
@@ -170,7 +170,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError("{ErrorMessage}", S(errorMessage));
+                _logger.LogError("{ErrorMessage}", errorMessage.Replace(Environment.NewLine, ""));
                 return new RestoreResult
                 {
                     Success = false,
@@ -180,7 +180,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring database backup: {BackupId}", S(backupId));
+_logger.LogError(ex, "Error restoring database backup: {BackupId}", backupId.Replace(Environment.NewLine, ""));
             return new RestoreResult
             {
                 Success = false,
@@ -194,12 +194,12 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
     {
         try
         {
-            _logger.LogInformation("Downloading database backup: {BackupId}", S(backupId));
+_logger.LogInformation("Downloading database backup: {BackupId}", backupId.Replace(Environment.NewLine, ""));
 
             // Validate backup ID to prevent path traversal
             if (!IsValidBackupId(backupId))
             {
-                _logger.LogError("Invalid backup ID format for download: {BackupId}", S(backupId));
+_logger.LogError("Invalid backup ID format for download: {BackupId}", backupId.Replace(Environment.NewLine, ""));
                 return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
             }
 
@@ -209,7 +209,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (backupFile == null)
             {
-                _logger.LogError("Backup file not found: {BackupId}", S(backupId));
+_logger.LogError("Backup file not found: {BackupId}", backupId.Replace(Environment.NewLine, ""));
                 return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
             }
 
@@ -223,7 +223,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading database backup: {BackupId}", S(backupId));
+_logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId.Replace(Environment.NewLine, ""));
             return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
         }
     }
@@ -353,7 +353,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (pgDumpProcess.ExitCode != 0)
             {
-                _logger.LogError("pg_dump error: {Error}", S(error));
+                _logger.LogError("pg_dump error: {Error}", error.Replace(Environment.NewLine, ""));
                 return new BackupResult
                 {
                     Success = false,
@@ -613,7 +613,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
                 if (psqlProcess.ExitCode != 0)
                 {
-                    _logger.LogError("psql error: {Error}", S(error));
+                    _logger.LogError("psql error: {Error}", error.Replace(Environment.NewLine, ""));
                     return new RestoreResult
                     {
                         Success = false,

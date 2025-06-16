@@ -110,7 +110,7 @@ public class ModelProviderMappingController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting model provider mapping for model ID {ModelId}", modelId);
+_logger.LogError(ex, "Error getting model provider mapping for model ID {ModelId}", modelId.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the model provider mapping");
         }
     }
@@ -149,7 +149,7 @@ public class ModelProviderMappingController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelId}", mappingDto.ModelId);
+_logger.LogError(ex, "Error creating model provider mapping for model ID {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating the model provider mapping");
         }
     }

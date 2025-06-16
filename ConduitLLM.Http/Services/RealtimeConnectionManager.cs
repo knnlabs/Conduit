@@ -213,7 +213,7 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogInformation(
                     "Unregistered connection {ConnectionId} for virtual key {VirtualKeyId}",
-                    connectionId, connection.VirtualKeyId);
+                    connectionId.Replace(Environment.NewLine, ""), connection.VirtualKeyId);
             }
 
             await Task.CompletedTask;
@@ -274,7 +274,7 @@ namespace ConduitLLM.Http.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error closing WebSocket for connection {ConnectionId}", connectionId);
+_logger.LogError(ex, "Error closing WebSocket for connection {ConnectionId}", connectionId.Replace(Environment.NewLine, ""));
                     }
                 }
 

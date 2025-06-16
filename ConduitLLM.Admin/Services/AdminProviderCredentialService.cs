@@ -59,7 +59,7 @@ namespace ConduitLLM.Admin.Services
                 var existingCredential = await _providerCredentialRepository.GetByProviderNameAsync(providerCredential.ProviderName);
                 if (existingCredential != null)
                 {
-                    _logger.LogWarning("Provider credential already exists for provider {ProviderName}", S(providerCredential.ProviderName));
+                    _logger.LogWarning("Provider credential already exists for provider {ProviderName}", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
                     throw new InvalidOperationException("A provider credential for this provider already exists");
                 }
 
@@ -73,16 +73,16 @@ namespace ConduitLLM.Admin.Services
                 var createdCredential = await _providerCredentialRepository.GetByIdAsync(id);
                 if (createdCredential == null)
                 {
-                    _logger.LogError("Failed to retrieve newly created provider credential {ProviderId}", S(id));
+                    _logger.LogError("Failed to retrieve newly created provider credential {ProviderId}", id);
                     throw new InvalidOperationException("Failed to retrieve newly created provider credential");
                 }
 
-                _logger.LogInformation("Created provider credential for '{ProviderName}'", S(providerCredential.ProviderName));
+                _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
                 return createdCredential.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating provider credential for '{ProviderName}'", S(providerCredential.ProviderName));
+                _logger.LogError(ex, "Error creating provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -96,18 +96,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Deleted provider credential with ID {Id}", S(id));
+                    _logger.LogInformation("Deleted provider credential with ID {Id}", id);
                 }
                 else
                 {
-                    _logger.LogWarning("Provider credential with ID {Id} not found for deletion", S(id));
+                    _logger.LogWarning("Provider credential with ID {Id} not found for deletion", id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", id);
                 throw;
             }
         }
@@ -152,7 +152,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error getting provider credential with ID {Id}", id);
                 throw;
             }
         }
@@ -172,7 +172,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", S(providerName));
+                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -205,7 +205,7 @@ namespace ConduitLLM.Admin.Services
                     var dbCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
                     if (dbCredential == null)
                     {
-                        _logger.LogWarning("Provider credential not found {ProviderId}", S(providerCredential.Id));
+                        _logger.LogWarning("Provider credential not found {ProviderId}", providerCredential.Id);
                         result.Message = "Provider credential not found";
                         result.ErrorDetails = "Provider not found in database";
                         return result;
@@ -319,7 +319,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", S(providerCredential.ProviderName));
+                _logger.LogError(ex, "Error testing connection to provider '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
 
                 return new ProviderConnectionTestResultDto
                 {
@@ -346,7 +346,7 @@ namespace ConduitLLM.Admin.Services
                 var existingCredential = await _providerCredentialRepository.GetByIdAsync(providerCredential.Id);
                 if (existingCredential == null)
                 {
-                    _logger.LogWarning("Provider credential with ID {Id} not found", S(providerCredential.Id));
+                    _logger.LogWarning("Provider credential with ID {Id} not found", providerCredential.Id);
                     return false;
                 }
 
@@ -358,18 +358,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Updated provider credential with ID {Id}", S(providerCredential.Id));
+                    _logger.LogInformation("Updated provider credential with ID {Id}", providerCredential.Id);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to update provider credential with ID {Id}", S(providerCredential.Id));
+                    _logger.LogWarning("Failed to update provider credential with ID {Id}", providerCredential.Id);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider credential with ID {Id}", S(providerCredential.Id));
+                _logger.LogError(ex, "Error updating provider credential with ID {Id}", providerCredential.Id);
                 throw;
             }
         }
@@ -452,7 +452,7 @@ namespace ConduitLLM.Admin.Services
                     // Try the auth key endpoint first (if it exists)
                     var authResponse = await client.GetAsync(authCheckUrl);
 
-                    _logger.LogInformation("OpenRouter auth endpoint returned status {StatusCode}", S((int)authResponse.StatusCode));
+                    _logger.LogInformation("OpenRouter auth endpoint returned status {StatusCode}", (int)authResponse.StatusCode);
 
                     if (authResponse.StatusCode == HttpStatusCode.OK)
                     {
@@ -464,7 +464,7 @@ namespace ConduitLLM.Admin.Services
                              authResponse.StatusCode == HttpStatusCode.Forbidden)
                     {
                         // Clear authentication failure
-                        _logger.LogWarning("OpenRouter authentication failed with status {StatusCode}", S((int)authResponse.StatusCode));
+                        _logger.LogWarning("OpenRouter authentication failed with status {StatusCode}", (int)authResponse.StatusCode);
                         return false;
                     }
                 }
@@ -555,12 +555,12 @@ namespace ConduitLLM.Admin.Services
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("Google Gemini authentication failed: {Status} - {Content}",
-                        S(response.StatusCode), S(responseContent));
+                        response.StatusCode, responseContent.Replace(Environment.NewLine, ""));
                     return false;
                 }
 
                 // If we get another status, log it but assume auth is ok
-                _logger.LogInformation("Google Gemini returned unexpected status: {Status}", S(response.StatusCode));
+                _logger.LogInformation("Google Gemini returned unexpected status: {Status}", response.StatusCode);
                 return true;
             }
             catch (Exception ex)

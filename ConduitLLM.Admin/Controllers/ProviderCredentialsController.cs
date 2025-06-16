@@ -77,7 +77,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    _logger.LogWarning("Provider credential not found {ProviderId}", S(id));
+                    _logger.LogWarning("Provider credential not found {ProviderId}", id);
                     return NotFound(new { error = "Provider credential not found" });
                 }
 
@@ -85,7 +85,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error getting provider credential with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -107,7 +107,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    _logger.LogWarning("Provider credential not found for provider {ProviderName}", S(providerName));
+                    _logger.LogWarning("Provider credential not found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                     return NotFound(new { error = "Provider credential not found" });
                 }
 
@@ -115,7 +115,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", S(providerName));
+                _logger.LogError(ex, "Error getting provider credential for '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -204,7 +204,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    _logger.LogWarning("Provider credential not found for update {ProviderId}", S(id));
+                    _logger.LogWarning("Provider credential not found for update {ProviderId}", id);
                     return NotFound(new { error = "Provider credential not found" });
                 }
 
@@ -212,7 +212,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error updating provider credential with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -234,7 +234,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (!success)
                 {
-                    _logger.LogWarning("Provider credential not found for deletion {ProviderId}", S(id));
+                    _logger.LogWarning("Provider credential not found for deletion {ProviderId}", id);
                     return NotFound(new { error = "Provider credential not found" });
                 }
 
@@ -242,7 +242,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error deleting provider credential with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -264,7 +264,7 @@ namespace ConduitLLM.Admin.Controllers
 
                 if (credential == null)
                 {
-                    _logger.LogWarning("Provider credential not found for connection test {ProviderId}", S(id));
+                    _logger.LogWarning("Provider credential not found for connection test {ProviderId}", id);
                     return NotFound(new { error = "Provider credential not found" });
                 }
 
@@ -273,7 +273,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection for provider credential with ID {Id}", S(id));
+                _logger.LogError(ex, "Error testing connection for provider credential with ID {Id}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
@@ -301,7 +301,7 @@ namespace ConduitLLM.Admin.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", S(testRequest?.ProviderName ?? "unknown"));
+                _logger.LogError(ex, "Error testing connection for provider {ProviderName}", (testRequest?.ProviderName ?? "unknown").Replace(Environment.NewLine, ""));
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }

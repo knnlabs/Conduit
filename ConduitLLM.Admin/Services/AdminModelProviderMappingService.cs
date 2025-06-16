@@ -52,7 +52,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<ModelProviderMappingDto?> GetMappingByIdAsync(int id)
     {
-        _logger.LogInformation("Getting model provider mapping with ID: {Id}", S(id));
+        _logger.LogInformation("Getting model provider mapping with ID: {Id}", id);
         var mapping = await _mappingRepository.GetByIdAsync(id);
         return mapping?.ToDto();
     }
@@ -60,7 +60,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<ModelProviderMappingDto?> GetMappingByModelIdAsync(string modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", S(modelId));
+_logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId.Replace(Environment.NewLine, ""));
         var mapping = await _mappingRepository.GetByModelAliasAsync(modelId);
         return mapping?.ToDto();
     }
@@ -70,7 +70,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", S(mappingDto.ModelId));
+_logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
 
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
@@ -82,13 +82,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
                 var provider = await _credentialRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", S(providerId));
+                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
                     return false;
                 }
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", S(mappingDto.ProviderId));
+_logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -96,7 +96,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             var existingMapping = await _mappingRepository.GetByModelAliasAsync(mapping.ModelAlias);
             if (existingMapping != null)
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", S(mapping.ModelAlias));
+                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -106,7 +106,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", S(mappingDto.ModelId));
+_logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
             return false;
         }
     }
@@ -116,7 +116,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Updating model provider mapping with ID: {Id}", S(mappingDto.Id));
+            _logger.LogInformation("Updating model provider mapping with ID: {Id}", mappingDto.Id);
 
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
@@ -125,7 +125,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             var existingMapping = await _mappingRepository.GetByIdAsync(mapping.Id);
             if (existingMapping == null)
             {
-                _logger.LogWarning("Model provider mapping not found with ID: {Id}", S(mapping.Id));
+                _logger.LogWarning("Model provider mapping not found with ID: {Id}", mapping.Id);
                 return false;
             }
 
@@ -136,13 +136,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
                 var provider = await _credentialRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", S(providerId));
+                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
                     return false;
                 }
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", S(mappingDto.ProviderId));
+_logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -159,7 +159,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating model provider mapping with ID: {Id}", S(mappingDto.Id));
+            _logger.LogError(ex, "Error updating model provider mapping with ID: {Id}", mappingDto.Id);
             return false;
         }
     }
@@ -169,13 +169,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Deleting model provider mapping with ID: {Id}", S(id));
+            _logger.LogInformation("Deleting model provider mapping with ID: {Id}", id);
 
             // Check if the mapping exists
             var existingMapping = await _mappingRepository.GetByIdAsync(id);
             if (existingMapping == null)
             {
-                _logger.LogWarning("Model provider mapping not found with ID: {Id}", S(id));
+                _logger.LogWarning("Model provider mapping not found with ID: {Id}", id);
                 return false;
             }
 
@@ -184,7 +184,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting model provider mapping with ID: {Id}", S(id));
+            _logger.LogError(ex, "Error deleting model provider mapping with ID: {Id}", id);
             return false;
         }
     }

@@ -50,9 +50,10 @@ namespace ConduitLLM.Http.Services
             string? provider,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation(
-                "Starting proxy for connection {ConnectionId}, model {Model}, provider {Provider}",
-                connectionId, model, provider);
+            _logger.LogInformation("Starting proxy for connection {ConnectionId}, model {Model}, provider {Provider}",
+                connectionId,
+                model.Replace(Environment.NewLine, ""),
+                provider?.Replace(Environment.NewLine, "") ?? "default");
 
             // Validate virtual key has permissions
             if (!virtualKey.IsEnabled || (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value))
@@ -109,12 +110,15 @@ namespace ConduitLLM.Http.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("Proxy connection {ConnectionId} cancelled", connectionId);
+                _logger.LogInformation("Proxy connection {ConnectionId} cancelled",
+                connectionId);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in proxy for connection {ConnectionId}", connectionId);
+                _logger.LogError(ex,
+                "Error in proxy for connection {ConnectionId}",
+                connectionId);
                 throw;
             }
             finally
@@ -126,13 +130,15 @@ namespace ConduitLLM.Http.Services
                     var finalStats = connectionInfo?.Usage ?? new ConnectionUsageStats();
                     var totalCost = await _usageTracker.FinalizeUsageAsync(connectionId, finalStats);
                     
-                    _logger.LogInformation(
-                        "Session {ConnectionId} completed with total cost: ${Cost:F4}",
-                        connectionId, totalCost);
+                    _logger.LogInformation("Session {ConnectionId} completed with total cost: ${Cost:F4}",
+                connectionId,
+                totalCost);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error finalizing usage for connection {ConnectionId}", connectionId);
+                    _logger.LogError(ex,
+                "Error finalizing usage for connection {ConnectionId}",
+                connectionId);
                 }
 
                 // Ensure client WebSocket is closed
@@ -165,7 +171,8 @@ namespace ConduitLLM.Http.Services
 
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        _logger.LogInformation("Client closed connection {ConnectionId}", connectionId);
+                        _logger.LogInformation("Client closed connection {ConnectionId}",
+                connectionId);
                         break;
                     }
 
@@ -223,13 +230,16 @@ namespace ConduitLLM.Http.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Error parsing client message");
+                            _logger.LogWarning(ex,
+                "Error parsing client message");
                         }
                     }
                 }
                 catch (WebSocketException ex)
                 {
-                    _logger.LogError(ex, "WebSocket error in client->provider proxy for {ConnectionId}", connectionId);
+                    _logger.LogError(ex,
+                "WebSocket error in client->provider proxy for {ConnectionId}",
+                connectionId);
                     break;
                 }
             }
@@ -248,7 +258,8 @@ namespace ConduitLLM.Http.Services
                 {
                     if (!clientWs.State.Equals(WebSocketState.Open))
                     {
-                        _logger.LogInformation("Client WebSocket closed for {ConnectionId}", connectionId);
+                        _logger.LogInformation("Client WebSocket closed for {ConnectionId}",
+                connectionId);
                         break;
                     }
 
@@ -269,17 +280,22 @@ namespace ConduitLLM.Http.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing provider response for {ConnectionId}", connectionId);
+                        _logger.LogError(ex,
+                "Error processing provider response for {ConnectionId}",
+                connectionId);
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("Provider stream cancelled for {ConnectionId}", connectionId);
+                _logger.LogInformation("Provider stream cancelled for {ConnectionId}",
+                connectionId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in provider->client proxy for {ConnectionId}", connectionId);
+                _logger.LogError(ex,
+                "Error in provider->client proxy for {ConnectionId}",
+                connectionId);
             }
         }
 
@@ -363,7 +379,8 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error parsing usage from provider message");
+                _logger.LogWarning(ex,
+                "Error parsing usage from provider message");
             }
 
             return null;
@@ -395,13 +412,15 @@ namespace ConduitLLM.Http.Services
                     // }
                 }
 
-                _logger.LogDebug(
-                    "Updated usage for connection {ConnectionId}: {TotalTokens} tokens",
-                    connectionId, usage.TotalTokens);
+                _logger.LogDebug("Updated usage for connection {ConnectionId}: {TotalTokens} tokens",
+                connectionId,
+                usage.TotalTokens);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling usage update for connection {ConnectionId}", connectionId);
+                _logger.LogError(ex,
+                "Error handling usage update for connection {ConnectionId}",
+                connectionId);
             }
         }
 
@@ -455,7 +474,9 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error tracking response usage for connection {ConnectionId}", connectionId);
+                _logger.LogError(ex,
+                "Error tracking response usage for connection {ConnectionId}",
+                connectionId);
             }
         }
 
@@ -516,7 +537,8 @@ namespace ConduitLLM.Http.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error closing WebSocket");
+                    _logger.LogWarning(ex,
+                "Error closing WebSocket");
                 }
             }
         }

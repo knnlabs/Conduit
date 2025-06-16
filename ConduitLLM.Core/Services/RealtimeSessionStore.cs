@@ -123,7 +123,7 @@ namespace ConduitLLM.Core.Services
 
             // Remove from distributed cache
             _cacheService.Remove(key);
-            _logger.LogDebug("Removed session {SessionId}", sessionId);
+_logger.LogDebug("Removed session {SessionId}", sessionId.Replace(Environment.NewLine, ""));
 
             return true;
         }

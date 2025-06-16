@@ -122,7 +122,7 @@ namespace ConduitLLM.Core.Services
             format = format?.ToLowerInvariant() ?? throw new ArgumentNullException(nameof(format));
             quality = Math.Clamp(quality, 0.0, 1.0);
 
-            _logger.LogDebug("Compressing {Format} audio with quality {Quality}", format, quality);
+_logger.LogDebug("Compressing {Format} audio with quality {Quality}", format.Replace(Environment.NewLine, ""), quality);
 
             try
             {
@@ -277,7 +277,7 @@ namespace ConduitLLM.Core.Services
                 var serialized = System.Text.Json.JsonSerializer.Serialize(cacheData);
                 _cacheService.Set($"audio:{key}", serialized, TimeSpan.FromSeconds(expiration));
 
-                _logger.LogDebug("Cached audio with key {Key} for {Expiration} seconds", key, expiration);
+_logger.LogDebug("Cached audio with key {Key} for {Expiration} seconds", key.Replace(Environment.NewLine, ""), expiration);
             }
             catch (Exception ex)
             {
@@ -301,7 +301,7 @@ namespace ConduitLLM.Core.Services
                     var cacheData = System.Text.Json.JsonSerializer.Deserialize<CachedAudio>(cached);
                     if (cacheData != null && cacheData.ExpiresAt > DateTime.UtcNow)
                     {
-                        _logger.LogDebug("Retrieved cached audio with key {Key}", key);
+_logger.LogDebug("Retrieved cached audio with key {Key}", key.Replace(Environment.NewLine, ""));
                         return Task.FromResult<CachedAudio?>(cacheData);
                     }
                 }

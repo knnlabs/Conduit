@@ -76,12 +76,12 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderName}'");
                 }
 
-                _logger.LogInformation("Created health configuration for provider '{ProviderName}'", config.ProviderName);
+_logger.LogInformation("Created health configuration for provider '{ProviderName}'", config.ProviderName.Replace(Environment.NewLine, ""));
                 return savedConfig.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating health configuration for provider '{ProviderName}'", config.ProviderName);
+_logger.LogError(ex, "Error creating health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), config.ProviderName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -164,7 +164,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health configuration for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -318,7 +318,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving latest health status for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving latest health status for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -349,7 +349,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health status history for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving health status history for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -414,12 +414,12 @@ namespace ConduitLLM.Admin.Services
                 // Update last checked time
                 await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerName);
 
-                _logger.LogInformation("Triggered health check for provider '{ProviderName}'", providerName);
+_logger.LogInformation("Triggered health check for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 return record.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -478,7 +478,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking if provider '{ProviderName}' exists", providerName);
+_logger.LogError(ex, "Error checking if provider '{ProviderName}' exists".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 return false;
             }
         }

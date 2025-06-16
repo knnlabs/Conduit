@@ -54,7 +54,7 @@ public class AdminLogService : IAdminLogService
         {
             _logger.LogInformation(
                 "Getting logs with filters - Page: {Page}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, HasModel: {HasModel}, HasVirtualKeyId: {HasVirtualKeyId}, HasStatus: {HasStatus}",
-                S(page), S(pageSize), startDate.HasValue ? S(startDate.Value) : "null", endDate.HasValue ? S(endDate.Value) : "null", !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
+                page, pageSize, startDate.HasValue ? startDate.Value : "null", endDate.HasValue ? endDate.Value : "null", !string.IsNullOrEmpty(model), virtualKeyId.HasValue, status.HasValue);
 
             // Validate page and pageSize
             if (page < 1) page = 1;
@@ -156,7 +156,7 @@ public class AdminLogService : IAdminLogService
     {
         try
         {
-            _logger.LogInformationSecure("Getting logs summary with timeframe: {Timeframe}", timeframe);
+_logger.LogInformationSecure("Getting logs summary with timeframe: {Timeframe}", timeframe.Replace(Environment.NewLine, ""));
 
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch

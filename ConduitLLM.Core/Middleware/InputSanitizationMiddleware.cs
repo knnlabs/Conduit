@@ -78,7 +78,7 @@ namespace ConduitLLM.Core.Middleware
                         if (sanitized != stringValue)
                         {
                             context.Request.RouteValues[kvp.Key] = sanitized;
-                            _logger.LogDebug("Sanitized route value {Key}", kvp.Key);
+_logger.LogDebug("Sanitized route value {Key}", kvp.Key.Replace(Environment.NewLine, ""));
                         }
                     }
                 }
@@ -102,7 +102,7 @@ namespace ConduitLLM.Core.Middleware
                     if (!kvp.Value.SequenceEqual(sanitizedValues))
                     {
                         modified = true;
-                        _logger.LogDebug("Sanitized query parameter {Key}", kvp.Key);
+_logger.LogDebug("Sanitized query parameter {Key}", kvp.Key.Replace(Environment.NewLine, ""));
                     }
 
                     newQuery[kvp.Key] = new Microsoft.Extensions.Primitives.StringValues(sanitizedValues);

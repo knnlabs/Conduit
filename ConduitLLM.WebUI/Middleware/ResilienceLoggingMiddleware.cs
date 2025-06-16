@@ -42,21 +42,20 @@ namespace ConduitLLM.WebUI.Middleware
                     // Log successful requests that took longer than expected
                     if (stopwatch.ElapsedMilliseconds > 5000)
                     {
-                        _logger.LogWarning(
-                            "Slow request detected. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                            context.Request.Path,
-                            context.Request.Method,
-                            stopwatch.ElapsedMilliseconds);
+                        _logger.LogWarning("Slow request detected. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
                     }
                 }
                 catch (BrokenCircuitException ex)
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Circuit breaker open. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
+                "Circuit breaker open. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
 
                     await HandleCircuitBreakerError(context);
                 }
@@ -64,10 +63,10 @@ namespace ConduitLLM.WebUI.Middleware
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Request timeout. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
+                "Request timeout. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
 
                     await HandleTimeoutError(context);
                 }
@@ -75,10 +74,10 @@ namespace ConduitLLM.WebUI.Middleware
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Unhandled exception. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
+                "Unhandled exception. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
 
                     throw; // Re-throw to let other middleware handle it
                 }

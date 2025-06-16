@@ -295,7 +295,7 @@ namespace ConduitLLM.Core.Services
 
             if (_sessions.TryRemove(sessionId, out var session))
             {
-                _logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId);
+_logger.LogInformation("Closed hybrid audio session: {SessionId}", sessionId.Replace(Environment.NewLine, ""));
             }
 
             return Task.CompletedTask;

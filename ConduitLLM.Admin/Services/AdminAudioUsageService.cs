@@ -249,7 +249,7 @@ namespace ConduitLLM.Admin.Services
             var session = await sessionStore.GetSessionAsync(sessionId);
             if (session == null)
             {
-                _logger.LogWarning("Session not found for termination {SessionId}", S(sessionId));
+                _logger.LogWarning("Session not found for termination {SessionId}", sessionId.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -264,7 +264,7 @@ namespace ConduitLLM.Admin.Services
 
             if (removed)
             {
-                _logger.LogInformation("Successfully terminated session {SessionId}", S(sessionId));
+                _logger.LogInformation("Successfully terminated session {SessionId}", sessionId.Replace(Environment.NewLine, ""));
             }
 
             return removed;

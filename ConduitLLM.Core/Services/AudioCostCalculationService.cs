@@ -156,7 +156,7 @@ namespace ConduitLLM.Core.Services
 
             // Default fallback rate
             var defaultRate = 0.01m; // $0.01 per minute
-            _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate", provider, model);
+_logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate".Replace(Environment.NewLine, ""), provider.Replace(Environment.NewLine, ""), model.Replace(Environment.NewLine, ""));
 
             return new AudioCostResult
             {
@@ -221,7 +221,7 @@ namespace ConduitLLM.Core.Services
 
             // Default fallback rate
             var defaultRate = 0.00002m; // $20 per 1M characters
-            _logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate", provider, model);
+_logger.LogWarning("No pricing found for {Provider}/{Model}, using default rate".Replace(Environment.NewLine, ""), provider.Replace(Environment.NewLine, ""), model.Replace(Environment.NewLine, ""));
 
             return new AudioCostResult
             {
@@ -370,7 +370,7 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to get custom rate for {Provider}/{Operation}/{Model}",
-                    provider, operation, model);
+                    provider, operation, model.Replace(Environment.NewLine, ""));
             }
 
             return null;

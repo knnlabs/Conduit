@@ -85,7 +85,7 @@ namespace ConduitLLM.Http.Middleware
             var virtualKeyId = await _requestLogService.GetVirtualKeyIdFromKeyValueAsync(keyValue);
             if (virtualKeyId == null)
             {
-                _logger.LogWarningSecure("Request with invalid virtual key: {KeyValue}", keyValue);
+_logger.LogWarningSecure("Request with invalid virtual key: {KeyValue}", keyValue.Replace(Environment.NewLine, ""));
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync("Invalid virtual key");
                 return;
@@ -158,7 +158,7 @@ namespace ConduitLLM.Http.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error tracking request for path {RequestPath}", context.Request.Path);
+_logger.LogError(ex, "Error tracking request for path {RequestPath}".Replace(Environment.NewLine, ""), context.Request.Path.ToString().Replace(Environment.NewLine, ""));
                 throw;
             }
             finally

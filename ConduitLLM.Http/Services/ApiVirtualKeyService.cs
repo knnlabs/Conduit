@@ -81,7 +81,7 @@ namespace ConduitLLM.Http.Services
                     var created = await _virtualKeyRepository.GetByIdAsync(createdId);
                     if (created != null)
                     {
-                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", S(created.KeyName), S(created.Id));
+                        _logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})", created.KeyName.Replace(Environment.NewLine, ""), created.Id);
                         
                         // Return the response with the actual key (only shown once)
                         return new CreateVirtualKeyResponseDto
@@ -96,7 +96,8 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating virtual key");
+                _logger.LogError(ex,
+                "Error generating virtual key");
                 throw;
             }
         }
@@ -109,7 +110,8 @@ namespace ConduitLLM.Http.Services
                 var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
                 if (virtualKey == null)
                 {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
+                    _logger.LogWarning("Virtual key with ID {KeyId} not found",
+                id);
                     return null;
                 }
                 
@@ -117,7 +119,9 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving virtual key info for ID {KeyId}", S(id));
+                _logger.LogError(ex,
+                "Error retrieving virtual key info for ID {KeyId}",
+                id);
                 throw;
             }
         }
@@ -132,7 +136,8 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error listing virtual keys");
+                _logger.LogError(ex,
+                "Error listing virtual keys");
                 throw;
             }
         }
@@ -145,7 +150,8 @@ namespace ConduitLLM.Http.Services
                 var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
                 if (virtualKey == null)
                 {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found for update", S(id));
+                    _logger.LogWarning("Virtual key with ID {KeyId} not found for update",
+                id);
                     return false;
                 }
                 
@@ -183,14 +189,16 @@ namespace ConduitLLM.Http.Services
                 
                 if (success)
                 {
-                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", S(virtualKey.KeyName), S(id));
+                    _logger.LogInformation("Updated virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
                 }
                 
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating virtual key with ID {KeyId}", S(id));
+                _logger.LogError(ex,
+                "Error updating virtual key with ID {KeyId}",
+                id);
                 return false;
             }
         }
@@ -203,7 +211,8 @@ namespace ConduitLLM.Http.Services
                 var virtualKey = await _virtualKeyRepository.GetByIdAsync(id);
                 if (virtualKey == null)
                 {
-                    _logger.LogWarning("Virtual key with ID {KeyId} not found for deletion", S(id));
+                    _logger.LogWarning("Virtual key with ID {KeyId} not found for deletion",
+                id);
                     return false;
                 }
                 
@@ -211,14 +220,16 @@ namespace ConduitLLM.Http.Services
                 
                 if (success)
                 {
-                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", S(virtualKey.KeyName), S(id));
+                    _logger.LogInformation("Deleted virtual key: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), id);
                 }
                 
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", S(id));
+                _logger.LogError(ex,
+                "Error deleting virtual key with ID {KeyId}",
+                id);
                 return false;
             }
         }
@@ -252,7 +263,9 @@ namespace ConduitLLM.Http.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", S(id));
+                _logger.LogError(ex,
+                "Error resetting spend for virtual key with ID {KeyId}",
+                id);
                 return false;
             }
         }
@@ -277,7 +290,7 @@ namespace ConduitLLM.Http.Services
             // Check if key is enabled
             if (!virtualKey.IsEnabled)
             {
-                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", S(virtualKey.KeyName), S(virtualKey.Id));
+                _logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})", virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
                 return null;
             }
 
@@ -285,7 +298,7 @@ namespace ConduitLLM.Http.Services
             if (virtualKey.ExpiresAt.HasValue && virtualKey.ExpiresAt.Value < DateTime.UtcNow)
             {
                 _logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
-                    S(virtualKey.KeyName), S(virtualKey.Id), S(virtualKey.ExpiresAt));
+                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.ExpiresAt);
                 return null;
             }
 
@@ -293,7 +306,7 @@ namespace ConduitLLM.Http.Services
             if (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value)
             {
                 _logger.LogWarning("Virtual key budget depleted: {KeyName} (ID: {KeyId}), spent {CurrentSpend}, budget {MaxBudget}",
-                    S(virtualKey.KeyName), S(virtualKey.Id), S(virtualKey.CurrentSpend), S(virtualKey.MaxBudget));
+                    virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, virtualKey.CurrentSpend, virtualKey.MaxBudget);
                 return null;
             }
 
@@ -305,14 +318,14 @@ namespace ConduitLLM.Http.Services
                 if (!isModelAllowed)
                 {
                     _logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
-                        S(virtualKey.KeyName), S(virtualKey.Id), S(requestedModel));
+                        virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id, requestedModel.Replace(Environment.NewLine, ""));
                     return null;
                 }
             }
 
             // All validations passed
             _logger.LogInformation("Validated virtual key successfully: {KeyName} (ID: {KeyId})",
-                S(virtualKey.KeyName), S(virtualKey.Id));
+                virtualKey.KeyName.Replace(Environment.NewLine, ""), virtualKey.Id);
             return virtualKey;
         }
 
@@ -333,14 +346,18 @@ namespace ConduitLLM.Http.Services
                 bool success = await _virtualKeyRepository.UpdateAsync(virtualKey);
                 if (success)
                 {
-                    _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}", S(keyId), S(virtualKey.CurrentSpend));
+                    _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}",
+                keyId,
+                virtualKey.CurrentSpend);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating spend for key ID {KeyId}.", S(keyId));
+                _logger.LogError(ex,
+                "Error updating spend for key ID {KeyId}.",
+                keyId);
                 return false;
             }
         }
@@ -396,9 +413,10 @@ namespace ConduitLLM.Http.Services
                         await _spendHistoryRepository.CreateAsync(spendHistory, cancellationToken);
                     }
 
-                    _logger.LogInformation(
-                        "Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}",
-                        S(keyId), S(virtualKey.CurrentSpend), S(virtualKey.BudgetStartDate));
+                    _logger.LogInformation("Resetting budget for key ID {KeyId}. Previous spend: {PreviousSpend}, Previous start date: {PreviousStartDate}",
+                keyId,
+                virtualKey.CurrentSpend,
+                virtualKey.BudgetStartDate);
 
                     // Reset the spend
                     virtualKey.CurrentSpend = 0;
@@ -419,16 +437,18 @@ namespace ConduitLLM.Http.Services
 
                     if (success)
                     {
-                        _logger.LogInformation(
-                            "Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}",
-                            S(keyId), S(virtualKey.BudgetStartDate));
+                        _logger.LogInformation("Budget reset completed for key ID {KeyId}. New start date: {NewStartDate}",
+                keyId,
+                virtualKey.BudgetStartDate);
                     }
 
                     return success;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error resetting budget for key ID {KeyId}", S(keyId));
+                    _logger.LogError(ex,
+                "Error resetting budget for key ID {KeyId}",
+                keyId);
                     return false;
                 }
             }

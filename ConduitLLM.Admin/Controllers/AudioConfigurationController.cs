@@ -445,7 +445,7 @@ namespace ConduitLLM.Admin.Controllers
             if (!terminated)
                 return NotFound();
 
-            _logger.LogInformation("Terminated real-time session {SessionId}", S(sessionId));
+            _logger.LogInformation("Terminated real-time session {SessionId}", sessionId.Replace(Environment.NewLine, ""));
             return NoContent();
         }
 

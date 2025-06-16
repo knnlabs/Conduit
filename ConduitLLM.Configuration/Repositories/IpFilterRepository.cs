@@ -43,7 +43,8 @@ public class IpFilterRepository : IIpFilterRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting all IP filters");
+            _logger.LogError(ex,
+                "Error getting all IP filters");
             return Enumerable.Empty<IpFilterEntity>();
         }
     }
@@ -62,7 +63,8 @@ public class IpFilterRepository : IIpFilterRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting enabled IP filters");
+            _logger.LogError(ex,
+                "Error getting enabled IP filters");
             return Enumerable.Empty<IpFilterEntity>();
         }
     }
@@ -77,7 +79,9 @@ public class IpFilterRepository : IIpFilterRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting IP filter with ID {Id}", S(id));
+            _logger.LogError(ex,
+                "Error getting IP filter with ID {Id}",
+                id);
             return null;
         }
     }
@@ -97,13 +101,14 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
-                S(filter.FilterType), S(filter.IpAddressOrCidr));
+                filter.FilterType.Replace(Environment.NewLine, ""),
+                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
 
             return filter;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", S(filter.IpAddressOrCidr));
+            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
             throw;
         }
     }
@@ -118,7 +123,8 @@ public class IpFilterRepository : IIpFilterRepository
             var existingFilter = await dbContext.IpFilters.FindAsync(filter.Id);
             if (existingFilter == null)
             {
-                _logger.LogWarning("IP filter with ID {Id} not found for update", S(filter.Id));
+                _logger.LogWarning("IP filter with ID {Id} not found for update",
+                filter.Id);
                 return false;
             }
 
@@ -132,13 +138,17 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Updated IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
-                S(filter.Id), S(filter.FilterType), S(filter.IpAddressOrCidr));
+                filter.Id,
+                filter.FilterType.Replace(Environment.NewLine, ""),
+                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {Id}", S(filter.Id));
+            _logger.LogError(ex,
+                "Error updating IP filter with ID {Id}",
+                filter.Id);
             throw;
         }
     }
@@ -153,7 +163,8 @@ public class IpFilterRepository : IIpFilterRepository
             var filter = await dbContext.IpFilters.FindAsync(id);
             if (filter == null)
             {
-                _logger.LogWarning("IP filter with ID {Id} not found for deletion", S(id));
+                _logger.LogWarning("IP filter with ID {Id} not found for deletion",
+                id);
                 return false;
             }
 
@@ -161,13 +172,17 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Deleted IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
-                S(id), S(filter.FilterType), S(filter.IpAddressOrCidr));
+                id,
+                filter.FilterType.Replace(Environment.NewLine, ""),
+                filter.IpAddressOrCidr.Replace(Environment.NewLine, ""));
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", S(id));
+            _logger.LogError(ex,
+                "Error deleting IP filter with ID {Id}",
+                id);
             throw;
         }
     }

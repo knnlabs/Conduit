@@ -53,13 +53,13 @@ public class VirtualKeysController : ControllerBase
         catch (DbUpdateException dbEx)
         {
             // Log the detailed exception
-            _logger.LogErrorSecure(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", request.KeyName);
+_logger.LogErrorSecure(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.".Replace(Environment.NewLine, ""), request.KeyName.Replace(Environment.NewLine, ""));
             // Return a more generic error to the client
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while saving the key. It might violate a unique constraint (e.g., duplicate name)." });
         }
         catch (Exception ex)
         {
-            _logger.LogErrorSecure(ex, "Error generating virtual key for '{KeyName}'", request.KeyName);
+_logger.LogErrorSecure(ex, "Error generating virtual key for '{KeyName}'".Replace(Environment.NewLine, ""), request.KeyName.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -106,7 +106,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", S(id));
+            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -141,7 +141,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", S(id));
+            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -170,7 +170,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", S(id));
+            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -199,7 +199,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", S(id));
+            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", id);
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

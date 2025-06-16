@@ -102,9 +102,10 @@ namespace ConduitLLM.Http.Controllers
                 // Generate a unique connection ID
                 var connectionId = Guid.NewGuid().ToString();
 
-                _logger.LogInformation(
-                    "WebSocket connection established. ConnectionId: {ConnectionId}, Model: {Model}, VirtualKeyId: {KeyId}",
-                    connectionId, S(model), keyEntity.Id);
+                _logger.LogInformation("WebSocket connection established. ConnectionId: {ConnectionId}, Model: {Model}, VirtualKeyId: {KeyId}",
+                connectionId,
+                model.Replace(Environment.NewLine, ""),
+                keyEntity.Id);
 
                 // Register the connection
                 await _connectionManager.RegisterConnectionAsync(connectionId, keyEntity.Id, model, webSocket);
@@ -130,7 +131,8 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling WebSocket connection");
+                _logger.LogError(ex,
+                "Error handling WebSocket connection");
                 return StatusCode(503, new { error = "Failed to establish real-time connection", details = ex.Message });
             }
         }

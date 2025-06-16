@@ -98,7 +98,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
 
             if (!eligibleProviders.Any())
             {
-                _logger.LogWarning("No eligible providers found for language {Language}", language);
+_logger.LogWarning("No eligible providers found for language {Language}", language.Replace(Environment.NewLine, ""));
                 return Task.FromResult<string?>(null);
             }
 
@@ -117,7 +117,7 @@ namespace ConduitLLM.Core.Routing.AudioRoutingStrategies
             _logger.LogInformation(
                 "Selected {Provider} for language {Language} with score {Score:F2}",
                 selected.Provider.Name,
-                language,
+                language.Replace(Environment.NewLine, ""),
                 selected.Score);
 
             return Task.FromResult<string?>(selected.Provider.Name);

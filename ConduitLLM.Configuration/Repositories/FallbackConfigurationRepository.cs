@@ -124,13 +124,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating fallback configuration '{ConfigName}'",
-                    S(fallbackConfig.Name));
+                    fallbackConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating fallback configuration '{ConfigName}'",
-                    S(fallbackConfig.Name));
+                    fallbackConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

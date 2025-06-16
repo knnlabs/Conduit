@@ -47,7 +47,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployment with ID {DeploymentId}", S(id));
+                _logger.LogError(ex, "Error getting model deployment with ID {DeploymentId}", id);
                 throw;
             }
         }
@@ -69,7 +69,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployment with name {DeploymentName}", S(deploymentName));
+                _logger.LogError(ex, "Error getting model deployment with name {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -93,7 +93,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", S(providerName));
+                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -117,7 +117,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for model {ModelName}", S(modelName));
+                _logger.LogError(ex, "Error getting model deployments for model {ModelName}", modelName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -164,13 +164,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating model deployment '{DeploymentName}'",
-                    S(modelDeployment.DeploymentName));
+                    modelDeployment.DeploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating model deployment '{DeploymentName}'",
-                    S(modelDeployment.DeploymentName));
+                    modelDeployment.DeploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -197,7 +197,7 @@ namespace ConduitLLM.Configuration.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating model deployment with ID {DeploymentId}",
-                    S(modelDeployment.Id));
+                    modelDeployment.Id);
                 throw;
             }
         }
@@ -221,7 +221,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model deployment with ID {DeploymentId}", S(id));
+                _logger.LogError(ex, "Error deleting model deployment with ID {DeploymentId}", id);
                 throw;
             }
         }

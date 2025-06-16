@@ -146,7 +146,7 @@ namespace ConduitLLM.Core.Routing
 
                 if (mapping == null)
                 {
-                    _logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias);
+_logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
                     throw new ConfigurationException($"No mapping found for model alias '{modelAlias}'");
                 }
 
@@ -154,7 +154,7 @@ namespace ConduitLLM.Core.Routing
                 // property path might be different in the ModelProviderMapping implementation
                 string providerName = ModelProviderMappingAdapter.GetProviderName(mapping);
 
-                _logger.LogInformation("Using provider {Provider} for model {Model}", providerName, modelAlias);
+_logger.LogInformation("Using provider {Provider} for model {Model}", providerName.Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
 
                 // Check if we have a factory for this provider
                 if (!_providerFactories.TryGetValue(providerName, out var factory))
@@ -170,7 +170,7 @@ namespace ConduitLLM.Core.Routing
             }
             catch (Exception ex) when (ex is not ConfigurationException)
             {
-                _logger.LogError(ex, "Error creating client for model {ModelAlias}", modelAlias);
+_logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
                 throw new ConfigurationException($"Error creating client for model '{modelAlias}'", ex);
             }
         }

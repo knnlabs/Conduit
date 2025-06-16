@@ -48,7 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with ID {SettingId}", S(id));
+                _logger.LogError(ex, "Error getting global setting with ID {SettingId}", id);
                 throw;
             }
         }
@@ -70,7 +70,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", S(key));
+                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -120,13 +120,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating global setting with key '{SettingKey}'",
-                    S(globalSetting.Key));
+                    globalSetting.Key.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating global setting with key '{SettingKey}'",
-                    S(globalSetting.Key));
+                    globalSetting.Key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -156,13 +156,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateConcurrencyException ex)
             {
                 _logger.LogError(ex, "Concurrency error updating global setting with ID {SettingId}",
-                    S(globalSetting.Id));
+                    globalSetting.Id);
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating global setting with ID {SettingId}",
-                    S(globalSetting.Id));
+                    globalSetting.Id);
                 throw;
             }
         }
@@ -220,7 +220,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", S(key));
+                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -244,7 +244,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with ID {SettingId}", S(id));
+                _logger.LogError(ex, "Error deleting global setting with ID {SettingId}", id);
                 throw;
             }
         }
@@ -274,7 +274,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", S(key));
+                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

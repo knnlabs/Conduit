@@ -87,7 +87,9 @@ namespace ConduitLLM.Admin.Services
 
             var created = await _repository.CreateAsync(cost);
             _logger.LogInformation("Created audio cost configuration {Id} for {Provider} {Operation}",
-                created.Id, created.Provider, created.OperationType);
+                created.Id,
+                created.Provider.Replace(Environment.NewLine, ""),
+                created.OperationType.Replace(Environment.NewLine, ""));
 
             return MapToDto(created);
         }
@@ -114,7 +116,8 @@ namespace ConduitLLM.Admin.Services
             cost.EffectiveTo = dto.EffectiveTo;
 
             var updated = await _repository.UpdateAsync(cost);
-            _logger.LogInformation("Updated audio cost configuration {Id}", id);
+            _logger.LogInformation("Updated audio cost configuration {Id}",
+                id);
 
             return MapToDto(updated);
         }
@@ -125,7 +128,8 @@ namespace ConduitLLM.Admin.Services
             var deleted = await _repository.DeleteAsync(id);
             if (deleted)
             {
-                _logger.LogInformation("Deleted audio cost configuration {Id}", id);
+                _logger.LogInformation("Deleted audio cost configuration {Id}",
+                id);
             }
             return deleted;
         }
@@ -185,11 +189,13 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 _logger.LogInformation("Imported {Success} costs successfully, {Failed} failed",
-                    result.SuccessCount, result.FailureCount);
+                result.SuccessCount,
+                result.FailureCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during bulk import");
+                _logger.LogError(ex,
+                "Error during bulk import");
                 result.Errors.Add($"Import failed: {ex.Message}");
             }
 
@@ -254,7 +260,8 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to parse JSON import data");
+                _logger.LogError(ex,
+                "Failed to parse JSON import data");
                 throw new ArgumentException("Invalid JSON format", ex);
             }
         }
@@ -275,7 +282,8 @@ namespace ConduitLLM.Admin.Services
                 var parts = lines[i].Split(',');
                 if (parts.Length < 5)
                 {
-                    _logger.LogWarning("Skipping invalid CSV line: {Line}", lines[i]);
+                    _logger.LogWarning("Skipping invalid CSV line: {Line}",
+                lines[i].Replace(Environment.NewLine, ""));
                     continue;
                 }
 
@@ -297,7 +305,9 @@ namespace ConduitLLM.Admin.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to parse CSV line: {Line}", lines[i]);
+                    _logger.LogError(ex,
+                "Failed to parse CSV line: {Line}",
+                lines[i].Replace(Environment.NewLine, ""));
                     throw new ArgumentException($"Invalid CSV data at line {i + 1}", ex);
                 }
             }

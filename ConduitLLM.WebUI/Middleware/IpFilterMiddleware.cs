@@ -100,12 +100,12 @@ public class IpFilterMiddleware
             bool isAllowed = await CheckIpWithFallbackAsync(ipFilterService, clientIp, settings.DefaultAllow);
             if (isAllowed)
             {
-                _logger.LogDebugSecure("IP {ClientIp} is allowed access", clientIp);
+_logger.LogDebugSecure("IP {ClientIp} is allowed access", clientIp.Replace(Environment.NewLine, ""));
                 await _next(context);
             }
             else
             {
-                _logger.LogInformationSecure("IP {ClientIp} is blocked from accessing {Path}", clientIp, path);
+_logger.LogInformationSecure("IP {ClientIp} is blocked from accessing {Path}", clientIp.Replace(Environment.NewLine, ""), path.Replace(Environment.NewLine, ""));
                 await RespondWithForbidden(context, IpFilterConstants.ACCESS_DENIED_MESSAGE);
             }
         }
@@ -172,7 +172,7 @@ public class IpFilterMiddleware
         {
             // Log the error
             _logger.LogErrorSecure(ex, "Failed to check IP {ClientIp} against Admin API. Using default allow setting: {DefaultAllow}",
-                clientIp, defaultAllow);
+                clientIp.Replace(Environment.NewLine, ""), defaultAllow);
 
             // Fall back to the default allow setting
             return defaultAllow;

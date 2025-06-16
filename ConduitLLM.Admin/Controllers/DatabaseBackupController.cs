@@ -115,7 +115,7 @@ public class DatabaseBackupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring database backup {BackupId}", S(backupId));
+            _logger.LogError(ex, "Error restoring database backup {BackupId}", backupId.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -146,7 +146,7 @@ public class DatabaseBackupController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading database backup {BackupId}", S(backupId));
+            _logger.LogError(ex, "Error downloading database backup {BackupId}", backupId.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

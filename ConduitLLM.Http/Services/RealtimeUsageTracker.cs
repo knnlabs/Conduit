@@ -61,9 +61,10 @@ namespace ConduitLLM.Http.Services
 
             _sessions[connectionId] = session;
 
-            _logger.LogInformation(
-                "Started usage tracking for connection {ConnectionId}, model {Model}, virtualKeyId {VirtualKeyId}",
-                connectionId, model, virtualKeyId);
+            _logger.LogInformation("Started usage tracking for connection {ConnectionId}, model {Model}, virtualKeyId {VirtualKeyId}",
+                connectionId,
+                model.Replace(Environment.NewLine, ""),
+                virtualKeyId);
 
             await Task.CompletedTask;
         }
@@ -72,7 +73,8 @@ namespace ConduitLLM.Http.Services
         {
             if (!_sessions.TryGetValue(connectionId, out var session))
             {
-                _logger.LogWarning("Attempted to update usage for unknown connection {ConnectionId}", connectionId);
+                _logger.LogWarning("Attempted to update usage for unknown connection {ConnectionId}",
+                connectionId);
                 return;
             }
 
@@ -80,8 +82,7 @@ namespace ConduitLLM.Http.Services
             session.LastActivity = DateTime.UtcNow;
             session.EstimatedCost = stats.EstimatedCost;
 
-            _logger.LogDebug(
-                "Updated usage stats for connection {ConnectionId}",
+            _logger.LogDebug("Updated usage stats for connection {ConnectionId}",
                 connectionId);
 
             await Task.CompletedTask;
@@ -91,7 +92,8 @@ namespace ConduitLLM.Http.Services
         {
             if (!_sessions.TryGetValue(connectionId, out var session))
             {
-                _logger.LogWarning("Attempted to track audio for unknown connection {ConnectionId}", connectionId);
+                _logger.LogWarning("Attempted to track audio for unknown connection {ConnectionId}",
+                connectionId);
                 return;
             }
 
@@ -106,9 +108,10 @@ namespace ConduitLLM.Http.Services
 
             session.LastActivity = DateTime.UtcNow;
 
-            _logger.LogDebug(
-                "Tracked {Seconds}s of {Type} audio for connection {ConnectionId}",
-                audioSeconds, isInput ? "input" : "output", connectionId);
+            _logger.LogDebug("Tracked {Seconds}s of {Type} audio for connection {ConnectionId}",
+                audioSeconds,
+                isInput ? "input" : "output".Replace(Environment.NewLine, ""),
+                connectionId);
 
             await Task.CompletedTask;
         }
@@ -117,7 +120,8 @@ namespace ConduitLLM.Http.Services
         {
             if (!_sessions.TryGetValue(connectionId, out var session))
             {
-                _logger.LogWarning("Attempted to track tokens for unknown connection {ConnectionId}", connectionId);
+                _logger.LogWarning("Attempted to track tokens for unknown connection {ConnectionId}",
+                connectionId);
                 return;
             }
 
@@ -125,9 +129,10 @@ namespace ConduitLLM.Http.Services
             session.OutputTokens += usage.CompletionTokens;
             session.LastActivity = DateTime.UtcNow;
 
-            _logger.LogDebug(
-                "Tracked {InputTokens} input tokens and {OutputTokens} output tokens for connection {ConnectionId}",
-                usage.PromptTokens, usage.CompletionTokens, connectionId);
+            _logger.LogDebug("Tracked {InputTokens} input tokens and {OutputTokens} output tokens for connection {ConnectionId}",
+                usage.PromptTokens,
+                usage.CompletionTokens,
+                connectionId);
 
             await Task.CompletedTask;
         }
@@ -142,7 +147,8 @@ namespace ConduitLLM.Http.Services
         {
             if (!_sessions.TryGetValue(connectionId, out var session))
             {
-                _logger.LogWarning("Attempted to track function call for unknown connection {ConnectionId}", connectionId);
+                _logger.LogWarning("Attempted to track function call for unknown connection {ConnectionId}",
+                connectionId);
                 return;
             }
 
@@ -167,7 +173,8 @@ namespace ConduitLLM.Http.Services
             var modelCost = await _costService.GetCostForModelAsync(session.Model);
             if (modelCost == null)
             {
-                _logger.LogWarning("No cost configuration found for model {Model}", session.Model);
+                _logger.LogWarning("No cost configuration found for model {Model}",
+                session.Model.Replace(Environment.NewLine, ""));
                 return 0;
             }
 
@@ -232,9 +239,10 @@ namespace ConduitLLM.Http.Services
             }
 
             var duration = DateTime.UtcNow - session.StartTime;
-            _logger.LogInformation(
-                "Finalized session {ConnectionId}: Duration={Duration}s, Cost=${Cost:F4}",
-                connectionId, duration.TotalSeconds, totalCost);
+            _logger.LogInformation("Finalized session {ConnectionId}: Duration={Duration}s, Cost=${Cost:F4}",
+                connectionId,
+                duration.TotalSeconds,
+                totalCost);
 
             return totalCost;
         }
