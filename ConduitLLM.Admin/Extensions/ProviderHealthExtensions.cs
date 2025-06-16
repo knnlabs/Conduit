@@ -20,7 +20,7 @@ namespace ConduitLLM.Admin.Extensions
         {
             return existingConfig.ProviderName;
         }
-        
+
         /// <summary>
         /// Updates a ProviderHealthConfiguration entity from an UpdateProviderHealthConfigurationDto
         /// </summary>
@@ -37,7 +37,7 @@ namespace ConduitLLM.Admin.Extensions
             entity.ConsecutiveFailuresThreshold = dto.ConsecutiveFailuresThreshold;
             entity.NotificationsEnabled = dto.NotificationsEnabled;
             entity.CustomEndpointUrl = dto.CustomEndpointUrl;
-            
+
             return entity;
         }
     }

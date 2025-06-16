@@ -16,11 +16,12 @@
 @inject IJSRuntime JSRuntime
 @inject ILogger<ProviderHealth> Logger
 @inject NotificationService NotificationService
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Provider Health Dashboard</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <!-- Header Section -->
     <PageHeader Title="Provider Health Dashboard" 
                 Description="Monitor the health status and performance metrics of your LLM providers"
@@ -38,7 +39,7 @@
     </PageHeader>
     
     <div class="d-flex justify-content-end mb-3">
-        <a href="/provider-health/config" class="btn btn-outline-primary">
+        <a href="/provider-health/config" class="btn btn-outline-primary modern-btn">
             <i class="fa fa-gear me-2"></i>Configuration
         </a>
     </div>
@@ -57,12 +58,12 @@
                     </div>
                     <div>
                         <div class="input-group">
-                            <select class="form-select" @bind="_timeRangeSelection">
+                            <select class="form-select modern-form-select" @bind="_timeRangeSelection">
                                 <option value="24h">Last 24 hours</option>
                                 <option value="7d">Last 7 days</option>
                                 <option value="30d">Last 30 days</option>
                             </select>
-                            <button class="btn btn-primary" @onclick="RefreshDataAsync">
+                            <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="RefreshDataAsync">
                                 <i class="bi bi-arrow-clockwise"></i> Refresh
                             </button>
                         </div>
@@ -73,12 +74,12 @@
                     @foreach (var status in _latestStatuses)
                     {
                         <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="card h-100 modern-card">
+                                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                                     <h5 class="mb-0">@status.Key</h5>
                                     <StatusBadge Status="@(status.Value.Status.ToString())" />
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body modern-card-body">
                                     <div class="mb-2">
                                         <strong>Status:</strong> @status.Value.StatusMessage
                                     </div>
@@ -96,7 +97,7 @@
                                     }
                                 </div>
                                 <div class="card-footer">
-                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowProviderDetailsAsync(status.Key)">
+                                    <button class="btn btn-sm btn-outline-primary modern-btn" @onclick="() => ShowProviderDetailsAsync(status.Key)">
                                         View Details
                                     </button>
                                 </div>
@@ -109,11 +110,11 @@
         
         <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
+                <div class="card h-100 modern-card">
+                    <div class="card-header modern-card-header">
                         <h3>Uptime</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (_uptime.Any())
                         {
                             <canvas id="uptimeChart" style="height: 300px;"></canvas>
@@ -129,11 +130,11 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
+                <div class="card h-100 modern-card">
+                    <div class="card-header modern-card-header">
                         <h3>Response Time</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (_responseTimes.Any())
                         {
                             <canvas id="responseTimeChart" style="height: 300px;"></canvas>
@@ -152,11 +153,11 @@
         
         <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
+                <div class="card h-100 modern-card">
+                    <div class="card-header modern-card-header">
                         <h3>Errors by Provider</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (_errorCounts.Any())
                         {
                             <canvas id="errorCountChart" style="height: 300px;"></canvas>
@@ -172,11 +173,11 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
+                <div class="card h-100 modern-card">
+                    <div class="card-header modern-card-header">
                         <h3>Error Categories</h3>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (_errorCategories.Any())
                         {
                             <canvas id="errorCategoryChart" style="height: 300px;"></canvas>
@@ -199,7 +200,7 @@
                 <h2>Audio Provider Health</h2>
                 @if (_audioProviders == null || !_audioProviders.Any())
                 {
-                    <div class="alert alert-info">
+                    <div class="alert modern-alert modern-alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         No audio providers configured. Configure audio capabilities in the <a href="/configuration">Configuration</a> page.
                     </div>
@@ -210,13 +211,13 @@
                         @foreach (var audioProvider in _audioProviders)
                         {
                             <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card h-100">
-                                    <div class="card-header bg-info text-white">
+                                <div class="card h-100 modern-card">
+                                    <div class="card-header modern-card-header">
                                         <h5 class="mb-0">
                                             <i class="bi bi-headphones me-2"></i>@audioProvider.ProviderName
                                         </h5>
                                     </div>
-                                    <div class="card-body">
+                                    <div class="card-body modern-card-body">
                                         <!-- Transcription Health -->
                                         @if (audioProvider.TranscriptionEnabled)
                                         {
@@ -322,7 +323,7 @@
                                         }
                                     </div>
                                     <div class="card-footer">
-                                        <button class="btn btn-sm btn-outline-info w-100" @onclick="() => TestAudioProviderAsync(audioProvider)">
+                                        <button class="btn btn-sm btn-outline-info modern-btn w-100" @onclick="() => TestAudioProviderAsync(audioProvider)">
                                             <i class="bi bi-play-circle me-2"></i>Test Audio Services
                                         </button>
                                     </div>
@@ -355,9 +356,9 @@
                         }
                         else
                         {
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
+                            <div class="table-responsive modern-table-container">
+                                <table class="table modern-table">
+                                    <thead class="modern-table-header">
                                         <tr>
                                             <th>Timestamp</th>
                                             <th>Status</th>
@@ -369,7 +370,7 @@
                                     <tbody>
                                         @foreach (var record in _providerHistory)
                                         {
-                                            <tr>
+                                            <tr class="modern-table-row">
                                                 <td>@record.TimestampUtc.ToLocalTime()</td>
                                                 <td>
                                                     <StatusBadge Status="@(record.Status.ToString())" />
@@ -392,14 +393,14 @@
                             </div>
                             
                             <div class="d-flex justify-content-center mt-3">
-                                <button class="btn btn-primary" @onclick="() => DownloadProviderHistoryAsync(_selectedProvider)">
+                                <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="() => DownloadProviderHistoryAsync(_selectedProvider)">
                                     <i class="bi bi-download"></i> Download History
                                 </button>
                             </div>
                         }
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                        <button type="button" class="btn btn-secondary modern-btn modern-btn-secondary" @onclick="CloseModal">Close</button>
                     </div>
                 </div>
             </div>
@@ -478,7 +479,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider health data");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading provider health data: " + ex.Message);
+            ToastService.ShowError("Error loading provider health data: " + ex.Message);
         }
         finally
         {
@@ -716,7 +717,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider details for {ProviderName}", providerName);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error loading details for {providerName}: {ex.Message}");
+            ToastService.ShowError($"Error loading details for {providerName}: {ex.Message}");
         }
         finally
         {
@@ -782,7 +783,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error downloading provider history for {ProviderName}", providerName);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error downloading history for {providerName}: {ex.Message}");
+            ToastService.ShowError($"Error downloading history for {providerName}: {ex.Message}");
         }
     }
     
@@ -830,7 +831,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading audio providers");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading audio providers: " + ex.Message);
+            ToastService.ShowError("Error loading audio providers: " + ex.Message);
         }
     }
     
@@ -887,12 +888,12 @@
             }
             
             StateHasChanged();
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Audio provider '{provider.ProviderName}' tested successfully");
+            ToastService.ShowSuccess($"Audio provider '{provider.ProviderName}' tested successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error testing audio provider {ProviderId}", provider.Id);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error testing audio provider: {ex.Message}");
+            ToastService.ShowError($"Error testing audio provider: {ex.Message}");
             
             // Mark all capabilities as unhealthy
             if (provider.TranscriptionEnabled)

@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Services.Dtos;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +18,7 @@ namespace ConduitLLM.Configuration.Services
     {
         private readonly ConfigurationDbContext _context;
         private readonly ILogger<RequestLogService> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the RequestLogService
         /// </summary>
@@ -30,7 +29,7 @@ namespace ConduitLLM.Configuration.Services
             _context = context;
             _logger = logger;
         }
-        
+
         /// <inheritdoc/>
         public decimal CalculateCost(string modelName, int inputTokens, int outputTokens)
         {
@@ -38,7 +37,7 @@ namespace ConduitLLM.Configuration.Services
             // you'd likely have a more sophisticated pricing model
             decimal inputRate = 0;
             decimal outputRate = 0;
-            
+
             // Set rates based on model
             switch (modelName.ToLowerInvariant())
             {
@@ -55,31 +54,31 @@ namespace ConduitLLM.Configuration.Services
                     outputRate = 0.000002m;  // Default rate
                     break;
             }
-            
+
             decimal inputCost = inputTokens * inputRate;
             decimal outputCost = outputTokens * outputRate;
-            
+
             return inputCost + outputCost;
         }
-        
+
         /// <inheritdoc/>
         public (int InputTokens, int OutputTokens) EstimateTokens(string requestContent, string responseContent)
         {
             // This is a simplified implementation - in a real system,
             // you'd likely use a tokenizer like GPT-2/3 BPE
-            
+
             // Rough estimate: ~4 characters per token for English text
-            int inputTokens = !string.IsNullOrEmpty(requestContent) 
-                ? (int)Math.Ceiling(requestContent.Length / 4.0) 
+            int inputTokens = !string.IsNullOrEmpty(requestContent)
+                ? (int)Math.Ceiling(requestContent.Length / 4.0)
                 : 0;
-                
-            int outputTokens = !string.IsNullOrEmpty(responseContent) 
-                ? (int)Math.Ceiling(responseContent.Length / 4.0) 
+
+            int outputTokens = !string.IsNullOrEmpty(responseContent)
+                ? (int)Math.Ceiling(responseContent.Length / 4.0)
                 : 0;
-                
+
             return (inputTokens, outputTokens);
         }
-        
+
         /// <inheritdoc/>
         public async Task<int?> GetVirtualKeyIdFromKeyValueAsync(string keyValue)
         {
@@ -89,19 +88,19 @@ namespace ConduitLLM.Configuration.Services
                 .Select(k => (int?)k.Id)
                 .FirstOrDefaultAsync();
         }
-        
+
         /// <inheritdoc/>
         public async Task<UsageStatisticsDto> GetUsageStatisticsAsync(int virtualKeyId, DateTime startDate, DateTime endDate)
         {
             // Use projection to avoid loading the entire entities into memory
             var result = new UsageStatisticsDto();
-            
+
             var stats = await _context.RequestLogs
                 .AsNoTracking()
                 .Where(r => r.VirtualKeyId == virtualKeyId)
                 .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                 .GroupBy(r => 1)
-                .Select(g => new 
+                .Select(g => new
                 {
                     TotalRequests = g.Count(),
                     TotalCost = g.Sum(r => r.Cost),
@@ -110,7 +109,7 @@ namespace ConduitLLM.Configuration.Services
                     AverageResponseTime = g.Any() ? g.Average(r => r.ResponseTimeMs) : 0
                 })
                 .FirstOrDefaultAsync();
-                
+
             if (stats != null)
             {
                 result.TotalRequests = stats.TotalRequests;
@@ -118,14 +117,14 @@ namespace ConduitLLM.Configuration.Services
                 result.TotalInputTokens = stats.TotalInputTokens;
                 result.TotalOutputTokens = stats.TotalOutputTokens;
                 result.AverageResponseTimeMs = stats.AverageResponseTime;
-                
+
                 // Get model-specific usage statistics
                 var modelStats = await _context.RequestLogs
                     .AsNoTracking()
                     .Where(r => r.VirtualKeyId == virtualKeyId)
                     .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
                     .GroupBy(r => r.ModelName)
-                    .Select(g => new 
+                    .Select(g => new
                     {
                         ModelName = g.Key,
                         RequestCount = g.Count(),
@@ -134,7 +133,7 @@ namespace ConduitLLM.Configuration.Services
                         OutputTokens = g.Sum(r => r.OutputTokens)
                     })
                     .ToListAsync();
-                    
+
                 foreach (var modelStat in modelStats)
                 {
                     result.ModelUsage[modelStat.ModelName] = new ModelUsage
@@ -146,23 +145,23 @@ namespace ConduitLLM.Configuration.Services
                     };
                 }
             }
-            
+
             return result;
         }
-        
+
         /// <inheritdoc/>
         public async Task LogRequestAsync(LogRequestDto request)
         {
             // Check if the database provider supports transactions
             bool supportsTransactions = !(_context.Database.ProviderName?.Contains("InMemory") ?? false);
-            
+
             // Create the transaction only if supported
             Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
             if (supportsTransactions)
             {
                 transaction = await _context.Database.BeginTransactionAsync();
             }
-            
+
             try
             {
                 var log = new RequestLog
@@ -180,22 +179,22 @@ namespace ConduitLLM.Configuration.Services
                     RequestPath = request.RequestPath,
                     StatusCode = request.StatusCode
                 };
-                
+
                 _context.RequestLogs.Add(log);
-                
+
                 // Also update the virtual key's current spend - retrieve just what we need
                 var key = await _context.VirtualKeys
                     .Where(k => k.Id == request.VirtualKeyId)
                     .FirstOrDefaultAsync();
-                    
+
                 if (key != null)
                 {
                     key.CurrentSpend += request.Cost;
                     key.UpdatedAt = DateTime.UtcNow;
                 }
-                
+
                 await _context.SaveChangesAsync();
-                
+
                 if (transaction != null)
                 {
                     await transaction.CommitAsync();
@@ -203,9 +202,12 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}", 
-                    request.VirtualKeyId, request.ModelName, request.RequestType);
-                
+                _logger.LogError(ex,
+                "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
+                request.VirtualKeyId,
+                request.ModelName.Replace(Environment.NewLine, ""),
+                request.RequestType.Replace(Environment.NewLine, ""));
+
                 if (transaction != null)
                 {
                     await transaction.RollbackAsync();
@@ -220,7 +222,7 @@ namespace ConduitLLM.Configuration.Services
                 }
             }
         }
-        
+
         /// <summary>
         /// Gets paged request logs for a virtual key
         /// </summary>
@@ -237,14 +239,14 @@ namespace ConduitLLM.Configuration.Services
                 .AsNoTracking()
                 .Where(r => r.VirtualKeyId == virtualKeyId)
                 .OrderByDescending(r => r.Timestamp);
-                
+
             var totalCount = await query.CountAsync();
-            
+
             var logs = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-                
+
             return (logs, totalCount);
         }
 
@@ -295,9 +297,9 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                _logger.LogError(ex,
                     "Error searching request logs with filters: VirtualKeyId={VirtualKeyId}, ModelFilter={ModelFilter}, " +
-                    "StatusCode={StatusCode}, StartDate={StartDate}, EndDate={EndDate}", 
+                    "StatusCode={StatusCode}, StartDate={StartDate}, EndDate={EndDate}",
                     virtualKeyId, modelFilter, statusCode, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 throw;
             }
@@ -382,7 +384,7 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting logs summary for period {StartDate} to {EndDate}", 
+                _logger.LogError(ex, "Error getting logs summary for period {StartDate} to {EndDate}",
                     startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 throw;
             }
@@ -402,7 +404,8 @@ namespace ConduitLLM.Configuration.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving distinct model names from request logs");
+                _logger.LogError(ex,
+                "Error retrieving distinct model names from request logs");
                 throw;
             }
         }

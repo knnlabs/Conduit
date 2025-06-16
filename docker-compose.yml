@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
@@ -42,16 +40,19 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      ASPNETCORE_ENVIRONMENT: Production
       CONDUIT_CACHE_ENABLED: "true"
       CONDUIT_CACHE_TYPE: "Redis"
       CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
+      Conduit__PerformanceTracking__Enabled: "true"
+      Conduit__PerformanceTracking__IncludeInResponse: "true"
+      Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
     ports:
       - "5000:8080"
     restart: on-failure
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -68,7 +69,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_DATABASE_ENSURE_CREATED: "true"
+      ASPNETCORE_ENVIRONMENT: Production
       AdminApi__MasterKey: alpha
       AdminApi__AllowedOrigins__0: http://webui:8080
       AdminApi__AllowedOrigins__1: http://localhost:5001
@@ -76,7 +77,7 @@ services:
       - "5002:8080"
     restart: on-failure
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -111,6 +112,12 @@ services:
     ports:
       - "5001:8080"
     restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing
 {
@@ -48,27 +50,27 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(request.Model);
-                        
+
                         // Check if the client supports audio transcription
                         if (client is IAudioTranscriptionClient audioClient)
                         {
-                            _logger.LogDebug("Found audio transcription client for model {Model}", request.Model);
+_logger.LogDebug("Found audio transcription client for model {Model}", request.Model.Replace(Environment.NewLine, ""));
                             return audioClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support audio transcription", request.Model);
+_logger.LogWarning("Client for model {Model} does not support audio transcription", request.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", request.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), request.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 
                 // If no specific model or failed, try to find any available transcription provider
                 var transcriptionProviders = await GetTranscriptionProvidersAsync();
-                
+
                 foreach (var provider in transcriptionProviders)
                 {
                     try
@@ -112,27 +114,27 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(request.Model);
-                        
+
                         // Check if the client supports text-to-speech
                         if (client is ITextToSpeechClient ttsClient)
                         {
-                            _logger.LogDebug("Found text-to-speech client for model {Model}", request.Model);
+_logger.LogDebug("Found text-to-speech client for model {Model}", request.Model.Replace(Environment.NewLine, ""));
                             return ttsClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support text-to-speech", request.Model);
+_logger.LogWarning("Client for model {Model} does not support text-to-speech", request.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", request.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), request.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 
                 // If no specific model or failed, try to find any available TTS provider
                 var ttsProviders = await GetTextToSpeechProvidersAsync();
-                
+
                 // Prefer providers that support the requested voice
                 if (!string.IsNullOrEmpty(request.Voice))
                 {
@@ -147,7 +149,7 @@ namespace ConduitLLM.Core.Routing
                                 var voices = await ttsClient.ListVoicesAsync(virtualKey, cancellationToken);
                                 if (voices.Any(v => v.VoiceId == request.Voice || v.Name == request.Voice))
                                 {
-                                    _logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider, request.Voice);
+_logger.LogInformation("Using {Provider} for TTS with voice {Voice}", provider.Replace(Environment.NewLine, ""), request.Voice.Replace(Environment.NewLine, ""));
                                     return ttsClient;
                                 }
                             }
@@ -203,27 +205,27 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(config.Model);
-                        
+
                         // Check if the client supports real-time audio
                         if (client is IRealtimeAudioClient realtimeClient)
                         {
-                            _logger.LogDebug("Found real-time audio client for model {Model}", config.Model);
+_logger.LogDebug("Found real-time audio client for model {Model}", config.Model.Replace(Environment.NewLine, ""));
                             return realtimeClient;
                         }
                         else
                         {
-                            _logger.LogWarning("Client for model {Model} does not support real-time audio", config.Model);
+_logger.LogWarning("Client for model {Model} does not support real-time audio", config.Model.Replace(Environment.NewLine, ""));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to get client for model {Model}", config.Model);
+_logger.LogWarning(ex, "Failed to get client for model {Model}".Replace(Environment.NewLine, ""), config.Model.Replace(Environment.NewLine, ""));
                     }
                 }
 
                 // If no specific model or failed, try to find any available real-time provider
                 var realtimeProviders = await GetRealtimeProvidersAsync();
-                
+
                 // Check capabilities match
                 foreach (var provider in realtimeProviders)
                 {

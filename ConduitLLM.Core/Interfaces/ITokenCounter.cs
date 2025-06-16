@@ -1,6 +1,7 @@
-using ConduitLLM.Core.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -16,7 +17,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="messages">List of messages to count tokens for</param>
         /// <returns>Estimated token count</returns>
         Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages);
-        
+
         /// <summary>
         /// Estimates tokens for a single text string.
         /// </summary>

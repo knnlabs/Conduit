@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Examples
@@ -78,13 +79,13 @@ namespace ConduitLLM.Examples
                 Console.WriteLine("\nResponse:");
                 Console.WriteLine("---------");
                 Console.WriteLine($"Model: {response.Model}");
-                
+
                 if (response.Choices.Count > 0)
                 {
                     var content = response.Choices[0].Message.Content;
                     Console.WriteLine($"Content: {content}");
                 }
-                
+
                 if (response.Usage != null)
                 {
                     Console.WriteLine("\nToken Usage:");
@@ -103,8 +104,8 @@ namespace ConduitLLM.Examples
         /// Sends a request to the Conduit API.
         /// </summary>
         private static async Task<ChatCompletionResponse?> SendRequestAsync(
-            string apiUrl, 
-            ChatCompletionRequest request, 
+            string apiUrl,
+            ChatCompletionRequest request,
             string apiKey)
         {
             try
@@ -118,7 +119,7 @@ namespace ConduitLLM.Examples
 
                 // Send the request
                 using var response = await _httpClient.SendAsync(httpRequest);
-                
+
                 // Check if the request was successful
                 if (!response.IsSuccessStatusCode)
                 {

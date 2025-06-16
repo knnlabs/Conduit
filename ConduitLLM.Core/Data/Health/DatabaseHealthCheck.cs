@@ -1,8 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -35,10 +37,10 @@ namespace ConduitLLM.Core.Data.Health
             try
             {
                 _logger.LogDebug("Checking database health for provider: {Provider}", _connectionFactory.ProviderName);
-                
+
                 // Create and open a connection to test database connectivity
                 using var connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
-                
+
                 // Perform a simple query to verify the connection works
                 using var command = connection.CreateCommand();
                 command.CommandText = _connectionFactory.ProviderName.ToLowerInvariant() switch
@@ -47,15 +49,15 @@ namespace ConduitLLM.Core.Data.Health
                     var p when p == DatabaseConstants.SQLITE_PROVIDER => "SELECT 1",
                     _ => throw new NotSupportedException($"Unsupported provider for health check: {_connectionFactory.ProviderName}")
                 };
-                
+
                 await command.ExecuteScalarAsync(cancellationToken);
-                
+
                 return HealthCheckResult.Healthy($"Database connection is healthy. Provider: {_connectionFactory.ProviderName}");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Database health check failed for provider: {Provider}", _connectionFactory.ProviderName);
-                
+
                 return HealthCheckResult.Unhealthy(
                     $"Database connection failed. Provider: {_connectionFactory.ProviderName}",
                     ex);

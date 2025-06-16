@@ -88,30 +88,30 @@ internal record AnthropicContentBlock
     [JsonPropertyName("text")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; init; }
-    
+
     // For image blocks
     [JsonPropertyName("source")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AnthropicImageSource? Source { get; init; }
-    
+
     // For tool_use blocks
     [JsonPropertyName("id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Id { get; init; }
-    
+
     [JsonPropertyName("name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Name { get; init; }
-    
+
     [JsonPropertyName("input")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Input { get; init; }
-    
+
     // For tool_result blocks
     [JsonPropertyName("tool_call_id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolCallId { get; init; }
-    
+
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Content { get; init; }
@@ -127,13 +127,13 @@ internal record AnthropicImageSource
     /// </summary>
     [JsonPropertyName("type")]
     public string Type { get; init; } = "base64";
-    
+
     /// <summary>
     /// The media type of the image (e.g., "image/jpeg").
     /// </summary>
     [JsonPropertyName("media_type")]
     public required string MediaType { get; init; }
-    
+
     /// <summary>
     /// The base64-encoded image data (without the data:image/... prefix).
     /// </summary>
@@ -163,11 +163,11 @@ internal record AnthropicErrorResponse
 
 internal record AnthropicErrorDetails
 {
-     [JsonPropertyName("type")]
-     public required string Type { get; init; } // e.g., "invalid_request_error", "api_error"
+    [JsonPropertyName("type")]
+    public required string Type { get; init; } // e.g., "invalid_request_error", "api_error"
 
-     [JsonPropertyName("message")]
-     public required string Message { get; init; }
+    [JsonPropertyName("message")]
+    public required string Message { get; init; }
 }
 
 
@@ -221,8 +221,8 @@ internal record AnthropicContentBlockStartEvent
 // Data for 'ping' event (usually empty)
 internal record AnthropicPingEvent
 {
-     [JsonPropertyName("type")]
-     public required string Type { get; init; } // "ping"
+    [JsonPropertyName("type")]
+    public required string Type { get; init; } // "ping"
 }
 
 // Data for 'content_block_delta' event
@@ -274,8 +274,8 @@ internal record AnthropicMessageDeltaDetails
 // Data for 'message_stop' event (usually empty)
 internal record AnthropicMessageStopEvent
 {
-     [JsonPropertyName("type")]
-     public required string Type { get; init; } // "message_stop"
+    [JsonPropertyName("type")]
+    public required string Type { get; init; } // "message_stop"
 }
 
 // Data for 'error' event (uses AnthropicErrorDetails defined earlier)

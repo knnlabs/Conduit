@@ -14,13 +14,13 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// Gets the provider name for the current database.
         /// </summary>
         string ProviderName { get; }
-        
+
         /// <summary>
         /// Gets the connection string for the current database.
         /// </summary>
         /// <returns>A sanitized connection string (passwords masked).</returns>
         string GetSanitizedConnectionString();
-        
+
         /// <summary>
         /// Creates a new database connection.
         /// </summary>
@@ -55,7 +55,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         DbConnection CreateConnection();
-        
+
         /// <summary>
         /// Creates a new database connection asynchronously.
         /// </summary>

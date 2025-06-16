@@ -13,14 +13,14 @@ public class UnsupportedProviderException : ConduitException
     public string? ProviderId { get; }
 
     public UnsupportedProviderException() { }
-    
+
     public UnsupportedProviderException(string providerId) : base($"Provider '{providerId}' is not supported or configured.")
     {
         ProviderId = providerId;
     }
-    
+
     public UnsupportedProviderException(string message, Exception innerException) : base(message, innerException) { }
-    
+
     public UnsupportedProviderException(string providerId, string message) : base($"Provider '{providerId}': {message}")
     {
         ProviderId = providerId;

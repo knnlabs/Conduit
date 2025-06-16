@@ -2,11 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Providers;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -48,14 +52,14 @@ namespace ConduitLLM.Http.Controllers
         [ProducesResponseType(typeof(object), 404)]
         [ProducesResponseType(typeof(object), 500)]
         public async Task<IActionResult> GetProviderModels(
-            string providerName, 
+            string providerName,
             [FromQuery] bool forceRefresh = false)
         {
             try
             {
-                _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})", 
-                    providerName, forceRefresh);
-                
+                _logger.LogInformation("Getting models for provider {ProviderName} (forceRefresh: {ForceRefresh})",
+                    providerName.Replace(Environment.NewLine, ""), forceRefresh);
+
                 // Get the provider credentials from the database
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 // EF Core can't translate StringComparison.OrdinalIgnoreCase, use ToLower() instead
@@ -65,13 +69,13 @@ namespace ConduitLLM.Http.Controllers
 
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider '{ProviderName}' not found", providerName);
+                    _logger.LogWarning("Provider '{ProviderName}' not found", providerName.Replace(Environment.NewLine, ""));
                     return NotFound(new { error = $"Provider '{providerName}' not found" });
                 }
 
                 if (string.IsNullOrEmpty(provider.ApiKey))
                 {
-                    _logger.LogWarning("API key missing for provider '{ProviderName}'", providerName);
+                    _logger.LogWarning("API key missing for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                     return BadRequest(new { error = "API key is required to retrieve models" });
                 }
 
@@ -83,23 +87,23 @@ namespace ConduitLLM.Http.Controllers
                     ApiBase = provider.BaseUrl,
                     ApiVersion = provider.ApiVersion
                 };
-                
+
                 // Use the model list service to get models
                 var models = await _modelListService.GetModelsForProviderAsync(providerCredentials, forceRefresh);
-                
+
                 // Sort the models alphabetically for better UX
                 var sortedModels = models
                     .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                
-                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}", 
-                    sortedModels.Count, providerName);
-                    
+
+                _logger.LogInformation("Retrieved {ModelsCount} models for provider {ProviderName}",
+                    sortedModels.Count, providerName.Replace(Environment.NewLine, ""));
+
                 return Ok(sortedModels);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error retrieving models for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 return StatusCode(500, new { error = $"Failed to retrieve models: {ex.Message}" });
             }
         }

@@ -1,14 +1,18 @@
-using ConduitLLM.Admin.Security;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Xunit;
+
+using ConduitLLM.Admin.Security;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using Xunit;
 
 namespace ConduitLLM.Admin.Tests.Security
 {
@@ -25,16 +29,16 @@ namespace ConduitLLM.Admin.Tests.Security
             _mockConfiguration = new Mock<IConfiguration>();
             _mockLogger = new Mock<ILogger<MasterKeyAuthorizationHandler>>();
             _handler = new TestMasterKeyAuthorizationHandler(_mockConfiguration.Object, _mockLogger.Object);
-            
+
             // Set up a mock HTTP context
             _httpContext = new DefaultHttpContext();
-            
+
             // Create a requirements collection with the MasterKeyRequirement
             var requirements = new[] { new MasterKeyRequirement() };
-            
+
             // Create an empty user (not relevant for this authorization type)
             var user = new ClaimsPrincipal(new ClaimsIdentity());
-            
+
             // Create the authorization context
             _context = new AuthorizationHandlerContext(requirements, user, _httpContext);
         }
@@ -45,11 +49,11 @@ namespace ConduitLLM.Admin.Tests.Security
             // Arrange
             // No need for configKey as we're using It.IsAny<string>() in the mock setup
             string masterKey = "test-master-key";
-            
+
             _mockConfiguration
                 .Setup(c => c[It.IsAny<string>()]) // Match any config key
                 .Returns(masterKey);
-            
+
             _httpContext.Request.Headers["X-API-Key"] = masterKey;
 
             // Act
@@ -67,11 +71,11 @@ namespace ConduitLLM.Admin.Tests.Security
             string configKey = "AdminApi:MasterKey";
             string masterKey = "test-master-key";
             string invalidKey = "invalid-key";
-            
+
             _mockConfiguration
                 .Setup(c => c[configKey])
                 .Returns(masterKey);
-            
+
             _httpContext.Request.Headers["X-API-Key"] = invalidKey;
 
             // Act
@@ -87,11 +91,11 @@ namespace ConduitLLM.Admin.Tests.Security
             // Arrange
             string configKey = "AdminApi:MasterKey";
             string masterKey = "test-master-key";
-            
+
             _mockConfiguration
                 .Setup(c => c[configKey])
                 .Returns(masterKey);
-            
+
             // No header added to the request
 
             // Act
@@ -107,11 +111,11 @@ namespace ConduitLLM.Admin.Tests.Security
             // Arrange
             string configKey = "AdminApi:MasterKey";
             string emptyKey = "";
-            
+
             _mockConfiguration
                 .Setup(c => c[configKey])
                 .Returns(emptyKey);
-            
+
             _httpContext.Request.Headers["X-API-Key"] = "any-key";
 
             // Act
@@ -126,11 +130,11 @@ namespace ConduitLLM.Admin.Tests.Security
         {
             // Arrange
             string configKey = "AdminApi:MasterKey";
-            
+
             _mockConfiguration
                 .Setup(c => c[configKey])
-                .Returns((string)null);
-            
+                .Returns((string?)null);
+
             _httpContext.Request.Headers["X-API-Key"] = "any-key";
 
             // Act

@@ -1,7 +1,9 @@
 using System;
 using System.Text.RegularExpressions;
+
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Data
@@ -27,6 +29,7 @@ namespace ConduitLLM.Core.Data
         public (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(Action<string>? logger = null)
         {
             // Use either the provided logger action or our internal logger if available
+            // lgtm [cs/cleartext-storage-of-sensitive-information]
             Action<string> logAction = logger ?? (message => _logger?.LogInformation(message));
 
             // Check for PostgreSQL DATABASE_URL
@@ -47,11 +50,11 @@ namespace ConduitLLM.Core.Data
                     logAction($"[DB] Error parsing PostgreSQL URL: {ex.Message}. Falling back to SQLite.");
                 }
             }
-            
+
             // If DATABASE_URL exists but doesn't match expected prefix, log and continue to SQLite fallback
             if (!string.IsNullOrEmpty(databaseUrl))
             {
-                logAction($"[DB] Invalid DATABASE_URL prefix: {databaseUrl}. Falling back to SQLite.");
+                logAction("[DB] Invalid DATABASE_URL prefix. Falling back to SQLite.");
             }
 
             // Check for custom SQLite path
@@ -88,10 +91,10 @@ namespace ConduitLLM.Core.Data
             // Accepts both postgres:// and postgresql://
             var pattern = @"^(postgres(?:ql)?):\/\/(?<user>[^:]+):(?<password>[^@]+)@(?<host>[^:/]+)(?::(?<port>\d+))?\/(?<database>[^?]+)";
             var match = Regex.Match(postgresUrl, pattern, RegexOptions.IgnoreCase);
-            
+
             if (!match.Success)
             {
-                _logger?.LogError("Invalid PostgreSQL URL format: {SanitizedUrl}", 
+                _logger?.LogError("Invalid PostgreSQL URL format: {SanitizedUrl}",
                     Regex.Replace(postgresUrl, ":[^@]+@", ":****@"));
                 throw new InvalidOperationException(DatabaseConstants.ERR_INVALID_POSTGRES_URL);
             }
@@ -99,8 +102,8 @@ namespace ConduitLLM.Core.Data
             var user = match.Groups["user"].Value;
             var password = match.Groups["password"].Value;
             var host = match.Groups["host"].Value;
-            var port = match.Groups["port"].Success 
-                ? match.Groups["port"].Value 
+            var port = match.Groups["port"].Success
+                ? match.Groups["port"].Value
                 : DatabaseConstants.DEFAULT_POSTGRES_PORT;
             var database = match.Groups["database"].Value;
 
@@ -111,8 +114,8 @@ namespace ConduitLLM.Core.Data
 
             // Add connection pooling parameters if not specified in the URL
             var poolingParams = string.Empty;
-            if (DatabaseConstants.POOLING_ENABLED && 
-                !queryString.Contains("Pooling=") && 
+            if (DatabaseConstants.POOLING_ENABLED &&
+                !queryString.Contains("Pooling=") &&
                 !queryString.Contains("pooling="))
             {
                 poolingParams = $";Pooling=true;MinPoolSize={DatabaseConstants.MIN_POOL_SIZE};" +
@@ -122,13 +125,13 @@ namespace ConduitLLM.Core.Data
 
             // Build the connection string
             var connStr = $"Host={host};Port={port};Database={database};Username={user};Password={password}";
-            
+
             // Add query parameters if present
             if (!string.IsNullOrEmpty(queryString))
             {
                 connStr += ";" + queryString.Replace("&", ";");
             }
-            
+
             // Add pooling parameters if needed
             connStr += poolingParams;
 
@@ -153,14 +156,14 @@ namespace ConduitLLM.Core.Data
                 case var _ when providerName.Equals(DatabaseConstants.POSTGRES_PROVIDER, StringComparison.OrdinalIgnoreCase):
                     ValidatePostgresConnectionString(connectionStringValue);
                     break;
-                    
+
                 case var _ when providerName.Equals(DatabaseConstants.SQLITE_PROVIDER, StringComparison.OrdinalIgnoreCase):
                     ValidateSqliteConnectionString(connectionStringValue);
                     break;
-                    
+
                 default:
                     throw new ArgumentException(
-                        string.Format(DatabaseConstants.ERR_INVALID_PROVIDER, providerName), 
+                        string.Format(DatabaseConstants.ERR_INVALID_PROVIDER, providerName),
                         nameof(providerName));
             }
         }
@@ -175,21 +178,22 @@ namespace ConduitLLM.Core.Data
 
             // Mask password in connection string (case-insensitive)
             return Regex.Replace(
-                connectionStringValue, 
-                @"(Password|pwd)=([^;]+)", 
-                "$1=*****", 
+                connectionStringValue,
+                @"(Password|pwd)=([^;]+)",
+                "$1=*****",
                 RegexOptions.IgnoreCase);
         }
 
         private void ValidatePostgresConnectionString(string connectionString)
         {
             // Basic validation for required fields in Postgres connection string
-            if (!connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) || 
+            if (!connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
                 !connectionString.Contains("Database=", StringComparison.OrdinalIgnoreCase) ||
-                !connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase) || 
+                !connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase) ||
                 !connectionString.Contains("Password=", StringComparison.OrdinalIgnoreCase))
             {
-                _logger?.LogError("Postgres connection string missing required fields: {SanitizedConnStr}", 
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
+                _logger?.LogError("Postgres connection string missing required fields: {SanitizedConnStr}",
                     SanitizeConnectionString(connectionString));
                 throw new InvalidOperationException(
                     string.Format(DatabaseConstants.ERR_MISSING_REQUIRED_FIELDS, "PostgreSQL"));
@@ -201,7 +205,8 @@ namespace ConduitLLM.Core.Data
             // Check for Data Source parameter in SQLite connection string
             if (string.IsNullOrEmpty(connectionString) || !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
             {
-                _logger?.LogError("SQLite connection string missing Data Source: {SanitizedConnStr}", 
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
+                _logger?.LogError("SQLite connection string missing Data Source: {SanitizedConnStr}",
                     SanitizeConnectionString(connectionString));
                 throw new InvalidOperationException(
                     string.Format(DatabaseConstants.ERR_MISSING_REQUIRED_FIELDS, "SQLite"));

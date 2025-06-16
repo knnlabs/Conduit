@@ -3,6 +3,7 @@
 @using ConduitLLM.WebUI.Components.Shared
 @inject NotificationService NotificationService
 @implements IDisposable
+@rendermode InteractiveServer
 
 <div class="notification-container">
     <button class="btn btn-icon notification-button" @onclick="ToggleNotificationPanel">

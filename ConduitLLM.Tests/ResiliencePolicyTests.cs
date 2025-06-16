@@ -1,17 +1,22 @@
 using System.Net;
 using System.Net.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Extensions;
-using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 using Moq;
 using Moq.Protected;
-using Xunit;
+
 using Polly.Timeout;
+
+using Xunit;
 
 namespace ConduitLLM.Tests;
 

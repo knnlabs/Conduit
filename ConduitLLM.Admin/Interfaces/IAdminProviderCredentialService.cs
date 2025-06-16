@@ -1,6 +1,7 @@
-using ConduitLLM.Configuration.DTOs;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.Interfaces
 {
@@ -61,7 +62,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// </summary>
         /// <param name="providerCredential">The provider credential to test</param>
         /// <returns>A result indicating success or failure with error details</returns>
-        Task<ProviderConnectionTestResult> TestProviderConnectionAsync(ProviderCredentialDto providerCredential);
+        Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(ProviderCredentialDto providerCredential);
     }
 
     /// <summary>

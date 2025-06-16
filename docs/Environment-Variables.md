@@ -50,6 +50,16 @@ ConduitLLM provides environment variables for configuring security-related aspec
 | `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for administrative operations. Required for certain API endpoints. |
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
+| `CONDUIT_REDIS_CONNECTION_STRING` | String | *None* | Redis connection string for Data Protection key persistence. When provided, ASP.NET Core Data Protection keys are stored in Redis for distributed scenarios. Format: `redis-host:6379` or full connection string. |
+
+### Data Protection Keys
+
+ASP.NET Core Data Protection is used to protect sensitive data like authentication cookies and anti-forgery tokens. By default, these keys are stored in the file system, which can cause issues in distributed scenarios:
+- Keys are lost when containers restart
+- Different container instances can't share keys
+- Users may experience authentication issues
+
+When `CONDUIT_REDIS_CONNECTION_STRING` is provided, Data Protection keys are persisted to Redis, solving these issues. If Redis is unavailable, the system falls back to file system storage.
 
 ## Database
 
@@ -71,15 +81,38 @@ These variables are used by the Admin API service for database configuration:
 
 The following environment variables are specific to the WebUI service:
 
+> **Important:** As of May 2025, the WebUI operates in Admin API mode by default. Legacy direct database access mode is deprecated and will be removed in October 2025. Ensure `CONDUIT_USE_ADMIN_API` is set to `true` (default) and configure `CONDUIT_ADMIN_API_BASE_URL` to point to your Admin API service.
+
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | The base URL of the Admin API service. |
+| `CONDUIT_ADMIN_API_BASE_URL` | String | `http://localhost:5002` | The base URL of the Admin API service. This is the primary variable for configuring Admin API connection. |
+| `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | Legacy alias for `CONDUIT_ADMIN_API_BASE_URL`. Use the BASE_URL version for new deployments. |
 | `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
 | `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
-| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in future releases). |
+| `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in October 2025). |
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
+
+### AutoLogin Feature
+
+The WebUI supports an AutoLogin feature that automatically authenticates users when:
+1. The `AutoLogin` global setting is set to `true` in the database
+2. The `CONDUIT_MASTER_KEY` environment variable is set
+
+To enable AutoLogin in development environments:
+```bash
+# Using the provided script
+./enable-autologin.sh
+
+# Or manually with SQLite
+sqlite3 /data/conduit.db "INSERT OR REPLACE INTO GlobalSettings (Key, Value, CreatedAt, UpdatedAt) VALUES ('AutoLogin', 'true', datetime('now'), datetime('now'))"
+
+# Or manually with PostgreSQL
+psql $CONDUIT_POSTGRES_CONNECTION_STRING -c "INSERT INTO \"GlobalSettings\" (\"Key\", \"Value\", \"CreatedAt\", \"UpdatedAt\") VALUES ('AutoLogin', 'true', NOW(), NOW()) ON CONFLICT(\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\", \"UpdatedAt\" = NOW()"
+```
+
+**Note**: AutoLogin should only be used in development or single-user environments. It bypasses the login screen entirely when enabled.
 
 ## Admin API Configuration
 
@@ -124,6 +157,7 @@ services:
       - CONDUIT_ADMIN_TIMEOUT_SECONDS=30
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
     ports:
       - "5000:5000"
     depends_on:
@@ -140,6 +174,7 @@ services:
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
       # Cache settings
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
@@ -169,6 +204,7 @@ services:
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
+      - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
     ports:
       - "5002:5002"
     depends_on:

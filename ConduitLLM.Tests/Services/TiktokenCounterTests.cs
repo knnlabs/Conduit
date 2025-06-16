@@ -1,11 +1,15 @@
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Services;
-using Microsoft.Extensions.Logging;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
+
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -82,17 +86,17 @@ namespace ConduitLLM.Tests.Services
 
             // Assert - token count should be positive
             Assert.True(result > 0, $"Expected positive token count, got {result}");
-            
+
             // Estimate token count manually to provide a better assertion
             int estimatedFallbackTokens = (
                 ("You are a helpful assistant.".Length +
                 "Hello, how are you?".Length +
                 "I'm doing well, thank you for asking. How can I help you today?".Length +
                 "system".Length + "user".Length + "assistant".Length) / 4) + (3 * 5);
-                
+
             // The actual count should be at least 1/3 of our fallback estimate
             // This allows for variations in tokenization methods
-            Assert.True(result >= estimatedFallbackTokens / 3, 
+            Assert.True(result >= estimatedFallbackTokens / 3,
                 $"Token count {result} is unexpectedly low compared to fallback estimate {estimatedFallbackTokens}");
         }
 
@@ -124,7 +128,7 @@ namespace ConduitLLM.Tests.Services
             var longResult = await _tokenCounter.EstimateTokenCountAsync("gpt-4", longMessages);
 
             // Assert
-            Assert.True(longResult > shortResult, 
+            Assert.True(longResult > shortResult,
                 $"Expected longer message ({longResult} tokens) to use more tokens than shorter message ({shortResult} tokens)");
         }
 

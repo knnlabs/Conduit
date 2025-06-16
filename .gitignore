@@ -196,3 +196,15 @@ website/.env.production.local
 website/npm-debug.log*
 website/yarn-debug.log*
 website/yarn-error.log*
+
+# CodeQL
+.codeql/
+.codeql-db/
+.codeql-results/
+*.sarif
+codeql-results/
+# CodeQL analysis artifacts
+codeql-db*/
+conduit-codeql-db/
+*.trap
+*.trap.gz

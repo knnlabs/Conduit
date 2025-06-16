@@ -2,16 +2,20 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using Xunit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Routing;
 using ConduitLLM.Core.Services;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using Xunit;
 using Xunit.Abstractions;
 
 namespace ConduitLLM.Tests.Integration
@@ -30,81 +34,81 @@ namespace ConduitLLM.Tests.Integration
         public AudioApiIntegrationTests(ITestOutputHelper output)
         {
             _output = output;
-            
+
             // Set up service collection with test configuration
             var services = new ServiceCollection();
-            
+
             // Add logging
             services.AddLogging(builder =>
             {
                 builder.AddDebug();
                 builder.SetMinimumLevel(LogLevel.Debug);
             });
-            
+
             // Add core services
             services.AddMemoryCache();
-            
+
             // Add ConduitRegistry
             services.AddSingleton<ConduitRegistry>();
-            
+
             // Add router and factory
             services.AddSingleton<ILLMRouter, DefaultLLMRouter>();
             services.AddSingleton<ILLMClientFactory, DefaultLLMClientFactory>();
             services.AddSingleton<IModelCapabilityDetector, ModelCapabilityDetector>();
-            
+
             // Add Conduit
             services.AddSingleton<IConduit, Conduit>();
-            
+
             // Add configuration services - this doesn't exist yet, so we'll mock it
             var mockMappingService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>();
-            
+
             // Setup model mappings for audio models
-            var whisperMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping 
-            { 
-                ModelAlias = "whisper-1", 
-                ProviderName = "openai", 
+            var whisperMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping
+            {
+                ModelAlias = "whisper-1",
+                ProviderName = "openai",
                 ProviderModelId = "whisper-1",
                 IsEnabled = true
             };
-            var ttsMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping 
-            { 
-                ModelAlias = "tts-1", 
-                ProviderName = "openai", 
+            var ttsMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping
+            {
+                ModelAlias = "tts-1",
+                ProviderName = "openai",
                 ProviderModelId = "tts-1",
                 IsEnabled = true
             };
-            var realtimeMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping 
-            { 
-                ModelAlias = "gpt-4o-realtime", 
-                ProviderName = "openai", 
+            var realtimeMapping = new ConduitLLM.Core.Interfaces.Configuration.ModelProviderMapping
+            {
+                ModelAlias = "gpt-4o-realtime",
+                ProviderName = "openai",
                 ProviderModelId = "gpt-4o-realtime-preview-2024-12-17",
                 IsEnabled = true
             };
-            
+
             mockMappingService.Setup(x => x.GetMappingByModelAliasAsync("whisper-1"))
                 .ReturnsAsync(whisperMapping);
             mockMappingService.Setup(x => x.GetMappingByModelAliasAsync("tts-1"))
                 .ReturnsAsync(ttsMapping);
             mockMappingService.Setup(x => x.GetMappingByModelAliasAsync("gpt-4o-realtime"))
                 .ReturnsAsync(realtimeMapping);
-                
+
             services.AddSingleton<ConduitLLM.Core.Interfaces.Configuration.IModelProviderMappingService>(
                 mockMappingService.Object);
             services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyService>(
                 new Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService>().Object);
             services.AddSingleton<ConduitLLM.Core.Interfaces.ICostCalculationService, CostCalculationService>();
-            
+
             // Add mock provider credentials
             var mockCredentialService = new Mock<ConduitLLM.Core.Interfaces.Configuration.IProviderCredentialService>();
             mockCredentialService.Setup(x => x.GetCredentialByProviderNameAsync("openai"))
                 .ReturnsAsync(new ConduitLLM.Core.Interfaces.Configuration.ProviderCredentials
-                { 
+                {
                     ProviderName = "openai",
                     ApiKey = "test-api-key",
                     BaseUrl = "https://api.openai.com/v1"
                 });
             services.AddSingleton(mockCredentialService.Object);
-            
+
             _serviceProvider = services.BuildServiceProvider();
             _conduit = _serviceProvider.GetRequiredService<IConduit>();
             _logger = _serviceProvider.GetRequiredService<ILogger<AudioApiIntegrationTests>>();
@@ -116,7 +120,7 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var audioData = GenerateTestAudioData();
             var client = _conduit.GetClient("whisper-1");
-            
+
             // Act
             if (client is IAudioTranscriptionClient transcriptionClient)
             {
@@ -126,9 +130,9 @@ namespace ConduitLLM.Tests.Integration
                     Language = "en",
                     ResponseFormat = TranscriptionFormat.Text
                 };
-                
+
                 var response = await transcriptionClient.TranscribeAudioAsync(request);
-                
+
                 // Assert
                 Assert.NotNull(response);
                 Assert.NotEmpty(response.Text);
@@ -146,7 +150,7 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var text = "Hello, this is a test of the text-to-speech functionality.";
             var client = _conduit.GetClient("tts-1");
-            
+
             // Act
             if (client is ITextToSpeechClient ttsClient)
             {
@@ -156,14 +160,14 @@ namespace ConduitLLM.Tests.Integration
                     Voice = "alloy",
                     ResponseFormat = AudioFormat.Mp3
                 };
-                
+
                 var response = await ttsClient.CreateSpeechAsync(request);
-                
+
                 // Assert
                 Assert.NotNull(response);
                 Assert.NotNull(response.AudioData);
                 Assert.True(response.AudioData.Length > 0);
-                Assert.Equal(AudioFormat.Mp3.ToString(), response.Format.ToString());
+                Assert.Equal(AudioFormat.Mp3.ToString(), response.Format?.ToString());
                 _output.WriteLine($"Generated audio size: {response.AudioData.Length} bytes");
             }
             else
@@ -177,7 +181,7 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var client = _conduit.GetClient("gpt-4o-realtime");
-            
+
             // Act
             if (client is IRealtimeAudioClient realtimeClient)
             {
@@ -195,10 +199,10 @@ namespace ConduitLLM.Tests.Integration
                         SilenceThresholdMs = 500
                     }
                 };
-                
+
                 var session = await realtimeClient.CreateSessionAsync(sessionConfig);
                 Assert.NotNull(session);
-                
+
                 // Note: Clean up would be done by closing the session
                 // await session.CloseAsync(); // Not implemented in current API
             }
@@ -212,22 +216,22 @@ namespace ConduitLLM.Tests.Integration
         public async Task AudioRouter_SelectsCorrectProvider_ForDifferentCapabilities()
         {
             // This test verifies that the router correctly selects providers based on audio capabilities
-            
+
             // Test transcription routing
             var transcriptionClient = _conduit.GetClient("whisper-1");
             Assert.NotNull(transcriptionClient);
             Assert.True(transcriptionClient is IAudioTranscriptionClient);
-            
+
             // Test TTS routing
             var ttsClient = _conduit.GetClient("tts-1");
             Assert.NotNull(ttsClient);
             Assert.True(ttsClient is ITextToSpeechClient);
-            
+
             // Test realtime routing
             var realtimeClient = _conduit.GetClient("gpt-4o-realtime");
             Assert.NotNull(realtimeClient);
             Assert.True(realtimeClient is IRealtimeAudioClient);
-            
+
             await Task.CompletedTask;
         }
 
@@ -239,7 +243,7 @@ namespace ConduitLLM.Tests.Integration
             var channels = 1;
             var duration = 1; // 1 second
             var dataSize = sampleRate * channels * (bitsPerSample / 8) * duration;
-            
+
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
@@ -257,13 +261,13 @@ namespace ConduitLLM.Tests.Integration
                 writer.Write((short)bitsPerSample);
                 writer.Write(Encoding.ASCII.GetBytes("data"));
                 writer.Write(dataSize);
-                
+
                 // Write silent audio data
                 for (int i = 0; i < dataSize / 2; i++)
                 {
                     writer.Write((short)0);
                 }
-                
+
                 return stream.ToArray();
             }
         }

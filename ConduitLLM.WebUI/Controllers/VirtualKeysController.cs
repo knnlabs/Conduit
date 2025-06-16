@@ -1,11 +1,14 @@
-using ConduitLLM.Configuration.DTOs.VirtualKey; 
+using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
-using ConduitLLM.WebUI.Interfaces; 
 
-using Microsoft.AspNetCore.Authorization; 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.WebUI.Controllers;
 
@@ -50,13 +53,13 @@ public class VirtualKeysController : ControllerBase
         catch (DbUpdateException dbEx)
         {
             // Log the detailed exception
-            _logger.LogError(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.", request.KeyName);
+_logger.LogErrorSecure(dbEx, "Database update error creating virtual key named {KeyName}. Check for constraint violations.".Replace(Environment.NewLine, ""), request.KeyName.Replace(Environment.NewLine, ""));
             // Return a more generic error to the client
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while saving the key. It might violate a unique constraint (e.g., duplicate name)." });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating virtual key for '{KeyName}'", request.KeyName);
+_logger.LogErrorSecure(ex, "Error generating virtual key for '{KeyName}'".Replace(Environment.NewLine, ""), request.KeyName.Replace(Environment.NewLine, ""));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

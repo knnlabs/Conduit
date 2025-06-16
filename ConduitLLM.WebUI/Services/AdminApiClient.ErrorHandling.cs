@@ -2,7 +2,9 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Logging;
+
 using Polly.CircuitBreaker;
 using Polly.Timeout;
 
@@ -32,7 +34,7 @@ namespace ConduitLLM.WebUI.Services
             }
             catch (BrokenCircuitException ex)
             {
-                _logger.LogError(ex, 
+                _logger.LogError(ex,
                     "Circuit breaker is open for {Operation}. Admin API is temporarily unavailable.",
                     operation);
                 return defaultValue;
@@ -149,12 +151,12 @@ namespace ConduitLLM.WebUI.Services
             Exception? exception = null)
         {
             var details = $"Operation: {operation}";
-            
+
             if (response != null)
             {
                 details += $", Status: {response.StatusCode}";
                 details += $", Reason: {response.ReasonPhrase}";
-                
+
                 if (response.RequestMessage != null)
                 {
                     details += $", URL: {response.RequestMessage.RequestUri}";
@@ -166,7 +168,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 details += $", Exception: {exception.GetType().Name}";
                 details += $", Message: {exception.Message}";
-                
+
                 if (exception.InnerException != null)
                 {
                     details += $", Inner: {exception.InnerException.Message}";

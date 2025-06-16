@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -85,7 +88,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {CostId}", id);
+                _logger.LogError(ex, "Error getting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -107,11 +110,11 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model {ModelName}", modelName);
+                _logger.LogError(ex, "Error getting model cost for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
                 throw;
             }
         }
-        
+
         /// <inheritdoc/>
         public async Task<ModelCost?> GetByModelIdPatternAsync(string modelIdPattern, CancellationToken cancellationToken = default)
         {
@@ -129,7 +132,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", modelIdPattern);
+_logger.LogError(ex, "Error getting model cost for model ID pattern {ModelIdPattern}", modelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -189,69 +192,69 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // First, get provider credentials for this provider
                 var providerCredential = await dbContext.ProviderCredentials
                     .AsNoTracking()
                     .FirstOrDefaultAsync(pc => pc.ProviderName == providerName, cancellationToken);
-                
+
                 if (providerCredential == null)
                 {
-                    _logger.LogWarning("No provider credential found for provider {ProviderName}", providerName);
+_logger.LogWarning("No provider credential found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                     return new List<ModelCost>();
                 }
-                
+
                 // Get all model mappings for this provider where provider credential matches
                 var providerMappings = await dbContext.ModelProviderMappings
                     .AsNoTracking()
                     .Where(m => m.ProviderCredentialId == providerCredential.Id)
                     .ToListAsync(cancellationToken);
-                
+
                 if (!providerMappings.Any())
                 {
-                    _logger.LogInformation("No model mappings found for provider {ProviderName}", providerName);
+_logger.LogInformation("No model mappings found for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                     return new List<ModelCost>();
                 }
-                
+
                 // Get the list of model patterns used by this provider
                 var allModelPatterns = new List<string>();
                 // Extract provider model names from mappings for pattern matching
                 var exactModelNames = providerMappings.Select(m => m.ProviderModelName).ToList();
-                
+
                 // Get all model costs
                 var allModelCosts = await dbContext.ModelCosts
                     .AsNoTracking()
                     .OrderBy(m => m.ModelIdPattern)
                     .ToListAsync(cancellationToken);
-                
+
                 // Filter model costs that match:
                 // 1. Exact matches to provider model names
                 // 2. Wildcard patterns that match provider model names
                 var result = new List<ModelCost>();
-                
+
                 // Add exact matches
                 result.AddRange(allModelCosts.Where(c => exactModelNames.Contains(c.ModelIdPattern)));
-                
+
                 // Add wildcard matches
                 var wildcardPatterns = allModelCosts.Where(c => c.ModelIdPattern.Contains('*')).ToList();
                 foreach (var pattern in wildcardPatterns)
                 {
                     string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
-                    
+
                     // Add if any provider model starts with this pattern prefix
                     if (exactModelNames.Any(modelName => modelName.StartsWith(patternPrefix)))
                     {
                         result.Add(pattern);
                     }
                 }
-                
+
                 // Also include model patterns that have the provider name in them
                 var providerPrefixPatterns = allModelCosts
                     .Where(c => c.ModelIdPattern.StartsWith($"{providerName}/") ||
                                 c.ModelIdPattern.StartsWith($"{providerName}-") ||
                                 c.ModelIdPattern.StartsWith(providerName.ToLowerInvariant()))
                     .ToList();
-                
+
                 foreach (var pattern in providerPrefixPatterns)
                 {
                     if (!result.Any(r => r.Id == pattern.Id))
@@ -259,12 +262,12 @@ namespace ConduitLLM.Configuration.Repositories
                         result.Add(pattern);
                     }
                 }
-                
+
                 return result.OrderBy(m => m.ModelIdPattern).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName);
+_logger.LogError(ex, "Error getting model costs for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -280,43 +283,43 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Use a transaction to ensure atomicity
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-                
+
                 try
                 {
                     // Set timestamps
                     modelCost.CreatedAt = DateTime.UtcNow;
                     modelCost.UpdatedAt = DateTime.UtcNow;
-                    
+
                     dbContext.ModelCosts.Add(modelCost);
                     await dbContext.SaveChangesAsync(cancellationToken);
-                    
+
                     // Commit the transaction
                     await transaction.CommitAsync(cancellationToken);
-                    
+
                     return modelCost.Id;
                 }
                 catch (Exception ex)
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Transaction rolled back while creating model cost for model '{ModelIdPattern}'", 
-                        modelCost.ModelIdPattern);
+                    _logger.LogError(ex, "Transaction rolled back while creating model cost for model '{ModelIdPattern}'",
+                        LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                     throw;
                 }
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating model cost for model '{ModelIdPattern}'", 
-                    modelCost.ModelIdPattern);
+                _logger.LogError(ex, "Database error creating model cost for model '{ModelIdPattern}'",
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost for model '{ModelIdPattern}'", 
-                    modelCost.ModelIdPattern);
+                _logger.LogError(ex, "Error creating model cost for model '{ModelIdPattern}'",
+                    LogSanitizer.SanitizeObject(modelCost.ModelIdPattern.Replace(Environment.NewLine, "")));
                 throw;
             }
         }
@@ -332,57 +335,57 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Use a transaction to ensure atomicity
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-                
+
                 try
                 {
                     // Set updated timestamp
                     modelCost.UpdatedAt = DateTime.UtcNow;
-                    
+
                     dbContext.ModelCosts.Update(modelCost);
                     int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                    
+
                     // Commit the transaction
                     await transaction.CommitAsync(cancellationToken);
-                    
+
                     return rowsAffected > 0;
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    
-                    _logger.LogError(ex, "Concurrency error updating model cost with ID {CostId}", modelCost.Id);
-                    
+
+                    _logger.LogError(ex, "Concurrency error updating model cost with ID {CostId}", LogSanitizer.SanitizeObject(modelCost.Id));
+
                     // Handle concurrency issues by reloading and reapplying changes with a new transaction
                     try
                     {
                         using var retryDbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                         await using var retryTransaction = await retryDbContext.Database.BeginTransactionAsync(cancellationToken);
-                        
+
                         var existingEntity = await retryDbContext.ModelCosts.FindAsync(new object[] { modelCost.Id }, cancellationToken);
-                        
+
                         if (existingEntity == null)
                         {
                             return false;
                         }
-                        
+
                         // Update properties
                         retryDbContext.Entry(existingEntity).CurrentValues.SetValues(modelCost);
                         existingEntity.UpdatedAt = DateTime.UtcNow;
-                        
+
                         int rowsAffected = await retryDbContext.SaveChangesAsync(cancellationToken);
-                        
+
                         // Commit the retry transaction
                         await retryTransaction.CommitAsync(cancellationToken);
-                        
+
                         return rowsAffected > 0;
                     }
                     catch (Exception retryEx)
                     {
-                        _logger.LogError(retryEx, "Error during retry of model cost update with ID {CostId}", modelCost.Id);
+                        _logger.LogError(retryEx, "Error during retry of model cost update with ID {CostId}", LogSanitizer.SanitizeObject(modelCost.Id));
                         throw;
                     }
                 }
@@ -390,15 +393,15 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Transaction rolled back while updating model cost with ID {CostId}", 
-                        modelCost.Id);
+                    _logger.LogError(ex, "Transaction rolled back while updating model cost with ID {CostId}",
+                        LogSanitizer.SanitizeObject(modelCost.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model cost with ID {CostId}", 
-                    modelCost.Id);
+                _logger.LogError(ex, "Error updating model cost with ID {CostId}",
+                    LogSanitizer.SanitizeObject(modelCost.Id));
                 throw;
             }
         }
@@ -409,38 +412,38 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Use a transaction to ensure atomicity
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-                
+
                 try
                 {
                     var modelCost = await dbContext.ModelCosts.FindAsync(new object[] { id }, cancellationToken);
-                    
+
                     if (modelCost == null)
                     {
                         return false;
                     }
-                    
+
                     dbContext.ModelCosts.Remove(modelCost);
                     int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                    
+
                     // Commit the transaction
                     await transaction.CommitAsync(cancellationToken);
-                    
+
                     return rowsAffected > 0;
                 }
                 catch (Exception ex)
                 {
                     // Rollback the transaction on error
                     await transaction.RollbackAsync(cancellationToken);
-                    _logger.LogError(ex, "Transaction rolled back while deleting model cost with ID {CostId}", id);
+                    _logger.LogError(ex, "Transaction rolled back while deleting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {CostId}", id);
+                _logger.LogError(ex, "Error deleting model cost with ID {CostId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }

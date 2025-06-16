@@ -52,17 +52,24 @@ public class ChatCompletionResponse
     [JsonPropertyName("usage")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Usage? Usage { get; set; }
-    
+
     /// <summary>
     /// The original model alias used in routing, if different from the model name.
     /// </summary>
     [JsonIgnore]
     public string? OriginalModelAlias { get; set; }
-    
+
     /// <summary>
     /// The seed that was used for generation.
     /// </summary>
     [JsonPropertyName("seed")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Seed { get; set; }
+
+    /// <summary>
+    /// Performance metrics for this completion request.
+    /// </summary>
+    [JsonPropertyName("performance_metrics")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PerformanceMetrics? PerformanceMetrics { get; set; }
 }

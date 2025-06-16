@@ -32,6 +32,7 @@ Virtual keys can be created and managed through the Conduit Web UI.
 
 Conduit implements the following core endpoints:
 
+### Text Generation
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/v1/chat/completions` | POST | Create chat completions |
@@ -39,6 +40,16 @@ Conduit implements the following core endpoints:
 | `/v1/embeddings` | POST | Generate text embeddings |
 | `/v1/models` | GET | List available models |
 | `/v1/images/generations` | POST | Generate images (if configured) |
+
+### Audio Services
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/audio/transcriptions` | POST | Transcribe audio to text (Speech-to-Text) |
+| `/v1/audio/translations` | POST | Transcribe and translate audio to English |
+| `/v1/audio/speech` | POST | Generate speech from text (Text-to-Speech) |
+| `/v1/audio/speech/stream` | POST | Stream generated speech |
+| `/v1/realtime/sessions` | POST | Create real-time audio session |
+| `/v1/realtime/sessions/{id}/ws` | WebSocket | Connect to real-time audio stream |
 
 ## Response Format
 
@@ -123,3 +134,4 @@ For streaming endpoints, responses follow the Server-Sent Events (SSE) format, w
 - [Chat Completions API](chat-completions): Learn about the chat interface
 - [Embeddings API](embeddings): Generate vector embeddings
 - [Models API](models): List and filter available models
+- [Audio API](audio): Speech-to-Text, Text-to-Speech, and real-time audio

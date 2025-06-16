@@ -1,7 +1,8 @@
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -24,7 +25,7 @@ namespace ConduitLLM.Admin.Extensions
         {
             return repository.GetByModelNameAsync(modelAlias, cancellationToken);
         }
-        
+
         /// <summary>
         /// Creates a new model provider mapping
         /// </summary>

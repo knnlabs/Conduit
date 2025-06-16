@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -65,7 +69,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployment with name {DeploymentName}", deploymentName);
+                _logger.LogError(ex, "Error getting model deployment with name {DeploymentName}", deploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -89,7 +93,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting model deployments for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -113,7 +117,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model deployments for model {ModelName}", modelName);
+                _logger.LogError(ex, "Error getting model deployments for model {ModelName}", modelName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -148,25 +152,25 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamps
                 modelDeployment.CreatedAt = DateTime.UtcNow;
                 modelDeployment.UpdatedAt = DateTime.UtcNow;
-                
+
                 dbContext.ModelDeployments.Add(modelDeployment);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return modelDeployment.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating model deployment '{DeploymentName}'", 
-                    modelDeployment.DeploymentName);
+                _logger.LogError(ex, "Database error creating model deployment '{DeploymentName}'",
+                    modelDeployment.DeploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model deployment '{DeploymentName}'", 
-                    modelDeployment.DeploymentName);
+                _logger.LogError(ex, "Error creating model deployment '{DeploymentName}'",
+                    modelDeployment.DeploymentName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -182,17 +186,17 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set updated timestamp
                 modelDeployment.UpdatedAt = DateTime.UtcNow;
-                
+
                 dbContext.ModelDeployments.Update(modelDeployment);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model deployment with ID {DeploymentId}", 
+                _logger.LogError(ex, "Error updating model deployment with ID {DeploymentId}",
                     modelDeployment.Id);
                 throw;
             }
@@ -205,12 +209,12 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var modelDeployment = await dbContext.ModelDeployments.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (modelDeployment == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.ModelDeployments.Remove(modelDeployment);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;

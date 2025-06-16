@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -42,7 +46,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting latest health status for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting latest health status for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -60,7 +64,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health status history for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting health status history for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -72,13 +76,13 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 await _dbContext.ProviderHealthRecords.AddAsync(status);
                 await _dbContext.SaveChangesAsync();
-                
-                _logger.LogDebug("Saved health status for provider {ProviderName}: {IsOnline}", 
-                    status.ProviderName, status.IsOnline);
+
+                _logger.LogDebug("Saved health status for provider {ProviderName}: {IsOnline}",
+                    status.ProviderName.Replace(Environment.NewLine, ""), status.IsOnline);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health status for provider {ProviderName}", status.ProviderName);
+                _logger.LogError(ex, "Error saving health status for provider {ProviderName}", status.ProviderName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -117,7 +121,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health configuration for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting health configuration for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -147,12 +151,12 @@ namespace ConduitLLM.Configuration.Repositories
                 }
 
                 await _dbContext.SaveChangesAsync();
-                
-                _logger.LogDebug("Saved health configuration for provider {ProviderName}", config.ProviderName);
+
+                _logger.LogDebug("Saved health configuration for provider {ProviderName}", config.ProviderName.Replace(Environment.NewLine, ""));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health configuration for provider {ProviderName}", config.ProviderName);
+                _logger.LogError(ex, "Error saving health configuration for provider {ProviderName}", config.ProviderName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -177,7 +181,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var uptimeResult = new Dictionary<string, double>();
-                
+
                 // Group records by provider and calculate uptime percentage
                 var providerRecords = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since)
@@ -195,7 +199,7 @@ namespace ConduitLLM.Configuration.Repositories
                     double uptimePercentage = record.TotalChecks > 0
                         ? (double)record.SuccessfulChecks / record.TotalChecks * 100
                         : 0;
-                    
+
                     uptimeResult[record.ProviderName] = Math.Round(uptimePercentage, 2);
                 }
 
@@ -214,7 +218,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var responseTimeResult = new Dictionary<string, double>();
-                
+
                 // Group records by provider and calculate average response time
                 var providerResponseTimes = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since && r.IsOnline) // Only include successful checks
@@ -246,7 +250,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var errorCountResult = new Dictionary<string, int>();
-                
+
                 // Group records by provider and count errors
                 var providerErrors = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since && !r.IsOnline) // Only include failed checks
@@ -278,7 +282,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var result = new Dictionary<string, Dictionary<string, int>>();
-                
+
                 // Get all error records with categories
                 var errorRecords = await _dbContext.ProviderHealthRecords
                     .Where(r => r.TimestampUtc >= since && !r.IsOnline && r.ErrorCategory != null)
@@ -327,15 +331,15 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     // Remove records in batches to avoid performance issues
                     const int batchSize = 1000;
-                    
+
                     for (int i = 0; i < count; i += batchSize)
                     {
                         var batch = recordsToDelete.Skip(i).Take(batchSize).ToList();
                         _dbContext.ProviderHealthRecords.RemoveRange(batch);
                         await _dbContext.SaveChangesAsync();
                     }
-                    
-                    _logger.LogInformation("Purged {Count} provider health records older than {OlderThan}", 
+
+                    _logger.LogInformation("Purged {Count} provider health records older than {OlderThan}",
                         count, olderThan);
                 }
 
@@ -354,7 +358,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var config = await GetConfigurationAsync(providerName);
-                
+
                 if (config == null)
                 {
                     // Create default configuration
@@ -368,16 +372,16 @@ namespace ConduitLLM.Configuration.Repositories
                         NotificationsEnabled = true,
                         LastCheckedUtc = null
                     };
-                    
+
                     await SaveConfigurationAsync(config);
-                    _logger.LogInformation("Created default health configuration for provider {ProviderName}", providerName);
+                    _logger.LogInformation("Created default health configuration for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 }
-                
+
                 return config;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring health configuration exists for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error ensuring health configuration exists for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -388,7 +392,7 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 var config = await GetConfigurationAsync(providerName);
-                
+
                 if (config != null)
                 {
                     config.LastCheckedUtc = DateTime.UtcNow;
@@ -396,12 +400,12 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 else
                 {
-                    _logger.LogWarning("Attempted to update LastCheckedUtc for non-existent provider {ProviderName}", providerName);
+                    _logger.LogWarning("Attempted to update LastCheckedUtc for non-existent provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating LastCheckedUtc for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error updating LastCheckedUtc for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -436,7 +440,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error counting consecutive failures for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error counting consecutive failures for provider {ProviderName}", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

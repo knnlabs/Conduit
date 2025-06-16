@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Interfaces.Configuration;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Http.Adapters
@@ -18,19 +19,19 @@ namespace ConduitLLM.Http.Adapters
             // Register adapters that map Configuration services to Core interfaces
             services.AddScoped<IModelProviderMappingService>(provider =>
                 new ModelProviderMappingServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IModelProviderMappingService>()));
-                
+
             services.AddScoped<IProviderCredentialService>(provider =>
                 new ProviderCredentialServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>()));
-                
+
             services.AddScoped<IModelCostService>(provider =>
                 new ModelCostServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.Services.IModelCostService>()));
-                
+
             services.AddSingleton<ICacheService>(provider =>
                 new CacheServiceAdapter(provider.GetRequiredService<ConduitLLM.Configuration.Services.ICacheService>()));
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Adapter that wraps Configuration's IModelProviderMappingService to implement Core's interface.
         /// </summary>
@@ -61,7 +62,7 @@ namespace ConduitLLM.Http.Adapters
             {
                 var mapping = await _innerService.GetMappingByModelAliasAsync(modelAlias);
                 if (mapping == null) return null;
-                
+
                 return new ModelProviderMapping
                 {
                     ModelAlias = mapping.ModelAlias,

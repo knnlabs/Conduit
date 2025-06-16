@@ -53,7 +53,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             // For testing purposes, return a fixed value
             return 125;
         }
-        
+
         /// <summary>
         /// Gets the model name for a detailed cost data item
         /// </summary>
@@ -64,7 +64,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             // The Name property in the new DTO should contain the model name
             return dto.Name;
         }
-        
+
         /// <summary>
         /// Gets the virtual key name for a detailed cost data item
         /// </summary>

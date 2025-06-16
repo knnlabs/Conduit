@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The fallback model mapping entity or null if not found</returns>
         Task<FallbackModelMappingEntity?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a fallback model mapping by source model name within a fallback configuration
         /// </summary>
@@ -25,10 +26,10 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The fallback model mapping entity or null if not found</returns>
         Task<FallbackModelMappingEntity?> GetBySourceModelAsync(
-            Guid fallbackConfigId, 
-            string sourceModelName, 
+            Guid fallbackConfigId,
+            string sourceModelName,
             CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all fallback model mappings for a fallback configuration
         /// </summary>
@@ -36,16 +37,16 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of fallback model mappings</returns>
         Task<List<FallbackModelMappingEntity>> GetByFallbackConfigIdAsync(
-            Guid fallbackConfigId, 
+            Guid fallbackConfigId,
             CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all fallback model mappings
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all fallback model mappings</returns>
         Task<List<FallbackModelMappingEntity>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new fallback model mapping
         /// </summary>
@@ -53,7 +54,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created fallback model mapping</returns>
         Task<int> CreateAsync(FallbackModelMappingEntity fallbackModelMapping, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a fallback model mapping
         /// </summary>
@@ -61,7 +62,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(FallbackModelMappingEntity fallbackModelMapping, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a fallback model mapping
         /// </summary>

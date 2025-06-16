@@ -1,4 +1,6 @@
 @* StatusBadge.razor - Display status with consistent styling *@
+@inject ILogger<StatusBadge> Logger
+
 <span class="badge @GetBadgeClass()">
     <i class="fa @GetIcon() me-1"></i>@GetDisplayText()
 </span>
@@ -102,5 +104,19 @@
     private string GetDisplayText()
     {
         return CustomText ?? Status;
+    }
+    
+    protected override void OnInitialized()
+    {
+        Logger.LogDebug("StatusBadge initialized with Status: '{Status}', Type: {Type}", Status, Type);
+    }
+    
+    protected override void OnParametersSet()
+    {
+        if (Type == StatusType.Auto && !string.IsNullOrEmpty(Status))
+        {
+            var detectedType = GetBadgeClass();
+            Logger.LogDebug("Auto-detected type for status '{Status}': {DetectedType}", Status, detectedType);
+        }
     }
 }

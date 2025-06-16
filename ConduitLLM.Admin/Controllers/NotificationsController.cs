@@ -1,10 +1,12 @@
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Controllers
 {
@@ -18,7 +20,7 @@ namespace ConduitLLM.Admin.Controllers
     {
         private readonly IAdminNotificationService _notificationService;
         private readonly ILogger<NotificationsController> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the NotificationsController
         /// </summary>
@@ -31,7 +33,7 @@ namespace ConduitLLM.Admin.Controllers
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        
+
         /// <summary>
         /// Gets all notifications
         /// </summary>
@@ -52,7 +54,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets all unread notifications
         /// </summary>
@@ -73,7 +75,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Gets a notification by ID
         /// </summary>
@@ -88,12 +90,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var notification = await _notificationService.GetNotificationByIdAsync(id);
-                
+
                 if (notification == null)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
-                
+
                 return Ok(notification);
             }
             catch (Exception ex)
@@ -102,7 +104,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Creates a new notification
         /// </summary>
@@ -118,7 +120,7 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             try
             {
                 var createdNotification = await _notificationService.CreateNotificationAsync(notification);
@@ -135,7 +137,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Updates an existing notification
         /// </summary>
@@ -153,22 +155,22 @@ namespace ConduitLLM.Admin.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             // Ensure ID in route matches ID in body
             if (id != notification.Id)
             {
                 return BadRequest("ID in route must match ID in body");
             }
-            
+
             try
             {
                 var success = await _notificationService.UpdateNotificationAsync(notification);
-                
+
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -177,7 +179,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Marks a notification as read
         /// </summary>
@@ -192,12 +194,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _notificationService.MarkNotificationAsReadAsync(id);
-                
+
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -206,7 +208,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Marks all notifications as read
         /// </summary>
@@ -227,7 +229,7 @@ namespace ConduitLLM.Admin.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
             }
         }
-        
+
         /// <summary>
         /// Deletes a notification
         /// </summary>
@@ -242,12 +244,12 @@ namespace ConduitLLM.Admin.Controllers
             try
             {
                 var success = await _notificationService.DeleteNotificationAsync(id);
-                
+
                 if (!success)
                 {
-                    return NotFound($"Notification with ID {id} not found");
+                    return NotFound("Notification not found");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)

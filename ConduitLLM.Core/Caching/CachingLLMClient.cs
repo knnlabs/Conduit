@@ -9,8 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -77,15 +77,15 @@ namespace ConduitLLM.Core.Caching
             {
                 // Try to get from cache first
                 var cachedResponse = _cacheService.Get<ChatCompletionResponse>(cacheKey);
-                
+
                 if (cachedResponse != null)
                 {
                     stopwatch.Stop();
                     _logger.LogDebug("Cache hit for key {CacheKey}, retrieval took {ElapsedMs}ms", cacheKey, stopwatch.ElapsedMilliseconds);
-                    
+
                     // Track metrics for cache hit
                     _metricsService.RecordHit(stopwatch.ElapsedMilliseconds, request.Model);
-                    
+
                     // Clone the cached response to ensure we don't modify the cached object
                     // This is important for thread safety and to avoid odd side effects
                     return CloneChatCompletionResponse(cachedResponse) ?? await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
@@ -99,7 +99,7 @@ namespace ConduitLLM.Core.Caching
                 var providerStopwatch = Stopwatch.StartNew();
                 var response = await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
                 providerStopwatch.Stop();
-                
+
                 _logger.LogDebug("LLM provider response took {ElapsedMs}ms", providerStopwatch.ElapsedMilliseconds);
 
                 // Cache the response with appropriate TTL
@@ -108,10 +108,10 @@ namespace ConduitLLM.Core.Caching
                 if (cacheExpiration.HasValue)
                 {
                     _cacheService.Set(cacheKey, response, cacheExpiration);
-                    _logger.LogDebug("Cached response with key {CacheKey} for {ExpirationMinutes} minutes", 
+                    _logger.LogDebug("Cached response with key {CacheKey} for {ExpirationMinutes} minutes",
                         cacheKey, cacheExpiration.Value.TotalMinutes);
                 }
-                
+
                 return response;
             }
             catch (Exception ex)
@@ -153,7 +153,7 @@ namespace ConduitLLM.Core.Caching
                     cacheKey,
                     async () => await _innerClient.ListModelsAsync(apiKey, cancellationToken),
                     TimeSpan.FromHours(1)); // Cache model lists for an hour
-                
+
                 return result ?? new List<string>();
             }
             catch (Exception ex)
@@ -246,7 +246,7 @@ namespace ConduitLLM.Core.Caching
         private TimeSpan? GetCacheExpiration(string model)
         {
             var options = _cacheOptions.Value;
-            
+
             // Check model-specific rules first
             if (options.ModelSpecificRules != null && options.ModelSpecificRules.Any())
             {
@@ -261,7 +261,7 @@ namespace ConduitLLM.Core.Caching
                         {
                             return null; // Don't cache
                         }
-                        
+
                         if (rule.ExpirationMinutes.HasValue && rule.ExpirationMinutes.Value > 0)
                         {
                             return TimeSpan.FromMinutes(rule.ExpirationMinutes.Value);
@@ -269,7 +269,7 @@ namespace ConduitLLM.Core.Caching
                     }
                 }
             }
-            
+
             // Fall back to default expiration
             return TimeSpan.FromMinutes(options.DefaultExpirationMinutes);
         }
@@ -315,7 +315,7 @@ namespace ConduitLLM.Core.Caching
         {
             if (original == null)
                 return null;
-                
+
             try
             {
                 // Use serialization for a deep clone
@@ -325,7 +325,7 @@ namespace ConduitLLM.Core.Caching
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cloning chat completion response");
-                
+
                 // Create a minimal valid response with required properties
                 return new ChatCompletionResponse
                 {

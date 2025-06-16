@@ -1,11 +1,13 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.IO;
 
 namespace ConduitLLM.WebUI.Controllers
 {
@@ -39,10 +41,10 @@ namespace ConduitLLM.WebUI.Controllers
             {
                 var backupData = await _backupService.CreateBackupAsync();
                 string provider = _backupService.GetDatabaseProvider();
-                
+
                 string contentType;
                 string fileName;
-                
+
                 if (provider == "sqlite")
                 {
                     contentType = "application/x-sqlite3";
@@ -53,7 +55,7 @@ namespace ConduitLLM.WebUI.Controllers
                     contentType = "application/json";
                     fileName = $"conduit_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
                 }
-                
+
                 return File(backupData, contentType, fileName);
             }
             catch (Exception ex)
@@ -81,16 +83,16 @@ namespace ConduitLLM.WebUI.Controllers
                 using var memoryStream = new MemoryStream();
                 await file.CopyToAsync(memoryStream);
                 byte[] backupData = memoryStream.ToArray();
-                
+
                 // Validate backup
                 if (!await _backupService.ValidateBackupAsync(backupData))
                 {
                     return BadRequest(new { message = "Invalid backup file format" });
                 }
-                
+
                 // Perform restore
                 bool success = await _backupService.RestoreFromBackupAsync(backupData);
-                
+
                 if (success)
                 {
                     return Ok(new { message = "Database restored successfully" });

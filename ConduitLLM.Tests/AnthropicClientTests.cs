@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -16,7 +17,6 @@ using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Tests.TestHelpers.Mocks; // For Anthropic DTOs
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Contrib.HttpClient;
@@ -99,7 +99,8 @@ public class AnthropicClientTests
         var providerModelId = "claude-3-opus-20240229";
 
         // Act & Assert
-        var ex = Assert.Throws<ConfigurationException>(() => {
+        var ex = Assert.Throws<ConfigurationException>(() =>
+        {
             var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
             return new AnthropicClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, httpClientFactory);
         });
@@ -225,7 +226,7 @@ public class AnthropicClientTests
         var request = CreateTestRequest();
         var providerModelId = "claude-3-opus-20240229";
         var expectedUri = $"{DefaultApiBase}{MessagesEndpoint}";
-        
+
         // Fix the HttpRequestException mocking by setting up a different way
         _handlerMock.SetupAnyRequest()
             .Throws(new HttpRequestException("Network connection lost"));
@@ -251,12 +252,12 @@ public class AnthropicClientTests
             Messages = new List<Message> { new Message { Role = MessageRole.System, Content = "System prompt only" } }
         };
         var providerModelId = "claude-3-opus-20240229";
-        
+
         // Setup the handler to return unauthorized for this test
         _handlerMock.SetupRequest(HttpMethod.Post, $"{DefaultApiBase}{MessagesEndpoint}")
             .ReturnsResponse(HttpStatusCode.Unauthorized, new StringContent("Unauthorized"))
             .Verifiable();
-        
+
         // Pass the mocked HttpClient to the constructor
         var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
         var client = new AnthropicClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
@@ -510,11 +511,11 @@ public class AnthropicClientTests
     {
         // Arrange
         var providerModelId = "claude-3-opus-20240229"; // Needed for constructor
-        
+
         // Pass the mocked HttpClient to the constructor
         var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
         var client = new AnthropicClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
-        
+
         var expectedModels = new List<string> // The hardcoded list from the client
         {
             "claude-3-opus-20240229",

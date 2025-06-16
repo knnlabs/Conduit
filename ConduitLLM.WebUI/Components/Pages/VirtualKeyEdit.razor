@@ -5,17 +5,19 @@
 @using ConduitLLM.WebUI.Components
 @using ConduitLLM.Configuration.DTOs.VirtualKey
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Extensions
 @inject IAdminApiClient AdminApiClient
 @inject NavigationManager NavigationManager
 @inject ILogger<VirtualKeyEdit> Logger
 @inject ConfigurationChangeNotifier ConfigChangeNotifier
 @inject ConduitLLM.WebUI.Interfaces.IVirtualKeyService VirtualKeyService
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>@(Id.HasValue ? "Edit Virtual Key" : "Create Virtual Key") - ConduitLLM</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
@@ -130,18 +132,6 @@
         <EditForm Model="@request" OnValidSubmit="HandleValidSubmit" FormName="VirtualKeyForm">
             <DataAnnotationsValidator />
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger vke-alert border-0 rounded-4 mb-4" role="alert">
-                    <div class="d-flex align-items-start">
-                        <i class="fa fa-exclamation-circle text-danger me-3 mt-1"></i>
-                        <div>
-                            <h6 class="mb-1 fw-bold">Error</h6>
-                            <p class="mb-0">@errorMessage</p>
-                        </div>
-                    </div>
-                </div>
-            }
 
             <div class="row g-4">
                 <!-- Left Column -->
@@ -153,7 +143,7 @@
                                 <i class="fa fa-id-card me-2 text-primary"></i>Key Details
                             </h5>
                         </div>
-                        <div class="card-body p-4">
+                        <div class="card-body modern-card-body p-4">
                             <div class="mb-4">
                                 <label for="keyName" class="form-label fw-semibold">Key Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control vke-input" id="keyName" @bind="request!.KeyName" placeholder="Enter a descriptive name for your key" />
@@ -193,7 +183,7 @@
                                 }
                             </div>
                         </div>
-                        <div class="card-body p-4">
+                        <div class="card-body modern-card-body p-4">
                             <div class="alert alert-info vke-info-alert border-0 mb-4">
                                 <div class="d-flex align-items-start">
                                     <i class="fa fa-info-circle text-info me-3 mt-1"></i>
@@ -290,7 +280,7 @@
                                 <i class="fa fa-dollar-sign me-2 text-primary"></i>Budget Settings
                             </h5>
                         </div>
-                        <div class="card-body p-4">
+                        <div class="card-body modern-card-body p-4">
                             <div class="alert alert-info vke-info-alert border-0 mb-4">
                                 <div class="d-flex align-items-start">
                                     <i class="fa fa-info-circle text-info me-3 mt-1"></i>
@@ -383,7 +373,7 @@
                                 <i class="fa fa-tachometer-alt me-2 text-primary"></i>Rate Limits
                             </h5>
                         </div>
-                        <div class="card-body p-4">
+                        <div class="card-body modern-card-body p-4">
                             <div class="alert alert-info vke-info-alert border-0 mb-4">
                                 <div class="d-flex align-items-start">
                                     <i class="fa fa-info-circle text-info me-3 mt-1"></i>
@@ -828,7 +818,6 @@
     
     private bool isLoading = true;
     private bool isSaving = false;
-    private string? errorMessage;
     private UpdateVirtualKeyRequestDto? request;
     private List<ModelMappingViewModel>? availableModels;
     private HashSet<string> selectedModels = new();
@@ -866,7 +855,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading data: {ex.Message}";
+            ToastService.ShowException(ex, "Error loading data");
             Logger.LogError(ex, "Error initializing VirtualKeyEdit component");
         }
         finally
@@ -884,6 +873,7 @@
             var key = await VirtualKeyService.GetVirtualKeyInfoAsync(Id.Value);
             if (key == null)
             {
+                ToastService.ShowError("Virtual key not found");
                 return;
             }
             
@@ -912,7 +902,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading virtual key: {ex.Message}";
+            ToastService.ShowException(ex, "Error loading virtual key");
             Logger.LogError(ex, "Error loading virtual key with ID {KeyId}", Id);
         }
     }
@@ -944,7 +934,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading available models");
-            errorMessage = "Failed to load model mappings. Please check Admin API connection.";
+            ToastService.ShowApiConnectionError();
             
             // Initialize to empty list instead of null to avoid spinner
             availableModels = new List<ModelMappingViewModel>();
@@ -1025,11 +1015,12 @@
                 var result = await VirtualKeyService.UpdateVirtualKeyAsync(Id.Value, request);
                 if (result)
                 {
+                    ToastService.ShowUpdateSuccess("Virtual key");
                     NavigationManager.NavigateTo("/virtualkeys");
                 }
                 else
                 {
-                    errorMessage = "Failed to update the virtual key";
+                    ToastService.ShowError("Failed to update the virtual key");
                 }
             }
             else
@@ -1052,16 +1043,17 @@
                 {
                     createdKey = response.VirtualKey;
                     showCreatedKey = true;
+                    ToastService.ShowCreateSuccess("Virtual key");
                 }
                 else
                 {
-                    errorMessage = "Failed to create the virtual key";
+                    ToastService.ShowError("Failed to create the virtual key");
                 }
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            ToastService.ShowException(ex);
             Logger.LogError(ex, "Error saving virtual key");
         }
         finally
@@ -1091,15 +1083,16 @@
             {
                 currentSpend = 0;
                 StateHasChanged();
+                ToastService.ShowSuccess("Spend reset successfully");
             }
             else
             {
-                errorMessage = "Failed to reset spend. The key may have been deleted.";
+                ToastService.ShowError("Failed to reset spend. The key may have been deleted.");
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error resetting spend: {ex.Message}";
+            ToastService.ShowException(ex, "Error resetting spend");
             Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", Id);
         }
     }
@@ -1113,13 +1106,13 @@
             // Use our new copyToClipboard utility function instead
             await JSRuntime.InvokeVoidAsync("copyToClipboard", createdKey);
             
-            // Provide user feedback
-            await JSRuntime.InvokeVoidAsync("alert", "Key copied to clipboard!");
+            // Use toast notification instead of alert
+            ToastService.ShowCopySuccess("Virtual key");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error copying key to clipboard");
-            await JSRuntime.InvokeVoidAsync("alert", "Failed to copy key: " + ex.Message);
+            ToastService.ShowError($"Failed to copy key: {ex.Message}");
         }
     }
     

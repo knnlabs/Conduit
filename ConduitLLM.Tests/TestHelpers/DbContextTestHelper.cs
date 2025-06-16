@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,15 +24,15 @@ namespace ConduitLLM.Tests.TestHelpers
         public static ConfigurationDbContext CreateInMemoryDbContext(string? dbName = null)
         {
             dbName ??= $"TestDb_{Guid.NewGuid()}";
-            
+
             var options = new DbContextOptionsBuilder<ConfigurationDbContext>()
                 .UseInMemoryDatabase(databaseName: dbName)
                 .EnableSensitiveDataLogging()
                 .Options;
-                
+
             return new ConfigurationDbContext(options);
         }
-        
+
         /// <summary>
         /// Creates a DbContextFactory that creates in-memory database contexts
         /// </summary>
@@ -39,18 +41,18 @@ namespace ConduitLLM.Tests.TestHelpers
         public static IDbContextFactory<ConfigurationDbContext> CreateInMemoryDbContextFactory(string? dbName = null)
         {
             dbName ??= $"TestDb_{Guid.NewGuid()}";
-            
+
             // Create a service collection and add the DbContext factory
             var services = new ServiceCollection();
             services.AddDbContextFactory<ConfigurationDbContext>(options =>
                 options.UseInMemoryDatabase(databaseName: dbName)
                       .EnableSensitiveDataLogging());
-                      
+
             // Build the service provider and get the factory
             var serviceProvider = services.BuildServiceProvider();
             return serviceProvider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
         }
-        
+
         /// <summary>
         /// Seeds a database context with test data
         /// </summary>
@@ -77,37 +79,37 @@ namespace ConduitLLM.Tests.TestHelpers
             {
                 await context.GlobalSettings.AddRangeAsync(globalSettings);
             }
-            
+
             if (requestLogs != null && requestLogs.Count > 0)
             {
                 await context.RequestLogs.AddRangeAsync(requestLogs);
             }
-            
+
             if (virtualKeys != null && virtualKeys.Count > 0)
             {
                 await context.VirtualKeys.AddRangeAsync(virtualKeys);
             }
-            
+
             if (modelCosts != null && modelCosts.Count > 0)
             {
                 await context.ModelCosts.AddRangeAsync(modelCosts);
             }
-            
+
             if (routerConfigs != null && routerConfigs.Count > 0)
             {
                 await context.RouterConfigurations.AddRangeAsync(routerConfigs);
             }
-            
+
             if (modelDeployments != null && modelDeployments.Count > 0)
             {
                 await context.ModelDeployments.AddRangeAsync(modelDeployments);
             }
-            
+
             if (fallbackConfigs != null && fallbackConfigs.Count > 0)
             {
                 await context.FallbackConfigurations.AddRangeAsync(fallbackConfigs);
             }
-            
+
             await context.SaveChangesAsync();
         }
     }

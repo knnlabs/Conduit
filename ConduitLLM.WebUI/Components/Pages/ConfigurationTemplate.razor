@@ -18,17 +18,12 @@
 @inject ConduitLLM.WebUI.Interfaces.IHttpRetryConfigurationService HttpRetryService
 @inject ConduitLLM.WebUI.Interfaces.IHttpTimeoutConfigurationService HttpTimeoutService
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <div class="container-fluid mt-4">
     <h2 class="mb-4">Configuration Management</h2>
 
-    @if (!string.IsNullOrEmpty(deleteErrorMessage))
-    {
-        <div class="alert alert-danger mb-4">
-            @deleteErrorMessage
-        </div>
-    }
 
     <div class="card mb-5 shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -195,7 +190,7 @@
             }
             
             <button class="btn btn-primary" 
-                 @onclick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; mappingErrorMessage = null; }">
+                 @onclick="() => { currentMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping { ModelAlias = string.Empty, ProviderModelName = string.Empty }; }">
                 <i class="fa fa-plus me-1"></i> Add Model Mapping
             </button>
         </div>
@@ -261,12 +256,6 @@
                         <i class="fa fa-save me-1"></i> Save Retry Settings
                     </button>
                     
-                    @if (!string.IsNullOrEmpty(httpRetryOptionsSaveMessage))
-                    {
-                        <div class="alert alert-success mt-3">
-                            @httpRetryOptionsSaveMessage
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -297,12 +286,6 @@
                         <i class="fa fa-save me-1"></i> Save Timeout Settings
                     </button>
                     
-                    @if (!string.IsNullOrEmpty(httpTimeoutOptionsSaveMessage))
-                    {
-                        <div class="alert alert-success mt-3">
-                            @httpTimeoutOptionsSaveMessage
-                        </div>
-                    }
                 </div>
             </div>
         </div>
@@ -369,23 +352,20 @@
 @code {
     // State management
     private ConduitLLM.Configuration.Entities.ModelProviderMapping? currentMapping;
-    private string? mappingErrorMessage;
+    // Removed unused mappingErrorMessage field - using ToastService instead
 
     // Provider management
     private List<ProviderCredential> providerCredentials = new();
     private List<ConduitLLM.Configuration.Entities.ModelProviderMapping> modelMappings = new();
-    private string deleteErrorMessage = "";
     private string[] _supportedProviders = new[] { 
         "OpenAI", "Azure OpenAI", "Anthropic", "Gemini", "Mistral", "HuggingFace", "Ollama", "Bedrock" 
     };
 
     // HTTP Retry settings
     private ConduitLLM.Providers.Configuration.RetryOptions httpRetryOptions = new();
-    private string httpRetryOptionsSaveMessage = "";
 
     // HTTP Timeout settings
     private ConduitLLM.Providers.Configuration.TimeoutOptions httpTimeoutOptions = new();
-    private string httpTimeoutOptionsSaveMessage = "";
 
     // Proxy URL
     private string proxyUrl = "";
@@ -430,7 +410,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error deleting model mapping");
-            mappingErrorMessage = $"Error deleting mapping: {ex.Message}";
+            ToastService.ShowError($"Error deleting mapping: {ex.Message}");
         }
     }
 
@@ -501,13 +481,12 @@
         try
         {
             await HttpRetryService.UpdateRetryConfigurationAsync(httpRetryOptions);
-            httpRetryOptionsSaveMessage = "HTTP retry options saved successfully!";
-            StateHasChanged();
+            ToastService.ShowSuccess("HTTP retry options saved successfully!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving HTTP retry options");
-            httpRetryOptionsSaveMessage = $"Error: {ex.Message}";
+            ToastService.ShowError($"Error saving HTTP retry options: {ex.Message}");
         }
     }
 
@@ -516,13 +495,12 @@
         try
         {
             await HttpTimeoutService.UpdateTimeoutConfigurationAsync(httpTimeoutOptions);
-            httpTimeoutOptionsSaveMessage = "HTTP timeout options saved successfully!";
-            StateHasChanged();
+            ToastService.ShowSuccess("HTTP timeout options saved successfully!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving HTTP timeout options");
-            httpTimeoutOptionsSaveMessage = $"Error: {ex.Message}";
+            ToastService.ShowError($"Error saving HTTP timeout options: {ex.Message}");
         }
     }
 
@@ -531,10 +509,12 @@
         try 
         {
             Logger.LogInformation($"Proxy URL saved: {proxyUrl}");
+            ToastService.ShowSuccess("Proxy URL saved successfully!");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving proxy URL");
+            ToastService.ShowError($"Error saving proxy URL: {ex.Message}");
         }
     }
 }

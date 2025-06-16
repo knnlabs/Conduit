@@ -1,6 +1,7 @@
+using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.WebUI.Interfaces;
-using System.Threading.Tasks;
 
 namespace ConduitLLM.WebUI.Extensions
 {
@@ -34,7 +35,7 @@ namespace ConduitLLM.WebUI.Extensions
         {
             return await client.UpsertGlobalSettingAsync(setting);
         }
-        
+
         /// <summary>
         /// Gets a string value for a global setting by key
         /// </summary>
@@ -48,7 +49,7 @@ namespace ConduitLLM.WebUI.Extensions
             var setting = await client.GetGlobalSettingByKeyAsync(key);
             return setting?.Value;
         }
-        
+
         /// <summary>
         /// Sets a global setting with the specified key and value
         /// </summary>
@@ -69,7 +70,7 @@ namespace ConduitLLM.WebUI.Extensions
                 Value = value,
                 Description = description ?? $"Setting for {key}"
             };
-            
+
             return await client.UpsertGlobalSettingAsync(setting);
         }
     }

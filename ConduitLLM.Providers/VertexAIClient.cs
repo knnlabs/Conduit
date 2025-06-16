@@ -13,14 +13,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
-using Microsoft.Extensions.Logging;
-
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -33,11 +33,11 @@ namespace ConduitLLM.Providers
         // Constants
         private const string DefaultRegion = "us-central1";
         private const string DefaultApiVersion = "v1";
-        
+
         private readonly string _region;
         private readonly string _apiVersion;
         private readonly string _projectId;
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="VertexAIClient"/> class.
         /// </summary>
@@ -45,12 +45,14 @@ namespace ConduitLLM.Providers
         /// <param name="modelAlias">The model alias to use (e.g., gemini-1.5-pro).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
+        /// <param name="defaultModels">Optional default model configuration.</param>
         /// <param name="apiVersion">The API version to use. Defaults to v1.</param>
         public VertexAIClient(
             ProviderCredentials credentials,
             string modelAlias,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null,
             string? apiVersion = null)
             : base(
                 credentials,
@@ -58,37 +60,38 @@ namespace ConduitLLM.Providers
                 logger,
                 httpClientFactory,
                 "VertexAI",
-                null)
+                null, // baseUrl
+                defaultModels)
         {
-            _apiVersion = apiVersion ?? (!string.IsNullOrWhiteSpace(credentials.ApiVersion) 
-                ? credentials.ApiVersion 
+            _apiVersion = apiVersion ?? (!string.IsNullOrWhiteSpace(credentials.ApiVersion)
+                ? credentials.ApiVersion
                 : DefaultApiVersion);
-                
+
             _region = !string.IsNullOrWhiteSpace(credentials.ApiBase)
                 ? credentials.ApiBase
                 : DefaultRegion;
-                
+
             // Extract project ID from ApiKey if possible, otherwise use default
             _projectId = ExtractProjectIdFromCredentials(credentials);
         }
-        
+
         /// <inheritdoc/>
         protected override void ValidateCredentials()
         {
             base.ValidateCredentials();
-            
+
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
-            
+
             if (string.IsNullOrWhiteSpace(_projectId))
             {
                 throw new ConfigurationException($"Project ID could not be determined for provider '{ProviderName}'. " +
                     "Please ensure it is included in the configuration.");
             }
         }
-        
+
         /// <inheritdoc/>
         public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
@@ -96,10 +99,10 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateChatCompletionAsync");
-            
+
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
             Logger.LogInformation("Creating chat completion with Google Vertex AI for model {Model}", request.Model);
-            
+
             try
             {
                 return await ExecuteApiRequestAsync(
@@ -107,15 +110,15 @@ namespace ConduitLLM.Providers
                     {
                         // Get the model information
                         var (modelId, modelType) = GetVertexAIModelInfo(ProviderModelId);
-                        
+
                         // Create the appropriate request based on model type
                         string apiEndpoint = BuildVertexAIEndpoint(modelId, modelType);
-                        
+
                         // Prepare the request based on model type
                         HttpResponseMessage response;
-                        
+
                         using var client = CreateHttpClient(effectiveApiKey);
-                        
+
                         if (modelType.Equals("gemini", StringComparison.OrdinalIgnoreCase))
                         {
                             var geminiRequest = PrepareGeminiRequest(request);
@@ -130,7 +133,7 @@ namespace ConduitLLM.Providers
                         {
                             throw new UnsupportedProviderException($"Unsupported Vertex AI model type: {modelType}");
                         }
-                        
+
                         // Process the response
                         if (!response.IsSuccessStatusCode)
                         {
@@ -140,7 +143,7 @@ namespace ConduitLLM.Providers
                             throw new LLMCommunicationException(
                                 $"Google Vertex AI API request failed with status code {response.StatusCode}. Response: {errorContent}");
                         }
-                        
+
                         // Deserialize based on model type
                         if (modelType.Equals("gemini", StringComparison.OrdinalIgnoreCase))
                         {
@@ -178,24 +181,24 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletionAsync");
-            
+
             Logger.LogInformation("Streaming is not natively supported in this Vertex AI client implementation. Simulating streaming.");
-            
+
             // For the specific test case that's failing, we need to directly query the API and process each prediction individually
             VertexAIPredictionResponse? vertexResponse = null;
-            
+
             try
             {
                 // Determine the API key to use
                 string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-                
+
                 // Get the model information
                 var (modelId, modelType) = GetVertexAIModelInfo(ProviderModelId);
                 string apiEndpoint = BuildVertexAIEndpoint(modelId, modelType);
-                
+
                 HttpResponseMessage response;
                 using var client = CreateHttpClient(effectiveApiKey);
-                
+
                 // Prepare the request based on model type
                 if (modelType.Equals("gemini", StringComparison.OrdinalIgnoreCase))
                 {
@@ -211,13 +214,13 @@ namespace ConduitLLM.Providers
                 {
                     throw new UnsupportedProviderException($"Unsupported Vertex AI model type: {modelType}");
                 }
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     string errorContent = await ReadErrorContentAsync(response, cancellationToken);
                     throw new LLMCommunicationException($"Vertex AI API request failed with status code {response.StatusCode}. Response: {errorContent}");
                 }
-                
+
                 try
                 {
                     vertexResponse = await response.Content.ReadFromJsonAsync<VertexAIPredictionResponse>(cancellationToken: cancellationToken);
@@ -251,22 +254,22 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "Unexpected error in Vertex AI streaming");
                 throw new LLMCommunicationException($"Unexpected error in Vertex AI streaming: {ex.Message}", ex);
             }
-            
+
             // If we didn't get a response or there are no predictions, end the stream
             if (vertexResponse?.Predictions == null || !vertexResponse.Predictions.Any())
             {
                 yield break;
             }
-            
+
             // Check for cancellation before starting stream
             if (cancellationToken.IsCancellationRequested)
             {
                 throw new TaskCanceledException("The streaming operation was canceled.", new OperationCanceledException(cancellationToken));
             }
-            
+
             // Stream each prediction as a separate chunk to match the test expectations
             bool isFirstChunk = true;
-            
+
             foreach (var prediction in vertexResponse.Predictions)
             {
                 // Check for cancellation before processing each prediction
@@ -274,7 +277,7 @@ namespace ConduitLLM.Providers
                 {
                     throw new TaskCanceledException("The streaming operation was canceled.", new OperationCanceledException(cancellationToken));
                 }
-                
+
                 // For Gemini models, stream each candidate within each prediction
                 if (prediction.Candidates != null && prediction.Candidates.Any())
                 {
@@ -285,7 +288,7 @@ namespace ConduitLLM.Providers
                         {
                             throw new TaskCanceledException("The streaming operation was canceled.", new OperationCanceledException(cancellationToken));
                         }
-                        
+
                         if (candidate.Content?.Parts != null)
                         {
                             // Extract content from candidate parts
@@ -297,14 +300,14 @@ namespace ConduitLLM.Providers
                                     content += part.Text;
                                 }
                             }
-                            
+
                             yield return CreateChatCompletionChunk(
                                 content,
                                 request.Model,
                                 isFirstChunk,
                                 candidate.FinishReason,
                                 request.Model);
-                                
+
                             isFirstChunk = false;
                         }
                     }
@@ -318,7 +321,7 @@ namespace ConduitLLM.Providers
                         isFirstChunk,
                         "stop",
                         request.Model);
-                        
+
                     isFirstChunk = false;
                 }
             }
@@ -330,11 +333,11 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             Logger.LogInformation("Listing available models from Google Vertex AI");
-            
+
             // Vertex AI doesn't have a simple API endpoint to list models via API key
             // Return hard-coded list of commonly available models
             await Task.Delay(1, cancellationToken); // Making this truly async
-            
+
             var models = new List<InternalModels.ExtendedModelInfo>
             {
                 InternalModels.ExtendedModelInfo.Create("gemini-1.0-pro", ProviderName, "gemini-1.0-pro")
@@ -351,7 +354,7 @@ namespace ConduitLLM.Providers
                         MaxInputTokens = 32768,
                         MaxOutputTokens = 8192
                     }),
-                
+
                 InternalModels.ExtendedModelInfo.Create("gemini-1.0-pro-vision", ProviderName, "gemini-1.0-pro-vision")
                     .WithName("Gemini 1.0 Pro Vision")
                     .WithCapabilities(new ModelCapabilities
@@ -367,7 +370,7 @@ namespace ConduitLLM.Providers
                         MaxInputTokens = 32768,
                         MaxOutputTokens = 4096
                     }),
-                
+
                 InternalModels.ExtendedModelInfo.Create("gemini-1.5-pro", ProviderName, "gemini-1.5-pro")
                     .WithName("Gemini 1.5 Pro")
                     .WithCapabilities(new ModelCapabilities
@@ -383,7 +386,7 @@ namespace ConduitLLM.Providers
                         MaxInputTokens = 1000000,
                         MaxOutputTokens = 8192
                     }),
-                
+
                 InternalModels.ExtendedModelInfo.Create("gemini-1.5-flash", ProviderName, "gemini-1.5-flash")
                     .WithName("Gemini 1.5 Flash")
                     .WithCapabilities(new ModelCapabilities
@@ -399,7 +402,7 @@ namespace ConduitLLM.Providers
                         MaxInputTokens = 1000000,
                         MaxOutputTokens = 8192
                     }),
-                
+
                 InternalModels.ExtendedModelInfo.Create("text-bison@002", ProviderName, "text-bison@002")
                     .WithName("Text Bison")
                     .WithCapabilities(new ModelCapabilities
@@ -414,7 +417,7 @@ namespace ConduitLLM.Providers
                         MaxInputTokens = 8192,
                         MaxOutputTokens = 1024
                     }),
-                
+
                 InternalModels.ExtendedModelInfo.Create("chat-bison@002", ProviderName, "chat-bison@002")
                     .WithName("Chat Bison")
                     .WithCapabilities(new ModelCapabilities
@@ -430,7 +433,7 @@ namespace ConduitLLM.Providers
                         MaxOutputTokens = 2048
                     })
             };
-            
+
             return models;
         }
 
@@ -453,25 +456,35 @@ namespace ConduitLLM.Providers
             return Task.FromException<ImageGenerationResponse>(
                 new UnsupportedProviderException(ProviderModelId, "Image generation is not supported by this provider."));
         }
-        
+
         #region Helper Methods
-        
+
         private string ExtractProjectIdFromCredentials(ProviderCredentials credentials)
         {
             // In a real scenario, project ID would be part of the credentials
             // For now, extract from ApiBase or use a default
-            
+
             if (!string.IsNullOrWhiteSpace(credentials.ApiVersion))
             {
                 return credentials.ApiVersion;
             }
-            
+
             return "vertex-ai-project"; // Default project ID
         }
-        
+
         private (string ModelId, string ModelType) GetVertexAIModelInfo(string modelAlias)
         {
-            // Map model aliases to actual Vertex AI model IDs and types
+            // First check if there's a configured alias mapping
+            var providerDefaults = DefaultModels?.ProviderDefaults?.GetValueOrDefault("vertexai");
+            if (providerDefaults?.ModelAliases != null &&
+                providerDefaults.ModelAliases.TryGetValue(modelAlias.ToLowerInvariant(), out var mappedModel))
+            {
+                // Determine model type from the mapped model ID
+                var modelType = mappedModel.StartsWith("gemini", StringComparison.OrdinalIgnoreCase) ? "gemini" : "palm";
+                return (mappedModel, modelType);
+            }
+
+            // Fallback to hardcoded mappings for backward compatibility
             return modelAlias.ToLowerInvariant() switch
             {
                 // Gemini models
@@ -479,23 +492,23 @@ namespace ConduitLLM.Providers
                 "gemini-pro-vision" or "gemini-1.0-pro-vision" => ("gemini-1.0-pro-vision", "gemini"),
                 "gemini-1.5-pro" => ("gemini-1.5-pro", "gemini"),
                 "gemini-1.5-flash" => ("gemini-1.5-flash", "gemini"),
-                
+
                 // PaLM models
                 "text-bison" or "text-bison@002" => ("text-bison@002", "palm"),
                 "chat-bison" or "chat-bison@002" => ("chat-bison@002", "palm"),
                 "text-unicorn" or "text-unicorn@001" => ("text-unicorn@001", "palm"),
-                
+
                 // Default to the model alias itself and assume Gemini for newer models
                 _ when modelAlias.StartsWith("gemini", StringComparison.OrdinalIgnoreCase) => (modelAlias, "gemini"),
                 _ => (modelAlias, "palm")  // Default to PaLM for other models
             };
         }
-        
+
         private string BuildVertexAIEndpoint(string modelId, string modelType)
         {
             // Form the endpoint based on model type
             string baseUrl = $"https://{_region}-aiplatform.googleapis.com/{_apiVersion}";
-            
+
             if (modelType.Equals("gemini", StringComparison.OrdinalIgnoreCase))
             {
                 return $"{baseUrl}/projects/{_projectId}/locations/{_region}/publishers/google/models/{modelId}:predict";
@@ -505,16 +518,16 @@ namespace ConduitLLM.Providers
                 return $"{baseUrl}/projects/{_projectId}/locations/{_region}/publishers/google/models/{modelId}:predict";
             }
         }
-        
+
         private VertexAIGeminiRequest PrepareGeminiRequest(ChatCompletionRequest request)
         {
             // With the Vertex AI Gemini model, we need to convert the messages to a specific format
             var contents = new List<VertexAIGeminiContent>();
-            
+
             foreach (var message in request.Messages)
             {
                 string role = message.Role.ToLowerInvariant();
-                
+
                 // For Gemini, only user and model roles are supported
                 if (role == "user")
                 {
@@ -564,7 +577,7 @@ namespace ConduitLLM.Providers
                     Logger.LogWarning("Unsupported message role '{Role}' encountered for Gemini provider. Skipping message.", message.Role);
                 }
             }
-            
+
             return new VertexAIGeminiRequest
             {
                 Contents = contents,
@@ -576,12 +589,12 @@ namespace ConduitLLM.Providers
                 }
             };
         }
-        
+
         private VertexAIPredictionRequest PreparePaLMRequest(ChatCompletionRequest request)
         {
             // For PaLM, we need to construct a prompt from the conversation
             var prompt = new StringBuilder();
-            
+
             // Extract system message if present and put at the beginning
             var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
             if (systemMessage != null)
@@ -589,20 +602,20 @@ namespace ConduitLLM.Providers
                 prompt.AppendLine(ContentHelper.GetContentAsString(systemMessage.Content));
                 prompt.AppendLine();
             }
-            
+
             // Add conversation history
             foreach (var message in request.Messages.Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)))
             {
                 string role = message.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
                     ? "Assistant"
                     : "Human";
-                    
+
                 prompt.AppendLine($"{role}: {ContentHelper.GetContentAsString(message.Content)}");
             }
-            
+
             // Add a final prompt for the assistant to continue
             prompt.Append("Assistant: ");
-            
+
             return new VertexAIPredictionRequest
             {
                 Instances = new List<object>
@@ -620,11 +633,11 @@ namespace ConduitLLM.Providers
                 }
             };
         }
-        
+
         private async Task<HttpResponseMessage> SendGeminiRequestAsync(
             HttpClient client,
-            string endpoint, 
-            VertexAIGeminiRequest request, 
+            string endpoint,
+            VertexAIGeminiRequest request,
             string apiKey,
             CancellationToken cancellationToken)
         {
@@ -633,21 +646,21 @@ namespace ConduitLLM.Providers
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
-            
+
             // Add API key as query parameter
             var uriBuilder = new UriBuilder(requestMessage.RequestUri!);
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             query["key"] = apiKey;
             uriBuilder.Query = query.ToString();
             requestMessage.RequestUri = uriBuilder.Uri;
-            
+
             return await client.SendAsync(requestMessage, cancellationToken);
         }
-        
+
         private async Task<HttpResponseMessage> SendPaLMRequestAsync(
             HttpClient client,
-            string endpoint, 
-            VertexAIPredictionRequest request, 
+            string endpoint,
+            VertexAIPredictionRequest request,
             string apiKey,
             CancellationToken cancellationToken)
         {
@@ -656,17 +669,17 @@ namespace ConduitLLM.Providers
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
-            
+
             // Add API key as query parameter
             var uriBuilder = new UriBuilder(requestMessage.RequestUri!);
             var query = HttpUtility.ParseQueryString(uriBuilder.Query);
             query["key"] = apiKey;
             uriBuilder.Query = query.ToString();
             requestMessage.RequestUri = uriBuilder.Uri;
-            
+
             return await client.SendAsync(requestMessage, cancellationToken);
         }
-        
+
         private async Task<ChatCompletionResponse> ProcessGeminiResponseAsync(
             HttpResponseMessage response,
             string originalModelAlias,
@@ -674,37 +687,37 @@ namespace ConduitLLM.Providers
         {
             var vertexResponse = await response.Content.ReadFromJsonAsync<VertexAIPredictionResponse>(
                 cancellationToken: cancellationToken);
-                
+
             if (vertexResponse?.Predictions == null || !vertexResponse.Predictions.Any())
             {
                 Logger.LogError("Failed to deserialize the response from Google Vertex AI Gemini or response is empty");
                 throw new LLMCommunicationException("Failed to deserialize the response from Google Vertex AI Gemini or response is empty");
             }
-            
+
             // Get the first prediction
             var prediction = vertexResponse.Predictions[0];
-            
+
             if (prediction.Candidates == null || !prediction.Candidates.Any())
             {
                 Logger.LogError("Gemini response has null or empty candidates");
                 throw new LLMCommunicationException("Gemini response has null or empty candidates");
             }
-            
+
             var choices = new List<Choice>();
-            
+
             for (int i = 0; i < prediction.Candidates.Count; i++)
             {
                 var candidate = prediction.Candidates[i];
-                
+
                 if (candidate.Content?.Parts == null || !candidate.Content.Parts.Any())
                 {
                     Logger.LogWarning("Gemini candidate {Index} has null or empty content parts, skipping", i);
                     continue;
                 }
-                
+
                 // Parts can be of different types, extract text content
                 string content = string.Empty;
-                
+
                 foreach (var part in candidate.Content.Parts)
                 {
                     if (part.Text != null)
@@ -712,32 +725,32 @@ namespace ConduitLLM.Providers
                         content += part.Text;
                     }
                 }
-                
+
                 choices.Add(new Choice
                 {
                     Index = i,
                     Message = new Message
                     {
-                        Role = candidate.Content.Role != null ? 
-                               (candidate.Content.Role == "model" ? "assistant" : candidate.Content.Role) 
+                        Role = candidate.Content.Role != null ?
+                               (candidate.Content.Role == "model" ? "assistant" : candidate.Content.Role)
                                : "assistant",
                         Content = content
                     },
                     FinishReason = MapFinishReason(candidate.FinishReason) ?? "stop"
                 });
             }
-            
+
             if (choices.Count == 0)
             {
                 Logger.LogError("Gemini response has no valid candidates");
                 throw new LLMCommunicationException("Gemini response has no valid candidates");
             }
-            
+
             // Create the core response
             var promptTokens = EstimateTokenCount(string.Join(" ", choices.Select(c => c.Message?.Content ?? string.Empty)));
             var completionTokens = EstimateTokenCount(string.Join(" ", choices.Select(c => c.Message?.Content ?? string.Empty)));
             var totalTokens = promptTokens + completionTokens;
-            
+
             return new ChatCompletionResponse
             {
                 Id = Guid.NewGuid().ToString(),
@@ -756,7 +769,7 @@ namespace ConduitLLM.Providers
                 OriginalModelAlias = originalModelAlias
             };
         }
-        
+
         private async Task<ChatCompletionResponse> ProcessPaLMResponseAsync(
             HttpResponseMessage response,
             string originalModelAlias,
@@ -764,27 +777,27 @@ namespace ConduitLLM.Providers
         {
             var vertexResponse = await response.Content.ReadFromJsonAsync<VertexAIPredictionResponse>(
                 cancellationToken: cancellationToken);
-                
+
             if (vertexResponse?.Predictions == null || !vertexResponse.Predictions.Any())
             {
                 Logger.LogError("Failed to deserialize the response from Google Vertex AI PaLM or response is empty");
                 throw new LLMCommunicationException("Failed to deserialize the response from Google Vertex AI PaLM or response is empty");
             }
-            
+
             // Get the first prediction
             var prediction = vertexResponse.Predictions[0];
-            
+
             if (string.IsNullOrEmpty(prediction.Content))
             {
                 Logger.LogError("Vertex AI PaLM response has empty content");
                 throw new LLMCommunicationException("Vertex AI PaLM response has empty content");
             }
-            
+
             // Create the core response
             var promptTokens = EstimateTokenCount(prediction.Content ?? string.Empty);
             var completionTokens = EstimateTokenCount(prediction.Content ?? string.Empty);
             var totalTokens = promptTokens + completionTokens;
-            
+
             return new ChatCompletionResponse
             {
                 Id = Guid.NewGuid().ToString(),
@@ -815,7 +828,7 @@ namespace ConduitLLM.Providers
                 OriginalModelAlias = originalModelAlias
             };
         }
-        
+
         private string? MapFinishReason(string? vertexFinishReason)
         {
             return vertexFinishReason?.ToLowerInvariant() switch
@@ -828,18 +841,18 @@ namespace ConduitLLM.Providers
                 _ => vertexFinishReason
             };
         }
-        
+
         private int EstimateTokenCount(string text)
         {
             // Very rough token count estimation
             // In a real implementation, use a proper tokenizer
             if (string.IsNullOrEmpty(text))
                 return 0;
-                
+
             // Approximately 4 characters per token for English text
             return text.Length / 4;
         }
-        
+
         #endregion
     }
 }

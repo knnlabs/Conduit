@@ -12,7 +12,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// </summary>
         [Required]
         public string Key { get; set; } = string.Empty;
-        
+
         /// <summary>
         /// Optional. The model being requested, to check against allowed models.
         /// </summary>

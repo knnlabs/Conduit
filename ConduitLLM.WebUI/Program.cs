@@ -1,22 +1,9 @@
 using System;
 using System.IO;
+
 using ConduitLLM.Configuration;
-using ConduitLLM.WebUI;
-using ConduitLLM.WebUI.Extensions;
-using Microsoft.AspNetCore.Authentication; 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Options;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Caching;
@@ -24,19 +11,35 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing;
+using ConduitLLM.Providers.Configuration;
+using ConduitLLM.Providers.Extensions;
+using ConduitLLM.WebUI;
 using ConduitLLM.WebUI.Authorization;
 using ConduitLLM.WebUI.Components;
+using ConduitLLM.WebUI.Extensions;
 // Data directory has been removed
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
 using ConduitLLM.WebUI.Services;
-using ConduitLLM.Providers.Extensions;
-using ConduitLLM.Providers.Configuration;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.StaticWebAssets;
-using Microsoft.Extensions.Logging;
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticWebAssets;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
     Args = args,
     // Don't load appsettings.json
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
@@ -69,7 +72,7 @@ builder.Services.AddAuthorization(options =>
 {
     // Create a policy based on insecure mode state
     var masterKeyPolicy = new AuthorizationPolicyBuilder();
-    
+
     if (insecureMode)
     {
         // In insecure mode, no requirements needed - always passes
@@ -80,13 +83,13 @@ builder.Services.AddAuthorization(options =>
         // Normal authentication requires the claim
         masterKeyPolicy.RequireClaim("MasterKeyAuthenticated", "true");
     }
-    
+
     // Register the policy
     options.AddPolicy("MasterKeyPolicy", masterKeyPolicy.Build());
-    
+
     // Set this as the default policy so it applies to all [Authorize] attributes without parameters
     options.DefaultPolicy = masterKeyPolicy.Build();
-    
+
     // Configure a fallback policy that allows anonymous access by default
     // This allows public pages like Login and AccessDenied to be accessed without authentication
     // Individual pages will use [Authorize] attribute as needed
@@ -100,11 +103,12 @@ builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.IInsecureModeProvider>
 builder.Services.AddHttpContextAccessor();
 
 // Helper method for API base URL
-static string GetApiBaseUrl() => Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ?? 
+static string GetApiBaseUrl() => Environment.GetEnvironmentVariable("CONDUIT_API_BASE_URL") ??
     (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ? "http://api:8080" : "http://localhost:5000");
 
 // Register HttpClient for calling the API proxy
-builder.Services.AddHttpClient("ApiClient", client => {
+builder.Services.AddHttpClient("ApiClient", client =>
+{
     client.BaseAddress = new Uri(GetApiBaseUrl());
     Console.WriteLine($"[Conduit WebUI] Configuring ApiClient with BaseAddress: {client.BaseAddress}");
 });
@@ -125,6 +129,8 @@ builder.Services.AddRouterServices(builder.Configuration);
 // Register HTTP configuration services
 builder.Services.AddOptions<RetryOptions>().Bind(builder.Configuration.GetSection(RetryOptions.SectionName)).ValidateDataAnnotations();
 builder.Services.AddOptions<TimeoutOptions>().Bind(builder.Configuration.GetSection(TimeoutOptions.SectionName)).ValidateDataAnnotations();
+builder.Services.AddSingleton<IHttpRetryConfigurationService, HttpRetryConfigurationService>();
+builder.Services.AddSingleton<IHttpTimeoutConfigurationService, HttpTimeoutConfigurationService>();
 builder.Services.AddTransient<IStartupFilter, HttpRetryConfigurationStartupFilter>();
 builder.Services.AddTransient<IStartupFilter, HttpTimeoutConfigurationStartupFilter>();
 
@@ -138,9 +144,13 @@ builder.Services.AddRouting(options => options.ConstraintMap.Add("controller", t
 Console.WriteLine("[Conduit WebUI] Registering controllers");
 
 // Register core services
-builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>(); 
+builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastService, ConduitLLM.WebUI.Services.ToastService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.NavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFileVersionService, ConduitLLM.WebUI.Services.FileVersionService>();
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 builder.Services.AddSingleton<ConduitLLM.Core.ConduitRegistry>();
@@ -158,7 +168,8 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()))
     .AddAdminApiResiliencePolicies();
 
-builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client => {
+builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client =>
+{
     client.BaseAddress = new Uri(GetApiBaseUrl());
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {client.BaseAddress}");
 })
@@ -171,6 +182,7 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IVirtualKeyService>(sp =>
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.ProviderStatusService>();
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelCostService>(sp => sp.GetRequiredService<AdminApiClient>());
 
 // Register global setting repository adapter for CacheStatusService
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IGlobalSettingRepository, ConduitLLM.WebUI.Services.AdminApiGlobalSettingRepositoryAdapter>();
@@ -193,10 +205,14 @@ builder.Services.AddSignalR(options =>
 // Add antiforgery services
 builder.Services.AddAntiforgery();
 
-// Add health checks
-builder.Services.AddHealthChecks()
-    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical" })
-    .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"), tags: new[] { "self" });
+// Configure Data Protection with Redis persistence
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
+// Add standardized health checks
+// Note: WebUI doesn't directly access the database, so we don't need database or provider health checks
+builder.Services.AddConduitHealthChecks(connectionString: null, redisConnectionString, includeProviderCheck: false)
+    .AddCheck<ConduitLLM.WebUI.HealthChecks.AdminApiHealthCheck>("admin_api", tags: new[] { "api", "critical", "ready" });
 
 // Add Razor Components
 builder.Services.AddRazorComponents()
@@ -219,7 +235,7 @@ using (var scope = app.Services.CreateScope())
 {
     var initialSetupService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.InitialSetupService>();
     await initialSetupService.EnsureMasterKeyExistsAsync();
-    
+
     // Verify the master key is set and accessible
     var envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
     if (string.IsNullOrEmpty(envMasterKey))
@@ -242,7 +258,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
-    
+
     try
     {
         // Initialize Router if enabled
@@ -255,7 +271,7 @@ using (var scope = app.Services.CreateScope())
             await routerService.InitializeRouterAsync();
             logger.LogInformation("LLM Router initialized successfully");
         }
-        
+
         // Initialize VersionCheckService
         var versionCheckService = services.GetRequiredService<ConduitLLM.WebUI.Services.VersionCheckService>();
         versionCheckService.Initialize();
@@ -273,7 +289,7 @@ using (var autoLoginScope = app.Services.CreateScope())
 {
     var globalSettingService = autoLoginScope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Interfaces.IGlobalSettingService>();
     var logger = autoLoginScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
+
     try
     {
         var autoLoginSetting = await globalSettingService.GetSettingAsync("AutoLogin");
@@ -281,7 +297,7 @@ using (var autoLoginScope = app.Services.CreateScope())
         if (bool.TryParse(autoLoginSetting, out bool autoLogin) && autoLogin)
         {
             logger.LogInformation("Auto-login is enabled, checking for master key in environment");
-            
+
             string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
             if (!string.IsNullOrEmpty(envMasterKey))
             {
@@ -329,34 +345,8 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
-// Map health checks
-app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-{
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "application/json";
-        var result = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new
-            {
-                name = e.Key,
-                status = e.Value.Status.ToString(),
-                description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds,
-                data = e.Value.Data
-            }),
-            totalDuration = report.TotalDuration.TotalMilliseconds
-        });
-        await context.Response.WriteAsync(result);
-    }
-});
-
-// Map specific health check for critical components only
-app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-{
-    Predicate = check => check.Tags.Contains("critical")
-});
+// Map standardized health check endpoints
+app.MapConduitHealthChecks();
 
 // Map controllers first
 app.MapControllers();
@@ -391,14 +381,14 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
     if (isValid)
     {
         logger.LogInformation("Login successful via POST /account/login.");
-        
+
         // Save the auto-login preference
         if (rememberMe.HasValue)
         {
             await globalSettingService.SetSettingAsync("AutoLogin", rememberMe.Value.ToString());
             logger.LogInformation("Auto-login preference saved: {AutoLogin}", rememberMe.Value);
         }
-        
+
         var claims = new List<System.Security.Claims.Claim>
         {
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Admin"),
@@ -409,8 +399,8 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
         var authProperties = new Microsoft.AspNetCore.Authentication.AuthenticationProperties
         {
             // Handle nullable rememberMe, default to false if null (unchecked)
-            IsPersistent = rememberMe ?? false, 
-            ExpiresUtc = DateTimeOffset.UtcNow.AddDays((rememberMe ?? false) ? 7 : 1) 
+            IsPersistent = rememberMe ?? false,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays((rememberMe ?? false) ? 7 : 1)
         };
 
         await context.SignInAsync(

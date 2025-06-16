@@ -3,15 +3,17 @@
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs
 @using ConduitLLM.WebUI.Extensions
+@using ConduitLLM.WebUI.Services
 @using Microsoft.Extensions.Logging
 @inject IAdminApiClient AdminApiClient
 @inject IJSRuntime JSRuntime
 @inject ILogger<ModelCosts> Logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
 <PageTitle>Model Cost Management - ConduitLLM</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <!-- Header Section -->
     <PageHeader Title="Model Cost Management" 
                 Description="Configure pricing for AI models, set cost calculations, and manage budget enforcement"
@@ -207,44 +209,44 @@
             </div>
             <div class="modal-body">
                 <form>
-                    <div class="mb-3">
-                        <label for="modelIdPattern" class="form-label">Model ID Pattern</label>
-                        <input type="text" class="form-control" id="modelIdPattern" @bind="editingModelCost.ModelIdPattern" required />
+                    <div class="modern-form-group">
+                        <label for="modelIdPattern" class="modern-form-label">Model ID Pattern</label>
+                        <input type="text" class="form-control modern-form-control" id="modelIdPattern" @bind="editingModelCost.ModelIdPattern" required />
                         <div class="form-text">Examples: 'openai/gpt-4o' (exact match), 'anthropic/claude-3*' (wildcard), '*-embedding*' (multi-wildcard)</div>
                     </div>
                         
-                    <div class="mb-3">
-                        <label for="inputTokenCost" class="form-label">Input Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="inputTokenCost" class="modern-form-label">Input Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="inputTokenCost" @bind="inputTokenCostPerThousand" min="0" step="0.01" required />
+                            <input type="number" class="form-control modern-form-control" id="inputTokenCost" @bind="inputTokenCostPerThousand" min="0" step="0.01" required />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 input tokens</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="outputTokenCost" class="form-label">Output Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="outputTokenCost" class="modern-form-label">Output Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="outputTokenCost" @bind="outputTokenCostPerThousand" min="0" step="0.01" required />
+                            <input type="number" class="form-control modern-form-control" id="outputTokenCost" @bind="outputTokenCostPerThousand" min="0" step="0.01" required />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 output tokens</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="embeddingTokenCost" class="form-label">Embedding Token Cost ($ per 1000 tokens)</label>
+                    <div class="modern-form-group">
+                        <label for="embeddingTokenCost" class="modern-form-label">Embedding Token Cost ($ per 1000 tokens)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="embeddingTokenCost" @bind="embeddingTokenCostPerThousand" min="0" step="0.01" />
+                            <input type="number" class="form-control modern-form-control" id="embeddingTokenCost" @bind="embeddingTokenCostPerThousand" min="0" step="0.01" />
                         </div>
                         <div class="form-text">Cost in USD per 1,000 embedding tokens (leave empty if not applicable)</div>
                     </div>
                            
-                    <div class="mb-3">
-                        <label for="imageCost" class="form-label">Image Cost ($ per image)</label>
+                    <div class="modern-form-group">
+                        <label for="imageCost" class="modern-form-label">Image Cost ($ per image)</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="imageCost" @bind="editingModelCost.ImageCostPerImage" min="0" step="0.01" />
+                            <input type="number" class="form-control modern-form-control" id="imageCost" @bind="editingModelCost.ImageCostPerImage" min="0" step="0.01" />
                         </div>
                         <div class="form-text">Cost in USD per generated image (leave empty if not applicable)</div>
                     </div>
@@ -257,21 +259,21 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioCostPerMinute" class="form-label">Transcription Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioCostPerMinute" class="modern-form-label">Transcription Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioCostPerMinute" @bind="editingModelCost.AudioCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioCostPerMinute" @bind="editingModelCost.AudioCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for speech-to-text transcription per minute</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioCostPerKCharacters" class="form-label">TTS Cost ($ per 1K characters)</label>
+                            <div class="modern-form-group">
+                                <label for="audioCostPerKCharacters" class="modern-form-label">TTS Cost ($ per 1K characters)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioCostPerKCharacters" @bind="editingModelCost.AudioCostPerKCharacters" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioCostPerKCharacters" @bind="editingModelCost.AudioCostPerKCharacters" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for text-to-speech per 1,000 characters</div>
                             </div>
@@ -280,21 +282,21 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioInputCostPerMinute" class="form-label">Real-time Input Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioInputCostPerMinute" class="modern-form-label">Real-time Input Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioInputCostPerMinute" @bind="editingModelCost.AudioInputCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioInputCostPerMinute" @bind="editingModelCost.AudioInputCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for real-time audio input per minute</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="audioOutputCostPerMinute" class="form-label">Real-time Output Cost ($ per minute)</label>
+                            <div class="modern-form-group">
+                                <label for="audioOutputCostPerMinute" class="modern-form-label">Real-time Output Cost ($ per minute)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="audioOutputCostPerMinute" @bind="editingModelCost.AudioOutputCostPerMinute" min="0" step="0.001" />
+                                    <input type="number" class="form-control modern-form-control" id="audioOutputCostPerMinute" @bind="editingModelCost.AudioOutputCostPerMinute" min="0" step="0.001" />
                                 </div>
                                 <div class="form-text">Cost for real-time audio output per minute</div>
                             </div>
@@ -489,7 +491,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading model costs: {ex.Message}");
+            ToastService.ShowError($"Error loading model costs: {ex.Message}");
             Logger.LogError(ex, "Error loading model costs");
         }
         finally
@@ -503,18 +505,19 @@
         await LoadModelCostsAsync();
     }
 
-    private async Task ClearCache()
+    private Task ClearCache()
     {
         try
         {
             // ClearCache method was removed in the admin API version; cache is managed internally now
-            await JSRuntime.InvokeVoidAsync("alert", "Model cost cache cleared successfully");
+            ToastService.ShowSuccess("Model cost cache cleared successfully");
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error clearing cache: {ex.Message}");
+            ToastService.ShowError($"Error clearing cache: {ex.Message}");
             Logger.LogError(ex, "Error clearing model cost cache");
         }
+        return Task.CompletedTask;
     }
 
     private void ShowAddEditModal(ModelCostDto? modelCost = null)
@@ -530,6 +533,10 @@
                 OutputTokenCost = modelCost.OutputTokenCost,
                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                 ImageCostPerImage = modelCost.ImageCostPerImage,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerKCharacters = modelCost.AudioCostPerKCharacters,
+                AudioInputCostPerMinute = modelCost.AudioInputCostPerMinute,
+                AudioOutputCostPerMinute = modelCost.AudioOutputCostPerMinute,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt
             };
@@ -595,14 +602,18 @@
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
                     EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = editingModelCost.ImageCostPerImage
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage,
+                    AudioCostPerMinute = editingModelCost.AudioCostPerMinute,
+                    AudioCostPerKCharacters = editingModelCost.AudioCostPerKCharacters,
+                    AudioInputCostPerMinute = editingModelCost.AudioInputCostPerMinute,
+                    AudioOutputCostPerMinute = editingModelCost.AudioOutputCostPerMinute
                 };
                 
                 // Use extension method to set Description
                 createDto.SetDescription(editingModelCost.Description ?? string.Empty);
                 
                 await AdminApiClient.CreateModelCostAsync(createDto);
-                await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
+                ToastService.ShowSuccess($"Model cost for '{editingModelCost.ModelIdPattern}' added successfully");
             }
             else
             {
@@ -614,7 +625,11 @@
                     InputTokenCost = editingModelCost.InputTokenCost,
                     OutputTokenCost = editingModelCost.OutputTokenCost,
                     EmbeddingTokenCost = editingModelCost.EmbeddingTokenCost,
-                    ImageCostPerImage = editingModelCost.ImageCostPerImage
+                    ImageCostPerImage = editingModelCost.ImageCostPerImage,
+                    AudioCostPerMinute = editingModelCost.AudioCostPerMinute,
+                    AudioCostPerKCharacters = editingModelCost.AudioCostPerKCharacters,
+                    AudioInputCostPerMinute = editingModelCost.AudioInputCostPerMinute,
+                    AudioOutputCostPerMinute = editingModelCost.AudioOutputCostPerMinute
                 };
                 
                 // Use extension method to set Description
@@ -623,11 +638,11 @@
                 var result = await AdminApiClient.UpdateModelCostAsync(editingModelCost.Id, updateDto);
                 if (result != null)
                 {
-                    await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
+                    ToastService.ShowSuccess($"Model cost for '{editingModelCost.ModelIdPattern}' updated successfully");
                 }
                 else
                 {
-                    await JSRuntime.InvokeVoidAsync("alert", "Failed to update model cost. It may have been deleted.");
+                    ToastService.ShowWarning("Failed to update model cost. It may have been deleted.");
                 }
             }
             
@@ -637,7 +652,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error saving model cost: {ex.Message}");
+            ToastService.ShowError($"Error saving model cost: {ex.Message}");
             Logger.LogError(ex, "Error saving model cost: {Error}", ex.Message);
         }
         finally
@@ -658,11 +673,11 @@
             var success = await AdminApiClient.DeleteModelCostAsync(deletingModelCost.Id);
             if (success)
             {
-                await JSRuntime.InvokeVoidAsync("alert", $"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
+                ToastService.ShowSuccess($"Model cost for '{deletingModelCost.ModelIdPattern}' deleted successfully");
             }
             else
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Failed to delete model cost. It may have already been removed.");
+                ToastService.ShowWarning("Failed to delete model cost. It may have already been removed.");
             }
             
             // Close modal and refresh list
@@ -671,7 +686,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error deleting model cost: {ex.Message}");
+            ToastService.ShowError($"Error deleting model cost: {ex.Message}");
             Logger.LogError(ex, "Error deleting model cost: {Error}", ex.Message);
         }
         finally

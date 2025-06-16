@@ -1,11 +1,15 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests
@@ -114,7 +118,7 @@ namespace ConduitLLM.Tests
 
             Assert.Contains("API Base URL is required", exception.Message);
         }
-        
+
         [Fact]
         public void Constructor_RejectsNullApiBaseUrl()
         {
@@ -163,11 +167,11 @@ namespace ConduitLLM.Tests
             var method = typeof(OpenAICompatibleGenericClient).GetMethod(
                 "ConfigureHttpClient",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
+
             method?.Invoke(client, new object[] { httpClient, "test-key" });
 
             // Assert
-            Assert.Contains("ConduitLLM/OpenAI-Compatible", 
+            Assert.Contains("ConduitLLM/OpenAI-Compatible",
                 httpClient.DefaultRequestHeaders.UserAgent.ToString());
         }
     }

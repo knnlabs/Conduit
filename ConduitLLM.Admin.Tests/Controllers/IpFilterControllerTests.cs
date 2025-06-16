@@ -1,14 +1,18 @@
-using ConduitLLM.Admin.Controllers;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs.IpFilter;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Xunit;
+
+using ConduitLLM.Admin.Controllers;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs.IpFilter;
+
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
 using Moq;
+
+using Xunit;
 
 namespace ConduitLLM.Admin.Tests.Controllers
 {
@@ -91,12 +95,12 @@ namespace ConduitLLM.Admin.Tests.Controllers
         public async Task GetFilterById_ExistingFilter_ReturnsOkWithFilter()
         {
             // Arrange
-            var filter = new IpFilterDto 
-            { 
-                Id = 1, 
-                Name = "Office IP", 
-                IpAddress = "192.168.1.0/24", 
-                FilterType = "Allow", 
+            var filter = new IpFilterDto
+            {
+                Id = 1,
+                Name = "Office IP",
+                IpAddress = "192.168.1.0/24",
+                FilterType = "Allow",
                 IsEnabled = true
             };
 
@@ -120,7 +124,7 @@ namespace ConduitLLM.Admin.Tests.Controllers
             // Arrange
             _mockService
                 .Setup(s => s.GetFilterByIdAsync(999))
-                .ReturnsAsync((IpFilterDto)null);
+                .ReturnsAsync((IpFilterDto?)null);
 
             // Act
             var result = await _controller.GetFilterById(999);
@@ -163,8 +167,8 @@ namespace ConduitLLM.Admin.Tests.Controllers
             var createdResult = Assert.IsType<CreatedAtActionResult>(result);
             Assert.Equal(StatusCodes.Status201Created, createdResult.StatusCode);
             Assert.Equal("GetFilterById", createdResult.ActionName);
-            Assert.Equal(3, createdResult.RouteValues["id"]);
-            
+            Assert.Equal(3, createdResult.RouteValues?["id"]);
+
             var returnValue = Assert.IsType<IpFilterDto>(createdResult.Value);
             Assert.Equal(3, returnValue.Id);
             Assert.Equal("New Office", returnValue.Name);

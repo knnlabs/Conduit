@@ -1,10 +1,12 @@
-using Polly;
-using Polly.Extensions.Http;
-using Polly.Contrib.WaitAndRetry;
-using Polly.Timeout;
 using System;
 using System.Net.Http;
+
 using Microsoft.Extensions.Logging;
+
+using Polly;
+using Polly.Contrib.WaitAndRetry;
+using Polly.Extensions.Http;
+using Polly.Timeout;
 
 namespace ConduitLLM.Providers;
 
@@ -23,8 +25,8 @@ public static class ResiliencePolicies
     /// <param name="logger">Optional logger for logging retry attempts</param>
     /// <returns>A configured Polly policy for HTTP requests</returns>
     public static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(
-        int maxRetries = 3, 
-        TimeSpan? initialDelay = null, 
+        int maxRetries = 3,
+        TimeSpan? initialDelay = null,
         TimeSpan? maxDelay = null,
         ILogger? logger = null)
     {
@@ -34,7 +36,7 @@ public static class ResiliencePolicies
 
         // Use decorrelated jitter backoff strategy for increased resilience and reduced potential for retry storms
         var delay = Backoff.DecorrelatedJitterBackoffV2(
-            medianFirstRetryDelay: initialDelay.Value, 
+            medianFirstRetryDelay: initialDelay.Value,
             retryCount: maxRetries,
             fastFirst: false); // No fast first retry
 
@@ -42,7 +44,7 @@ public static class ResiliencePolicies
             .HandleTransientHttpError() // Handles 5xx status codes and connection failures
             .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests) // Handle 429 Too Many Requests
             .WaitAndRetryAsync(
-                delay, 
+                delay,
                 onRetry: (outcome, timespan, retryAttempt, context) =>
                 {
                     // Log the retry attempt if a logger is provided
@@ -72,8 +74,8 @@ public static class ResiliencePolicies
 
         // Pessimistic strategy ensures the timeout is enforced strictly
         return Policy.TimeoutAsync<HttpResponseMessage>(
-            timeout.Value, 
-            TimeoutStrategy.Pessimistic, 
+            timeout.Value,
+            TimeoutStrategy.Pessimistic,
             onTimeoutAsync: (context, timespan, task, exception) =>
             {
                 // Log the timeout event if a logger is provided
@@ -81,7 +83,7 @@ public static class ResiliencePolicies
                     "HTTP request timed out after {TimeoutMs}ms. Request: {Operation}",
                     timespan.TotalMilliseconds,
                     context.OperationKey);
-                
+
                 return Task.CompletedTask;
             })
             .WithPolicyKey("LLMProviderTimeoutPolicy"); // Name for identification

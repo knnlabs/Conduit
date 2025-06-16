@@ -6,9 +6,9 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -37,12 +37,12 @@ namespace ConduitLLM.Core.Routing
         private readonly IProviderCredentialService _credentialService;
         private readonly IModelProviderMappingService _mappingService;
         private readonly ILogger<DefaultLLMClientFactory> _logger;
-        
+
         /// <summary>
         /// Cache of LLM clients indexed by model alias
         /// </summary>
         private readonly ConcurrentDictionary<string, ILLMClient> _clientCache = new(StringComparer.OrdinalIgnoreCase);
-        
+
         /// <summary>
         /// Cache of LLM clients indexed by provider name
         /// </summary>
@@ -70,7 +70,7 @@ namespace ConduitLLM.Core.Routing
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Initialize provider factories (this would typically use factories from registered providers)
             InitializeProviderFactories();
         }
@@ -143,34 +143,34 @@ namespace ConduitLLM.Core.Routing
             {
                 // Get the mapping for this model alias
                 var mapping = _mappingService.GetMappingByModelAliasAsync(modelAlias).GetAwaiter().GetResult();
-                
+
                 if (mapping == null)
                 {
-                    _logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias);
+_logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias.Replace(Environment.NewLine, ""));
                     throw new ConfigurationException($"No mapping found for model alias '{modelAlias}'");
                 }
-                
+
                 // Get the provider name - we use a default provider name for development since the actual
                 // property path might be different in the ModelProviderMapping implementation
                 string providerName = ModelProviderMappingAdapter.GetProviderName(mapping);
-                
-                _logger.LogInformation("Using provider {Provider} for model {Model}", providerName, modelAlias);
-                
+
+_logger.LogInformation("Using provider {Provider} for model {Model}", providerName.Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
+
                 // Check if we have a factory for this provider
                 if (!_providerFactories.TryGetValue(providerName, out var factory))
                 {
                     _logger.LogWarning("No factory found for provider {ProviderName}", providerName);
-                    
+
                     // Return a placeholder client for demonstration purposes
                     return new PlaceholderLLMClient(ModelProviderMappingAdapter.GetProviderModelName(mapping), providerName, _logger);
                 }
-                
+
                 // Create the client using the factory function
                 return factory(ModelProviderMappingAdapter.GetProviderModelName(mapping));
             }
             catch (Exception ex) when (ex is not ConfigurationException)
             {
-                _logger.LogError(ex, "Error creating client for model {ModelAlias}", modelAlias);
+_logger.LogError(ex, "Error creating client for model {ModelAlias}".Replace(Environment.NewLine, ""), modelAlias.Replace(Environment.NewLine, ""));
                 throw new ConfigurationException($"Error creating client for model '{modelAlias}'", ex);
             }
         }
@@ -185,16 +185,16 @@ namespace ConduitLLM.Core.Routing
                 // Get provider credentials
                 var credentials = _credentialService.GetCredentialByProviderNameAsync(providerName).GetAwaiter().GetResult()
                     ?? throw new ConfigurationException($"No credentials found for provider '{providerName}'");
-                
+
                 // Check if we have a factory for this provider
                 if (!_providerFactories.TryGetValue(providerName, out var factory))
                 {
                     _logger.LogWarning("No factory found for provider {ProviderName}", providerName);
-                    
+
                     // Return a placeholder client for demonstration purposes
                     return new PlaceholderLLMClient(null, providerName, _logger);
                 }
-                
+
                 // Create the client using the factory function
                 return factory(providerName);
             }
@@ -248,9 +248,9 @@ namespace ConduitLLM.Core.Routing
 
         public Task<ChatCompletionResponse> CreateChatCompletionAsync(ChatCompletionRequest request, string? apiKey = null, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Placeholder client received request for model {Model} with provider {Provider}", 
+            _logger.LogInformation("Placeholder client received request for model {Model} with provider {Provider}",
                 request.Model ?? _modelId, _providerName);
-            
+
             return Task.FromResult(new ChatCompletionResponse
             {
                 Id = Guid.NewGuid().ToString(),
@@ -295,14 +295,14 @@ namespace ConduitLLM.Core.Routing
             var response = $"This is a placeholder streaming response from {_providerName} provider.";
             var words = response.Split(' ');
             var id = Guid.NewGuid().ToString();
-            
+
             foreach (var word in words)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     yield break;
                 }
-                
+
                 yield return new ChatCompletionChunk
                 {
                     Id = id,
@@ -322,10 +322,10 @@ namespace ConduitLLM.Core.Routing
                         }
                     }
                 };
-                
+
                 await Task.Delay(100, cancellationToken);
             }
-            
+
             // Final chunk with finish reason
             yield return new ChatCompletionChunk
             {

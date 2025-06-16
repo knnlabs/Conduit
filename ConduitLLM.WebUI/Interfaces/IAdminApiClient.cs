@@ -1,9 +1,10 @@
+using System;
+using System.Collections.Generic;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
-using System;
-using System.Collections.Generic;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -77,7 +78,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <returns>Collection of enabled IP filters</returns>
         Task<IEnumerable<IpFilterDto>> GetEnabledIpFiltersAsync();
-        
+
         /// <summary>
         /// Checks if an IP address is allowed based on current filter rules
         /// </summary>
@@ -136,7 +137,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="virtualKeyId">Optional virtual key ID to filter statistics.</param>
         /// <returns>A collection of usage statistics DTOs.</returns>
         Task<IEnumerable<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>> GetVirtualKeyUsageStatisticsAsync(int? virtualKeyId = null);
-        
+
         /// <summary>
         /// Validates a virtual key.
         /// </summary>
@@ -144,7 +145,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="requestedModel">Optional model being requested.</param>
         /// <returns>Validation result with information about the key.</returns>
         Task<VirtualKeyValidationResult?> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
-        
+
         /// <summary>
         /// Updates the spend amount for a virtual key.
         /// </summary>
@@ -152,21 +153,21 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="cost">The cost to add to the current spend.</param>
         /// <returns>True if the update was successful, false otherwise.</returns>
         Task<bool> UpdateVirtualKeySpendAsync(int id, decimal cost);
-        
+
         /// <summary>
         /// Checks if the budget period has expired and resets if needed.
         /// </summary>
         /// <param name="id">The ID of the virtual key.</param>
         /// <returns>Result indicating if a reset was performed.</returns>
         Task<BudgetCheckResult?> CheckVirtualKeyBudgetAsync(int id);
-        
+
         /// <summary>
         /// Gets detailed information about a virtual key for validation purposes.
         /// </summary>
         /// <param name="id">The ID of the virtual key.</param>
         /// <returns>Virtual key validation information or null if not found.</returns>
         Task<VirtualKeyValidationInfoDto?> GetVirtualKeyValidationInfoAsync(int id);
-        
+
         /// <summary>
         /// Performs maintenance tasks on all virtual keys including:
         /// - Resetting expired budgets

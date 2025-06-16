@@ -1,8 +1,13 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Models;
 using ConduitLLM.WebUI.Services.Adapters;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Xunit;
+
 
 namespace ConduitLLM.Tests.WebUI.Adapters
 {
@@ -23,10 +28,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetAllFiltersAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+            var expectedFilters = new List<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto>
             {
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
-                new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" }
+                new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
+                new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllIpFiltersAsync())
@@ -44,7 +49,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetFilterByIdAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedFilter = new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" };
+            var expectedFilter = new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" };
 
             _adminApiClientMock.Setup(c => c.GetIpFilterByIdAsync(1))
                 .ReturnsAsync(expectedFilter);
@@ -61,8 +66,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CreateFilterAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var createDto = new ConfigDTOs.IpFilter.CreateIpFilterDto { IpAddress = "192.168.1.2", FilterType = "whitelist" };
-            var expectedFilter = new ConfigDTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "192.168.1.2", FilterType = "whitelist" };
+            var createDto = new ConduitLLM.Configuration.DTOs.IpFilter.CreateIpFilterDto { IpAddress = "192.168.1.2", FilterType = "whitelist" };
+            var expectedFilter = new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "192.168.1.2", FilterType = "whitelist" };
 
             _adminApiClientMock.Setup(c => c.CreateIpFilterAsync(createDto))
                 .ReturnsAsync(expectedFilter);
@@ -71,8 +76,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.CreateFilterAsync(createDto);
 
             // Assert
-            Assert.True(result.Success);
-            Assert.Same(expectedFilter, result.Filter);
+            Assert.NotNull(result);
+            Assert.Same(expectedFilter, result);
             _adminApiClientMock.Verify(c => c.CreateIpFilterAsync(createDto), Times.Once);
         }
 
@@ -80,8 +85,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task UpdateFilterAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var updateDto = new ConfigDTOs.IpFilter.UpdateIpFilterDto { IpAddress = "192.168.1.1", FilterType = "blacklist" };
-            var expectedFilter = new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "blacklist" };
+            var updateDto = new ConduitLLM.Configuration.DTOs.IpFilter.UpdateIpFilterDto { IpAddress = "192.168.1.1", FilterType = "blacklist" };
+            var expectedFilter = new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "blacklist" };
 
             _adminApiClientMock.Setup(c => c.UpdateIpFilterAsync(1, updateDto))
                 .ReturnsAsync(expectedFilter);
@@ -92,7 +97,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.UpdateFilterAsync(updateDto);
 
             // Assert
-            Assert.True(result.Success);
+            Assert.NotNull(result);
+            Assert.Equal(expectedFilter, result);
             _adminApiClientMock.Verify(c => c.UpdateIpFilterAsync(1, updateDto), Times.Once);
         }
 
@@ -107,7 +113,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.DeleteFilterAsync(1);
 
             // Assert
-            Assert.True(result.Success);
+            Assert.True(result);
             _adminApiClientMock.Verify(c => c.DeleteIpFilterAsync(1), Times.Once);
         }
 
@@ -115,16 +121,16 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetIpFilterSettingsAsync_ReturnsCorrectSettings_WithWhitelists()
         {
             // Arrange
-            var settingsDto = new ConfigDTOs.IpFilter.IpFilterSettingsDto
+            var settingsDto = new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto
             {
-                WhitelistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                WhitelistFilters = new List<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto>
                 {
-                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
-                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "172.16.0.1", FilterType = "whitelist" }
+                    new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "192.168.1.1", FilterType = "whitelist" },
+                    new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 3, IpAddress = "172.16.0.1", FilterType = "whitelist" }
                 },
-                BlacklistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                BlacklistFilters = new List<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto>
                 {
-                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" }
+                    new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.1", FilterType = "blacklist" }
                 },
                 FilterMode = "restrictive",
                 IsEnabled = true,
@@ -158,13 +164,13 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetIpFilterSettingsAsync_ReturnsPermissiveMode_WithoutWhitelists()
         {
             // Arrange
-            var settingsDto = new ConfigDTOs.IpFilter.IpFilterSettingsDto
+            var settingsDto = new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterSettingsDto
             {
-                WhitelistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>(),
-                BlacklistFilters = new List<ConfigDTOs.IpFilter.IpFilterDto>
+                WhitelistFilters = new List<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto>(),
+                BlacklistFilters = new List<ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto>
                 {
-                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "10.0.0.1", FilterType = "blacklist" },
-                    new ConfigDTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.2", FilterType = "blacklist" }
+                    new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 1, IpAddress = "10.0.0.1", FilterType = "blacklist" },
+                    new ConduitLLM.Configuration.DTOs.IpFilter.IpFilterDto { Id = 2, IpAddress = "10.0.0.2", FilterType = "blacklist" }
                 },
                 FilterMode = "permissive",
                 IsEnabled = true,
@@ -206,7 +212,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error getting IP filter settings")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Error getting IP filter settings")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

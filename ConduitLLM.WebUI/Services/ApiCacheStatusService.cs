@@ -26,7 +26,7 @@ namespace ConduitLLM.WebUI.Services
         private readonly ICacheMetricsService _metricsService;
         private readonly IOptions<CacheOptions> _cacheOptions;
         private readonly IRedisCacheMetricsService? _redisCacheMetrics;
-        
+
         private readonly System.Threading.CancellationTokenSource _cts = new System.Threading.CancellationTokenSource();
         private bool _isDisposed;
 
@@ -45,10 +45,10 @@ namespace ConduitLLM.WebUI.Services
             _cacheOptions = cacheOptions ?? throw new ArgumentNullException(nameof(cacheOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _redisCacheMetrics = redisCacheMetrics;
-            
+
             _logger.LogInformation("ApiCacheStatusService initialized in Admin API mode");
         }
-        
+
         /// <inheritdoc/>
         public async Task<CacheStatus> GetCacheStatusAsync()
         {
@@ -66,7 +66,7 @@ namespace ConduitLLM.WebUI.Services
                     StatusMessage = "Cache service is disposed"
                 };
             }
-            
+
             try
             {
                 var options = _cacheOptions.Value;
@@ -75,18 +75,18 @@ namespace ConduitLLM.WebUI.Services
                     IsEnabled = options.IsEnabled,
                     CacheType = options.CacheType
                 };
-                
+
                 // Get current metrics
                 var totalRequests = _metricsService.GetTotalRequests();
                 var hitRate = _metricsService.GetHitRate();
                 var avgResponseTime = _metricsService.GetAverageRetrievalTimeMs();
-                
+
                 // Use current metrics
                 result.TotalItems = (int)totalRequests;
                 result.HitRate = hitRate;
                 result.MemoryUsageBytes = EstimateMemoryUsage(options);
                 result.AvgResponseTime = avgResponseTime;
-                
+
                 // Add Redis-specific info if using Redis cache
                 if (options.CacheType?.ToLowerInvariant() == "redis" && _redisCacheMetrics != null)
                 {
@@ -98,10 +98,10 @@ namespace ConduitLLM.WebUI.Services
                             result.StatusMessage = "Cache service was disposed during Redis status check";
                             return result;
                         }
-                        
+
                         // Get Redis connection status
                         result.IsRedisConnected = await _redisCacheMetrics.IsConnectedAsync();
-                        
+
                         if (result.IsRedisConnected)
                         {
                             // Check if service is disposed before Redis detail operations
@@ -110,31 +110,31 @@ namespace ConduitLLM.WebUI.Services
                                 result.StatusMessage = "Cache service was disposed during Redis detail retrieval";
                                 return result;
                             }
-                            
+
                             // Get Redis client info
                             var clientInfo = await _redisCacheMetrics.GetClientInfoAsync();
                             var memoryStats = await _redisCacheMetrics.GetMemoryStatsAsync();
                             var dbStats = await _redisCacheMetrics.GetDatabaseStatsAsync();
                             var serverInfo = await _redisCacheMetrics.GetServerInfoAsync();
-                            
+
                             // Final check if service is disposed before constructing result
                             if (_isDisposed)
                             {
                                 result.StatusMessage = "Cache service was disposed during Redis metrics collection";
                                 return result;
                             }
-                            
+
                             // Set Redis connection info
                             result.RedisConnection = new RedisConnectionInfo
                             {
                                 ConnectedClients = clientInfo.ConnectedClients,
-                                Endpoint = serverInfo.TryGetValue("server:redis_version", out var version) ? 
-                                    serverInfo.TryGetValue("server:os", out var os) ? $"{os} (Redis {version})" : $"Redis {version}" : 
+                                Endpoint = serverInfo.TryGetValue("server:redis_version", out var version) ?
+                                    serverInfo.TryGetValue("server:os", out var os) ? $"{os} (Redis {version})" : $"Redis {version}" :
                                     "Redis Server",
                                 Version = serverInfo.TryGetValue("server:redis_version", out var v) ? v : "Unknown",
                                 InstanceName = options.RedisInstanceName
                             };
-                            
+
                             // Set Redis memory info
                             result.RedisMemory = new RedisMemoryInfo
                             {
@@ -143,7 +143,7 @@ namespace ConduitLLM.WebUI.Services
                                 FragmentationRatio = memoryStats.FragmentationRatio,
                                 CachedMemory = memoryStats.CachedMemory
                             };
-                            
+
                             // Set Redis database info
                             result.RedisDatabase = new RedisDatabaseInfo
                             {
@@ -154,7 +154,7 @@ namespace ConduitLLM.WebUI.Services
                                 Misses = dbStats.Misses,
                                 HitRatePercentage = dbStats.HitRate
                             };
-                            
+
                             // Update memory usage from Redis stats
                             if (memoryStats.UsedMemory > 0)
                             {
@@ -174,7 +174,7 @@ namespace ConduitLLM.WebUI.Services
                         result.StatusMessage = $"Redis metrics error: {redisEx.Message}";
                     }
                 }
-                
+
                 return result;
             }
             catch (ObjectDisposedException)
@@ -193,7 +193,7 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting cache status. Exception details: {Message}", ex.Message);
-                
+
                 return new CacheStatus
                 {
                     IsEnabled = false,
@@ -206,30 +206,30 @@ namespace ConduitLLM.WebUI.Services
                 };
             }
         }
-        
+
         /// <inheritdoc/>
         public Task SetCacheEnabledAsync(bool enabled)
         {
             // Check if service is disposed
             if (_isDisposed)
                 return Task.CompletedTask;
-                
+
             try
             {
                 // Update options (but don't persist - that would be done through Admin API)
                 var options = _cacheOptions.Value;
                 options.IsEnabled = enabled;
-                
+
                 _logger.LogInformation("Cache {Status}", enabled ? "enabled" : "disabled");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error setting cache enabled state to {Enabled}", enabled);
             }
-            
+
             return Task.CompletedTask;
         }
-        
+
         /// <inheritdoc/>
         public Task ClearCacheAsync()
         {
@@ -237,32 +237,32 @@ namespace ConduitLLM.WebUI.Services
             _logger.LogWarning("Cache clear operation not implemented in ApiCacheStatusService");
             return Task.CompletedTask;
         }
-        
+
         /// <inheritdoc/>
         public Task SetCacheTypeAsync(string cacheType)
         {
             // Check if service is disposed
             if (_isDisposed)
                 return Task.CompletedTask;
-                
+
             try
             {
                 if (string.IsNullOrEmpty(cacheType))
                 {
                     throw new ArgumentException("Cache type cannot be empty");
                 }
-                
+
                 var options = _cacheOptions.Value;
-                
+
                 // Validate cache type
                 if (cacheType.ToLowerInvariant() != "memory" && cacheType.ToLowerInvariant() != "redis")
                 {
                     throw new ArgumentException($"Invalid cache type: {cacheType}. Valid values are 'Memory' or 'Redis'");
                 }
-                
+
                 // Update options (but don't persist - that would be done through Admin API)
                 options.CacheType = cacheType;
-                
+
                 _logger.LogInformation("Cache type set to {CacheType}", cacheType);
             }
             catch (Exception ex)
@@ -270,30 +270,30 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error setting cache type to {CacheType}", cacheType);
                 throw;
             }
-            
+
             return Task.CompletedTask;
         }
-        
+
         /// <inheritdoc/>
         public Task UpdateRedisSettingsAsync(string connectionString, string instanceName)
         {
             // Check if service is disposed
             if (_isDisposed)
                 return Task.CompletedTask;
-                
+
             try
             {
                 if (string.IsNullOrEmpty(connectionString))
                 {
                     throw new ArgumentException("Redis connection string cannot be empty");
                 }
-                
+
                 var options = _cacheOptions.Value;
-                
+
                 // Update options (but don't persist - that would be done through Admin API)
                 options.RedisConnectionString = connectionString;
                 options.RedisInstanceName = instanceName ?? "conduit:";
-                
+
                 _logger.LogInformation("Redis settings updated");
             }
             catch (Exception ex)
@@ -301,10 +301,10 @@ namespace ConduitLLM.WebUI.Services
                 _logger.LogError(ex, "Error updating Redis settings");
                 throw;
             }
-            
+
             return Task.CompletedTask;
         }
-        
+
         /// <inheritdoc/>
         public async Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString)
         {
@@ -317,7 +317,7 @@ namespace ConduitLLM.WebUI.Services
                     ErrorMessage = "Cache service is disposed"
                 };
             }
-            
+
             try
             {
                 if (_redisCacheMetrics == null)
@@ -328,7 +328,7 @@ namespace ConduitLLM.WebUI.Services
                         ErrorMessage = "Redis metrics service is not available"
                     };
                 }
-                
+
                 // Use the cancellation token to ensure we can cancel if needed
                 return await _redisCacheMetrics.TestRedisConnectionAsync(connectionString);
             }
@@ -359,7 +359,7 @@ namespace ConduitLLM.WebUI.Services
                 };
             }
         }
-        
+
         /// <summary>
         /// Estimates the memory usage of the cache based on configuration and usage patterns
         /// </summary>
@@ -367,7 +367,7 @@ namespace ConduitLLM.WebUI.Services
         {
             if (!options.IsEnabled)
                 return 0;
-                
+
             if (options.CacheType == "Redis")
             {
                 // For Redis, we don't have direct memory usage info
@@ -379,26 +379,34 @@ namespace ConduitLLM.WebUI.Services
                 // Estimate based on item count and a rough per-item size
                 const int estimatedBytesPerCachedResponse = 4096; // In-memory cache has more overhead
                 const long baselineUsage = 2 * 1024 * 1024; // 2MB baseline for the cache infrastructure
-                
+
                 return baselineUsage + (_metricsService.GetTotalRequests() * estimatedBytesPerCachedResponse);
             }
         }
-        
+
         /// <summary>
         /// Disposes of resources used by the service
         /// </summary>
+        /// <inheritdoc/>
+        public Task<CacheConfiguration?> GetCacheConfigurationAsync()
+        {
+            // In API mode, cache configuration is not available through this service
+            // The API manages its own cache configuration
+            return Task.FromResult<CacheConfiguration?>(null);
+        }
+
         public void Dispose()
         {
             if (_isDisposed)
                 return;
-                
+
             _isDisposed = true;
-            
+
             try
             {
                 // Signal cancellation to stop any pending operations
                 _cts.Cancel();
-                
+
                 // Dispose the cancellation token source
                 _cts.Dispose();
             }

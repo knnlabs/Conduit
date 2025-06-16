@@ -8,7 +8,7 @@ namespace ConduitLLM.Providers.Helpers
     public static class DateTimeExtensions
     {
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        
+
         /// <summary>
         /// Converts a DateTime to Unix timestamp (seconds since Unix epoch).
         /// </summary>
@@ -18,7 +18,7 @@ namespace ConduitLLM.Providers.Helpers
         {
             return (long)(dateTime.ToUniversalTime() - UnixEpoch).TotalSeconds;
         }
-        
+
         /// <summary>
         /// Converts a DateTime to Unix timestamp (milliseconds since Unix epoch).
         /// </summary>

@@ -39,7 +39,7 @@ public class OpenAIChatCompletionChunk
 
     [System.Text.Json.Serialization.JsonPropertyName("choices")]
     public List<OpenAIChunkChoice> Choices { get; set; } = new();
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("system_fingerprint")]
     public string? SystemFingerprint { get; set; }
 
@@ -109,13 +109,13 @@ public class GeminiErrorDetail
 public class CohereResponseMetadata
 {
     public CohereTokenUsage? TokenUsage { get; set; }
-    
+
     /// <summary>
     /// Token information
     /// </summary>
     [System.Text.Json.Serialization.JsonPropertyName("tokens")]
     public CohereApiMetaTokens? Tokens { get; set; }
-    
+
     /// <summary>
     /// Billed units information
     /// </summary>
@@ -292,13 +292,13 @@ public class CohereChatResponse
 
     [System.Text.Json.Serialization.JsonPropertyName("meta")]
     public CohereResponseMetadata? Meta { get; set; }
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("generation_id")]
     public string? GenerationId { get; set; }
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("finish_reason")]
     public string? FinishReason { get; set; }
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("chat_history")]
     public List<CohereMessage>? ChatHistory { get; set; }
 }
@@ -352,13 +352,13 @@ public class CohereStreamEndEvent : CohereStreamEventBase
 {
     [System.Text.Json.Serialization.JsonPropertyName("event_type")]
     public new string EventType { get; set; } = "stream-end";
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("is_finished")]
     public bool IsFinished { get; set; } = true;
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("finish_reason")]
     public string FinishReason { get; set; } = "COMPLETE";
-    
+
     [System.Text.Json.Serialization.JsonPropertyName("response")]
     public CohereChatResponse Response { get; set; } = new();
 }

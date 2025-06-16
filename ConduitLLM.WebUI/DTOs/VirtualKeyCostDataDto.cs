@@ -1,4 +1,5 @@
 using System;
+
 using ConfigDto = ConduitLLM.Configuration.DTOs.Costs;
 
 namespace ConduitLLM.WebUI.DTOs
@@ -17,7 +18,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => KeyName;
             set => KeyName = value;
         }
-        
+
         /// <summary>
         /// Total cost alias (for compatibility)
         /// </summary>
@@ -26,7 +27,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => Cost;
             set => Cost = value;
         }
-        
+
         /// <summary>
         /// Total requests alias (for compatibility)
         /// </summary>
@@ -35,12 +36,12 @@ namespace ConduitLLM.WebUI.DTOs
             get => RequestCount;
             set => RequestCount = value;
         }
-        
+
         /// <summary>
         /// Number of input tokens (WebUI-specific property)
         /// </summary>
         public int InputTokens { get; set; }
-        
+
         /// <summary>
         /// Total input tokens alias (for compatibility)
         /// </summary>
@@ -54,7 +55,7 @@ namespace ConduitLLM.WebUI.DTOs
         /// Number of output tokens (WebUI-specific property)
         /// </summary>
         public int OutputTokens { get; set; }
-        
+
         /// <summary>
         /// Total output tokens alias (for compatibility)
         /// </summary>
@@ -63,17 +64,17 @@ namespace ConduitLLM.WebUI.DTOs
             get => OutputTokens;
             set => OutputTokens = value;
         }
-        
+
         /// <summary>
         /// Average response time in milliseconds (WebUI-specific property)
         /// </summary>
         public double AverageResponseTimeMs { get; set; }
-        
+
         /// <summary>
         /// Last time the key was used (WebUI-specific property)
         /// </summary>
         public DateTime? LastUsedAt { get; set; }
-        
+
         /// <summary>
         /// Last request time (alias for LastUsedAt)
         /// </summary>
@@ -82,7 +83,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => LastUsedAt ?? DateTime.MinValue;
             set => LastUsedAt = value;
         }
-        
+
         /// <summary>
         /// Last request date (alias for LastUsedAt)
         /// </summary>
@@ -91,12 +92,12 @@ namespace ConduitLLM.WebUI.DTOs
             get => LastUsedAt ?? DateTime.MinValue;
             set => LastUsedAt = value;
         }
-        
+
         /// <summary>
         /// Time when the key was created (WebUI-specific property)
         /// </summary>
         public DateTime CreatedAt { get; set; }
-        
+
         /// <summary>
         /// First request time (alias for CreatedAt)
         /// </summary>
@@ -105,7 +106,7 @@ namespace ConduitLLM.WebUI.DTOs
             get => CreatedAt;
             set => CreatedAt = value;
         }
-        
+
         /// <summary>
         /// Number of requests in the last day (WebUI-specific property)
         /// </summary>

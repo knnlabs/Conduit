@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -51,8 +55,8 @@ namespace ConduitLLM.Configuration.Repositories
 
         /// <inheritdoc/>
         public async Task<FallbackModelMappingEntity?> GetBySourceModelAsync(
-            Guid fallbackConfigId, 
-            string sourceModelName, 
+            Guid fallbackConfigId,
+            string sourceModelName,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(sourceModelName))
@@ -66,22 +70,22 @@ namespace ConduitLLM.Configuration.Repositories
                 return await dbContext.FallbackModelMappings
                     .AsNoTracking()
                     .Include(m => m.FallbackConfiguration)
-                    .FirstOrDefaultAsync(m => 
-                        m.FallbackConfigurationId == fallbackConfigId && 
-                        m.SourceModelName == sourceModelName, 
+                    .FirstOrDefaultAsync(m =>
+                        m.FallbackConfigurationId == fallbackConfigId &&
+                        m.SourceModelName == sourceModelName,
                         cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting fallback model mapping for source model {SourceModel} in config {ConfigId}", 
-                    sourceModelName, fallbackConfigId);
+                _logger.LogError(ex, "Error getting fallback model mapping for source model {SourceModel} in config {ConfigId}",
+                    sourceModelName.Replace(Environment.NewLine, ""), fallbackConfigId);
                 throw;
             }
         }
 
         /// <inheritdoc/>
         public async Task<List<FallbackModelMappingEntity>> GetByFallbackConfigIdAsync(
-            Guid fallbackConfigId, 
+            Guid fallbackConfigId,
             CancellationToken cancellationToken = default)
         {
             try
@@ -131,49 +135,49 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamps
                 fallbackModelMapping.CreatedAt = DateTime.UtcNow;
                 fallbackModelMapping.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Check if the mapping already exists
                 var existingMapping = await dbContext.FallbackModelMappings
-                    .FirstOrDefaultAsync(m => 
-                        m.FallbackConfigurationId == fallbackModelMapping.FallbackConfigurationId && 
-                        m.SourceModelName == fallbackModelMapping.SourceModelName, 
+                    .FirstOrDefaultAsync(m =>
+                        m.FallbackConfigurationId == fallbackModelMapping.FallbackConfigurationId &&
+                        m.SourceModelName == fallbackModelMapping.SourceModelName,
                         cancellationToken);
-                        
+
                 if (existingMapping != null)
                 {
                     throw new InvalidOperationException(
                         $"A mapping for source model '{fallbackModelMapping.SourceModelName}' " +
                         $"already exists in fallback configuration ID {fallbackModelMapping.FallbackConfigurationId}");
                 }
-                
+
                 // Verify that the fallback configuration exists
                 var configExists = await dbContext.FallbackConfigurations
                     .AnyAsync(f => f.Id == fallbackModelMapping.FallbackConfigurationId, cancellationToken);
-                    
+
                 if (!configExists)
                 {
                     throw new InvalidOperationException(
                         $"Fallback configuration with ID {fallbackModelMapping.FallbackConfigurationId} does not exist");
                 }
-                
+
                 dbContext.FallbackModelMappings.Add(fallbackModelMapping);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return fallbackModelMapping.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating fallback model mapping for source model '{SourceModel}'", 
-                    fallbackModelMapping.SourceModelName);
+                _logger.LogError(ex, "Database error creating fallback model mapping for source model '{SourceModel}'",
+                    fallbackModelMapping.SourceModelName.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating fallback model mapping for source model '{SourceModel}'", 
-                    fallbackModelMapping.SourceModelName);
+                _logger.LogError(ex, "Error creating fallback model mapping for source model '{SourceModel}'",
+                    fallbackModelMapping.SourceModelName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -189,32 +193,32 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set updated timestamp
                 fallbackModelMapping.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Check if we're changing the source model name and if that would create a duplicate
                 var existingMapping = await dbContext.FallbackModelMappings
-                    .FirstOrDefaultAsync(m => 
-                        m.Id != fallbackModelMapping.Id && 
-                        m.FallbackConfigurationId == fallbackModelMapping.FallbackConfigurationId && 
-                        m.SourceModelName == fallbackModelMapping.SourceModelName, 
+                    .FirstOrDefaultAsync(m =>
+                        m.Id != fallbackModelMapping.Id &&
+                        m.FallbackConfigurationId == fallbackModelMapping.FallbackConfigurationId &&
+                        m.SourceModelName == fallbackModelMapping.SourceModelName,
                         cancellationToken);
-                        
+
                 if (existingMapping != null)
                 {
                     throw new InvalidOperationException(
                         $"Another mapping for source model '{fallbackModelMapping.SourceModelName}' " +
                         $"already exists in fallback configuration ID {fallbackModelMapping.FallbackConfigurationId}");
                 }
-                
+
                 dbContext.FallbackModelMappings.Update(fallbackModelMapping);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating fallback model mapping with ID {MappingId}", 
+                _logger.LogError(ex, "Error updating fallback model mapping with ID {MappingId}",
                     fallbackModelMapping.Id);
                 throw;
             }
@@ -227,12 +231,12 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var fallbackModelMapping = await dbContext.FallbackModelMappings.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (fallbackModelMapping == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.FallbackModelMappings.Remove(fallbackModelMapping);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;

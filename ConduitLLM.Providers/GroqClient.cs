@@ -4,12 +4,14 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -35,14 +37,14 @@ namespace ConduitLLM.Providers
             {
                 public const string DefaultApiBase = "https://api.groq.com/v1";
             }
-            
+
             public static class Endpoints
             {
                 public const string ChatCompletions = "/chat/completions";
                 public const string Models = "/models";
                 public const string Completions = "/completions";
             }
-            
+
             public static class ErrorMessages
             {
                 public const string ModelNotFound = "Model not found. Available Groq models include: llama3-8b-8192, llama3-70b-8192, llama2-70b-4096, mixtral-8x7b-32768, gemma-7b-it";
@@ -57,18 +59,21 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model ID to use.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public GroqClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<GroqClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureGroqCredentials(credentials),
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "groq",
-                DetermineBaseUrl(credentials))
+                DetermineBaseUrl(credentials),
+                defaultModels)
         {
         }
 
@@ -146,7 +151,7 @@ namespace ConduitLLM.Providers
                 {
                     errorMessage = body;
                 }
-                
+
                 Logger.LogError(ex, "Groq API error: {Message}", errorMessage);
                 throw new LLMCommunicationException($"Groq API error: {errorMessage}", ex);
             }
@@ -167,7 +172,7 @@ namespace ConduitLLM.Providers
         {
             // Create a wrapped stream to avoid yielding in try/catch
             IAsyncEnumerable<ChatCompletionChunk> baseStream;
-            
+
             try
             {
                 // Get the base implementation's stream
@@ -180,7 +185,7 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "Error initializing streaming chat completion from Groq: {Message}", enhancedErrorMessage);
                 throw new LLMCommunicationException(enhancedErrorMessage, ex);
             }
-            
+
             // Process the stream outside of try/catch
             await foreach (var chunk in baseStream.WithCancellation(cancellationToken))
             {
@@ -221,7 +226,7 @@ namespace ConduitLLM.Providers
             {
                 return models;
             }
-            
+
             // If for some reason the base class doesn't have Groq models, provide them here
             return new List<InternalModels.ExtendedModelInfo>
             {
@@ -245,45 +250,45 @@ namespace ConduitLLM.Providers
         {
             // Use the base implementation first
             var baseErrorMessage = base.ExtractEnhancedErrorMessage(ex);
-            
+
             // If the base implementation found a useful message, return it
-            if (!string.IsNullOrEmpty(baseErrorMessage) && 
-                !baseErrorMessage.Equals(ex.Message) && 
+            if (!string.IsNullOrEmpty(baseErrorMessage) &&
+                !baseErrorMessage.Equals(ex.Message) &&
                 !baseErrorMessage.Contains("Exception of type"))
             {
                 return baseErrorMessage;
             }
-            
+
             // Groq-specific error extraction
             var msg = ex.Message;
-            
+
             // If we find "model not found" in the message, provide a more helpful message
             if (msg.Contains("model not found", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("The model", StringComparison.OrdinalIgnoreCase) && 
+                msg.Contains("The model", StringComparison.OrdinalIgnoreCase) &&
                 msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
             {
                 return Constants.ErrorMessages.ModelNotFound;
             }
-            
+
             // For rate limit errors, provide a clearer message
             if (msg.Contains("rate limit", StringComparison.OrdinalIgnoreCase) ||
                 msg.Contains("too many requests", StringComparison.OrdinalIgnoreCase))
             {
                 return Constants.ErrorMessages.RateLimitExceeded;
             }
-            
+
             // Look for Body data
             if (ex.Data.Contains("Body") && ex.Data["Body"] is string body && !string.IsNullOrEmpty(body))
             {
                 return $"Groq API error: {body}";
             }
-            
+
             // Try inner exception
             if (ex.InnerException != null && !string.IsNullOrEmpty(ex.InnerException.Message))
             {
                 return $"Groq API error: {ex.InnerException.Message}";
             }
-            
+
             // Fallback to original message
             return $"Groq API error: {msg}";
         }

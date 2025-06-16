@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -95,38 +99,38 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamps
                 routerConfig.CreatedAt = DateTime.UtcNow;
                 routerConfig.UpdatedAt = DateTime.UtcNow;
-                
+
                 if (routerConfig.IsActive)
                 {
                     // Deactivate all other configs
                     var activeConfigs = await dbContext.RouterConfigs
                         .Where(r => r.IsActive)
                         .ToListAsync(cancellationToken);
-                        
+
                     foreach (var config in activeConfigs)
                     {
                         config.IsActive = false;
                     }
                 }
-                
+
                 dbContext.RouterConfigs.Add(routerConfig);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return routerConfig.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating router configuration '{ConfigName}'", 
-                    routerConfig.Name);
+                _logger.LogError(ex, "Database error creating router configuration '{ConfigName}'",
+                    routerConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating router configuration '{ConfigName}'", 
-                    routerConfig.Name);
+                _logger.LogError(ex, "Error creating router configuration '{ConfigName}'",
+                    routerConfig.Name.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -142,30 +146,30 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set updated timestamp
                 routerConfig.UpdatedAt = DateTime.UtcNow;
-                
+
                 if (routerConfig.IsActive)
                 {
                     // Deactivate all other configs
                     var activeConfigs = await dbContext.RouterConfigs
                         .Where(r => r.IsActive && r.Id != routerConfig.Id)
                         .ToListAsync(cancellationToken);
-                        
+
                     foreach (var config in activeConfigs)
                     {
                         config.IsActive = false;
                     }
                 }
-                
+
                 dbContext.RouterConfigs.Update(routerConfig);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating router configuration with ID {ConfigId}", 
+                _logger.LogError(ex, "Error updating router configuration with ID {ConfigId}",
                     routerConfig.Id);
                 throw;
             }
@@ -177,13 +181,13 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 var routerConfig = await dbContext.RouterConfigs.FindAsync(new object[] { id }, cancellationToken);
                 if (routerConfig == null)
                 {
                     return false;
                 }
-                
+
                 // Deactivate all configs
                 var configs = await dbContext.RouterConfigs.ToListAsync(cancellationToken);
                 foreach (var config in configs)
@@ -191,7 +195,7 @@ namespace ConduitLLM.Configuration.Repositories
                     config.IsActive = (config.Id == id);
                     config.UpdatedAt = DateTime.UtcNow;
                 }
-                
+
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
@@ -209,18 +213,18 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var routerConfig = await dbContext.RouterConfigs.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (routerConfig == null)
                 {
                     return false;
                 }
-                
+
                 if (routerConfig.IsActive)
                 {
                     _logger.LogWarning("Attempting to delete active router configuration {ConfigId}", id);
                     // You might want to prevent this or activate another config
                 }
-                
+
                 dbContext.RouterConfigs.Remove(routerConfig);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;

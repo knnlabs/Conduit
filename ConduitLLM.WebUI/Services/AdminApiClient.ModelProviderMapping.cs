@@ -1,11 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.WebUI.Interfaces;
+
 using ConfigDTO = ConduitLLM.Configuration.DTOs;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Net.Http.Json;
-using System.Net;
-using System;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -45,16 +47,16 @@ namespace ConduitLLM.WebUI.Services
                     IsEnabled = mapping.IsEnabled
                     // Other properties will be set by the API
                 };
-                
+
                 // Call the API to create the mapping
                 var success = await CreateModelProviderMappingAsync(entity);
-                
+
                 if (success)
                 {
                     // If creation was successful, retrieve the newly created mapping by model alias
                     return await GetModelProviderMappingByAliasAsync(mapping.ModelId ?? string.Empty);
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
@@ -74,7 +76,7 @@ namespace ConduitLLM.WebUI.Services
                     _logger.LogError("Cannot update model provider mapping without a valid ID");
                     return null;
                 }
-                
+
                 // Convert DTO to Entity for the API call
                 var entity = new ConduitLLM.Configuration.Entities.ModelProviderMapping
                 {
@@ -85,16 +87,16 @@ namespace ConduitLLM.WebUI.Services
                     IsEnabled = mapping.IsEnabled
                     // Other properties will be set by the API
                 };
-                
+
                 // Call the API to update the mapping
                 var success = await UpdateModelProviderMappingAsync(mapping.Id, entity);
-                
+
                 if (success)
                 {
                     // If update was successful, retrieve the updated mapping
                     return await GetModelProviderMappingByIdAsync(mapping.Id);
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
@@ -117,7 +119,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 var response = await _httpClient.GetAsync("api/modelprovidermapping/providers");
                 response.EnsureSuccessStatusCode();
-                
+
                 var result = await response.Content.ReadFromJsonAsync<IEnumerable<ConfigDTO.ProviderDataDto>>(_jsonOptions);
                 return result ?? Enumerable.Empty<ConfigDTO.ProviderDataDto>();
             }

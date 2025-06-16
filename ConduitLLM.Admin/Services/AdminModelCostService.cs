@@ -1,13 +1,17 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -66,12 +70,12 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
                 }
 
-                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern);
+                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern);
+                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -82,21 +86,25 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var result = await _modelCostRepository.DeleteAsync(id);
-                
+
                 if (result)
                 {
-                    _logger.LogInformation("Deleted model cost with ID {Id}", id);
+                    _logger.LogInformation("Deleted model cost with ID {Id}",
+                id);
                 }
                 else
                 {
-                    _logger.LogWarning("Model cost with ID {Id} not found for deletion", id);
+                    _logger.LogWarning("Model cost with ID {Id} not found for deletion",
+                id);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {Id}", id);
+                _logger.LogError(ex,
+                "Error deleting model cost with ID {Id}",
+                id);
                 throw;
             }
         }
@@ -111,7 +119,8 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting all model costs");
+                _logger.LogError(ex,
+                "Error getting all model costs");
                 throw;
             }
         }
@@ -126,7 +135,9 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {Id}", id);
+                _logger.LogError(ex,
+                "Error getting model cost with ID {Id}",
+                id);
                 throw;
             }
         }
@@ -146,7 +157,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern);
+                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -167,7 +178,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     return Enumerable.Empty<ModelCostOverviewDto>();
                 }
-                
+
                 // Group by model and aggregate cost data
                 var modelGroups = logs
                     .Where(l => !string.IsNullOrEmpty(l.ModelName)) // Filter out logs with no model name
@@ -187,8 +198,10 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost overview for period {StartDate} to {EndDate}", 
-                    startDate, endDate);
+                _logger.LogError(ex,
+                "Error getting model cost overview for period {StartDate} to {EndDate}",
+                startDate,
+                endDate);
                 throw;
             }
         }
@@ -208,7 +221,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
+                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -229,7 +242,7 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 int importedCount = 0;
-                
+
                 // Process each model cost
                 foreach (var modelCost in modelCosts)
                 {
@@ -237,7 +250,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         // Check if a model cost with the same pattern already exists
                         var existingModelCost = await _modelCostRepository.GetByModelIdPatternAsync(modelCost.ModelIdPattern);
-                        
+
                         if (existingModelCost != null)
                         {
                             // Update existing model cost
@@ -250,7 +263,7 @@ namespace ConduitLLM.Admin.Services
                                 EmbeddingTokenCost = modelCost.EmbeddingTokenCost,
                                 ImageCostPerImage = modelCost.ImageCostPerImage
                             };
-                            
+
                             existingModelCost.UpdateFrom(updateDto);
                             await _modelCostRepository.UpdateAsync(existingModelCost);
                         }
@@ -260,23 +273,26 @@ namespace ConduitLLM.Admin.Services
                             var modelCostEntity = modelCost.ToEntity();
                             await _modelCostRepository.CreateAsync(modelCostEntity);
                         }
-                        
+
                         importedCount++;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error importing model cost with pattern '{Pattern}'", 
-                            modelCost.ModelIdPattern);
+                        _logger.LogWarning(ex,
+                "Error importing model cost with pattern '{Pattern}'",
+                modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                         // Continue with next model cost
                     }
                 }
-                
-                _logger.LogInformation("Imported {Count} model costs", importedCount);
+
+                _logger.LogInformation("Imported {Count} model costs",
+                importedCount);
                 return importedCount;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error importing model costs");
+                _logger.LogError(ex,
+                "Error importing model costs");
                 throw;
             }
         }
@@ -295,10 +311,11 @@ namespace ConduitLLM.Admin.Services
                 var existingModelCost = await _modelCostRepository.GetByIdAsync(modelCost.Id);
                 if (existingModelCost == null)
                 {
-                    _logger.LogWarning("Model cost with ID {Id} not found", modelCost.Id);
+                    _logger.LogWarning("Model cost with ID {Id} not found",
+                modelCost.Id);
                     return false;
                 }
-                
+
                 // Check if the pattern is being changed and a model cost with the new pattern already exists
                 if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
                 {
@@ -308,27 +325,31 @@ namespace ConduitLLM.Admin.Services
                         throw new InvalidOperationException($"Another model cost with pattern '{modelCost.ModelIdPattern}' already exists");
                     }
                 }
-                
+
                 // Update entity
                 existingModelCost.UpdateFrom(modelCost);
-                
+
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
-                
+
                 if (result)
                 {
-                    _logger.LogInformation("Updated model cost with ID {Id}", modelCost.Id);
+                    _logger.LogInformation("Updated model cost with ID {Id}",
+                modelCost.Id);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to update model cost with ID {Id}", modelCost.Id);
+                    _logger.LogWarning("Failed to update model cost with ID {Id}",
+                modelCost.Id);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model cost with ID {Id}", modelCost.Id);
+                _logger.LogError(ex,
+                "Error updating model cost with ID {Id}",
+                modelCost.Id);
                 throw;
             }
         }

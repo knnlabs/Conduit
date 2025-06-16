@@ -16,6 +16,7 @@
 @inject IInsecureModeProvider InsecureModeProvider
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 
 <PageTitle>Login - ConduitLLM</PageTitle>
 
@@ -43,13 +44,6 @@ else
                     </div>
                     <div class="card-body p-4">
                         <form method="post" action="/account/login">
-                            @if (!string.IsNullOrEmpty(errorMessage))
-                            {
-                                <div class="alert alert-danger mb-4">
-                                    @errorMessage
-                                </div>
-                            }
-
                             @* Add hidden field for returnUrl *@
                             <input type="hidden" name="returnUrl" value="@returnUrl" />
                             
@@ -95,7 +89,6 @@ else
 }
 
 @code {
-    private string? errorMessage;
     private string? masterKey;
     private bool rememberMe;
     private string? returnUrl = string.Empty;
@@ -159,7 +152,7 @@ else
         {
             if (errorValue == "InvalidKey")
             {
-                errorMessage = "Invalid master key provided.";
+                ToastService.ShowError("Invalid master key provided.");
                 Logger.LogWarning("Login page loaded with invalid key error message.");
             }
         }
@@ -176,7 +169,7 @@ else
         else
         {
             Logger.LogError("HttpContext is null, cannot generate antiforgery token.");
-            errorMessage = "Internal security error. Please try refreshing the page.";
+            ToastService.ShowError("Internal security error. Please try refreshing the page.");
         }
         
         await base.OnInitializedAsync();

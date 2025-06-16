@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+
 using Polly.CircuitBreaker;
 
 namespace ConduitLLM.WebUI.Middleware
@@ -27,57 +29,56 @@ namespace ConduitLLM.WebUI.Middleware
         {
             var stopwatch = Stopwatch.StartNew();
             var requestId = Guid.NewGuid().ToString("N").Substring(0, 8);
-            
+
             // Add request ID to logging scope
             using (_logger.BeginScope("RequestId: {RequestId}", requestId))
             {
                 try
                 {
                     await _next(context);
-                    
+
                     stopwatch.Stop();
-                    
+
                     // Log successful requests that took longer than expected
                     if (stopwatch.ElapsedMilliseconds > 5000)
                     {
-                        _logger.LogWarning(
-                            "Slow request detected. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                            context.Request.Path,
-                            context.Request.Method,
-                            stopwatch.ElapsedMilliseconds);
+                        _logger.LogWarning("Slow request detected. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
                     }
                 }
                 catch (BrokenCircuitException ex)
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Circuit breaker open. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
-                    
+                "Circuit breaker open. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
+
                     await HandleCircuitBreakerError(context);
                 }
                 catch (TaskCanceledException ex) when (stopwatch.ElapsedMilliseconds > 30000)
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Request timeout. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
-                    
+                "Request timeout. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
+
                     await HandleTimeoutError(context);
                 }
                 catch (Exception ex)
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex,
-                        "Unhandled exception. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
-                        context.Request.Path,
-                        context.Request.Method,
-                        stopwatch.ElapsedMilliseconds);
-                    
+                "Unhandled exception. Path: {Path}, Method: {Method}, Duration: {Duration}ms",
+                context.Request.Path.ToString().Replace(Environment.NewLine, ""),
+                context.Request.Method.Replace(Environment.NewLine, ""),
+                stopwatch.ElapsedMilliseconds);
+
                     throw; // Re-throw to let other middleware handle it
                 }
             }
@@ -87,7 +88,7 @@ namespace ConduitLLM.WebUI.Middleware
         {
             context.Response.StatusCode = 503; // Service Unavailable
             context.Response.ContentType = "application/json";
-            
+
             await context.Response.WriteAsync(@"{
                 ""error"": ""Service temporarily unavailable"",
                 ""message"": ""The Admin API is currently experiencing issues. Please try again in a few moments."",
@@ -99,7 +100,7 @@ namespace ConduitLLM.WebUI.Middleware
         {
             context.Response.StatusCode = 504; // Gateway Timeout
             context.Response.ContentType = "application/json";
-            
+
             await context.Response.WriteAsync(@"{
                 ""error"": ""Request timeout"",
                 ""message"": ""The operation took too long to complete. Please try again."",

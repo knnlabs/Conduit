@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -83,7 +86,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting virtual key with ID {KeyId}", id);
+                _logger.LogError(ex, "Error getting virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }
@@ -145,12 +148,12 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating virtual key '{KeyName}'", virtualKey.KeyName);
+_logger.LogError(ex, "Database error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating virtual key '{KeyName}'", virtualKey.KeyName);
+_logger.LogError(ex, "Error creating virtual key '{KeyName}'", virtualKey.KeyName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -166,48 +169,48 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Ensure the entity is tracked
                 dbContext.VirtualKeys.Update(virtualKey);
-                
+
                 // Set the updated timestamp
                 virtualKey.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Save changes
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex, "Concurrency error updating virtual key with ID {KeyId}", virtualKey.Id);
-                
+                _logger.LogError(ex, "Concurrency error updating virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
+
                 // Handle concurrency issues by reloading and reapplying changes if needed
                 try
                 {
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                     var existingEntity = await dbContext.VirtualKeys.FindAsync(new object[] { virtualKey.Id }, cancellationToken);
-                    
+
                     if (existingEntity == null)
                     {
                         return false;
                     }
-                    
+
                     // Update properties
                     dbContext.Entry(existingEntity).CurrentValues.SetValues(virtualKey);
                     existingEntity.UpdatedAt = DateTime.UtcNow;
-                    
+
                     int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                     return rowsAffected > 0;
                 }
                 catch (Exception retryEx)
                 {
-                    _logger.LogError(retryEx, "Error during retry of virtual key update with ID {KeyId}", virtualKey.Id);
+                    _logger.LogError(retryEx, "Error during retry of virtual key update with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating virtual key with ID {KeyId}", virtualKey.Id);
+                _logger.LogError(ex, "Error updating virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(virtualKey.Id));
                 throw;
             }
         }
@@ -219,19 +222,19 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var virtualKey = await dbContext.VirtualKeys.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (virtualKey == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.VirtualKeys.Remove(virtualKey);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", id);
+                _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}", LogSanitizer.SanitizeObject(id));
                 throw;
             }
         }

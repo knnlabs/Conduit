@@ -10,6 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Start web UI: `dotnet run --project ConduitLLM.WebUI`
 - Start both services: `docker compose up -d`
 
+## Development Workflow
+- After implementing features, always run: `dotnet build` to check for compilation errors
+- Test your changes locally before committing
+- When working with API changes, test with curl or a REST client
+- For UI changes, verify in the browser with developer tools open
+- Clean up temporary test files and scripts after completing features
+
 ## Code Style Guidelines
 - **Naming**: 
   - Interfaces prefixed with 'I' (e.g., `ILLMClient`)

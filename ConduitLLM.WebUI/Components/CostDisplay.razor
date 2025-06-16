@@ -1,0 +1,58 @@
+<span class="mc-cost-display text-@Color fw-medium">
+    @if (Value.HasValue && Value.Value > 0)
+    {
+        @if (ShowCurrencySymbol)
+        {
+            <i class="fa fa-dollar-sign me-1"></i>
+        }
+        @FormatCost(Value.Value)
+    }
+    else
+    {
+        <span class="text-muted">-</span>
+    }
+</span>
+
+@code {
+    /// <summary>
+    /// Gets or sets the cost value to display.
+    /// </summary>
+    [Parameter] public decimal? Value { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the color theme (Bootstrap color names).
+    /// </summary>
+    [Parameter] public string Color { get; set; } = "success";
+    
+    /// <summary>
+    /// Gets or sets whether to show the currency symbol.
+    /// </summary>
+    [Parameter] public bool ShowCurrencySymbol { get; set; } = false;
+    
+    /// <summary>
+    /// Gets or sets the number of decimal places to display.
+    /// </summary>
+    [Parameter] public int DecimalPlaces { get; set; } = 6;
+    
+    /// <summary>
+    /// Gets or sets the format type.
+    /// </summary>
+    [Parameter] public CostFormatType FormatType { get; set; } = CostFormatType.Decimal;
+
+    private string FormatCost(decimal value)
+    {
+        return FormatType switch
+        {
+            CostFormatType.Currency => value.ToString($"C{DecimalPlaces}"),
+            CostFormatType.Percentage => value.ToString($"P{DecimalPlaces}"),
+            _ => value.ToString($"F{DecimalPlaces}")
+        };
+    }
+
+    public enum CostFormatType
+    {
+        Decimal,
+        Currency,
+        Percentage
+    }
+}

@@ -1,5 +1,6 @@
-using ConduitLLM.Configuration.DTOs.IpFilter;
 using System.Text.Json;
+
+using ConduitLLM.Configuration.DTOs.IpFilter;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -12,12 +13,12 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Use singular "ipfilter" to match the controller's route
                 var response = await _httpClient.GetAsync($"api/ipfilter/check/{Uri.EscapeDataString(ipAddress)}");
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
                 }
-                
+
                 return await response.Content.ReadFromJsonAsync<IpCheckResult>(_jsonOptions);
             }
             catch (Exception ex)

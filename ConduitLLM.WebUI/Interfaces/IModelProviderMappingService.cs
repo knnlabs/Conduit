@@ -1,6 +1,7 @@
-using ConfigDTO = ConduitLLM.Configuration.DTOs;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using ConfigDTO = ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.WebUI.Interfaces
 {

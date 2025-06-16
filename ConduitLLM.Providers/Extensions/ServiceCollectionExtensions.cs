@@ -1,5 +1,7 @@
 using System;
+
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.Providers.Extensions
@@ -20,16 +22,16 @@ namespace ConduitLLM.Providers.Extensions
             {
                 throw new ArgumentNullException(nameof(services));
             }
-            
+
             // Register LLM client factory
             services.AddScoped<ILLMClientFactory, LLMClientFactory>();
-            
+
             // Register model list service
             services.AddScoped<ModelListService>();
-            
+
             // Ensure memory cache is registered
             services.AddMemoryCache();
-            
+
             return services;
         }
     }

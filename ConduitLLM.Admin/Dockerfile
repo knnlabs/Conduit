@@ -11,6 +11,7 @@ WORKDIR /src
 COPY ["ConduitLLM.Admin/ConduitLLM.Admin.csproj", "ConduitLLM.Admin/"]
 COPY ["ConduitLLM.Configuration/ConduitLLM.Configuration.csproj", "ConduitLLM.Configuration/"]
 COPY ["ConduitLLM.Core/ConduitLLM.Core.csproj", "ConduitLLM.Core/"]
+COPY ["ConduitLLM.Providers/ConduitLLM.Providers.csproj", "ConduitLLM.Providers/"]
 RUN dotnet restore "ConduitLLM.Admin/ConduitLLM.Admin.csproj"
 COPY . .
 WORKDIR "/src/ConduitLLM.Admin"

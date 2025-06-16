@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Interfaces
@@ -36,7 +37,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// about cache configuration adjustments.
         /// </remarks>
         Task<CacheStatus> GetCacheStatusAsync();
-        
+
         /// <summary>
         /// Enables or disables the LLM response cache
         /// </summary>
@@ -50,7 +51,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// The cache state persists between application restarts as it is saved to the database.
         /// </remarks>
         Task SetCacheEnabledAsync(bool enabled);
-        
+
         /// <summary>
         /// Clears all items from the LLM response cache
         /// </summary>
@@ -66,7 +67,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// - After updating model configuration or credentials
         /// </remarks>
         Task ClearCacheAsync();
-        
+
         /// <summary>
         /// Updates the cache type (Memory or Redis)
         /// </summary>
@@ -77,7 +78,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// to Redis or vice versa, the cache is cleared and reconfigured.
         /// </remarks>
         Task SetCacheTypeAsync(string cacheType);
-        
+
         /// <summary>
         /// Updates the Redis connection settings
         /// </summary>
@@ -89,7 +90,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Redis, the connection will be re-established with the new settings.
         /// </remarks>
         Task UpdateRedisSettingsAsync(string connectionString, string instanceName);
-        
+
         /// <summary>
         /// Tests the Redis connection with the specified settings
         /// </summary>
@@ -101,8 +102,18 @@ namespace ConduitLLM.WebUI.Interfaces
         /// connection settings before applying them.
         /// </remarks>
         Task<RedisConnectionTestResult> TestRedisConnectionAsync(string connectionString);
+
+        /// <summary>
+        /// Gets the full cache configuration from the backend
+        /// </summary>
+        /// <returns>The cache configuration object or null if not configured</returns>
+        /// <remarks>
+        /// This method retrieves the complete cache configuration from the Admin API,
+        /// which is the authoritative source for all cache settings and defaults.
+        /// </remarks>
+        Task<CacheConfiguration?> GetCacheConfigurationAsync();
     }
-    
+
     /// <summary>
     /// Results of a Redis connection test
     /// </summary>
@@ -112,17 +123,17 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Whether the connection test was successful
         /// </summary>
         public bool IsSuccess { get; set; }
-        
+
         /// <summary>
         /// Error message if the connection test failed
         /// </summary>
         public string? ErrorMessage { get; set; }
-        
+
         /// <summary>
         /// Redis server version if connection was successful
         /// </summary>
         public string? ServerVersion { get; set; }
-        
+
         /// <summary>
         /// Latency of the connection test in milliseconds
         /// </summary>

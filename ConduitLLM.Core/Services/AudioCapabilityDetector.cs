@@ -1,25 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Default implementation of the audio capability detector.
+    /// Uses IModelCapabilityService for database-driven capability detection.
     /// </summary>
     public class AudioCapabilityDetector : IAudioCapabilityDetector
     {
-        // Provider capability definitions
-        private readonly Dictionary<string, AudioProviderCapabilities> _providerCapabilities;
+        private readonly ILogger<AudioCapabilityDetector> _logger;
+        private readonly IModelCapabilityService _capabilityService;
 
         /// <summary>
         /// Initializes a new instance of the AudioCapabilityDetector class.
         /// </summary>
-        public AudioCapabilityDetector()
+        /// <param name="logger">Logger for diagnostics</param>
+        /// <param name="capabilityService">Service for retrieving model capabilities from configuration</param>
+        public AudioCapabilityDetector(
+            ILogger<AudioCapabilityDetector> logger,
+            IModelCapabilityService capabilityService)
         {
-            _providerCapabilities = InitializeProviderCapabilities();
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityService = capabilityService ?? throw new ArgumentNullException(nameof(capabilityService));
         }
 
         /// <summary>
@@ -27,20 +37,34 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsTranscription(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-                return false;
-
-            if (capabilities.Transcription == null)
-                return false;
-
-            // If a specific model is requested, check if it's supported
-            if (!string.IsNullOrWhiteSpace(model))
+            if (string.IsNullOrWhiteSpace(model))
             {
-                return capabilities.Transcription.Models.Any(m => 
-                    m.ModelId.Equals(model, StringComparison.OrdinalIgnoreCase));
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "transcription").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default transcription model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default transcription model for provider {Provider}", provider);
+                    return false;
+                }
             }
 
-            return true;
+            try
+            {
+                return _capabilityService.SupportsAudioTranscriptionAsync(model).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking transcription capability for model {Model}", model);
+                return false;
+            }
         }
 
         /// <summary>
@@ -48,20 +72,34 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsTextToSpeech(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-                return false;
-
-            if (capabilities.TextToSpeech == null)
-                return false;
-
-            // If a specific model is requested, check if it's supported
-            if (!string.IsNullOrWhiteSpace(model))
+            if (string.IsNullOrWhiteSpace(model))
             {
-                return capabilities.TextToSpeech.Models.Any(m => 
-                    m.ModelId.Equals(model, StringComparison.OrdinalIgnoreCase));
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "tts").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default TTS model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default TTS model for provider {Provider}", provider);
+                    return false;
+                }
             }
 
-            return true;
+            try
+            {
+                return _capabilityService.SupportsTextToSpeechAsync(model).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking TTS capability for model {Model}", model);
+                return false;
+            }
         }
 
         /// <summary>
@@ -69,10 +107,34 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsRealtime(string provider, string? model = null)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-                return false;
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                // Try to get default model for provider
+                try
+                {
+                    model = _capabilityService.GetDefaultModelAsync(provider, "realtime").GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(model))
+                    {
+                        _logger.LogWarning("No default realtime model found for provider {Provider}", provider);
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error getting default realtime model for provider {Provider}", provider);
+                    return false;
+                }
+            }
 
-            return capabilities.Realtime != null;
+            try
+            {
+                return _capabilityService.SupportsRealtimeAudioAsync(model).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking realtime capability for model {Model}", model);
+                return false;
+            }
         }
 
         /// <summary>
@@ -80,26 +142,25 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public bool SupportsVoice(string provider, string voiceId)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
+            try
+            {
+                // Get default TTS model for provider
+                var model = _capabilityService.GetDefaultModelAsync(provider, "tts").GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default TTS model found for provider {Provider}", provider);
+                    return false;
+                }
+
+                // Check if voice is supported by the model
+                var supportedVoices = _capabilityService.GetSupportedVoicesAsync(model).GetAwaiter().GetResult();
+                return supportedVoices.Contains(voiceId, StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+_logger.LogError(ex, "Error checking voice support for {Provider}/{Voice}", provider.Replace(Environment.NewLine, ""), voiceId.Replace(Environment.NewLine, ""));
                 return false;
-
-            // Check TTS voices
-            if (capabilities.TextToSpeech?.Voices != null)
-            {
-                if (capabilities.TextToSpeech.Voices.Any(v => 
-                    v.VoiceId.Equals(voiceId, StringComparison.OrdinalIgnoreCase)))
-                    return true;
             }
-
-            // Check real-time voices
-            if (capabilities.Realtime?.AvailableVoices != null)
-            {
-                if (capabilities.Realtime.AvailableVoices.Any(v => 
-                    v.VoiceId.Equals(voiceId, StringComparison.OrdinalIgnoreCase)))
-                    return true;
-            }
-
-            return false;
         }
 
         /// <summary>
@@ -107,20 +168,41 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioFormat[] GetSupportedFormats(string provider, AudioOperation operation)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-                return Array.Empty<AudioFormat>();
-
-            return operation switch
+            try
             {
-                AudioOperation.Transcription => ParseFormatsToEnum(capabilities.Transcription?.SupportedFormats),
-                AudioOperation.TextToSpeech => capabilities.TextToSpeech?.SupportedFormats.ToArray() ?? Array.Empty<AudioFormat>(),
-                AudioOperation.Realtime => (capabilities.Realtime?.SupportedInputFormats ?? new List<RealtimeAudioFormat>())
-                    .Select(f => ConvertRealtimeToAudioFormat(f))
+                // Get the appropriate model based on operation
+                var capabilityType = operation switch
+                {
+                    AudioOperation.Transcription => "transcription",
+                    AudioOperation.TextToSpeech => "tts",
+                    AudioOperation.Realtime => "realtime",
+                    _ => null
+                };
+
+                if (capabilityType == null)
+                {
+                    return Array.Empty<AudioFormat>();
+                }
+
+                var model = _capabilityService.GetDefaultModelAsync(provider, capabilityType).GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default {CapabilityType} model found for provider {Provider}", capabilityType, provider);
+                    return Array.Empty<AudioFormat>();
+                }
+
+                var supportedFormats = _capabilityService.GetSupportedFormatsAsync(model).GetAwaiter().GetResult();
+                return supportedFormats
+                    .Select(f => Enum.TryParse<AudioFormat>(f, true, out var format) ? format : (AudioFormat?)null)
                     .Where(f => f.HasValue)
                     .Select(f => f!.Value)
-                    .ToArray(),
-                _ => Array.Empty<AudioFormat>()
-            };
+                    .ToArray();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting supported formats for {Provider}/{Operation}", provider, operation);
+                return Array.Empty<AudioFormat>();
+            }
         }
 
         /// <summary>
@@ -128,16 +210,36 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetSupportedLanguages(string provider, AudioOperation operation)
         {
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-                return Enumerable.Empty<string>();
-
-            return operation switch
+            try
             {
-                AudioOperation.Transcription => capabilities.Transcription?.SupportedLanguages ?? Enumerable.Empty<string>(),
-                AudioOperation.TextToSpeech => capabilities.TextToSpeech?.SupportedLanguages ?? Enumerable.Empty<string>(),
-                AudioOperation.Realtime => capabilities.Realtime?.SupportedLanguages ?? Enumerable.Empty<string>(),
-                _ => Enumerable.Empty<string>()
-            };
+                // Get the appropriate model based on operation
+                var capabilityType = operation switch
+                {
+                    AudioOperation.Transcription => "transcription",
+                    AudioOperation.TextToSpeech => "tts",
+                    AudioOperation.Realtime => "realtime",
+                    _ => null
+                };
+
+                if (capabilityType == null)
+                {
+                    return Enumerable.Empty<string>();
+                }
+
+                var model = _capabilityService.GetDefaultModelAsync(provider, capabilityType).GetAwaiter().GetResult();
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    _logger.LogWarning("No default {CapabilityType} model found for provider {Provider}", capabilityType, provider);
+                    return Enumerable.Empty<string>();
+                }
+
+                return _capabilityService.GetSupportedLanguagesAsync(model).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting supported languages for {Provider}/{Operation}", provider, operation);
+                return Enumerable.Empty<string>();
+            }
         }
 
         /// <summary>
@@ -153,13 +255,7 @@ namespace ConduitLLM.Core.Services
                 return false;
             }
 
-            if (!_providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities))
-            {
-                errorMessage = $"Unknown provider: {provider}";
-                return false;
-            }
-
-            // Additional provider-specific validation could be added here
+            // Additional validation could be added here based on database capabilities
 
             return true;
         }
@@ -169,9 +265,19 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public IEnumerable<string> GetProvidersWithCapability(AudioCapability capability)
         {
-            return _providerCapabilities
-                .Where(kvp => HasCapability(kvp.Value, capability))
-                .Select(kvp => kvp.Key);
+            _logger.LogWarning("GetProvidersWithCapability needs to be made async to properly query all models in the capability service");
+            // This method needs to be made async to properly query the capability service
+            // For now, return known providers based on capability type
+            return capability switch
+            {
+                AudioCapability.BasicTranscription => new[] { "openai", "google", "aws" },
+                AudioCapability.TimestampedTranscription => new[] { "openai", "google", "aws" },
+                AudioCapability.BasicTTS => new[] { "openai", "google", "aws" },
+                AudioCapability.MultiVoiceTTS => new[] { "openai", "google", "aws" },
+                AudioCapability.RealtimeConversation => new[] { "openai" },
+                AudioCapability.RealtimeFunctions => new[] { "openai" },
+                _ => Enumerable.Empty<string>()
+            };
         }
 
         /// <summary>
@@ -179,9 +285,40 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public AudioProviderCapabilities GetProviderCapabilities(string provider)
         {
-            return _providerCapabilities.TryGetValue(provider.ToLowerInvariant(), out var capabilities)
-                ? capabilities
-                : new AudioProviderCapabilities { Provider = provider };
+            var capabilities = new List<AudioCapability>();
+            
+            try
+            {
+                // Check each capability type
+                if (SupportsTranscription(provider))
+                {
+                    capabilities.Add(AudioCapability.BasicTranscription);
+                    capabilities.Add(AudioCapability.TimestampedTranscription);
+                }
+                    
+                if (SupportsTextToSpeech(provider))
+                {
+                    capabilities.Add(AudioCapability.BasicTTS);
+                    capabilities.Add(AudioCapability.MultiVoiceTTS);
+                }
+                    
+                if (SupportsRealtime(provider))
+                {
+                    capabilities.Add(AudioCapability.RealtimeConversation);
+                    capabilities.Add(AudioCapability.RealtimeFunctions);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting capabilities for provider {Provider}", provider);
+            }
+            
+            return new AudioProviderCapabilities
+            {
+                Provider = provider,
+                DisplayName = provider,
+                SupportedCapabilities = capabilities
+            };
         }
 
         /// <summary>
@@ -193,346 +330,30 @@ namespace ConduitLLM.Core.Services
             if (!providers.Any())
                 return null;
 
-            // This is a simplified recommendation logic
-            // In a real implementation, this would consider:
-            // - Cost optimization
-            // - Quality requirements
-            // - Language/voice support
-            // - Provider health/availability
-
-            // For now, prefer providers in this order for different request types
+            // Determine operation type from request
+            AudioOperation operation;
             if (request is AudioTranscriptionRequest)
+                operation = AudioOperation.Transcription;
+            else if (request is TextToSpeechRequest)
+                operation = AudioOperation.TextToSpeech;
+            // RealtimeSessionConfig is handled separately, not through AudioRequestBase
+            else
+                return providers.First();
+
+            // Find providers that support the operation
+            var capableProviders = providers.Where(p =>
             {
-                // Prefer OpenAI for transcription (Whisper is excellent)
-                if (providers.Contains("openai", StringComparer.OrdinalIgnoreCase))
-                    return "openai";
-                if (providers.Contains("azure", StringComparer.OrdinalIgnoreCase))
-                    return "azure";
-            }
-            else if (request is TextToSpeechRequest ttsRequest)
-            {
-                // For TTS, consider voice requirements
-                foreach (var provider in providers)
+                return operation switch
                 {
-                    if (SupportsVoice(provider, ttsRequest.Voice))
-                        return provider;
-                }
-            }
+                    AudioOperation.Transcription => SupportsTranscription(p),
+                    AudioOperation.TextToSpeech => SupportsTextToSpeech(p),
+                    AudioOperation.Realtime => SupportsRealtime(p),
+                    _ => false
+                };
+            }).ToList();
 
-            // Default to first available
-            return providers.First();
-        }
-
-        /// <summary>
-        /// Initializes the provider capability definitions.
-        /// </summary>
-        private Dictionary<string, AudioProviderCapabilities> InitializeProviderCapabilities()
-        {
-            return new Dictionary<string, AudioProviderCapabilities>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["openai"] = CreateOpenAICapabilities(),
-                ["azure"] = CreateAzureOpenAICapabilities(),
-                ["google"] = CreateGoogleCapabilities(),
-                ["elevenlabs"] = CreateElevenLabsCapabilities(),
-                ["ultravox"] = CreateUltravoxCapabilities()
-            };
-        }
-
-        private AudioProviderCapabilities CreateOpenAICapabilities()
-        {
-            return new AudioProviderCapabilities
-            {
-                Provider = "openai",
-                DisplayName = "OpenAI",
-                SupportedCapabilities = new List<AudioCapability>
-                {
-                    AudioCapability.BasicTranscription,
-                    AudioCapability.TimestampedTranscription,
-                    AudioCapability.BasicTTS,
-                    AudioCapability.MultiVoiceTTS,
-                    AudioCapability.StreamingAudio,
-                    AudioCapability.RealtimeConversation,
-                    AudioCapability.RealtimeFunctions
-                },
-                Transcription = new TranscriptionCapabilities
-                {
-                    SupportedFormats = new List<string> { "mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm" },
-                    SupportedLanguages = GetWhisperLanguages(),
-                    Models = new List<AudioModelInfo>
-                    {
-                        new AudioModelInfo { ModelId = "whisper-1", Name = "Whisper v1", IsDefault = true }
-                    },
-                    SupportsAutoLanguageDetection = true,
-                    SupportsWordTimestamps = true,
-                    MaxFileSizeBytes = 25 * 1024 * 1024, // 25MB
-                    OutputFormats = new List<TranscriptionFormat>
-                    {
-                        TranscriptionFormat.Json,
-                        TranscriptionFormat.Text,
-                        TranscriptionFormat.Srt,
-                        TranscriptionFormat.Vtt,
-                        TranscriptionFormat.VerboseJson
-                    }
-                },
-                TextToSpeech = new TextToSpeechCapabilities
-                {
-                    Voices = GetOpenAIVoices(),
-                    SupportedFormats = new List<AudioFormat>
-                    {
-                        AudioFormat.Mp3,
-                        AudioFormat.Opus,
-                        AudioFormat.Aac,
-                        AudioFormat.Flac,
-                        AudioFormat.Wav,
-                        AudioFormat.Pcm
-                    },
-                    Models = new List<AudioModelInfo>
-                    {
-                        new AudioModelInfo { ModelId = "tts-1", Name = "TTS v1", IsDefault = true },
-                        new AudioModelInfo { ModelId = "tts-1-hd", Name = "TTS v1 HD" }
-                    },
-                    SupportedLanguages = GetOpenAISupportedTTSLanguages(),
-                    SupportsStreaming = false, // Not yet, but we simulate it
-                    SpeedRange = new RangeLimit { Min = 0.25, Max = 4.0, Default = 1.0 },
-                    MaxTextLength = 4096
-                },
-                Realtime = new RealtimeCapabilities
-                {
-                    SupportedInputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_8kHz,
-                        RealtimeAudioFormat.PCM16_16kHz,
-                        RealtimeAudioFormat.PCM16_24kHz,
-                        RealtimeAudioFormat.G711_ULAW,
-                        RealtimeAudioFormat.G711_ALAW
-                    },
-                    SupportedOutputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_8kHz,
-                        RealtimeAudioFormat.PCM16_16kHz,
-                        RealtimeAudioFormat.PCM16_24kHz
-                    },
-                    AvailableVoices = GetOpenAIVoices(),
-                    SupportedLanguages = GetOpenAISupportedTTSLanguages(),
-                    SupportsFunctionCalling = true,
-                    SupportsInterruptions = true,
-                    MaxSessionDurationSeconds = 900 // 15 minutes
-                }
-            };
-        }
-
-        private AudioProviderCapabilities CreateAzureOpenAICapabilities()
-        {
-            // Azure OpenAI has similar capabilities to OpenAI
-            var capabilities = CreateOpenAICapabilities();
-            capabilities.Provider = "azure";
-            capabilities.DisplayName = "Azure OpenAI";
-            return capabilities;
-        }
-
-        private AudioProviderCapabilities CreateGoogleCapabilities()
-        {
-            return new AudioProviderCapabilities
-            {
-                Provider = "google",
-                DisplayName = "Google Cloud",
-                SupportedCapabilities = new List<AudioCapability>
-                {
-                    AudioCapability.BasicTranscription,
-                    AudioCapability.TimestampedTranscription,
-                    AudioCapability.BasicTTS,
-                    AudioCapability.MultiVoiceTTS,
-                    AudioCapability.SSMLSupport
-                },
-                Transcription = new TranscriptionCapabilities
-                {
-                    SupportedFormats = new List<string> { "wav", "flac", "mp3", "ogg", "webm" },
-                    SupportedLanguages = GetGoogleSupportedLanguages(),
-                    SupportsAutoLanguageDetection = true,
-                    SupportsWordTimestamps = true,
-                    SupportsSpeakerDiarization = true,
-                    MaxFileSizeBytes = 180 * 1024 * 1024 // 180MB
-                },
-                TextToSpeech = new TextToSpeechCapabilities
-                {
-                    SupportedFormats = new List<AudioFormat>
-                    {
-                        AudioFormat.Mp3,
-                        AudioFormat.Wav,
-                        AudioFormat.Ogg
-                    },
-                    SupportedLanguages = GetGoogleSupportedLanguages(),
-                    SupportsSSML = true,
-                    MaxTextLength = 5000
-                }
-            };
-        }
-
-        private AudioProviderCapabilities CreateElevenLabsCapabilities()
-        {
-            return new AudioProviderCapabilities
-            {
-                Provider = "elevenlabs",
-                DisplayName = "ElevenLabs",
-                SupportedCapabilities = new List<AudioCapability>
-                {
-                    AudioCapability.BasicTTS,
-                    AudioCapability.MultiVoiceTTS,
-                    AudioCapability.EmotionalTTS,
-                    AudioCapability.VoiceCloning,
-                    AudioCapability.StreamingAudio,
-                    AudioCapability.RealtimeConversation
-                },
-                TextToSpeech = new TextToSpeechCapabilities
-                {
-                    SupportedFormats = new List<AudioFormat>
-                    {
-                        AudioFormat.Mp3,
-                        AudioFormat.Wav,
-                        AudioFormat.Flac,
-                        AudioFormat.Ogg,
-                        AudioFormat.Pcm
-                    },
-                    SupportedLanguages = GetElevenLabsSupportedLanguages(),
-                    SupportsStreaming = true,
-                    SupportsVoiceCloning = true,
-                    MaxTextLength = 5000
-                },
-                Realtime = new RealtimeCapabilities
-                {
-                    SupportedInputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_16kHz
-                    },
-                    SupportedOutputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_16kHz
-                    },
-                    SupportsInterruptions = true,
-                    MaxSessionDurationSeconds = 1800 // 30 minutes
-                }
-            };
-        }
-
-        private AudioProviderCapabilities CreateUltravoxCapabilities()
-        {
-            return new AudioProviderCapabilities
-            {
-                Provider = "ultravox",
-                DisplayName = "Ultravox",
-                SupportedCapabilities = new List<AudioCapability>
-                {
-                    AudioCapability.RealtimeConversation,
-                    AudioCapability.RealtimeFunctions
-                },
-                Realtime = new RealtimeCapabilities
-                {
-                    SupportedInputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_8kHz,
-                        RealtimeAudioFormat.PCM16_16kHz,
-                        RealtimeAudioFormat.PCM16_24kHz
-                    },
-                    SupportedOutputFormats = new List<RealtimeAudioFormat>
-                    {
-                        RealtimeAudioFormat.PCM16_16kHz
-                    },
-                    SupportsFunctionCalling = true,
-                    SupportsInterruptions = true
-                }
-            };
-        }
-
-        private bool HasCapability(AudioProviderCapabilities capabilities, AudioCapability capability)
-        {
-            return capabilities.SupportedCapabilities?.Contains(capability) ?? false;
-        }
-
-        private AudioFormat[] ParseFormatsToEnum(List<string>? formats)
-        {
-            if (formats == null) return Array.Empty<AudioFormat>();
-
-            var result = new List<AudioFormat>();
-            foreach (var format in formats)
-            {
-                if (Enum.TryParse<AudioFormat>(format, true, out var audioFormat))
-                {
-                    result.Add(audioFormat);
-                }
-            }
-            return result.ToArray();
-        }
-
-        private AudioFormat? ConvertRealtimeToAudioFormat(RealtimeAudioFormat format)
-        {
-            return format switch
-            {
-                RealtimeAudioFormat.MP3 => AudioFormat.Mp3,
-                RealtimeAudioFormat.Opus => AudioFormat.Opus,
-                _ => null
-            };
-        }
-
-        private List<string> GetWhisperLanguages()
-        {
-            return new List<string>
-            {
-                "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr",
-                "pl", "ca", "nl", "ar", "sv", "it", "id", "hi", "fi", "vi",
-                "he", "uk", "el", "ms", "cs", "ro", "da", "hu", "ta", "no",
-                "th", "ur", "hr", "bg", "lt", "la", "mi", "ml", "cy", "sk",
-                "te", "fa", "lv", "bn", "sr", "az", "sl", "kn", "et", "mk",
-                "br", "eu", "is", "hy", "ne", "mn", "bs", "kk", "sq", "sw",
-                "gl", "mr", "pa", "si", "km", "sn", "yo", "so", "af", "oc",
-                "ka", "be", "tg", "sd", "gu", "am", "yi", "lo", "uz", "fo",
-                "ht", "ps", "tk", "nn", "mt", "sa", "lb", "my", "bo", "tl",
-                "mg", "as", "tt", "haw", "ln", "ha", "ba", "jw", "su"
-            };
-        }
-
-        private List<VoiceInfo> GetOpenAIVoices()
-        {
-            return new List<VoiceInfo>
-            {
-                new VoiceInfo { VoiceId = "alloy", Name = "Alloy", Gender = VoiceGender.Neutral },
-                new VoiceInfo { VoiceId = "echo", Name = "Echo", Gender = VoiceGender.Male },
-                new VoiceInfo { VoiceId = "fable", Name = "Fable", Gender = VoiceGender.Male },
-                new VoiceInfo { VoiceId = "onyx", Name = "Onyx", Gender = VoiceGender.Male },
-                new VoiceInfo { VoiceId = "nova", Name = "Nova", Gender = VoiceGender.Female },
-                new VoiceInfo { VoiceId = "shimmer", Name = "Shimmer", Gender = VoiceGender.Female }
-            };
-        }
-
-        private List<string> GetOpenAISupportedTTSLanguages()
-        {
-            // OpenAI TTS supports many languages but not as many as Whisper
-            return new List<string>
-            {
-                "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko",
-                "nl", "pl", "sv", "da", "no", "fi", "tr", "ar", "he", "hi"
-            };
-        }
-
-        private List<string> GetGoogleSupportedLanguages()
-        {
-            // Simplified list - Google supports many more
-            return new List<string>
-            {
-                "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko",
-                "nl", "pl", "sv", "da", "no", "fi", "tr", "ar", "he", "hi",
-                "th", "vi", "id", "ms", "fil", "uk", "cs", "ro", "hu", "el"
-            };
-        }
-
-        private List<string> GetElevenLabsSupportedLanguages()
-        {
-            // ElevenLabs supports multiple languages
-            return new List<string>
-            {
-                "en", "es", "fr", "de", "it", "pt", "pl", "ru", "nl", "sv",
-                "cs", "ar", "zh", "ja", "ko", "hi", "tr", "da", "fi", "el",
-                "he", "hu", "id", "ms", "no", "ro", "sk", "th", "uk", "vi"
-            };
+            // Return first capable provider, or fallback to first available
+            return capableProviders.FirstOrDefault() ?? providers.First();
         }
     }
 }

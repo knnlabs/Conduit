@@ -1,89 +1,107 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
-using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Providers.InternalModels;
-using ConduitLLM.Providers.InternalModels.OpenAIModels;
 
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Providers
 {
     /// <summary>
-    /// Client for interacting with the OpenRouter API.
+    /// Client for interacting with OpenRouter API, providing access to multiple AI models through a unified interface.
+    /// OpenRouter is a meta-provider that routes requests to various underlying providers.
     /// </summary>
+    /// <remarks>
+    /// OpenRouter features:
+    /// <list type="bullet">
+    /// <item>Access to models from multiple providers through a single API</item>
+    /// <item>Automatic failover and load balancing</item>
+    /// <item>Unified billing across providers</item>
+    /// <item>Standard OpenAI-compatible API format</item>
+    /// </list>
+    /// 
+    /// Configuration example:
+    /// <code>
+    /// {
+    ///   "ProviderName": "openrouter",
+    ///   "ApiKey": "sk-or-...",
+    ///   "BaseUrl": "https://openrouter.ai/api/v1"
+    /// }
+    /// </code>
+    /// </remarks>
     public class OpenRouterClient : OpenAICompatibleClient
     {
-        // API configuration constants
+        /// <summary>
+        /// OpenRouter-specific constants for API configuration and endpoints.
+        /// </summary>
         private static class Constants
         {
+            /// <summary>
+            /// OpenRouter-specific URLs and API configuration.
+            /// </summary>
             public static class Urls
             {
-                public const string DefaultApiBase = "https://openrouter.ai/api/v1/";
+                /// <summary>
+                /// The base URL for OpenRouter API requests.
+                /// </summary>
+                public const string ApiBase = "https://openrouter.ai/api/v1/";
+
+                /// <summary>
+                /// The full API endpoint for OpenRouter requests.
+                /// </summary>
                 public const string ApiEndpoint = "https://openrouter.ai/api/v1";
             }
-            
+
+            /// <summary>
+            /// API endpoints relative to the base URL.
+            /// </summary>
             public static class Endpoints
             {
+                /// <summary>
+                /// Endpoint for chat completions.
+                /// </summary>
                 public const string ChatCompletions = "/chat/completions";
+
+                /// <summary>
+                /// Endpoint for listing available models.
+                /// </summary>
                 public const string Models = "/models";
-            }
-            
-            public static class Headers
-            {
-                public const string HttpReferer = "HTTP-Referer";
-                public const string XTitle = "X-Title";
             }
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OpenRouterClient"/> class.
         /// </summary>
-        /// <param name="credentials">The provider credentials.</param>
-        /// <param name="providerModelId">The provider's model identifier.</param>
-        /// <param name="logger">The logger to use.</param>
-        /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        /// <param name="credentials">OpenRouter API credentials including API key and optional base URL.</param>
+        /// <param name="modelId">The ID of the model to use for requests (e.g., "openai/gpt-4", "anthropic/claude-2").</param>
+        /// <param name="logger">Logger instance for diagnostic output.</param>
+        /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public OpenRouterClient(
             ProviderCredentials credentials,
-            string providerModelId,
+            string modelId,
             ILogger<OpenRouterClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureOpenRouterCredentials(credentials),
-                providerModelId,
+                modelId,
                 logger,
                 httpClientFactory,
-                "openrouter",
-                DetermineBaseUrl(credentials))
+                "OpenRouter",
+                null, // Let the base constructor determine the URL
+                defaultModels)
         {
-        }
-        
-        /// <summary>
-        /// Override to fix the double slash issue in the endpoint URLs.
-        /// </summary>
-        /// <returns>The full URL for the chat completions endpoint.</returns>
-        protected override string GetChatCompletionEndpoint()
-        {
-            // Fix the double slash by using a full URL without relying on BaseUrl with trailing slash
-            return Constants.Urls.ApiEndpoint + Constants.Endpoints.ChatCompletions;
         }
 
         /// <summary>
-        /// Override to fix the double slash issue in the endpoint URLs.
+        /// Override to provide the fixed models endpoint URL without double slashes.
         /// </summary>
         /// <returns>The full URL for the models endpoint.</returns>
         protected override string GetModelsEndpoint()
@@ -91,111 +109,56 @@ namespace ConduitLLM.Providers
             // Fix the double slash by using a full URL without relying on BaseUrl with trailing slash
             return Constants.Urls.ApiEndpoint + Constants.Endpoints.Models;
         }
-        
+
         /// <summary>
-        /// Override to fix the model name for non-streaming completions as well.
+        /// Override GetModelsAsync to handle OpenRouter's simplified response format.
         /// </summary>
-        public override async Task<ChatCompletionResponse> CreateChatCompletionAsync(
-            ChatCompletionRequest request,
+        public override async Task<List<InternalModels.ExtendedModelInfo>> GetModelsAsync(
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                // Debug info
-                Logger.LogInformation("OpenRouter CreateChatCompletionAsync - HARD-CODED Debug Info");
-                Logger.LogInformation("Request model: {ModelName}", request.Model);
-                Logger.LogInformation("Provider model ID: {ProviderModelId}", ProviderModelId);
-                
-                // HARDCODED WORKAROUND: Explicitly use the correct model ID for OpenRouter
-                // This works for any model set up with alias "test" that points to Phi 4 
-                string originalModel = request.Model;
-                
-                if (originalModel == "test" || ProviderModelId.Contains("phi-4-reasoning"))
+                return await ExecuteApiRequestAsync(async () =>
                 {
-                    // Explicitly set the model ID to a known working value
-                    request.Model = "microsoft/phi-4-reasoning-plus:free";
-                    Logger.LogInformation("OpenRouter HARDCODED MODEL OVERRIDE - Using model ID: {ModelId}", request.Model);
-                }
-                else
-                {
-                    // If not our specific test case, still make sure we use the ProviderModelId
-                    request.Model = ProviderModelId;
-                    Logger.LogInformation("OpenRouter CreateChatCompletionAsync - Using model ID: {ModelId}", request.Model);
-                }
-                
-                // Call the base implementation with the fixed model ID
-                return await base.CreateChatCompletionAsync(request, apiKey, cancellationToken);
+                    using var client = CreateHttpClient(apiKey);
+
+                    var endpoint = GetModelsEndpoint();
+
+                    Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
+
+                    var response = await client.GetAsync(endpoint, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    // OpenRouter returns a simplified format with just model IDs
+                    var jsonDocument = JsonDocument.Parse(content);
+                    var models = new List<InternalModels.ExtendedModelInfo>();
+
+                    if (jsonDocument.RootElement.TryGetProperty("data", out var dataArray))
+                    {
+                        foreach (var item in dataArray.EnumerateArray())
+                        {
+                            if (item.TryGetProperty("id", out var idProperty))
+                            {
+                                var modelId = idProperty.GetString();
+                                if (!string.IsNullOrEmpty(modelId))
+                                {
+                                    models.Add(InternalModels.ExtendedModelInfo.Create(modelId, ProviderName, modelId));
+                                }
+                            }
+                        }
+                    }
+
+                    Logger.LogInformation($"OpenRouter returned {models.Count} models");
+                    return models;
+                }, "GetModels", cancellationToken);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "OpenRouter CreateChatCompletionAsync - Exception: {Message}", ex.Message);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Override to implement streaming support for OpenRouter API.
-        /// </summary>
-        /// <param name="request">The chat completion request.</param>
-        /// <param name="apiKey">Optional API key to override the one in credentials.</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-        /// <returns>An async enumerable of chat completion chunks.</returns>
-        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
-            ChatCompletionRequest request,
-            string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            // Debug info
-            Logger.LogInformation("OpenRouter StreamChatCompletionAsync - HARD-CODED Debug Info");
-            Logger.LogInformation("Request model: {ModelName}", request.Model);
-            Logger.LogInformation("Provider model ID: {ProviderModelId}", ProviderModelId);
-            
-            // HARDCODED WORKAROUND: Explicitly use the correct model ID for OpenRouter
-            // This works for any model set up with alias "test" that points to Phi 4 
-            string originalModel = request.Model;
-            
-            if (originalModel == "test" || ProviderModelId.Contains("phi-4-reasoning"))
-            {
-                // Explicitly set the model ID to a known working value
-                request.Model = "microsoft/phi-4-reasoning-plus:free";
-                Logger.LogInformation("OpenRouter HARDCODED MODEL OVERRIDE - Using model ID: {ModelId}", request.Model);
-            }
-            else
-            {
-                // If not our specific test case, still make sure we use the ProviderModelId
-                request.Model = ProviderModelId;
-                Logger.LogInformation("OpenRouter StreamChatCompletionAsync - Using model ID: {ModelId}", request.Model);
-            }
-            
-            // Create a custom dictionary for the request to ensure the model ID is set correctly
-            Dictionary<string, object> customReq = new Dictionary<string, object>
-            {
-                { "model", request.Model },
-                { "messages", request.Messages },
-                { "stream", true }
-            };
-            
-            if (request.Temperature.HasValue)
-                customReq["temperature"] = request.Temperature.Value;
-                
-            if (request.TopP.HasValue)
-                customReq["top_p"] = request.TopP.Value;
-                
-            if (request.Stop != null && request.Stop.Count > 0)
-                customReq["stop"] = request.Stop;
-            
-            // Construct a new HttpClient for raw access
-            using var client = CreateHttpClient(apiKey);
-            string endpoint = GetChatCompletionEndpoint();
-            
-            Logger.LogInformation("OpenRouter endpoint: {Endpoint}", endpoint);
-            Logger.LogInformation("OpenRouter final model: {Model}", customReq["model"]);
-            
-            // Call the base class implementation which has all the streaming logic
-            await foreach (var chunk in base.StreamChatCompletionAsync(request, apiKey, cancellationToken))
-            {
-                yield return chunk;
+                Logger.LogWarning(ex, "Failed to retrieve models from {Provider} API. Returning known models.", ProviderName);
+                return GetFallbackModels();
             }
         }
 
@@ -231,137 +194,66 @@ namespace ConduitLLM.Providers
             throw new NotSupportedException("Image generation is not supported in the OpenRouter client");
         }
 
+        /// <summary>
+        /// Gets a fallback list of models for OpenRouter when the API is unavailable.
+        /// </summary>
+        /// <returns>A list of commonly available OpenRouter models.</returns>
+        protected override List<InternalModels.ExtendedModelInfo> GetFallbackModels()
+        {
+            return new List<InternalModels.ExtendedModelInfo>
+            {
+                InternalModels.ExtendedModelInfo.Create("anthropic/claude-3-opus", "openrouter", "Claude 3 Opus"),
+                InternalModels.ExtendedModelInfo.Create("anthropic/claude-3-sonnet", "openrouter", "Claude 3 Sonnet"),
+                InternalModels.ExtendedModelInfo.Create("openai/gpt-4-turbo", "openrouter", "GPT-4 Turbo"),
+                InternalModels.ExtendedModelInfo.Create("openai/gpt-3.5-turbo", "openrouter", "GPT-3.5 Turbo"),
+                InternalModels.ExtendedModelInfo.Create("google/gemini-pro", "openrouter", "Gemini Pro"),
+                InternalModels.ExtendedModelInfo.Create("meta-llama/llama-3-70b-instruct", "openrouter", "Llama 3 70B")
+            };
+        }
+
         private static ProviderCredentials EnsureOpenRouterCredentials(ProviderCredentials credentials)
         {
-            if (credentials == null)
+            // Ensure we have a proper base URL
+            if (string.IsNullOrWhiteSpace(credentials.ApiBase))
             {
-                throw new ArgumentNullException(nameof(credentials));
-            }
-
-            if (string.IsNullOrWhiteSpace(credentials.ApiKey))
-            {
-                throw new ConfigurationException("API key is required for OpenRouter API");
+                credentials.ApiBase = Constants.Urls.ApiBase;
             }
 
             return credentials;
         }
 
-        private static string DetermineBaseUrl(ProviderCredentials credentials)
-        {
-            return string.IsNullOrWhiteSpace(credentials.ApiBase)
-                ? Constants.Urls.DefaultApiBase
-                : credentials.ApiBase.TrimEnd('/') + "/";
-        }
-
-        /// <inheritdoc />
+        /// <summary>
+        /// Configures the HTTP client with OpenRouter-specific settings and headers.
+        /// </summary>
+        /// <param name="client">The HTTP client to configure.</param>
+        /// <param name="apiKey">The API key for authentication.</param>
+        /// <remarks>
+        /// OpenRouter requires specific headers:
+        /// <list type="bullet">
+        /// <item>HTTP-Referer: Identifies the source application</item>
+        /// <item>X-Title: Optional title for request tracking</item>
+        /// </list>
+        /// </remarks>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
             base.ConfigureHttpClient(client, apiKey);
-            
+
             // Add OpenRouter-specific headers
-            client.DefaultRequestHeaders.Add(Constants.Headers.HttpReferer, "https://conduit-llm.com");
-            client.DefaultRequestHeaders.Add(Constants.Headers.XTitle, "ConduitLLM");
+            client.DefaultRequestHeaders.Add("HTTP-Referer", "https://conduit-llm.com");
+            client.DefaultRequestHeaders.Add("X-Title", "ConduitLLM");
         }
 
         /// <summary>
-        /// Maps the provider-agnostic request to OpenAI format with OpenRouter-specific requirements.
+        /// Gets the chat completion endpoint URL.
         /// </summary>
-        /// <param name="request">The provider-agnostic request.</param>
-        /// <returns>An object representing the OpenRouter-formatted request.</returns>
-        protected override object MapToOpenAIRequest(ChatCompletionRequest request)
+        /// <returns>The full URL for the chat completions endpoint.</returns>
+        /// <remarks>
+        /// OpenRouter uses a non-standard path structure compared to vanilla OpenAI API.
+        /// </remarks>
+        protected override string GetChatCompletionEndpoint()
         {
-            // Before we do anything, log what we're receiving
-            Logger.LogInformation("OpenRouter MapToOpenAIRequest - Input request model: {ModelName}, Provider model ID: {ProviderModelId}", 
-                request.Model, ProviderModelId);
-                
-            // Create a new dictionary specifically for OpenRouter
-            Dictionary<string, object> modifiedRequest = new Dictionary<string, object>();
-            
-            // First, let base implementation convert to OpenAI format
-            var openAiRequest = base.MapToOpenAIRequest(request);
-            
-            // Serialize to string and deserialize to dictionary to get a clean slate
-            var jsonString = JsonSerializer.Serialize(openAiRequest, DefaultJsonOptions);
-            var requestDict = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonString, DefaultJsonOptions);
-            
-            if (requestDict == null)
-            {
-                Logger.LogWarning("OpenRouter MapToOpenAIRequest - Failed to parse request to dictionary. Using original request.");
-                return openAiRequest;
-            }
-            
-            // Copy all properties from the openAI request
-            foreach (var kvp in requestDict)
-            {
-                modifiedRequest[kvp.Key] = kvp.Value;
-            }
-            
-            // Explicitly set the model to our provider model ID
-            modifiedRequest["model"] = ProviderModelId;
-            
-            // Log the final model ID being sent
-            Logger.LogInformation("OpenRouter MapToOpenAIRequest - Final request using model ID: {ModelId}", modifiedRequest["model"]);
-            
-            return modifiedRequest;
-        }
-
-        /// <inheritdoc />
-        public override async Task<List<ExtendedModelInfo>> GetModelsAsync(
-            string? apiKey = null, 
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                Logger.LogInformation("Listing OpenRouter models");
-                
-                using var client = CreateHttpClient(apiKey);
-                string endpoint = "models";
-                
-                using var requestMessage = new HttpRequestMessage(HttpMethod.Get, endpoint);
-                using var response = await client.SendAsync(requestMessage, cancellationToken);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    string errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                    Logger.LogError("OpenRouter API list models failed: {StatusCode}. Response: {Response}", 
-                        response.StatusCode, errorContent);
-                    throw new LLMCommunicationException($"OpenRouter list models failed: {response.ReasonPhrase} ({response.StatusCode})");
-                }
-                
-                // Custom DTO for OpenRouter /models response
-                var openRouterModelsResponse = await response.Content.ReadFromJsonAsync<OpenRouterModelsResponse>(
-                    options: DefaultJsonOptions,
-                    cancellationToken: cancellationToken);
-                
-                if (openRouterModelsResponse?.Data == null)
-                {
-                    Logger.LogWarning("OpenRouter API returned null/empty data for models.");
-                    return new List<ExtendedModelInfo>();
-                }
-                
-                return openRouterModelsResponse.Data
-                    .Where(m => !string.IsNullOrEmpty(m.Id))
-                    .Select(m => ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error listing OpenRouter models");
-                return new List<ExtendedModelInfo>(); // Return empty list on error
-            }
-        }
-        
-        // DTOs for OpenRouter /models response - nested private classes
-        private class OpenRouterModel
-        {
-            [System.Text.Json.Serialization.JsonPropertyName("id")]
-            public string Id { get; set; } = string.Empty;
-        }
-
-        private class OpenRouterModelsResponse
-        {
-            [System.Text.Json.Serialization.JsonPropertyName("data")]
-            public List<OpenRouterModel> Data { get; set; } = new List<OpenRouterModel>();
+            // Fix: Use the correct path structure for OpenRouter
+            return Constants.Urls.ApiEndpoint + Constants.Endpoints.ChatCompletions;
         }
     }
 }

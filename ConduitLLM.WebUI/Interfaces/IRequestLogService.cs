@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.DTOs;
-using WebUIDTOs = ConduitLLM.WebUI.DTOs;
+
 using ConfigServiceDTOs = ConduitLLM.Configuration.Services.Dtos;
+using WebUIDTOs = ConduitLLM.WebUI.DTOs;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -36,8 +38,8 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Gets request logs for a specific virtual key
         /// </summary>
         Task<(List<RequestLog> Logs, int TotalCount)> GetRequestLogsForKeyAsync(
-            int virtualKeyId, 
-            int page = 1, 
+            int virtualKeyId,
+            int page = 1,
             int pageSize = 100,
             CancellationToken cancellationToken = default);
 
@@ -45,7 +47,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// Gets summary statistics for a specific virtual key
         /// </summary>
         Task<KeyUsageSummary?> GetKeyUsageSummaryAsync(
-            int virtualKeyId, 
+            int virtualKeyId,
             CancellationToken cancellationToken = default);
 
         /// <summary>

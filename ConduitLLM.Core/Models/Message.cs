@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
@@ -43,6 +44,12 @@ public class Message
     [JsonPropertyName("tool_call_id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolCallId { get; set; }
+
+    /// <summary>
+    /// The timestamp when this message was created. Used for UI display purposes only.
+    /// </summary>
+    [JsonIgnore]
+    public DateTime? Timestamp { get; set; }
 }
 
 /// <summary>

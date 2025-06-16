@@ -2,8 +2,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+
 using ConduitLLM.Core.Models;
 using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Models;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +37,7 @@ public class ConduitApiClient : IConduitApiClient
 
         // Note: HttpClient BaseAddress is configured in Program.cs via dependency injection
         // Don't override it here as it may be different for local dev vs containerized deployment
-        
+
         // Get the admin API key to use for requests
         string adminApiKey = configuration["ApiClient:AdminApiKey"] ?? "";
         if (!string.IsNullOrEmpty(adminApiKey))
@@ -88,13 +91,13 @@ public class ConduitApiClient : IConduitApiClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
-                "/v1/chat/completions", 
-                request, 
-                _jsonOptions, 
+                "/v1/chat/completions",
+                request,
+                _jsonOptions,
                 cancellationToken);
 
             response.EnsureSuccessStatusCode();
-            
+
             return await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(_jsonOptions, cancellationToken);
         }
         catch (Exception ex)
@@ -117,9 +120,9 @@ public class ConduitApiClient : IConduitApiClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
-                "/v1/embeddings", 
-                request, 
-                _jsonOptions, 
+                "/v1/embeddings",
+                request,
+                _jsonOptions,
                 cancellationToken);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotImplemented)
@@ -129,7 +132,7 @@ public class ConduitApiClient : IConduitApiClient
             }
 
             response.EnsureSuccessStatusCode();
-            
+
             return await response.Content.ReadFromJsonAsync<EmbeddingResponse>(_jsonOptions, cancellationToken);
         }
         catch (Exception ex)
@@ -144,8 +147,8 @@ public class ConduitApiClient : IConduitApiClient
     /// </summary>
     /// <param name="request">The chat completion request.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An async enumerable of chat completion chunks.</returns>
-    public async IAsyncEnumerable<ChatCompletionChunk> CreateStreamingChatCompletionAsync(
+    /// <returns>An async enumerable of streaming chat responses.</returns>
+    public async IAsyncEnumerable<StreamingChatResponse> CreateStreamingChatCompletionAsync(
         ChatCompletionRequest request,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -153,38 +156,109 @@ public class ConduitApiClient : IConduitApiClient
 
         // Ensure streaming is enabled
         request.Stream = true;
-        
+
         var response = await _httpClient.PostAsJsonAsync("/v1/chat/completions", request, _jsonOptions, cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Streaming chat completion request failed with status: {StatusCode}, Content: {Content}", 
+            _logger.LogError("Streaming chat completion request failed with status: {StatusCode}, Content: {Content}",
                 response.StatusCode, errorContent);
             response.Dispose();
             yield break;
         }
-        
+
+        // Extract request ID if available
+        var requestId = response.Headers.TryGetValues("X-Request-ID", out var values) ? values.FirstOrDefault() : null;
+        if (!string.IsNullOrEmpty(requestId))
+        {
+            _logger.LogDebug("Streaming request ID: {RequestId}", requestId);
+        }
+
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
         using (response)
         {
+            string? currentEventType = null;
+            var dataBuffer = new List<string>();
+
             while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync(cancellationToken);
-                
-                if (string.IsNullOrEmpty(line) || !line.StartsWith("data: "))
-                    continue;
-                    
-                var jsonData = line.Substring(6); // Remove "data: " prefix
-                
-                if (jsonData == "[DONE]")
+
+                if (line == null)
                     break;
-                    
-                ChatCompletionChunk? chunk = null;
-                if (TryDeserializeChunk(jsonData, out chunk) && chunk != null)
+
+                // Handle event type
+                if (line.StartsWith("event: "))
                 {
-                    yield return chunk;
+                    currentEventType = line.Substring(7);
+                    continue;
+                }
+
+                // Handle data
+                if (line.StartsWith("data: "))
+                {
+                    dataBuffer.Add(line.Substring(6));
+                    continue;
+                }
+
+                // Empty line means end of event
+                if (string.IsNullOrEmpty(line) && dataBuffer.Count > 0)
+                {
+                    var jsonData = string.Join("\n", dataBuffer);
+                    dataBuffer.Clear();
+
+                    // Handle different event types
+                    if (currentEventType == "content" || string.IsNullOrEmpty(currentEventType))
+                    {
+                        if (jsonData == "[DONE]")
+                        {
+                            yield return new StreamingChatResponse { EventType = "done" };
+                            break;
+                        }
+
+                        ChatCompletionChunk? chunk = null;
+                        if (TryDeserializeChunk(jsonData, out chunk) && chunk != null)
+                        {
+                            yield return new StreamingChatResponse 
+                            { 
+                                EventType = "content", 
+                                Chunk = chunk 
+                            };
+                        }
+                    }
+                    else if (currentEventType == "metrics" || currentEventType == "metrics-final")
+                    {
+                        _logger.LogDebug("Received {EventType}: {Data}", currentEventType, jsonData);
+                        
+                        PerformanceMetrics? metrics = null;
+                        if (TryDeserializeMetrics(jsonData, out metrics) && metrics != null)
+                        {
+                            yield return new StreamingChatResponse 
+                            { 
+                                EventType = currentEventType, 
+                                Metrics = metrics 
+                            };
+                        }
+                    }
+                    else if (currentEventType == "done")
+                    {
+                        yield return new StreamingChatResponse { EventType = "done" };
+                        break;
+                    }
+                    else if (currentEventType == "error")
+                    {
+                        _logger.LogError("Streaming error event: {Data}", jsonData);
+                        yield return new StreamingChatResponse 
+                        { 
+                            EventType = "error", 
+                            Error = jsonData 
+                        };
+                        break;
+                    }
+
+                    currentEventType = null;
                 }
             }
         }
@@ -201,6 +275,21 @@ public class ConduitApiClient : IConduitApiClient
         {
             _logger.LogError(ex, "Error parsing stream chunk: {JsonData}", jsonData);
             chunk = null;
+            return false;
+        }
+    }
+
+    private bool TryDeserializeMetrics(string jsonData, out PerformanceMetrics? metrics)
+    {
+        try
+        {
+            metrics = JsonSerializer.Deserialize<PerformanceMetrics>(jsonData, _jsonOptions);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing metrics: {JsonData}", jsonData);
+            metrics = null;
             return false;
         }
     }

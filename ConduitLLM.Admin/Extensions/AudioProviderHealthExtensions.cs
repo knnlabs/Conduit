@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Interfaces;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Configuration.Repositories;
-using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -66,7 +68,7 @@ namespace ConduitLLM.Admin.Extensions
             try
             {
                 var configs = await _repository.GetAllAsync();
-                var enabledConfigs = configs.Where(c => 
+                var enabledConfigs = configs.Where(c =>
                     c.ProviderCredential?.IsEnabled == true &&
                     (c.TranscriptionEnabled || c.TextToSpeechEnabled || c.RealtimeEnabled))
                     .ToList();
@@ -88,7 +90,7 @@ namespace ConduitLLM.Admin.Extensions
                     try
                     {
                         var client = _clientFactory.GetClientByProvider(providerName);
-                        
+
                         // Check each enabled capability
                         if (config.TranscriptionEnabled && client is IAudioTranscriptionClient transcriptionClient)
                         {
@@ -132,7 +134,7 @@ namespace ConduitLLM.Admin.Extensions
                 else if (healthyProviders < totalProviders)
                 {
                     return HealthCheckResult.Degraded(
-                        $"{totalProviders - healthyProviders} audio provider(s) are unhealthy", 
+                        $"{totalProviders - healthyProviders} audio provider(s) are unhealthy",
                         data: results);
                 }
                 else

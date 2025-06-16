@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -12,20 +13,18 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
-using ConduitLLM.Tests.TestHelpers;
 using ConduitLLM.Providers.InternalModels;
+using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
-
-// Use alias to avoid ambiguity with mocks
-using TestHelperMocks = ConduitLLM.Tests.TestHelpers.Mocks;
 
 using Moq;
 using Moq.Contrib.HttpClient;
 using Moq.Protected;
 
 using Xunit;
+// Use alias to avoid ambiguity with mocks
+using TestHelperMocks = ConduitLLM.Tests.TestHelpers.Mocks;
 
 namespace ConduitLLM.Tests
 {
@@ -108,7 +107,8 @@ namespace ConduitLLM.Tests
             var providerModelId = "command-r";
 
             // Act & Assert
-            var ex = Assert.Throws<ConfigurationException>(() => {
+            var ex = Assert.Throws<ConfigurationException>(() =>
+            {
                 var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
                 new CohereClient(credentialsWithMissingKey, providerModelId, _loggerMock.Object, httpClientFactory);
             });
@@ -209,8 +209,8 @@ namespace ConduitLLM.Tests
                 JsonSerializer.Serialize(new { event_type = "stream-start", generation_id = "gen-12345" }),
                 JsonSerializer.Serialize(new { event_type = "text-generation", text = "Hello" }),
                 JsonSerializer.Serialize(new { event_type = "text-generation", text = " there!" }),
-                JsonSerializer.Serialize(new { 
-                    event_type = "stream-end", 
+                JsonSerializer.Serialize(new {
+                    event_type = "stream-end",
                     finish_reason = "COMPLETE",
                     response = new {
                         text = "Hello there!",
@@ -249,11 +249,11 @@ namespace ConduitLLM.Tests
             // First chunk should have role assistant
             Assert.Equal("assistant", chunks[0].Choices[0].Delta.Role);
             Assert.Equal("Hello", chunks[0].Choices[0].Delta.Content);
-            
+
             // Second chunk should only have content
             Assert.Null(chunks[1].Choices[0].Delta.Role);
             Assert.Equal(" there!", chunks[1].Choices[0].Delta.Content);
-            
+
             // Last chunk should have finish reason
             // The content can be empty string or null depending on implementation
             Assert.True(string.IsNullOrEmpty(chunks[2].Choices[0].Delta.Content));
@@ -281,35 +281,63 @@ namespace ConduitLLM.Tests
             // Assert
             Assert.NotNull(models);
             Assert.NotEmpty(models);
-            
+
             // Verify it contains some expected Cohere models
             Assert.Contains(models, m => m.Id == "command-r");
             Assert.Contains(models, m => m.Id == "command-r-plus");
             Assert.Contains(models, m => m.Provider == "cohere");
-            
+
             // Verify no HTTP requests were made (static list)
-            _handlerMock.Protected().Verify("SendAsync", Times.Never(), 
-                Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(), 
+            _handlerMock.Protected().Verify("SendAsync", Times.Never(),
+                Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
                 Moq.Protected.ItExpr.IsAny<CancellationToken>());
         }
 
         [Fact]
-        public async Task CreateEmbeddingAsync_NotImplemented_ThrowsNotImplementedException()
+        public async Task CreateEmbeddingAsync_Success()
         {
             // Arrange
-            var providerModelId = "command-r";
-            var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
-            var client = new CohereClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
-            var embeddingRequest = new ConduitLLM.Core.Models.EmbeddingRequest 
-            { 
-                Model = "command-r",
+            var providerModelId = "embed-english-v3.0";
+            var embeddingRequest = new ConduitLLM.Core.Models.EmbeddingRequest
+            {
+                Model = "embed-model",
                 Input = new[] { "Test text" },
                 EncodingFormat = "float"
             };
+            
+            var expectedUrl = $"{DefaultApiBase}/embed";
+            var cohereResponse = new
+            {
+                embeddings = new List<List<double>> { new List<double> { 0.1, 0.2, 0.3 } },
+                id = "embed-123",
+                meta = new { billed_units = new { input_tokens = 3 } }
+            };
 
-            // Act & Assert
-            await Assert.ThrowsAsync<NotImplementedException>(() => 
-                client.CreateEmbeddingAsync(embeddingRequest));
+            _handlerMock.SetupRequest(HttpMethod.Post, expectedUrl)
+                .ReturnsResponse(HttpStatusCode.OK, JsonContent.Create(cohereResponse))
+                .Verifiable();
+
+            var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
+            var client = new CohereClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
+
+            // Act
+            var response = await client.CreateEmbeddingAsync(embeddingRequest);
+
+            // Assert
+            Assert.NotNull(response);
+            Assert.Single(response.Data);
+            Assert.Equal(3, response.Data[0].Embedding.Count);
+            Assert.Equal(0.1, response.Data[0].Embedding[0], 0.0001);
+            Assert.Equal(0.2, response.Data[0].Embedding[1], 0.0001);
+            Assert.Equal(0.3, response.Data[0].Embedding[2], 0.0001);
+            Assert.Equal(3, response.Usage.TotalTokens);
+
+            // Verify request was sent
+            _handlerMock.Protected()
+                .Verify("SendAsync", Times.Once(), Moq.Protected.ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Post &&
+                    req.RequestUri != null && req.RequestUri.ToString() == expectedUrl),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>());
         }
 
         [Fact]
@@ -319,14 +347,14 @@ namespace ConduitLLM.Tests
             var providerModelId = "command-r";
             var httpClientFactory = HttpClientFactoryAdapter.AdaptHttpClient(_httpClient);
             var client = new CohereClient(_credentials, providerModelId, _loggerMock.Object, httpClientFactory);
-            var imageRequest = new ConduitLLM.Core.Models.ImageGenerationRequest 
-            { 
+            var imageRequest = new ConduitLLM.Core.Models.ImageGenerationRequest
+            {
                 Model = "command-r",
                 Prompt = "A cat"
             };
 
             // Act & Assert
-            await Assert.ThrowsAsync<NotSupportedException>(() => 
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
                 client.CreateImageAsync(imageRequest));
         }
 

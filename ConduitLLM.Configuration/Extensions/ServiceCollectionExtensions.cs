@@ -1,8 +1,10 @@
 using System;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.Services;
+
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -25,9 +27,9 @@ namespace ConduitLLM.Configuration.Extensions
         public static IServiceCollection AddRepositories(this IServiceCollection services)
         {
             // Register DbContext interface
-            services.AddScoped<IConfigurationDbContext>(provider => 
+            services.AddScoped<IConfigurationDbContext>(provider =>
                 provider.GetRequiredService<ConfigurationDbContext>());
-                
+
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
             services.AddScoped<IProviderCredentialRepository, ProviderCredentialRepository>();
@@ -35,7 +37,7 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IModelProviderMappingRepository, ModelProviderMappingRepository>();
             services.AddScoped<IModelCostRepository, ModelCostRepository>();
             services.AddScoped<IRequestLogRepository, RequestLogRepository>();
-            
+
             // Register new repositories
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<IVirtualKeySpendHistoryRepository, VirtualKeySpendHistoryRepository>();
@@ -45,7 +47,7 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IFallbackModelMappingRepository, FallbackModelMappingRepository>();
             services.AddScoped<IProviderHealthRepository, ProviderHealthRepository>();
             services.AddScoped<IIpFilterRepository, IpFilterRepository>();
-            
+
             // Register audio-related repositories
             services.AddScoped<IAudioProviderConfigRepository, AudioProviderConfigRepository>();
             services.AddScoped<IAudioCostRepository, AudioCostRepository>();
@@ -53,7 +55,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             return services;
         }
-        
+
         /// <summary>
         /// Adds caching services to the service collection
         /// </summary>
@@ -64,32 +66,32 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register cache options
             services.Configure<CacheOptions>(configuration.GetSection(CacheOptions.SectionName));
-            
+
             // Add memory cache
             services.AddMemoryCache(options =>
             {
                 var cacheSection = configuration.GetSection(CacheOptions.SectionName);
                 options.SizeLimit = cacheSection.GetValue<long?>("MaxCacheItems");
             });
-            
+
             // Add Redis connection factory
             services.AddSingleton<RedisConnectionFactory>();
-            
+
             // Register cache service factory
             services.AddSingleton<CacheServiceFactory>();
-            
+
             // Register the appropriate distributed cache provider based on configuration
             var cacheType = configuration.GetSection(CacheOptions.SectionName)
                 .GetValue<string>("CacheType")?.ToLowerInvariant();
-                
+
             if (cacheType == "redis")
             {
                 var redisConnectionString = configuration.GetSection(CacheOptions.SectionName)
                     .GetValue<string>("RedisConnectionString");
-                    
+
                 var redisInstanceName = configuration.GetSection(CacheOptions.SectionName)
                     .GetValue<string>("RedisInstanceName") ?? "conduitllm-cache";
-                
+
                 if (!string.IsNullOrEmpty(redisConnectionString))
                 {
                     services.AddStackExchangeRedisCache(options =>
@@ -109,20 +111,20 @@ namespace ConduitLLM.Configuration.Extensions
                 // Use memory cache if Redis is not specified
                 services.AddDistributedMemoryCache();
             }
-            
+
             // Register the ICacheService as a singleton but with factory-based initialization
             services.AddSingleton<ICacheService>(serviceProvider =>
             {
                 var factory = serviceProvider.GetRequiredService<CacheServiceFactory>();
-                
+
                 // Create the appropriate cache service based on configuration
                 // For simplicity in the synchronous service provider context, we'll block on the async result here
                 return factory.CreateCacheServiceAsync().GetAwaiter().GetResult();
             });
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Adds database initialization services to the service collection
         /// </summary>
@@ -132,8 +134,9 @@ namespace ConduitLLM.Configuration.Extensions
         {
             // Register the database initializer
             services.AddScoped<DatabaseInitializer>();
-            
+
             return services;
         }
+
     }
 }

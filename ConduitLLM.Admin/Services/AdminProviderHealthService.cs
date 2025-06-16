@@ -1,14 +1,17 @@
-using ConduitLLM.Admin.Extensions;
-using ProviderHealthExt = ConduitLLM.Admin.Extensions.ProviderHealthExtensions;
-using ConduitLLM.Admin.Interfaces;
-using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
+
+using ProviderHealthExt = ConduitLLM.Admin.Extensions.ProviderHealthExtensions;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -20,7 +23,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IProviderHealthRepository _providerHealthRepository;
         private readonly IProviderCredentialRepository _providerCredentialRepository;
         private readonly ILogger<AdminProviderHealthService> _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the AdminProviderHealthService
         /// </summary>
@@ -44,7 +47,7 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentNullException(nameof(config));
             }
-            
+
             try
             {
                 // Check if configuration already exists for this provider
@@ -54,31 +57,31 @@ namespace ConduitLLM.Admin.Services
                 {
                     throw new InvalidOperationException($"Provider health configuration already exists for provider '{config.ProviderName}'");
                 }
-                
+
                 // Verify that the provider exists
                 var providerExists = await ProviderExistsAsync(config.ProviderName);
                 if (!providerExists)
                 {
                     throw new InvalidOperationException($"Provider '{config.ProviderName}' does not exist");
                 }
-                
+
                 // Convert to entity and save
                 var configEntity = config.ToEntity();
                 await _providerHealthRepository.SaveConfigurationAsync(configEntity);
-                
+
                 // Retrieve the saved configuration
                 var savedConfig = await _providerHealthRepository.GetConfigurationAsync(config.ProviderName);
                 if (savedConfig == null)
                 {
                     throw new InvalidOperationException($"Failed to retrieve newly created configuration for provider '{config.ProviderName}'");
                 }
-                
-                _logger.LogInformation("Created health configuration for provider '{ProviderName}'", config.ProviderName);
+
+_logger.LogInformation("Created health configuration for provider '{ProviderName}'", config.ProviderName.Replace(Environment.NewLine, ""));
                 return savedConfig.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating health configuration for provider '{ProviderName}'", config.ProviderName);
+_logger.LogError(ex, "Error creating health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), config.ProviderName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -125,7 +128,7 @@ namespace ConduitLLM.Admin.Services
                 // Get all provider names first, then get records for each
                 var latestStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
                 var providerNames = latestStatuses.Keys.ToList();
-                
+
                 var allRecords = new List<ProviderHealthRecord>();
                 foreach (var providerName in providerNames)
                 {
@@ -133,10 +136,10 @@ namespace ConduitLLM.Admin.Services
                         providerName: providerName,
                         since: DateTime.MinValue, // Get all records regardless of time
                         limit: int.MaxValue); // No limit on number of records
-                    
+
                     allRecords.AddRange(providerRecords);
                 }
-                
+
                 return allRecords.Select(r => r.ToDto()).ToList();
             }
             catch (Exception ex)
@@ -153,7 +156,7 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
             }
-            
+
             try
             {
                 var config = await _providerHealthRepository.GetConfigurationAsync(providerName);
@@ -161,7 +164,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health configuration for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving health configuration for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -173,32 +176,32 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Hours must be greater than zero", nameof(hours));
             }
-            
+
             try
             {
                 var sinceTime = DateTime.UtcNow.AddHours(-hours);
-                
+
                 // Get status counts
                 var allStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
                 int totalProviders = allStatuses.Count;
                 int onlineProviders = allStatuses.Count(s => s.Value.Status == ProviderHealthRecord.StatusType.Online);
                 int offlineProviders = allStatuses.Count(s => s.Value.Status == ProviderHealthRecord.StatusType.Offline);
                 int unknownProviders = allStatuses.Count(s => s.Value.Status == ProviderHealthRecord.StatusType.Unknown);
-                
+
                 // Get response times
                 var responseTimesDict = await _providerHealthRepository.GetAverageResponseTimesAsync(sinceTime);
-                double averageResponseTime = responseTimesDict.Count > 0 
-                    ? responseTimesDict.Values.Average() 
+                double averageResponseTime = responseTimesDict.Count > 0
+                    ? responseTimesDict.Values.Average()
                     : 0;
-                
+
                 // Get error counts
                 var errorCountDict = await _providerHealthRepository.GetErrorCountByProviderAsync(sinceTime);
                 int totalErrors = errorCountDict.Values.Sum();
-                
+
                 // Get error categories
                 var errorCategoriesDict = await _providerHealthRepository.GetErrorCategoriesByProviderAsync(sinceTime);
                 var errorCategoryDistribution = new Dictionary<string, int>();
-                
+
                 // Combine error categories across providers
                 foreach (var providerErrors in errorCategoriesDict.Values)
                 {
@@ -214,7 +217,7 @@ namespace ConduitLLM.Admin.Services
                         }
                     }
                 }
-                
+
                 return new ProviderHealthStatisticsDto
                 {
                     TotalProviders = totalProviders,
@@ -241,38 +244,38 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Hours must be greater than zero", nameof(hours));
             }
-            
+
             try
             {
                 var sinceTime = DateTime.UtcNow.AddHours(-hours);
-                
+
                 // Get all current statuses
                 var allStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
-                
+
                 // Get uptime percentages
                 var uptimeDict = await _providerHealthRepository.GetProviderUptimeAsync(sinceTime);
-                
+
                 // Get average response times
                 var responseTimesDict = await _providerHealthRepository.GetAverageResponseTimesAsync(sinceTime);
-                
+
                 // Get error counts
                 var errorCountDict = await _providerHealthRepository.GetErrorCountByProviderAsync(sinceTime);
-                
+
                 // Get error categories
                 var errorCategoriesDict = await _providerHealthRepository.GetErrorCategoriesByProviderAsync(sinceTime);
-                
+
                 // Get configuration for all providers
                 var allConfigs = await _providerHealthRepository.GetAllConfigurationsAsync();
                 var configDict = allConfigs.ToDictionary(c => c.ProviderName, c => c);
-                
+
                 // Combine all data into summaries
                 var summaries = new List<ProviderHealthSummaryDto>();
-                
+
                 foreach (var provider in allStatuses.Keys)
                 {
                     var status = allStatuses[provider];
                     var config = configDict.ContainsKey(provider) ? configDict[provider] : null;
-                    
+
                     var summary = new ProviderHealthSummaryDto
                     {
                         ProviderName = provider,
@@ -281,16 +284,16 @@ namespace ConduitLLM.Admin.Services
                         UptimePercentage = uptimeDict.ContainsKey(provider) ? uptimeDict[provider] : 0,
                         AverageResponseTimeMs = responseTimesDict.ContainsKey(provider) ? responseTimesDict[provider] : 0,
                         ErrorCount = errorCountDict.ContainsKey(provider) ? errorCountDict[provider] : 0,
-                        ErrorCategories = errorCategoriesDict.ContainsKey(provider) 
-                            ? errorCategoriesDict[provider] 
+                        ErrorCategories = errorCategoriesDict.ContainsKey(provider)
+                            ? errorCategoriesDict[provider]
                             : new Dictionary<string, int>(),
                         LastCheckedUtc = config?.LastCheckedUtc,
                         MonitoringEnabled = config?.MonitoringEnabled ?? false
                     };
-                    
+
                     summaries.Add(summary);
                 }
-                
+
                 return summaries;
             }
             catch (Exception ex)
@@ -307,7 +310,7 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
             }
-            
+
             try
             {
                 var status = await _providerHealthRepository.GetLatestStatusAsync(providerName);
@@ -315,7 +318,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving latest health status for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving latest health status for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -327,17 +330,17 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
             }
-            
+
             if (hours <= 0)
             {
                 throw new ArgumentException("Hours must be greater than zero", nameof(hours));
             }
-            
+
             if (limit <= 0)
             {
                 throw new ArgumentException("Limit must be greater than zero", nameof(limit));
             }
-            
+
             try
             {
                 var sinceTime = DateTime.UtcNow.AddHours(-hours);
@@ -346,7 +349,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving health status history for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error retrieving health status history for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -358,12 +361,12 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Days must be greater than zero", nameof(days));
             }
-            
+
             try
             {
                 var olderThan = DateTime.UtcNow.AddDays(-days);
                 var purgedCount = await _providerHealthRepository.PurgeOldRecordsAsync(olderThan);
-                
+
                 _logger.LogInformation("Purged {Count} health records older than {Date}", purgedCount, olderThan);
                 return purgedCount;
             }
@@ -381,7 +384,7 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
             }
-            
+
             try
             {
                 // Verify that the provider exists
@@ -390,7 +393,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     throw new InvalidOperationException($"Provider '{providerName}' does not exist");
                 }
-                
+
                 // Create a mock health check record
                 // In a real implementation, this would trigger the health check service
                 var record = new ProviderHealthRecord
@@ -404,19 +407,19 @@ namespace ConduitLLM.Admin.Services
                     ErrorDetails = null,
                     EndpointUrl = null
                 };
-                
+
                 // Save the record
                 await _providerHealthRepository.SaveStatusAsync(record);
-                
+
                 // Update last checked time
                 await _providerHealthRepository.UpdateLastCheckedTimeAsync(providerName);
-                
-                _logger.LogInformation("Triggered health check for provider '{ProviderName}'", providerName);
+
+_logger.LogInformation("Triggered health check for provider '{ProviderName}'", providerName.Replace(Environment.NewLine, ""));
                 return record.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'", providerName);
+_logger.LogError(ex, "Error triggering health check for provider '{ProviderName}'".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -428,7 +431,7 @@ namespace ConduitLLM.Admin.Services
             {
                 throw new ArgumentNullException(nameof(config));
             }
-            
+
             try
             {
                 // Get existing configuration by id
@@ -438,13 +441,13 @@ namespace ConduitLLM.Admin.Services
                     _logger.LogWarning("Provider health configuration not found with ID {Id}", config.Id);
                     return false;
                 }
-                
+
                 // Update entity using the extension method from ProviderHealthExtensions
                 ProviderHealthExt.UpdateFrom(existingConfig, config);
-                
+
                 // Save changes
                 await _providerHealthRepository.SaveConfigurationAsync(existingConfig);
-                
+
                 string providerName = existingConfig.ProviderName; // Get the name from the existing config
                 _logger.LogInformation("Updated health configuration for provider '{ProviderName}'", providerName);
                 return true;
@@ -455,7 +458,7 @@ namespace ConduitLLM.Admin.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Checks if a provider exists
         /// </summary>
@@ -467,7 +470,7 @@ namespace ConduitLLM.Admin.Services
             {
                 return false;
             }
-            
+
             try
             {
                 var credentials = await _providerCredentialRepository.GetAllAsync();
@@ -475,7 +478,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking if provider '{ProviderName}' exists", providerName);
+_logger.LogError(ex, "Error checking if provider '{ProviderName}' exists".Replace(Environment.NewLine, ""), providerName.Replace(Environment.NewLine, ""));
                 return false;
             }
         }

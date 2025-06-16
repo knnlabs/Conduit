@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json.Serialization;
+
 using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Services;
@@ -28,7 +29,7 @@ public class VersionCheckService
         _logger = logger;
         _notificationService = notificationService;
         _configuration = configuration;
-        
+
         // Default check interval is 24 hours - can be overridden in configuration
         // Try from environment variables first (Docker-friendly)
         var intervalHours = Environment.GetEnvironmentVariable("CONDUIT_VERSION_CHECK_INTERVAL_HOURS");
@@ -52,7 +53,7 @@ public class VersionCheckService
         // Load the current version from assembly
         var assembly = Assembly.GetExecutingAssembly();
         var version = assembly.GetName().Version;
-        
+
         if (version != null)
         {
             _currentVersion = version.ToString();
@@ -66,7 +67,7 @@ public class VersionCheckService
                 _currentVersion = infoVersionAttr.InformationalVersion;
             }
         }
-        
+
         _logger.LogInformation("Current version: {Version}", _currentVersion);
     }
 
@@ -87,53 +88,53 @@ public class VersionCheckService
         // Check environment variable first (Docker-friendly)
         var envEnabled = Environment.GetEnvironmentVariable("CONDUIT_VERSION_CHECK_ENABLED");
         bool isEnabled = true; // Enabled by default
-        
+
         if (!string.IsNullOrEmpty(envEnabled))
         {
             isEnabled = envEnabled.ToLowerInvariant() == "true";
         }
-        else 
+        else
         {
             // Fall back to configuration
             isEnabled = _configuration.GetValue<bool>("VersionCheck:Enabled", true);
         }
-        
+
         if (!isEnabled)
         {
             return;
         }
-    
+
         // Check if we need to perform a version check
         if (!forceCheck && DateTime.UtcNow - _lastCheck < _checkInterval)
         {
             return;
         }
-        
+
         _lastCheck = DateTime.UtcNow;
-        
+
         try
         {
             var client = _httpClientFactory.CreateClient("GithubApi");
-            
+
             // Use GitHub releases API to get the latest release
             var latestRelease = await client.GetFromJsonAsync<GitHubRelease>(
                 "https://api.github.com/repos/knnlabs/Conduit/releases/latest");
-                
+
             if (latestRelease == null)
             {
                 _logger.LogWarning("Failed to get latest release information");
                 return;
             }
-            
+
             var latestVersion = latestRelease.TagName;
             if (latestVersion.StartsWith('v'))
             {
                 latestVersion = latestVersion[1..]; // Remove 'v' prefix if present
             }
-            
-            _logger.LogInformation("Latest version: {LatestVersion}, Current version: {CurrentVersion}", 
+
+            _logger.LogInformation("Latest version: {LatestVersion}, Current version: {CurrentVersion}",
                 latestVersion, _currentVersion);
-                
+
             // Compare versions
             if (IsNewerVersion(latestVersion, _currentVersion))
             {
@@ -144,7 +145,7 @@ public class VersionCheckService
                     $"You are currently running version {_currentVersion}. " +
                     $"A new version ({latestVersion}) is available. " +
                     $"Release notes: {latestRelease.HtmlUrl}");
-                    
+
                 _logger.LogInformation("New version notification added");
             }
         }
@@ -166,12 +167,12 @@ public class VersionCheckService
             {
                 return false;
             }
-            
+
             if (!Version.TryParse(currentVersion, out var current))
             {
                 return false;
             }
-            
+
             return latest > current;
         }
         catch (Exception ex)
@@ -180,7 +181,7 @@ public class VersionCheckService
             return false;
         }
     }
-    
+
     /// <summary>
     /// Model for GitHub release API response
     /// </summary>
@@ -188,13 +189,13 @@ public class VersionCheckService
     {
         [JsonPropertyName("tag_name")]
         public string TagName { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("html_url")]
         public string HtmlUrl { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("published_at")]
         public DateTime PublishedAt { get; set; }
-        
+
         [JsonPropertyName("body")]
         public string Body { get; set; } = string.Empty;
     }

@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers.Translators
@@ -28,7 +30,7 @@ namespace ConduitLLM.Providers.Translators
         public UltravoxRealtimeTranslator(ILogger<UltravoxRealtimeTranslator> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -52,7 +54,7 @@ namespace ConduitLLM.Providers.Translators
                         channels = 1
                     }
                 },
-                
+
                 RealtimeTextInput textInput => new
                 {
                     type = "text",
@@ -62,7 +64,7 @@ namespace ConduitLLM.Providers.Translators
                         role = "user"
                     }
                 },
-                
+
                 RealtimeFunctionResponse funcResponse => new
                 {
                     type = "function_result",
@@ -72,7 +74,7 @@ namespace ConduitLLM.Providers.Translators
                         result = funcResponse.Output
                     }
                 },
-                
+
                 RealtimeResponseRequest responseRequest => new
                 {
                     type = "generate",
@@ -83,33 +85,33 @@ namespace ConduitLLM.Providers.Translators
                         maxTokens = 4096
                     }
                 },
-                
+
                 _ => throw new NotSupportedException($"Message type '{message.GetType().Name}' is not supported by Ultravox")
             };
 
             var json = JsonSerializer.Serialize(ultravoxMessage, _jsonOptions);
             _logger.LogDebug("Translated to Ultravox: {MessageType} -> {Json}", message.GetType().Name, json);
-            
+
             return await Task.FromResult(json);
         }
 
         public async Task<IEnumerable<RealtimeMessage>> TranslateFromProviderAsync(string providerMessage)
         {
             var messages = new List<RealtimeMessage>();
-            
+
             try
             {
                 using var doc = JsonDocument.Parse(providerMessage);
                 var root = doc.RootElement;
-                
+
                 if (!root.TryGetProperty("type", out var typeElement))
                 {
                     throw new InvalidOperationException("Ultravox message missing 'type' field");
                 }
-                
+
                 var messageType = typeElement.GetString();
                 _logger.LogDebug("Translating from Ultravox: {MessageType}", messageType);
-                
+
                 switch (messageType)
                 {
                     case "session_started":
@@ -120,7 +122,7 @@ namespace ConduitLLM.Providers.Translators
                             Details = providerMessage
                         });
                         break;
-                        
+
                     case "audio_chunk":
                         if (root.TryGetProperty("data", out var audioData) &&
                             audioData.TryGetProperty("audio", out var audioBase64))
@@ -133,7 +135,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "text_chunk":
                         if (root.TryGetProperty("data", out var textData) &&
                             textData.TryGetProperty("text", out var text))
@@ -145,7 +147,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "function_call":
                         if (root.TryGetProperty("data", out var funcData))
                         {
@@ -158,13 +160,13 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "generation_complete":
                         messages.Add(new RealtimeStatusMessage
                         {
                             Status = "response_complete"
                         });
-                        
+
                         // Check for usage stats
                         if (root.TryGetProperty("usage", out var usage))
                         {
@@ -172,7 +174,7 @@ namespace ConduitLLM.Providers.Translators
                             _logger.LogDebug("Ultravox usage data: {Usage}", usage.GetRawText());
                         }
                         break;
-                        
+
                     case "error":
                         var error = ParseError(root);
                         messages.Add(new RealtimeErrorMessage
@@ -180,7 +182,7 @@ namespace ConduitLLM.Providers.Translators
                             Error = error
                         });
                         break;
-                        
+
                     default:
                         _logger.LogWarning("Unknown Ultravox message type: {Type}", messageType);
                         break;
@@ -191,14 +193,14 @@ namespace ConduitLLM.Providers.Translators
                 _logger.LogError(ex, "Error parsing Ultravox message: {Message}", providerMessage);
                 throw new InvalidOperationException("Failed to parse Ultravox realtime message", ex);
             }
-            
+
             return await Task.FromResult(messages);
         }
 
         public async Task<TranslationValidationResult> ValidateSessionConfigAsync(RealtimeSessionConfig config)
         {
             var result = new TranslationValidationResult { IsValid = true };
-            
+
             // Validate model
             var supportedModels = new[] { "ultravox", "ultravox-v2", "ultravox-realtime" };
             if (!string.IsNullOrEmpty(config.Model) && !supportedModels.Contains(config.Model))
@@ -206,7 +208,7 @@ namespace ConduitLLM.Providers.Translators
                 result.Errors.Add($"Model '{config.Model}' is not supported. Use: {string.Join(", ", supportedModels)}");
                 result.IsValid = false;
             }
-            
+
             // Validate audio formats
             var supportedFormats = new[] { RealtimeAudioFormat.PCM16_16kHz, RealtimeAudioFormat.PCM16_24kHz };
             if (!supportedFormats.Contains(config.InputFormat))
@@ -214,13 +216,13 @@ namespace ConduitLLM.Providers.Translators
                 result.Errors.Add($"Input format '{config.InputFormat}' is not supported by Ultravox");
                 result.IsValid = false;
             }
-            
+
             // Ultravox specific validations
             if (config.TurnDetection.Enabled && config.TurnDetection.Type != TurnDetectionType.ServerVAD)
             {
                 result.Warnings.Add("Ultravox only supports server-side VAD turn detection");
             }
-            
+
             return await Task.FromResult(result);
         }
 
@@ -254,7 +256,7 @@ namespace ConduitLLM.Providers.Translators
                     }
                 }
             };
-            
+
             return await Task.FromResult(JsonSerializer.Serialize(ultravoxConfig, _jsonOptions));
         }
 
@@ -270,20 +272,20 @@ namespace ConduitLLM.Providers.Translators
                 ["X-Ultravox-Version"] = "1.0",
                 ["X-Ultravox-Client"] = "conduit-llm"
             };
-            
+
             return await Task.FromResult(headers);
         }
 
         public async Task<IEnumerable<string>> GetInitializationMessagesAsync(RealtimeSessionConfig config)
         {
             var messages = new List<string>();
-            
+
             // Send session configuration
             var sessionConfig = await TransformSessionConfigAsync(config);
             messages.Add(sessionConfig);
-            
+
             // Ultravox starts immediately without additional messages
-            
+
             return messages;
         }
 
@@ -293,13 +295,13 @@ namespace ConduitLLM.Providers.Translators
             {
                 using var doc = JsonDocument.Parse(providerError);
                 var root = doc.RootElement;
-                
+
                 if (root.TryGetProperty("error", out var errorElement) ||
                     root.TryGetProperty("data", out errorElement))
                 {
                     var code = errorElement.TryGetProperty("code", out var codeElem) ? codeElem.GetString() : "unknown";
                     var message = errorElement.TryGetProperty("message", out var msgElem) ? msgElem.GetString() : providerError;
-                    
+
                     return new RealtimeError
                     {
                         Code = code ?? "unknown",
@@ -313,7 +315,7 @@ namespace ConduitLLM.Providers.Translators
             {
                 // If we can't parse it, treat as generic error
             }
-            
+
             return new RealtimeError
             {
                 Code = "provider_error",
@@ -350,7 +352,7 @@ namespace ConduitLLM.Providers.Translators
         private RealtimeError ParseError(JsonElement root)
         {
             var errorData = root.TryGetProperty("data", out var data) ? data : root.GetProperty("error");
-            
+
             return new RealtimeError
             {
                 Code = errorData.TryGetProperty("code", out var code) ? code.GetString() ?? "unknown" : "unknown",

@@ -1,8 +1,9 @@
-using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.WebUI.Models;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.WebUI.Models;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -17,7 +18,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A dictionary mapping provider names to their status</returns>
         Task<Dictionary<string, ProviderStatus>> CheckAllProvidersStatusAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Checks the status of a specific provider
         /// </summary>
@@ -25,7 +26,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The status of the provider</returns>
         Task<ProviderStatus> CheckProviderStatusAsync(ProviderCredentialDto provider, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Checks the status of a provider by name
         /// </summary>

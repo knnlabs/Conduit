@@ -7,9 +7,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -41,14 +43,14 @@ namespace ConduitLLM.Core.Utilities
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var jsonOptions = options ?? DefaultJsonOptions;
-            
+
             // Process the stream outside of any try-catch
             foreach (var data in await ExtractSseDataAsync<T>(response, logger, jsonOptions, cancellationToken))
             {
                 yield return data;
             }
         }
-        
+
         /// <summary>
         /// Extracts and deserializes data from an SSE stream.
         /// </summary>
@@ -59,7 +61,7 @@ namespace ConduitLLM.Core.Utilities
             CancellationToken cancellationToken)
         {
             var results = new List<T>();
-            
+
             try
             {
                 logger?.LogDebug("Beginning to process SSE stream");
@@ -73,7 +75,7 @@ namespace ConduitLLM.Core.Utilities
                 while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
                 {
                     line = await reader.ReadLineAsync();
-                    
+
                     if (string.IsNullOrEmpty(line))
                     {
                         // Empty line indicates the end of an event
@@ -126,7 +128,7 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Error processing SSE stream");
                 throw new LLMCommunicationException("Error processing streaming response", ex);
             }
-            
+
             return results;
         }
 
@@ -266,7 +268,7 @@ namespace ConduitLLM.Core.Utilities
                 yield return result;
             }
         }
-        
+
         /// <summary>
         /// Extracts and converts data from a custom stream format.
         /// </summary>
@@ -279,7 +281,7 @@ namespace ConduitLLM.Core.Utilities
             CancellationToken cancellationToken)
         {
             var results = new List<TResult>();
-            
+
             try
             {
                 logger?.LogDebug("Beginning to process custom stream with delimiter: {Delimiter}", delimiter);
@@ -315,7 +317,7 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Error processing custom stream");
                 throw new LLMCommunicationException("Error processing custom streaming response", ex);
             }
-            
+
             return results;
         }
     }

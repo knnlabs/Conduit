@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -65,7 +70,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", key);
+                _logger.LogError(ex, "Error getting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -99,29 +104,29 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Set timestamps
                 if (globalSetting.CreatedAt == default)
                 {
                     globalSetting.CreatedAt = DateTime.UtcNow;
                 }
-                
+
                 globalSetting.UpdatedAt = DateTime.UtcNow;
-                
+
                 dbContext.GlobalSettings.Add(globalSetting);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return globalSetting.Id;
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating global setting with key '{SettingKey}'", 
-                    globalSetting.Key);
+                _logger.LogError(ex, "Database error creating global setting with key '{SettingKey}'",
+                    globalSetting.Key.Replace(Environment.NewLine, ""));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating global setting with key '{SettingKey}'", 
-                    globalSetting.Key);
+                _logger.LogError(ex, "Error creating global setting with key '{SettingKey}'",
+                    globalSetting.Key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -137,26 +142,26 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Ensure the entity is tracked
                 dbContext.GlobalSettings.Update(globalSetting);
-                
+
                 // Set the updated timestamp
                 globalSetting.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Save changes
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex, "Concurrency error updating global setting with ID {SettingId}", 
+                _logger.LogError(ex, "Concurrency error updating global setting with ID {SettingId}",
                     globalSetting.Id);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with ID {SettingId}", 
+                _logger.LogError(ex, "Error updating global setting with ID {SettingId}",
                     globalSetting.Id);
                 throw;
             }
@@ -178,11 +183,11 @@ namespace ConduitLLM.Configuration.Repositories
             try
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                
+
                 // Try to find existing setting
                 var existingSetting = await dbContext.GlobalSettings
                     .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
-                
+
                 if (existingSetting == null)
                 {
                     // Create new setting
@@ -194,7 +199,7 @@ namespace ConduitLLM.Configuration.Repositories
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    
+
                     dbContext.GlobalSettings.Add(newSetting);
                 }
                 else
@@ -202,20 +207,20 @@ namespace ConduitLLM.Configuration.Repositories
                     // Update existing setting
                     existingSetting.Value = value;
                     existingSetting.UpdatedAt = DateTime.UtcNow;
-                    
+
                     // Only update description if provided
                     if (description != null)
                     {
                         existingSetting.Description = description;
                     }
                 }
-                
+
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", key);
+                _logger.LogError(ex, "Error upserting global setting with key '{SettingKey}'", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }
@@ -227,12 +232,12 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var globalSetting = await dbContext.GlobalSettings.FindAsync(new object[] { id }, cancellationToken);
-                
+
                 if (globalSetting == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.GlobalSettings.Remove(globalSetting);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
@@ -257,19 +262,19 @@ namespace ConduitLLM.Configuration.Repositories
                 using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 var globalSetting = await dbContext.GlobalSettings
                     .FirstOrDefaultAsync(gs => gs.Key == key, cancellationToken);
-                
+
                 if (globalSetting == null)
                 {
                     return false;
                 }
-                
+
                 dbContext.GlobalSettings.Remove(globalSetting);
                 int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", key);
+                _logger.LogError(ex, "Error deleting global setting with key {SettingKey}", key.Replace(Environment.NewLine, ""));
                 throw;
             }
         }

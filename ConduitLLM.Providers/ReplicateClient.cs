@@ -10,13 +10,13 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Logging;
-
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.InternalModels;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
 {
@@ -28,11 +28,11 @@ namespace ConduitLLM.Providers
     {
         // Default base URL for Replicate API
         private const string DefaultReplicateApiBase = "https://api.replicate.com/v1/";
-        
+
         // Default polling configuration
-        private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2); 
+        private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan MaxPollingDuration = TimeSpan.FromMinutes(10);
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ReplicateClient"/> class.
         /// </summary>
@@ -40,32 +40,35 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public ReplicateClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 credentials,
                 providerModelId,
                 logger,
                 httpClientFactory,
                 "Replicate",
-                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase)
+                string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultReplicateApiBase : credentials.ApiBase,
+                defaultModels)
         {
         }
-        
+
         /// <inheritdoc/>
         protected override void ValidateCredentials()
         {
             base.ValidateCredentials();
-            
+
             if (string.IsNullOrWhiteSpace(Credentials.ApiKey))
             {
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'.");
             }
         }
-        
+
         /// <inheritdoc/>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
@@ -74,7 +77,7 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
-            
+
             // Set the base address if not already set
             if (client.BaseAddress == null && !string.IsNullOrEmpty(BaseUrl))
             {
@@ -89,18 +92,18 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateChatCompletionAsync");
-            
+
             Logger.LogInformation("Creating chat completion with Replicate for model '{ModelId}'", ProviderModelId);
-            
+
             try
             {
                 // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToPredictionRequest(request);
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-                
+
                 // Poll until prediction completes or fails
                 var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
-                
+
                 // Process the final result
                 return MapToChatCompletionResponse(finalPrediction, request.Model);
             }
@@ -123,19 +126,19 @@ namespace ConduitLLM.Providers
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "StreamChatCompletionAsync");
-            
+
             Logger.LogInformation("Creating streaming chat completion with Replicate for model '{ModelId}'", ProviderModelId);
-            
+
             // Variables to hold data outside the try block
             ReplicatePredictionRequest? predictionRequest = null;
             ReplicatePredictionResponse? predictionResponse = null;
             ReplicatePredictionResponse? finalPrediction = null;
-            
+
             try
             {
                 // Replicate doesn't natively support streaming in the common SSE format
                 // Instead, we'll simulate streaming by getting the full response and breaking it into chunks
-                
+
                 // Start the prediction
                 predictionRequest = MapToPredictionRequest(request);
                 predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
@@ -150,24 +153,24 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "An unexpected error occurred starting Replicate prediction");
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
-            
+
             // First chunk with role "assistant" - outside try block so we can yield
             yield return CreateChatCompletionChunk(
-                string.Empty, 
-                request.Model, 
-                true, 
-                null, 
+                string.Empty,
+                ProviderModelId,
+                true,
+                null,
                 request.Model);
-            
+
             try
             {
                 // Poll until prediction completes or fails
                 if (predictionResponse != null)
                 {
                     finalPrediction = await PollPredictionUntilCompletedAsync(
-                        predictionResponse.Id, 
-                        apiKey, 
-                        cancellationToken, 
+                        predictionResponse.Id,
+                        apiKey,
+                        cancellationToken,
                         true); // Set yield progress to true
                 }
             }
@@ -181,7 +184,7 @@ namespace ConduitLLM.Providers
                 Logger.LogError(ex, "An unexpected error occurred polling Replicate prediction");
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
-            
+
             // Extract content and yield the result - outside try block
             if (finalPrediction != null)
             {
@@ -190,10 +193,10 @@ namespace ConduitLLM.Providers
                 {
                     // Yield the content as a chunk
                     yield return CreateChatCompletionChunk(
-                        content, 
-                        request.Model, 
-                        false, 
-                        "stop", 
+                        content,
+                        ProviderModelId,
+                        false,
+                        "stop",
                         request.Model);
                 }
             }
@@ -210,14 +213,14 @@ namespace ConduitLLM.Providers
                 // In a real implementation, this would query the Replicate API for models
                 // However, Replicate doesn't have a simple endpoint for listing all available LLMs
                 // So we return a curated list of known models
-                
+
                 // This is a simplified implementation - in production, you might want to:
                 // 1. Cache this list and refresh periodically
                 // 2. Query the collections endpoint for more models
                 // 3. Allow administrators to configure which models to include
-                
+
                 await Task.Delay(1, cancellationToken); // Making this truly async
-                
+
                 var models = new List<InternalModels.ExtendedModelInfo>
                 {
                     InternalModels.ExtendedModelInfo.Create(
@@ -237,7 +240,7 @@ namespace ConduitLLM.Providers
                             MaxInputTokens = 32000,
                             MaxOutputTokens = 4096
                         }),
-                    
+
                     InternalModels.ExtendedModelInfo.Create(
                         "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590",
                         ProviderName,
@@ -255,7 +258,7 @@ namespace ConduitLLM.Providers
                             MaxInputTokens = 16000,
                             MaxOutputTokens = 4096
                         }),
-                    
+
                     InternalModels.ExtendedModelInfo.Create(
                         "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82",
                         ProviderName,
@@ -269,7 +272,7 @@ namespace ConduitLLM.Providers
                             ImageGeneration = true
                         })
                 };
-                
+
                 return models;
             }
             catch (Exception ex)
@@ -286,7 +289,7 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateEmbeddingAsync");
-            
+
             // While Replicate does have embedding models, the implementation would be similar to chat completion
             // For now, we'll throw NotSupportedException, but this could be implemented in the future
             Logger.LogWarning("Embeddings are not currently supported by ReplicateClientRevised.");
@@ -301,18 +304,18 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default)
         {
             ValidateRequest(request, "CreateImageAsync");
-            
+
             Logger.LogInformation("Creating image with Replicate for model '{ModelId}'", ProviderModelId);
-            
+
             try
             {
                 // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToImageGenerationRequest(request);
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-                
+
                 // Poll until prediction completes or fails
                 var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
-                
+
                 // Process the final result
                 return MapToImageGenerationResponse(finalPrediction, request.Model);
             }
@@ -327,21 +330,21 @@ namespace ConduitLLM.Providers
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
         }
-        
+
         #region Helper Methods
-        
+
         private ReplicatePredictionRequest MapToPredictionRequest(ChatCompletionRequest request)
         {
             // Prepare the input based on the model
             var input = new Dictionary<string, object>();
-            
+
             // For Llama models, handle with the system message format
             if (ProviderModelId.Contains("llama", StringComparison.OrdinalIgnoreCase))
             {
                 // Extract system message if present
                 var systemMessage = request.Messages.FirstOrDefault(m => m.Role.Equals("system", StringComparison.OrdinalIgnoreCase));
                 var systemPrompt = systemMessage != null ? systemMessage.Content?.ToString() : null;
-                
+
                 // Create a list of chat messages for the 'messages' parameter (excluding system)
                 var chatMessages = request.Messages
                     .Where(m => !m.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
@@ -351,10 +354,10 @@ namespace ConduitLLM.Providers
                         Content = m.Content?.ToString() ?? string.Empty
                     })
                     .ToList();
-                
+
                 // Add the messages to the input
                 input["messages"] = chatMessages;
-                
+
                 // Add system prompt if present
                 if (!string.IsNullOrEmpty(systemPrompt))
                 {
@@ -365,7 +368,7 @@ namespace ConduitLLM.Providers
             {
                 // For models that expect a simple text prompt, concatenate messages
                 var promptBuilder = new System.Text.StringBuilder();
-                
+
                 foreach (var message in request.Messages)
                 {
                     if (message.Role.Equals("system", StringComparison.OrdinalIgnoreCase))
@@ -382,42 +385,42 @@ namespace ConduitLLM.Providers
                         promptBuilder.AppendLine($"Assistant: {message.Content}");
                     }
                 }
-                
+
                 // Add a final prompt marker
                 promptBuilder.Append("Assistant: ");
-                
+
                 // Add the prompt to the input
                 input["prompt"] = promptBuilder.ToString();
             }
-            
+
             // Add optional parameters if provided
             if (request.Temperature.HasValue)
             {
                 input["temperature"] = request.Temperature.Value;
             }
-            
+
             if (request.MaxTokens.HasValue)
             {
                 input["max_length"] = request.MaxTokens.Value;
             }
-            
+
             if (request.TopP.HasValue)
             {
                 input["top_p"] = request.TopP.Value;
             }
-            
+
             if (request.Stop != null && request.Stop.Any())
             {
                 input["stop_sequences"] = request.Stop;
             }
-            
+
             return new ReplicatePredictionRequest
             {
                 Version = ProviderModelId,
                 Input = input
             };
         }
-        
+
         private ReplicatePredictionRequest MapToImageGenerationRequest(ImageGenerationRequest request)
         {
             // Prepare the input based on the model
@@ -425,7 +428,7 @@ namespace ConduitLLM.Providers
             {
                 ["prompt"] = request.Prompt
             };
-            
+
             // Add optional parameters if provided
             if (request.Size != null)
             {
@@ -436,29 +439,29 @@ namespace ConduitLLM.Providers
                     input["height"] = height;
                 }
             }
-            
+
             if (request.Quality != null)
             {
                 input["quality"] = request.Quality;
             }
-            
+
             if (request.Style != null)
             {
                 input["style"] = request.Style;
             }
-            
+
             if (request.N > 1)
             {
                 input["num_outputs"] = request.N;
             }
-            
+
             return new ReplicatePredictionRequest
             {
                 Version = ProviderModelId,
                 Input = input
             };
         }
-        
+
         private async Task<ReplicatePredictionResponse> StartPredictionAsync(
             ReplicatePredictionRequest request,
             string? apiKey,
@@ -468,24 +471,24 @@ namespace ConduitLLM.Providers
             {
                 using var client = CreateHttpClient(apiKey);
                 var response = await client.PostAsJsonAsync("predictions", request, cancellationToken);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     string errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                    Logger.LogError("Replicate API prediction creation failed with status code {StatusCode}. Response: {ErrorContent}", 
+                    Logger.LogError("Replicate API prediction creation failed with status code {StatusCode}. Response: {ErrorContent}",
                         response.StatusCode, errorContent);
                     throw new LLMCommunicationException(
                         $"Replicate API prediction creation failed with status code {response.StatusCode}. Response: {errorContent}");
                 }
-                
+
                 var predictionResponse = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
                     cancellationToken: cancellationToken);
-                
+
                 if (predictionResponse == null)
                 {
                     throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
                 }
-                
+
                 return predictionResponse;
             }
             catch (HttpRequestException ex)
@@ -508,9 +511,9 @@ namespace ConduitLLM.Providers
                 throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
             }
         }
-        
+
         private async Task<ReplicatePredictionResponse> PollPredictionUntilCompletedAsync(
-            string predictionId, 
+            string predictionId,
             string? apiKey,
             CancellationToken cancellationToken,
             bool yieldProgress = false)
@@ -518,7 +521,7 @@ namespace ConduitLLM.Providers
             var startTime = DateTime.UtcNow;
             var attemptCount = 0;
             ReplicatePredictionResponse? prediction = null;
-            
+
             while (true)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -526,60 +529,60 @@ namespace ConduitLLM.Providers
                     Logger.LogInformation("Prediction polling was canceled");
                     throw new OperationCanceledException("Prediction polling was canceled", cancellationToken);
                 }
-                
+
                 // Check if we've exceeded the maximum polling duration
                 if (DateTime.UtcNow - startTime > MaxPollingDuration)
                 {
                     Logger.LogError("Exceeded maximum polling duration for prediction {PredictionId}", predictionId);
                     throw new LLMCommunicationException($"Exceeded maximum polling duration for prediction {predictionId}");
                 }
-                
+
                 attemptCount++;
                 Logger.LogDebug("Polling prediction {PredictionId}, attempt {AttemptCount}", predictionId, attemptCount);
-                
+
                 try
                 {
                     using var client = CreateHttpClient(apiKey);
                     var response = await client.GetAsync($"predictions/{predictionId}", cancellationToken);
-                    
+
                     if (!response.IsSuccessStatusCode)
                     {
                         string errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                        Logger.LogError("Replicate API prediction polling failed with status code {StatusCode}. Response: {ErrorContent}", 
+                        Logger.LogError("Replicate API prediction polling failed with status code {StatusCode}. Response: {ErrorContent}",
                             response.StatusCode, errorContent);
                         throw new LLMCommunicationException(
                             $"Replicate API prediction polling failed with status code {response.StatusCode}. Response: {errorContent}");
                     }
-                    
+
                     prediction = await response.Content.ReadFromJsonAsync<ReplicatePredictionResponse>(
                         cancellationToken: cancellationToken);
-                    
+
                     if (prediction == null)
                     {
                         throw new LLMCommunicationException("Failed to deserialize Replicate prediction response");
                     }
-                    
+
                     // Check prediction status
                     switch (prediction.Status.ToLowerInvariant())
                     {
                         case "succeeded":
                             Logger.LogInformation("Prediction {PredictionId} completed successfully", predictionId);
                             return prediction;
-                            
+
                         case "failed":
                             Logger.LogError("Prediction {PredictionId} failed: {Error}", predictionId, prediction.Error);
                             throw new LLMCommunicationException($"Replicate prediction failed: {prediction.Error}");
-                            
+
                         case "canceled":
                             Logger.LogWarning("Prediction {PredictionId} was canceled", predictionId);
                             throw new LLMCommunicationException("Replicate prediction was canceled");
-                            
+
                         case "starting":
                         case "processing":
                             // Still in progress, continue polling
                             Logger.LogDebug("Prediction {PredictionId} is {Status}", predictionId, prediction.Status);
                             break;
-                            
+
                         default:
                             Logger.LogWarning("Prediction {PredictionId} has unknown status: {Status}", predictionId, prediction.Status);
                             break;
@@ -608,22 +611,22 @@ namespace ConduitLLM.Providers
                     Logger.LogError(ex, "An unexpected error occurred during prediction polling");
                     throw new LLMCommunicationException($"An unexpected error occurred during prediction polling: {ex.Message}", ex);
                 }
-                
+
                 // Add a delay before the next poll
                 await Task.Delay(DefaultPollingInterval, cancellationToken);
             }
         }
-        
+
         private ChatCompletionResponse MapToChatCompletionResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
         {
             // Extract content from the prediction output - format depends on the model
             var content = ExtractTextFromPredictionOutput(prediction.Output);
-            
+
             // Estimate token usage (not precise, just a rough estimate)
             var inputStr = prediction.Input != null ? JsonSerializer.Serialize(prediction.Input) : string.Empty;
             var promptTokens = EstimateTokenCount(inputStr);
             var completionTokens = EstimateTokenCount(content);
-            
+
             return new ChatCompletionResponse
             {
                 Id = prediction.Id,
@@ -652,12 +655,12 @@ namespace ConduitLLM.Providers
                 OriginalModelAlias = originalModelAlias
             };
         }
-        
+
         private ImageGenerationResponse MapToImageGenerationResponse(ReplicatePredictionResponse prediction, string originalModelAlias)
         {
             // Extract image URLs from the prediction output
             var imageUrls = ExtractImageUrlsFromPredictionOutput(prediction.Output);
-            
+
             return new ImageGenerationResponse
             {
                 Created = ((DateTimeOffset)prediction.CreatedAt).ToUnixTimeSeconds(),
@@ -667,7 +670,7 @@ namespace ConduitLLM.Providers
                 }).ToList()
             };
         }
-        
+
         private string ExtractTextFromPredictionOutput(object? output)
         {
             // Handle different output formats from different models
@@ -675,7 +678,7 @@ namespace ConduitLLM.Providers
             {
                 return string.Empty;
             }
-            
+
             try
             {
                 // String output (common for text generation models)
@@ -683,7 +686,7 @@ namespace ConduitLLM.Providers
                 {
                     return str;
                 }
-                
+
                 // List of strings (some models return this)
                 if (output is JsonElement element)
                 {
@@ -705,7 +708,7 @@ namespace ConduitLLM.Providers
                         return result.ToString();
                     }
                 }
-                
+
                 // Last resort: serialize to JSON and try to extract
                 return JsonSerializer.Serialize(output);
             }
@@ -715,17 +718,17 @@ namespace ConduitLLM.Providers
                 return string.Empty;
             }
         }
-        
+
         private List<string> ExtractImageUrlsFromPredictionOutput(object? output)
         {
             var urls = new List<string>();
-            
+
             // Handle different output formats from different models
             if (output == null)
             {
                 return urls;
             }
-            
+
             try
             {
                 // String output (single image URL)
@@ -734,7 +737,7 @@ namespace ConduitLLM.Providers
                     urls.Add(str);
                     return urls;
                 }
-                
+
                 // Array of strings (multiple image URLs)
                 if (output is JsonElement element)
                 {
@@ -765,21 +768,21 @@ namespace ConduitLLM.Providers
             {
                 Logger.LogWarning(ex, "Error extracting image URLs from prediction output");
             }
-            
+
             return urls;
         }
-        
+
         private int EstimateTokenCount(string text)
         {
             if (string.IsNullOrEmpty(text))
             {
                 return 0;
             }
-            
+
             // Very rough estimate: 4 characters per token (English text)
             return text.Length / 4;
         }
-        
+
         #endregion
     }
 }

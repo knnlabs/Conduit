@@ -37,17 +37,20 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The provider's model identifier.</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public HuggingFaceClient(
             ProviderCredentials credentials,
             string providerModelId,
             ILogger<HuggingFaceClient> logger,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            ProviderDefaultModels? defaultModels = null)
             : base(
                 EnsureHuggingFaceCredentials(credentials),
                 providerModelId,
                 logger,
                 httpClientFactory,
-                "huggingface")
+                "huggingface",
+                defaultModels)
         {
         }
 
@@ -288,12 +291,168 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException("Embeddings are not yet supported in the HuggingFace client.");
+            // Validate input
+            if (request.Input == null)
+            {
+                throw new ValidationException("Input text is required for embeddings");
+            }
+
+            // HuggingFace feature extraction expects single text or array
+            object inputs;
+            if (request.Input is string singleText)
+            {
+                inputs = singleText;
+            }
+            else if (request.Input is IEnumerable<string> multipleTexts)
+            {
+                var textList = multipleTexts.ToList();
+                if (textList.Count == 0)
+                {
+                    throw new ValidationException("At least one input text is required");
+                }
+                inputs = textList;
+            }
+            else
+            {
+                throw new ValidationException("Input must be a string or array of strings");
+            }
+
+            // Create HuggingFace request - feature extraction endpoint
+            var hfRequest = new
+            {
+                inputs = inputs,
+                // Optional parameters for feature extraction
+                options = new
+                {
+                    wait_for_model = true,
+                    use_cache = true
+                }
+            };
+
+            using var httpClient = CreateHttpClient(apiKey);
+            var requestJson = JsonSerializer.Serialize(hfRequest, DefaultJsonOptions);
+            var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+
+            try
+            {
+                // For embeddings, we use the feature-extraction task
+                // The model should be an embedding model like sentence-transformers/all-MiniLM-L6-v2
+                var response = await httpClient.PostAsync("", content, cancellationToken);
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Handle error response
+                    Logger.LogError("HuggingFace API request failed with status code {StatusCode}. Response: {ErrorContent}",
+                        response.StatusCode, responseBody);
+                    throw new LLMCommunicationException(
+                        $"HuggingFace API request failed with status code {response.StatusCode}. Response: {responseBody}");
+                }
+
+                // Parse response - HuggingFace returns embeddings directly
+                // For single input: [[embedding]]
+                // For multiple inputs: [[embedding1], [embedding2], ...]
+                List<List<float>> embeddings;
+                
+                using (var doc = JsonDocument.Parse(responseBody))
+                {
+                    var root = doc.RootElement;
+                    
+                    if (root.ValueKind == JsonValueKind.Array)
+                    {
+                        embeddings = new List<List<float>>();
+                        
+                        // Check if it's a single embedding [[...]] or multiple [[[...]], [[...]]]
+                        if (root.GetArrayLength() > 0)
+                        {
+                            var firstElement = root[0];
+                            if (firstElement.ValueKind == JsonValueKind.Array && 
+                                firstElement.GetArrayLength() > 0 &&
+                                firstElement[0].ValueKind == JsonValueKind.Number)
+                            {
+                                // Single embedding case: [[0.1, 0.2, ...]]
+                                var embedding = new List<float>();
+                                foreach (var value in firstElement.EnumerateArray())
+                                {
+                                    embedding.Add(value.GetSingle());
+                                }
+                                embeddings.Add(embedding);
+                            }
+                            else if (firstElement.ValueKind == JsonValueKind.Array)
+                            {
+                                // Multiple embeddings case: [[[0.1, 0.2, ...]], [[0.3, 0.4, ...]]]
+                                foreach (var embeddingArray in root.EnumerateArray())
+                                {
+                                    if (embeddingArray.ValueKind == JsonValueKind.Array && 
+                                        embeddingArray.GetArrayLength() > 0)
+                                    {
+                                        var embedding = new List<float>();
+                                        foreach (var value in embeddingArray[0].EnumerateArray())
+                                        {
+                                            embedding.Add(value.GetSingle());
+                                        }
+                                        embeddings.Add(embedding);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new LLMCommunicationException(
+                            "Invalid response format from HuggingFace API");
+                    }
+                }
+
+                // Map to standard embedding response
+                var embeddingData = new List<EmbeddingData>();
+                for (int i = 0; i < embeddings.Count; i++)
+                {
+                    embeddingData.Add(new EmbeddingData
+                    {
+                        Object = "embedding",
+                        Embedding = embeddings[i],
+                        Index = i
+                    });
+                }
+
+                // Calculate approximate token usage
+                // This is an approximation as HuggingFace doesn't provide token counts
+                var textCount = inputs is string ? 1 : ((IEnumerable<string>)inputs).Count();
+                var approxTokens = textCount * 50; // Rough estimate
+
+                var usage = new Usage
+                {
+                    PromptTokens = approxTokens,
+                    CompletionTokens = 0,
+                    TotalTokens = approxTokens
+                };
+
+                return new EmbeddingResponse
+                {
+                    Object = "list",
+                    Data = embeddingData,
+                    Model = request.Model ?? ProviderModelId,
+                    Usage = usage
+                };
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new LLMCommunicationException(
+                    $"Error communicating with HuggingFace API: {ex.Message}",
+                    ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                throw new LLMCommunicationException(
+                    "Request to HuggingFace API timed out",
+                    ex);
+            }
         }
 
         /// <inheritdoc />

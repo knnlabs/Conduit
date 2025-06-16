@@ -21,7 +21,7 @@ public class VirtualKeyAuthenticationMiddleware
     private const string AuthorizationHeader = "Authorization";
     private const string ApiKeyHeader = "X-Api-Key";
     private const string BearerPrefix = "Bearer ";
-    
+
     public VirtualKeyAuthenticationMiddleware(
         RequestDelegate next,
         ILogger<VirtualKeyAuthenticationMiddleware> logger,

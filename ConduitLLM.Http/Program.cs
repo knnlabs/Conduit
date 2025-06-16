@@ -4,47 +4,58 @@ using System.Text.Json.Serialization; // Required for JsonNamingPolicy
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data; // Added for database initialization
+using ConduitLLM.Configuration.Extensions; // Added for DataProtectionExtensions and HealthCheckExtensions
+using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Http.Adapters;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Http.Adapters;
+using ConduitLLM.Http.Controllers; // Added for RealtimeController
+using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
+using ConduitLLM.Http.Security;
+using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
-using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
-using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Added for EF Core
-using Microsoft.Extensions.Options; // Added for IOptions
 using Microsoft.AspNetCore.RateLimiting;
-using ConduitLLM.Http.Security;
-using ConduitLLM.Http.Controllers; // Added for RealtimeController
+using Microsoft.EntityFrameworkCore; // Added for EF Core
+using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
+using Microsoft.Extensions.Options; // Added for IOptions
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
     Args = args,
     // Don't load appsettings.json
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
 });
 builder.Configuration.Sources.Clear();
-builder.Configuration.AddEnvironmentVariables();
 
-// Check if --apply-migrations flag is passed
-bool explicitMigration = args.Contains("--apply-migrations");
-bool shouldApplyMigrations = explicitMigration || Environment.GetEnvironmentVariable("APPLY_MIGRATIONS") == "true";
-bool useEnsureCreated = Environment.GetEnvironmentVariable("CONDUIT_DATABASE_ENSURE_CREATED") == "true";
-
-if (explicitMigration || shouldApplyMigrations)
+// Add appsettings files for development
+if (builder.Environment.IsDevelopment())
 {
-    Console.WriteLine("[Conduit] Running with migration flag. Will prioritize database migration.");
+    builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 }
 
-if (useEnsureCreated)
+builder.Configuration.AddEnvironmentVariables();
+
+// Database initialization strategy
+// We use a flexible approach that works for both development and production
+bool skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
+
+if (skipDatabaseInit)
 {
-    Console.WriteLine("[Conduit] Using EnsureCreated for database initialization (skipping migrations).");
+    Console.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
+}
+else
+{
+    Console.WriteLine("[Conduit] Database will be initialized automatically.");
 }
 
 // Configure JSON options for snake_case serialization (OpenAI compatibility)
@@ -88,12 +99,26 @@ var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndCon
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseSqlite(dbConnectionString));
+    {
+        options.UseSqlite(dbConnectionString);
+        // Suppress PendingModelChangesWarning in production
+        if (builder.Environment.IsProduction())
+        {
+            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
 }
 else if (dbProvider == "postgres")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-        options.UseNpgsql(dbConnectionString));
+    {
+        options.UseNpgsql(dbConnectionString);
+        // Suppress PendingModelChangesWarning in production
+        if (builder.Environment.IsProduction())
+        {
+            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        }
+    });
 }
 else
 {
@@ -111,6 +136,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.LLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
 
+// Add performance metrics service
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
+
 // Add required services for the router components
 builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
 builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>();
@@ -119,12 +147,8 @@ builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>
 builder.Services.AddScoped<ITokenCounter, ConduitLLM.Core.Services.TiktokenCounter>();
 builder.Services.AddScoped<IContextManager, ConduitLLM.Core.Services.ContextManager>();
 
-// Register repositories
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IVirtualKeyRepository, ConduitLLM.Configuration.Repositories.VirtualKeyRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IVirtualKeySpendHistoryRepository, ConduitLLM.Configuration.Repositories.VirtualKeySpendHistoryRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelCostRepository, ConduitLLM.Configuration.Repositories.ModelCostRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IModelProviderMappingRepository, ConduitLLM.Configuration.Repositories.ModelProviderMappingRepository>();
-builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IProviderCredentialRepository, ConduitLLM.Configuration.Repositories.ProviderCredentialRepository>();
+// Register all repositories using the extension method
+builder.Services.AddRepositories();
 
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
@@ -133,6 +157,10 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, Condui
 
 // Register cache service based on configuration
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.ICacheService, ConduitLLM.Configuration.Services.CacheService>();
+
+// Configure Data Protection with Redis persistence
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Register Configuration adapters (moved from Core)
 builder.Services.AddConfigurationAdapters();
@@ -144,15 +172,15 @@ builder.Services.AddScoped<ModelListService>();
 builder.Services.AddScoped<Conduit>();
 
 // Register Audio services
-builder.Services.AddConduitAudioServices();
+builder.Services.AddConduitAudioServices(builder.Configuration);
 
 // Register Real-time Audio services
 builder.Services.AddSingleton<IRealtimeConnectionManager, RealtimeConnectionManager>();
 builder.Services.AddSingleton<IRealtimeMessageTranslatorFactory, RealtimeMessageTranslatorFactory>();
 builder.Services.AddScoped<IRealtimeProxyService, RealtimeProxyService>();
 builder.Services.AddScoped<IRealtimeUsageTracker, RealtimeUsageTracker>();
-builder.Services.AddHostedService<RealtimeConnectionManager>(provider => 
-    provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ?? 
+builder.Services.AddHostedService<RealtimeConnectionManager>(provider =>
+    provider.GetRequiredService<IRealtimeConnectionManager>() as RealtimeConnectionManager ??
     throw new InvalidOperationException("RealtimeConnectionManager not registered properly"));
 
 // Register Real-time Message Translators
@@ -184,43 +212,69 @@ builder.Services.AddCors(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Add standardized health checks (skip in test environment to avoid conflicts)
+if (builder.Environment.EnvironmentName != "Test")
+{
+    var redisHealthConnection = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisHealthConnection);
+
+    // Add audio-specific health checks if audio services are configured
+    if (builder.Configuration.GetSection("AudioService:Providers").Exists())
+    {
+        healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
+    }
+}
+
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
 
 var app = builder.Build();
 
-// Initialize database if configured
-if (shouldApplyMigrations || useEnsureCreated)
+// Initialize database - Always run unless explicitly told to skip
+// This ensures users get automatic schema updates when pulling new versions
+if (!skipDatabaseInit)
 {
     using (var scope = app.Services.CreateScope())
     {
         var dbInitializer = scope.ServiceProvider.GetRequiredService<ConduitLLM.Configuration.Data.DatabaseInitializer>();
         var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
+
         try
         {
             initLogger.LogInformation("Starting database initialization...");
-            var success = await dbInitializer.InitializeDatabaseAsync();
-            
+
+            // Wait for database to be available (especially important in Docker)
+            var maxRetries = 10;
+            var retryDelay = 3000; // 3 seconds between retries
+
+            var success = await dbInitializer.InitializeDatabaseAsync(maxRetries, retryDelay);
+
             if (success)
             {
                 initLogger.LogInformation("Database initialization completed successfully");
             }
             else
             {
-                initLogger.LogError("Database initialization failed");
-                if (!useEnsureCreated)
-                {
-                    // If not using EnsureCreated, fail hard on migration errors
-                    throw new InvalidOperationException("Database initialization failed");
-                }
+                initLogger.LogError("Database initialization failed after {MaxRetries} attempts", maxRetries);
+                // Always fail hard if database initialization fails
+                // This prevents running with an incomplete schema
+                throw new InvalidOperationException($"Database initialization failed after {maxRetries} attempts. Please check database connectivity and logs.");
             }
         }
         catch (Exception ex)
         {
-            initLogger.LogError(ex, "Error during database initialization");
-            throw;
+            initLogger.LogError(ex, "Critical error during database initialization");
+            // Re-throw to prevent the application from starting with a broken database
+            throw new InvalidOperationException("Failed to initialize database. Application cannot start.", ex);
         }
+    }
+}
+else
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var initLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        initLogger.LogWarning("Database initialization is skipped. Ensure database schema is up to date.");
     }
 }
 
@@ -233,21 +287,20 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromSeconds(120)
 });
 
-// Add a health check endpoint
 // Add controllers to the app
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
-// Add a health check endpoint
-app.MapGet("/health", () => {
-    return Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
-});
+// Map standardized health check endpoints
+app.MapConduitHealthChecks();
 
 // Add completions endpoint (legacy)
-app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {
+app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>
+{
     logger.LogInformation("Legacy /completions endpoint called.");
     return Results.Json(
-        new {
+        new
+        {
             error = "The /completions endpoint is not implemented. Please use /chat/completions."
         },
         statusCode: 501,
@@ -258,17 +311,21 @@ app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) => {
 // Add embeddings endpoint
 app.MapPost("/v1/embeddings", (
     [FromBody] EmbeddingRequest? request,
-    [FromServices] ILogger<Program> logger) => {
+    [FromServices] ILogger<Program> logger) =>
+{
 
-    if (request == null) {
+    if (request == null)
+    {
         return Results.BadRequest(new { error = "Invalid request body." });
     }
 
-    try {
+    try
+    {
         // Currently embeddings are not fully implemented
         logger.LogWarning("Embeddings endpoint called but CreateEmbeddingAsync not implemented.");
         return Results.Json(
-            new {
+            new
+            {
                 error = "Embeddings routing not yet implemented."
             },
             statusCode: 501,
@@ -279,10 +336,13 @@ app.MapPost("/v1/embeddings", (
         // var response = await router.CreateEmbeddingAsync(request, cancellationToken);
         // return Results.Json(response, options: jsonSerializerOptions);
     }
-    catch (Exception ex) {
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error processing embeddings request for model: {Model}", request.Model);
-        return Results.Json(new OpenAIErrorResponse {
-            Error = new OpenAIError {
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
                 Message = ex.Message,
                 Type = "server_error",
                 Code = "internal_error"
@@ -292,31 +352,38 @@ app.MapPost("/v1/embeddings", (
 });
 
 // Add models endpoint
-app.MapGet("/v1/models", ([FromServices] ILLMRouter router, [FromServices] ILogger<Program> logger) => {
-    try {
+app.MapGet("/v1/models", ([FromServices] ILLMRouter router, [FromServices] ILogger<Program> logger) =>
+{
+    try
+    {
         logger.LogInformation("Getting available models");
 
         // Get model names from the router
         var modelNames = router.GetAvailableModels();
 
         // Convert to OpenAI format
-        var basicModelData = modelNames.Select(m => new {
+        var basicModelData = modelNames.Select(m => new
+        {
             id = m,
             @object = "model"
         }).ToList();
 
         // Create the response envelope
-        var response = new {
+        var response = new
+        {
             data = basicModelData,
             @object = "list"
         };
 
         return Results.Json(response, options: jsonSerializerOptions);
     }
-    catch (Exception ex) {
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error retrieving models list");
-        return Results.Json(new OpenAIErrorResponse {
-            Error = new OpenAIError {
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
                 Message = ex.Message,
                 Type = "server_error",
                 Code = "internal_error"
@@ -334,55 +401,113 @@ app.MapPost("/v1/chat/completions", async (
 {
     logger.LogInformation("Received /v1/chat/completions request for model: {Model}", request.Model);
 
-    try {
+    try
+    {
         // Non-streaming path
-        if (request.Stream != true) {
+        if (request.Stream != true)
+        {
             logger.LogInformation("Handling non-streaming request.");
             var response = await conduit.CreateChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted);
             return Results.Json(response, options: jsonSerializerOptions);
-        } else {
+        }
+        else
+        {
             logger.LogInformation("Handling streaming request.");
-            // Implement streaming response
+            
+            // Use enhanced SSE writer for performance metrics support
             var response = httpRequest.HttpContext.Response;
-            response.Headers["Content-Type"] = "text/event-stream";
-            response.Headers["Cache-Control"] = "no-cache";
-            response.Headers["Connection"] = "keep-alive";
+            var sseWriter = response.CreateEnhancedSSEWriter(jsonSerializerOptions);
             
-            try {
-                await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted)) {
-                    var json = JsonSerializer.Serialize(chunk, jsonSerializerOptions);
-                    await response.WriteAsync($"data: {json}\n\n");
-                    await response.Body.FlushAsync();
+            // Create metrics collector if performance tracking is enabled
+            var settings = httpRequest.HttpContext.RequestServices.GetRequiredService<IOptions<ConduitSettings>>().Value;
+            StreamingMetricsCollector? metricsCollector = null;
+            
+            if (settings.PerformanceTracking?.Enabled == true && settings.PerformanceTracking.TrackStreamingMetrics)
+            {
+                logger.LogInformation("Performance tracking enabled for streaming request");
+                var requestId = Guid.NewGuid().ToString();
+                response.Headers["X-Request-ID"] = requestId;
+                
+                // Get provider info for metrics from settings
+                var modelMapping = settings.ModelMappings?.FirstOrDefault(m => 
+                    string.Equals(m.ModelAlias, request.Model, StringComparison.OrdinalIgnoreCase));
+                var providerName = modelMapping?.ProviderName ?? "unknown";
+                
+                logger.LogInformation("Creating StreamingMetricsCollector for model {Model}, provider {Provider}", request.Model, providerName);
+                metricsCollector = new StreamingMetricsCollector(
+                    requestId,
+                    request.Model,
+                    providerName);
+            }
+            else
+            {
+                logger.LogInformation("Performance tracking disabled for streaming request. Enabled: {Enabled}, TrackStreaming: {TrackStreaming}", 
+                    settings.PerformanceTracking?.Enabled, 
+                    settings.PerformanceTracking?.TrackStreamingMetrics);
+            }
+
+            try
+            {
+                await foreach (var chunk in conduit.StreamChatCompletionAsync(request, null, httpRequest.HttpContext.RequestAborted))
+                {
+                    // Write content event
+                    await sseWriter.WriteContentEventAsync(chunk);
+                    
+                    // Track metrics if enabled
+                    if (metricsCollector != null && chunk?.Choices?.Count > 0)
+                    {
+                        var hasContent = chunk.Choices.Any(c => !string.IsNullOrEmpty(c.Delta?.Content));
+                        if (hasContent)
+                        {
+                            if (metricsCollector.GetMetrics().TimeToFirstTokenMs == null)
+                            {
+                                metricsCollector.RecordFirstToken();
+                            }
+                            else
+                            {
+                                metricsCollector.RecordToken();
+                            }
+                        }
+                        
+                        // Emit metrics periodically
+                        if (metricsCollector.ShouldEmitMetrics())
+                        {
+                            logger.LogDebug("Emitting streaming metrics");
+                            await sseWriter.WriteMetricsEventAsync(metricsCollector.GetMetrics());
+                        }
+                    }
                 }
-                
+
+                // Write final metrics if tracking is enabled
+                if (metricsCollector != null)
+                {
+                    var finalMetrics = metricsCollector.GetFinalMetrics();
+                    await sseWriter.WriteFinalMetricsEventAsync(finalMetrics);
+                }
+
                 // Write [DONE] to signal the end of the stream
-                await response.WriteAsync("data: [DONE]\n\n");
-                await response.Body.FlushAsync();
+                await sseWriter.WriteDoneEventAsync();
             }
-            catch (Exception streamEx) {
+            catch (Exception streamEx)
+            {
                 logger.LogError(streamEx, "Error in stream processing");
-                var errorJson = JsonSerializer.Serialize(new OpenAIErrorResponse { 
-                    Error = new OpenAIError { 
-                        Message = streamEx.Message, 
-                        Type = "server_error", 
-                        Code = "streaming_error" 
-                    } 
-                }, jsonSerializerOptions);
-                
-                await response.WriteAsync($"data: {errorJson}\n\n");
-                await response.Body.FlushAsync();
+                await sseWriter.WriteErrorEventAsync(streamEx.Message);
             }
-            
+
             return Results.Empty;
         }
-    } catch (Exception ex) {
+    }
+    catch (Exception ex)
+    {
         logger.LogError(ex, "Error processing request");
-        return Results.Json(new OpenAIErrorResponse { 
-            Error = new OpenAIError { 
-                Message = ex.Message, 
-                Type = "server_error", 
-                Code = "internal_error" 
-            } 
+        return Results.Json(new OpenAIErrorResponse
+        {
+            Error = new OpenAIError
+            {
+                Message = ex.Message,
+                Type = "server_error",
+                Code = "internal_error"
+            }
         }, statusCode: 500, options: jsonSerializerOptions);
     }
 });
@@ -444,7 +569,7 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             if (providerCredsList.Any())
             {
                 _logger.LogInformation("Found {Count} provider credentials in database", providerCredsList.Count);
-                
+
                 // Convert database provider credentials to Core provider credentials
                 var providersList = providerCredsList.Select(p => new ProviderCredentials
                 {
@@ -453,26 +578,26 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ApiVersion = p.ApiVersion,
                     ApiBase = p.BaseUrl // Map BaseUrl from DB entity to ApiBase in settings entity
                 }).ToList();
-                
+
                 // Now integrate these with existing settings
                 // Two approaches: 
                 // 1. Replace in-memory with DB values
                 // 2. Merge DB with in-memory (with DB taking precedence)
                 // Using approach #2 here
-                
+
                 if (settings.ProviderCredentials == null)
                 {
                     settings.ProviderCredentials = new List<ProviderCredentials>();
                 }
-                
+
                 // Remove any in-memory providers that exist in DB to avoid duplicates
-                settings.ProviderCredentials.RemoveAll(p => 
-                    providersList.Any(dbp => 
+                settings.ProviderCredentials.RemoveAll(p =>
+                    providersList.Any(dbp =>
                         string.Equals(dbp.ProviderName, p.ProviderName, StringComparison.OrdinalIgnoreCase)));
-                
+
                 // Then add all the database credentials
                 settings.ProviderCredentials.AddRange(providersList);
-                
+
                 foreach (var cred in providersList)
                 {
                     _logger.LogInformation("Loaded credentials for provider: {ProviderName}", cred.ProviderName);
@@ -482,16 +607,16 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
             {
                 _logger.LogWarning("No provider credentials found in database");
             }
-            
+
             // Load model mappings using ModelProviderMappingRepository directly
             var modelMappingsEntities = await configDbContext.ModelProviderMappings
                 .Include(m => m.ProviderCredential)
                 .ToListAsync();
-                
+
             if (modelMappingsEntities.Any())
             {
                 _logger.LogInformation("Found {Count} model mappings in database", modelMappingsEntities.Count);
-                
+
                 // Convert database model mappings to Core model mappings
                 var modelMappingsList = modelMappingsEntities.Select(m => new ModelProviderMapping
                 {
@@ -499,24 +624,24 @@ public class DatabaseSettingsStartupFilter : IStartupFilter
                     ProviderName = m.ProviderCredential.ProviderName,
                     ProviderModelId = m.ProviderModelName
                 }).ToList();
-                
+
                 // Configure the model mappings in settings
                 if (settings.ModelMappings == null)
                 {
                     settings.ModelMappings = new List<ModelProviderMapping>();
                 }
-                
+
                 // Remove existing mappings that exist in DB to avoid duplicates
-                settings.ModelMappings.RemoveAll(m => 
-                    modelMappingsList.Any(dbm => 
+                settings.ModelMappings.RemoveAll(m =>
+                    modelMappingsList.Any(dbm =>
                         string.Equals(dbm.ModelAlias, m.ModelAlias, StringComparison.OrdinalIgnoreCase)));
-                
+
                 // Add all the database model mappings
                 settings.ModelMappings.AddRange(modelMappingsList);
-                
+
                 foreach (var mapping in modelMappingsList)
                 {
-                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}", 
+                    _logger.LogInformation("Loaded model mapping: {ModelAlias} -> {ProviderName}/{ProviderModelId}",
                         mapping.ModelAlias, mapping.ProviderName, mapping.ProviderModelId);
                 }
             }

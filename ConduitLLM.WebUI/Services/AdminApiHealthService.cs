@@ -1,11 +1,15 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using ConduitLLM.WebUI.Options;
-using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Models;
+using ConduitLLM.WebUI.Options;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -23,6 +27,7 @@ namespace ConduitLLM.WebUI.Services
         private string _lastErrorMessage = string.Empty;
         private DateTime _lastChecked = DateTime.MinValue;
         private TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+        private DetailedHealthStatus? _lastDetailedStatus = null;
 
         /// <summary>
         /// Gets whether the Admin API is healthy
@@ -38,6 +43,11 @@ namespace ConduitLLM.WebUI.Services
         /// Gets the time when the health was last checked
         /// </summary>
         public DateTime LastChecked => _lastChecked;
+
+        /// <summary>
+        /// Gets the last detailed health status
+        /// </summary>
+        public DetailedHealthStatus? LastDetailedStatus => _lastDetailedStatus;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AdminApiHealthService"/> class
@@ -100,11 +110,23 @@ namespace ConduitLLM.WebUI.Services
                 {
                     _lastErrorMessage = string.Empty;
                     _logger.LogInformation("Admin API health check succeeded");
+                    
+                    // Try to parse detailed health response
+                    try
+                    {
+                        var content = await response.Content.ReadAsStringAsync();
+                        _lastDetailedStatus = ParseHealthResponse(content);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse detailed health response");
+                    }
                 }
                 else
                 {
                     _lastErrorMessage = $"Health check failed with status code {response.StatusCode}";
                     _logger.LogWarning("Admin API health check failed: {ErrorMessage}", _lastErrorMessage);
+                    _lastDetailedStatus = null;
                 }
 
                 return _isHealthy;
@@ -139,6 +161,17 @@ namespace ConduitLLM.WebUI.Services
         }
 
         /// <summary>
+        /// Gets detailed health status from the Admin API
+        /// </summary>
+        /// <param name="force">Whether to force a check regardless of the interval</param>
+        /// <returns>Detailed health status</returns>
+        public async Task<DetailedHealthStatus?> GetDetailedHealthAsync(bool force = false)
+        {
+            await CheckHealthAsync(force);
+            return _lastDetailedStatus;
+        }
+
+        /// <summary>
         /// Gets the connection details for the Admin API
         /// </summary>
         /// <returns>Connection details</returns>
@@ -152,6 +185,68 @@ namespace ConduitLLM.WebUI.Services
                 IsHealthy = _isHealthy,
                 LastErrorMessage = _lastErrorMessage
             };
+        }
+
+        private DetailedHealthStatus? ParseHealthResponse(string content)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                using var document = JsonDocument.Parse(content);
+                var root = document.RootElement;
+
+                var status = new DetailedHealthStatus
+                {
+                    Status = root.GetProperty("status").GetString() ?? "Unknown",
+                    TotalDuration = root.GetProperty("totalDuration").GetDouble(),
+                    Timestamp = DateTime.UtcNow
+                };
+
+                if (root.TryGetProperty("checks", out var checksElement))
+                {
+                    foreach (var check in checksElement.EnumerateArray())
+                    {
+                        var healthCheck = new HealthCheckResult
+                        {
+                            Name = check.GetProperty("name").GetString() ?? "Unknown",
+                            Status = check.GetProperty("status").GetString() ?? "Unknown",
+                            Duration = check.TryGetProperty("duration", out var duration) ? duration.GetDouble() : 0
+                        };
+
+                        if (check.TryGetProperty("description", out var desc))
+                        {
+                            healthCheck.Description = desc.GetString();
+                        }
+
+                        if (check.TryGetProperty("exception", out var ex))
+                        {
+                            healthCheck.Exception = ex.GetString();
+                        }
+
+                        if (check.TryGetProperty("data", out var data))
+                        {
+                            healthCheck.Data = new Dictionary<string, object>();
+                            foreach (var prop in data.EnumerateObject())
+                            {
+                                healthCheck.Data[prop.Name] = prop.Value.ToString();
+                            }
+                        }
+
+                        status.Checks.Add(healthCheck);
+                    }
+                }
+
+                return status;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse health response");
+                return null;
+            }
         }
     }
 

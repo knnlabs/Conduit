@@ -1,11 +1,13 @@
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
 {
@@ -93,7 +95,7 @@ namespace ConduitLLM.Core.Services
             {
                 throw new ArgumentNullException(nameof(request));
             }
-            
+
             // Early exit conditions
             if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || !request.Messages.Any())
             {
@@ -105,14 +107,14 @@ namespace ConduitLLM.Core.Services
 
             // Account for completion tokens if MaxTokens is specified in the request
             int reservedCompletionTokens = request.MaxTokens ?? 0;
-            
+
             // Calculate available tokens for the context window
             int availableContextTokens = maxContextTokens.Value - reservedCompletionTokens;
-            
+
             // Ensure a minimum context size (don't trim to nothing)
             if (availableContextTokens < 100)
             {
-                _logger.LogWarning("Available context tokens ({AvailableTokens}) is very low due to high MaxTokens ({MaxTokens}) setting. Using minimum context size.", 
+                _logger.LogWarning("Available context tokens ({AvailableTokens}) is very low due to high MaxTokens ({MaxTokens}) setting. Using minimum context size.",
                     availableContextTokens, request.MaxTokens);
                 availableContextTokens = 100; // Minimum reasonable context window
             }
@@ -129,14 +131,14 @@ namespace ConduitLLM.Core.Services
 
             // Create a copy of the messages for trimming
             var trimmedMessages = new List<Message>(request.Messages);
-            
+
             // Track system messages for special handling
             var systemMessages = trimmedMessages
                 .Where(m => m.Role == MessageRole.System)
                 .ToList();
-            
+
             // Keep trimming until under the limit or only system messages remain
-            while (currentTokens > availableContextTokens && 
+            while (currentTokens > availableContextTokens &&
                    trimmedMessages.Count > systemMessages.Count)
             {
                 // Find the oldest non-system message (typically user or assistant message)
@@ -158,7 +160,7 @@ namespace ConduitLLM.Core.Services
                         "Context trimming couldn't reduce token count below limit. " +
                         "Only system messages remain but token count {CurrentTokens} exceeds limit {MaxTokens}.",
                         currentTokens, availableContextTokens);
-                    
+
                     // We could potentially trim system messages too, but for now let's preserve them
                     break;
                 }
@@ -166,12 +168,12 @@ namespace ConduitLLM.Core.Services
                 // Log which message is being removed
                 var messageToRemove = trimmedMessages[indexToRemove];
                 _logger.LogDebug("Trimming message with role {Role}, content starts with: {ContentPreview}",
-                    messageToRemove.Role, 
+                    messageToRemove.Role,
                     GetContentPreview(messageToRemove.Content, 20));
-                
+
                 // Remove the message
                 trimmedMessages.RemoveAt(indexToRemove);
-                
+
                 // Re-estimate token count after removal
                 currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, trimmedMessages);
             }
@@ -185,7 +187,7 @@ namespace ConduitLLM.Core.Services
                     request.Messages.Count,
                     trimmedMessages.Count,
                     currentTokens);
-                
+
                 // Create a new request with the trimmed messages
                 // Clone the request to avoid modifying the original
                 var newRequest = new ChatCompletionRequest
@@ -204,10 +206,10 @@ namespace ConduitLLM.Core.Services
                     ResponseFormat = request.ResponseFormat,
                     Seed = request.Seed
                 };
-                
+
                 return newRequest;
             }
-            
+
             // If no trimming was done, return the original request
             return request;
         }
@@ -237,15 +239,15 @@ namespace ConduitLLM.Core.Services
         {
             if (content == null)
                 return "[null]";
-                
+
             if (content is string textContent)
             {
                 // Simple string content
-                return textContent.Length <= maxLength 
-                    ? textContent 
+                return textContent.Length <= maxLength
+                    ? textContent
                     : textContent.Substring(0, maxLength) + "...";
             }
-            
+
             if (content is JsonElement jsonElement)
             {
                 // Handle JsonElement (common when deserialized from JSON)
@@ -265,7 +267,7 @@ namespace ConduitLLM.Core.Services
                     return jsonElement.ToString() ?? "[JsonElement]";
                 }
             }
-            
+
             try
             {
                 // Try to provide a sensible preview for other object types

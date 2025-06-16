@@ -51,7 +51,7 @@ namespace ConduitLLM.Core.Routing
         /// has been reached and to calculate the appropriate backoff delay between retries.
         /// </remarks>
         public int AttemptCount { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the last exception encountered during request attempts.
         /// </summary>
@@ -62,7 +62,7 @@ namespace ConduitLLM.Core.Routing
         /// If multiple attempts fail, this will contain the exception from the most recent attempt.
         /// </remarks>
         public Exception? LastException { get; set; }
-        
+
         /// <summary>
         /// Creates a new instance of AttemptContext with default values.
         /// </summary>
@@ -76,7 +76,7 @@ namespace ConduitLLM.Core.Routing
             LastException = null;
         }
     }
-    
+
     /// <summary>
     /// Default implementation of the LLM router with multiple routing strategies, 
     /// load balancing, health checking, and fallback support.
@@ -99,27 +99,27 @@ namespace ConduitLLM.Core.Routing
         private readonly ILLMClientFactory _clientFactory;
         private readonly ILogger<DefaultLLMRouter> _logger;
         private readonly IModelCapabilityDetector? _capabilityDetector;
-        
+
         /// <summary>
         /// Tracks the health status (true = healthy, false = unhealthy) of each model
         /// </summary>
         private readonly ConcurrentDictionary<string, bool> _modelHealthStatus = new(StringComparer.OrdinalIgnoreCase);
-        
+
         /// <summary>
         /// Maps primary models to their list of fallback models
         /// </summary>
         private readonly ConcurrentDictionary<string, List<string>> _fallbackModels = new(StringComparer.OrdinalIgnoreCase);
-        
+
         /// <summary>
         /// Tracks the usage count of each model for load balancing purposes
         /// </summary>
         private readonly ConcurrentDictionary<string, int> _modelUsageCount = new(StringComparer.OrdinalIgnoreCase);
-        
+
         /// <summary>
         /// Stores the model deployment information for all registered models
         /// </summary>
         private readonly ConcurrentDictionary<string, ModelDeployment> _modelDeployments = new(StringComparer.OrdinalIgnoreCase);
-        
+
         private readonly Random _random = new();
         private readonly object _lockObject = new();
 
@@ -135,7 +135,7 @@ namespace ConduitLLM.Core.Routing
         /// <param name="logger">Logger instance</param>
         /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
         public DefaultLLMRouter(
-            ILLMClientFactory clientFactory, 
+            ILLMClientFactory clientFactory,
             ILogger<DefaultLLMRouter> logger,
             IModelCapabilityDetector? capabilityDetector = null)
         {
@@ -152,8 +152,8 @@ namespace ConduitLLM.Core.Routing
         /// <param name="config">Router configuration</param>
         /// <param name="capabilityDetector">Optional detector for model capabilities like vision support</param>
         public DefaultLLMRouter(
-            ILLMClientFactory clientFactory, 
-            ILogger<DefaultLLMRouter> logger, 
+            ILLMClientFactory clientFactory,
+            ILogger<DefaultLLMRouter> logger,
             RouterConfig config,
             IModelCapabilityDetector? capabilityDetector = null)
             : this(clientFactory, logger, capabilityDetector)
@@ -234,24 +234,24 @@ namespace ConduitLLM.Core.Routing
             {
                 throw new ArgumentNullException(nameof(request));
             }
-            
+
             // Determine routing strategy
             var strategy = DetermineRoutingStrategy(routingStrategy);
             string? originalModelRequested = request.Model;
-            
+
             _logger.LogDebug("Processing chat completion request using {Strategy} strategy", strategy);
-            
+
             // Check for passthrough mode first
             if (ShouldUsePassthroughMode(request, strategy))
             {
                 _logger.LogDebug("Using passthrough mode for model {Model}", request.Model);
                 return await DirectModelPassthroughAsync(request, apiKey, cancellationToken);
             }
-            
+
             // Otherwise use normal routing with retries
             return await RouteThroughLoadBalancerAsync(request, originalModelRequested, strategy, apiKey, cancellationToken);
         }
-        
+
         /// <summary>
         /// Determines the routing strategy to use based on input and defaults.
         /// </summary>
@@ -261,7 +261,7 @@ namespace ConduitLLM.Core.Routing
         {
             return requestedStrategy ?? _defaultRoutingStrategy;
         }
-        
+
         /// <summary>
         /// Determines if a request should be handled in passthrough mode.
         /// </summary>
@@ -273,7 +273,7 @@ namespace ConduitLLM.Core.Routing
             return !string.IsNullOrEmpty(request.Model) &&
                    strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase);
         }
-        
+
         /// <summary>
         /// Directly passes the request to the specified model without routing.
         /// </summary>
@@ -283,7 +283,7 @@ namespace ConduitLLM.Core.Routing
         /// <returns>The chat completion response.</returns>
         private async Task<ChatCompletionResponse> DirectModelPassthroughAsync(
             ChatCompletionRequest request,
-            string? apiKey, 
+            string? apiKey,
             CancellationToken cancellationToken)
         {
             // This is just a renamed version of HandlePassthroughRequestAsync for clarity
@@ -299,7 +299,7 @@ namespace ConduitLLM.Core.Routing
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Routes a request through the load balancer with retry logic.
         /// </summary>
@@ -320,25 +320,25 @@ namespace ConduitLLM.Core.Routing
         {
             List<string> attemptedModels = new();
             var attemptContext = new AttemptContext();
-            
+
             // Attempt to execute the request with retries
             var result = await ExecuteWithRetriesAsync(
-                request, 
+                request,
                 originalModel,
-                strategy, 
-                attemptedModels, 
+                strategy,
+                attemptedModels,
                 attemptContext,
-                apiKey, 
+                apiKey,
                 cancellationToken);
-                
+
             if (result != null)
             {
                 return result;
             }
-            
+
             // Handle the case where all attempts have failed
             HandleFailedAttempts(attemptContext.LastException, originalModel, attemptedModels, attemptContext.AttemptCount);
-            
+
             // This line will never be reached, but is required for compilation
             throw new ModelUnavailableException(
                 $"No suitable model found for {originalModel} after {attemptContext.AttemptCount} attempts");
@@ -386,7 +386,7 @@ namespace ConduitLLM.Core.Routing
             {
                 // Update attempt counter in context
                 attemptContext.AttemptCount = retryAttempt;
-                
+
                 // Attempt the request execution with a specific model
                 var result = await TryRequestExecutionWithSelectedModelAsync(
                     request,
@@ -396,26 +396,26 @@ namespace ConduitLLM.Core.Routing
                     attemptContext,
                     apiKey,
                     cancellationToken);
-                
+
                 // If successful, return the result
                 if (result != null)
                 {
                     return result;
                 }
-                
+
                 // Check if we should continue retrying
                 if (ShouldStopRetrying(attemptContext, retryAttempt))
                 {
                     break;
                 }
-                
+
                 // Apply backoff delay before next retry
                 await ApplyRetryDelayAsync(retryAttempt, cancellationToken);
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Attempts to execute a request with a selected model.
         /// </summary>
@@ -438,7 +438,7 @@ namespace ConduitLLM.Core.Routing
                 apiKey,
                 cancellationToken);
         }
-        
+
         /// <summary>
         /// Determines if retry attempts should stop based on the error type and retry count.
         /// </summary>
@@ -450,17 +450,17 @@ namespace ConduitLLM.Core.Routing
                 _logger.LogWarning("Non-recoverable error encountered, stopping retry attempts");
                 return true;
             }
-            
+
             // If this is the last retry, don't continue
             if (retryAttempt >= _maxRetries)
             {
                 _logger.LogWarning("Maximum retry attempts reached");
                 return true;
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Attempts to execute a request with a dynamically selected model.
         /// </summary>
@@ -498,7 +498,7 @@ namespace ConduitLLM.Core.Routing
         {
             // Check if request contains images and requires vision capabilities
             bool containsImages = false;
-            
+
             if (_capabilityDetector != null)
             {
                 containsImages = _capabilityDetector.ContainsImageContent(request);
@@ -521,15 +521,15 @@ namespace ConduitLLM.Core.Routing
                     }
                 }
             }
-            
+
             // Get the next model based on strategy, considering vision requirements
             string? selectedModel = await SelectModelAsync(
-                originalModelRequested, 
-                strategy, 
-                attemptedModels, 
+                originalModelRequested,
+                strategy,
+                attemptedModels,
                 cancellationToken,
                 containsImages);
-            
+
             if (selectedModel == null)
             {
                 if (containsImages)
@@ -544,22 +544,22 @@ namespace ConduitLLM.Core.Routing
                 }
                 return null;
             }
-            
+
             _logger.LogInformation("Selected model {ModelName} for request using {Strategy} strategy{VisionCapable}",
                 selectedModel, strategy, containsImages ? " (vision-capable)" : "");
-                
+
             // Add this model to the list of attempted ones
             attemptedModels.Add(selectedModel);
-            
+
             // Try to execute with the selected model
             return await TryExecuteRequestAsync(
-                request, 
-                selectedModel, 
-                attemptContext, 
-                apiKey, 
+                request,
+                selectedModel,
+                attemptContext,
+                apiKey,
                 cancellationToken);
         }
-        
+
         /// <summary>
         /// Applies a delay before the next retry attempt.
         /// </summary>
@@ -569,11 +569,11 @@ namespace ConduitLLM.Core.Routing
         private async Task ApplyRetryDelayAsync(int attemptCount, CancellationToken cancellationToken)
         {
             int delayMs = CalculateBackoffDelay(attemptCount);
-            
+
             _logger.LogInformation(
                 "Retrying request in {DelayMs}ms (attempt {CurrentAttempt}/{MaxRetries})",
                 delayMs, attemptCount, _maxRetries);
-                
+
             await Task.Delay(delayMs, cancellationToken);
         }
 
@@ -625,7 +625,7 @@ namespace ConduitLLM.Core.Routing
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Executes a request with the specified model and tracks metrics.
         /// </summary>
@@ -662,7 +662,7 @@ namespace ConduitLLM.Core.Routing
                 throw; // Re-throw to be handled by the caller
             }
         }
-        
+
         /// <summary>
         /// Handles exceptions that occur during request execution.
         /// </summary>
@@ -685,7 +685,7 @@ namespace ConduitLLM.Core.Routing
         /// <param name="attemptedModels">List of models that were attempted.</param>
         /// <param name="attemptCount">The number of attempts that were made.</param>
         private void HandleFailedAttempts(
-            Exception? lastException, 
+            Exception? lastException,
             string? originalModelRequested,
             List<string> attemptedModels,
             int attemptCount)
@@ -695,7 +695,7 @@ namespace ConduitLLM.Core.Routing
                 _logger.LogError(lastException,
                     "All attempts failed for model {OriginalModel} after trying {ModelCount} models with {AttemptCount} attempts",
                     originalModelRequested, attemptedModels.Count, attemptCount);
-                
+
                 throw new LLMCommunicationException(
                     $"Failed to process request after {attemptCount} attempts across {attemptedModels.Count} models",
                     lastException);
@@ -719,20 +719,20 @@ namespace ConduitLLM.Core.Routing
 
             // We need to handle streaming differently due to yield return limitations
             var strategy = routingStrategy ?? _defaultRoutingStrategy;
-            
+
             // First, select the appropriate model
             string selectedModel = await SelectModelForStreamingRequestAsync(request, strategy, cancellationToken);
-            
+
             // Update the request with the selected model
             request.Model = GetModelAliasForDeployment(selectedModel);
-            
+
             // Process the streaming request
             await foreach (var chunk in ProcessStreamingRequestAsync(request, selectedModel, apiKey, cancellationToken))
             {
                 yield return chunk;
             }
         }
-        
+
         /// <summary>
         /// Selects the appropriate model for a streaming request.
         /// </summary>
@@ -747,7 +747,7 @@ namespace ConduitLLM.Core.Routing
             CancellationToken cancellationToken)
         {
             string? modelToUse = null;
-            
+
             // Check if request contains images and requires vision capabilities
             bool containsImages = false;
             if (_capabilityDetector != null)
@@ -780,9 +780,9 @@ namespace ConduitLLM.Core.Routing
                 strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase))
             {
                 modelToUse = request.Model;
-                
+
                 // Still need to check if the passthrough model supports vision if needed
-                if (containsImages && _capabilityDetector != null && 
+                if (containsImages && _capabilityDetector != null &&
                     !_capabilityDetector.HasVisionCapability(modelToUse))
                 {
                     throw new ModelUnavailableException(
@@ -809,10 +809,10 @@ namespace ConduitLLM.Core.Routing
                     }
                 }
             }
-            
+
             return modelToUse;
         }
-        
+
         /// <summary>
         /// Processes a streaming request with the selected model.
         /// </summary>
@@ -872,7 +872,7 @@ namespace ConduitLLM.Core.Routing
                 throw new LLMCommunicationException($"No chunks received from model {selectedModel}");
             }
         }
-        
+
         /// <summary>
         /// Updates all statistics for a model after successful request completion.
         /// </summary>
@@ -886,14 +886,20 @@ namespace ConduitLLM.Core.Routing
         }
 
         /// <inheritdoc/>
-        public Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public async Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? routingStrategy = null,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            // Implementation to be added
-            throw new NotImplementedException();
+            if (request.Model == null)
+            {
+                throw new ValidationException("Model must be specified for embedding requests");
+            }
+
+            // For now, just use the simple passthrough approach
+            var client = _clientFactory.GetClient(request.Model);
+            return await client.CreateEmbeddingAsync(request, apiKey, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -901,7 +907,7 @@ namespace ConduitLLM.Core.Routing
              CancellationToken cancellationToken = default)
         {
             // Construct ModelInfo list from the internal _modelDeployments dictionary
-            var modelInfos = _modelDeployments.Values
+            IReadOnlyList<ModelInfo> modelInfos = _modelDeployments.Values
                 .Where(d => d.IsEnabled) // Optionally filter only enabled deployments
                 .Select(deployment => new ModelInfo
                 {
@@ -910,10 +916,9 @@ namespace ConduitLLM.Core.Routing
                     OwnedBy = deployment.ProviderName, // Use ProviderName as OwnedBy
                     MaxContextTokens = null // Context window info not directly in ModelDeployment
                                             // Could potentially be fetched from client or config if needed
-                    // Object property defaults to "model" in ModelInfo class
+                                            // Object property defaults to "model" in ModelInfo class
                 })
-                .ToList()
-                .AsReadOnly(); // Convert to ReadOnlyList
+                .ToList();
 
             _logger.LogInformation("Retrieved {Count} available model details.", modelInfos.Count);
 
@@ -953,9 +958,9 @@ namespace ConduitLLM.Core.Routing
                 // Select a model based on strategy using the same SelectModelAsync method
                 // that now delegates to our strategy pattern, with vision requirements if needed
                 string? selectedModel = await SelectModelAsync(
-                    requestedModel, 
-                    strategy, 
-                    attemptedModels, 
+                    requestedModel,
+                    strategy,
+                    attemptedModels,
                     cancellationToken,
                     visionRequired);
 
@@ -1190,28 +1195,28 @@ namespace ConduitLLM.Core.Routing
             // Select model using the appropriate strategy, filtering for vision-capable models if needed
             return SelectModelUsingStrategy(strategy, availableModels, availableDeployments, visionRequest);
         }
-        
+
         /// <summary>
         /// Gets a filtered list of available models based on requested model and exclusions.
         /// </summary>
-        private async Task<(List<string> AvailableModels, Dictionary<string, ModelDeployment> AvailableDeployments)> 
+        private async Task<(List<string> AvailableModels, Dictionary<string, ModelDeployment> AvailableDeployments)>
             GetFilteredAvailableModelsAsync(string? requestedModel, List<string> excludeModels, CancellationToken cancellationToken)
         {
             // Add small delay to ensure method is truly async
             await Task.Delay(1, cancellationToken);
-            
+
             // Build candidate models list
             var candidateModels = BuildCandidateModelsList(requestedModel, excludeModels);
-            
+
             // Filter to only healthy models
             var availableModels = FilterHealthyModels(candidateModels);
-            
+
             // Get deployment information for available models
             var availableDeployments = GetAvailableDeployments(availableModels);
-            
+
             return (availableModels, availableDeployments);
         }
-        
+
         /// <summary>
         /// Determines if the strategy is a passthrough strategy.
         /// </summary>
@@ -1219,13 +1224,13 @@ namespace ConduitLLM.Core.Routing
         {
             return strategy.Equals("passthrough", StringComparison.OrdinalIgnoreCase);
         }
-        
+
         /// <summary>
         /// Selects a model using the appropriate strategy implementation.
         /// </summary>
         private string? SelectModelUsingStrategy(
-            string strategy, 
-            List<string> availableModels, 
+            string strategy,
+            List<string> availableModels,
             Dictionary<string, ModelDeployment> availableDeployments,
             bool visionRequired = false)
         {
@@ -1236,31 +1241,31 @@ namespace ConduitLLM.Core.Routing
                 candidateModels = availableModels
                     .Where(model => _capabilityDetector.HasVisionCapability(GetModelAliasForDeployment(model)))
                     .ToList();
-                
+
                 if (!candidateModels.Any())
                 {
                     _logger.LogWarning("No vision-capable models available from the {Count} candidate models",
                         availableModels.Count);
                     return null;
                 }
-                
+
                 _logger.LogInformation("Found {Count} vision-capable models out of {TotalCount} candidates",
                     candidateModels.Count, availableModels.Count);
             }
-            
+
             // Use the strategy factory to get the appropriate strategy and delegate selection
             var modelSelectionStrategy = ModelSelectionStrategyFactory.GetStrategy(strategy);
-            
-            _logger.LogDebug("Using {Strategy} strategy to select from {ModelCount} models", 
+
+            _logger.LogDebug("Using {Strategy} strategy to select from {ModelCount} models",
                 strategy, candidateModels.Count);
-                
+
             return modelSelectionStrategy.SelectModel(
                 candidateModels,
                 availableDeployments.Where(kv => candidateModels.Contains(kv.Key))
                                    .ToDictionary(kv => kv.Key, kv => kv.Value),
                 _modelUsageCount);
         }
-        
+
         /// <summary>
         /// Builds a list of candidate models based on the requested model and available fallbacks.
         /// </summary>
@@ -1304,10 +1309,10 @@ namespace ConduitLLM.Core.Routing
                     .Where(m => !excludeModels.Contains(m))
                     .ToList();
             }
-            
+
             return candidateModels;
         }
-        
+
         /// <summary>
         /// Filters a list of candidate models to include only healthy ones.
         /// </summary>
@@ -1319,7 +1324,7 @@ namespace ConduitLLM.Core.Routing
                 .Where(m => !_modelHealthStatus.TryGetValue(m, out var healthy) || healthy)
                 .ToList();
         }
-        
+
         /// <summary>
         /// Converts a list of model names to a dictionary of their deployment information.
         /// </summary>
@@ -1362,7 +1367,7 @@ namespace ConduitLLM.Core.Routing
             {
                 return false;
             }
-            
+
             // Categorize exception types as recoverable or not
             // Some errors should not be retried as they will always fail (e.g., validation errors)
             return ex switch

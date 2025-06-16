@@ -21,52 +21,52 @@ namespace ConduitLLM.WebUI.DTOs
         /// Total number of requests in the period
         /// </summary>
         public int TotalRequests { get; set; }
-        
+
         /// <summary>
         /// Total cost of all requests in the period
         /// </summary>
         public decimal TotalCost { get; set; }
-        
+
         /// <summary>
         /// Total input tokens across all requests
         /// </summary>
         public int TotalInputTokens { get; set; }
-        
+
         /// <summary>
         /// Total output tokens across all requests
         /// </summary>
         public int TotalOutputTokens { get; set; }
-        
+
         /// <summary>
         /// Total tokens (input + output) for all requests
         /// </summary>
         public int TotalTokens => TotalInputTokens + TotalOutputTokens;
-        
+
         /// <summary>
         /// Average response time in milliseconds
         /// </summary>
         public double AverageResponseTimeMs { get; set; }
-        
+
         /// <summary>
         /// Start date of the period
         /// </summary>
         public DateTime StartDate { get; set; }
-        
+
         /// <summary>
         /// End date of the period
         /// </summary>
         public DateTime EndDate { get; set; }
-        
+
         /// <summary>
         /// Number of days in the period
         /// </summary>
         public int TotalDays { get; set; }
-        
+
         /// <summary>
         /// Date of the most recent request
         /// </summary>
         public DateTime? LastRequestDate { get; set; }
-        
+
         /// <summary>
         /// Success rate percentage
         /// </summary>
@@ -85,32 +85,32 @@ namespace ConduitLLM.WebUI.DTOs
         /// Number of failed requests
         /// </summary>
         public int FailedRequests { get; set; }
-        
+
         /// <summary>
         /// Daily breakdown of requests
         /// </summary>
         public List<DailyStatsDto> DailyBreakdown { get; set; } = new List<DailyStatsDto>();
-        
+
         /// <summary>
         /// Breakdown by model
         /// </summary>
         public List<RequestsByModelDto> ModelBreakdown { get; set; } = new List<RequestsByModelDto>();
-        
+
         /// <summary>
         /// The most used model in the period
         /// </summary>
         public string? TopModel { get; set; }
-        
+
         /// <summary>
         /// Requests in the last 24 hours
         /// </summary>
         public int RequestsLast24Hours { get; set; }
-        
+
         /// <summary>
         /// Requests in the last 7 days
         /// </summary>
         public int RequestsLast7Days { get; set; }
-        
+
         /// <summary>
         /// Requests in the last 30 days
         /// </summary>

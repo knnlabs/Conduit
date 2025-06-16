@@ -1,13 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
+
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Admin.Services;
 
@@ -55,7 +60,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<ModelProviderMappingDto?> GetMappingByModelIdAsync(string modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
+_logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId.Replace(Environment.NewLine, ""));
         var mapping = await _mappingRepository.GetByModelAliasAsync(modelId);
         return mapping?.ToDto();
     }
@@ -65,7 +70,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
+_logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
 
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
@@ -83,7 +88,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
+_logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -91,7 +96,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             var existingMapping = await _mappingRepository.GetByModelAliasAsync(mapping.ModelAlias);
             if (existingMapping != null)
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias);
+                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
                 return false;
             }
 
@@ -101,7 +106,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
+_logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", mappingDto.ModelId.Replace(Environment.NewLine, ""));
             return false;
         }
     }
@@ -137,7 +142,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
+_logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Replace(Environment.NewLine, ""));
                 return false;
             }
 

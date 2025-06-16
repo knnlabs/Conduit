@@ -1,6 +1,7 @@
 @page "/configuration/provider/edit/{id?}"
 @using System.Text.Json
 @using Microsoft.Extensions.Logging
+@using Microsoft.AspNetCore.WebUtilities
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.Configuration.Entities
@@ -11,16 +12,18 @@
 @using ProviderCredentialDto = ConduitLLM.Configuration.DTOs.ProviderCredentialDto
 @using CreateProviderCredentialDto = ConduitLLM.Configuration.DTOs.CreateProviderCredentialDto
 @using UpdateProviderCredentialDto = ConduitLLM.Configuration.DTOs.UpdateProviderCredentialDto
+@using ProviderConnectionTestResultDto = ConduitLLM.Configuration.DTOs.ProviderConnectionTestResultDto
 @inject ConduitLLM.WebUI.Interfaces.IProviderCredentialService ProviderCredentialService
 @inject IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
 @inject ConfigurationChangeNotifier ConfigNotifier
 @inject ILogger<ProviderEdit> _logger
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>@(Id.HasValue ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
+<PageTitle>@(!string.IsNullOrEmpty(Id) ? "Edit Provider" : "Add Provider") - ConduitLLM</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
@@ -28,11 +31,11 @@
                 <div class="row align-items-center">
                     <div class="col">
                         <h1 class="h3 mb-2">
-                            <i class="fa fa-@(Id.HasValue ? "edit" : "plus-circle") me-3"></i>
-                            @(Id.HasValue ? "Edit Provider Configuration" : "Add New Provider")
+                            <i class="fa fa-@(!string.IsNullOrEmpty(Id) ? "edit" : "plus-circle") me-3"></i>
+                            @(!string.IsNullOrEmpty(Id) ? "Edit Provider Configuration" : "Add New Provider")
                         </h1>
                         <p class="mb-0 opacity-90">
-                            @(Id.HasValue ? "Update your provider settings and API credentials" : "Configure a new LLM provider to use with Conduit")
+                            @(!string.IsNullOrEmpty(Id) ? "Update your provider settings and API credentials" : "Configure a new LLM provider to use with Conduit")
                         </p>
                     </div>
                 </div>
@@ -62,14 +65,7 @@
             @* Keep ValidationSummary for other potential errors *@
             <ValidationSummary />
 
-            @* Display general errors above the form *@
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger border-0 shadow-sm mb-4">
-                    <i class="fa fa-exclamation-circle me-2"></i>
-                    @errorMessage
-                </div>
-            }
+            @* Removed inline error display - using toast notifications instead *@
 
             <div class="row">
                 <div class="col-12 col-lg-6">
@@ -86,7 +82,7 @@
                                 </label>
                                 <select id="providerName" class="form-select shadow-sm" 
                                         @bind="provider.ProviderName" 
-                                        disabled="@Id.HasValue">
+                                        disabled="@(!string.IsNullOrEmpty(Id))">
                                     <option value="">-- Select Provider --</option>
                                     @foreach (var name in _supportedProviders)
                                     {
@@ -94,7 +90,7 @@
                                     }
                                 </select>
                                 <ValidationMessage For="@(() => provider.ProviderName)" />
-                                @if (Id.HasValue)
+                                @if (!string.IsNullOrEmpty(Id))
                                 {
                                     <small class="text-muted mt-1">
                                         <i class="fa fa-info-circle me-1"></i>
@@ -159,7 +155,7 @@
                                         {
                                             <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetApiKeyUrl(provider.ProviderName)" 
                                                target="_blank" 
-                                               class="btn btn-sm btn-outline-info">
+                                               class="btn btn-sm modern-btn-outline-info">
                                                 <i class="fa fa-external-link-alt me-2"></i>
                                                 Get API Key
                                             </a>
@@ -168,7 +164,7 @@
                                         {
                                             <a href="@ConduitLLM.WebUI.Models.ProviderApiInfo.GetDocumentationUrl(provider.ProviderName)" 
                                                target="_blank" 
-                                               class="btn btn-sm btn-outline-info">
+                                               class="btn btn-sm modern-btn-outline-info">
                                                 <i class="fa fa-book me-2"></i>
                                                 View Documentation
                                             </a>
@@ -286,7 +282,7 @@
                             else
                             {
                                 <i class="fa fa-save me-2"></i>
-                                <span>@(Id.HasValue ? "Update Provider" : "Create Provider")</span>
+                                <span>@(!string.IsNullOrEmpty(Id) ? "Update Provider" : "Create Provider")</span>
                             }
                         </button>
                     </div>
@@ -346,22 +342,9 @@
 
 @code {
     [Parameter]
-    public int? Id { get; set; }
-    
-    // This is needed to properly handle string route parameters
-    [SupplyParameterFromQuery(Name = "id")]
-    public string? IdParam
-    {
-        get => Id?.ToString();
-        set
-        {
-            if (int.TryParse(value, out var parsed))
-                Id = parsed;
-        }
-    }
+    public string? Id { get; set; }
 
     private ProviderCredentialDto provider = new ProviderCredentialDto { ProviderName = "" };
-    private string? errorMessage;
     private bool isLoading = true;
     private bool isSaving = false;
     private bool isTestingConnection = false;
@@ -376,7 +359,7 @@
     {
         editContext = new EditContext(provider);
         
-        if (Id.HasValue)
+        if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var providerId))
         {
             isLoading = true;
             StateHasChanged();
@@ -384,7 +367,7 @@
             try
             {
                 // Use ProviderCredentialService to get provider details
-                var existingProvider = await ProviderCredentialService.GetByIdAsync(Id.Value);
+                var existingProvider = await ProviderCredentialService.GetByIdAsync(providerId);
                 
                 if (existingProvider != null)
                 {
@@ -405,8 +388,8 @@
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading provider: {ex.Message}");
-                errorMessage = $"Error loading provider: {ex.Message}";
+                _logger.LogError(ex, "Error loading provider");
+                ToastService.ShowError($"Error loading provider: {ex.Message}");
             }
             finally
             {
@@ -417,7 +400,19 @@
         else
         {
             // Initialize a new DTO for adding
-            provider = new ProviderCredentialDto { ProviderName = "" }; 
+            provider = new ProviderCredentialDto { ProviderName = "" };
+            
+            // Check if a provider name was passed via query string
+            var uri = new Uri(NavigationManager.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("provider", out var providerValues))
+            {
+                var providerName = providerValues.FirstOrDefault();
+                if (!string.IsNullOrEmpty(providerName) && _supportedProviders.Contains(providerName))
+                {
+                    provider.ProviderName = providerName;
+                }
+            }
+            
             isLoading = false;
         }
         
@@ -427,7 +422,6 @@
     private async Task HandleValidSubmit()
     {
         isSaving = true;
-        errorMessage = null;
         StateHasChanged();
         
         try 
@@ -435,17 +429,17 @@
             // Validate API Base URL for OpenAI Compatible providers
             if (provider.ProviderName == "OpenAI Compatible" && string.IsNullOrWhiteSpace(provider.ApiBase))
             {
-                errorMessage = "API Base URL is required for OpenAI Compatible providers.";
+                ToastService.ShowError("API Base URL is required for OpenAI Compatible providers.");
                 isSaving = false;
                 StateHasChanged();
                 return;
             }
-            if (Id.HasValue) // Edit
+            if (!string.IsNullOrEmpty(Id) && int.TryParse(Id, out var providerId)) // Edit
             {
                 // Create a DTO for update
                 var updateDto = new UpdateProviderCredentialDto
                 {
-                    Id = Id.Value,
+                    Id = providerId,
                     ApiBase = string.IsNullOrWhiteSpace(provider.ApiBase) ? null : provider.ApiBase,
                     IsEnabled = true
                 };
@@ -463,12 +457,14 @@
                 // Otherwise, don't include the API key in the update (keep existing)
                 
                 // Update via ProviderCredentialService
-                var updateResult = await ProviderCredentialService.UpdateAsync(Id.Value, updateDto);
+                var updateResult = await ProviderCredentialService.UpdateAsync(providerId, updateDto);
                 
                 if (updateResult == null)
                 {
                     throw new Exception($"Failed to update provider {provider.ProviderName}");
                 }
+                
+                ToastService.ShowSuccess($"Provider '{provider.ProviderName}' updated successfully!");
             }
             else // Add
             {
@@ -488,6 +484,8 @@
                 {
                     throw new Exception($"Failed to create provider {provider.ProviderName}");
                 }
+                
+                ToastService.ShowSuccess($"Provider '{provider.ProviderName}' created successfully!");
             }
             
             // Notify the Conduit HTTP proxy about configuration changes
@@ -501,6 +499,7 @@
                 if (!notificationSuccess)
                 {
                     _logger.LogWarning("Failed to notify proxy server about configuration changes. The server may need to be restarted.");
+                    ToastService.ShowWarning("Configuration saved, but failed to notify proxy server. The server may need to be restarted.");
                     // We still proceed with navigation even if notification fails
                 }
             }
@@ -514,9 +513,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving provider: {ex.Message}");
-            errorMessage = $"Error saving provider: {ex.Message}";
             _logger.LogError(ex, "Error saving provider configuration");
+            ToastService.ShowError($"Error saving provider: {ex.Message}");
         }
         finally
         {
@@ -534,9 +532,7 @@
     {
         if (string.IsNullOrWhiteSpace(provider.ApiKey))
         {
-            showConnectionStatus = true;
-            connectionStatusMessage = "API key is required to test the connection";
-            connectionStatus = null;
+            ToastService.ShowError("API key is required to test the connection");
             return;
         }
 
@@ -547,8 +543,19 @@
 
         try
         {
-            // Test the connection using the ProviderCredentialService
-            var testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            // Test the connection using the appropriate method based on whether the provider is saved
+            ProviderConnectionTestResultDto? testResult;
+            if (!string.IsNullOrEmpty(Id))
+            {
+                // For existing providers, use the ID-based test
+                testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
+            }
+            else
+            {
+                // For new providers, use the credentials-based test
+                testResult = await ProviderCredentialService.TestProviderConnectionWithCredentialsAsync(provider);
+            }
+            
             if (testResult != null && testResult.Success)
             {
                 connectionStatus = new ProviderStatus
@@ -559,6 +566,7 @@
                     IsOnline = true
                 };
                 connectionStatusMessage = "Connection successful! API key is valid and the service is reachable.";
+                ToastService.ShowSuccess("Connection test successful! Provider is online.");
             }
             else
             {
@@ -570,6 +578,7 @@
                     IsOnline = false
                 };
                 connectionStatusMessage = $"Connection failed: {connectionStatus.StatusMessage}";
+                ToastService.ShowError($"Connection test failed: {connectionStatus.StatusMessage}");
             }
             showConnectionStatus = true;
         }

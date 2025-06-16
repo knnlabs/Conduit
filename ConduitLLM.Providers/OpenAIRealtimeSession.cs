@@ -5,8 +5,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.Translators;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -36,10 +38,10 @@ namespace ConduitLLM.Providers
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _webSocket = new ClientWebSocket();
-            _translator = new OpenAIRealtimeTranslatorV2(logger as ILogger<OpenAIRealtimeTranslatorV2> ?? 
+            _translator = new OpenAIRealtimeTranslatorV2(logger as ILogger<OpenAIRealtimeTranslatorV2> ??
                 throw new ArgumentException("Logger must be ILogger<OpenAIRealtimeTranslatorV2>"));
             _cancellationTokenSource = new CancellationTokenSource();
-            
+
             // Set base class properties
             Provider = "OpenAI";
             Config = config;
@@ -50,39 +52,39 @@ namespace ConduitLLM.Providers
             // Add required headers
             _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_apiKey}");
             _webSocket.Options.SetRequestHeader("OpenAI-Beta", "realtime=v1");
-            
+
             // Set subprotocol if required
             var subprotocol = _translator.GetRequiredSubprotocol();
             if (!string.IsNullOrEmpty(subprotocol))
             {
                 _webSocket.Options.AddSubProtocol(subprotocol);
             }
-            
+
             // Add any custom headers
             var headers = await _translator.GetConnectionHeadersAsync(_config);
             foreach (var header in headers)
             {
                 _webSocket.Options.SetRequestHeader(header.Key, header.Value);
             }
-            
+
             try
             {
                 State = SessionState.Connecting;
                 await _webSocket.ConnectAsync(new Uri(_url), cancellationToken);
                 _logger.LogInformation("Connected to OpenAI Realtime API at {Url}", _url);
-                
+
                 State = SessionState.Connected;
-                
+
                 // Send initialization messages
                 var initMessages = await _translator.GetInitializationMessagesAsync(_config);
                 foreach (var message in initMessages)
                 {
                     await SendRawMessageAsync(message, cancellationToken);
                 }
-                
+
                 // Start receive loop
                 _receiveTask = ReceiveLoopAsync(_cancellationTokenSource.Token);
-                
+
                 State = SessionState.Active;
             }
             catch (Exception ex)
@@ -99,7 +101,7 @@ namespace ConduitLLM.Providers
             {
                 throw new InvalidOperationException("WebSocket is not open");
             }
-            
+
             var jsonMessage = await _translator.TranslateToProviderAsync(message);
             await SendRawMessageAsync(jsonMessage, cancellationToken);
         }
@@ -108,11 +110,11 @@ namespace ConduitLLM.Providers
         public async IAsyncEnumerable<RealtimeMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
-            
+
             while (!cancellationToken.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
             {
                 var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
-                
+
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await _webSocket.CloseAsync(
@@ -121,12 +123,12 @@ namespace ConduitLLM.Providers
                         cancellationToken);
                     break;
                 }
-                
+
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
                     _logger.LogDebug("Received message from OpenAI: {Message}", message);
-                    
+
                     var conduitMessages = await _translator.TranslateFromProviderAsync(message);
                     foreach (var conduitMessage in conduitMessages)
                     {
@@ -141,16 +143,20 @@ namespace ConduitLLM.Providers
             if (disposing)
             {
                 _cancellationTokenSource.Cancel();
-                
+
                 if (_receiveTask != null)
                 {
                     try
                     {
                         _receiveTask.Wait(TimeSpan.FromSeconds(5));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        // Log but don't throw - we're in Dispose
+                        _logger?.LogDebug(ex, "Exception while waiting for receive task to complete during disposal");
+                    }
                 }
-                
+
                 if (_webSocket.State == WebSocketState.Open)
                 {
                     try
@@ -158,13 +164,17 @@ namespace ConduitLLM.Providers
                         _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disposing", CancellationToken.None)
                             .Wait(TimeSpan.FromSeconds(5));
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        // Log but don't throw - we're in Dispose
+                        _logger?.LogDebug(ex, "Exception while closing WebSocket during disposal");
+                    }
                 }
-                
+
                 _webSocket.Dispose();
                 _cancellationTokenSource.Dispose();
             }
-            
+
             base.Dispose(disposing);
         }
 
@@ -176,20 +186,20 @@ namespace ConduitLLM.Providers
                 WebSocketMessageType.Text,
                 true,
                 cancellationToken);
-                
+
             _logger.LogDebug("Sent message to OpenAI: {Message}", message);
         }
 
         private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
-            
+
             try
             {
                 while (!cancellationToken.IsCancellationRequested && _webSocket.State == WebSocketState.Open)
                 {
                     var result = await _webSocket.ReceiveAsync(buffer, cancellationToken);
-                    
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         await _webSocket.CloseAsync(
@@ -198,12 +208,12 @@ namespace ConduitLLM.Providers
                             cancellationToken);
                         break;
                     }
-                    
+
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
                         _logger.LogDebug("Received message from OpenAI: {Message}", message);
-                        
+
                         try
                         {
                             var conduitMessages = await _translator.TranslateFromProviderAsync(message);

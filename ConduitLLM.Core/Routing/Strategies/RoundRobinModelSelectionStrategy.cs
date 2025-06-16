@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+
 using ConduitLLM.Core.Models.Routing;
 
 namespace ConduitLLM.Core.Routing.Strategies
@@ -30,7 +31,7 @@ namespace ConduitLLM.Core.Routing.Strategies
             {
                 return null;
             }
-            
+
             // Select the model with the lowest usage count
             return availableModels
                 .OrderBy(m => modelUsageCounts.TryGetValue(m, out var count) ? count : 0)

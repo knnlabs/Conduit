@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Realtime;
 
@@ -44,6 +45,14 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="usage">Token usage information.</param>
         /// <returns>A task that completes when the usage is recorded.</returns>
         Task RecordTokenUsageAsync(string connectionId, Usage usage);
+
+        /// <summary>
+        /// Records a function call for billing purposes.
+        /// </summary>
+        /// <param name="connectionId">The connection identifier.</param>
+        /// <param name="functionName">Optional function name for logging.</param>
+        /// <returns>A task that completes when the function call is recorded.</returns>
+        Task RecordFunctionCallAsync(string connectionId, string? functionName = null);
 
         /// <summary>
         /// Gets the current estimated cost for a session.

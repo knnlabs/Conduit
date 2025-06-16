@@ -1,21 +1,26 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 using Moq;
 using Moq.Protected;
-using System.Threading;
+
 using Xunit;
+
 using CostDTOs = ConduitLLM.Configuration.DTOs.Costs;
 using WebUIDto = ConduitLLM.WebUI.DTOs;
-using ConduitLLM.Configuration.DTOs.VirtualKey;
-using System.Net;
-using System.Text.Json;
-using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Tests.WebUI.Providers
 {
@@ -31,16 +36,16 @@ namespace ConduitLLM.Tests.WebUI.Providers
             _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
             _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
             _mockLogger = new Mock<ILogger<AdminApiClient>>();
-            
+
             var options = new AdminApiOptions
             {
                 BaseUrl = "https://admin-api.example.com",
                 MasterKey = "test-api-key"
             };
-            
+
             var optionsWrapper = new Mock<IOptions<AdminApiOptions>>();
             optionsWrapper.Setup(x => x.Value).Returns(options);
-            
+
             _adminApiClient = new AdminApiClient(_httpClient, optionsWrapper.Object, _mockLogger.Object);
         }
 

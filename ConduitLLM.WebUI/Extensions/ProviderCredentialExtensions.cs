@@ -19,7 +19,7 @@ namespace ConduitLLM.WebUI.Extensions
             {
                 return null;
             }
-            
+
             return new ProviderCredentialDto
             {
                 Id = entity.Id,

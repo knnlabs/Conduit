@@ -1,10 +1,12 @@
+using System;
+using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.DTOs;
 using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace ConduitLLM.WebUI.Controllers
 {
@@ -72,7 +74,7 @@ namespace ConduitLLM.WebUI.Controllers
                 // Default to last 30 days if no dates provided
                 if (!startDate.HasValue)
                     startDate = DateTime.UtcNow.AddDays(-30);
-                
+
                 if (!endDate.HasValue)
                     endDate = DateTime.UtcNow;
 
@@ -136,7 +138,7 @@ namespace ConduitLLM.WebUI.Controllers
                 // Calculate dates based on period and count
                 DateTime endDate = DateTime.UtcNow;
                 DateTime startDate;
-                
+
                 switch (period.ToLower())
                 {
                     case "week":
@@ -150,7 +152,7 @@ namespace ConduitLLM.WebUI.Controllers
                         startDate = endDate.AddDays(-count);
                         break;
                 }
-                
+
                 var data = await _costDashboardService.GetDashboardDataAsync(
                     startDate,
                     endDate,

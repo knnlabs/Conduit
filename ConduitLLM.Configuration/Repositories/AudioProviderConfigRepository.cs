@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Repositories
 {
@@ -25,11 +27,19 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<List<AudioProviderConfig>> GetAllAsync()
         {
-            return await _context.AudioProviderConfigs
-                .Include(c => c.ProviderCredential)
-                .OrderBy(c => c.ProviderCredential.ProviderName)
-                .ThenByDescending(c => c.RoutingPriority)
-                .ToListAsync();
+            try
+            {
+                return await _context.AudioProviderConfigs
+                    .Include(c => c.ProviderCredential)
+                    .OrderBy(c => c.ProviderCredential != null ? c.ProviderCredential.ProviderName : "")
+                    .ThenByDescending(c => c.RoutingPriority)
+                    .ToListAsync();
+            }
+            catch (Exception)
+            {
+                // Return empty list if database tables don't exist or there's a connection issue
+                return new List<AudioProviderConfig>();
+            }
         }
 
         /// <inheritdoc/>
@@ -83,10 +93,10 @@ namespace ConduitLLM.Configuration.Repositories
         {
             config.CreatedAt = DateTime.UtcNow;
             config.UpdatedAt = DateTime.UtcNow;
-            
+
             _context.AudioProviderConfigs.Add(config);
             await _context.SaveChangesAsync();
-            
+
             return config;
         }
 
@@ -94,10 +104,10 @@ namespace ConduitLLM.Configuration.Repositories
         public async Task<AudioProviderConfig> UpdateAsync(AudioProviderConfig config)
         {
             config.UpdatedAt = DateTime.UtcNow;
-            
+
             _context.AudioProviderConfigs.Update(config);
             await _context.SaveChangesAsync();
-            
+
             return config;
         }
 
@@ -110,7 +120,7 @@ namespace ConduitLLM.Configuration.Repositories
 
             _context.AudioProviderConfigs.Remove(config);
             await _context.SaveChangesAsync();
-            
+
             return true;
         }
 

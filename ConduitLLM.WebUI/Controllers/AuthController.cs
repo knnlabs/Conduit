@@ -4,11 +4,16 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.WebUI.Controllers
 {
@@ -72,7 +77,7 @@ namespace ConduitLLM.WebUI.Controllers
                 }
 
                 // If validation fails, log it
-                _logger.LogWarning("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress);
+                _logger.LogWarning("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
                 return Unauthorized(new { message = "Invalid master key" });
             }
             catch (Exception ex)
@@ -159,7 +164,7 @@ namespace ConduitLLM.WebUI.Controllers
 
                 // Compare hashes (case-insensitive)
                 bool result = string.Equals(hashedInputKey, storedHash, StringComparison.OrdinalIgnoreCase);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Master key validated successfully against hashed value");
@@ -168,7 +173,7 @@ namespace ConduitLLM.WebUI.Controllers
                 {
                     _logger.LogWarning("Invalid master key attempted");
                 }
-                
+
                 return result;
             }
             catch (Exception ex)

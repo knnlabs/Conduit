@@ -5,11 +5,13 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Realtime;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Realtime;
 
 namespace ConduitLLM.Http.Services
 {
@@ -28,7 +30,7 @@ namespace ConduitLLM.Http.Services
         private readonly int _maxTotalConnections;
         private readonly TimeSpan _staleConnectionTimeout;
 
-        public RealtimeConnectionManager(ILogger<RealtimeConnectionManager> logger) 
+        public RealtimeConnectionManager(ILogger<RealtimeConnectionManager> logger)
             : this(logger, null)
         {
         }
@@ -39,12 +41,12 @@ namespace ConduitLLM.Http.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration;
-            
+
             // Load configuration with defaults
             _maxConnectionsPerKey = _configuration?.GetValue<int>("Realtime:MaxConnectionsPerKey", 5) ?? 5;
             _maxTotalConnections = _configuration?.GetValue<int>("Realtime:MaxTotalConnections", 1000) ?? 1000;
             _staleConnectionTimeout = TimeSpan.FromMinutes(_configuration?.GetValue<int>("Realtime:StaleConnectionTimeoutMinutes", 30) ?? 30);
-            
+
             // Only setup cleanup timer if we have configuration
             if (_configuration != null)
             {
@@ -76,7 +78,7 @@ namespace ConduitLLM.Http.Services
                 LastHeartbeat = DateTime.UtcNow,
                 IsHealthy = true
             };
-            
+
             _connections.TryAdd(connectionId, connection);
             _connectionToVirtualKey.TryAdd(connectionId, virtualKey);
         }
@@ -86,12 +88,12 @@ namespace ConduitLLM.Http.Services
             if (_connections.TryRemove(connectionId, out var connection))
             {
                 _connectionToVirtualKey.TryRemove(connectionId, out _);
-                
+
                 // Remove from per-key collection
                 if (_connectionsByVirtualKey.TryGetValue(connection.VirtualKeyId, out var keyConnections))
                 {
                     keyConnections.Remove(connectionId);
-                    
+
                     if (keyConnections.Count == 0)
                     {
                         _connectionsByVirtualKey.TryRemove(connection.VirtualKeyId, out _);
@@ -139,9 +141,9 @@ namespace ConduitLLM.Http.Services
 
         // Async interface methods
         public async Task RegisterConnectionAsync(
-            string connectionId, 
-            int virtualKeyId, 
-            string model, 
+            string connectionId,
+            int virtualKeyId,
+            string model,
             WebSocket webSocket)
         {
             // Check total connection limit
@@ -149,13 +151,13 @@ namespace ConduitLLM.Http.Services
             {
                 throw new InvalidOperationException($"Maximum total connections ({_maxTotalConnections}) reached");
             }
-            
+
             // Check per-key limit
             if (await IsAtConnectionLimitAsync(virtualKeyId))
             {
                 throw new InvalidOperationException($"Virtual key {virtualKeyId} has reached maximum connections ({_maxConnectionsPerKey})");
             }
-            
+
             var connection = new ManagedConnection
             {
                 Info = new ConduitLLM.Core.Models.Realtime.ConnectionInfo
@@ -172,13 +174,13 @@ namespace ConduitLLM.Http.Services
                 LastHeartbeat = DateTime.UtcNow,
                 IsHealthy = true
             };
-            
+
             // Add to main collection
             if (!_connections.TryAdd(connectionId, connection))
             {
                 throw new InvalidOperationException($"Connection {connectionId} already registered");
             }
-            
+
             // Add to per-key collection
             _connectionsByVirtualKey.AddOrUpdate(
                 virtualKeyId,
@@ -188,7 +190,7 @@ namespace ConduitLLM.Http.Services
                     set.Add(connectionId);
                     return set;
                 });
-            
+
             _logger.LogInformation(
                 "Registered connection {ConnectionId} for virtual key {VirtualKeyId}",
                 connectionId, virtualKeyId);
@@ -202,25 +204,25 @@ namespace ConduitLLM.Http.Services
                 if (_connectionsByVirtualKey.TryGetValue(connection.VirtualKeyId, out var keyConnections))
                 {
                     keyConnections.Remove(connectionId);
-                    
+
                     if (keyConnections.Count == 0)
                     {
                         _connectionsByVirtualKey.TryRemove(connection.VirtualKeyId, out _);
                     }
                 }
-                
+
                 _logger.LogInformation(
                     "Unregistered connection {ConnectionId} for virtual key {VirtualKeyId}",
-                    connectionId, connection.VirtualKeyId);
+                    connectionId.Replace(Environment.NewLine, ""), connection.VirtualKeyId);
             }
-            
+
             await Task.CompletedTask;
         }
 
         public async Task<List<ConduitLLM.Core.Models.Realtime.ConnectionInfo>> GetActiveConnectionsAsync(int virtualKeyId)
         {
             var connections = new List<ConduitLLM.Core.Models.Realtime.ConnectionInfo>();
-            
+
             if (_connectionsByVirtualKey.TryGetValue(virtualKeyId, out var connectionIds))
             {
                 foreach (var id in connectionIds)
@@ -231,7 +233,7 @@ namespace ConduitLLM.Http.Services
                     }
                 }
             }
-            
+
             return await Task.FromResult(connections);
         }
 
@@ -246,7 +248,7 @@ namespace ConduitLLM.Http.Services
             {
                 return await Task.FromResult(connection.Info);
             }
-            
+
             return await Task.FromResult<ConduitLLM.Core.Models.Realtime.ConnectionInfo?>(null);
         }
 
@@ -259,7 +261,7 @@ namespace ConduitLLM.Http.Services
                 {
                     return false;
                 }
-                
+
                 // Close WebSocket if still open
                 if (connection.WebSocket != null && connection.WebSocket.State == WebSocketState.Open)
                 {
@@ -272,16 +274,16 @@ namespace ConduitLLM.Http.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error closing WebSocket for connection {ConnectionId}", connectionId);
+_logger.LogError(ex, "Error closing WebSocket for connection {ConnectionId}", connectionId.Replace(Environment.NewLine, ""));
                     }
                 }
-                
+
                 // Remove from collections
                 await UnregisterConnectionAsync(connectionId);
-                
+
                 return true;
             }
-            
+
             return false;
         }
 
@@ -291,7 +293,7 @@ namespace ConduitLLM.Http.Services
             {
                 return await Task.FromResult(connections.Count >= _maxConnectionsPerKey);
             }
-            
+
             return false;
         }
 
@@ -302,7 +304,7 @@ namespace ConduitLLM.Http.Services
                 connection.Info.Usage = stats;
                 connection.LastHeartbeat = DateTime.UtcNow;
             }
-            
+
             await Task.CompletedTask;
         }
 
@@ -311,47 +313,47 @@ namespace ConduitLLM.Http.Services
             var cleanedCount = 0;
             var now = DateTime.UtcNow;
             var staleConnections = new List<string>();
-            
+
             foreach (var kvp in _connections)
             {
                 var connection = kvp.Value;
                 var timeSinceHeartbeat = now - connection.LastHeartbeat;
-                
+
                 // Check if connection is stale
                 if (timeSinceHeartbeat > _staleConnectionTimeout)
                 {
                     staleConnections.Add(kvp.Key);
                 }
                 // Check WebSocket state
-                else if (connection.WebSocket != null && 
+                else if (connection.WebSocket != null &&
                          connection.WebSocket.State != WebSocketState.Open &&
                          connection.WebSocket.State != WebSocketState.Connecting)
                 {
                     staleConnections.Add(kvp.Key);
                 }
             }
-            
+
             // Clean up stale connections
             foreach (var connectionId in staleConnections)
             {
                 _logger.LogWarning(
                     "Cleaning up stale connection {ConnectionId}",
                     connectionId);
-                
+
                 if (_connections.TryRemove(connectionId, out var connection))
                 {
                     await TerminateConnectionAsync(connectionId, connection.VirtualKeyId);
                     cleanedCount++;
                 }
             }
-            
+
             if (cleanedCount > 0)
             {
                 _logger.LogInformation(
                     "Cleaned up {Count} stale connections",
                     cleanedCount);
             }
-            
+
             return cleanedCount;
         }
 
@@ -364,16 +366,16 @@ namespace ConduitLLM.Http.Services
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("RealtimeConnectionManager stopping...");
-            
+
             // Stop cleanup timer
             if (_cleanupTimer != null)
             {
                 await _cleanupTimer.DisposeAsync();
             }
-            
+
             // Close all active connections
             var tasks = new List<Task>();
-            
+
             foreach (var connection in _connections.Values)
             {
                 if (connection.WebSocket != null && connection.WebSocket.State == WebSocketState.Open)
@@ -384,12 +386,12 @@ namespace ConduitLLM.Http.Services
                         cancellationToken));
                 }
             }
-            
+
             await Task.WhenAll(tasks);
-            
+
             _connections.Clear();
             _connectionsByVirtualKey.Clear();
-            
+
             _logger.LogInformation("RealtimeConnectionManager stopped");
         }
     }
