@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Costs;
 using ConduitLLM.WebUI.Interfaces;
@@ -26,7 +27,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             DateTime startDate,
             DateTime endDate,
             int? virtualKeyId = null,
-            string modelName = null)
+            string? modelName = null)
         {
             // For test mocking only - real implementation would call the API
             return Task.FromResult(new List<ConduitLLM.Configuration.DTOs.DailyUsageStatsDto>());
@@ -46,7 +47,7 @@ namespace ConduitLLM.Tests.WebUI.Extensions
             DateTime startDate,
             DateTime endDate,
             int? virtualKeyId = null,
-            string modelName = null)
+            string? modelName = null)
         {
             // For test mocking only - real implementation would call the API
             return Task.FromResult(new List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>());

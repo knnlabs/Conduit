@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers.Translators
@@ -25,7 +27,7 @@ namespace ConduitLLM.Providers.Translators
         public OpenAIRealtimeTranslatorV2(ILogger<OpenAIRealtimeTranslatorV2> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -44,7 +46,7 @@ namespace ConduitLLM.Providers.Translators
                     type = "input_audio_buffer.append",
                     audio = Convert.ToBase64String(audioFrame.AudioData)
                 },
-                
+
                 RealtimeTextInput textInput => new
                 {
                     type = "conversation.item.create",
@@ -58,7 +60,7 @@ namespace ConduitLLM.Providers.Translators
                         }
                     }
                 },
-                
+
                 RealtimeFunctionResponse funcResponse => new
                 {
                     type = "conversation.item.create",
@@ -69,7 +71,7 @@ namespace ConduitLLM.Providers.Translators
                         output = funcResponse.Output
                     }
                 },
-                
+
                 RealtimeResponseRequest responseRequest => new
                 {
                     type = "response.create",
@@ -80,33 +82,33 @@ namespace ConduitLLM.Providers.Translators
                         temperature = responseRequest.Temperature
                     }
                 },
-                
+
                 _ => throw new NotSupportedException($"Message type '{message.GetType().Name}' is not supported")
             };
 
             var json = JsonSerializer.Serialize(openAiMessage, _jsonOptions);
             _logger.LogDebug("Translated to OpenAI: {MessageType} -> {Json}", message.GetType().Name, json);
-            
+
             return await Task.FromResult(json);
         }
 
         public async Task<IEnumerable<RealtimeMessage>> TranslateFromProviderAsync(string providerMessage)
         {
             var messages = new List<RealtimeMessage>();
-            
+
             try
             {
                 using var doc = JsonDocument.Parse(providerMessage);
                 var root = doc.RootElement;
-                
+
                 if (!root.TryGetProperty("type", out var typeElement))
                 {
                     throw new InvalidOperationException("OpenAI message missing 'type' field");
                 }
-                
+
                 var messageType = typeElement.GetString();
                 _logger.LogDebug("Translating from OpenAI: {MessageType}", messageType);
-                
+
                 switch (messageType)
                 {
                     case "session.created":
@@ -118,7 +120,7 @@ namespace ConduitLLM.Providers.Translators
                             Details = providerMessage
                         });
                         break;
-                        
+
                     case "response.audio.delta":
                         // Audio chunk from AI
                         if (root.TryGetProperty("delta", out var audioDelta))
@@ -131,7 +133,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "response.text.delta":
                         // Text chunk from AI
                         if (root.TryGetProperty("delta", out var textDelta))
@@ -143,10 +145,10 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "response.function_call_arguments.delta":
                         // Function call in progress
-                        if (root.TryGetProperty("call_id", out var callId) && 
+                        if (root.TryGetProperty("call_id", out var callId) &&
                             root.TryGetProperty("delta", out var argsDelta))
                         {
                             messages.Add(new RealtimeFunctionCall
@@ -157,7 +159,7 @@ namespace ConduitLLM.Providers.Translators
                             });
                         }
                         break;
-                        
+
                     case "response.done":
                         // Response completed
                         messages.Add(new RealtimeStatusMessage
@@ -165,7 +167,7 @@ namespace ConduitLLM.Providers.Translators
                             Status = "response_complete"
                         });
                         break;
-                        
+
                     case "error":
                         // Error from provider
                         var error = ParseError(root);
@@ -174,7 +176,7 @@ namespace ConduitLLM.Providers.Translators
                             Error = error
                         });
                         break;
-                        
+
                     default:
                         _logger.LogWarning("Unknown OpenAI message type: {Type}", messageType);
                         break;
@@ -185,14 +187,14 @@ namespace ConduitLLM.Providers.Translators
                 _logger.LogError(ex, "Error parsing OpenAI message: {Message}", providerMessage);
                 throw new InvalidOperationException("Failed to parse OpenAI realtime message", ex);
             }
-            
+
             return await Task.FromResult(messages);
         }
 
         public async Task<TranslationValidationResult> ValidateSessionConfigAsync(RealtimeSessionConfig config)
         {
             var result = new TranslationValidationResult { IsValid = true };
-            
+
             // Validate model
             var supportedModels = new[] { "gpt-4o-realtime-preview", "gpt-4o-realtime-preview-2024-10-01" };
             if (!string.IsNullOrEmpty(config.Model) && !supportedModels.Contains(config.Model))
@@ -200,14 +202,14 @@ namespace ConduitLLM.Providers.Translators
                 result.Errors.Add($"Model '{config.Model}' is not supported. Use: {string.Join(", ", supportedModels)}");
                 result.IsValid = false;
             }
-            
+
             // Validate voice
             var supportedVoices = new[] { "alloy", "echo", "shimmer" };
             if (!string.IsNullOrEmpty(config.Voice) && !supportedVoices.Contains(config.Voice))
             {
                 result.Warnings.Add($"Voice '{config.Voice}' may not be supported. Recommended: {string.Join(", ", supportedVoices)}");
             }
-            
+
             // Validate audio formats
             var supportedFormats = new[] { RealtimeAudioFormat.PCM16_16kHz, RealtimeAudioFormat.PCM16_24kHz, RealtimeAudioFormat.G711_ULAW };
             if (!supportedFormats.Contains(config.InputFormat))
@@ -215,7 +217,7 @@ namespace ConduitLLM.Providers.Translators
                 result.Errors.Add($"Input format '{config.InputFormat}' is not supported by OpenAI");
                 result.IsValid = false;
             }
-            
+
             return await Task.FromResult(result);
         }
 
@@ -246,7 +248,7 @@ namespace ConduitLLM.Providers.Translators
                     modalities = new[] { "text", "audio" }
                 }
             };
-            
+
             return await Task.FromResult(JsonSerializer.Serialize(openAiConfig, _jsonOptions));
         }
 
@@ -261,18 +263,18 @@ namespace ConduitLLM.Providers.Translators
             {
                 ["OpenAI-Beta"] = "realtime=v1"
             };
-            
+
             return await Task.FromResult(headers);
         }
 
         public async Task<IEnumerable<string>> GetInitializationMessagesAsync(RealtimeSessionConfig config)
         {
             var messages = new List<string>();
-            
+
             // Send session configuration as first message
             var sessionConfig = await TransformSessionConfigAsync(config);
             messages.Add(sessionConfig);
-            
+
             return messages;
         }
 
@@ -282,12 +284,12 @@ namespace ConduitLLM.Providers.Translators
             {
                 using var doc = JsonDocument.Parse(providerError);
                 var root = doc.RootElement;
-                
+
                 if (root.TryGetProperty("error", out var errorElement))
                 {
                     var code = errorElement.TryGetProperty("code", out var codeElem) ? codeElem.GetString() : "unknown";
                     var message = errorElement.TryGetProperty("message", out var msgElem) ? msgElem.GetString() : providerError;
-                    
+
                     return new RealtimeError
                     {
                         Code = code ?? "unknown",
@@ -301,7 +303,7 @@ namespace ConduitLLM.Providers.Translators
             {
                 // If we can't parse it, treat as generic error
             }
-            
+
             return new RealtimeError
             {
                 Code = "provider_error",
@@ -326,7 +328,7 @@ namespace ConduitLLM.Providers.Translators
         private RealtimeError ParseError(JsonElement root)
         {
             var error = root.GetProperty("error");
-            
+
             return new RealtimeError
             {
                 Code = error.TryGetProperty("code", out var code) ? code.GetString() ?? "unknown" : "unknown",

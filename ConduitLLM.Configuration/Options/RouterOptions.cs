@@ -46,6 +46,11 @@ namespace ConduitLLM.Configuration.Options
         /// List of fallback configurations in the format "primary_model:fallback_model1,fallback_model2"
         /// </summary>
         public List<string> FallbackRules { get; set; } = new();
+
+        /// <summary>
+        /// The default audio routing strategy to use (LatencyBased, LanguageOptimized, CostOptimized, QualityBased)
+        /// </summary>
+        public string DefaultAudioRoutingStrategy { get; set; } = "LatencyBased";
     }
 
     /// <summary>

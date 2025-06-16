@@ -1,7 +1,8 @@
-using Microsoft.Extensions.Logging;
-using ConduitLLM.Configuration.Repositories;
-using ConduitLLM.Configuration.Mapping;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Mapping;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration
 {
@@ -15,7 +16,7 @@ namespace ConduitLLM.Configuration
         private readonly IProviderCredentialRepository _credentialRepository;
 
         public ModelProviderMappingService(
-            ILogger<ModelProviderMappingService> logger, 
+            ILogger<ModelProviderMappingService> logger,
             IModelProviderMappingRepository repository,
             IProviderCredentialRepository credentialRepository)
         {
@@ -34,12 +35,13 @@ namespace ConduitLLM.Configuration
             try
             {
                 _logger.LogInformation("Adding mapping: {ModelAlias}", mapping.ModelAlias);
-                
+
                 // Get the provider credential
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    throw new InvalidOperationException($"Provider credentials not found for provider: {mapping.ProviderName}");
+                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
 
                 // Convert to entity and set the provider credential ID
@@ -52,7 +54,7 @@ namespace ConduitLLM.Configuration
                 {
                     throw new InvalidOperationException("Failed to convert DTO to entity");
                 }
-                
+
                 await _repository.CreateAsync(entity);
             }
             catch (Exception ex)
@@ -136,21 +138,23 @@ namespace ConduitLLM.Configuration
             try
             {
                 _logger.LogInformation("Updating mapping: {ModelAlias}", mapping.ModelAlias);
-                
+
                 // Get the existing entity
                 var existingEntity = await _repository.GetByModelNameAsync(mapping.ModelAlias);
                 if (existingEntity == null)
                 {
-                    throw new InvalidOperationException($"Mapping not found for model alias: {mapping.ModelAlias}");
+                    _logger.LogWarning("Mapping not found for model alias {ModelAlias}", mapping.ModelAlias);
+                    throw new InvalidOperationException("Mapping not found for the specified model alias");
                 }
-                
+
                 // Get the provider credential
                 var credential = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (credential == null)
                 {
-                    throw new InvalidOperationException($"Provider credentials not found for provider: {mapping.ProviderName}");
+                    _logger.LogWarning("Provider credentials not found for provider {ProviderName}", mapping.ProviderName);
+                    throw new InvalidOperationException("Provider credentials not found for the specified provider");
                 }
-                
+
                 // Update the entity
                 var entity = ModelProviderMappingMapper.ToEntity(mapping, existingEntity);
                 if (entity != null)
@@ -161,7 +165,7 @@ namespace ConduitLLM.Configuration
                 {
                     throw new InvalidOperationException("Failed to convert DTO to entity");
                 }
-                
+
                 await _repository.UpdateAsync(entity);
             }
             catch (Exception ex)

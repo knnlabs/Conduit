@@ -10,20 +10,20 @@ public interface IAdminDatabaseBackupService
     /// </summary>
     /// <returns>Backup info with success status and backup file path or error message</returns>
     Task<BackupResult> CreateBackupAsync();
-    
+
     /// <summary>
     /// Gets a list of available backups
     /// </summary>
     /// <returns>List of backup info</returns>
     Task<List<BackupInfo>> GetBackupsAsync();
-    
+
     /// <summary>
     /// Restores a database backup
     /// </summary>
     /// <param name="backupId">The ID or filename of the backup to restore</param>
     /// <returns>Restore result with success status and error message if failed</returns>
     Task<RestoreResult> RestoreBackupAsync(string backupId);
-    
+
     /// <summary>
     /// Downloads a database backup
     /// </summary>
@@ -41,12 +41,12 @@ public class BackupResult
     /// Whether the backup was successful
     /// </summary>
     public bool Success { get; set; }
-    
+
     /// <summary>
     /// Error message if the backup failed
     /// </summary>
     public string? ErrorMessage { get; set; }
-    
+
     /// <summary>
     /// Backup information if successful
     /// </summary>
@@ -62,7 +62,7 @@ public class RestoreResult
     /// Whether the restore was successful
     /// </summary>
     public bool Success { get; set; }
-    
+
     /// <summary>
     /// Error message if the restore failed
     /// </summary>
@@ -78,22 +78,22 @@ public class BackupInfo
     /// Unique identifier for the backup
     /// </summary>
     public string Id { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// File name of the backup
     /// </summary>
     public string FileName { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Date and time when the backup was created
     /// </summary>
     public DateTime CreatedAt { get; set; }
-    
+
     /// <summary>
     /// Size of the backup file in bytes
     /// </summary>
     public long SizeBytes { get; set; }
-    
+
     /// <summary>
     /// Human-readable size of the backup file
     /// </summary>

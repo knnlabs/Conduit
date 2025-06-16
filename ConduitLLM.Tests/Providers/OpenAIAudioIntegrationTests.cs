@@ -7,14 +7,19 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
 using Moq.Protected;
+
 using Xunit;
+
 using ItExpr = Moq.Protected.ItExpr;
 
 namespace ConduitLLM.Tests.Providers;
@@ -36,7 +41,7 @@ public class OpenAIAudioIntegrationTests
         _handlerMock = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_handlerMock.Object);
         _loggerMock = new Mock<ILogger<OpenAIClient>>();
-        
+
         _mockHttpClientFactory = new Mock<IHttpClientFactory>();
         _mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>()))
             .Returns(_httpClient);

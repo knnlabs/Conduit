@@ -17,7 +17,7 @@ public class VirtualKeyDto
     /// </summary>
     [Required]
     public string KeyName { get; set; } = string.Empty;
-    
+
     // Note: KeyHash is intentionally excluded for security reasons
 
     /// <summary>
@@ -79,12 +79,12 @@ public class VirtualKeyDto
     /// Can be used to store additional information about the key's purpose or owner.
     /// </summary>
     public string? Metadata { get; set; }
-    
+
     /// <summary>
     /// Optional rate limit in requests per minute.
     /// </summary>
     public int? RateLimitRpm { get; set; }
-    
+
     /// <summary>
     /// Optional rate limit in requests per day.
     /// </summary>

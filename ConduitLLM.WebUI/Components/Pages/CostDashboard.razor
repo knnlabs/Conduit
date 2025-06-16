@@ -11,12 +11,13 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject IAdminApiClient AdminApiClient
+@inject IToastService ToastService
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
 <PageTitle>Cost Dashboard - ConduitLLM</PageTitle>
 
-<div class="container container-xxl mt-4">
+<div class="container container-xxl">
     <!-- Header Section -->
     <PageHeader Title="Cost Dashboard" 
                 Description="Analyze spending patterns, track costs by model and virtual key, and monitor usage trends"
@@ -202,16 +203,16 @@
                             Download Data
                         </button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         @if (dashboardData.CostTrends() == null || !dashboardData.CostTrends().Any())
                         {
-                            <div class="alert alert-info">
+                            <div class="alert modern-alert modern-alert-info">
                                 No trend data available for the selected period.
                             </div>
                         }
                         else
                         {
-                            <div style="height: 300px; width: 100%;">
+                            <div class="chart-container">
                                 <canvas id="costTrendChart"></canvas>
                             </div>
                         }
@@ -486,8 +487,7 @@
         }
         catch (Exception ex)
         {
-            // Use browser alert instead of MudBlazor Snackbar
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading filter options: {ex.Message}");
+            ToastService.ShowException(ex, "Error loading filter options");
         }
     }
 
@@ -514,7 +514,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error loading dashboard data: {ex.Message}");
+            ToastService.ShowException(ex, "Error loading dashboard data");
         }
         finally
         {
@@ -582,13 +582,13 @@
         {
             if (startDate == null || endDate == null)
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Please select both start and end dates");
+                ToastService.ShowValidationError("Please select both start and end dates");
                 return;
             }
             
             if (startDate > endDate)
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Start date must be before end date");
+                ToastService.ShowValidationError("Start date must be before end date");
                 return;
             }
         }
@@ -648,7 +648,7 @@
         }
         catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Error downloading data: {ex.Message}");
+            ToastService.ShowException(ex, "Error downloading data");
         }
     }
     

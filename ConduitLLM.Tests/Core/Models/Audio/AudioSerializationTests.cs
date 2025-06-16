@@ -1,8 +1,10 @@
 using System;
 using System.Text.Json;
-using Xunit;
-using ConduitLLM.Core.Models.Audio;
+
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Audio;
+
+using Xunit;
 
 namespace ConduitLLM.Tests.Core.Models.Audio
 {

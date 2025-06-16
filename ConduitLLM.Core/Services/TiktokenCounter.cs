@@ -1,13 +1,16 @@
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using TiktokenSharp;
 using System.Text.Json;
+using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+
+using Microsoft.Extensions.Logging;
+
+using TiktokenSharp;
 
 namespace ConduitLLM.Core.Services
 {
@@ -43,15 +46,23 @@ namespace ConduitLLM.Core.Services
         private static readonly Dictionary<string, TikToken> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
+        private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TiktokenCounter"/> class.
         /// </summary>
         /// <param name="logger">The logger for recording diagnostic information.</param>
+        /// <param name="capabilityService">Service for retrieving model capabilities from configuration.</param>
         /// <exception cref="ArgumentNullException">Thrown when logger is null.</exception>
-        public TiktokenCounter(ILogger<TiktokenCounter> logger)
+        public TiktokenCounter(ILogger<TiktokenCounter> logger, IModelCapabilityService? capabilityService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _capabilityService = capabilityService;
+
+            if (capabilityService == null)
+            {
+                _logger.LogWarning("ModelCapabilityService not available, using fallback tokenizer detection");
+            }
         }
 
         /// <inheritdoc />
@@ -79,7 +90,7 @@ namespace ConduitLLM.Core.Services
                     // These numbers are based on OpenAI's tokenization approach
                     tokenCount += 4; // Every message follows <|start|>{role/name}\n{content}<|end|>\n
 
-                    
+
                     if (message.Role != null)
                     {
                         try
@@ -92,7 +103,7 @@ namespace ConduitLLM.Core.Services
                             tokenCount += message.Role.Length / 4;
                         }
                     }
-                    
+
                     if (message.Content != null)
                     {
                         try
@@ -122,7 +133,7 @@ namespace ConduitLLM.Core.Services
                             tokenCount += contentStr.Length / 4;
                         }
                     }
-                    
+
                     // Add handling for 'Name' property if present
                     if (!string.IsNullOrEmpty(message.Name))
                     {
@@ -138,7 +149,7 @@ namespace ConduitLLM.Core.Services
                         tokenCount += 1; // Additional overhead for name field
                     }
                 }
-                
+
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
 
                 return Task.FromResult(tokenCount);
@@ -211,25 +222,40 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                // Default to the most common encoding
-                string encodingName = "cl100k_base"; // Default for newer models (GPT-3.5, GPT-4)
-                
-                // Lower case the model name for consistent matching
-                string lowerModelName = modelName.ToLowerInvariant();
-                
-                // Map model names/families to their encodings
-                if (lowerModelName.Contains("gpt-3.5") || lowerModelName.Contains("gpt-4"))
+                string encodingName = "cl100k_base"; // Default for newer models
+
+                // Try to get tokenizer type from capability service first
+                if (_capabilityService != null)
                 {
+                    try
+                    {
+                        var tokenizerType = _capabilityService.GetTokenizerTypeAsync(modelName).GetAwaiter().GetResult();
+                        if (!string.IsNullOrEmpty(tokenizerType))
+                        {
+                            encodingName = tokenizerType;
+                            _logger.LogDebug("Using tokenizer {TokenizerType} from capability service for model {Model}", tokenizerType, modelName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error getting tokenizer type from capability service for model {Model}", modelName);
+                    }
+                }
+
+                // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
+                // since TiktokenSharp only supports OpenAI encodings
+                if (encodingName == "claude" || encodingName == "gemini")
+                {
+                    // Use cl100k_base as approximation for non-OpenAI models
+                    _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
                     encodingName = "cl100k_base";
                 }
-                else if (lowerModelName.Contains("davinci") || 
-                         lowerModelName.Contains("curie") || 
-                         lowerModelName.Contains("babbage") || 
-                         lowerModelName.Contains("ada"))
+                else if (encodingName == "o200k_base")
                 {
-                    encodingName = "p50k_base";
+                    // o200k_base is newer than cl100k_base, but if not supported, fall back
+                    // Try to use it, but we'll handle the error below if it's not supported
+                    _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
                 }
-                // Add more mappings as needed for other model families
 
                 lock (_lock)
                 {
@@ -242,8 +268,28 @@ namespace ConduitLLM.Core.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to get encoding {EncodingName} for model {ModelName}", encodingName, modelName);
-                            return null;
+                            _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
+
+                            // Try fallback to cl100k_base if the specific encoding isn't supported
+                            if (encodingName != "cl100k_base")
+                            {
+                                try
+                                {
+                                    encodingName = "cl100k_base";
+                                    encoding = TikToken.EncodingForModel(encodingName);
+                                    _encodings[encodingName] = encoding;
+                                    _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
+                                }
+                                catch (Exception fallbackEx)
+                                {
+                                    _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
+                                    return null;
+                                }
+                            }
+                            else
+                            {
+                                return null;
+                            }
                         }
                     }
                     return encoding;
@@ -280,7 +326,7 @@ namespace ConduitLLM.Core.Services
         private int EstimateJsonElementTokens(JsonElement element, TikToken encoding)
         {
             int tokenCount = 0;
-            
+
             if (element.ValueKind == JsonValueKind.String)
             {
                 string? stringValue = element.GetString();
@@ -295,7 +341,7 @@ namespace ConduitLLM.Core.Services
                 foreach (var item in element.EnumerateArray())
                 {
                     // Check if it's a text content part
-                    if (item.TryGetProperty("type", out var typeElement) && 
+                    if (item.TryGetProperty("type", out var typeElement) &&
                         typeElement.ValueKind == JsonValueKind.String &&
                         typeElement.GetString() == "text" &&
                         item.TryGetProperty("text", out var textElement) &&
@@ -308,7 +354,7 @@ namespace ConduitLLM.Core.Services
                             tokenCount += encoding.Encode(text).Count;
                         }
                     }
-                    else if (item.TryGetProperty("type", out var imgTypeElement) && 
+                    else if (item.TryGetProperty("type", out var imgTypeElement) &&
                              imgTypeElement.ValueKind == JsonValueKind.String &&
                              imgTypeElement.GetString() == "image_url")
                     {
@@ -319,7 +365,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
             }
-            
+
             return tokenCount;
         }
 
@@ -349,19 +395,19 @@ namespace ConduitLLM.Core.Services
             {
                 // First try to serialize the content to JSON
                 string json = JsonSerializer.Serialize(content);
-                
+
                 // Then parse it as a JsonElement to use our existing logic
                 using var document = JsonDocument.Parse(json);
                 var root = document.RootElement;
-                
+
                 StringBuilder sb = new StringBuilder();
-                
+
                 // If it's an array, likely it's content parts
                 if (root.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var item in root.EnumerateArray())
                     {
-                        if (item.TryGetProperty("type", out var typeElement) && 
+                        if (item.TryGetProperty("type", out var typeElement) &&
                             typeElement.ValueKind == JsonValueKind.String &&
                             typeElement.GetString() == "text" &&
                             item.TryGetProperty("text", out var textElement) &&
@@ -386,7 +432,7 @@ namespace ConduitLLM.Core.Services
             {
                 // If we can't process it properly, just return the string representation
             }
-            
+
             return content.ToString() ?? "";
         }
 
@@ -412,11 +458,11 @@ namespace ConduitLLM.Core.Services
         private int FallbackEstimateTokens(List<Message> messages)
         {
             // Very rough estimation based on characters
-            int totalCharacters = messages.Sum(m => 
-                (m.Content != null ? m.Content.ToString()?.Length ?? 0 : 0) + 
-                (m.Role?.Length ?? 0) + 
+            int totalCharacters = messages.Sum(m =>
+                (m.Content != null ? m.Content.ToString()?.Length ?? 0 : 0) +
+                (m.Role?.Length ?? 0) +
                 (m.Name?.Length ?? 0));
-                
+
             // Rough estimate: 1 token ≈ 4 characters in English
             return totalCharacters / 4;
         }

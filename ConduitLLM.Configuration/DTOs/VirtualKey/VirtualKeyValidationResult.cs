@@ -9,32 +9,32 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Whether the key is valid
         /// </summary>
         public bool IsValid { get; set; }
-        
+
         /// <summary>
         /// ID of the virtual key if valid
         /// </summary>
         public int? VirtualKeyId { get; set; }
-        
+
         /// <summary>
         /// Name of the virtual key
         /// </summary>
         public string? KeyName { get; set; }
-        
+
         /// <summary>
         /// Models allowed for this key
         /// </summary>
         public string? AllowedModels { get; set; }
-        
+
         /// <summary>
         /// Maximum budget for this key
         /// </summary>
         public decimal? MaxBudget { get; set; }
-        
+
         /// <summary>
         /// Current spend amount
         /// </summary>
         public decimal CurrentSpend { get; set; }
-        
+
         /// <summary>
         /// Error message if validation failed
         /// </summary>

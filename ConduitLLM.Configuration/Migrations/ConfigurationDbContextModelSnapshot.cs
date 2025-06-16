@@ -15,7 +15,7 @@ namespace ConduitLLM.Configuration.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.4");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
                 {
@@ -379,6 +379,18 @@ namespace ConduitLLM.Configuration.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("AudioCostPerKCharacters")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioInputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
+                    b.Property<decimal?>("AudioOutputCostPerMinute")
+                        .HasColumnType("decimal(18, 4)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -492,6 +504,13 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DefaultCapabilityType")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
 
@@ -509,6 +528,31 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("ProviderModelName")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SupportedFormats")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SupportedLanguages")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SupportedVoices")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SupportsAudioTranscription")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SupportsRealtimeAudio")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SupportsTextToSpeech")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SupportsVision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TokenizerType")
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")

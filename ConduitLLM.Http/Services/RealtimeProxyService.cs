@@ -6,12 +6,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Realtime;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Http.Services
 {
@@ -23,17 +25,20 @@ namespace ConduitLLM.Http.Services
         private readonly IRealtimeMessageTranslator _translator;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IRealtimeConnectionManager _connectionManager;
+        private readonly IRealtimeUsageTracker _usageTracker;
         private readonly ILogger<RealtimeProxyService> _logger;
 
         public RealtimeProxyService(
             IRealtimeMessageTranslator translator,
             IVirtualKeyService virtualKeyService,
             IRealtimeConnectionManager connectionManager,
+            IRealtimeUsageTracker usageTracker,
             ILogger<RealtimeProxyService> logger)
         {
             _translator = translator ?? throw new ArgumentNullException(nameof(translator));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+            _usageTracker = usageTracker ?? throw new ArgumentNullException(nameof(usageTracker));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -56,9 +61,9 @@ namespace ConduitLLM.Http.Services
             }
 
             // Get the provider client and establish connection
-            var audioRouter = _connectionManager as IAudioRouter ?? 
+            var audioRouter = _connectionManager as IAudioRouter ??
                 throw new InvalidOperationException("Connection manager must implement IAudioRouter");
-                
+
             // Create session configuration
             var sessionConfig = new RealtimeSessionConfig
             {
@@ -66,7 +71,7 @@ namespace ConduitLLM.Http.Services
                 Voice = "alloy", // Default voice, could be made configurable
                 SystemPrompt = "You are a helpful assistant."
             };
-            
+
             var realtimeClient = await audioRouter.GetRealtimeClientAsync(sessionConfig, virtualKey.KeyHash);
             if (realtimeClient == null)
             {
@@ -75,17 +80,20 @@ namespace ConduitLLM.Http.Services
 
             // Connect to provider
             RealtimeSession? providerSession = null;
-            
+
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
+
             try
             {
+                // Start usage tracking
+                await _usageTracker.StartTrackingAsync(connectionId, virtualKey.Id, model, provider ?? "default");
+
                 // Create the session
                 providerSession = await realtimeClient.CreateSessionAsync(sessionConfig, virtualKey.KeyHash, cancellationToken);
-                
+
                 // Get the duplex stream from the provider
                 var providerStream = realtimeClient.StreamAudioAsync(providerSession, cts.Token);
-                
+
                 // Start proxying in both directions
                 var clientToProvider = ProxyClientToProviderAsync(
                     clientWebSocket, providerStream, connectionId, virtualKey.KeyHash, cts.Token);
@@ -93,10 +101,10 @@ namespace ConduitLLM.Http.Services
                     providerStream, clientWebSocket, connectionId, virtualKey.KeyHash, cts.Token);
 
                 await Task.WhenAny(clientToProvider, providerToClient);
-                
+
                 // If one direction fails, cancel the other
                 cts.Cancel();
-                
+
                 await Task.WhenAll(clientToProvider, providerToClient);
             }
             catch (OperationCanceledException)
@@ -111,9 +119,25 @@ namespace ConduitLLM.Http.Services
             }
             finally
             {
+                try
+                {
+                    // Finalize usage tracking and update virtual key spend
+                    var connectionInfo = await _connectionManager.GetConnectionAsync(connectionId);
+                    var finalStats = connectionInfo?.Usage ?? new ConnectionUsageStats();
+                    var totalCost = await _usageTracker.FinalizeUsageAsync(connectionId, finalStats);
+                    
+                    _logger.LogInformation(
+                        "Session {ConnectionId} completed with total cost: ${Cost:F4}",
+                        connectionId, totalCost);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error finalizing usage for connection {ConnectionId}", connectionId);
+                }
+
                 // Ensure client WebSocket is closed
                 await CloseWebSocketAsync(clientWebSocket, "Proxy connection ended");
-                
+
                 // Close provider session
                 if (providerSession != null)
                 {
@@ -130,7 +154,7 @@ namespace ConduitLLM.Http.Services
             CancellationToken cancellationToken)
         {
             var buffer = new ArraySegment<byte>(new byte[4096]);
-            
+
             while (!cancellationToken.IsCancellationRequested &&
                    clientWs.State == WebSocketState.Open &&
                    providerStream.IsConnected)
@@ -138,13 +162,13 @@ namespace ConduitLLM.Http.Services
                 try
                 {
                     var result = await clientWs.ReceiveAsync(buffer, cancellationToken);
-                    
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         _logger.LogInformation("Client closed connection {ConnectionId}", connectionId);
                         break;
                     }
-                    
+
                     if (result.MessageType == WebSocketMessageType.Binary)
                     {
                         // Assume binary data is audio
@@ -155,23 +179,27 @@ namespace ConduitLLM.Http.Services
                             SampleRate = 24000, // Default, should be configurable
                             Channels = 1
                         };
-                        
+
                         await providerStream.SendAsync(audioFrame, cancellationToken);
+                        
+                        // Track input audio usage
+                        var audioDuration = audioFrame.AudioData.Length / (double)(audioFrame.SampleRate * audioFrame.Channels * 2); // 16-bit audio
+                        await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: true);
                     }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
-                        
+
                         // Try to parse as JSON control message
                         try
                         {
                             using var doc = JsonDocument.Parse(message);
                             var root = doc.RootElement;
-                            
+
                             if (root.TryGetProperty("type", out var typeElement))
                             {
                                 var type = typeElement.GetString();
-                                
+
                                 if (type == "audio" && root.TryGetProperty("data", out var dataElement))
                                 {
                                     // Audio data sent as base64 in JSON
@@ -183,8 +211,12 @@ namespace ConduitLLM.Http.Services
                                         SampleRate = 24000,
                                         Channels = 1
                                     };
-                                    
+
                                     await providerStream.SendAsync(audioFrame, cancellationToken);
+                        
+                        // Track input audio usage
+                        var audioDuration = audioFrame.AudioData.Length / (double)(audioFrame.SampleRate * audioFrame.Channels * 2); // 16-bit audio
+                        await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: true);
                                 }
                                 // Handle other control messages as needed
                             }
@@ -225,15 +257,15 @@ namespace ConduitLLM.Http.Services
                         // Convert response to client format
                         var clientMessage = ConvertResponseToClientMessage(response);
                         var messageBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(clientMessage));
-                        
+
                         await clientWs.SendAsync(
                             new ArraySegment<byte>(messageBytes),
                             WebSocketMessageType.Text,
                             true,
                             cancellationToken);
-                        
-                        // Track usage if applicable
-                        // Note: Usage tracking would need to be implemented based on provider-specific events
+
+                        // Track usage based on response type
+                        await TrackResponseUsageAsync(connectionId, response, virtualKey);
                     }
                     catch (Exception ex)
                     {
@@ -257,11 +289,11 @@ namespace ConduitLLM.Http.Services
             {
                 using var doc = JsonDocument.Parse(message);
                 var root = doc.RootElement;
-                
+
                 if (root.TryGetProperty("type", out var typeElement))
                 {
                     var type = typeElement.GetString();
-                    
+
                     // Simple parsing based on type
                     return type switch
                     {
@@ -279,7 +311,7 @@ namespace ConduitLLM.Http.Services
             {
                 // Ignore parsing errors
             }
-            
+
             return null;
         }
 
@@ -289,23 +321,23 @@ namespace ConduitLLM.Http.Services
             {
                 using var doc = JsonDocument.Parse(message);
                 var root = doc.RootElement;
-                
-                if (root.TryGetProperty("type", out var typeElement) && 
+
+                if (root.TryGetProperty("type", out var typeElement) &&
                     typeElement.GetString() == "response.done" &&
                     root.TryGetProperty("response", out var response) &&
                     response.TryGetProperty("usage", out var usage))
                 {
                     var update = new RealtimeUsageUpdate();
-                    
+
                     if (usage.TryGetProperty("total_tokens", out var totalTokens))
                         update.TotalTokens = totalTokens.GetInt64();
-                        
+
                     if (usage.TryGetProperty("input_tokens", out var inputTokens))
                         update.InputTokens = inputTokens.GetInt64();
-                        
+
                     if (usage.TryGetProperty("output_tokens", out var outputTokens))
                         update.OutputTokens = outputTokens.GetInt64();
-                        
+
                     if (usage.TryGetProperty("input_token_details", out var inputDetails))
                     {
                         update.InputTokenDetails = new Dictionary<string, object>();
@@ -315,7 +347,7 @@ namespace ConduitLLM.Http.Services
                                 update.InputTokenDetails[prop.Name] = prop.Value.GetInt64();
                         }
                     }
-                    
+
                     if (usage.TryGetProperty("output_token_details", out var outputDetails))
                     {
                         update.OutputTokenDetails = new Dictionary<string, object>();
@@ -325,7 +357,7 @@ namespace ConduitLLM.Http.Services
                                 update.OutputTokenDetails[prop.Name] = prop.Value.GetInt64();
                         }
                     }
-                    
+
                     return update;
                 }
             }
@@ -333,7 +365,7 @@ namespace ConduitLLM.Http.Services
             {
                 _logger.LogWarning(ex, "Error parsing usage from provider message");
             }
-            
+
             return null;
         }
 
@@ -350,7 +382,7 @@ namespace ConduitLLM.Http.Services
                     EstimatedCost = 0.01m * usage.TotalTokens // Simple cost calculation
                 };
                 await _connectionManager.UpdateUsageStatsAsync(connectionId, stats);
-                
+
                 // Update spend for virtual key tracking
                 var estimatedCost = stats.EstimatedCost;
                 if (estimatedCost > 0)
@@ -362,7 +394,7 @@ namespace ConduitLLM.Http.Services
                     //     await _virtualKeyService.UpdateSpendAsync(virtualKeyEntity.Id, estimatedCost);
                     // }
                 }
-                    
+
                 _logger.LogDebug(
                     "Updated usage for connection {ConnectionId}: {TotalTokens} tokens",
                     connectionId, usage.TotalTokens);
@@ -370,6 +402,60 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling usage update for connection {ConnectionId}", connectionId);
+            }
+        }
+
+        private async Task TrackResponseUsageAsync(string connectionId, RealtimeResponse response, string virtualKey)
+        {
+            try
+            {
+                switch (response.EventType)
+                {
+                    case RealtimeEventType.AudioDelta:
+                        if (response.Audio != null && response.Audio.Data.Length > 0)
+                        {
+                            // Assume 24kHz, 1 channel, 16-bit audio for output
+                            var audioDuration = response.Audio.Data.Length / (24000.0 * 1 * 2);
+                            await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: false);
+                        }
+                        break;
+
+                    case RealtimeEventType.ResponseComplete:
+                        // Check if response contains usage information
+                        if (response.Usage != null)
+                        {
+                            var usage = new Usage
+                            {
+                                PromptTokens = (int)(response.Usage.InputTokens ?? 0),
+                                CompletionTokens = (int)(response.Usage.OutputTokens ?? 0),
+                                TotalTokens = (int)(response.Usage.TotalTokens ?? 0)
+                            };
+                            await _usageTracker.RecordTokenUsageAsync(connectionId, usage);
+                            
+                            // Track function calls if any
+                            if (response.Usage.FunctionCalls > 0)
+                            {
+                                // Record each function call
+                                for (int i = 0; i < response.Usage.FunctionCalls; i++)
+                                {
+                                    await _usageTracker.RecordFunctionCallAsync(connectionId);
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case RealtimeEventType.ToolCallRequest:
+                        // Track function call when it's requested
+                        if (response.ToolCall != null)
+                        {
+                            await _usageTracker.RecordFunctionCallAsync(connectionId, response.ToolCall.FunctionName);
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error tracking response usage for connection {ConnectionId}", connectionId);
             }
         }
 
@@ -450,7 +536,7 @@ namespace ConduitLLM.Http.Services
                     "error" => ProxyConnectionState.Failed,
                     _ => ProxyConnectionState.Connecting
                 },
-                Provider = info.Provider,
+                Provider = info.Provider ?? string.Empty,
                 Model = info.Model,
                 ConnectedAt = info.ConnectedAt,
                 LastActivityAt = info.LastActivity,

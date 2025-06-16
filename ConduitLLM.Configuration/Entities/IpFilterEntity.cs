@@ -48,7 +48,7 @@ public class IpFilterEntity
     /// Date when the filter was last updated
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    
+
     /// <summary>
     /// Concurrency token for optimistic concurrency control
     /// </summary>

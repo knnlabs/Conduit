@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using ConduitLLM.Configuration.Services.Dtos;
 
 #pragma warning disable CS0618 // Type or member is obsolete - We're managing the migration process
@@ -24,37 +25,37 @@ namespace ConduitLLM.Configuration.DTOs
         /// Total number of requests in the period
         /// </summary>
         public int TotalRequests { get; set; }
-        
+
         /// <summary>
         /// Total cost of all requests in the period
         /// </summary>
         public decimal EstimatedCost { get; set; }
-        
+
         /// <summary>
         /// Total input tokens across all requests
         /// </summary>
         public int InputTokens { get; set; }
-        
+
         /// <summary>
         /// Total output tokens across all requests
         /// </summary>
         public int OutputTokens { get; set; }
-        
+
         /// <summary>
         /// Total tokens (input + output) for all requests
         /// </summary>
         public int TotalTokens => InputTokens + OutputTokens;
-        
+
         /// <summary>
         /// Average response time in milliseconds
         /// </summary>
         public double AverageResponseTime { get; set; }
-        
+
         /// <summary>
         /// Number of successful requests
         /// </summary>
         public int SuccessfulRequests { get; set; }
-        
+
         /// <summary>
         /// Number of failed requests
         /// </summary>
@@ -73,17 +74,17 @@ namespace ConduitLLM.Configuration.DTOs
         /// Date of the most recent request
         /// </summary>
         public DateTime? LastRequestDate { get; set; }
-        
+
         /// <summary>
         /// Request count by model name
         /// </summary>
         public Dictionary<string, int> RequestsByModel { get; set; } = new Dictionary<string, int>();
-        
+
         /// <summary>
         /// Cost by model name
         /// </summary>
         public Dictionary<string, decimal> CostByModel { get; set; } = new Dictionary<string, decimal>();
-        
+
         /// <summary>
         /// Request count by status code
         /// </summary>
@@ -93,9 +94,9 @@ namespace ConduitLLM.Configuration.DTOs
         /// Daily statistics
         /// </summary>
         public List<DailyUsageStatsDto> DailyStats { get; set; } = new List<DailyUsageStatsDto>();
-        
+
         // Backwards compatibility properties for Services.Dtos.LogsSummaryDto
-        
+
         /// <summary>
         /// Total cost (alias for EstimatedCost)
         /// </summary>
@@ -104,7 +105,7 @@ namespace ConduitLLM.Configuration.DTOs
             get => EstimatedCost;
             set => EstimatedCost = value;
         }
-        
+
         /// <summary>
         /// Total input tokens (alias for InputTokens)
         /// </summary>
@@ -113,7 +114,7 @@ namespace ConduitLLM.Configuration.DTOs
             get => InputTokens;
             set => InputTokens = value;
         }
-        
+
         /// <summary>
         /// Total output tokens (alias for OutputTokens)
         /// </summary>
@@ -122,7 +123,7 @@ namespace ConduitLLM.Configuration.DTOs
             get => OutputTokens;
             set => OutputTokens = value;
         }
-        
+
         /// <summary>
         /// Average response time (alias for AverageResponseTime)
         /// </summary>
@@ -133,7 +134,7 @@ namespace ConduitLLM.Configuration.DTOs
         }
 
     }
-    
+
     /// <summary>
     /// Daily usage statistics for the logs summary
     /// </summary>

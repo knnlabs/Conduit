@@ -132,17 +132,12 @@ public class StreamingTests
     // Helper method to create an IAsyncEnumerable that throws an exception
     private static async IAsyncEnumerable<ChatCompletionChunk> ThrowingAsyncEnumerable(string message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Yield one item to ensure it's an iterator block if needed, or just throw
-#pragma warning disable CS0162 // Unreachable code detected
-        if (false) // This ensures the compiler recognizes this as an iterator method but the code is never executed
-        {
-            yield return new ChatCompletionChunk { Id = "temp" };
-        }
-#pragma warning restore CS0162
-        
         await Task.Delay(1, cancellationToken); // Simulate async work before throwing
         cancellationToken.ThrowIfCancellationRequested();
-        throw new LLMCommunicationException(message);
+
+        // This approach makes it an async iterator without unreachable code
+        await Task.FromException<ChatCompletionChunk>(new LLMCommunicationException(message));
+        yield break;
     }
 
     [Fact]
@@ -175,7 +170,7 @@ public class StreamingTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-             // Pass null for apiKey
+            // Pass null for apiKey
             await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, CancellationToken.None))
             {
                 // Should not reach here
@@ -200,7 +195,7 @@ public class StreamingTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ConfigurationException>(async () =>
         {
-             // Pass null for apiKey
+            // Pass null for apiKey
             await foreach (var chunk in _conduit.StreamChatCompletionAsync(request, null, CancellationToken.None))
             {
                 // Should not reach here

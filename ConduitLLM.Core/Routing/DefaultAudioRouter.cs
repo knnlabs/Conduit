@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Audio;
-using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Routing
 {
@@ -48,7 +50,7 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(request.Model);
-                        
+
                         // Check if the client supports audio transcription
                         if (client is IAudioTranscriptionClient audioClient)
                         {
@@ -68,7 +70,7 @@ namespace ConduitLLM.Core.Routing
 
                 // If no specific model or failed, try to find any available transcription provider
                 var transcriptionProviders = await GetTranscriptionProvidersAsync();
-                
+
                 foreach (var provider in transcriptionProviders)
                 {
                     try
@@ -112,7 +114,7 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(request.Model);
-                        
+
                         // Check if the client supports text-to-speech
                         if (client is ITextToSpeechClient ttsClient)
                         {
@@ -132,7 +134,7 @@ namespace ConduitLLM.Core.Routing
 
                 // If no specific model or failed, try to find any available TTS provider
                 var ttsProviders = await GetTextToSpeechProvidersAsync();
-                
+
                 // Prefer providers that support the requested voice
                 if (!string.IsNullOrEmpty(request.Voice))
                 {
@@ -203,7 +205,7 @@ namespace ConduitLLM.Core.Routing
                     try
                     {
                         var client = _clientFactory.GetClient(config.Model);
-                        
+
                         // Check if the client supports real-time audio
                         if (client is IRealtimeAudioClient realtimeClient)
                         {
@@ -223,7 +225,7 @@ namespace ConduitLLM.Core.Routing
 
                 // If no specific model or failed, try to find any available real-time provider
                 var realtimeProviders = await GetRealtimeProvidersAsync();
-                
+
                 // Check capabilities match
                 foreach (var provider in realtimeProviders)
                 {

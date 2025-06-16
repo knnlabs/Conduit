@@ -8,8 +8,11 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Moq;
+
 using StackExchange.Redis;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -28,7 +31,7 @@ namespace ConduitLLM.Tests.Services
             : base(options, logger)
         {
             _getConnectionImplementation = getConnectionImpl;
-            _getConnectionWithStringImplementation = getConnectionWithStringImpl ?? 
+            _getConnectionWithStringImplementation = getConnectionWithStringImpl ??
                 (s => _getConnectionImplementation());
         }
 
@@ -42,7 +45,7 @@ namespace ConduitLLM.Tests.Services
             return _getConnectionWithStringImplementation(connectionString);
         }
     }
-    
+
     public class RedisDependencyTests
     {
         private readonly Mock<IOptions<CacheOptions>> _mockCacheOptions;
@@ -68,10 +71,10 @@ namespace ConduitLLM.Tests.Services
                 RedisConnectionString = "localhost:6379",
                 RedisInstanceName = "test-cache"
             };
-            
+
             _mockCacheOptions = new Mock<IOptions<CacheOptions>>();
             _mockCacheOptions.Setup(x => x.Value).Returns(_cacheOptions);
-            
+
             _mockMemoryCache = new Mock<IMemoryCache>();
             _mockDistributedCache = new Mock<IDistributedCache>();
             _mockLoggerFactory = new Mock<ILoggerFactory>();
@@ -80,11 +83,11 @@ namespace ConduitLLM.Tests.Services
             _mockFactoryLogger = new Mock<ILogger<CacheServiceFactory>>();
             _mockNullCacheLogger = new Mock<ILogger<NullCacheService>>();
             _mockCacheServiceLogger = new Mock<ILogger<CacheService>>();
-            
+
             // Use Setup with a string parameter instead of generic extension method
             _mockLoggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
-                
+
             // Setup specific loggers by name instead of using generic extension methods
             _mockLoggerFactory.Setup(x => x.CreateLogger(typeof(NullCacheService).FullName!))
                 .Returns(_mockNullCacheLogger.Object);
@@ -101,23 +104,23 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var connectionException = new RedisConnectionException(ConnectionFailureType.UnableToConnect, "Connection failed");
-            
+
             // Create a testable factory that throws an exception
             var redisConnectionFactory = new TestableRedisConnectionFactory(
                 _mockCacheOptions.Object,
                 _mockRedisConnectionLogger.Object,
                 () => Task.FromException<IConnectionMultiplexer>(connectionException));
-            
+
             var factory = new CacheServiceFactory(
                 _mockCacheOptions.Object,
                 _mockMemoryCache.Object,
                 _mockDistributedCache.Object,
                 _mockLoggerFactory.Object,
                 redisConnectionFactory);
-            
+
             // Act
             var cacheService = await factory.CreateCacheServiceAsync();
-            
+
             // Assert
             Assert.NotNull(cacheService);
             Assert.IsType<CacheService>(cacheService);
@@ -130,7 +133,7 @@ namespace ConduitLLM.Tests.Services
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
-        
+
         [Fact]
         public async Task CacheServiceFactory_WhenCacheIsDisabled_ReturnsNullCacheService()
         {
@@ -139,59 +142,59 @@ namespace ConduitLLM.Tests.Services
             {
                 IsEnabled = false
             };
-            
+
             var mockDisabledOptions = new Mock<IOptions<CacheOptions>>();
             mockDisabledOptions.Setup(x => x.Value).Returns(disabledOptions);
-            
+
             // Create a testable factory
             var mockConnectionMultiplexer = new Mock<IConnectionMultiplexer>();
             var redisConnectionFactory = new TestableRedisConnectionFactory(
                 _mockCacheOptions.Object,
                 _mockRedisConnectionLogger.Object,
                 () => Task.FromResult(mockConnectionMultiplexer.Object));
-            
+
             var factory = new CacheServiceFactory(
                 mockDisabledOptions.Object,
                 _mockMemoryCache.Object,
                 _mockDistributedCache.Object,
                 _mockLoggerFactory.Object,
                 redisConnectionFactory);
-            
+
             // Act
             var cacheService = await factory.CreateCacheServiceAsync();
-            
+
             // Assert
             Assert.NotNull(cacheService);
             Assert.IsType<NullCacheService>(cacheService);
         }
-        
+
         [Fact]
         public async Task CacheServiceFactory_WhenRedisIsConfigured_ReturnsRedisCacheService()
         {
             // Arrange
             var mockConnectionMultiplexer = new Mock<IConnectionMultiplexer>();
-            
+
             // Create a testable factory that returns a connection
             var redisConnectionFactory = new TestableRedisConnectionFactory(
                 _mockCacheOptions.Object,
                 _mockRedisConnectionLogger.Object,
                 () => Task.FromResult(mockConnectionMultiplexer.Object));
-            
+
             var factory = new CacheServiceFactory(
                 _mockCacheOptions.Object,
                 _mockMemoryCache.Object,
                 _mockDistributedCache.Object,
                 _mockLoggerFactory.Object,
                 redisConnectionFactory);
-            
+
             // Act
             var cacheService = await factory.CreateCacheServiceAsync();
-            
+
             // Assert
             Assert.NotNull(cacheService);
             Assert.IsType<RedisCacheService>(cacheService);
         }
-        
+
         [Fact]
         public async Task CacheServiceFactory_WhenMemoryCacheIsConfigured_ReturnsCacheService()
         {
@@ -201,27 +204,27 @@ namespace ConduitLLM.Tests.Services
                 IsEnabled = true,
                 CacheType = "Memory"
             };
-            
+
             var mockMemoryCacheOptions = new Mock<IOptions<CacheOptions>>();
             mockMemoryCacheOptions.Setup(x => x.Value).Returns(memoryCacheOptions);
-            
+
             // Create a testable factory
             var mockConnectionMultiplexer = new Mock<IConnectionMultiplexer>();
             var redisConnectionFactory = new TestableRedisConnectionFactory(
                 _mockCacheOptions.Object,
                 _mockRedisConnectionLogger.Object,
                 () => Task.FromResult(mockConnectionMultiplexer.Object));
-            
+
             var factory = new CacheServiceFactory(
                 mockMemoryCacheOptions.Object,
                 _mockMemoryCache.Object,
                 _mockDistributedCache.Object,
                 _mockLoggerFactory.Object,
                 redisConnectionFactory);
-            
+
             // Act
             var cacheService = await factory.CreateCacheServiceAsync();
-            
+
             // Assert
             Assert.NotNull(cacheService);
             Assert.IsType<CacheService>(cacheService);

@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -97,7 +99,7 @@ namespace ConduitLLM.Admin.Services
             };
 
             var created = await _repository.CreateAsync(config);
-            _logger.LogInformation("Created audio provider configuration {Id} for provider {Provider}", 
+            _logger.LogInformation("Created audio provider configuration {Id} for provider {Provider}",
                 created.Id, credential.ProviderName);
 
             return MapToDto(created);
@@ -158,7 +160,7 @@ namespace ConduitLLM.Admin.Services
             try
             {
                 var stopwatch = Stopwatch.StartNew();
-                
+
                 // Create a client for the provider
                 var client = _clientFactory.GetClientByProvider(
                     config.ProviderCredential.ProviderName);
@@ -258,7 +260,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error testing audio provider {Id} for operation {Operation}", 
+                _logger.LogError(ex, "Error testing audio provider {Id} for operation {Operation}",
                     id, operationType);
                 result.Success = false;
                 result.Message = $"Test failed: {ex.Message}";

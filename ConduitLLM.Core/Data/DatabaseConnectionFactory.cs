@@ -2,10 +2,13 @@ using System;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+
 using Npgsql;
 
 namespace ConduitLLM.Core.Data
@@ -31,11 +34,11 @@ namespace ConduitLLM.Core.Data
         {
             _connectionStringManager = connectionStringManager ?? throw new ArgumentNullException(nameof(connectionStringManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+
             // Get provider and connection string once at initialization
             (_providerName, _connectionString) = _connectionStringManager.GetProviderAndConnectionString(
                 msg => _logger.LogDebug(msg));
-            
+
             // Validate the connection string
             try
             {
@@ -66,7 +69,7 @@ namespace ConduitLLM.Core.Data
                 var p when p == DatabaseConstants.SQLITE_PROVIDER => new SqliteConnection(_connectionString),
                 _ => throw new InvalidOperationException($"Unsupported database provider: {_providerName}")
             };
-            
+
             _logger.LogDebug("Created connection for provider: {Provider}", _providerName);
             return connection;
         }

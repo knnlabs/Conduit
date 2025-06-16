@@ -6,8 +6,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using ConduitLLM.Core.Exceptions;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -49,12 +51,12 @@ namespace ConduitLLM.Core.Utilities
             CancellationToken cancellationToken = default)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
-            
+
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options);
                 logger?.LogDebug("Sending {Method} request to {Endpoint}", method, endpoint);
-                
+
                 using var response = await client.SendAsync(request, cancellationToken);
                 return await ProcessResponseAsync<TResponse>(response, options, logger, cancellationToken);
             }
@@ -96,17 +98,17 @@ namespace ConduitLLM.Core.Utilities
             JsonSerializerOptions options)
         {
             var request = new HttpRequestMessage(method, endpoint);
-            
+
             // Add content if data is provided
             if (requestData != null)
             {
                 var requestJson = JsonSerializer.Serialize(requestData, options);
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
-            
+
             // Add headers
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            
+
             if (headers != null)
             {
                 foreach (var header in headers)
@@ -114,7 +116,7 @@ namespace ConduitLLM.Core.Utilities
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
-            
+
             return request;
         }
 
@@ -134,9 +136,9 @@ namespace ConduitLLM.Core.Utilities
                 throw new LLMCommunicationException(
                     $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}");
             }
-            
+
             logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
-            
+
             var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             return await JsonSerializer.DeserializeAsync<TResponse>(responseStream, options, cancellationToken)
                 ?? throw new LLMCommunicationException("Failed to deserialize response");
@@ -153,7 +155,7 @@ namespace ConduitLLM.Core.Utilities
                 {
                     return "No content";
                 }
-                
+
                 return await response.Content.ReadAsStringAsync(cancellationToken);
             }
             catch (Exception)
@@ -186,14 +188,14 @@ namespace ConduitLLM.Core.Utilities
             CancellationToken cancellationToken = default)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
-            
+
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options);
                 logger?.LogDebug("Sending streaming {Method} request to {Endpoint}", method, endpoint);
-                
+
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
@@ -201,7 +203,7 @@ namespace ConduitLLM.Core.Utilities
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}");
                 }
-                
+
                 logger?.LogDebug("Received successful streaming response with status code {StatusCode}", response.StatusCode);
                 return response;
             }
@@ -242,23 +244,23 @@ namespace ConduitLLM.Core.Utilities
             {
                 throw new ArgumentException("Authentication value cannot be empty", nameof(authValue));
             }
-            
+
             switch (authType.ToLowerInvariant())
             {
                 case "bearer":
                     headers["Authorization"] = $"Bearer {authValue}";
                     break;
-                    
+
                 case "apikey":
                 case "api-key":
                     headers["x-api-key"] = authValue;
                     break;
-                    
+
                 case "basic":
                     var encodedAuth = Convert.ToBase64String(Encoding.ASCII.GetBytes(authValue));
                     headers["Authorization"] = $"Basic {encodedAuth}";
                     break;
-                    
+
                 default:
                     // For custom header auth
                     headers[authType] = authValue;

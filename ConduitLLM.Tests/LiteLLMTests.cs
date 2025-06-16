@@ -4,10 +4,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using ConduitLLM.Core;
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using ConduitLLM.Core.Configuration;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

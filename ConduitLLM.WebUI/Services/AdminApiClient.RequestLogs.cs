@@ -1,12 +1,14 @@
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.WebUI.DTOs;
-using ConduitLLM.WebUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.WebUI.DTOs;
+using ConduitLLM.WebUI.Interfaces;
+
 using ConfigDTO = ConduitLLM.Configuration.DTOs;
 using ConfigServiceDTOs = ConduitLLM.Configuration.Services.Dtos;
 
@@ -18,17 +20,17 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<RequestLog> CreateRequestLogAsync(
-            int virtualKeyId, 
-            string modelName, 
-            string requestType, 
-            int inputTokens, 
-            int outputTokens, 
-            decimal cost, 
-            double responseTimeMs, 
-            string? userId = null, 
-            string? clientIp = null, 
-            string? requestPath = null, 
-            int? statusCode = null, 
+            int virtualKeyId,
+            string modelName,
+            string requestType,
+            int inputTokens,
+            int outputTokens,
+            decimal cost,
+            double responseTimeMs,
+            string? userId = null,
+            string? clientIp = null,
+            string? requestPath = null,
+            int? statusCode = null,
             CancellationToken cancellationToken = default)
         {
             try
@@ -49,16 +51,16 @@ namespace ConduitLLM.WebUI.Services
                     StatusCode = statusCode,
                     Timestamp = DateTime.UtcNow
                 };
-                
+
                 // Call the Admin API to create the log
                 var createdLog = await CreateRequestLogAsync(requestLogDto);
-                
+
                 if (createdLog == null)
                 {
                     _logger.LogError("Failed to create request log for virtual key {VirtualKeyId}", virtualKeyId);
                     throw new InvalidOperationException($"Failed to create request log for virtual key {virtualKeyId}");
                 }
-                
+
                 // Map the DTO back to the entity for returning
                 var result = new RequestLog
                 {
@@ -76,7 +78,7 @@ namespace ConduitLLM.WebUI.Services
                     StatusCode = createdLog.StatusCode,
                     Timestamp = createdLog.Timestamp
                 };
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -88,21 +90,21 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<(List<RequestLog> Logs, int TotalCount)> GetRequestLogsForKeyAsync(
-            int virtualKeyId, 
-            int page = 1, 
-            int pageSize = 100, 
+            int virtualKeyId,
+            int page = 1,
+            int pageSize = 100,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 // Call the Admin API to get the logs
                 var result = await GetRequestLogsAsync(page, pageSize, virtualKeyId);
-                
+
                 if (result == null)
                 {
                     return (new List<RequestLog>(), 0);
                 }
-                
+
                 // Map the DTOs to entities
                 var logs = new List<RequestLog>();
                 foreach (var log in result.Items)
@@ -124,7 +126,7 @@ namespace ConduitLLM.WebUI.Services
                         Timestamp = log.Timestamp
                     });
                 }
-                
+
                 return (logs, result.TotalCount);
             }
             catch (Exception ex)
@@ -136,25 +138,25 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<KeyUsageSummary?> GetKeyUsageSummaryAsync(
-            int virtualKeyId, 
+            int virtualKeyId,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 // Get the key usage statistics
                 var statistics = await GetVirtualKeyUsageStatisticsAsync(virtualKeyId);
-                
+
                 if (statistics == null || !statistics.Any())
                 {
                     return null;
                 }
-                
+
                 var keyData = statistics.FirstOrDefault();
                 if (keyData == null)
                 {
                     return null;
                 }
-                
+
                 // Map to KeyUsageSummary
                 return new KeyUsageSummary
                 {
@@ -162,7 +164,7 @@ namespace ConduitLLM.WebUI.Services
                     KeyName = keyData.KeyName,
                     TotalRequests = keyData.RequestCount,
                     TotalCost = keyData.Cost,
-                    TotalInputTokens = keyData.InputTokens, 
+                    TotalInputTokens = keyData.InputTokens,
                     TotalOutputTokens = keyData.OutputTokens,
                     AverageResponseTimeMs = keyData.AverageResponseTimeMs,
                     LastUsed = keyData.LastUsedAt,
@@ -185,12 +187,12 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Get all virtual key usage statistics
                 var statistics = await GetVirtualKeyUsageStatisticsAsync();
-                
+
                 if (statistics == null || !statistics.Any())
                 {
                     return null;
                 }
-                
+
                 // Map to KeyAggregateSummary list
                 var summaries = new List<KeyAggregateSummary>();
                 foreach (var keyData in statistics)
@@ -205,7 +207,7 @@ namespace ConduitLLM.WebUI.Services
                         TotalOutputTokens = keyData.OutputTokens
                     });
                 }
-                
+
                 return summaries;
             }
             catch (Exception ex)
@@ -217,9 +219,9 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<List<DailyUsageSummary>?> GetDailyUsageStatsAsync(
-            int? virtualKeyId = null, 
-            DateTime? startDate = null, 
-            DateTime? endDate = null, 
+            int? virtualKeyId = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
             CancellationToken cancellationToken = default)
         {
             try
@@ -227,15 +229,15 @@ namespace ConduitLLM.WebUI.Services
                 // Set default date range if not provided
                 var start = startDate ?? DateTime.UtcNow.AddDays(-30);
                 var end = endDate ?? DateTime.UtcNow;
-                
+
                 // Get daily usage stats from Admin API
                 var stats = await GetDailyUsageStatsAsync(start, end, virtualKeyId);
-                
+
                 if (stats == null || !stats.Any())
                 {
                     return null;
                 }
-                
+
                 // Map to DailyUsageSummary list
                 var summaries = new List<DailyUsageSummary>();
                 foreach (var stat in stats)
@@ -250,7 +252,7 @@ namespace ConduitLLM.WebUI.Services
                         ModelName = stat.ModelName
                     });
                 }
-                
+
                 return summaries;
             }
             catch (Exception ex)
@@ -262,31 +264,31 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<(List<RequestLog> Logs, int TotalCount)> SearchLogsAsync(
-            int? virtualKeyId, 
-            string? modelFilter, 
-            DateTime startDate, 
-            DateTime endDate, 
-            int? statusCode, 
-            int pageNumber = 1, 
-            int pageSize = 20, 
+            int? virtualKeyId,
+            string? modelFilter,
+            DateTime startDate,
+            DateTime endDate,
+            int? statusCode,
+            int pageNumber = 1,
+            int pageSize = 20,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 // Call the Admin API to get the logs with filtering
                 var result = await GetRequestLogsAsync(
-                    pageNumber, 
-                    pageSize, 
-                    virtualKeyId, 
-                    modelFilter, 
-                    startDate, 
+                    pageNumber,
+                    pageSize,
+                    virtualKeyId,
+                    modelFilter,
+                    startDate,
                     endDate);
-                
+
                 if (result == null)
                 {
                     return (new List<RequestLog>(), 0);
                 }
-                
+
                 // Map the DTOs to entities
                 var logs = new List<RequestLog>();
                 foreach (var log in result.Items)
@@ -296,7 +298,7 @@ namespace ConduitLLM.WebUI.Services
                     {
                         continue;
                     }
-                    
+
                     logs.Add(new RequestLog
                     {
                         Id = log.Id,
@@ -314,7 +316,7 @@ namespace ConduitLLM.WebUI.Services
                         Timestamp = log.Timestamp
                     });
                 }
-                
+
                 return (logs, result.TotalCount);
             }
             catch (Exception ex)
@@ -326,24 +328,24 @@ namespace ConduitLLM.WebUI.Services
 
         /// <inheritdoc />
         public async Task<LogsSummaryDto> GetLogsSummaryAsync(
-            DateTime startDate, 
-            DateTime endDate, 
+            DateTime startDate,
+            DateTime endDate,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 // Calculate days between start and end dates
                 var days = (int)Math.Ceiling((endDate - startDate).TotalDays);
-                
+
                 // Call the Admin API to get logs summary
                 var summary = await GetLogsSummaryAsync(days);
-                
+
                 // Return summary or create new WebUI DTO if null  
                 if (summary == null)
                 {
                     return new LogsSummaryDto();
                 }
-                
+
                 // Map Configuration DTO to WebUI DTO
                 var webUiSummary = new LogsSummaryDto
                 {
@@ -356,7 +358,7 @@ namespace ConduitLLM.WebUI.Services
                     FailedRequests = summary.FailedRequests,
                     ModelBreakdown = new List<RequestsByModelDto>()
                 };
-                
+
                 // Map RequestsByModel dictionary to ModelBreakdown list
                 if (summary.RequestsByModel != null)
                 {
@@ -371,7 +373,7 @@ namespace ConduitLLM.WebUI.Services
                         });
                     }
                 }
-                
+
                 return webUiSummary;
             }
             catch (Exception ex)
@@ -389,7 +391,7 @@ namespace ConduitLLM.WebUI.Services
             {
                 // Call the Admin API to get distinct models
                 var models = await GetDistinctModelsAsync();
-                
+
                 return models?.ToList() ?? new List<string>();
             }
             catch (Exception ex)

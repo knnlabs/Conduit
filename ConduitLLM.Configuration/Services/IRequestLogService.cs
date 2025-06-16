@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Services.Dtos; 
+using ConduitLLM.Configuration.Services.Dtos;
 
 namespace ConduitLLM.Configuration.Services
 {
@@ -51,7 +51,7 @@ namespace ConduitLLM.Configuration.Services
         /// <param name="endDate">End date of the period</param>
         /// <returns>Usage statistics</returns>
         Task<UsageStatisticsDto> GetUsageStatisticsAsync(int virtualKeyId, DateTime startDate, DateTime endDate);
-        
+
         /// <summary>
         /// Gets paged request logs for a virtual key
         /// </summary>
@@ -63,7 +63,7 @@ namespace ConduitLLM.Configuration.Services
             int virtualKeyId,
             int pageNumber = 1,
             int pageSize = 20);
-            
+
         /// <summary>
         /// Searches for request logs with various filter criteria
         /// </summary>
@@ -83,7 +83,7 @@ namespace ConduitLLM.Configuration.Services
             int? statusCode,
             int pageNumber = 1,
             int pageSize = 20);
-            
+
         /// <summary>
         /// Gets summary statistics for request logs in a specified time period
         /// </summary>
@@ -91,7 +91,7 @@ namespace ConduitLLM.Configuration.Services
         /// <param name="endDate">End date of the period</param>
         /// <returns>Summary statistics</returns>
         Task<DTOs.LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate);
-        
+
         /// <summary>
         /// Gets all distinct model names from the request logs
         /// </summary>

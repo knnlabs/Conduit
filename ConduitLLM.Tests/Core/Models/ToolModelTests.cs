@@ -1,11 +1,13 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using System.Linq;
+
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Validation;
-using ConduitLLM.Core.Exceptions;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Core.Models;
@@ -61,7 +63,7 @@ public class ToolModelTests
         // Arrange & Act
         var toolChoice = ToolChoice.Function("get_weather");
         var serialized = toolChoice.GetSerializedValue();
-        
+
         // Assert
         Assert.NotNull(serialized);
         var json = JsonSerializer.Serialize(serialized);
@@ -75,7 +77,7 @@ public class ToolModelTests
         // Arrange & Act
         var noneChoice = ToolChoice.None;
         var autoChoice = ToolChoice.Auto;
-        
+
         // Assert
         Assert.Equal("none", noneChoice.GetSerializedValue());
         Assert.Equal("auto", autoChoice.GetSerializedValue());
@@ -181,7 +183,10 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        ToolValidation.ValidateTools(new List<Tool> { tool }); // Should not throw
+        var exception = Record.Exception(() => ToolValidation.ValidateTools(new List<Tool> { tool }));
+        
+        // Assert
+        Assert.Null(exception); // Should not throw any exception
     }
 
     [Fact]
@@ -200,9 +205,12 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        ToolValidation.ValidateToolCalls(new List<ToolCall> { toolCall }); // Should not throw
+        var exception = Record.Exception(() => ToolValidation.ValidateToolCalls(new List<ToolCall> { toolCall }));
+        
+        // Assert
+        Assert.Null(exception); // Should not throw any exception
     }
-    
+
     [Fact]
     public void ToolValidation_ValidateToolWithInvalidType_ThrowsValidationException()
     {
@@ -218,11 +226,11 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        var ex = Assert.Throws<ValidationException>(() => 
+        var ex = Assert.Throws<ValidationException>(() =>
             ToolValidation.ValidateTools(new List<Tool> { tool }));
         Assert.Contains("not supported", ex.Message);
     }
-    
+
     [Fact]
     public void ToolValidation_ValidateFunctionCallWithInvalidJson_ThrowsValidationException()
     {
@@ -234,11 +242,11 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        var ex = Assert.Throws<ValidationException>(() => 
+        var ex = Assert.Throws<ValidationException>(() =>
             ToolValidation.ValidateFunctionCall(functionCall));
         Assert.Contains("must be valid JSON", ex.Message);
     }
-    
+
     [Fact]
     public void ChatCompletionRequest_WithToolsAndToolChoice_SerializationIsCorrect()
     {
@@ -247,8 +255,8 @@ public class ToolModelTests
         {
             Model = "gpt-4",
             Messages = new List<Message> { new Message { Role = "user", Content = "What's the weather like?" } },
-            Tools = new List<Tool> 
-            { 
+            Tools = new List<Tool>
+            {
                 new Tool
                 {
                     Type = "function",

@@ -2,13 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Routing;
 using ConduitLLM.Core.Routing;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Routing
@@ -18,12 +22,12 @@ namespace ConduitLLM.Tests.Routing
         private readonly Mock<ILLMClientFactory> _mockClientFactory;
         private readonly Mock<ILogger<DefaultLLMRouter>> _mockLogger;
         private readonly RouterConfig _testConfig;
-        
+
         public DefaultLLMRouterTests()
         {
             _mockClientFactory = new Mock<ILLMClientFactory>();
             _mockLogger = new Mock<ILogger<DefaultLLMRouter>>();
-            
+
             // Create a basic test configuration with a few model deployments
             _testConfig = new RouterConfig
             {
@@ -70,7 +74,7 @@ namespace ConduitLLM.Tests.Routing
                 }
             };
         }
-        
+
         [Fact]
         public async Task CreateChatCompletionAsync_WithPassthroughStrategy_CallsCorrectModel()
         {
@@ -81,7 +85,7 @@ namespace ConduitLLM.Tests.Routing
                 Model = "model-1",
                 Messages = new List<Message> { new Message { Role = "user", Content = "Hello" } }
             };
-            
+
             var mockClient = new Mock<ILLMClient>();
             var expectedResponse = new ChatCompletionResponse
             {
@@ -99,18 +103,18 @@ namespace ConduitLLM.Tests.Routing
                     }
                 }
             };
-            
+
             mockClient.Setup(c => c.CreateChatCompletionAsync(
                     It.IsAny<ChatCompletionRequest>(),
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
-                
+
             _mockClientFactory.Setup(f => f.GetClient("model-1")).Returns(mockClient.Object);
-            
+
             // Act
             var result = await router.CreateChatCompletionAsync(request, "passthrough");
-            
+
             // Assert
             Assert.Same(expectedResponse, result);
             _mockClientFactory.Verify(f => f.GetClient("model-1"), Times.Once);
@@ -119,7 +123,7 @@ namespace ConduitLLM.Tests.Routing
                 null,
                 It.IsAny<CancellationToken>()), Times.Once);
         }
-        
+
         [Fact]
         public Task CreateChatCompletionAsync_WithFailingPrimaryModel_UsesFallback()
         {
@@ -128,7 +132,7 @@ namespace ConduitLLM.Tests.Routing
             Assert.True(true, "Test simplified to allow build to pass");
             return Task.CompletedTask;
         }
-        
+
         [Fact]
         public Task CreateChatCompletionAsync_WithAllModelsFailingRecoverable_ThrowsLLMCommunicationException()
         {
@@ -137,7 +141,7 @@ namespace ConduitLLM.Tests.Routing
             Assert.True(true, "Test simplified to allow build to pass");
             return Task.CompletedTask;
         }
-        
+
         [Fact]
         public Task CreateChatCompletionAsync_WithNoSuitableModels_ThrowsModelUnavailableException()
         {
@@ -146,7 +150,7 @@ namespace ConduitLLM.Tests.Routing
             Assert.True(true, "Test simplified to allow build to pass");
             return Task.CompletedTask;
         }
-        
+
         [Fact]
         public async Task CreateChatCompletionAsync_WithApiKey_PassesApiKeyToClient()
         {
@@ -157,7 +161,7 @@ namespace ConduitLLM.Tests.Routing
                 Model = "model-1",
                 Messages = new List<Message> { new Message { Role = "user", Content = "Hello" } }
             };
-            
+
             var mockClient = new Mock<ILLMClient>();
             var expectedResponse = new ChatCompletionResponse
             {
@@ -175,20 +179,20 @@ namespace ConduitLLM.Tests.Routing
                     }
                 }
             };
-            
+
             mockClient.Setup(c => c.CreateChatCompletionAsync(
                     It.IsAny<ChatCompletionRequest>(),
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResponse);
-                
+
             _mockClientFactory.Setup(f => f.GetClient("model-1")).Returns(mockClient.Object);
-            
+
             string testApiKey = "test-api-key";
-            
+
             // Act
             var result = await router.CreateChatCompletionAsync(request, apiKey: testApiKey);
-            
+
             // Assert
             Assert.Same(expectedResponse, result);
             mockClient.Verify(c => c.CreateChatCompletionAsync(

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -11,13 +12,12 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
+using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Providers.InternalModels.SageMakerModels;
 using ConduitLLM.Tests.TestHelpers;
-using ConduitLLM.Providers.InternalModels;
 using ConduitLLM.Tests.TestHelpers;
 
 using Microsoft.Extensions.Logging;
-using System.Linq;
 
 using Moq;
 using Moq.Protected;
@@ -110,12 +110,12 @@ public class SageMakerClientTests
         // Arrange
         var request = CreateTestRequest("sagemaker-llama2");
         var expectedUri = $"https://runtime.sagemaker.us-east-1.amazonaws.com/endpoints/{_endpointName}/invocations";
-        
+
         var errorResponse = new { error = "Model error", message = "Failed to process the request" };
-        
+
         _handlerMock.Protected()
-            .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req != null), 
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req => req != null),
                 Moq.Protected.ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
@@ -129,7 +129,7 @@ public class SageMakerClientTests
         // Act & Assert
         var exception = await Assert.ThrowsAsync<LLMCommunicationException>(
             () => client.CreateChatCompletionAsync(request));
-        
+
         // Check for more generic error message components
         Assert.Contains("AWS SageMaker API request failed", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("error", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -160,7 +160,7 @@ public class SageMakerClientTests
         Assert.Single(models);
         Assert.Equal(_endpointName, models[0]);
     }
-    
+
     [Fact]
     public async Task CreateEmbeddingAsync_ThrowsUnsupportedProviderException()
     {
@@ -179,7 +179,7 @@ public class SageMakerClientTests
         await Assert.ThrowsAsync<UnsupportedProviderException>(
             () => client.CreateEmbeddingAsync(request));
     }
-    
+
     [Fact]
     public async Task CreateImageAsync_ThrowsUnsupportedProviderException()
     {

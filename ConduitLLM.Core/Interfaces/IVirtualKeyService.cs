@@ -1,5 +1,5 @@
-using ConduitLLM.Configuration.DTOs.VirtualKey; 
-using ConduitLLM.Configuration.Entities; 
+using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Core.Interfaces;
 

@@ -1,0 +1,322 @@
+@page "/style-guide"
+@using ConduitLLM.WebUI.Components.Shared
+@rendermode InteractiveServer
+
+<PageTitle>Style Guide - ConduitLLM</PageTitle>
+
+<div class="container container-xxl">
+    <!-- Header Section -->
+    <PageHeader Title="ConduitLLM Design System" 
+                Description="Reference guide for UI components and design patterns"
+                Icon="fa-palette">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-paint-brush me-2"></i>
+                <span class="small">Modern Design</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-check-circle me-2"></i>
+                <span class="small">Consistent UI</span>
+            </div>
+        </Statistics>
+    </PageHeader>
+
+    <!-- Cards Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-square me-2 text-primary"></i>Cards
+            </h3>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-star me-2 text-warning"></i>Modern Card
+                    </h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <p>This is a modern card with rounded corners, shadow, and hover effects.</p>
+                    <code>&lt;div class="card modern-card"&gt;</code>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
+                    <h5 class="card-title">Card without Header</h5>
+                    <p>Modern cards can also be used without headers for simpler content.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Controls Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-edit me-2 text-success"></i>Form Controls
+            </h3>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Input Fields</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="modern-form-group">
+                        <label class="modern-form-label">Text Input</label>
+                        <input type="text" class="form-control modern-form-control" placeholder="Enter text...">
+                    </div>
+                    <div class="modern-form-group">
+                        <label class="modern-form-label">Select Dropdown</label>
+                        <select class="form-select modern-form-select">
+                            <option>Option 1</option>
+                            <option>Option 2</option>
+                            <option>Option 3</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="exampleCheck">
+                        <label class="form-check-label" for="exampleCheck">
+                            Checkbox Example
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Form Code</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <pre class="mb-0"><code>&lt;div class="modern-form-group"&gt;
+    &lt;label class="modern-form-label"&gt;Label&lt;/label&gt;
+    &lt;input type="text" 
+           class="form-control modern-form-control"&gt;
+&lt;/div&gt;</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buttons Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-mouse-pointer me-2 text-info"></i>Buttons
+            </h3>
+        </div>
+        <div class="col-12">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Button Styles</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="d-flex flex-wrap gap-3">
+                        <button class="btn btn-primary modern-btn modern-btn-primary">
+                            <i class="fa fa-check me-2"></i>Primary
+                        </button>
+                        <button class="btn btn-secondary modern-btn modern-btn-secondary">
+                            <i class="fa fa-cog me-2"></i>Secondary
+                        </button>
+                        <button class="btn btn-success modern-btn">
+                            <i class="fa fa-plus me-2"></i>Success
+                        </button>
+                        <button class="btn btn-warning modern-btn">
+                            <i class="fa fa-exclamation me-2"></i>Warning
+                        </button>
+                        <button class="btn btn-danger modern-btn">
+                            <i class="fa fa-trash me-2"></i>Danger
+                        </button>
+                        <button class="btn btn-info modern-btn">
+                            <i class="fa fa-info me-2"></i>Info
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <code>&lt;button class="btn btn-primary modern-btn modern-btn-primary"&gt;</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-table me-2 text-warning"></i>Tables
+            </h3>
+        </div>
+        <div class="col-12">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Modern Table</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive modern-table-container">
+                        <table class="table modern-table">
+                            <thead class="modern-table-header">
+                                <tr>
+                                    <th>Column 1</th>
+                                    <th>Column 2</th>
+                                    <th>Column 3</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="modern-table-row">
+                                    <td>Data 1</td>
+                                    <td>Data 2</td>
+                                    <td>Data 3</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr class="modern-table-row">
+                                    <td>Data 4</td>
+                                    <td>Data 5</td>
+                                    <td>Data 6</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Badges and Alerts Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-tag me-2 text-danger"></i>Badges & Alerts
+            </h3>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Badges</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="badge modern-badge modern-badge-success">
+                            <i class="fa fa-check me-1"></i>Success
+                        </span>
+                        <span class="badge modern-badge modern-badge-warning">
+                            <i class="fa fa-exclamation me-1"></i>Warning
+                        </span>
+                        <span class="badge modern-badge modern-badge-danger">
+                            <i class="fa fa-times me-1"></i>Danger
+                        </span>
+                        <span class="badge modern-badge modern-badge-info">
+                            <i class="fa fa-info me-1"></i>Info
+                        </span>
+                    </div>
+                    <code>&lt;span class="badge modern-badge modern-badge-success"&gt;</code>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Alerts</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="alert modern-alert modern-alert-info">
+                        <i class="fa fa-info-circle me-2"></i>This is an info alert
+                    </div>
+                    <div class="alert modern-alert modern-alert-warning mb-0">
+                        <i class="fa fa-exclamation-triangle me-2"></i>This is a warning alert
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Palette Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-palette me-2 text-primary"></i>Color Palette
+            </h3>
+        </div>
+        <div class="col-12">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Design System Colors</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="p-4 text-white text-center rounded" style="background: var(--color-primary);">
+                                <strong>Primary</strong><br>
+                                <code class="text-white">#667eea</code>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-4 text-white text-center rounded" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <strong>Gradient</strong><br>
+                                <code class="text-white">Primary</code>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-4 text-dark text-center rounded" style="background: var(--gradient-light);">
+                                <strong>Light</strong><br>
+                                <code>#f8f9ff</code>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="p-4 text-dark text-center rounded border" style="background: var(--color-border-light);">
+                                <strong>Border</strong><br>
+                                <code>#e8f4fd</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Utility Classes Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="fa fa-code me-2 text-success"></i>Utility Classes
+            </h3>
+        </div>
+        <div class="col-12">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
+                    <h5 class="mb-0">Helper Classes</h5>
+                </div>
+                <div class="card-body modern-card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Effects</h6>
+                            <ul>
+                                <li><code>.hover-lift</code> - Adds lift effect on hover</li>
+                                <li><code>.gradient-text</code> - Makes text gradient colored</li>
+                                <li><code>.modern-info-card</code> - Info card styling</li>
+                                <li><code>.modern-feature</code> - Feature box styling</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>CSS Variables</h6>
+                            <ul>
+                                <li><code>--border-radius-sm</code> - 0.5rem</li>
+                                <li><code>--border-radius-md</code> - 0.75rem</li>
+                                <li><code>--border-radius-lg</code> - 1rem</li>
+                                <li><code>--shadow-lg</code> - Large shadow</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

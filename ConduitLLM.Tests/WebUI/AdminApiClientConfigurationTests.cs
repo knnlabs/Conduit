@@ -1,7 +1,9 @@
 using ConduitLLM.WebUI.Options;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Moq;
 
 namespace ConduitLLM.Tests.WebUI
@@ -87,7 +89,7 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Arrange
             var optionsMock = new Mock<IOptions<AdminApiOptions>>();
-            optionsMock.Setup(o => o.Value).Returns((AdminApiOptions?)null);
+            optionsMock.Setup(o => o.Value).Returns(new AdminApiOptions());
 
             // Act
             using var httpClient = new HttpClient(_handlerMock.Object);

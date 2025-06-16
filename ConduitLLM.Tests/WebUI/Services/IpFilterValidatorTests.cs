@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.WebUI.Services;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.WebUI.Services
@@ -14,13 +18,13 @@ namespace ConduitLLM.Tests.WebUI.Services
     {
         private readonly Mock<ILogger<IpFilterValidator>> _mockLogger;
         private readonly IpFilterValidator _validator;
-        
+
         public IpFilterValidatorTests()
         {
             _mockLogger = new Mock<ILogger<IpFilterValidator>>();
             _validator = new IpFilterValidator(_mockLogger.Object);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithValidFilter_ReturnsValid()
         {
@@ -32,17 +36,17 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>();
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.True(isValid);
             Assert.Null(errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithInvalidFilterType_ReturnsInvalid()
         {
@@ -54,17 +58,17 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>();
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("Invalid filter type", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithEmptyIpAddress_ReturnsInvalid()
         {
@@ -76,17 +80,17 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>();
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("IP address or CIDR subnet cannot be empty", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithInvalidIpAddress_ReturnsInvalid()
         {
@@ -98,17 +102,17 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>();
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("Invalid IP address format", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithInvalidCidr_ReturnsInvalid()
         {
@@ -120,17 +124,17 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>();
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("Invalid CIDR notation", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithDuplicateFilter_ReturnsInvalid()
         {
@@ -142,7 +146,7 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>
             {
                 new IpFilterEntity
@@ -154,15 +158,15 @@ namespace ConduitLLM.Tests.WebUI.Services
                     IsEnabled = true
                 }
             };
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("rule already exists", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithConflictingFilterType_ReturnsInvalid()
         {
@@ -174,7 +178,7 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>
             {
                 new IpFilterEntity
@@ -186,15 +190,15 @@ namespace ConduitLLM.Tests.WebUI.Services
                     IsEnabled = true
                 }
             };
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("Conflict detected", errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WhenUpdating_IgnoresExistingFilterWithSameId()
         {
@@ -240,7 +244,7 @@ namespace ConduitLLM.Tests.WebUI.Services
             Assert.True(isValid);
             Assert.Null(errorMessage);
         }
-        
+
         [Fact]
         public void ValidateFilter_WithCidrConflict_ReturnsInvalid()
         {
@@ -252,7 +256,7 @@ namespace ConduitLLM.Tests.WebUI.Services
                 Description = "Test filter",
                 IsEnabled = true
             };
-            
+
             var existingFilters = new List<IpFilterEntity>
             {
                 new IpFilterEntity
@@ -264,10 +268,10 @@ namespace ConduitLLM.Tests.WebUI.Services
                     IsEnabled = true
                 }
             };
-            
+
             // Act
             var (isValid, errorMessage) = _validator.ValidateFilter(filter, existingFilters);
-            
+
             // Assert
             Assert.False(isValid);
             Assert.Contains("Conflict detected", errorMessage);

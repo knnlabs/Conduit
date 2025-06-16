@@ -1,13 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Extensions;
+
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ConduitLLM.Admin.Services;
 
@@ -39,7 +42,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<IEnumerable<ModelProviderMappingDto>> GetAllMappingsAsync()
     {
-        _logger.LogInformation("Getting all model provider mappings");
+        _logger.LogInformationSecure("Getting all model provider mappings");
         var mappings = await _mappingRepository.GetAllAsync();
         return mappings.Select(m => m.ToDto());
     }
@@ -47,7 +50,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<ModelProviderMappingDto?> GetMappingByIdAsync(int id)
     {
-        _logger.LogInformation("Getting model provider mapping with ID: {Id}", id);
+        _logger.LogInformationSecure("Getting model provider mapping with ID: {Id}", id);
         var mapping = await _mappingRepository.GetByIdAsync(id);
         return mapping?.ToDto();
     }
@@ -55,7 +58,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     /// <inheritdoc />
     public async Task<ModelProviderMappingDto?> GetMappingByModelIdAsync(string modelId)
     {
-        _logger.LogInformation("Getting model provider mapping for model ID: {ModelId}", modelId);
+        _logger.LogInformationSecure("Getting model provider mapping for model ID: {ModelId}", modelId);
         var mapping = await _mappingRepository.GetByModelAliasAsync(modelId);
         return mapping?.ToDto();
     }
@@ -65,7 +68,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Adding new model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
+            _logger.LogInformationSecure("Adding new model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
 
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
@@ -77,13 +80,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
                 var provider = await _credentialRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
+                    _logger.LogWarningSecure("Provider not found with ID: {ProviderId}", providerId);
                     return false;
                 }
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
+                _logger.LogWarningSecure("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
                 return false;
             }
 
@@ -91,7 +94,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             var existingMapping = await _mappingRepository.GetByModelAliasAsync(mapping.ModelAlias);
             if (existingMapping != null)
             {
-                _logger.LogWarning("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias);
+                _logger.LogWarningSecure("A mapping for model ID already exists: {ModelId}", mapping.ModelAlias);
                 return false;
             }
 
@@ -101,7 +104,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
+            _logger.LogErrorSecure(ex, "Error adding model provider mapping for model ID: {ModelId}", mappingDto.ModelId);
             return false;
         }
     }
@@ -111,7 +114,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Updating model provider mapping with ID: {Id}", mappingDto.Id);
+            _logger.LogInformationSecure("Updating model provider mapping with ID: {Id}", mappingDto.Id);
 
             // Convert DTO to entity
             var mapping = mappingDto.ToEntity();
@@ -120,7 +123,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
             var existingMapping = await _mappingRepository.GetByIdAsync(mapping.Id);
             if (existingMapping == null)
             {
-                _logger.LogWarning("Model provider mapping not found with ID: {Id}", mapping.Id);
+                _logger.LogWarningSecure("Model provider mapping not found with ID: {Id}", mapping.Id);
                 return false;
             }
 
@@ -131,13 +134,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
                 var provider = await _credentialRepository.GetByIdAsync(providerId);
                 if (provider == null)
                 {
-                    _logger.LogWarning("Provider not found with ID: {ProviderId}", providerId);
+                    _logger.LogWarningSecure("Provider not found with ID: {ProviderId}", providerId);
                     return false;
                 }
             }
             else
             {
-                _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
+                _logger.LogWarningSecure("Invalid provider ID: {ProviderId}", mappingDto.ProviderId);
                 return false;
             }
 
@@ -154,7 +157,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating model provider mapping with ID: {Id}", mappingDto.Id);
+            _logger.LogErrorSecure(ex, "Error updating model provider mapping with ID: {Id}", mappingDto.Id);
             return false;
         }
     }
@@ -164,13 +167,13 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Deleting model provider mapping with ID: {Id}", id);
+            _logger.LogInformationSecure("Deleting model provider mapping with ID: {Id}", id);
 
             // Check if the mapping exists
             var existingMapping = await _mappingRepository.GetByIdAsync(id);
             if (existingMapping == null)
             {
-                _logger.LogWarning("Model provider mapping not found with ID: {Id}", id);
+                _logger.LogWarningSecure("Model provider mapping not found with ID: {Id}", id);
                 return false;
             }
 
@@ -179,7 +182,7 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting model provider mapping with ID: {Id}", id);
+            _logger.LogErrorSecure(ex, "Error deleting model provider mapping with ID: {Id}", id);
             return false;
         }
     }
@@ -189,14 +192,14 @@ public class AdminModelProviderMappingService : IAdminModelProviderMappingServic
     {
         try
         {
-            _logger.LogInformation("Getting all providers");
+            _logger.LogInformationSecure("Getting all providers");
 
             var providers = await _credentialRepository.GetAllAsync();
             return providers.Select(p => p.ToProviderDataDto());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting providers");
+            _logger.LogErrorSecure(ex, "Error getting providers");
             return Enumerable.Empty<ProviderDataDto>();
         }
     }

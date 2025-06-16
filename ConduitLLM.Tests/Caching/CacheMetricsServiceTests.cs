@@ -166,15 +166,15 @@ namespace ConduitLLM.Tests.Caching
             Assert.True(modelMetrics.ContainsKey("model1"));
             Assert.True(modelMetrics.ContainsKey("model2"));
             Assert.True(modelMetrics.ContainsKey("model3"));
-            
+
             Assert.Equal(1, modelMetrics["model1"].Hits);
             Assert.Equal(1, modelMetrics["model1"].Misses);
             Assert.Equal(10, modelMetrics["model1"].TotalRetrievalTimeMs);
-            
+
             Assert.Equal(1, modelMetrics["model2"].Hits);
             Assert.Equal(0, modelMetrics["model2"].Misses);
             Assert.Equal(20, modelMetrics["model2"].TotalRetrievalTimeMs);
-            
+
             Assert.Equal(0, modelMetrics["model3"].Hits);
             Assert.Equal(1, modelMetrics["model3"].Misses);
             Assert.Equal(0, modelMetrics["model3"].TotalRetrievalTimeMs);
@@ -250,7 +250,7 @@ namespace ConduitLLM.Tests.Caching
             long hits = 100;
             long misses = 50;
             double avgResponseTime = 15.5;
-            
+
             var modelMetrics = new Dictionary<string, ModelCacheMetrics>
             {
                 ["model1"] = new ModelCacheMetrics { Hits = 60, Misses = 20, TotalRetrievalTimeMs = 900 },
@@ -263,11 +263,11 @@ namespace ConduitLLM.Tests.Caching
             // Assert
             var importedMetrics = _metricsService.GetModelMetrics();
             Assert.Equal(2, importedMetrics.Count);
-            
+
             Assert.Equal(60, importedMetrics["model1"].Hits);
             Assert.Equal(20, importedMetrics["model1"].Misses);
             Assert.Equal(900, importedMetrics["model1"].TotalRetrievalTimeMs);
-            
+
             Assert.Equal(40, importedMetrics["model2"].Hits);
             Assert.Equal(30, importedMetrics["model2"].Misses);
             Assert.Equal(650, importedMetrics["model2"].TotalRetrievalTimeMs);
@@ -278,7 +278,7 @@ namespace ConduitLLM.Tests.Caching
         {
             // Arrange
             _metricsService.RecordHit(10);
-            
+
             long hits = 100;
             long misses = 50;
             double avgResponseTime = 15.5;

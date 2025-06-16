@@ -1,8 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
+
 using ConduitLLM.WebUI.Components.Pages;
+
 using Microsoft.AspNetCore.Components;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.WebUI
@@ -17,10 +20,10 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Get the assembly containing the pages
             var webUIAssembly = typeof(Home).Assembly;
-            
+
             // Find all page components (classes that inherit from ComponentBase and are in Pages namespace)
             var pageTypes = webUIAssembly.GetTypes()
-                .Where(t => t.Namespace != null && 
+                .Where(t => t.Namespace != null &&
                            t.Namespace.Contains("Pages") &&
                            typeof(ComponentBase).IsAssignableFrom(t) &&
                            !t.IsAbstract &&
@@ -29,7 +32,7 @@ namespace ConduitLLM.Tests.WebUI
 
             // Verify we found pages
             Assert.NotEmpty(pageTypes);
-            
+
             // Try to create an instance of each page
             foreach (var pageType in pageTypes)
             {
@@ -68,7 +71,7 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Act
             var instance = Activator.CreateInstance(pageType);
-            
+
             // Assert
             Assert.NotNull(instance);
             Assert.IsAssignableFrom<ComponentBase>(instance);
@@ -79,10 +82,10 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Get the assembly containing the pages
             var webUIAssembly = typeof(Home).Assembly;
-            
+
             // Find all page components
             var pageTypes = webUIAssembly.GetTypes()
-                .Where(t => t.Namespace != null && 
+                .Where(t => t.Namespace != null &&
                            t.Namespace.Contains("Pages") &&
                            typeof(ComponentBase).IsAssignableFrom(t) &&
                            !t.IsAbstract &&
@@ -93,7 +96,7 @@ namespace ConduitLLM.Tests.WebUI
             {
                 // Verify page names don't contain spaces or special characters
                 Assert.Matches(@"^[A-Za-z][A-Za-z0-9]*$", pageType.Name);
-                
+
                 // Verify pages are in the correct namespace
                 Assert.Contains("ConduitLLM.WebUI.Components.Pages", pageType.Namespace);
             }
@@ -104,10 +107,10 @@ namespace ConduitLLM.Tests.WebUI
         {
             // Get the assembly containing the pages
             var webUIAssembly = typeof(Home).Assembly;
-            
+
             // Find all page components
             var pageTypes = webUIAssembly.GetTypes()
-                .Where(t => t.Namespace != null && 
+                .Where(t => t.Namespace != null &&
                            t.Namespace.Contains("Pages") &&
                            typeof(ComponentBase).IsAssignableFrom(t) &&
                            !t.IsAbstract)

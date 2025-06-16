@@ -1,0 +1,304 @@
+# Production deployment configuration for Conduit Audio Services
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conduit-audio-service
+  namespace: production
+  labels:
+    app: conduit-audio
+    component: audio-service
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: conduit-audio
+      component: audio-service
+  template:
+    metadata:
+      labels:
+        app: conduit-audio
+        component: audio-service
+        environment: production
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - conduit-audio
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: audio-service
+        image: conduit/audio-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        - containerPort: 443
+          name: https
+          protocol: TCP
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ASPNETCORE_URLS
+          value: "http://+:80;https://+:443"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: conduit-database
+              key: connection-string
+        - name: Redis__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: conduit-redis
+              key: connection-string
+        - name: AudioService__MaxConcurrentRequests
+          value: "1000"
+        - name: AudioService__RequestTimeoutSeconds
+          value: "300"
+        - name: AudioService__EnableMetrics
+          value: "true"
+        - name: AudioService__EnableTracing
+          value: "true"
+        - name: Logging__MinimumLevel__Default
+          value: "Information"
+        - name: Logging__MinimumLevel__Microsoft
+          value: "Warning"
+        - name: Logging__MinimumLevel__System
+          value: "Warning"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+        volumeMounts:
+        - name: appsettings
+          mountPath: /app/config
+          readOnly: true
+        - name: certificates
+          mountPath: /app/certificates
+          readOnly: true
+      volumes:
+      - name: appsettings
+        configMap:
+          name: conduit-audio-config
+      - name: certificates
+        secret:
+          secretName: conduit-audio-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: conduit-audio-service
+  namespace: production
+  labels:
+    app: conduit-audio
+    component: audio-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: https
+    protocol: TCP
+    name: https
+  selector:
+    app: conduit-audio
+    component: audio-service
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conduit-audio-config
+  namespace: production
+data:
+  appsettings.Production.json: |
+    {
+      "AudioService": {
+        "Providers": {
+          "OpenAI": {
+            "Enabled": true,
+            "Weight": 70,
+            "MaxConcurrentRequests": 500,
+            "TimeoutSeconds": 120,
+            "RetryPolicy": {
+              "MaxRetries": 3,
+              "InitialDelayMs": 1000,
+              "MaxDelayMs": 30000
+            }
+          },
+          "Google": {
+            "Enabled": true,
+            "Weight": 20,
+            "MaxConcurrentRequests": 200,
+            "TimeoutSeconds": 120
+          },
+          "AWS": {
+            "Enabled": true,
+            "Weight": 10,
+            "MaxConcurrentRequests": 100,
+            "TimeoutSeconds": 120
+          }
+        },
+        "ConnectionPool": {
+          "MaxConnectionsPerProvider": 100,
+          "ConnectionTimeout": 30,
+          "MaxIdleTime": "00:15:00",
+          "MaxConnectionAge": "01:00:00",
+          "EnableHealthChecks": true,
+          "HealthCheckInterval": "00:01:00"
+        },
+        "Cache": {
+          "EnabledCaching": true,
+          "DefaultTranscriptionTtl": "00:30:00",
+          "DefaultTtsTtl": "01:00:00",
+          "MaxMemoryCacheSizeBytes": 1073741824,
+          "EnableCompression": true,
+          "CompressionThreshold": 1024
+        },
+        "Monitoring": {
+          "EnableMetrics": true,
+          "EnableTracing": true,
+          "EnableAlerts": true,
+          "MetricsRetentionHours": 168,
+          "AlertEvaluationInterval": "00:01:00"
+        },
+        "RateLimiting": {
+          "Enabled": true,
+          "RequestsPerMinute": 1000,
+          "BurstSize": 2000,
+          "QueueLimit": 5000
+        }
+      },
+      "Serilog": {
+        "MinimumLevel": {
+          "Default": "Information",
+          "Override": {
+            "Microsoft": "Warning",
+            "System": "Warning",
+            "Microsoft.Hosting.Lifetime": "Information"
+          }
+        },
+        "WriteTo": [
+          {
+            "Name": "Console",
+            "Args": {
+              "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj} {Properties:j}{NewLine}{Exception}"
+            }
+          },
+          {
+            "Name": "File",
+            "Args": {
+              "path": "/logs/audio-service-.log",
+              "rollingInterval": "Day",
+              "retainedFileCountLimit": 7,
+              "fileSizeLimitBytes": 1073741824,
+              "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{SourceContext}] {Message:lj} {Properties:j}{NewLine}{Exception}"
+            }
+          }
+        ],
+        "Enrich": ["FromLogContext", "WithMachineName", "WithThreadId"]
+      }
+    }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: conduit-audio-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: conduit-audio-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: audio_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: 50
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: conduit-audio-pdb
+  namespace: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: conduit-audio
+      component: audio-service

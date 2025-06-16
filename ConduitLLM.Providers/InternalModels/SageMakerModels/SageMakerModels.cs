@@ -10,7 +10,7 @@ public class SageMakerRequest
 {
     [JsonPropertyName("inputs")]
     public string Inputs { get; set; } = null!;
-    
+
     [JsonPropertyName("parameters")]
     public SageMakerParameters? Parameters { get; set; }
 }
@@ -22,22 +22,22 @@ public class SageMakerParameters
 {
     [JsonPropertyName("max_new_tokens")]
     public int? MaxNewTokens { get; set; }
-    
+
     [JsonPropertyName("temperature")]
     public double? Temperature { get; set; }
-    
+
     [JsonPropertyName("top_p")]
     public double? TopP { get; set; }
-    
+
     [JsonPropertyName("top_k")]
     public int? TopK { get; set; }
-    
+
     [JsonPropertyName("stop")]
     public List<string>? Stop { get; set; }
-    
+
     [JsonPropertyName("do_sample")]
     public bool? DoSample { get; set; }
-    
+
     [JsonPropertyName("return_full_text")]
     public bool? ReturnFullText { get; set; }
 }
@@ -70,7 +70,7 @@ public class SageMakerChatMessage
 {
     [JsonPropertyName("role")]
     public string Role { get; set; } = null!;
-    
+
     [JsonPropertyName("content")]
     public string Content { get; set; } = null!;
 }
@@ -91,7 +91,7 @@ public class SageMakerChatOutput
 {
     [JsonPropertyName("role")]
     public string? Role { get; set; }
-    
+
     [JsonPropertyName("content")]
     public string? Content { get; set; }
 }

@@ -14,6 +14,7 @@
 @inject ILogger<ProviderHealthConfig> Logger
 @inject IJSRuntime JSRuntime
 @inject NotificationService NotificationService
+@inject IToastService ToastService
 
 <PageTitle>Provider Health Configuration</PageTitle>
 
@@ -293,7 +294,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading provider health configuration");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error loading configuration: " + ex.Message);
+            ToastService.ShowError("Error loading configuration: " + ex.Message);
         }
         finally
         {
@@ -338,7 +339,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error refreshing provider configurations");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error refreshing configurations: " + ex.Message);
+            ToastService.ShowError("Error refreshing configurations: " + ex.Message);
         }
     }
     
@@ -350,12 +351,12 @@
             await GlobalSettingService.SaveProviderHealthOptionsAsync(_globalSettings);
 
             // Show success notification
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, "Global settings saved successfully");
+            ToastService.ShowSuccess("Global settings saved successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving global settings");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error saving global settings: " + ex.Message);
+            ToastService.ShowError("Error saving global settings: " + ex.Message);
         }
     }
     
@@ -375,12 +376,12 @@
             };
             
             await AdminApiClient.UpdateProviderHealthConfigurationAsync(config.ProviderName, updateDto);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Configuration for {config.ProviderName} saved successfully");
+            ToastService.ShowSuccess($"Configuration for {config.ProviderName} saved successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving provider configuration for {ProviderName}", config.ProviderName);
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, $"Error saving configuration for {config.ProviderName}: {ex.Message}");
+            ToastService.ShowError($"Error saving configuration for {config.ProviderName}: {ex.Message}");
         }
     }
     
@@ -417,12 +418,12 @@
             // Purge old records via Admin API
             var purgedCount = await AdminApiClient.PurgeOldProviderHealthRecordsAsync(olderThan);
             
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged {purgedCount} old records successfully");
+            ToastService.ShowSuccess($"Purged {purgedCount} old records successfully");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error purging old records");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error purging old records: " + ex.Message);
+            ToastService.ShowError("Error purging old records: " + ex.Message);
         }
     }
     
@@ -434,13 +435,13 @@
             var purgedCount = await AdminApiClient.PurgeOldProviderHealthRecordsAsync(DateTime.UtcNow.AddYears(100));
             
             _showPurgeAllModal = false;
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Success, $"Purged all {purgedCount} records successfully");
+            ToastService.ShowSuccess($"Purged all {purgedCount} records successfully");
             StateHasChanged();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error purging all records");
-            NotificationService.AddNotification(WebUI.Models.NotificationType.Error, "Error purging all records: " + ex.Message);
+            ToastService.ShowError("Error purging all records: " + ex.Message);
             _showPurgeAllModal = false;
             StateHasChanged();
         }

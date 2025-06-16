@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
@@ -30,7 +31,7 @@ namespace ConduitLLM.Admin.Extensions
         {
             // Get the logs for the date range
             var logs = await repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
-            
+
             // Group by date and calculate daily costs
             var dailyCosts = logs
                 .GroupBy(l => l.Timestamp.Date)
@@ -38,10 +39,10 @@ namespace ConduitLLM.Admin.Extensions
                 .OrderBy(d => d.Date)
                 .Select(d => (d.Date, d.Cost))
                 .ToList();
-                
+
             return dailyCosts;
         }
-        
+
         /// <summary>
         /// Gets virtual key information by key name
         /// </summary>
@@ -57,7 +58,7 @@ namespace ConduitLLM.Admin.Extensions
             var keys = await repository.GetAllAsync(cancellationToken);
             return keys.FirstOrDefault(k => k.KeyName.Equals(keyName, StringComparison.OrdinalIgnoreCase));
         }
-        
+
         /// <summary>
         /// Gets the spend history for a virtual key within a date range
         /// </summary>
@@ -80,7 +81,7 @@ namespace ConduitLLM.Admin.Extensions
                 .OrderBy(h => h.Timestamp)
                 .ToList();
         }
-        
+
         /// <summary>
         /// Gets the remaining budget for a virtual key
         /// </summary>
@@ -92,7 +93,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 return null;
             }
-            
+
             return Math.Max(0, virtualKey.MaxBudget.Value - virtualKey.CurrentSpend);
         }
 
@@ -107,7 +108,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 throw new ArgumentNullException(nameof(mapping));
             }
-            
+
             return new ModelProviderMappingDto
             {
                 Id = mapping.Id,
@@ -123,7 +124,7 @@ namespace ConduitLLM.Admin.Extensions
                 Notes = null // Not available in entity
             };
         }
-        
+
         /// <summary>
         /// Maps a ModelProviderMappingDto to a ModelProviderMapping entity
         /// </summary>
@@ -135,13 +136,13 @@ namespace ConduitLLM.Admin.Extensions
             {
                 throw new ArgumentNullException(nameof(dto));
             }
-            
+
             int providerId = 0;
             if (!string.IsNullOrEmpty(dto.ProviderId))
             {
                 int.TryParse(dto.ProviderId, out providerId);
             }
-            
+
             return new ModelProviderMapping
             {
                 Id = dto.Id,
@@ -154,7 +155,7 @@ namespace ConduitLLM.Admin.Extensions
                 UpdatedAt = dto.UpdatedAt
             };
         }
-        
+
         /// <summary>
         /// Maps a ProviderCredential entity to a ProviderCredentialDto
         /// </summary>

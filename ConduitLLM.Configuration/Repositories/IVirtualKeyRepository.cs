@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 
@@ -45,7 +46,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// scenarios and improves performance.
         /// </remarks>
         Task<VirtualKey?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Retrieves a virtual key entity by its hashed key value.
         /// </summary>
@@ -69,7 +70,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </remarks>
         /// <exception cref="ArgumentException">Thrown when the keyHash parameter is null or empty.</exception>
         Task<VirtualKey?> GetByKeyHashAsync(string keyHash, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Retrieves all virtual key entities in the system.
         /// </summary>
@@ -92,7 +93,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// </para>
         /// </remarks>
         Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new virtual key entity in the database.
         /// </summary>
@@ -119,7 +120,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <exception cref="ArgumentNullException">Thrown when the virtualKey parameter is null.</exception>
         /// <exception cref="DbUpdateException">May be thrown when a database constraint is violated.</exception>
         Task<int> CreateAsync(VirtualKey virtualKey, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates an existing virtual key entity in the database.
         /// </summary>
@@ -154,7 +155,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <exception cref="ArgumentNullException">Thrown when the virtualKey parameter is null.</exception>
         /// <exception cref="DbUpdateConcurrencyException">May be thrown when a concurrency conflict occurs.</exception>
         Task<bool> UpdateAsync(VirtualKey virtualKey, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a virtual key entity from the database.
         /// </summary>

@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,7 @@ public class LogsController : ControllerBase
 {
     private readonly IAdminLogService _logService;
     private readonly ILogger<LogsController> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the LogsController
     /// </summary>
@@ -28,7 +29,7 @@ public class LogsController : ControllerBase
         _logService = logService ?? throw new ArgumentNullException(nameof(logService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets paginated request logs
     /// </summary>
@@ -45,12 +46,12 @@ public class LogsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetLogs(
-        [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 50, 
-        [FromQuery] DateTime? startDate = null, 
-        [FromQuery] DateTime? endDate = null, 
-        [FromQuery] string? model = null, 
-        [FromQuery] int? virtualKeyId = null, 
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? model = null,
+        [FromQuery] int? virtualKeyId = null,
         [FromQuery] int? status = null)
     {
         try
@@ -60,15 +61,15 @@ public class LogsController : ControllerBase
             {
                 return BadRequest("Page must be greater than or equal to 1");
             }
-            
+
             if (pageSize < 1 || pageSize > 100)
             {
                 return BadRequest("Page size must be between 1 and 100");
             }
-            
+
             var logs = await _logService.GetLogsAsync(
                 page, pageSize, startDate, endDate, model, virtualKeyId, status);
-            
+
             return Ok(logs);
         }
         catch (Exception ex)
@@ -77,13 +78,34 @@ public class LogsController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
+    /// <summary>
+    /// Gets a list of distinct model names from request logs
+    /// </summary>
+    /// <returns>List of model names</returns>
+    [HttpGet("models")]
+    [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetDistinctModels()
+    {
+        try
+        {
+            var models = await _logService.GetDistinctModelsAsync();
+            return Ok(models);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting distinct models");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
+        }
+    }
+
     /// <summary>
     /// Gets a single log entry by ID
     /// </summary>
     /// <param name="id">The ID of the log to retrieve</param>
     /// <returns>The log entry</returns>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(LogRequestDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -92,12 +114,12 @@ public class LogsController : ControllerBase
         try
         {
             var log = await _logService.GetLogByIdAsync(id);
-            
+
             if (log == null)
             {
-                return NotFound($"Log with ID {id} not found");
+                return NotFound("Log entry not found");
             }
-            
+
             return Ok(log);
         }
         catch (Exception ex)
@@ -106,7 +128,7 @@ public class LogsController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
-    
+
     /// <summary>
     /// Gets logs summarized by the specified timeframe
     /// </summary>
@@ -119,8 +141,8 @@ public class LogsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetLogsSummary(
-        [FromQuery] string timeframe = "daily", 
-        [FromQuery] DateTime? startDate = null, 
+        [FromQuery] string timeframe = "daily",
+        [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
         try
@@ -130,9 +152,9 @@ public class LogsController : ControllerBase
             {
                 return BadRequest("Timeframe must be one of: daily, weekly, monthly");
             }
-            
+
             var summary = await _logService.GetLogsSummaryAsync(timeframe, startDate, endDate);
-            
+
             return Ok(summary);
         }
         catch (Exception ex)

@@ -1,0 +1,191 @@
+name: Build and Release
+
+on:
+  push:
+    branches: ['master', 'dev']
+    paths-ignore:
+      - 'website/**'
+      - '**/*.md'
+      - 'docs/**'
+  pull_request:
+    branches: ['master', 'dev']
+    paths-ignore:
+      - 'website/**'
+      - '**/*.md'
+      - 'docs/**'
+  release:
+    types: [published]
+
+jobs:
+  # CodeQL Security Analysis
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: csharp
+        queries: security-and-quality
+
+    - name: Build
+      run: dotnet build --configuration Release
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:csharp"
+        # Upload to GitHub for main branches, skip for PRs
+        upload: ${{ github.event_name != 'pull_request' }}
+        output: codeql-results
+
+    - name: Check for Security Issues
+      id: check-security
+      run: |
+        if [ -d codeql-results ]; then
+          # Check for high severity issues in SARIF files
+          HIGH_SEVERITY_COUNT=0
+          for sarif in codeql-results/*.sarif; do
+            if [ -f "$sarif" ]; then
+              # Count high severity results
+              COUNT=$(jq '[.runs[].results[] | select(.level == "error" or .level == "critical")] | length' "$sarif" 2>/dev/null || echo "0")
+              HIGH_SEVERITY_COUNT=$((HIGH_SEVERITY_COUNT + COUNT))
+            fi
+          done
+          
+          echo "high_severity_count=$HIGH_SEVERITY_COUNT" >> $GITHUB_OUTPUT
+          
+          if [ $HIGH_SEVERITY_COUNT -gt 0 ]; then
+            echo "❌ Found $HIGH_SEVERITY_COUNT high severity security issues!" >> $GITHUB_STEP_SUMMARY
+            echo "Docker images will not be built until these issues are resolved." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ No high severity security issues found!" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "⚠️ No CodeQL results found to analyze" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload CodeQL Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results
+        path: codeql-results/
+        retention-days: 7
+
+  # Build and Test
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: codeql-analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Test
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+  # Build and Push Docker Images
+  docker-build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [codeql-analysis, build-and-test]
+    # Only run on push events to main branches or releases
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # WebUI Image
+      - name: Extract metadata for WebUI
+        id: meta-webui
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/knnlabs/conduit-webui
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+
+      - name: Build and push WebUI Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./ConduitLLM.WebUI/Dockerfile
+          push: true
+          tags: ${{ steps.meta-webui.outputs.tags }}
+          labels: ${{ steps.meta-webui.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      # HTTP API Image
+      - name: Extract metadata for HTTP API
+        id: meta-http
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/knnlabs/conduit-http
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+
+      - name: Build and push Http Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./ConduitLLM.Http/Dockerfile
+          push: true
+          tags: ${{ steps.meta-http.outputs.tags }}
+          labels: ${{ steps.meta-http.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1

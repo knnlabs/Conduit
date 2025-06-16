@@ -1,7 +1,20 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services.Adapters;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Xunit;
+
+using VirtualKeyDto = ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto;
+using CreateVirtualKeyRequestDto = ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyRequestDto;
+using CreateVirtualKeyResponseDto = ConduitLLM.Configuration.DTOs.VirtualKey.CreateVirtualKeyResponseDto;
+using UpdateVirtualKeyRequestDto = ConduitLLM.Configuration.DTOs.VirtualKey.UpdateVirtualKeyRequestDto;
+using VirtualKeyCostDataDto = ConduitLLM.Configuration.DTOs.Costs.VirtualKeyCostDataDto;
+using WebUIVirtualKeyCostDataDto = ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto;
+
 
 namespace ConduitLLM.Tests.WebUI.Adapters
 {
@@ -22,10 +35,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task ListVirtualKeysAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedKeys = new List<ConfigDTOs.VirtualKey.VirtualKeyDto>
+            var expectedKeys = new List<VirtualKeyDto>
             {
-                new ConfigDTOs.VirtualKey.VirtualKeyDto { Id = 1, Name = "Test Key 1" },
-                new ConfigDTOs.VirtualKey.VirtualKeyDto { Id = 2, Name = "Test Key 2" }
+                new VirtualKeyDto { Id = 1, Name = "Test Key 1" },
+                new VirtualKeyDto { Id = 2, Name = "Test Key 2" }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllVirtualKeysAsync())
@@ -43,7 +56,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetVirtualKeyInfoAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedKey = new ConfigDTOs.VirtualKey.VirtualKeyDto { Id = 1, Name = "Test Key" };
+            var expectedKey = new VirtualKeyDto { Id = 1, Name = "Test Key" };
 
             _adminApiClientMock.Setup(c => c.GetVirtualKeyByIdAsync(1))
                 .ReturnsAsync(expectedKey);
@@ -60,9 +73,9 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CreateVirtualKeyAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var createDto = new ConfigDTOs.VirtualKey.CreateVirtualKeyRequestDto { KeyName = "New Key" };
-            var keyInfo = new ConfigDTOs.VirtualKey.VirtualKeyDto { Id = 1, Name = "New Key" };
-            var expectedResponse = new ConfigDTOs.VirtualKey.CreateVirtualKeyResponseDto { 
+            var createDto = new CreateVirtualKeyRequestDto { KeyName = "New Key" };
+            var keyInfo = new VirtualKeyDto { Id = 1, Name = "New Key" };
+            var expectedResponse = new CreateVirtualKeyResponseDto { 
                 VirtualKey = "vk-123456", 
                 KeyInfo = keyInfo 
             };
@@ -82,7 +95,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task UpdateVirtualKeyAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var updateDto = new ConfigDTOs.VirtualKey.UpdateVirtualKeyRequestDto { KeyName = "Updated Key" };
+            var updateDto = new UpdateVirtualKeyRequestDto { KeyName = "Updated Key" };
 
             _adminApiClientMock.Setup(c => c.UpdateVirtualKeyAsync(1, updateDto))
                 .ReturnsAsync(true);
@@ -114,20 +127,20 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetVirtualKeyUsageStatisticsAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var configStats = new List<ConfigDTOs.VirtualKeyCostDataDto>
+            var configStats = new List<VirtualKeyCostDataDto>
             {
-                new ConfigDTOs.VirtualKeyCostDataDto { VirtualKeyId = 1, TotalCost = 10.5m }
+                new VirtualKeyCostDataDto { VirtualKeyId = 1, Cost = 10.5m }
             };
             
             // Convert to WebUI DTOs
-            var webStats = configStats.Select(c => new WebUIDTOs.VirtualKeyCostDataDto
+            var webStats = configStats.Select(c => new WebUIVirtualKeyCostDataDto
             {
                 VirtualKeyId = c.VirtualKeyId,
-                TotalCost = c.TotalCost
+                TotalCost = c.Cost
             }).ToList();
 
             _adminApiClientMock.Setup(c => c.GetVirtualKeyUsageStatisticsAsync(1))
-                .Returns(Task.FromResult<IEnumerable<ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto>>(webStats));
+                .Returns(Task.FromResult<IEnumerable<WebUIVirtualKeyCostDataDto>>(webStats));
 
             // Act
             var result = await _adapter.GetVirtualKeyUsageStatisticsAsync(1);

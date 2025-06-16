@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -34,7 +35,7 @@ namespace ConduitLLM.WebUI.Services
         {
             _logger.LogInformation("Provider Health Monitor Service is running as a stub during migration");
             _logger.LogInformation("Provider health monitoring is now managed by the Admin API");
-            
+
             // Background service needs to keep running
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -51,7 +52,7 @@ namespace ConduitLLM.WebUI.Services
             _logger.LogInformation("Provider Health Monitor Service is starting.");
             return base.StartAsync(cancellationToken);
         }
-        
+
         /// <summary>
         /// Called when the service is stopping
         /// </summary>

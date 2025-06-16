@@ -19,9 +19,9 @@ namespace ConduitLLM.Core.Routing.Strategies
     public static class ModelSelectionStrategyFactory
     {
         // Cache of strategy instances to avoid creating new instances for each request
-        private static readonly ConcurrentDictionary<string, IModelSelectionStrategy> _strategyCache = 
+        private static readonly ConcurrentDictionary<string, IModelSelectionStrategy> _strategyCache =
             new(StringComparer.OrdinalIgnoreCase);
-            
+
         /// <summary>
         /// Gets a model selection strategy instance for the specified strategy name.
         /// </summary>
@@ -38,16 +38,16 @@ namespace ConduitLLM.Core.Routing.Strategies
             {
                 return existingStrategy;
             }
-            
+
             // Create a new strategy instance based on the name
             var newStrategy = CreateStrategy(strategyName);
-            
+
             // Cache the new instance for future use
             _strategyCache[strategyName] = newStrategy;
-            
+
             return newStrategy;
         }
-        
+
         /// <summary>
         /// Creates a new strategy instance based on the strategy name.
         /// </summary>
@@ -68,7 +68,7 @@ namespace ConduitLLM.Core.Routing.Strategies
                 _ => new SimpleModelSelectionStrategy()
             };
         }
-        
+
         /// <summary>
         /// Clears the strategy cache, forcing new instances to be created on next request.
         /// </summary>

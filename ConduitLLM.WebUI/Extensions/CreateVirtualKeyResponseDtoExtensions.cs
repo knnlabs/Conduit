@@ -16,7 +16,7 @@ namespace ConduitLLM.WebUI.Extensions
         {
             return dto?.VirtualKey;
         }
-        
+
         /// <summary>
         /// Gets the virtual key info from the response (backward compatibility)
         /// </summary>
@@ -28,7 +28,7 @@ namespace ConduitLLM.WebUI.Extensions
             {
                 return null;
             }
-            
+
             return dto.KeyInfo;
         }
     }

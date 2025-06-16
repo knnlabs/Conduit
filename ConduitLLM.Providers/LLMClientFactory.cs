@@ -2,8 +2,10 @@ using System;
 using System.Linq;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces; // Use the original interface location
+using ConduitLLM.Core.Services;
 
 using Microsoft.Extensions.Logging; // Added for ILoggerFactory
 using Microsoft.Extensions.Options;
@@ -18,7 +20,8 @@ public class LLMClientFactory : ILLMClientFactory
     private readonly ConduitSettings _settings;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
-    
+    private readonly IPerformanceMetricsService? _performanceMetricsService;
+
     // Removed compatibility flag as migration is now complete
 
     /// <summary>
@@ -27,14 +30,17 @@ public class LLMClientFactory : ILLMClientFactory
     /// <param name="settingsOptions">The configuration settings.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="performanceMetricsService">Optional performance metrics service.</param>
     public LLMClientFactory(
-        IOptions<ConduitSettings> settingsOptions, 
+        IOptions<ConduitSettings> settingsOptions,
         ILoggerFactory loggerFactory,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IPerformanceMetricsService? performanceMetricsService = null)
     {
         _settings = settingsOptions.Value ?? throw new ArgumentNullException(nameof(settingsOptions), "Conduit settings cannot be null.");
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _performanceMetricsService = performanceMetricsService;
     }
 
     /// <inheritdoc />
@@ -93,6 +99,12 @@ public class LLMClientFactory : ILLMClientFactory
     {
         // Get normalized provider name
         string normalizedProviderName = providerName.ToLowerInvariant();
+
+        // Get default models configuration
+        var defaultModels = _settings.DefaultModels;
+
+        // Create the base client
+        ILLMClient client;
         
         // Create clients using the new class hierarchy
         switch (normalizedProviderName)
@@ -100,85 +112,142 @@ public class LLMClientFactory : ILLMClientFactory
             // OpenAI-compatible clients
             case "openai":
                 var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                return new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory);
-            
+                client = new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "azure":
                 var azureLogger = _loggerFactory.CreateLogger<AzureOpenAIClient>();
-                return new AzureOpenAIClient(credentials, modelId, azureLogger, _httpClientFactory);
-                
+                client = new AzureOpenAIClient(credentials, modelId, azureLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "mistral":
             case "mistralai":
                 var mistralLogger = _loggerFactory.CreateLogger<MistralClient>();
-                return new MistralClient(credentials, modelId, mistralLogger, _httpClientFactory);
-            
+                client = new MistralClient(credentials, modelId, mistralLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "groq":
                 var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
-                return new GroqClient(credentials, modelId, groqLogger, _httpClientFactory);
-                
+                client = new GroqClient(credentials, modelId, groqLogger, _httpClientFactory, defaultModels);
+                break;
+
             // Custom provider clients
             case "anthropic":
                 var anthropicLogger = _loggerFactory.CreateLogger<AnthropicClient>();
-                return new AnthropicClient(credentials, modelId, anthropicLogger, _httpClientFactory);
-                
+                client = new AnthropicClient(credentials, modelId, anthropicLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "cohere":
                 var cohereLogger = _loggerFactory.CreateLogger<CohereClient>();
-                return new CohereClient(credentials, modelId, cohereLogger, _httpClientFactory);
-                
+                client = new CohereClient(credentials, modelId, cohereLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "google":
             case "gemini": // Alias
                 var geminiLogger = _loggerFactory.CreateLogger<GeminiClient>();
-                return new GeminiClient(credentials, modelId, geminiLogger, _httpClientFactory);
-                
+                client = new GeminiClient(credentials, modelId, geminiLogger, _httpClientFactory, null, defaultModels);
+                break;
+
             case "vertexai":
                 var vertexAiLogger = _loggerFactory.CreateLogger<VertexAIClient>();
-                return new VertexAIClient(credentials, modelId, vertexAiLogger, _httpClientFactory);
-                
+                client = new VertexAIClient(credentials, modelId, vertexAiLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "ollama":
                 var ollamaLogger = _loggerFactory.CreateLogger<OllamaClient>();
-                return new OllamaClient(credentials, modelId, ollamaLogger, _httpClientFactory);
-                
+                client = new OllamaClient(credentials, modelId, ollamaLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "replicate":
                 var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
-                return new ReplicateClient(credentials, modelId, replicateLogger, _httpClientFactory);
-                
+                client = new ReplicateClient(credentials, modelId, replicateLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "fireworks":
             case "fireworksai":
                 var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
-                return new FireworksClient(credentials, modelId, fireworksLogger, _httpClientFactory);
-            
+                client = new FireworksClient(credentials, modelId, fireworksLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "bedrock":
                 var bedrockLogger = _loggerFactory.CreateLogger<BedrockClient>();
-                return new BedrockClient(credentials, modelId, bedrockLogger, _httpClientFactory);
-            
+                client = new BedrockClient(credentials, modelId, bedrockLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "huggingface":
                 var huggingFaceLogger = _loggerFactory.CreateLogger<HuggingFaceClient>();
-                return new HuggingFaceClient(credentials, modelId, huggingFaceLogger, _httpClientFactory);
-            
+                client = new HuggingFaceClient(credentials, modelId, huggingFaceLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "sagemaker":
                 var sageMakerLogger = _loggerFactory.CreateLogger<SageMakerClient>();
-                return new SageMakerClient(credentials, modelId, sageMakerLogger, _httpClientFactory);
-            
+                client = new SageMakerClient(credentials, modelId, sageMakerLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "openrouter":
                 var openRouterLogger = _loggerFactory.CreateLogger<OpenRouterClient>();
-                return new OpenRouterClient(credentials, modelId, openRouterLogger, _httpClientFactory);
-            
+                client = new OpenRouterClient(credentials, modelId, openRouterLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "openai-compatible":
             case "openaicompatible":
                 var openAiCompatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
-                return new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory);
-            
+                client = new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "ultravox":
                 var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
-                return new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory);
-            
+                client = new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "elevenlabs":
             case "eleven-labs":
                 var elevenLabsLogger = _loggerFactory.CreateLogger<ElevenLabsClient>();
-                return new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory);
-            
+                client = new ElevenLabsClient(credentials, modelId, elevenLabsLogger, _httpClientFactory, defaultModels);
+                break;
+
+            case "googlecloud":
+            case "google-cloud":
+            case "gcp":
+                var googleCloudLogger = _loggerFactory.CreateLogger<GoogleCloudAudioClient>();
+                client = new GoogleCloudAudioClient(credentials, modelId, googleCloudLogger, _httpClientFactory, defaultModels);
+                break;
+
+            case "aws":
+            case "awstranscribe":
+            case "aws-transcribe":
+                var awsTranscribeLogger = _loggerFactory.CreateLogger<AWSTranscribeClient>();
+                client = new AWSTranscribeClient(credentials, modelId, awsTranscribeLogger, _httpClientFactory, defaultModels);
+                break;
+
             default:
                 throw new UnsupportedProviderException($"Provider '{normalizedProviderName}' is not currently supported by ConduitLLM.");
         }
+
+        // Apply performance tracking decorator if enabled
+        if (_settings.PerformanceTracking?.Enabled == true)
+        {
+            // Check if provider or model is excluded
+            var isProviderExcluded = _settings.PerformanceTracking.ExcludedProviders?.Contains(
+                normalizedProviderName, StringComparer.OrdinalIgnoreCase) ?? false;
+            var isModelExcluded = _settings.PerformanceTracking.ExcludedModels?.Contains(
+                modelId, StringComparer.OrdinalIgnoreCase) ?? false;
+
+            if (!isProviderExcluded && !isModelExcluded)
+            {
+                var performanceLogger = _loggerFactory.CreateLogger<PerformanceTrackingLLMClient>();
+                var metricsService = _performanceMetricsService ?? new PerformanceMetricsService();
+                
+                client = new PerformanceTrackingLLMClient(
+                    client,
+                    metricsService,
+                    performanceLogger,
+                    normalizedProviderName,
+                    _settings.PerformanceTracking.IncludeInResponse);
+            }
+        }
+
+        return client;
     }
     // Legacy client creation method has been removed as part of the client migration
 }

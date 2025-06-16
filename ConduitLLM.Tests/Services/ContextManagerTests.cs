@@ -1,10 +1,14 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
+
 using Microsoft.Extensions.Logging;
+
 using Moq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Services
@@ -136,11 +140,11 @@ namespace ConduitLLM.Tests.Services
             _tokenCounterMock.Setup(x => x.EstimateTokenCountAsync(request.Model, request.Messages))
                 .ReturnsAsync(2000);
 
-            _tokenCounterMock.Setup(x => x.EstimateTokenCountAsync(request.Model, 
+            _tokenCounterMock.Setup(x => x.EstimateTokenCountAsync(request.Model,
                 It.Is<List<Message>>(m => m.Count == 4 && m.Exists(msg => msg.Role == MessageRole.System))))
                 .ReturnsAsync(1500);
 
-            _tokenCounterMock.Setup(x => x.EstimateTokenCountAsync(request.Model, 
+            _tokenCounterMock.Setup(x => x.EstimateTokenCountAsync(request.Model,
                 It.Is<List<Message>>(m => m.Count == 3 && m.Exists(msg => msg.Role == MessageRole.System))))
                 .ReturnsAsync(900);
 

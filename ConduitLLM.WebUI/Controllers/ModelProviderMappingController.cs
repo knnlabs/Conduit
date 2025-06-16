@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Repositories;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -84,12 +86,13 @@ namespace ConduitLLM.WebUI.Controllers
             try
             {
                 var mapping = await _mappingService.GetMappingByIdAsync(id);
-                
+
                 if (mapping == null)
                 {
-                    return NotFound($"Model provider mapping with ID {id} not found");
+                    _logger.LogWarning("Model provider mapping not found {MappingId}", id);
+                    return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
-                
+
                 return Ok(mapping);
             }
             catch (Exception ex)
@@ -113,12 +116,13 @@ namespace ConduitLLM.WebUI.Controllers
             try
             {
                 var mapping = await _mappingService.GetMappingByModelAliasAsync(modelAlias);
-                
+
                 if (mapping == null)
                 {
-                    return NotFound($"No mapping found for model alias '{modelAlias}'");
+                    _logger.LogWarning("No mapping found for model alias {ModelAlias}", modelAlias);
+                    return NotFound(new { error = "No mapping found for model alias", modelAlias = modelAlias });
                 }
-                
+
                 return Ok(mapping);
             }
             catch (Exception ex)
@@ -150,18 +154,20 @@ namespace ConduitLLM.WebUI.Controllers
                 var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (provider == null)
                 {
-                    return BadRequest($"Provider '{mapping.ProviderName}' does not exist");
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName);
+                    return BadRequest(new { error = "Provider does not exist", provider = mapping.ProviderName });
                 }
 
                 // Check if a mapping with the same alias already exists
                 var existingMapping = await _mappingService.GetMappingByModelAliasAsync(mapping.ModelAlias);
                 if (existingMapping != null)
                 {
-                    return BadRequest($"A mapping for model alias '{mapping.ModelAlias}' already exists");
+                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", mapping.ModelAlias);
+                    return BadRequest(new { error = "A mapping for this model alias already exists", modelAlias = mapping.ModelAlias });
                 }
 
                 await _mappingService.AddMappingAsync(mapping);
-                
+
                 // Return the created mapping
                 var createdMapping = await _mappingService.GetMappingByModelAliasAsync(mapping.ModelAlias);
                 return CreatedAtAction(nameof(GetMappingByAlias), new { modelAlias = mapping.ModelAlias }, createdMapping);
@@ -197,19 +203,21 @@ namespace ConduitLLM.WebUI.Controllers
                 var existingMapping = await _mappingService.GetMappingByIdAsync(id);
                 if (existingMapping == null)
                 {
-                    return NotFound($"Model provider mapping with ID {id} not found");
+                    _logger.LogWarning("Model provider mapping not found for update {MappingId}", id);
+                    return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
 
                 // Validate that the provider exists
                 var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
                 if (provider == null)
                 {
-                    return BadRequest($"Provider '{mapping.ProviderName}' does not exist");
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName);
+                    return BadRequest(new { error = "Provider does not exist", provider = mapping.ProviderName });
                 }
 
                 // Update the mapping
                 await _mappingService.UpdateMappingAsync(mapping);
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -236,11 +244,12 @@ namespace ConduitLLM.WebUI.Controllers
                 var existingMapping = await _mappingService.GetMappingByIdAsync(id);
                 if (existingMapping == null)
                 {
-                    return NotFound($"Model provider mapping with ID {id} not found");
+                    _logger.LogWarning("Model provider mapping not found for deletion {MappingId}", id);
+                    return NotFound(new { error = "Model provider mapping not found", id = id });
                 }
 
                 await _mappingService.DeleteMappingAsync(id);
-                
+
                 return NoContent();
             }
             catch (Exception ex)

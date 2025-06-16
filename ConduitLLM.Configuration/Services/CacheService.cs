@@ -35,17 +35,17 @@ namespace ConduitLLM.Configuration.Services
         public void Set<T>(string key, T value, TimeSpan? absoluteExpiration = null, TimeSpan? slidingExpiration = null)
         {
             var options = new MemoryCacheEntryOptions();
-            
+
             // Use provided expiration time or fall back to default from configuration
             var absExpiration = absoluteExpiration ?? _cacheOptions.DefaultAbsoluteExpiration;
             var slideExpiration = slidingExpiration ?? _cacheOptions.DefaultSlidingExpiration;
-            
+
             if (absExpiration.HasValue)
                 options.AbsoluteExpirationRelativeToNow = absExpiration.Value;
-                
+
             if (slideExpiration.HasValue)
                 options.SlidingExpiration = slideExpiration.Value;
-                
+
             _memoryCache.Set(key, value, options);
         }
 
@@ -79,14 +79,14 @@ namespace ConduitLLM.Configuration.Services
 
                 // Set cache options
                 var options = new MemoryCacheEntryOptions();
-                
+
                 // Use provided expiration time or fall back to default from configuration
                 var absExpiration = absoluteExpiration ?? _cacheOptions.DefaultAbsoluteExpiration;
                 var slideExpiration = slidingExpiration ?? _cacheOptions.DefaultSlidingExpiration;
-                
+
                 if (absExpiration.HasValue)
                     options.AbsoluteExpirationRelativeToNow = absExpiration.Value;
-                    
+
                 if (slideExpiration.HasValue)
                     options.SlidingExpiration = slideExpiration.Value;
 
@@ -107,7 +107,7 @@ namespace ConduitLLM.Configuration.Services
             // we would need a separate cache key tracking mechanism.
             // For simplicity, this is a basic implementation
             // In a production app, you might use a more sophisticated approach
-            
+
             // Not implemented in this basic version
             // Would require tracking cache keys with a given prefix
         }

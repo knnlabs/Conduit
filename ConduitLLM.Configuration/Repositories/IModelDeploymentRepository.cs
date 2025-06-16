@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Repositories
@@ -16,7 +17,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model deployment entity or null if not found</returns>
         Task<ModelDeploymentEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets a model deployment by deployment name
         /// </summary>
@@ -24,7 +25,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The model deployment entity or null if not found</returns>
         Task<ModelDeploymentEntity?> GetByDeploymentNameAsync(string deploymentName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets model deployments by provider
         /// </summary>
@@ -32,7 +33,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model deployments for the specified provider</returns>
         Task<List<ModelDeploymentEntity>> GetByProviderAsync(string providerName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets model deployments by model name
         /// </summary>
@@ -40,14 +41,14 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of model deployments for the specified model</returns>
         Task<List<ModelDeploymentEntity>> GetByModelNameAsync(string modelName, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Gets all model deployments
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>A list of all model deployments</returns>
         Task<List<ModelDeploymentEntity>> GetAllAsync(CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Creates a new model deployment
         /// </summary>
@@ -55,7 +56,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The ID of the created model deployment</returns>
         Task<Guid> CreateAsync(ModelDeploymentEntity modelDeployment, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Updates a model deployment
         /// </summary>
@@ -63,7 +64,7 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if the update was successful, false otherwise</returns>
         Task<bool> UpdateAsync(ModelDeploymentEntity modelDeployment, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// Deletes a model deployment
         /// </summary>

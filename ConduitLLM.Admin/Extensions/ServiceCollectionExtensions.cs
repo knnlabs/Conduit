@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+
 using Microsoft.AspNetCore.Authorization;
 
 namespace ConduitLLM.Admin.Extensions;
@@ -40,7 +41,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
         services.AddScoped<IAdminModelCostService, AdminModelCostService>();
         services.AddScoped<IAdminProviderCredentialService, AdminProviderCredentialService>();
-        
+
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
@@ -52,7 +53,7 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("AdminCorsPolicy", policy =>
             {
                 policy.WithOrigins(
-                        configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>() ?? 
+                        configuration.GetSection("AdminApi:AllowedOrigins").Get<string[]>() ??
                         new[] { "http://localhost:5000", "https://localhost:5001" })
                     .AllowAnyMethod()
                     .AllowAnyHeader();

@@ -9,32 +9,32 @@ public enum NotificationType
     /// General system information
     /// </summary>
     System,
-    
+
     /// <summary>
     /// Virtual key validation failures
     /// </summary>
     VirtualKeyValidation,
-    
+
     /// <summary>
     /// Warnings about budget limits being approached
     /// </summary>
     BudgetWarning,
-    
+
     /// <summary>
     /// Key expiration notifications
     /// </summary>
     KeyExpiration,
-    
+
     /// <summary>
     /// Security related alerts
     /// </summary>
     Security,
-    
+
     /// <summary>
     /// General errors
     /// </summary>
     Error,
-    
+
     /// <summary>
     /// Success notifications
     /// </summary>
@@ -50,37 +50,37 @@ public class Notification
     /// Unique identifier for the notification
     /// </summary>
     public Guid Id { get; set; }
-    
+
     /// <summary>
     /// Type of notification
     /// </summary>
     public NotificationType Type { get; set; }
-    
+
     /// <summary>
     /// Main notification message
     /// </summary>
     public string Message { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Source of the notification (e.g., "Virtual Key ID: 123")
     /// </summary>
     public string? Source { get; set; }
-    
+
     /// <summary>
     /// Additional details about the notification
     /// </summary>
     public string? Details { get; set; }
-    
+
     /// <summary>
     /// When the notification was created
     /// </summary>
     public DateTime Timestamp { get; set; }
-    
+
     /// <summary>
     /// Whether the notification has been marked as read
     /// </summary>
     public bool IsRead { get; set; }
-    
+
     /// <summary>
     /// Gets a color class based on the notification type
     /// </summary>
@@ -98,7 +98,7 @@ public class Notification
             _ => "secondary"
         };
     }
-    
+
     /// <summary>
     /// Gets an icon class based on the notification type
     /// </summary>

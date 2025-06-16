@@ -1,40 +1,45 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Services
 @inject NavigationManager NavigationManager
 @inject IInsecureModeProvider InsecureModeProvider
 @inject IJSRuntime JSRuntime
+@inject IToastService ToastService
 
 <CascadingValue Value="this">
     <!-- No theme providers needed with standard Blazor -->
 </CascadingValue>
 
-@if (InsecureModeProvider.IsInsecureMode)
-{
-    <div class="warning-banner">
-        <div class="insecure-mode-alert">
-            <div class="insecure-mode-content">
-                <div class="insecure-mode-icon">
-                    <i class="fa fa-exclamation-triangle"></i>
-                </div>
-                <div class="insecure-mode-text">
-                    <div class="insecure-mode-title">
-                        <strong>Security Warning</strong>
+<ToastContainer />
+
+<div class="page-wrapper @(InsecureModeProvider.IsInsecureMode ? "has-security-banner" : "")">
+    @if (InsecureModeProvider.IsInsecureMode)
+    {
+        <div class="warning-banner">
+            <div class="insecure-mode-alert">
+                <div class="insecure-mode-content">
+                    <div class="insecure-mode-icon">
+                        <i class="fa fa-exclamation-triangle"></i>
                     </div>
-                    <div class="insecure-mode-message">
-                        Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+                    <div class="insecure-mode-text">
+                        <div class="insecure-mode-title">
+                            <strong>Security Warning</strong>
+                        </div>
+                        <div class="insecure-mode-message">
+                            Conduit is running in Insecure Mode. Authentication is disabled. DO NOT expose this instance publicly.
+                        </div>
                     </div>
+                    <div class="insecure-mode-pulse"></div>
                 </div>
-                <div class="insecure-mode-pulse"></div>
             </div>
         </div>
-    </div>
-}
+    }
 
-<CircuitBreakerStatus />
+    <CircuitBreakerStatus />
 
-<div class="d-flex flex-column" style="min-height: 100vh;">    
-    <div class="layout flex-grow-1">
+    <div class="d-flex flex-column" style="min-height: 100vh;">    
+        <div class="layout flex-grow-1">
         <!-- Modern Top Navigation Bar -->
         <header class="app-bar">
             <div class="app-bar-container">
@@ -92,33 +97,59 @@
         
         <!-- Side Navigation -->
         <div class="sidebar">
-            <NavMenu />
+            <NavMenu @rendermode="InteractiveServer" />
         </div>
         
         <!-- Main Content Area -->
         <main class="main-content">
             <div class="main-content-inner">
                 <ConduitLLM.WebUI.Components.Shared.DeprecationWarning />
-                @Body
+                <ConduitLLM.WebUI.Components.Shared.ConduitErrorBoundary>
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent Context="exception">
+                        <div class="container mt-5">
+                            <div class="alert alert-danger" role="alert">
+                                <h4 class="alert-heading">
+                                    <i class="fa fa-exclamation-circle me-2"></i>Page Error
+                                </h4>
+                                <p>The requested page encountered an error and cannot be displayed.</p>
+                                <hr />
+                                <p class="mb-0">Please try refreshing the page or navigating to a different section.</p>
+                            </div>
+                        </div>
+                    </ErrorContent>
+                </ConduitLLM.WebUI.Components.Shared.ConduitErrorBoundary>
             </div>
         </main>
+        </div>
     </div>
 </div>
 
 <!-- Modern Layout Styling -->
 <style>
+    /* Page wrapper for proper layout flow */
+    .page-wrapper {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        position: relative;
+    }
+
     /* Global Layout */
     .layout {
         display: flex;
         flex-direction: column;
         position: relative;
+        flex: 1;
     }
 
     /* Modern Insecure Mode Banner */
     .warning-banner {
         width: 100%;
         z-index: 1300;
-        position: fixed;
+        position: sticky;
         top: 0;
         left: 0;
         right: 0;
@@ -264,14 +295,18 @@
         height: 70px;
         display: flex;
         align-items: center;
-        position: fixed;
-        top: @(InsecureModeProvider.IsInsecureMode ? "56px" : "0");
+        position: sticky;
+        top: 0;
         left: 0;
         right: 0;
         z-index: 1000;
         box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
         backdrop-filter: blur(10px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .has-security-banner .app-bar {
+        top: 68px; /* Height of security banner */
     }
 
     .app-bar-container {
@@ -424,7 +459,7 @@
     .sidebar {
         width: 280px;
         position: fixed;
-        top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
+        top: 70px;
         bottom: 0;
         left: 0;
         background: white;
@@ -433,20 +468,34 @@
         overflow-y: auto;
         overflow-x: hidden;
         border-right: 1px solid rgba(0, 0, 0, 0.08);
+        height: calc(100vh - 70px);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .has-security-banner .sidebar {
+        top: 138px; /* Security banner (68px) + App bar (70px) */
+        height: calc(100vh - 138px);
     }
 
     /* Main Content */
     .main-content {
         margin-left: 280px;
-        padding-top: @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px");
+        padding-top: 0;
         min-height: 100vh;
         background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
         position: relative;
     }
 
     .main-content-inner {
-        padding: 1.5rem;
-        min-height: calc(100vh - @(InsecureModeProvider.IsInsecureMode ? "126px" : "70px"));
+        padding: 0 1.5rem 1.5rem 1.5rem; /* No top padding */
+        min-height: 100vh;
+        padding-top: 70px; /* Only app bar height */
+    }
+    
+    .has-security-banner .main-content-inner {
+        min-height: 100vh;
+        padding-top: 138px; /* Only security banner + app bar height */
     }
 
 

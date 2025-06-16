@@ -16,18 +16,18 @@ namespace ConduitLLM.Configuration.Entities
             /// Provider is online
             /// </summary>
             Online = 0,
-            
+
             /// <summary>
             /// Provider is offline
             /// </summary>
             Offline = 1,
-            
+
             /// <summary>
             /// Provider status cannot be determined
             /// </summary>
             Unknown = 2
         }
-        
+
         /// <summary>
         /// The unique identifier for the health record.
         /// </summary>
@@ -42,13 +42,13 @@ namespace ConduitLLM.Configuration.Entities
         /// The status of the provider.
         /// </summary>
         public StatusType Status { get; set; } = StatusType.Unknown;
-        
+
         /// <summary>
         /// Indicates whether the provider was online at the time of checking.
         /// This property is maintained for backward compatibility.
         /// </summary>
-        public bool IsOnline 
-        { 
+        public bool IsOnline
+        {
             get => Status == StatusType.Online;
             set => Status = value ? StatusType.Online : StatusType.Offline;
         }

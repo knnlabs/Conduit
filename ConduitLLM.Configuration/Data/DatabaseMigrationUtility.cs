@@ -1,8 +1,9 @@
+using System;
+using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace ConduitLLM.Configuration.Data
 {
@@ -23,9 +24,9 @@ namespace ConduitLLM.Configuration.Data
             {
                 using var scope = serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
-                
+
                 logger?.LogInformation("Checking for pending database migrations...");
-                
+
                 // Apply migrations if needed
                 var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
                 if (pendingMigrations.Any())
@@ -45,7 +46,7 @@ namespace ConduitLLM.Configuration.Data
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Updates the database schema to ensure the MaxContextTokens column exists on the ModelProviderMapping table.
         /// This is a fallback for when proper migrations cannot be applied.
@@ -59,12 +60,12 @@ namespace ConduitLLM.Configuration.Data
             {
                 using var scope = serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
-                
+
                 logger?.LogInformation("Checking for MaxContextTokens column...");
-                
+
                 // Check if the column exists using a raw SQL query
                 var columnExists = false;
-                
+
                 try
                 {
                     // This query checks if the column exists in the SQLite schema
@@ -72,7 +73,7 @@ namespace ConduitLLM.Configuration.Data
                         SELECT COUNT(*) 
                         FROM pragma_table_info('ModelProviderMappings') 
                         WHERE name = 'MaxContextTokens'";
-                        
+
                     var result = await dbContext.Database.ExecuteSqlRawAsync(query);
                     columnExists = result > 0;
                 }
@@ -80,18 +81,18 @@ namespace ConduitLLM.Configuration.Data
                 {
                     logger?.LogWarning(ex, "Error checking for MaxContextTokens column existence.");
                 }
-                
+
                 if (!columnExists)
                 {
                     logger?.LogInformation("Adding MaxContextTokens column to ModelProviderMappings table...");
-                    
+
                     try
                     {
                         // Add the column using a raw SQL query (SQLite syntax)
                         var alterTableQuery = @"
                             ALTER TABLE ModelProviderMappings 
                             ADD COLUMN MaxContextTokens INTEGER NULL";
-                            
+
                         await dbContext.Database.ExecuteSqlRawAsync(alterTableQuery);
                         logger?.LogInformation("MaxContextTokens column added successfully.");
                     }

@@ -1,12 +1,17 @@
 using System;
 using System.Threading.Tasks;
+
 using ConduitLLM.Core.Data;
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+
 using Moq;
+
 using Npgsql;
+
 using Xunit;
 
 namespace ConduitLLM.Tests.Data
@@ -28,7 +33,7 @@ namespace ConduitLLM.Tests.Data
             // Arrange
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
                 .Returns((DatabaseConstants.POSTGRES_PROVIDER, "Host=localhost;Database=testdb;Username=user;Password=pass"));
-            
+
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
 
             // Act
@@ -45,7 +50,7 @@ namespace ConduitLLM.Tests.Data
             // Arrange
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
                 .Returns((DatabaseConstants.SQLITE_PROVIDER, "Data Source=test.db"));
-            
+
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
 
             // Act
@@ -62,13 +67,13 @@ namespace ConduitLLM.Tests.Data
             // Arrange
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
                 .Returns(("unsupported", "InvalidConnectionString"));
-            
+
             // We need to also set up the validation to not throw an exception
             _mockConnectionStringManager.Setup(m => m.ValidateConnectionString(It.IsAny<string>(), It.IsAny<string>()))
                 .Verifiable();
-            
+
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
-            
+
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => factory.CreateConnection());
         }
@@ -80,10 +85,10 @@ namespace ConduitLLM.Tests.Data
             var connectionString = "Host=localhost;Database=testdb;Username=user;Password=pass";
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
                 .Returns((DatabaseConstants.POSTGRES_PROVIDER, connectionString));
-            
+
             _mockConnectionStringManager.Setup(m => m.SanitizeConnectionString(connectionString))
                 .Returns("Host=localhost;Database=testdb;Username=user;Password=*****");
-            
+
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
 
             // Act
@@ -100,14 +105,14 @@ namespace ConduitLLM.Tests.Data
             // Arrange - Use SQLite in-memory for a real connection test
             _mockConnectionStringManager.Setup(m => m.GetProviderAndConnectionString(It.IsAny<Action<string>>()))
                 .Returns((DatabaseConstants.SQLITE_PROVIDER, "Data Source=:memory:"));
-            
+
             var factory = new DatabaseConnectionFactory(_mockConnectionStringManager.Object, _mockLogger.Object);
 
             // Act
             using var connection = await factory.CreateConnectionAsync();
 
             // Assert
-            Assert.True(connection.State == System.Data.ConnectionState.Open);
+            Assert.Equal(System.Data.ConnectionState.Open, connection.State);
         }
     }
 }

@@ -1,0 +1,279 @@
+@page "/audio-providers"
+@using System.Text.Json
+@using ConduitLLM.Configuration
+@using ConfigDTOs = ConduitLLM.Configuration.DTOs
+@using WebUIDTOs = ConduitLLM.WebUI.DTOs
+@using ConduitLLM.Providers.Configuration
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+@using System.Threading.Tasks
+@using Microsoft.JSInterop
+@using AudioDTOs = ConduitLLM.Configuration.DTOs.Audio
+@using ConduitLLM.WebUI.Components.Shared
+
+@inject NavigationManager NavigationManager
+@inject ILogger<AudioProviders> Logger
+@inject IAdminApiClient AdminApiClient
+@inject ConfigurationChangeNotifier ConfigChangeNotifier
+@inject IJSRuntime JSRuntime
+@inject ProviderModelsService ProviderModelsService
+@inject IToastService ToastService
+@rendermode InteractiveServer
+
+<PageTitle>Audio Providers - ConduitLLM</PageTitle>
+
+<div class="container container-xxl">
+    <!-- Header Section -->
+    <PageHeader Title="Audio Provider Management" 
+                Description="Configure audio capabilities and providers for your deployment"
+                Icon="fa-headphones">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-headphones me-2"></i>
+                <span class="small">@(audioProviders?.Count ?? 0) Audio Providers</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-check-circle me-2"></i>
+                <span class="small">@(audioProviders?.Count(p => p.TranscriptionEnabled || p.TextToSpeechEnabled || p.RealtimeEnabled) ?? 0) Active</span>
+            </div>
+        </Statistics>
+    </PageHeader>
+
+    <!-- Audio Providers Section -->
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-light border-0">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fa fa-headphones me-2 text-info"></i>Audio Providers
+                </h5>
+                <button class="btn btn-primary shadow-sm" @onclick="AddAudioProvider" disabled="@(!providerCredentials.Any())">
+                    <i class="fa fa-plus me-1"></i> Configure Audio Provider
+                </button>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            @if (!providerCredentials.Any())
+            {
+                <div class="alert alert-warning border-0 shadow-sm mb-4">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    <strong>No LLM Providers Configured:</strong> You must configure at least one LLM provider before adding audio capabilities.
+                    <a href="/llm-providers" class="alert-link ms-2">Configure LLM Providers <i class="fa fa-arrow-right ms-1"></i></a>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="fa fa-info-circle me-2"></i>
+                    <strong>Audio Providers:</strong> Configure audio capabilities for your LLM providers including transcription, text-to-speech, and real-time audio.
+                </div>
+            }
+            
+            @if (audioProviders == null)
+            {
+                <LoadingSpinner Message="Loading audio providers..." />
+            }
+            else if (!audioProviders.Any())
+            {
+                <EmptyState Title="No Audio Providers Configured"
+                            Description="Configure audio capabilities for your existing LLM providers"
+                            Icon="fa-headphones" />
+            }
+            else
+            {
+                <div class="table-responsive mb-4">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Provider</th>
+                                <th>Transcription</th>
+                                <th>Text-to-Speech</th>
+                                <th>Real-time Audio</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var audioProvider in audioProviders)
+                            {
+                                <tr class="modern-table-row">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="provider-icon icon-container bg-info-light rounded-circle p-2 me-3">
+                                                <i class="fa fa-headphones text-info"></i>
+                                            </div>
+                                            <span class="fw-semibold">@audioProvider.ProviderName</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (audioProvider.TranscriptionEnabled)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fa fa-check me-1"></i>Enabled
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultTranscriptionModel))
+                                            {
+                                                <br/>
+                                                <small class="text-muted">@audioProvider.DefaultTranscriptionModel</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Disabled</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (audioProvider.TextToSpeechEnabled)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fa fa-check me-1"></i>Enabled
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultTTSModel))
+                                            {
+                                                <br/>
+                                                <small class="text-muted">@audioProvider.DefaultTTSModel</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Disabled</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (audioProvider.RealtimeEnabled)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fa fa-check me-1"></i>Enabled
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(audioProvider.DefaultRealtimeModel))
+                                            {
+                                                <br/>
+                                                <small class="text-muted">@audioProvider.DefaultRealtimeModel</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Disabled</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">@audioProvider.RoutingPriority</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => NavigateToEditAudioProvider(audioProvider.Id)">
+                                                <i class="fa fa-edit me-1"></i> Edit
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteAudioProvider(audioProvider.Id)">
+                                                <i class="fa fa-trash me-1"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+    // --- State ---
+    private List<ConfigDTOs.ProviderCredentialDto> providerCredentials = new();
+    private List<AudioDTOs.AudioProviderConfigDto> audioProviders = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadProvidersAsync();
+            await LoadAudioProvidersAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing Audio Providers page");
+        }
+    }
+    
+    private async Task LoadProvidersAsync()
+    {
+        try
+        {
+            var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
+            providerCredentials = providers.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading provider credentials");
+            providerCredentials = new List<ConfigDTOs.ProviderCredentialDto>(); 
+        }
+    }
+    
+    private async Task LoadAudioProvidersAsync()
+    {
+        try
+        {
+            audioProviders = await AdminApiClient.GetAudioProvidersAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading audio providers");
+            audioProviders = new List<AudioDTOs.AudioProviderConfigDto>();
+        }
+    }
+    
+    private void AddAudioProvider()
+    {
+        NavigationManager.NavigateTo("/audio-providers/edit");
+    }
+    
+    private void NavigateToEditAudioProvider(int id)
+    {
+        NavigationManager.NavigateTo($"/audio-providers/edit/{id}");
+    }
+    
+    private async Task DeleteAudioProvider(int id)
+    {
+        try
+        {
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+                "Are you sure you want to delete this audio provider configuration? This cannot be undone.");
+
+            if (!confirmed) return;
+
+            var success = await AdminApiClient.DeleteAudioProviderAsync(id);
+            if (success)
+            {
+                await LoadAudioProvidersAsync();
+                ToastService.ShowSuccess("Audio provider configuration deleted successfully");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to delete audio provider configuration.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting audio provider");
+            ToastService.ShowError($"Error deleting audio provider: {ex.Message}");
+        }
+    }
+}
+
+<!-- Page-specific styles removed - using design system -->
+<style>
+    /* Keep only truly page-specific styles */
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>

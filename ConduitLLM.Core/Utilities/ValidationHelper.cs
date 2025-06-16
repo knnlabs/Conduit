@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+
 using ConduitLLM.Core.Exceptions;
 
 namespace ConduitLLM.Core.Utilities
@@ -24,7 +25,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be null or empty");
             }
         }
-        
+
         /// <summary>
         /// Validates that a collection is not null or empty.
         /// </summary>
@@ -39,7 +40,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} collection cannot be null or empty");
             }
         }
-        
+
         /// <summary>
         /// Validates that a value is within a numeric range.
         /// </summary>
@@ -56,7 +57,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} must be between {min} and {max}");
             }
         }
-        
+
         /// <summary>
         /// Validates a string value against a regular expression pattern.
         /// </summary>
@@ -68,13 +69,13 @@ namespace ConduitLLM.Core.Utilities
         public static void RequirePattern(string? value, string pattern, string parameterName, string description = "valid format")
         {
             RequireNonEmpty(value, parameterName);
-            
+
             if (!Regex.IsMatch(value!, pattern))
             {
                 throw new ValidationException($"{parameterName} must be in {description}");
             }
         }
-        
+
         /// <summary>
         /// Validates an object is not null.
         /// </summary>
@@ -88,7 +89,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be null");
             }
         }
-        
+
         /// <summary>
         /// Validates that a string does not exceed a maximum length.
         /// </summary>
@@ -103,7 +104,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot exceed {maxLength} characters");
             }
         }
-        
+
         /// <summary>
         /// Validates that a condition is true.
         /// </summary>
@@ -117,7 +118,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException(errorMessage);
             }
         }
-        
+
         /// <summary>
         /// Validates that a Guid is not empty.
         /// </summary>
@@ -131,7 +132,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be an empty GUID");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is greater than zero.
         /// </summary>
@@ -145,7 +146,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} must be a positive number");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is greater than zero.
         /// </summary>
@@ -159,7 +160,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} must be a positive number");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is greater than zero.
         /// </summary>
@@ -173,7 +174,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} must be a positive number");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is non-negative (zero or greater).
         /// </summary>
@@ -187,7 +188,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be negative");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is non-negative (zero or greater).
         /// </summary>
@@ -201,7 +202,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be negative");
             }
         }
-        
+
         /// <summary>
         /// Validates a numeric value is non-negative (zero or greater).
         /// </summary>
@@ -215,7 +216,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be negative");
             }
         }
-        
+
         /// <summary>
         /// Validates a date is not in the future.
         /// </summary>
@@ -229,7 +230,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be a future date");
             }
         }
-        
+
         /// <summary>
         /// Validates a date is not in the past.
         /// </summary>
@@ -243,7 +244,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} cannot be a past date");
             }
         }
-        
+
         /// <summary>
         /// Validates a date is within a specified range.
         /// </summary>
@@ -259,7 +260,7 @@ namespace ConduitLLM.Core.Utilities
                 throw new ValidationException($"{parameterName} must be between {minDate:d} and {maxDate:d}");
             }
         }
-        
+
         /// <summary>
         /// Validates an enum value is defined.
         /// </summary>

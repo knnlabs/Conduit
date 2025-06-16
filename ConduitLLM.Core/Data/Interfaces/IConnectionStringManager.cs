@@ -23,7 +23,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(Action<string>? logger = null);
-        
+
         /// <summary>
         /// Parses a PostgreSQL URL into a connection string.
         /// </summary>
@@ -42,7 +42,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         string ParsePostgresUrl(string postgresUrl);
-        
+
         /// <summary>
         /// Validates a connection string for the specified provider.
         /// </summary>
@@ -67,7 +67,7 @@ namespace ConduitLLM.Core.Data.Interfaces
         /// ```
         /// </example>
         void ValidateConnectionString(string providerName, string connectionStringValue);
-        
+
         /// <summary>
         /// Sanitizes a connection string by masking sensitive information.
         /// </summary>

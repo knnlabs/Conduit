@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Xunit;
+
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
+
+using Xunit;
 
 namespace ConduitLLM.Tests.Core.Models.Audio
 {
@@ -115,7 +117,7 @@ namespace ConduitLLM.Tests.Core.Models.Audio
                         {
                             Name = "get_weather",
                             Description = "Get weather information",
-                            Parameters = System.Text.Json.JsonSerializer.SerializeToNode(new { 
+                            Parameters = System.Text.Json.JsonSerializer.SerializeToNode(new {
                                 type = "object",
                                 properties = new {
                                     location = new { type = "string" }

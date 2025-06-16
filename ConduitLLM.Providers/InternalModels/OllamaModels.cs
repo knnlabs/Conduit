@@ -178,7 +178,7 @@ public record OllamaChatResponse
 /// In streaming mode, the Message property will contain the delta content for each chunk.
 /// The Done property indicates the final chunk, which includes usage statistics.
 /// </remarks>
-public record OllamaStreamChunk : OllamaChatResponse 
+public record OllamaStreamChunk : OllamaChatResponse
 {
 }
 

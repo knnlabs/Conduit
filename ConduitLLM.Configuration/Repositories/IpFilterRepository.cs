@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -12,7 +13,7 @@ public class IpFilterRepository : IIpFilterRepository
 {
     private readonly IDbContextFactory<ConfigurationDbContext> _dbContextFactory;
     private readonly ILogger<IpFilterRepository> _logger;
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="IpFilterRepository"/> class
     /// </summary>
@@ -25,7 +26,7 @@ public class IpFilterRepository : IIpFilterRepository
         _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
-    
+
     /// <inheritdoc/>
     public async Task<IEnumerable<IpFilterEntity>> GetAllAsync()
     {
@@ -43,7 +44,7 @@ public class IpFilterRepository : IIpFilterRepository
             return Enumerable.Empty<IpFilterEntity>();
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<IEnumerable<IpFilterEntity>> GetEnabledAsync()
     {
@@ -62,7 +63,7 @@ public class IpFilterRepository : IIpFilterRepository
             return Enumerable.Empty<IpFilterEntity>();
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<IpFilterEntity?> GetByIdAsync(int id)
     {
@@ -77,24 +78,24 @@ public class IpFilterRepository : IIpFilterRepository
             return null;
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<IpFilterEntity> AddAsync(IpFilterEntity filter)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            
+
             // Set default dates
             filter.CreatedAt = DateTime.UtcNow;
             filter.UpdatedAt = DateTime.UtcNow;
-            
+
             dbContext.IpFilters.Add(filter);
             await dbContext.SaveChangesAsync();
-            
-            _logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}", 
+
+            _logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
                 filter.FilterType, filter.IpAddressOrCidr);
-                
+
             return filter;
         }
         catch (Exception ex)
@@ -103,33 +104,33 @@ public class IpFilterRepository : IIpFilterRepository
             throw;
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<bool> UpdateAsync(IpFilterEntity filter)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            
+
             var existingFilter = await dbContext.IpFilters.FindAsync(filter.Id);
             if (existingFilter == null)
             {
                 _logger.LogWarning("IP filter with ID {Id} not found for update", filter.Id);
                 return false;
             }
-            
+
             // Update properties
             existingFilter.FilterType = filter.FilterType;
             existingFilter.IpAddressOrCidr = filter.IpAddressOrCidr;
             existingFilter.Description = filter.Description;
             existingFilter.IsEnabled = filter.IsEnabled;
             existingFilter.UpdatedAt = DateTime.UtcNow;
-            
+
             await dbContext.SaveChangesAsync();
-            
-            _logger.LogInformation("Updated IP filter ID {Id}: {FilterType} {IpAddressOrCidr}", 
+
+            _logger.LogInformation("Updated IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
                 filter.Id, filter.FilterType, filter.IpAddressOrCidr);
-                
+
             return true;
         }
         catch (Exception ex)
@@ -138,27 +139,27 @@ public class IpFilterRepository : IIpFilterRepository
             throw;
         }
     }
-    
+
     /// <inheritdoc/>
     public async Task<bool> DeleteAsync(int id)
     {
         try
         {
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            
+
             var filter = await dbContext.IpFilters.FindAsync(id);
             if (filter == null)
             {
                 _logger.LogWarning("IP filter with ID {Id} not found for deletion", id);
                 return false;
             }
-            
+
             dbContext.IpFilters.Remove(filter);
             await dbContext.SaveChangesAsync();
-            
-            _logger.LogInformation("Deleted IP filter ID {Id}: {FilterType} {IpAddressOrCidr}", 
+
+            _logger.LogInformation("Deleted IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
                 id, filter.FilterType, filter.IpAddressOrCidr);
-                
+
             return true;
         }
         catch (Exception ex)

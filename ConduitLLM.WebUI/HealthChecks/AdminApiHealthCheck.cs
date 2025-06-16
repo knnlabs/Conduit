@@ -1,9 +1,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.HealthChecks
 {
@@ -31,7 +33,7 @@ namespace ConduitLLM.WebUI.HealthChecks
             {
                 // Try to get system info as a health check
                 var systemInfo = await _adminApiClient.GetSystemInfoAsync();
-                
+
                 if (systemInfo != null)
                 {
                     return HealthCheckResult.Healthy(
@@ -42,14 +44,14 @@ namespace ConduitLLM.WebUI.HealthChecks
                             ["lastCheck"] = DateTime.UtcNow
                         });
                 }
-                
+
                 return HealthCheckResult.Unhealthy(
                     "Admin API returned null response");
             }
             catch (Exception ex) when (ex.Message.Contains("Circuit breaker is open"))
             {
                 _logger.LogWarning("Admin API health check failed: Circuit breaker is open");
-                
+
                 return HealthCheckResult.Unhealthy(
                     "Circuit breaker is open",
                     exception: ex,
@@ -62,7 +64,7 @@ namespace ConduitLLM.WebUI.HealthChecks
             catch (TaskCanceledException ex)
             {
                 _logger.LogWarning("Admin API health check timed out");
-                
+
                 return HealthCheckResult.Degraded(
                     "Admin API request timed out",
                     exception: ex,
@@ -75,7 +77,7 @@ namespace ConduitLLM.WebUI.HealthChecks
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Admin API health check failed");
-                
+
                 return HealthCheckResult.Unhealthy(
                     "Admin API is not accessible",
                     exception: ex,

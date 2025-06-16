@@ -7,9 +7,11 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Data;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Services;
@@ -22,7 +24,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
     private readonly DateTime _startTime;
-    
+
     /// <summary>
     /// Initializes a new instance of the AdminSystemInfoService class
     /// </summary>
@@ -36,12 +38,12 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _startTime = Process.GetCurrentProcess().StartTime;
     }
-    
+
     /// <inheritdoc />
     public async Task<SystemInfoDto> GetSystemInfoAsync()
     {
         _logger.LogInformation("Getting system information");
-        
+
         var systemInfo = new SystemInfoDto
         {
             Version = GetVersionInfo(),
@@ -50,39 +52,39 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             Database = await GetDatabaseInfoAsync(),
             RecordCounts = await GetRecordCountsAsync()
         };
-        
+
         return systemInfo;
     }
-    
+
     /// <inheritdoc />
     public async Task<HealthStatusDto> GetHealthStatusAsync()
     {
         _logger.LogInformation("Getting health status");
-        
+
         var components = new Dictionary<string, ComponentHealth>();
-        
+
         // Database health
         var dbHealth = await CheckDatabaseHealthAsync();
         components.Add("Database", dbHealth);
-        
+
         // Overall health is determined by component statuses
-        string overallStatus = components.All(c => c.Value.Status == "Healthy") 
-            ? "Healthy" 
+        string overallStatus = components.All(c => c.Value.Status == "Healthy")
+            ? "Healthy"
             : "Unhealthy";
-        
+
         return new HealthStatusDto
         {
             Status = overallStatus,
             Components = components
         };
     }
-    
+
     private VersionInfo GetVersionInfo()
     {
         var assembly = Assembly.GetExecutingAssembly();
         var version = assembly.GetName().Version;
         var versionString = version?.ToString() ?? "Unknown";
-        
+
         // Try to get build date from assembly metadata if available
         DateTime? buildDate = null;
         var buildDateAttribute = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
@@ -98,14 +100,14 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 }
             }
         }
-        
+
         return new VersionInfo
         {
             AppVersion = versionString,
             BuildDate = buildDate
         };
     }
-    
+
     private OsInfo GetOsInfo()
     {
         return new OsInfo
@@ -114,7 +116,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             Architecture = RuntimeInformation.ProcessArchitecture.ToString()
         };
     }
-    
+
     private RuntimeInfo GetRuntimeInfo()
     {
         return new RuntimeInfo
@@ -124,7 +126,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             Uptime = DateTime.Now - _startTime
         };
     }
-    
+
     private async Task<DatabaseInfo> GetDatabaseInfoAsync()
     {
         var info = new DatabaseInfo
@@ -133,19 +135,19 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             Connected = false,
             Version = "Unknown"
         };
-        
+
         try
         {
             // Check connection
             info.Connected = await _dbContext.GetDatabase().CanConnectAsync();
-            
+
             // Get database version if possible
             if (info.Connected)
             {
                 // Get connection string (masked)
                 var connectionString = _dbContext.GetDatabase().GetConnectionString();
                 info.ConnectionString = MaskConnectionString(connectionString);
-                
+
                 if (info.Provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
                 {
                     var version = await _dbContext.GetDatabase().ExecuteSqlRawAsync("SELECT @@VERSION");
@@ -155,7 +157,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 {
                     info.Version = "SQLite";
                     info.Location = ExtractDatabasePathFromConnectionString(connectionString);
-                    
+
                     // Get database file size if it's SQLite
                     if (!string.IsNullOrEmpty(info.Location) && File.Exists(info.Location))
                     {
@@ -167,13 +169,13 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 {
                     info.Version = "-1"; // We'll get this with raw SQL below
                     info.Location = ExtractHostFromConnectionString(connectionString);
-                    
+
                     // Get PostgreSQL version and database size using raw SQL
                     try
                     {
                         var dbConnection = _dbContext.GetDatabase().GetDbConnection();
                         await dbConnection.OpenAsync();
-                        
+
                         using (var command = dbConnection.CreateCommand())
                         {
                             // Get PostgreSQL version
@@ -190,23 +192,36 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                                 }
                             }
                         }
-                        
+
                         using (var command = dbConnection.CreateCommand())
                         {
                             // Get database size
                             var dbName = ExtractDatabaseNameFromConnectionString(connectionString);
-                            command.CommandText = $"SELECT pg_database_size('{dbName}')";
-                            var sizeResult = await command.ExecuteScalarAsync();
-                            if (sizeResult != null && long.TryParse(sizeResult.ToString(), out long sizeInBytes))
+                            // Validate database name to prevent SQL injection
+                            if (!IsValidDatabaseName(dbName))
                             {
-                                info.Size = FormatFileSize(sizeInBytes);
+                                info.Size = "Invalid database name";
                             }
                             else
                             {
-                                info.Size = "Unknown";
+                                // Use quote_ident to safely escape the database name
+                                command.CommandText = "SELECT pg_database_size(quote_ident(@dbName))";
+                                var parameter = command.CreateParameter();
+                                parameter.ParameterName = "@dbName";
+                                parameter.Value = dbName;
+                                command.Parameters.Add(parameter);
+                                var sizeResult = await command.ExecuteScalarAsync();
+                                if (sizeResult != null && long.TryParse(sizeResult.ToString(), out long sizeInBytes))
+                                {
+                                    info.Size = FormatFileSize(sizeInBytes);
+                                }
+                                else
+                                {
+                                    info.Size = "Unknown";
+                                }
                             }
                         }
-                        
+
                         await dbConnection.CloseAsync();
                     }
                     catch (Exception ex)
@@ -215,7 +230,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                         info.Size = "N/A";
                     }
                 }
-                
+
                 // Get table count
                 var tables = await GetTableCountAsync();
                 info.TableCount = tables;
@@ -226,10 +241,10 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             _logger.LogError(ex, "Error getting database information");
             info.Connected = false;
         }
-        
+
         return info;
     }
-    
+
     private async Task<ComponentHealth> CheckDatabaseHealthAsync()
     {
         var health = new ComponentHealth
@@ -237,23 +252,23 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             Description = "Database connection and migrations",
             Data = new Dictionary<string, string>()
         };
-        
+
         try
         {
             // Check connection
             bool canConnect = await _dbContext.GetDatabase().CanConnectAsync();
             health.Data["Connection"] = canConnect ? "Success" : "Failed";
-            
+
             if (canConnect)
             {
                 // Check migrations
                 bool pendingMigrations = (await _dbContext.GetDatabase().GetPendingMigrationsAsync()).Any();
                 health.Data["Pending Migrations"] = pendingMigrations ? "Yes" : "No";
-                
+
                 // Get migration history
                 var migrations = await _dbContext.GetDatabase().GetAppliedMigrationsAsync();
                 health.Data["Applied Migrations"] = migrations.Count().ToString();
-                
+
                 health.Status = pendingMigrations ? "Degraded" : "Healthy";
             }
             else
@@ -267,14 +282,14 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             health.Status = "Unhealthy";
             health.Data["Error"] = ex.Message;
         }
-        
+
         return health;
     }
-    
+
     private async Task<RecordCountsDto> GetRecordCountsAsync()
     {
         var counts = new RecordCountsDto();
-        
+
         try
         {
             counts.VirtualKeys = await _dbContext.VirtualKeys.CountAsync();
@@ -287,19 +302,19 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         {
             _logger.LogError(ex, "Error getting record counts");
         }
-        
+
         return counts;
     }
-    
+
     private async Task<int> GetTableCountAsync()
     {
         try
         {
             var provider = _dbContext.GetDatabase().ProviderName ?? "";
             var dbConnection = _dbContext.GetDatabase().GetDbConnection();
-            
+
             await dbConnection.OpenAsync();
-            
+
             using (var command = dbConnection.CreateCommand())
             {
                 if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
@@ -326,16 +341,16 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                     await dbConnection.CloseAsync();
                     return 13;
                 }
-                
+
                 var result = await command.ExecuteScalarAsync();
                 await dbConnection.CloseAsync();
-                
+
                 if (result != null && int.TryParse(result.ToString(), out int count))
                 {
                     return count;
                 }
             }
-            
+
             // Default to known table count
             return 13;
         }
@@ -345,19 +360,19 @@ public class AdminSystemInfoService : IAdminSystemInfoService
             return 13; // Default known table count
         }
     }
-    
+
     private string MaskConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "Not configured";
-        
+
         var parts = connectionString.Split(';');
         var maskedParts = new List<string>();
-        
+
         foreach (var part in parts)
         {
             var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) || 
+            if (trimmedPart.StartsWith("Password=", StringComparison.OrdinalIgnoreCase) ||
                 trimmedPart.StartsWith("Pwd=", StringComparison.OrdinalIgnoreCase))
             {
                 maskedParts.Add(trimmedPart.Split('=')[0] + "=****");
@@ -367,15 +382,15 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 maskedParts.Add(trimmedPart);
             }
         }
-        
+
         return string.Join("; ", maskedParts);
     }
-    
+
     private string ExtractDatabasePathFromConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "Unknown";
-        
+
         var parts = connectionString.Split(';');
         foreach (var part in parts)
         {
@@ -385,34 +400,34 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 return trimmedPart.Split('=')[1].Trim();
             }
         }
-        
+
         return "Unknown";
     }
-    
+
     private string ExtractHostFromConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "Unknown";
-        
+
         var parts = connectionString.Split(';');
         foreach (var part in parts)
         {
             var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) || 
+            if (trimmedPart.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) ||
                 trimmedPart.StartsWith("Server=", StringComparison.OrdinalIgnoreCase))
             {
                 return trimmedPart.Split('=')[1].Trim();
             }
         }
-        
+
         return "Unknown";
     }
-    
+
     private string ExtractDatabaseNameFromConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "";
-        
+
         var parts = connectionString.Split(';');
         foreach (var part in parts)
         {
@@ -422,25 +437,35 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 return trimmedPart.Split('=')[1].Trim();
             }
         }
-        
+
         return "";
     }
-    
+
+    private bool IsValidDatabaseName(string dbName)
+    {
+        if (string.IsNullOrWhiteSpace(dbName))
+            return false;
+
+        // Database names in PostgreSQL can contain letters, numbers, underscores, and hyphens
+        // They cannot contain quotes, semicolons, or other special characters that could be used for SQL injection
+        return System.Text.RegularExpressions.Regex.IsMatch(dbName, @"^[a-zA-Z0-9_\-]+$");
+    }
+
     private string FormatFileSize(long bytes)
     {
         if (bytes < 0)
             return "N/A";
-            
+
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
         double len = bytes;
         int order = 0;
-        
+
         while (len >= 1024 && order < sizes.Length - 1)
         {
             order++;
             len /= 1024;
         }
-        
+
         return $"{len:0.##} {sizes[order]}";
     }
 }

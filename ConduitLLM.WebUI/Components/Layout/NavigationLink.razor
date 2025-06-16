@@ -1,0 +1,72 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+@if (IsEnabled)
+{
+    <NavLink class="@ComputedCssClass" href="@Href" Match="@Match">
+        <div class="nav-link-content">
+            <i class="@IconClass"></i>
+            <span>@Text</span>
+            @if (ShowIndicator)
+            {
+                <i class="fas fa-exclamation-circle nav-link-warning-indicator" title="@TooltipMessage"></i>
+            }
+        </div>
+        <div class="nav-link-indicator"></div>
+    </NavLink>
+}
+else
+{
+    <div class="@ComputedDisabledCssClass" title="@TooltipMessage">
+        <div class="nav-link-content">
+            <i class="@IconClass"></i>
+            <span>@Text</span>
+            <i class="fas fa-lock nav-link-lock-indicator"></i>
+        </div>
+        <div class="nav-link-indicator"></div>
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// The URL to navigate to.
+    /// </summary>
+    [Parameter] public string Href { get; set; } = "";
+    
+    /// <summary>
+    /// The text to display in the link.
+    /// </summary>
+    [Parameter] public string Text { get; set; } = "";
+    
+    /// <summary>
+    /// The CSS class for the icon.
+    /// </summary>
+    [Parameter] public string IconClass { get; set; } = "fa fa-circle";
+    
+    /// <summary>
+    /// Additional CSS classes to apply to the link.
+    /// </summary>
+    [Parameter] public string? CssClass { get; set; }
+    
+    /// <summary>
+    /// The NavLink matching behavior.
+    /// </summary>
+    [Parameter] public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+    
+    /// <summary>
+    /// Whether the navigation link is enabled.
+    /// </summary>
+    [Parameter] public bool IsEnabled { get; set; } = true;
+    
+    /// <summary>
+    /// The tooltip message to display when disabled or showing indicator.
+    /// </summary>
+    [Parameter] public string? TooltipMessage { get; set; }
+    
+    /// <summary>
+    /// Whether to show a warning indicator even when enabled.
+    /// </summary>
+    [Parameter] public bool ShowIndicator { get; set; }
+    
+    private string ComputedCssClass => string.IsNullOrEmpty(CssClass) ? "nav-link" : $"nav-link {CssClass}";
+    private string ComputedDisabledCssClass => string.IsNullOrEmpty(CssClass) ? "nav-link nav-link-disabled" : $"nav-link nav-link-disabled {CssClass}";
+}

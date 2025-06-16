@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Configuration.Data
@@ -21,17 +22,17 @@ namespace ConduitLLM.Configuration.Data
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => new { e.ModelAlias, e.ProviderCredentialId }).IsUnique();
             });
-            
+
             // Configure ProviderCredential entity
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.ProviderCredential>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.ProviderName).IsUnique();
             });
-            
+
             // Configure Provider Health entities
             modelBuilder.ApplyProviderHealthConfigurations();
-            
+
             // Ignore entities in test environments if needed
             if (isTestEnvironment)
             {

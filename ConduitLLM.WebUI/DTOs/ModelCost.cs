@@ -41,7 +41,7 @@ public class ModelCost
     /// Description for this model cost entry (for backward compatibility)
     /// </summary>
     public string? Description { get; set; }
-    
+
     /// <summary>
     /// Creation timestamp of this cost record
     /// </summary>
@@ -51,7 +51,7 @@ public class ModelCost
     /// Last update timestamp of this cost record
     /// </summary>
     public DateTime UpdatedAt { get; set; }
-    
+
     /// <summary>
     /// Convert from a ModelCostDto to a WebUI ModelCost
     /// </summary>
@@ -72,7 +72,7 @@ public class ModelCost
             UpdatedAt = dto.UpdatedAt
         };
     }
-    
+
     /// <summary>
     /// Convert to a ModelCostDto
     /// </summary>
@@ -92,7 +92,7 @@ public class ModelCost
             UpdatedAt = this.UpdatedAt
         };
     }
-    
+
     /// <summary>
     /// Implicit conversion operator to ModelCostDto
     /// </summary>
@@ -104,7 +104,7 @@ public class ModelCost
         {
             return null;
         }
-        
+
         return modelCost.ToDto();
     }
 }

@@ -38,6 +38,9 @@ const sidebars: SidebarsConfig = {
         'features/model-routing',
         'features/provider-integration',
         'features/multimodal-support',
+        'features/audio-services',
+        'features/audio-providers',
+        'features/correlation-tracing',
       ],
     },
     {
@@ -58,6 +61,7 @@ const sidebars: SidebarsConfig = {
         'api-reference/chat-completions',
         'api-reference/embeddings',
         'api-reference/models',
+        'api-reference/audio',
       ],
     },
     {
@@ -67,6 +71,16 @@ const sidebars: SidebarsConfig = {
         'architecture/overview',
         'architecture/components',
         'architecture/repository-pattern',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Monitoring & Operations',
+      items: [
+        'monitoring/health-checks',
+        'monitoring/metrics-monitoring',
+        'monitoring/production-deployment',
+        'monitoring/runbooks',
       ],
     },
     {

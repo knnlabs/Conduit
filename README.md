@@ -28,6 +28,7 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
 - **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
 - **Streaming Support**: Real-time token streaming for responsive applications
+- **Audio API Support**: Complete audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
 - **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
 - **Extensible Architecture**: Easily add support for new LLM providers
@@ -295,6 +296,10 @@ See the `docs/` directory for detailed documentation:
   - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
   - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
   - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
+- [Audio API Guide](docs/Audio-API-Guide.md)
+- [Audio Architecture](docs/Audio-Architecture.md)
+- [Real-time Architecture](docs/Realtime-Architecture.md)
+- [Audio Implementation Status](docs/Audio-Implementation-Status.md)
 - [Budget Management](docs/Budget-Management.md)
 - [Cache Configuration](docs/Cache-Configuration.md)
 - [Configuration Guide](docs/Configuration-Guide.md)
@@ -307,8 +312,7 @@ See the `docs/` directory for detailed documentation:
 - [Virtual Keys](docs/Virtual-Keys.md)
 - [WebUI Guide](docs/WebUI-Guide.md)
 - [Admin API Migration Guide](docs/admin-api-migration-guide.md)
-- [Admin API Implementation Status](docs/ADMIN-API-MIGRATION-STATUS.md)
-- [Legacy Mode Deprecation Timeline](docs/LEGACY-MODE-DEPRECATION-TIMELINE.md)
+- [Current Status](docs/Current-Status.md)
 
 ## Contributing
 

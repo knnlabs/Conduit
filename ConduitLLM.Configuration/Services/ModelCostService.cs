@@ -1,12 +1,14 @@
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Repositories;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Repositories;
+
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Services;
 
@@ -88,7 +90,7 @@ public class ModelCostService : IModelCostService
             {
                 // Remove the trailing asterisk for comparison
                 string patternPrefix = pattern.ModelIdPattern.TrimEnd('*');
-                
+
                 if (modelId.StartsWith(patternPrefix) && patternPrefix.Length > longestMatchLength)
                 {
                     bestMatch = pattern;
@@ -118,7 +120,7 @@ public class ModelCostService : IModelCostService
             }
 
             var costs = await _modelCostRepository.GetAllAsync(cancellationToken);
-            
+
             _cache.Set(AllModelsCacheKey, costs, _cacheDuration);
             return costs;
         }
@@ -204,7 +206,7 @@ public class ModelCostService : IModelCostService
                 // Clear cache
                 ClearCache();
             }
-            
+
             return result;
         }
         catch (Exception ex)

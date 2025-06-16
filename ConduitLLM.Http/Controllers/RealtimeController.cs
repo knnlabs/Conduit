@@ -3,12 +3,14 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models.Realtime;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models.Realtime;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -94,10 +96,10 @@ namespace ConduitLLM.Http.Controllers
             {
                 // Accept the WebSocket connection
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-                
+
                 // Generate a unique connection ID
                 var connectionId = Guid.NewGuid().ToString();
-                
+
                 _logger.LogInformation(
                     "WebSocket connection established. ConnectionId: {ConnectionId}, Model: {Model}, VirtualKeyId: {KeyId}",
                     connectionId, model, keyEntity.Id);
@@ -153,7 +155,7 @@ namespace ConduitLLM.Http.Controllers
             }
 
             var connections = await _connectionManager.GetActiveConnectionsAsync(keyEntity.Id);
-            
+
             return Ok(new ConnectionStatusResponse
             {
                 VirtualKeyId = keyEntity.Id,
@@ -222,10 +224,10 @@ namespace ConduitLLM.Http.Controllers
             // 1. A specific permission flag
             // 2. The models allowed for the key
             // 3. A feature flag in the key's metadata
-            
+
             // For now, we'll allow all keys with audio model access
             // In production, you'd want more granular control
-            
+
             if (keyEntity.AllowedModels?.Contains("realtime", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return true;

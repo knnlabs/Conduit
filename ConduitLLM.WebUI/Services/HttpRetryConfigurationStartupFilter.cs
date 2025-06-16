@@ -1,8 +1,9 @@
+using ConduitLLM.WebUI.Interfaces;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.WebUI.Interfaces;
 
 namespace ConduitLLM.WebUI.Services
 {
@@ -31,19 +32,19 @@ namespace ConduitLLM.WebUI.Services
                 using (var scope = builder.ApplicationServices.CreateScope())
                 {
                     var adminApiClient = scope.ServiceProvider.GetRequiredService<IAdminApiClient>();
-                    
+
                     try
                     {
                         // Initialize default configuration if needed via the API
-                        var initialized = Task.Run(async () => 
+                        var initialized = Task.Run(async () =>
                             await adminApiClient.InitializeHttpRetryConfigurationAsync()
                         ).GetAwaiter().GetResult();
-                        
+
                         if (initialized)
                         {
                             _logger.LogInformation("HTTP retry configuration initialized successfully");
                         }
-                        
+
                         // Now load the settings into the application options
                         var retryConfigService = scope.ServiceProvider.GetRequiredService<IHttpRetryConfigurationService>();
                         Task.Run(async () => await retryConfigService.LoadSettingsFromDatabaseAsync()).GetAwaiter().GetResult();

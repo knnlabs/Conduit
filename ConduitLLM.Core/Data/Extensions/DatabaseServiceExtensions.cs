@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Data.Health;
 using ConduitLLM.Core.Data.Interfaces;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -26,10 +27,10 @@ namespace ConduitLLM.Core.Data.Extensions
         {
             // Register the connection string manager as a singleton
             services.TryAddSingleton<IConnectionStringManager, ConnectionStringManager>();
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Adds database connection factory to the service collection.
         /// </summary>
@@ -45,13 +46,13 @@ namespace ConduitLLM.Core.Data.Extensions
         {
             // Make sure connection string manager is registered
             services.AddConnectionStringManager();
-            
+
             // Register the database connection factory
             services.TryAddSingleton<IDatabaseConnectionFactory, DatabaseConnectionFactory>();
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Adds database initialization services for the specified DbContext type.
         /// </summary>
@@ -69,13 +70,13 @@ namespace ConduitLLM.Core.Data.Extensions
         {
             // Make sure connection string manager is registered
             services.AddConnectionStringManager();
-            
+
             // Register database initializer
             services.TryAddScoped<IDatabaseInitializer, DatabaseInitializer<TContext>>();
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Adds all database-related services to the service collection.
         /// </summary>
@@ -96,7 +97,7 @@ namespace ConduitLLM.Core.Data.Extensions
                 .AddDatabaseInitializer<TContext>()
                 .AddDatabaseHealthChecks();
         }
-        
+
         /// <summary>
         /// Adds database health checks to the service collection.
         /// </summary>
@@ -107,7 +108,7 @@ namespace ConduitLLM.Core.Data.Extensions
             // Add health checks for database
             services.AddHealthChecks()
                 .AddCheck<DatabaseHealthCheck>("database_health", tags: new[] { "database", "readiness" });
-            
+
             return services;
         }
     }
