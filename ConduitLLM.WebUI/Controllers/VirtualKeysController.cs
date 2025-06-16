@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.WebUI.Controllers;
 
 [ApiController]
@@ -104,7 +106,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error getting virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -139,7 +141,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error updating virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -168,7 +170,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error deleting virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }
@@ -197,7 +199,7 @@ public class VirtualKeysController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", id);
+            _logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}.", S(id));
             return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred.");
         }
     }

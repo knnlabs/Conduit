@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Http.Controllers
 {
     /// <summary>
@@ -102,7 +104,7 @@ namespace ConduitLLM.Http.Controllers
 
                 _logger.LogInformation(
                     "WebSocket connection established. ConnectionId: {ConnectionId}, Model: {Model}, VirtualKeyId: {KeyId}",
-                    connectionId, model, keyEntity.Id);
+                    connectionId, S(model), keyEntity.Id);
 
                 // Register the connection
                 await _connectionManager.RegisterConnectionAsync(connectionId, keyEntity.Id, model, webSocket);

@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.WebUI.Controllers
 {
     /// <summary>
@@ -114,7 +116,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", deploymentName);
+                _logger.LogError(ex, "Error retrieving model deployment {DeploymentName}", S(deploymentName));
                 return StatusCode(500, $"Error retrieving model deployment '{deploymentName}'");
             }
         }
@@ -181,7 +183,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", deploymentName);
+                _logger.LogError(ex, "Error deleting model deployment {DeploymentName}", S(deploymentName));
                 return StatusCode(500, $"Error deleting model deployment '{deploymentName}'");
             }
         }
@@ -235,7 +237,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}", primaryModel);
+                _logger.LogError(ex, "Error setting fallback configuration for model {PrimaryModel}", S(primaryModel));
                 return StatusCode(500, $"Error setting fallback configuration for model '{primaryModel}'");
             }
         }
@@ -261,7 +263,7 @@ namespace ConduitLLM.WebUI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", primaryModel);
+                _logger.LogError(ex, "Error removing fallback configuration for model {PrimaryModel}", S(primaryModel));
                 return StatusCode(500, $"Error removing fallback configuration for model '{primaryModel}'");
             }
         }

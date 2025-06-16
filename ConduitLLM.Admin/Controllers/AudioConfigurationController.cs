@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Controllers
 {
     /// <summary>
@@ -443,7 +445,7 @@ namespace ConduitLLM.Admin.Controllers
             if (!terminated)
                 return NotFound();
 
-            _logger.LogInformation("Terminated real-time session {SessionId}", sessionId);
+            _logger.LogInformation("Terminated real-time session {SessionId}", S(sessionId));
             return NoContent();
         }
 
