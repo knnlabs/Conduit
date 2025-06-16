@@ -183,7 +183,10 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        ToolValidation.ValidateTools(new List<Tool> { tool }); // Should not throw
+        var exception = Record.Exception(() => ToolValidation.ValidateTools(new List<Tool> { tool }));
+        
+        // Assert
+        Assert.Null(exception); // Should not throw any exception
     }
 
     [Fact]
@@ -202,7 +205,10 @@ public class ToolModelTests
         };
 
         // Act & Assert
-        ToolValidation.ValidateToolCalls(new List<ToolCall> { toolCall }); // Should not throw
+        var exception = Record.Exception(() => ToolValidation.ValidateToolCalls(new List<ToolCall> { toolCall }));
+        
+        // Assert
+        Assert.Null(exception); // Should not throw any exception
     }
 
     [Fact]

@@ -194,7 +194,8 @@ namespace ConduitLLM.Tests.Integration
                 var response = await _adminHttpClient.GetAsync("/health");
 
                 // Assert
-                Assert.True(response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable);
+                Assert.True(response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable, 
+                    $"Expected success status or ServiceUnavailable, but got {response.StatusCode}");
             }
             catch (HttpRequestException ex)
             {

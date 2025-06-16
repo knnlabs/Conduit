@@ -112,7 +112,7 @@ namespace ConduitLLM.Tests.Data
             using var connection = await factory.CreateConnectionAsync();
 
             // Assert
-            Assert.True(connection.State == System.Data.ConnectionState.Open);
+            Assert.Equal(System.Data.ConnectionState.Open, connection.State);
         }
     }
 }
