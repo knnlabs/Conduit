@@ -9,6 +9,8 @@ using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
+
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -44,7 +46,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting latest health status for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting latest health status for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -62,7 +64,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health status history for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting health status history for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -76,11 +78,11 @@ namespace ConduitLLM.Configuration.Repositories
                 await _dbContext.SaveChangesAsync();
 
                 _logger.LogDebug("Saved health status for provider {ProviderName}: {IsOnline}",
-                    status.ProviderName, status.IsOnline);
+                    S(status.ProviderName), S(status.IsOnline));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health status for provider {ProviderName}", status.ProviderName);
+                _logger.LogError(ex, "Error saving health status for provider {ProviderName}", S(status.ProviderName));
                 throw;
             }
         }
@@ -119,7 +121,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting health configuration for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting health configuration for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -150,11 +152,11 @@ namespace ConduitLLM.Configuration.Repositories
 
                 await _dbContext.SaveChangesAsync();
 
-                _logger.LogDebug("Saved health configuration for provider {ProviderName}", config.ProviderName);
+                _logger.LogDebug("Saved health configuration for provider {ProviderName}", S(config.ProviderName));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving health configuration for provider {ProviderName}", config.ProviderName);
+                _logger.LogError(ex, "Error saving health configuration for provider {ProviderName}", S(config.ProviderName));
                 throw;
             }
         }
@@ -205,7 +207,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calculating provider uptimes since {Since}", since);
+                _logger.LogError(ex, "Error calculating provider uptimes since {Since}", S(since));
                 throw;
             }
         }
@@ -237,7 +239,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calculating average response times since {Since}", since);
+                _logger.LogError(ex, "Error calculating average response times since {Since}", S(since));
                 throw;
             }
         }
@@ -269,7 +271,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error counting errors by provider since {Since}", since);
+                _logger.LogError(ex, "Error counting errors by provider since {Since}", S(since));
                 throw;
             }
         }
@@ -309,7 +311,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting error categories by provider since {Since}", since);
+                _logger.LogError(ex, "Error getting error categories by provider since {Since}", S(since));
                 throw;
             }
         }
@@ -338,14 +340,14 @@ namespace ConduitLLM.Configuration.Repositories
                     }
 
                     _logger.LogInformation("Purged {Count} provider health records older than {OlderThan}",
-                        count, olderThan);
+                        count, S(olderThan));
                 }
 
                 return count;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error purging old health records older than {OlderThan}", olderThan);
+                _logger.LogError(ex, "Error purging old health records older than {OlderThan}", S(olderThan));
                 throw;
             }
         }
@@ -372,14 +374,14 @@ namespace ConduitLLM.Configuration.Repositories
                     };
 
                     await SaveConfigurationAsync(config);
-                    _logger.LogInformation("Created default health configuration for provider {ProviderName}", providerName);
+                    _logger.LogInformation("Created default health configuration for provider {ProviderName}", S(providerName));
                 }
 
                 return config;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error ensuring health configuration exists for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error ensuring health configuration exists for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -398,12 +400,12 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 else
                 {
-                    _logger.LogWarning("Attempted to update LastCheckedUtc for non-existent provider {ProviderName}", providerName);
+                    _logger.LogWarning("Attempted to update LastCheckedUtc for non-existent provider {ProviderName}", S(providerName));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating LastCheckedUtc for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error updating LastCheckedUtc for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -438,7 +440,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error counting consecutive failures for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error counting consecutive failures for provider {ProviderName}", S(providerName));
                 throw;
             }
         }

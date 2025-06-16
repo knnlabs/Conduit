@@ -10,6 +10,8 @@ using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
+
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -45,7 +47,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting notification with ID {NotificationId}", id);
+                _logger.LogError(ex, "Error getting notification with ID {NotificationId}", S(id));
                 throw;
             }
         }
@@ -108,12 +110,12 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateException ex)
             {
-                _logger.LogError(ex, "Database error creating notification '{NotificationType}'", notification.Type);
+                _logger.LogError(ex, "Database error creating notification '{NotificationType}'", S(notification.Type));
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating notification '{NotificationType}'", notification.Type);
+                _logger.LogError(ex, "Error creating notification '{NotificationType}'", S(notification.Type));
                 throw;
             }
         }
@@ -138,7 +140,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex, "Concurrency error updating notification with ID {NotificationId}", notification.Id);
+                _logger.LogError(ex, "Concurrency error updating notification with ID {NotificationId}", S(notification.Id));
 
                 // Handle concurrency issues by reloading and reapplying changes if needed
                 try
@@ -159,13 +161,13 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 catch (Exception retryEx)
                 {
-                    _logger.LogError(retryEx, "Error during retry of notification update with ID {NotificationId}", notification.Id);
+                    _logger.LogError(retryEx, "Error during retry of notification update with ID {NotificationId}", S(notification.Id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating notification with ID {NotificationId}", notification.Id);
+                _logger.LogError(ex, "Error updating notification with ID {NotificationId}", S(notification.Id));
                 throw;
             }
         }
@@ -190,7 +192,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.LogError(ex, "Concurrency error marking notification with ID {NotificationId} as read", id);
+                _logger.LogError(ex, "Concurrency error marking notification with ID {NotificationId} as read", S(id));
 
                 // Handle concurrency issues by retrying
                 try
@@ -210,13 +212,13 @@ namespace ConduitLLM.Configuration.Repositories
                 }
                 catch (Exception retryEx)
                 {
-                    _logger.LogError(retryEx, "Error during retry of marking notification with ID {NotificationId} as read", id);
+                    _logger.LogError(retryEx, "Error during retry of marking notification with ID {NotificationId} as read", S(id));
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking notification with ID {NotificationId} as read", id);
+                _logger.LogError(ex, "Error marking notification with ID {NotificationId} as read", S(id));
                 throw;
             }
         }
@@ -240,7 +242,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting notification with ID {NotificationId}", id);
+                _logger.LogError(ex, "Error deleting notification with ID {NotificationId}", S(id));
                 throw;
             }
         }

@@ -9,6 +9,8 @@ using ConduitLLM.Configuration.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
+
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -46,7 +48,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mapping with ID {MappingId}", id);
+                _logger.LogError(ex, "Error getting model provider mapping with ID {MappingId}", S(id));
                 throw;
             }
         }
@@ -70,7 +72,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", modelName);
+                _logger.LogError(ex, "Error getting model provider mapping for model {ModelName}", S(modelName));
                 throw;
             }
         }
@@ -127,7 +129,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model provider mappings for provider {ProviderName}", providerName);
+                _logger.LogError(ex, "Error getting model provider mappings for provider {ProviderName}", S(providerName));
                 throw;
             }
         }
@@ -157,7 +159,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", modelProviderMapping.ModelAlias);
+                _logger.LogError(ex, "Error creating model provider mapping for {ModelAlias}", S(modelProviderMapping.ModelAlias));
                 throw;
             }
         }
@@ -182,7 +184,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (existingEntity == null)
                 {
-                    _logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", modelProviderMapping.Id);
+                    _logger.LogWarning("Cannot update non-existent model provider mapping with ID {MappingId}", S(modelProviderMapping.Id));
                     return false;
                 }
 
@@ -199,7 +201,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", modelProviderMapping.Id);
+                _logger.LogError(ex, "Error updating model provider mapping with ID {MappingId}", S(modelProviderMapping.Id));
                 throw;
             }
         }
@@ -216,7 +218,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (entity == null)
                 {
-                    _logger.LogWarning("Cannot delete non-existent model provider mapping with ID {MappingId}", id);
+                    _logger.LogWarning("Cannot delete non-existent model provider mapping with ID {MappingId}", S(id));
                     return false;
                 }
 
@@ -227,7 +229,7 @@ namespace ConduitLLM.Configuration.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model provider mapping with ID {MappingId}", id);
+                _logger.LogError(ex, "Error deleting model provider mapping with ID {MappingId}", S(id));
                 throw;
             }
         }
