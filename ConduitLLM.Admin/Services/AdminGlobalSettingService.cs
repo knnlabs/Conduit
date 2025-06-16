@@ -12,6 +12,8 @@ using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -40,14 +42,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Getting all global settings");
+                _logger.LogInformation("Getting all global settings");
 
                 var settings = await _globalSettingRepository.GetAllAsync();
                 return settings.Select(s => s.ToDto()).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error getting all global settings");
+                _logger.LogError(ex, "Error getting all global settings");
                 throw;
             }
         }
@@ -57,14 +59,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Getting global setting with ID: {Id}", id);
+                _logger.LogInformation("Getting global setting with ID: {Id}", S(id));
 
                 var setting = await _globalSettingRepository.GetByIdAsync(id);
                 return setting?.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error getting global setting with ID {Id}", id);
+                _logger.LogError(ex, "Error getting global setting with ID {Id}", S(id));
                 throw;
             }
         }
@@ -74,14 +76,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Getting global setting with key: {Key}", key);
+                _logger.LogInformation("Getting global setting with key: {Key}", S(key));
 
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);
                 return setting?.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error getting global setting with key {Key}", key);
+                _logger.LogError(ex, "Error getting global setting with key {Key}", S(key));
                 throw;
             }
         }
@@ -91,7 +93,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Creating new global setting with key: {Key}", setting.Key);
+                _logger.LogInformation("Creating new global setting with key: {Key}", S(setting.Key));
 
                 // Check if a setting with the same key already exists
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
@@ -117,7 +119,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error creating global setting with key {Key}", setting.Key);
+                _logger.LogError(ex, "Error creating global setting with key {Key}", S(setting.Key));
                 throw;
             }
         }
@@ -127,13 +129,13 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Updating global setting with ID: {Id}", setting.Id);
+                _logger.LogInformation("Updating global setting with ID: {Id}", S(setting.Id));
 
                 // Get the existing setting
                 var existingSetting = await _globalSettingRepository.GetByIdAsync(setting.Id);
                 if (existingSetting == null)
                 {
-                    _logger.LogWarningSecure("Global setting with ID {Id} not found", setting.Id);
+                    _logger.LogWarning("Global setting with ID {Id} not found", S(setting.Id));
                     return false;
                 }
 
@@ -145,7 +147,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error updating global setting with ID {Id}", setting.Id);
+                _logger.LogError(ex, "Error updating global setting with ID {Id}", S(setting.Id));
                 throw;
             }
         }
@@ -155,14 +157,14 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Updating global setting with key: {Key}", setting.Key);
+                _logger.LogInformation("Updating global setting with key: {Key}", S(setting.Key));
 
                 // Upsert the setting
                 return await _globalSettingRepository.UpsertAsync(setting.Key, setting.Value, setting.Description);
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error updating global setting with key {Key}", setting.Key);
+                _logger.LogError(ex, "Error updating global setting with key {Key}", S(setting.Key));
                 throw;
             }
         }
@@ -172,13 +174,13 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Deleting global setting with ID: {Id}", id);
+                _logger.LogInformation("Deleting global setting with ID: {Id}", S(id));
 
                 return await _globalSettingRepository.DeleteAsync(id);
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error deleting global setting with ID {Id}", id);
+                _logger.LogError(ex, "Error deleting global setting with ID {Id}", S(id));
                 throw;
             }
         }
@@ -188,13 +190,13 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                _logger.LogInformationSecure("Deleting global setting with key: {Key}", key);
+                _logger.LogInformation("Deleting global setting with key: {Key}", S(key));
 
                 return await _globalSettingRepository.DeleteByKeyAsync(key);
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error deleting global setting with key {Key}", key);
+                _logger.LogError(ex, "Error deleting global setting with key {Key}", S(key));
                 throw;
             }
         }

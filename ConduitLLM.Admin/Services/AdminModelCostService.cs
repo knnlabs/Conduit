@@ -11,6 +11,8 @@ using ConduitLLM.Configuration.Repositories;
 
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -68,12 +70,12 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
                 }
 
-                _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern);
+                _logger.LogInformation("Created model cost with pattern '{Pattern}'", S(modelCost.ModelIdPattern));
                 return createdModelCost.ToDto();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", modelCost.ModelIdPattern);
+                _logger.LogError(ex, "Error creating model cost with pattern '{Pattern}'", S(modelCost.ModelIdPattern));
                 throw;
             }
         }
@@ -87,18 +89,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
-                    _logger.LogInformation("Deleted model cost with ID {Id}", id);
+                    _logger.LogInformation("Deleted model cost with ID {Id}", S(id));
                 }
                 else
                 {
-                    _logger.LogWarning("Model cost with ID {Id} not found for deletion", id);
+                    _logger.LogWarning("Model cost with ID {Id} not found for deletion", S(id));
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting model cost with ID {Id}", id);
+                _logger.LogError(ex, "Error deleting model cost with ID {Id}", S(id));
                 throw;
             }
         }
@@ -128,7 +130,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with ID {Id}", id);
+                _logger.LogError(ex, "Error getting model cost with ID {Id}", S(id));
                 throw;
             }
         }
@@ -148,7 +150,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", modelIdPattern);
+                _logger.LogError(ex, "Error getting model cost with pattern '{Pattern}'", S(modelIdPattern));
                 throw;
             }
         }
@@ -190,7 +192,7 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting model cost overview for period {StartDate} to {EndDate}",
-                    startDate, endDate);
+                    S(startDate), S(endDate));
                 throw;
             }
         }
@@ -210,7 +212,7 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", providerName);
+                _logger.LogError(ex, "Error getting model costs for provider '{ProviderName}'", S(providerName));
                 throw;
             }
         }
