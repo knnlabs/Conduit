@@ -203,3 +203,8 @@ website/yarn-error.log*
 .codeql-results/
 *.sarif
 codeql-results/
+# CodeQL analysis artifacts
+codeql-db*/
+conduit-codeql-db/
+*.trap
+*.trap.gz

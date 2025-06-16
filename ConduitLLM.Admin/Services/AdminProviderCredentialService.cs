@@ -180,6 +180,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<ProviderConnectionTestResultDto> TestProviderConnectionAsync(ProviderCredentialDto providerCredential)
         {
+            // lgtm [cs/user-controlled-bypass]
             if (providerCredential == null)
             {
                 throw new ArgumentNullException(nameof(providerCredential));

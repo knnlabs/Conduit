@@ -448,7 +448,24 @@ _logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId.R
                 {
                     foreach (var entry in archive.Entries)
                     {
-                        var extractPath = Path.Combine(tempDir, entry.FullName);
+                        // Sanitize the entry name to prevent path traversal attacks
+                        var sanitizedFileName = Path.GetFileName(entry.FullName);
+                        if (string.IsNullOrEmpty(sanitizedFileName))
+                        {
+                            continue;
+                        }
+                        
+                        var extractPath = Path.Combine(tempDir, sanitizedFileName);
+                        
+                        // Ensure the path is within the temp directory
+                        var fullPath = Path.GetFullPath(extractPath);
+                        var tempDirFullPath = Path.GetFullPath(tempDir);
+                        if (!fullPath.StartsWith(tempDirFullPath))
+                        {
+                            _logger.LogWarning("Skipping entry with invalid path: {EntryName}", entry.FullName);
+                            continue;
+                        }
+                        
                         entry.ExtractToFile(extractPath, true);
                     }
                 }
@@ -539,7 +556,24 @@ _logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId.R
                     {
                         if (entry.FullName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
                         {
-                            sqlFilePath = Path.Combine(tempDir, entry.FullName);
+                            // Sanitize the entry name to prevent path traversal attacks
+                            var sanitizedFileName = Path.GetFileName(entry.FullName);
+                            if (string.IsNullOrEmpty(sanitizedFileName))
+                            {
+                                continue;
+                            }
+                            
+                            sqlFilePath = Path.Combine(tempDir, sanitizedFileName);
+                            
+                            // Ensure the path is within the temp directory
+                            var fullPath = Path.GetFullPath(sqlFilePath);
+                            var tempDirFullPath = Path.GetFullPath(tempDir);
+                            if (!fullPath.StartsWith(tempDirFullPath))
+                            {
+                                _logger.LogWarning("Skipping SQL entry with invalid path: {EntryName}", entry.FullName);
+                                continue;
+                            }
+                            
                             entry.ExtractToFile(sqlFilePath, true);
                             break;
                         }

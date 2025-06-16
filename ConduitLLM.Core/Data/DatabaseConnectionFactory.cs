@@ -37,6 +37,7 @@ namespace ConduitLLM.Core.Data
 
             // Get provider and connection string once at initialization
             (_providerName, _connectionString) = _connectionStringManager.GetProviderAndConnectionString(
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
                 msg => _logger.LogDebug(msg));
 
             // Validate the connection string

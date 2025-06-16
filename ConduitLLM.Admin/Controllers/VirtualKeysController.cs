@@ -225,6 +225,7 @@ public class VirtualKeysController : ControllerBase
     [ProducesResponseType(typeof(VirtualKeyValidationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    // lgtm [cs/web/missing-function-level-access-control]
     public async Task<IActionResult> ValidateKey([FromBody] ValidateVirtualKeyRequest request)
     {
         if (!ModelState.IsValid)

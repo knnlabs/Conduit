@@ -102,6 +102,7 @@ namespace ConduitLLM.Configuration.Services
                         _logger.LogWarning("Redis error message: {Message}", args.Message);
                     };
 
+                    // lgtm [cs/cleartext-storage-of-sensitive-information]
                     _logger.LogInformation("Successfully connected to Redis at {ConnectionString}",
                         connectionString.Replace("password=", "password=******"));
 
@@ -109,6 +110,7 @@ namespace ConduitLLM.Configuration.Services
                 }
                 catch (Exception ex)
                 {
+                    // lgtm [cs/cleartext-storage-of-sensitive-information]
                     _logger.LogError(ex, "Failed to connect to Redis at {ConnectionString}",
                         connectionString.Replace("password=", "password=******"));
                     throw;

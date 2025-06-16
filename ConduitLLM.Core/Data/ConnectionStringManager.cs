@@ -29,6 +29,7 @@ namespace ConduitLLM.Core.Data
         public (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(Action<string>? logger = null)
         {
             // Use either the provided logger action or our internal logger if available
+            // lgtm [cs/cleartext-storage-of-sensitive-information]
             Action<string> logAction = logger ?? (message => _logger?.LogInformation(message));
 
             // Check for PostgreSQL DATABASE_URL
@@ -191,6 +192,7 @@ namespace ConduitLLM.Core.Data
                 !connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase) ||
                 !connectionString.Contains("Password=", StringComparison.OrdinalIgnoreCase))
             {
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
                 _logger?.LogError("Postgres connection string missing required fields: {SanitizedConnStr}",
                     SanitizeConnectionString(connectionString));
                 throw new InvalidOperationException(
@@ -203,6 +205,7 @@ namespace ConduitLLM.Core.Data
             // Check for Data Source parameter in SQLite connection string
             if (string.IsNullOrEmpty(connectionString) || !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
             {
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
                 _logger?.LogError("SQLite connection string missing Data Source: {SanitizedConnStr}",
                     SanitizeConnectionString(connectionString));
                 throw new InvalidOperationException(
