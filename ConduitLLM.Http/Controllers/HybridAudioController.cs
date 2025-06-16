@@ -132,11 +132,10 @@ namespace ConduitLLM.Http.Controllers
                 var response = await _hybridAudioService.ProcessAudioAsync(request, HttpContext.RequestAborted);
 
                 // Log usage
-                _logger.LogInformation(
-                    "Hybrid audio processed - Input: {InputDuration}s, Output: {OutputDuration}s, Session: {SessionId}",
-                    response.Metrics?.InputDurationSeconds,
-                    response.Metrics?.OutputDurationSeconds,
-                    sessionId);
+                _logger.LogInformation("Hybrid audio processed - Input: {InputDuration}s, Output: {OutputDuration}s, Session: {SessionId}",
+                response.Metrics?.InputDurationSeconds,
+                response.Metrics?.OutputDurationSeconds,
+                (sessionId ?? "none").Replace(Environment.NewLine, ""));
 
                 // Return audio file
                 var contentType = GetContentType(response.AudioFormat);
@@ -144,12 +143,14 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Invalid hybrid audio request");
+                _logger.LogWarning(ex,
+                "Invalid hybrid audio request");
                 return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing hybrid audio");
+                _logger.LogError(ex,
+                "Error processing hybrid audio");
                 return StatusCode(500, new { error = "An error occurred processing the audio" });
             }
         }
@@ -195,7 +196,8 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating hybrid audio session");
+                _logger.LogError(ex,
+                "Error creating hybrid audio session");
                 return StatusCode(500, new { error = "An error occurred creating the session" });
             }
         }
@@ -225,7 +227,8 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error closing hybrid audio session");
+                _logger.LogError(ex,
+                "Error closing hybrid audio session");
                 return StatusCode(500, new { error = "An error occurred closing the session" });
             }
         }
@@ -255,7 +258,8 @@ namespace ConduitLLM.Http.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking hybrid audio status");
+                _logger.LogError(ex,
+                "Error checking hybrid audio status");
                 return Ok(new ServiceStatus { Available = false });
             }
         }

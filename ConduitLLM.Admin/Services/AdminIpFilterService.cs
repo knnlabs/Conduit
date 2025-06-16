@@ -76,14 +76,14 @@ public class AdminIpFilterService : IAdminIpFilterService
     {
         try
         {
-            _logger.LogInformation("Getting IP filter with ID: {FilterId}", S(id));
+            _logger.LogInformation("Getting IP filter with ID: {FilterId}", id);
 
             var filter = await _ipFilterRepository.GetByIdAsync(id);
             return filter != null ? MapToDto(filter) : null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting IP filter with ID {FilterId}", S(id));
+            _logger.LogError(ex, "Error getting IP filter with ID {FilterId}", id);
             return null;
         }
     }
@@ -93,10 +93,10 @@ public class AdminIpFilterService : IAdminIpFilterService
     {
         try
         {
-            _logger.LogInformation("Creating new IP filter for {IpAddress}", S(createFilter.IpAddressOrCidr));
+            _logger.LogInformation("Creating new IP filter for {IpAddress}", (createFilter.IpAddressOrCidr ?? "").Replace(Environment.NewLine, ""));
 
             // Validate the IP address format
-            if (!IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
+            if (string.IsNullOrWhiteSpace(createFilter.IpAddressOrCidr) || !IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
             {
                 return (false, "Invalid IP address or CIDR format", null);
             }
@@ -120,7 +120,7 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating IP filter for {IpAddress}", S(createFilter.IpAddressOrCidr));
+            _logger.LogError(ex, "Error creating IP filter for {IpAddress}", (createFilter.IpAddressOrCidr ?? "").Replace(Environment.NewLine, ""));
             return (false, "An unexpected error occurred", null);
         }
     }
@@ -130,7 +130,7 @@ public class AdminIpFilterService : IAdminIpFilterService
     {
         try
         {
-            _logger.LogInformation("Updating IP filter with ID: {FilterId}", S(updateFilter.Id));
+            _logger.LogInformation("Updating IP filter with ID: {FilterId}", updateFilter.Id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(updateFilter.Id);
@@ -166,7 +166,7 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", S(updateFilter.Id));
+            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", updateFilter.Id);
             return (false, "An unexpected error occurred");
         }
     }
@@ -176,7 +176,7 @@ public class AdminIpFilterService : IAdminIpFilterService
     {
         try
         {
-            _logger.LogInformation("Deleting IP filter with ID: {FilterId}", S(id));
+            _logger.LogInformation("Deleting IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
@@ -199,7 +199,7 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting IP filter with ID {FilterId}", S(id));
+            _logger.LogError(ex, "Error deleting IP filter with ID {FilterId}", id);
             return (false, "An unexpected error occurred");
         }
     }
@@ -277,7 +277,7 @@ public class AdminIpFilterService : IAdminIpFilterService
     {
         try
         {
-            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", S(ipAddress));
+            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
 
             // Get current IP filter settings
             var settings = await GetIpFilterSettingsAsync();
@@ -334,7 +334,7 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", S(ipAddress));
+            _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", ipAddress.Replace(Environment.NewLine, ""));
 
             // On error, default to allowing the request (safer than potentially blocking all traffic)
             return new IpCheckResult
@@ -412,7 +412,7 @@ public class AdminIpFilterService : IAdminIpFilterService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", S(ipAddressOrCidr));
+            _logger.LogWarning(ex, "Error validating IP address or CIDR: {IpAddressOrCidr}", ipAddressOrCidr.Replace(Environment.NewLine, ""));
             return false;
         }
     }
@@ -453,7 +453,7 @@ public class AdminIpFilterService : IAdminIpFilterService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", S(ipAddress), S(filterValue));
+                _logger.LogWarning(ex, "Error checking IP {IpAddress} against CIDR {CidrRange}", ipAddress.Replace(Environment.NewLine, ""), filterValue.Replace(Environment.NewLine, ""));
                 return false;
             }
         }
