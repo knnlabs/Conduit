@@ -189,3 +189,29 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+
+      # Admin API Image
+      - name: Extract metadata for Admin API
+        id: meta-admin
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/knnlabs/conduit-admin
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+
+      - name: Build and push Admin Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./ConduitLLM.Admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta-admin.outputs.tags }}
+          labels: ${{ steps.meta-admin.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
