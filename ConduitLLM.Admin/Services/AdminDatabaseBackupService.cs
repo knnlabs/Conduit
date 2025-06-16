@@ -73,7 +73,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError(errorMessage);
+                _logger.LogError("{ErrorMessage}", S(errorMessage));
                 return new BackupResult
                 {
                     Success = false,
@@ -148,7 +148,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             if (backupFile == null)
             {
                 var errorMessage = $"Backup file not found: {backupId}";
-                _logger.LogError(errorMessage);
+                _logger.LogError("{ErrorMessage}", S(errorMessage));
                 return new RestoreResult
                 {
                     Success = false,
@@ -170,7 +170,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             else
             {
                 var errorMessage = $"Unsupported database provider: {providerName}";
-                _logger.LogError(errorMessage);
+                _logger.LogError("{ErrorMessage}", S(errorMessage));
                 return new RestoreResult
                 {
                     Success = false,
@@ -353,7 +353,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
             if (pgDumpProcess.ExitCode != 0)
             {
-                _logger.LogError("pg_dump error: {Error}", error);
+                _logger.LogError("pg_dump error: {Error}", S(error));
                 return new BackupResult
                 {
                     Success = false,
@@ -613,7 +613,7 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
 
                 if (psqlProcess.ExitCode != 0)
                 {
-                    _logger.LogError("psql error: {Error}", error);
+                    _logger.LogError("psql error: {Error}", S(error));
                     return new RestoreResult
                     {
                         Success = false,

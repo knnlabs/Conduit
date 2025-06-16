@@ -13,6 +13,8 @@ using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -44,7 +46,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<CreateVirtualKeyResponseDto> GenerateVirtualKeyAsync(CreateVirtualKeyRequestDto request)
         {
-            _logger.LogInformationSecure("Generating new virtual key with name: {KeyName}", request.KeyName);
+            _logger.LogInformation("Generating new virtual key with name: {KeyName}", S(request.KeyName));
 
             // Generate a secure random key
             var keyBytes = new byte[KeyLengthBytes];
@@ -115,12 +117,12 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyDto?> GetVirtualKeyInfoAsync(int id)
         {
-            _logger.LogInformationSecure("Getting virtual key info for ID: {KeyId}", id);
+            _logger.LogInformation("Getting virtual key info for ID: {KeyId}", S(id));
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
             {
-                _logger.LogWarningSecure("Virtual key with ID {KeyId} not found", id);
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
                 return null;
             }
 
@@ -130,7 +132,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<List<VirtualKeyDto>> ListVirtualKeysAsync()
         {
-            _logger.LogInformationSecure("Listing all virtual keys");
+            _logger.LogInformation("Listing all virtual keys");
 
             var keys = await _virtualKeyRepository.GetAllAsync();
 
@@ -140,12 +142,12 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> UpdateVirtualKeyAsync(int id, UpdateVirtualKeyRequestDto request)
         {
-            _logger.LogInformationSecure("Updating virtual key with ID: {KeyId}", id);
+            _logger.LogInformation("Updating virtual key with ID: {KeyId}", S(id));
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
             {
-                _logger.LogWarningSecure("Virtual key with ID {KeyId} not found", id);
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
                 return false;
             }
 
@@ -188,12 +190,12 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> DeleteVirtualKeyAsync(int id)
         {
-            _logger.LogInformationSecure("Deleting virtual key with ID: {KeyId}", id);
+            _logger.LogInformation("Deleting virtual key with ID: {KeyId}", S(id));
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
             {
-                _logger.LogWarningSecure("Virtual key with ID {KeyId} not found", id);
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
                 return false;
             }
 
@@ -203,12 +205,12 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> ResetSpendAsync(int id)
         {
-            _logger.LogInformationSecure("Resetting spend for virtual key with ID: {KeyId}", id);
+            _logger.LogInformation("Resetting spend for virtual key with ID: {KeyId}", S(id));
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
             {
-                _logger.LogWarningSecure("Virtual key with ID {KeyId} not found", id);
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
                 return false;
             }
 
@@ -244,7 +246,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyValidationResult> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
         {
-            _logger.LogInformationSecure("Validating virtual key and checking if model {Model} is allowed", requestedModel ?? "any");
+            _logger.LogInformation("Validating virtual key and checking if model {Model} is allowed", S(requestedModel ?? "any"));
 
             var result = new VirtualKeyValidationResult { IsValid = false };
 
@@ -318,7 +320,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<bool> UpdateSpendAsync(int id, decimal cost)
         {
-            _logger.LogInformationSecure("Updating spend for virtual key ID {KeyId} by {Cost}", id, cost);
+            _logger.LogInformation("Updating spend for virtual key ID {KeyId} by {Cost}", S(id), S(cost));
 
             if (cost <= 0)
             {
@@ -328,7 +330,7 @@ namespace ConduitLLM.Admin.Services
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
             {
-                _logger.LogWarningSecure("Virtual key with ID {KeyId} not found", id);
+                _logger.LogWarning("Virtual key with ID {KeyId} not found", S(id));
                 return false;
             }
 
@@ -342,7 +344,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<BudgetCheckResult> CheckBudgetAsync(int id)
         {
-            _logger.LogInformationSecure("Checking budget period for virtual key ID {KeyId}", id);
+            _logger.LogInformation("Checking budget period for virtual key ID {KeyId}", S(id));
 
             var result = new BudgetCheckResult
             {
@@ -420,7 +422,7 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<VirtualKeyValidationInfoDto?> GetValidationInfoAsync(int id)
         {
-            _logger.LogInformationSecure("Getting validation info for virtual key ID {KeyId}", id);
+            _logger.LogInformation("Getting validation info for virtual key ID {KeyId}", S(id));
 
             var key = await _virtualKeyRepository.GetByIdAsync(id);
             if (key == null)
@@ -563,13 +565,13 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task PerformMaintenanceAsync()
         {
-            _logger.LogInformationSecure("Starting virtual key maintenance tasks");
+            _logger.LogInformation("Starting virtual key maintenance tasks");
 
             try
             {
                 // Get all virtual keys
                 var allKeys = await _virtualKeyRepository.GetAllAsync();
-                _logger.LogInformationSecure("Processing maintenance for {KeyCount} virtual keys", allKeys.Count);
+                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", S(allKeys.Count));
 
                 int budgetsReset = 0;
                 int keysDisabled = 0;
@@ -587,8 +589,8 @@ namespace ConduitLLM.Admin.Services
                             if (budgetResult.WasReset)
                             {
                                 budgetsReset++;
-                                _logger.LogInformationSecure("Reset budget for virtual key {KeyId} ({KeyName})",
-                                    key.Id, key.KeyName);
+                                _logger.LogInformation("Reset budget for virtual key {KeyId} ({KeyName})",
+                                    S(key.Id), S(key.KeyName));
                             }
                         }
 
@@ -602,24 +604,24 @@ namespace ConduitLLM.Admin.Services
                             if (updated)
                             {
                                 keysDisabled++;
-                                _logger.LogInformationSecure("Disabled expired virtual key {KeyId} ({KeyName})",
-                                    key.Id, key.KeyName);
+                                _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
+                                    S(key.Id), S(key.KeyName));
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogErrorSecure(ex, "Error processing maintenance for virtual key {KeyId}", key.Id);
+                        _logger.LogError(ex, "Error processing maintenance for virtual key {KeyId}", S(key.Id));
                         // Continue processing other keys even if one fails
                     }
                 }
 
-                _logger.LogInformationSecure("Virtual key maintenance completed. Budgets reset: {BudgetsReset}, Keys disabled: {KeysDisabled}",
-                    budgetsReset, keysDisabled);
+                _logger.LogInformation("Virtual key maintenance completed. Budgets reset: {BudgetsReset}, Keys disabled: {KeysDisabled}",
+                    S(budgetsReset), S(keysDisabled));
             }
             catch (Exception ex)
             {
-                _logger.LogErrorSecure(ex, "Error during virtual key maintenance");
+                _logger.LogError(ex, "Error during virtual key maintenance");
                 throw;
             }
         }
