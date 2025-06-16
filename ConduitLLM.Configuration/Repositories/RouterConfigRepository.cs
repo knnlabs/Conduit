@@ -10,6 +10,8 @@ using ConduitLLM.Configuration.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
+
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
@@ -122,13 +124,13 @@ namespace ConduitLLM.Configuration.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error creating router configuration '{ConfigName}'",
-                    routerConfig.Name);
+                    S(routerConfig.Name));
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating router configuration '{ConfigName}'",
-                    routerConfig.Name);
+                    S(routerConfig.Name));
                 throw;
             }
         }
