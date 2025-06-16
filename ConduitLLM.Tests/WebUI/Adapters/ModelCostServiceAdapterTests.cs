@@ -1,7 +1,13 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services.Adapters;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Xunit;
+
 
 namespace ConduitLLM.Tests.WebUI.Adapters
 {
@@ -22,10 +28,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetAllModelCostsAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedCosts = new List<ConfigDTOs.ModelCostDto>
+            var expectedCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -43,7 +49,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetModelCostByIdAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var expectedCost = new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m };
+            var expectedCost = new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m };
 
             _adminApiClientMock.Setup(c => c.GetModelCostByIdAsync(1))
                 .ReturnsAsync(expectedCost);
@@ -60,10 +66,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetModelCostByPatternAsync_FindsMatchingPattern()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -83,10 +89,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task GetModelCostByPatternAsync_ReturnsNull_WhenNoMatchingPattern()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -127,8 +133,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CreateModelCostAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var createDto = new ConfigDTOs.CreateModelCostDto { ModelIdPattern = "claude*", InputTokenCost = 5m, OutputTokenCost = 15m };
-            var expectedCost = new ConfigDTOs.ModelCostDto { Id = 3, ModelIdPattern = "claude*", InputTokenCost = 5m, OutputTokenCost = 15m };
+            var createDto = new ConduitLLM.Configuration.DTOs.CreateModelCostDto { ModelIdPattern = "claude*", InputTokenCost = 5m, OutputTokenCost = 15m };
+            var expectedCost = new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 3, ModelIdPattern = "claude*", InputTokenCost = 5m, OutputTokenCost = 15m };
 
             _adminApiClientMock.Setup(c => c.CreateModelCostAsync(createDto))
                 .ReturnsAsync(expectedCost);
@@ -145,8 +151,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task UpdateModelCostAsync_DelegatesToAdminApiClient()
         {
             // Arrange
-            var updateDto = new ConfigDTOs.UpdateModelCostDto { ModelIdPattern = "gpt-4*", InputTokenCost = 15m, OutputTokenCost = 45m };
-            var expectedCost = new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 15m, OutputTokenCost = 45m };
+            var updateDto = new ConduitLLM.Configuration.DTOs.UpdateModelCostDto { ModelIdPattern = "gpt-4*", InputTokenCost = 15m, OutputTokenCost = 45m };
+            var expectedCost = new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 15m, OutputTokenCost = 45m };
 
             _adminApiClientMock.Setup(c => c.UpdateModelCostAsync(1, updateDto))
                 .ReturnsAsync(expectedCost);
@@ -178,10 +184,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CalculateCostAsync_CalculatesCorrectly_WithExactMatch()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5-turbo", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5-turbo", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -200,10 +206,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CalculateCostAsync_CalculatesCorrectly_WithWildcardMatch()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -222,10 +228,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CalculateCostAsync_ReturnsBestMatch_WhenMultipleWildcardMatches()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt*", InputTokenCost = 5m, OutputTokenCost = 10m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt*", InputTokenCost = 5m, OutputTokenCost = 10m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -245,10 +251,10 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         public async Task CalculateCostAsync_ReturnsZero_WhenNoMatch()
         {
             // Arrange
-            var modelCosts = new List<ConfigDTOs.ModelCostDto>
+            var modelCosts = new List<ConduitLLM.Configuration.DTOs.ModelCostDto>
             {
-                new ConfigDTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
-                new ConfigDTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 1, ModelIdPattern = "gpt-4*", InputTokenCost = 10m, OutputTokenCost = 30m },
+                new ConduitLLM.Configuration.DTOs.ModelCostDto { Id = 2, ModelIdPattern = "gpt-3.5*", InputTokenCost = 1.5m, OutputTokenCost = 2m }
             };
 
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
@@ -267,7 +273,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetAllModelCostsAsync())
-                .ReturnsAsync(new List<ConfigDTOs.ModelCostDto>());
+                .ReturnsAsync(new List<ConduitLLM.Configuration.DTOs.ModelCostDto>());
 
             // Act
             var result = await _adapter.CalculateCostAsync("gpt-4", 1000, 500);

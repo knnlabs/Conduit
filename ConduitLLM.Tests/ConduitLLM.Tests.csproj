@@ -44,15 +44,6 @@
     <Compile Remove="WebUI\Providers\RequestLogServiceProviderTests.cs" />
     <Compile Remove="Extensions\LogsSummaryDtoToWebUIDtoExtensions.cs" />
     <Compile Remove="Extensions\LogsSummaryDtoExtensions.cs" />
-    <!-- Exclude adapter tests that don't have their adapter implementations yet -->
-    <Compile Remove="WebUI\Adapters\CostDashboardServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\GlobalSettingServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\IpFilterServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\ModelCostServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\ModelProviderMappingServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\ProviderCredentialServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\ProviderHealthServiceAdapterTests.cs" />
-    <Compile Remove="WebUI\Adapters\VirtualKeyServiceAdapterTests.cs" />
     <!-- Temporarily exclude audio load testing files until implementations are complete -->
     <Compile Remove="LoadTesting\AudioPerformanceBenchmarks.cs" />
     <Compile Remove="LoadTesting\AudioStressTests.cs" />
