@@ -11,6 +11,8 @@ using ConduitLLM.Core.Extensions;
 
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services;
 
 /// <summary>
@@ -46,7 +48,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", timeframe);
+            _logger.LogInformation("Getting cost summary with timeframe: {Timeframe}", S(timeframe));
 
             // Normalize timeframe (case-insensitive)
             timeframe = timeframe.ToLower() switch
@@ -205,7 +207,7 @@ public class AdminCostDashboardService : IAdminCostDashboardService
     {
         try
         {
-            _logger.LogInformation("Getting cost trends with period: {Period}", period);
+            _logger.LogInformation("Getting cost trends with period: {Period}", S(period));
 
             // Normalize period (case-insensitive)
             period = period.ToLower() switch

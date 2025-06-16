@@ -1,8 +1,11 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using static ConduitLLM.Configuration.Utilities.LogSanitizer;
 
 namespace ConduitLLM.Configuration.Repositories;
 
@@ -74,7 +77,7 @@ public class IpFilterRepository : IIpFilterRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting IP filter with ID {Id}", id);
+            _logger.LogError(ex, "Error getting IP filter with ID {Id}", S(id));
             return null;
         }
     }
@@ -94,13 +97,13 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Added new IP filter: {FilterType} {IpAddressOrCidr}",
-                filter.FilterType, filter.IpAddressOrCidr);
+                S(filter.FilterType), S(filter.IpAddressOrCidr));
 
             return filter;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", filter.IpAddressOrCidr);
+            _logger.LogError(ex, "Error adding IP filter for {IpAddressOrCidr}", S(filter.IpAddressOrCidr));
             throw;
         }
     }
@@ -115,7 +118,7 @@ public class IpFilterRepository : IIpFilterRepository
             var existingFilter = await dbContext.IpFilters.FindAsync(filter.Id);
             if (existingFilter == null)
             {
-                _logger.LogWarning("IP filter with ID {Id} not found for update", filter.Id);
+                _logger.LogWarning("IP filter with ID {Id} not found for update", S(filter.Id));
                 return false;
             }
 
@@ -129,13 +132,13 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Updated IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
-                filter.Id, filter.FilterType, filter.IpAddressOrCidr);
+                S(filter.Id), S(filter.FilterType), S(filter.IpAddressOrCidr));
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {Id}", filter.Id);
+            _logger.LogError(ex, "Error updating IP filter with ID {Id}", S(filter.Id));
             throw;
         }
     }
@@ -150,7 +153,7 @@ public class IpFilterRepository : IIpFilterRepository
             var filter = await dbContext.IpFilters.FindAsync(id);
             if (filter == null)
             {
-                _logger.LogWarning("IP filter with ID {Id} not found for deletion", id);
+                _logger.LogWarning("IP filter with ID {Id} not found for deletion", S(id));
                 return false;
             }
 
@@ -158,13 +161,13 @@ public class IpFilterRepository : IIpFilterRepository
             await dbContext.SaveChangesAsync();
 
             _logger.LogInformation("Deleted IP filter ID {Id}: {FilterType} {IpAddressOrCidr}",
-                id, filter.FilterType, filter.IpAddressOrCidr);
+                S(id), S(filter.FilterType), S(filter.IpAddressOrCidr));
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", id);
+            _logger.LogError(ex, "Error deleting IP filter with ID {Id}", S(id));
             throw;
         }
     }

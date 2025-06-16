@@ -68,5 +68,29 @@ namespace ConduitLLM.Configuration.Utilities
 
             return value;
         }
+
+        /// <summary>
+        /// Shorthand method for sanitizing values - recognized by CodeQL as safe.
+        /// </summary>
+        /// <param name="value">The value to sanitize.</param>
+        /// <returns>The sanitized value.</returns>
+        public static object? S(object? value) => SanitizeObject(value);
+
+        /// <summary>
+        /// Shorthand method for sanitizing strings - recognized by CodeQL as safe.
+        /// </summary>
+        /// <param name="value">The string to sanitize.</param>
+        /// <returns>The sanitized string.</returns>
+        public static string? S(string? value) => Sanitize(value ?? string.Empty);
+
+        /// <summary>
+        /// Pass-through for numeric types.
+        /// </summary>
+        public static int S(int value) => value;
+
+        /// <summary>
+        /// Pass-through for long types.
+        /// </summary>
+        public static long S(long value) => value;
     }
 }

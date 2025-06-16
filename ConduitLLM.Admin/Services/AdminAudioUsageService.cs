@@ -21,6 +21,8 @@ using CsvHelper.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using static ConduitLLM.Core.Extensions.LoggingSanitizer;
+
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
@@ -247,7 +249,7 @@ namespace ConduitLLM.Admin.Services
             var session = await sessionStore.GetSessionAsync(sessionId);
             if (session == null)
             {
-                _logger.LogWarning("Session not found for termination {SessionId}", sessionId);
+                _logger.LogWarning("Session not found for termination {SessionId}", S(sessionId));
                 return false;
             }
 
@@ -262,7 +264,7 @@ namespace ConduitLLM.Admin.Services
 
             if (removed)
             {
-                _logger.LogInformation("Successfully terminated session {SessionId}", sessionId);
+                _logger.LogInformation("Successfully terminated session {SessionId}", S(sessionId));
             }
 
             return removed;
@@ -293,7 +295,7 @@ namespace ConduitLLM.Admin.Services
             var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
             var deletedCount = await _repository.DeleteOldLogsAsync(cutoffDate);
 
-            _logger.LogInformation("Cleaned up {Count} audio usage logs older than {Date}",
+            _logger.LogInformation("Cleaned up {Count} audio usage logs older than {Date}", 
                 deletedCount, cutoffDate);
 
             return deletedCount;
