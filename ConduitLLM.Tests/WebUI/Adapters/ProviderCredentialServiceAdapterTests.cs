@@ -238,7 +238,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Error getting credentials for provider")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error getting credentials for provider")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

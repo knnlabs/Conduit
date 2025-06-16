@@ -49,11 +49,11 @@ namespace ConduitLLM.Tests.WebUI.Adapters
         }
 
         [Fact]
-        public async Task GetAllAsync_ReturnsEmptyListWhenNull()
+        public async Task GetAllAsync_ReturnsEmptyListWhenEmptyResult()
         {
             // Arrange
             _adminApiClientMock.Setup(c => c.GetAllModelProviderMappingsAsync())
-                .ReturnsAsync((IEnumerable<ModelProviderMappingDto>)null);
+                .ReturnsAsync(Enumerable.Empty<ModelProviderMappingDto>());
 
             // Act
             var result = await _adapter.GetAllAsync();
@@ -288,7 +288,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => true),
                     It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
                 Times.Once);
         }
     }

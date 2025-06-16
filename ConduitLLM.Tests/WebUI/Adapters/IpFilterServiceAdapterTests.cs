@@ -212,7 +212,7 @@ namespace ConduitLLM.Tests.WebUI.Adapters
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString().Contains("Error getting IP filter settings")),
+                    It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Error getting IP filter settings")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
