@@ -66,9 +66,9 @@ namespace ConduitLLM.Tests.WebUI.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString().Contains($"Banned IP address {ipAddress}")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains($"Banned IP address {ipAddress}")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
 
@@ -77,8 +77,8 @@ namespace ConduitLLM.Tests.WebUI.Services
         {
             // Arrange
             const string ipAddress = "192.168.1.100";
-            _mockConfiguration.Setup(x => x["CONDUIT_MAX_FAILED_ATTEMPTS"]).Returns((string)null);
-            _mockConfiguration.Setup(x => x["CONDUIT_IP_BAN_DURATION_MINUTES"]).Returns((string)null);
+            _mockConfiguration.Setup(x => x["CONDUIT_MAX_FAILED_ATTEMPTS"]).Returns((string?)null);
+            _mockConfiguration.Setup(x => x["CONDUIT_IP_BAN_DURATION_MINUTES"]).Returns((string?)null);
 
             // Act - Record 5 attempts (default max)
             for (int i = 0; i < 5; i++)
@@ -188,9 +188,9 @@ namespace ConduitLLM.Tests.WebUI.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString().Contains("Failed login attempt 1/5")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed login attempt 1/5")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
 
@@ -208,9 +208,9 @@ namespace ConduitLLM.Tests.WebUI.Services
                 x => x.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString().Contains($"Cleared failed login attempts for IP: {ipAddress}")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains($"Cleared failed login attempts for IP: {ipAddress}")),
                     It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
         }
 

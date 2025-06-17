@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -12,6 +13,8 @@ using ConduitLLM.WebUI.Controllers;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 using ConduitLLM.WebUI.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ConduitLLM.Tests.WebUI.Controllers
 {
@@ -71,9 +74,10 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.True(response.success);
-            Assert.Equal("/", response.redirectUrl);
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.True(response["success"]!.Value<bool>());
+            Assert.Equal("/", response["redirectUrl"]!.Value<string>());
             _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts("127.0.0.1"), Times.Once);
         }
 
@@ -95,9 +99,10 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.True(response.success);
-            Assert.Equal("/dashboard", response.redirectUrl);
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.True(response["success"]!.Value<bool>());
+            Assert.Equal("/dashboard", response["redirectUrl"]!.Value<string>());
             _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts("127.0.0.1"), Times.Once);
         }
 
@@ -113,8 +118,9 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            dynamic response = unauthorizedResult.Value;
-            Assert.Equal("Invalid master key", response.message);
+            var json = JsonConvert.SerializeObject(unauthorizedResult.Value);
+            var response = JObject.Parse(json);
+            Assert.Equal("Invalid master key", response["message"]!.Value<string>());
             _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin("127.0.0.1"), Times.Once);
             _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts(It.IsAny<string>()), Times.Never);
         }
@@ -133,8 +139,9 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             // Assert
             var statusResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(429, statusResult.StatusCode);
-            dynamic response = statusResult.Value;
-            Assert.Equal("Too many failed login attempts. Please try again later.", response.message);
+            var json = JsonConvert.SerializeObject(statusResult.Value);
+            var response = JObject.Parse(json);
+            Assert.Equal("Too many failed login attempts. Please try again later.", response["message"]!.Value<string>());
             _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin(It.IsAny<string>()), Times.Never);
         }
 
@@ -149,8 +156,9 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            dynamic response = badRequestResult.Value;
-            Assert.Equal("Master key is required", response.message);
+            var json = JsonConvert.SerializeObject(badRequestResult.Value);
+            var response = JObject.Parse(json);
+            Assert.Equal("Master key is required", response["message"]!.Value<string>());
             _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin(It.IsAny<string>()), Times.Never);
         }
 
@@ -191,22 +199,23 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             Environment.SetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY", null);
             Environment.SetEnvironmentVariable("CONDUIT_MASTER_KEY", null);
             
-            // SHA256 hash of "test-password"
+            // SHA256 hash of "test"
             var hashedPassword = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
             _mockSettingService.Setup(x => x.GetMasterKeyHashAsync())
                 .ReturnsAsync(hashedPassword);
             _mockSettingService.Setup(x => x.GetMasterKeyHashAlgorithmAsync())
                 .ReturnsAsync("SHA256");
             
-            var request = new LoginRequest { MasterKey = "test-password" };
+            var request = new LoginRequest { MasterKey = "test" };
 
             // Act
             var result = await _controller.Login(request);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.True(response.success);
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.True(response["success"]!.Value<bool>());
         }
 
         [Fact]
@@ -217,8 +226,9 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.True(response.success);
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.True(response["success"]!.Value<bool>());
         }
 
         [Fact]
@@ -240,12 +250,12 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.True(response.isAuthenticated);
-            Assert.Equal("Admin", response.username);
-            var rolesList = response.roles as IEnumerable<object>;
-            Assert.NotNull(rolesList);
-            var roles = rolesList.Select(r => r.ToString()).ToList();
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.True(response["isAuthenticated"]!.Value<bool>());
+            Assert.Equal("Admin", response["username"]!.Value<string>());
+            var roles = response["roles"]!.ToObject<List<string>>();
+            Assert.NotNull(roles);
             Assert.Contains("Administrator", roles);
             Assert.Contains("User", roles);
         }
@@ -261,8 +271,9 @@ namespace ConduitLLM.Tests.WebUI.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic response = okResult.Value;
-            Assert.False(response.isAuthenticated);
+            var json = JsonConvert.SerializeObject(okResult.Value);
+            var response = JObject.Parse(json);
+            Assert.False(response["isAuthenticated"]!.Value<bool>());
         }
 
         public void Dispose()
