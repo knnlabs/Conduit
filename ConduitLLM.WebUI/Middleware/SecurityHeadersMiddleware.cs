@@ -101,11 +101,11 @@ public class SecurityHeadersMiddleware
 
         options.EnableContentSecurityPolicy = configuration.GetValue<bool>("CONDUIT_SECURITY_HEADERS_CSP_ENABLED", true);
         options.ContentSecurityPolicy = configuration["CONDUIT_SECURITY_HEADERS_CSP"] ?? 
-            "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-            "style-src 'self' 'unsafe-inline'; " +
+            "default-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " +
             "img-src 'self' data: https:; " +
-            "font-src 'self'; " +
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
             "connect-src 'self' wss: ws:; " +
             "frame-ancestors 'none';";
 
