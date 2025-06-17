@@ -1,4 +1,5 @@
 @page "/audio-test"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 @using System.Text
 @using ConduitLLM.Configuration.DTOs
 @using AudioDTOs = ConduitLLM.Configuration.DTOs.Audio

@@ -94,10 +94,10 @@ namespace ConduitLLM.Tests.Configuration
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void ParseRedisUrl_EmptyOrNull_ThrowsArgumentException(string redisUrl)
+        public void ParseRedisUrl_EmptyOrNull_ThrowsArgumentException(string? redisUrl)
         {
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => RedisUrlParser.ParseRedisUrl(redisUrl));
+            Assert.Throws<ArgumentException>(() => RedisUrlParser.ParseRedisUrl(redisUrl!));
         }
 
         [Fact]

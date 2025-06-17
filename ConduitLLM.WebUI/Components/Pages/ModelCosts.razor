@@ -1,4 +1,5 @@
 @page "/model-costs"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 @using ConduitLLM.Configuration.DTOs
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.DTOs

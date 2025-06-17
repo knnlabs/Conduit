@@ -1,5 +1,6 @@
 @page "/configuration/mapping/edit"
 @page "/configuration/mapping/edit/{id}"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 @using Microsoft.Extensions.Caching.Memory
 @using System.ComponentModel.DataAnnotations
 @using ConduitLLM.Configuration

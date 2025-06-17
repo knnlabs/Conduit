@@ -1,4 +1,5 @@
 @page "/system-info"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 @using System.IO
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.Entities

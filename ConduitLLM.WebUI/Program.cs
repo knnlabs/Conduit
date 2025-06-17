@@ -53,6 +53,12 @@ Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
 
+// Add memory cache for failed login tracking
+builder.Services.AddMemoryCache();
+
+// Register failed login tracking service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
@@ -259,15 +265,26 @@ using (var scope = app.Services.CreateScope())
     var initialSetupService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.InitialSetupService>();
     await initialSetupService.EnsureMasterKeyExistsAsync();
 
-    // Verify the master key is set and accessible
+    // Verify the authentication keys are set and accessible
+    var envWebUIKey = Environment.GetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY");
     var envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
-    if (string.IsNullOrEmpty(envMasterKey))
+    
+    if (string.IsNullOrEmpty(envWebUIKey))
     {
-        Console.WriteLine("WARNING: CONDUIT_MASTER_KEY environment variable is not set!");
+        if (string.IsNullOrEmpty(envMasterKey))
+        {
+            Console.WriteLine("WARNING: Neither CONDUIT_WEBUI_AUTH_KEY nor CONDUIT_MASTER_KEY environment variables are set!");
+            Console.WriteLine("         WebUI authentication will not work without at least one of these keys.");
+        }
+        else
+        {
+            Console.WriteLine("INFO: CONDUIT_WEBUI_AUTH_KEY is not set, falling back to CONDUIT_MASTER_KEY for WebUI authentication.");
+            Console.WriteLine("      Consider setting CONDUIT_WEBUI_AUTH_KEY for better security separation.");
+        }
     }
     else
     {
-        Console.WriteLine($"CONDUIT_MASTER_KEY environment variable is set. Length: {envMasterKey.Length}");
+        Console.WriteLine($"CONDUIT_WEBUI_AUTH_KEY environment variable is set. Length: {envWebUIKey.Length}");
     }
 
     // Get global settings
@@ -382,28 +399,55 @@ Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered"
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)
-app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService) =>
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking) =>
 {
     logger.LogInformation("POST /account/login received.");
     logger.LogInformation("Remember me checkbox value: {RememberMe}", rememberMe);
+    
+    // Get client IP
+    var clientIp = GetClientIpAddress(context);
+    
+    // Check if IP is banned
+    if (failedLoginTracking.IsBanned(clientIp))
+    {
+        logger.LogWarning("Login attempt from banned IP: {IpAddress}", clientIp);
+        context.Response.StatusCode = 429;
+        return Results.Redirect("/login?error=TooManyAttempts");
+    }
+    
+    // Check WebUI auth key first
+    string? envWebUIKey = Environment.GetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY");
     string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
     bool isValid = false;
 
-    if (!string.IsNullOrEmpty(envMasterKey))
+    if (!string.IsNullOrEmpty(envWebUIKey))
     {
-        // Use the same comparison logic as before
+        isValid = string.Equals(masterKey?.Trim(), envWebUIKey.Trim(), StringComparison.OrdinalIgnoreCase);
+        if (isValid)
+        {
+            logger.LogInformation("WebUI auth key validated successfully");
+        }
+    }
+    else if (!string.IsNullOrEmpty(envMasterKey))
+    {
+        // Fall back to master key for backward compatibility
         isValid = string.Equals(masterKey?.Trim(), envMasterKey.Trim(), StringComparison.OrdinalIgnoreCase);
-        logger.LogInformation("Environment variable key comparison result: {IsValid}", isValid);
+        if (isValid)
+        {
+            logger.LogInformation("Master key validated successfully (backward compatibility)");
+        }
     }
     else
     {
-        // Optional: Add fallback to database hash check here if needed in the future
-        logger.LogWarning("CONDUIT_MASTER_KEY environment variable not set during POST /account/login.");
+        logger.LogWarning("Neither CONDUIT_WEBUI_AUTH_KEY nor CONDUIT_MASTER_KEY environment variables are set during POST /account/login.");
     }
 
     if (isValid)
     {
         logger.LogInformation("Login successful via POST /account/login.");
+
+        // Clear failed login attempts on successful login
+        failedLoginTracking.ClearFailedAttempts(clientIp);
 
         // Save the auto-login preference
         if (rememberMe.HasValue)
@@ -435,12 +479,47 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
     }
     else
     {
-        logger.LogWarning("Login failed via POST /account/login.");
+        // Record failed login attempt
+        failedLoginTracking.RecordFailedLogin(clientIp);
+        logger.LogWarning("Login failed via POST /account/login from IP: {IpAddress}", clientIp);
+        
         // Redirect back to login page with an error indicator
         var redirectUrl = $"/login?error=InvalidKey{(string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}")}";
         return Results.Redirect(redirectUrl);
     }
 });
+
+// Helper function to get client IP address
+static string GetClientIpAddress(HttpContext context)
+{
+    // Check X-Forwarded-For header first (for reverse proxies)
+    var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(forwardedFor))
+    {
+        // Take the first IP in the chain
+        var ip = forwardedFor.Split(',').First().Trim();
+        if (System.Net.IPAddress.TryParse(ip, out _))
+        {
+            return ip;
+        }
+    }
+
+    // Check X-Real-IP header
+    var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
+    {
+        return realIp;
+    }
+
+    // Fall back to direct connection IP
+    return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}
 // --- End Minimal API endpoint ---
 
 app.Run();
+
+// Make the implicit Program class accessible to tests
+namespace ConduitLLM.WebUI
+{
+    public partial class Program { }
+}

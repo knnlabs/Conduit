@@ -26,16 +26,19 @@ namespace ConduitLLM.WebUI.Controllers
     {
         private readonly IGlobalSettingService _settingService;
         private readonly ILogger<AuthController> _logger;
+        private readonly IFailedLoginTrackingService _failedLoginTracking;
 
         /// <summary>
         /// Creates a new instance of the AuthController
         /// </summary>
         public AuthController(
             IGlobalSettingService settingService,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            IFailedLoginTrackingService failedLoginTracking)
         {
             _settingService = settingService ?? throw new ArgumentNullException(nameof(settingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _failedLoginTracking = failedLoginTracking ?? throw new ArgumentNullException(nameof(failedLoginTracking));
         }
 
         /// <summary>
@@ -51,10 +54,23 @@ namespace ConduitLLM.WebUI.Controllers
                     return BadRequest(new { message = "Master key is required" });
                 }
 
+                // Get client IP
+                var clientIp = GetClientIpAddress();
+
+                // Check if IP is banned
+                if (_failedLoginTracking.IsBanned(clientIp))
+                {
+                    _logger.LogWarning("Login attempt from banned IP: {IpAddress}", clientIp);
+                    return StatusCode(429, new { message = "Too many failed login attempts. Please try again later." });
+                }
+
                 bool isValid = await ValidateMasterKeyAsync(request.MasterKey);
 
                 if (isValid)
                 {
+                    // Clear failed login attempts on successful login
+                    _failedLoginTracking.ClearFailedAttempts(clientIp);
+
                     // Create claims for the user
                     var claims = new List<Claim>
                     {
@@ -76,8 +92,12 @@ namespace ConduitLLM.WebUI.Controllers
                     return Ok(new { success = true, redirectUrl = request.ReturnUrl ?? "/" });
                 }
 
-                // If validation fails, log it
-                _logger.LogWarning("Invalid master key attempt from {IpAddress}", HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+                // If validation fails, log it and record failed attempt
+                _logger.LogWarning("Invalid master key attempt from {IpAddress}", clientIp);
+                
+                // Record failed login attempt
+                _failedLoginTracking.RecordFailedLogin(clientIp);
+                
                 return Unauthorized(new { message = "Invalid master key" });
             }
             catch (Exception ex)
@@ -125,6 +145,34 @@ namespace ConduitLLM.WebUI.Controllers
         }
 
         /// <summary>
+        /// Gets the client IP address from the request
+        /// </summary>
+        private string GetClientIpAddress()
+        {
+            // Check X-Forwarded-For header first (for reverse proxies)
+            var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(forwardedFor))
+            {
+                // Take the first IP in the chain
+                var ip = forwardedFor.Split(',').First().Trim();
+                if (System.Net.IPAddress.TryParse(ip, out _))
+                {
+                    return ip;
+                }
+            }
+
+            // Check X-Real-IP header
+            var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
+            {
+                return realIp;
+            }
+
+            // Fall back to direct connection IP
+            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        }
+
+        /// <summary>
         /// Validates the master key
         /// </summary>
         private async Task<bool> ValidateMasterKeyAsync(string inputKey)
@@ -134,11 +182,19 @@ namespace ConduitLLM.WebUI.Controllers
 
             try
             {
-                // First, check if the input is the exact master key from environment
+                // First, check if the input is the exact WebUI auth key from environment
+                string? envWebUIKey = Environment.GetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY");
+                if (!string.IsNullOrEmpty(envWebUIKey) && inputKey.Equals(envWebUIKey, StringComparison.Ordinal))
+                {
+                    _logger.LogInformation("WebUI auth key validated against environment variable");
+                    return true;
+                }
+
+                // Fall back to master key for backward compatibility
                 string? envMasterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY");
                 if (!string.IsNullOrEmpty(envMasterKey) && inputKey.Equals(envMasterKey, StringComparison.Ordinal))
                 {
-                    _logger.LogInformation("Master key validated against environment variable");
+                    _logger.LogInformation("Master key validated against environment variable (backward compatibility)");
                     return true;
                 }
 

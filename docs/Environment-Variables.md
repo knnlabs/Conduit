@@ -43,11 +43,34 @@ For more detailed information about cache configuration, see the [Cache Configur
 
 ## Security Configuration
 
-ConduitLLM provides environment variables for configuring security-related aspects:
+ConduitLLM provides comprehensive security configuration options:
+
+### Authentication Keys
 
 | Environment Variable | Type | Default | Description |
 |---------------------|------|---------|-------------|
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for administrative operations. Required for certain API endpoints. |
+| `CONDUIT_WEBUI_AUTH_KEY` | String | *None* | Authentication key for human access to the WebUI. Recommended for production deployments to separate human access from service-to-service authentication. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). Also used for WebUI authentication if `CONDUIT_WEBUI_AUTH_KEY` is not set. |
+| `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. Only use in isolated development environments. |
+
+### Failed Login Protection
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_MAX_FAILED_ATTEMPTS` | Integer | 5 | Maximum failed login attempts before temporarily banning an IP address. |
+| `CONDUIT_IP_BAN_DURATION_MINUTES` | Integer | 30 | How long (in minutes) an IP address remains banned after exceeding failed login attempts. |
+
+### IP Access Control
+
+The existing IP filtering middleware (configured through the Admin API) provides additional IP-based access control:
+- Whitelist/blacklist configuration
+- CIDR subnet support
+- Integration with the failed login tracking system
+
+### Network Security
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
 | `CONDUIT_REDIS_CONNECTION_STRING` | String | *None* | Redis connection string for Data Protection key persistence. When provided, ASP.NET Core Data Protection keys are stored in Redis for distributed scenarios. Format: `redis-host:6379` or full connection string. |
@@ -88,17 +111,21 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_ADMIN_API_BASE_URL` | String | `http://localhost:5002` | The base URL of the Admin API service. This is the primary variable for configuring Admin API connection. |
 | `CONDUIT_ADMIN_API_URL` | String | `http://localhost:5001` | Legacy alias for `CONDUIT_ADMIN_API_BASE_URL`. Use the BASE_URL version for new deployments. |
 | `CONDUIT_LLM_API_URL` | String | `http://localhost:5002` | The base URL of the LLM API service. |
-| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. |
+| `CONDUIT_WEBUI_AUTH_KEY` | String | *None* | The authentication key required for human access to the WebUI. If not set, falls back to `CONDUIT_MASTER_KEY` for backward compatibility. |
+| `CONDUIT_MASTER_KEY` | String | *Must be provided* | The master key used for authentication with the Admin API. Also used for WebUI authentication if `CONDUIT_WEBUI_AUTH_KEY` is not set. |
 | `CONDUIT_USE_ADMIN_API` | Boolean | `true` | When true (default), WebUI uses the Admin API client and adapters; when explicitly set to false, it uses direct repository access (legacy mode, will be deprecated in October 2025). |
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
+| `CONDUIT_INSECURE` | Boolean | `false` | When set to `true`, disables authentication requirements for the WebUI. **WARNING: Only use in development environments. Never enable in production.** |
+| `CONDUIT_MAX_FAILED_ATTEMPTS` | Integer | 5 | Maximum number of failed login attempts before an IP address is temporarily banned. |
+| `CONDUIT_IP_BAN_DURATION_MINUTES` | Integer | 30 | Duration in minutes that an IP address remains banned after exceeding the maximum failed login attempts. |
 
 ### AutoLogin Feature
 
 The WebUI supports an AutoLogin feature that automatically authenticates users when:
 1. The `AutoLogin` global setting is set to `true` in the database
-2. The `CONDUIT_MASTER_KEY` environment variable is set
+2. Either `CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_MASTER_KEY` environment variable is set
 
 To enable AutoLogin in development environments:
 ```bash
@@ -150,6 +177,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5000
+      - CONDUIT_WEBUI_AUTH_KEY=your_secure_webui_auth_key_here
       - CONDUIT_MASTER_KEY=your_secure_master_key_here
       - CONDUIT_ADMIN_API_URL=http://admin:5001
       - CONDUIT_LLM_API_URL=http://api:5002
@@ -158,6 +186,8 @@ services:
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
       - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
+      - CONDUIT_MAX_FAILED_ATTEMPTS=5
+      - CONDUIT_IP_BAN_DURATION_MINUTES=30
     ports:
       - "5000:5000"
     depends_on:
@@ -248,12 +278,15 @@ COPY --from=build /app/webui/publish .
 # Set environment variables
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5000
+ENV CONDUIT_WEBUI_AUTH_KEY=""
 ENV CONDUIT_MASTER_KEY=""
 ENV CONDUIT_ADMIN_API_URL=http://localhost:5001
 ENV CONDUIT_LLM_API_URL=http://localhost:5002
 ENV CONDUIT_USE_ADMIN_API=true
 ENV CONDUIT_ADMIN_TIMEOUT_SECONDS=30
 ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
+ENV CONDUIT_MAX_FAILED_ATTEMPTS=5
+ENV CONDUIT_IP_BAN_DURATION_MINUTES=30
 
 EXPOSE 5000
 ENTRYPOINT ["dotnet", "ConduitLLM.WebUI.dll"]
