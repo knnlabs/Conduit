@@ -21,6 +21,8 @@ public class IpFilterMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<IpFilterMiddleware> _logger;
     private readonly IOptions<IpFilterOptions> _options;
+    private readonly ISecurityConfigurationService _securityConfig;
+    private readonly IIpAddressClassifier _ipClassifier;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IpFilterMiddleware"/> class
@@ -28,14 +30,20 @@ public class IpFilterMiddleware
     /// <param name="next">The next middleware in the pipeline</param>
     /// <param name="logger">Logger for the middleware</param>
     /// <param name="options">IP filtering configuration options</param>
+    /// <param name="securityConfig">Security configuration service</param>
+    /// <param name="ipClassifier">IP address classifier service</param>
     public IpFilterMiddleware(
         RequestDelegate next,
         ILogger<IpFilterMiddleware> logger,
-        IOptions<IpFilterOptions> options)
+        IOptions<IpFilterOptions> options,
+        ISecurityConfigurationService securityConfig,
+        IIpAddressClassifier ipClassifier)
     {
         _next = next;
         _logger = logger;
         _options = options;
+        _securityConfig = securityConfig;
+        _ipClassifier = ipClassifier;
     }
 
     /// <summary>
@@ -96,6 +104,14 @@ public class IpFilterMiddleware
                 return;
             }
 
+            // Check if private IPs are allowed and this is a private IP
+            if (_securityConfig.AllowPrivateIps && _ipClassifier.IsPrivateOrIntranet(clientIp))
+            {
+                _logger.LogDebugSecure("Private/Intranet IP {ClientIp} is automatically allowed", clientIp.Replace(Environment.NewLine, ""));
+                await _next(context);
+                return;
+            }
+
             // Check if the IP is allowed, with fallback handling for API connection issues
             bool isAllowed = await CheckIpWithFallbackAsync(ipFilterService, clientIp, settings.DefaultAllow);
             if (isAllowed)
@@ -126,31 +142,38 @@ _logger.LogInformationSecure("IP {ClientIp} is blocked from accessing {Path}", c
     /// <returns>IP filter settings</returns>
     private async Task<Configuration.DTOs.IpFilter.IpFilterSettingsDto> GetIpFilterSettingsWithFallbackAsync(IIpFilterService ipFilterService)
     {
+        // First check environment configuration
+        var envSettings = _securityConfig.GetIpFilterSettings();
+        
+        // If IP filtering is explicitly configured via environment, use those settings
+        if (envSettings.IsEnabled || envSettings.WhitelistFilters.Count > 0 || envSettings.BlacklistFilters.Count > 0)
+        {
+            _logger.LogInformation("Using IP filter settings from environment configuration");
+            return envSettings;
+        }
+
         try
         {
             // Try to get settings from the Admin API
             var settings = await ipFilterService.GetIpFilterSettingsAsync();
 
-            // This conversion is no longer needed since the IpFilterService now returns the DTO directly
+            // Merge environment filters with Admin API filters if both exist
+            if (envSettings.WhitelistFilters.Count > 0 || envSettings.BlacklistFilters.Count > 0)
+            {
+                settings.WhitelistFilters.AddRange(envSettings.WhitelistFilters);
+                settings.BlacklistFilters.AddRange(envSettings.BlacklistFilters);
+                _logger.LogInformation("Merged environment IP filters with Admin API settings");
+            }
 
             return settings;
         }
         catch (Exception ex)
         {
             // Log the error
-            _logger.LogError(ex, "Failed to retrieve IP filter settings from Admin API. Using permissive defaults.");
+            _logger.LogError(ex, "Failed to retrieve IP filter settings from Admin API. Using environment configuration as fallback.");
 
-            // Return permissive default settings to avoid blocking legitimate access
-            return new Configuration.DTOs.IpFilter.IpFilterSettingsDto
-            {
-                IsEnabled = false, // Disable filtering when there's an error (most permissive)
-                DefaultAllow = true, // Allow by default (permissive fallback)
-                BypassForAdminUi = true, // Allow admin UI access
-                ExcludedEndpoints = new List<string> { "/login", "/logout", "/health", "/_blazor", "/css", "/js", "/images" },
-                FilterMode = "permissive", // Permissive mode
-                WhitelistFilters = new List<Configuration.DTOs.IpFilter.IpFilterDto>(), // Empty list
-                BlacklistFilters = new List<Configuration.DTOs.IpFilter.IpFilterDto>() // Empty list
-            };
+            // Return environment settings as fallback
+            return envSettings;
         }
     }
 

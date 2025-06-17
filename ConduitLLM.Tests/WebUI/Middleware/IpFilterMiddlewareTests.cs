@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Middleware;
+using ConduitLLM.WebUI.Services;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,8 @@ namespace ConduitLLM.Tests.WebUI.Middleware
         private readonly Mock<ILogger<IpFilterMiddleware>> _mockLogger;
         private readonly Mock<IIpFilterService> _mockIpFilterService;
         private readonly Mock<IOptions<IpFilterOptions>> _mockOptions;
-        private readonly IpFilterMiddleware _middleware;
+        private readonly Mock<ISecurityConfigurationService> _mockSecurityConfig;
+        private readonly Mock<IIpAddressClassifier> _mockIpClassifier;
         private readonly RequestDelegate _nextMock;
 
         public IpFilterMiddlewareTests()
@@ -32,6 +34,8 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             _mockLogger = new Mock<ILogger<IpFilterMiddleware>>();
             _mockIpFilterService = new Mock<IIpFilterService>();
             _mockOptions = new Mock<IOptions<IpFilterOptions>>();
+            _mockSecurityConfig = new Mock<ISecurityConfigurationService>();
+            _mockIpClassifier = new Mock<IIpAddressClassifier>();
 
             _mockOptions.Setup(o => o.Value).Returns(new IpFilterOptions
             {
@@ -42,9 +46,27 @@ namespace ConduitLLM.Tests.WebUI.Middleware
                 ExcludedEndpoints = new() { "/api/v1/health" }
             });
 
-            _nextMock = (HttpContext context) => Task.CompletedTask;
+            // Setup default security config
+            _mockSecurityConfig.Setup(x => x.AllowPrivateIps).Returns(false);
+            _mockSecurityConfig.Setup(x => x.GetIpFilterSettings()).Returns(new IpFilterSettingsDto
+            {
+                IsEnabled = false,
+                WhitelistFilters = new List<IpFilterDto>(),
+                BlacklistFilters = new List<IpFilterDto>()
+            });
 
-            _middleware = new IpFilterMiddleware(_nextMock, _mockLogger.Object, _mockOptions.Object);
+            _nextMock = (HttpContext context) => Task.CompletedTask;
+        }
+
+        private IpFilterMiddleware CreateMiddleware(RequestDelegate? next = null)
+        {
+            return new IpFilterMiddleware(
+                next ?? _nextMock,
+                _mockLogger.Object,
+                _mockOptions.Object,
+                _mockSecurityConfig.Object,
+                _mockIpClassifier.Object
+            );
         }
 
         [Fact]
@@ -59,7 +81,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -85,7 +107,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -112,7 +134,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -141,7 +163,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -171,7 +193,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -201,7 +223,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
 
             bool nextCalled = false;
             RequestDelegate next = (HttpContext ctx) => { nextCalled = true; return Task.CompletedTask; };
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);
@@ -230,7 +252,7 @@ namespace ConduitLLM.Tests.WebUI.Middleware
             };
 
             // Create a new middleware instance with our test delegate
-            var middleware = new IpFilterMiddleware(next, _mockLogger.Object, _mockOptions.Object);
+            var middleware = CreateMiddleware(next);
 
             // Act - the middleware should handle the exception and call next
             await middleware.InvokeAsync(context, _mockIpFilterService.Object);

@@ -76,8 +76,9 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.CreateFilterAsync(createDto);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Same(expectedFilter, result);
+            Assert.True(result.Success);
+            Assert.Null(result.ErrorMessage);
+            Assert.Same(expectedFilter, result.Filter);
             _adminApiClientMock.Verify(c => c.CreateIpFilterAsync(createDto), Times.Once);
         }
 
@@ -97,8 +98,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.UpdateFilterAsync(updateDto);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(expectedFilter, result);
+            Assert.True(result.Success);
+            Assert.Null(result.ErrorMessage);
             _adminApiClientMock.Verify(c => c.UpdateIpFilterAsync(1, updateDto), Times.Once);
         }
 
@@ -113,7 +114,8 @@ namespace ConduitLLM.Tests.WebUI.Adapters
             var result = await _adapter.DeleteFilterAsync(1);
 
             // Assert
-            Assert.True(result);
+            Assert.True(result.Success);
+            Assert.Null(result.ErrorMessage);
             _adminApiClientMock.Verify(c => c.DeleteIpFilterAsync(1), Times.Once);
         }
 

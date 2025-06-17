@@ -56,8 +56,13 @@ bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLo
 // Add memory cache for failed login tracking
 builder.Services.AddMemoryCache();
 
-// Register failed login tracking service
+// Register security services
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityConfigurationService, ConduitLLM.WebUI.Services.SecurityConfigurationService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IIpAddressClassifier, ConduitLLM.WebUI.Services.IpAddressClassifier>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+
+// Register IP filter service adapter (for compatibility with Admin API)
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IIpFilterService, ConduitLLM.WebUI.Services.Adapters.IpFilterServiceAdapter>();
 
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -257,6 +262,25 @@ using (var scope = app.Services.CreateScope())
     {
         ConduitLLM.Configuration.Services.RedisUrlValidator.ValidateAndLog(envRedisUrl, logger, "WebUI Service");
     }
+
+    // Log security configuration
+    var securityConfig = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.ISecurityConfigurationService>();
+    var ipFilterSettings = securityConfig.GetIpFilterSettings();
+    
+    logger.LogInformation("=== Security Configuration ===");
+    logger.LogInformation("IP Filtering: {Status}", ipFilterSettings.IsEnabled ? "Enabled" : "Disabled");
+    if (ipFilterSettings.IsEnabled)
+    {
+        logger.LogInformation("  - Mode: {Mode}", ipFilterSettings.FilterMode);
+        logger.LogInformation("  - Default Action: {Action}", ipFilterSettings.DefaultAllow ? "Allow" : "Deny");
+        logger.LogInformation("  - Allow Private IPs: {AllowPrivate}", securityConfig.AllowPrivateIps);
+        logger.LogInformation("  - Whitelist Rules: {Count}", ipFilterSettings.WhitelistFilters.Count);
+        logger.LogInformation("  - Blacklist Rules: {Count}", ipFilterSettings.BlacklistFilters.Count);
+    }
+    logger.LogInformation("Failed Login Protection: Enabled");
+    logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityConfig.MaxFailedLoginAttempts);
+    logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityConfig.IpBanDurationMinutes);
+    logger.LogInformation("==============================");
 }
 
 // Initialize Master Key using InitialSetupService
@@ -383,6 +407,9 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add IP filtering middleware after authentication but before other middleware
+app.UseIpFiltering();
+
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
 // Map standardized health check endpoints
@@ -399,13 +426,17 @@ Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered"
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)
-app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking) =>
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking, ConduitLLM.WebUI.Services.IIpAddressClassifier ipClassifier) =>
 {
     logger.LogInformation("POST /account/login received.");
     logger.LogInformation("Remember me checkbox value: {RememberMe}", rememberMe);
     
     // Get client IP
     var clientIp = GetClientIpAddress(context);
+    
+    // Log IP classification for debugging
+    var ipClassification = ipClassifier.GetClassification(clientIp);
+    logger.LogInformation("Login attempt from {IpAddress} (Classification: {Classification})", clientIp, ipClassification);
     
     // Check if IP is banned
     if (failedLoginTracking.IsBanned(clientIp))

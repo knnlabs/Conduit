@@ -100,7 +100,7 @@ services:
     environment:
       # WebUI no longer uses DATABASE_URL
       CONDUIT_MASTER_KEY: alpha
-      CONDUIT_INSECURE: "true"
+      CONDUIT_INSECURE: "false"
       CONDUIT_API_BASE_URL: http://api:8080
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
@@ -110,6 +110,19 @@ services:
       CONDUIT_VERSION_CHECK_INTERVAL_HOURS: "24"
       # Admin API configuration (required)
       CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
+      # WebUI authentication password
+      CONDUIT_WEBUI_AUTH_KEY: conduit123
+      # IP Filtering Configuration (optional)
+      # CONDUIT_IP_FILTERING_ENABLED: "true"
+      # CONDUIT_IP_FILTER_MODE: "permissive"  # or "restrictive"
+      # CONDUIT_IP_FILTER_DEFAULT_ALLOW: "true"
+      # CONDUIT_IP_FILTER_BYPASS_ADMIN_UI: "true"
+      # CONDUIT_IP_FILTER_ALLOW_PRIVATE: "true"  # Auto-allow private/intranet IPs
+      # CONDUIT_IP_FILTER_WHITELIST: "192.168.1.0/24,10.0.0.0/8"
+      # CONDUIT_IP_FILTER_BLACKLIST: "203.0.113.0/24"
+      # Failed Login Protection
+      # CONDUIT_MAX_FAILED_ATTEMPTS: "5"
+      # CONDUIT_IP_BAN_DURATION_MINUTES: "30"
     ports:
       - "5001:8080"
     restart: on-failure
