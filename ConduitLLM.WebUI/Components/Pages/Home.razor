@@ -1,5 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 
 <PageTitle>ConduitLLM Dashboard</PageTitle>
 

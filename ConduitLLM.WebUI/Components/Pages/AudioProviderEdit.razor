@@ -1,5 +1,6 @@
 @page "/audio-providers/edit"
 @page "/audio-providers/edit/{id:int}"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
 @using System.Text.Json
 @using ConduitLLM.Configuration
 @using ConfigDTOs = ConduitLLM.Configuration.DTOs
