@@ -26,7 +26,7 @@ namespace ConduitLLM.WebUI.Controllers
     {
         private readonly IGlobalSettingService _settingService;
         private readonly ILogger<AuthController> _logger;
-        private readonly IFailedLoginTrackingService _failedLoginTracking;
+        private readonly ISecurityService _securityService;
 
         /// <summary>
         /// Creates a new instance of the AuthController
@@ -34,11 +34,11 @@ namespace ConduitLLM.WebUI.Controllers
         public AuthController(
             IGlobalSettingService settingService,
             ILogger<AuthController> logger,
-            IFailedLoginTrackingService failedLoginTracking)
+            ISecurityService securityService)
         {
             _settingService = settingService ?? throw new ArgumentNullException(nameof(settingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _failedLoginTracking = failedLoginTracking ?? throw new ArgumentNullException(nameof(failedLoginTracking));
+            _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace ConduitLLM.WebUI.Controllers
                 var clientIp = GetClientIpAddress();
 
                 // Check if IP is banned
-                if (_failedLoginTracking.IsBanned(clientIp))
+                if (await _securityService.IsIpBannedAsync(clientIp))
                 {
                     _logger.LogWarning("Login attempt from banned IP: {IpAddress}", clientIp);
                     return StatusCode(429, new { message = "Too many failed login attempts. Please try again later." });
@@ -69,7 +69,7 @@ namespace ConduitLLM.WebUI.Controllers
                 if (isValid)
                 {
                     // Clear failed login attempts on successful login
-                    _failedLoginTracking.ClearFailedAttempts(clientIp);
+                    await _securityService.ClearFailedLoginAttemptsAsync(clientIp);
 
                     // Create claims for the user
                     var claims = new List<Claim>
@@ -96,7 +96,7 @@ namespace ConduitLLM.WebUI.Controllers
                 _logger.LogWarning("Invalid master key attempt from {IpAddress}", clientIp);
                 
                 // Record failed login attempt
-                _failedLoginTracking.RecordFailedLogin(clientIp);
+                await _securityService.RecordFailedLoginAsync(clientIp);
                 
                 return Unauthorized(new { message = "Invalid master key" });
             }

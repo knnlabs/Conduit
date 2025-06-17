@@ -89,66 +89,14 @@ else
     Console.WriteLine("[Conduit WebUI] Using in-memory distributed cache");
 }
 
-// Register security services
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityConfigurationService, ConduitLLM.WebUI.Services.SecurityConfigurationService>();
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IIpAddressClassifier, ConduitLLM.WebUI.Services.IpAddressClassifier>();
+// Configure security options from environment variables
+builder.Services.ConfigureSecurityOptions(builder.Configuration);
 
-// Register failed login tracking service - use distributed version if Redis is available
-var useDistributedTracking = !string.IsNullOrEmpty(redisConnectionString) && 
-    builder.Configuration.GetValue<bool>("CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING", true);
-
-if (useDistributedTracking)
-{
-    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.DistributedFailedLoginTrackingService>();
-    Console.WriteLine("[Conduit WebUI] Using distributed (Redis) failed login tracking");
-}
-else
-{
-    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
-    Console.WriteLine("[Conduit WebUI] Using in-memory failed login tracking");
-}
+// Register unified security service
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityService, ConduitLLM.WebUI.Services.SecurityService>();
 
 // Register IP filter service adapter (for compatibility with Admin API)
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IIpFilterService, ConduitLLM.WebUI.Services.Adapters.IpFilterServiceAdapter>();
-
-// Configure IpFilterOptions from environment variables
-builder.Services.Configure<ConduitLLM.Configuration.Options.IpFilterOptions>(options =>
-{
-    // Map environment variables to options
-    var config = builder.Configuration;
-    
-    // Basic settings
-    options.Enabled = config.GetValue<bool>("CONDUIT_IP_FILTERING_ENABLED", false);
-    options.DefaultAllow = config.GetValue<bool>("CONDUIT_IP_FILTER_DEFAULT_ALLOW", true);
-    options.BypassForAdminUi = config.GetValue<bool>("CONDUIT_IP_FILTER_BYPASS_ADMIN_UI", true);
-    options.EnableIpv6 = config.GetValue<bool>("CONDUIT_IP_FILTER_ENABLE_IPV6", true);
-    
-    // Excluded endpoints
-    var excludedEndpoints = config["CONDUIT_IP_FILTER_EXCLUDED_ENDPOINTS"];
-    if (!string.IsNullOrWhiteSpace(excludedEndpoints))
-    {
-        options.ExcludedEndpoints = excludedEndpoints.Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(e => e.Trim())
-            .ToList();
-    }
-    else
-    {
-        // Default excluded endpoints
-        options.ExcludedEndpoints = new List<string> 
-        { 
-            "/health", 
-            "/health/ready", 
-            "/health/live", 
-            "/login", 
-            "/logout",
-            "/_blazor",
-            "/css",
-            "/js",
-            "/images",
-            "/favicon.ico"
-        };
-    }
-});
 
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -335,22 +283,26 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Log security configuration
-    var securityConfig = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.ISecurityConfigurationService>();
-    var ipFilterSettings = securityConfig.GetIpFilterSettings();
+    var securityOptions = scope.ServiceProvider.GetRequiredService<IOptions<ConduitLLM.WebUI.Options.SecurityOptions>>().Value;
     
     logger.LogInformation("=== Security Configuration ===");
-    logger.LogInformation("IP Filtering: {Status}", ipFilterSettings.IsEnabled ? "Enabled" : "Disabled");
-    if (ipFilterSettings.IsEnabled)
+    logger.LogInformation("IP Filtering: {Status}", securityOptions.IpFiltering.Enabled ? "Enabled" : "Disabled");
+    if (securityOptions.IpFiltering.Enabled)
     {
-        logger.LogInformation("  - Mode: {Mode}", ipFilterSettings.FilterMode);
-        logger.LogInformation("  - Default Action: {Action}", ipFilterSettings.DefaultAllow ? "Allow" : "Deny");
-        logger.LogInformation("  - Allow Private IPs: {AllowPrivate}", securityConfig.AllowPrivateIps);
-        logger.LogInformation("  - Whitelist Rules: {Count}", ipFilterSettings.WhitelistFilters.Count);
-        logger.LogInformation("  - Blacklist Rules: {Count}", ipFilterSettings.BlacklistFilters.Count);
+        logger.LogInformation("  - Mode: {Mode}", securityOptions.IpFiltering.Mode);
+        logger.LogInformation("  - Allow Private IPs: {AllowPrivate}", securityOptions.IpFiltering.AllowPrivateIps);
+        logger.LogInformation("  - Whitelist Rules: {Count}", securityOptions.IpFiltering.Whitelist.Count);
+        logger.LogInformation("  - Blacklist Rules: {Count}", securityOptions.IpFiltering.Blacklist.Count);
+    }
+    logger.LogInformation("Rate Limiting: {Status}", securityOptions.RateLimiting.Enabled ? "Enabled" : "Disabled");
+    if (securityOptions.RateLimiting.Enabled)
+    {
+        logger.LogInformation("  - Max Requests: {MaxRequests} per {Window} seconds", 
+            securityOptions.RateLimiting.MaxRequests, securityOptions.RateLimiting.WindowSeconds);
     }
     logger.LogInformation("Failed Login Protection: Enabled");
-    logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityConfig.MaxFailedLoginAttempts);
-    logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityConfig.IpBanDurationMinutes);
+    logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityOptions.FailedLogin.MaxAttempts);
+    logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityOptions.FailedLogin.BanDurationMinutes);
     logger.LogInformation("==============================");
 }
 
@@ -472,8 +424,8 @@ app.UseRouting();
 // Add security headers middleware (should be early in pipeline)
 app.UseSecurityHeaders();
 
-// Add rate limiting middleware
-app.UseRateLimiting();
+// Add unified security middleware (includes rate limiting, IP filtering, and failed login protection)
+app.UseSecurity();
 
 // Add resilience logging middleware
 app.UseMiddleware<ConduitLLM.WebUI.Middleware.ResilienceLoggingMiddleware>();
@@ -484,8 +436,7 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add IP filtering middleware after authentication but before other middleware
-app.UseIpFiltering();
+// IP filtering is now handled by the unified security middleware
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
@@ -503,7 +454,7 @@ Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered"
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)
-app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking, ConduitLLM.WebUI.Services.IIpAddressClassifier ipClassifier) =>
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.ISecurityService securityService) =>
 {
     logger.LogInformation("POST /account/login received.");
     logger.LogInformation("Remember me checkbox value: {RememberMe}", rememberMe);
@@ -512,11 +463,11 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
     var clientIp = GetClientIpAddress(context);
     
     // Log IP classification for debugging
-    var ipClassification = ipClassifier.GetClassification(clientIp);
+    var ipClassification = securityService.ClassifyIpAddress(clientIp);
     logger.LogInformation("Login attempt from {IpAddress} (Classification: {Classification})", clientIp, ipClassification);
     
     // Check if IP is banned
-    if (failedLoginTracking.IsBanned(clientIp))
+    if (await securityService.IsIpBannedAsync(clientIp))
     {
         logger.LogWarning("Login attempt from banned IP: {IpAddress}", clientIp);
         context.Response.StatusCode = 429;
@@ -555,7 +506,7 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
         logger.LogInformation("Login successful via POST /account/login.");
 
         // Clear failed login attempts on successful login
-        failedLoginTracking.ClearFailedAttempts(clientIp);
+        await securityService.ClearFailedLoginAttemptsAsync(clientIp);
 
         // Save the auto-login preference
         if (rememberMe.HasValue)
@@ -588,7 +539,7 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
     else
     {
         // Record failed login attempt
-        failedLoginTracking.RecordFailedLogin(clientIp);
+        await securityService.RecordFailedLoginAsync(clientIp);
         logger.LogWarning("Login failed via POST /account/login from IP: {IpAddress}", clientIp);
         
         // Redirect back to login page with an error indicator

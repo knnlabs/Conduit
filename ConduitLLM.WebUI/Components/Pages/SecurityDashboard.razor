@@ -9,11 +9,7 @@
 @attribute [Authorize]
 
 @inject IIpFilterService IpFilterService
-@inject IFailedLoginTrackingService FailedLoginTracking
-@inject ISecurityConfigurationService SecurityConfig
-@inject IIpAddressClassifier IpClassifier
-@inject IMemoryCache MemoryCache
-@inject IDistributedCache DistributedCache
+@inject ISecurityService SecurityService
 @inject ILogger<SecurityDashboard> Logger
 @inject IJSRuntime JS
 
@@ -36,7 +32,7 @@
                 <div class="card-body">
                     <h5 class="card-title text-muted">IP Filtering</h5>
                     <p class="card-text h3">
-                        @if (ipFilterSettings?.IsEnabled == true)
+                        @if (dashboardData?.IpFilteringEnabled == true)
                         {
                             <span class="text-success">Enabled</span>
                         }
@@ -46,7 +42,7 @@
                         }
                     </p>
                     <small class="text-muted">
-                        Mode: @(ipFilterSettings?.FilterMode ?? "N/A")
+                        Mode: @(dashboardData?.IpFilterMode ?? "N/A")
                     </small>
                 </div>
             </div>
@@ -57,10 +53,10 @@
                 <div class="card-body">
                     <h5 class="card-title text-muted">Active Filters</h5>
                     <p class="card-text h3">
-                        @((whitelistFilters?.Count ?? 0) + (blacklistFilters?.Count ?? 0))
+                        @((dashboardData?.Whitelist?.Count ?? 0) + (dashboardData?.Blacklist?.Count ?? 0) + (whitelistFilters?.Count ?? 0) + (blacklistFilters?.Count ?? 0))
                     </p>
                     <small class="text-muted">
-                        @(whitelistFilters?.Count ?? 0) whitelist, @(blacklistFilters?.Count ?? 0) blacklist
+                        Env: @(dashboardData?.Whitelist?.Count ?? 0)/@(dashboardData?.Blacklist?.Count ?? 0), DB: @(whitelistFilters?.Count ?? 0)/@(blacklistFilters?.Count ?? 0)
                     </small>
                 </div>
             </div>
@@ -71,10 +67,10 @@
                 <div class="card-body">
                     <h5 class="card-title text-muted">Banned IPs</h5>
                     <p class="card-text h3">
-                        @bannedIps.Count
+                        @(dashboardData?.BannedIps?.Count ?? 0)
                     </p>
                     <small class="text-muted">
-                        Max attempts: @SecurityConfig.MaxFailedLoginAttempts
+                        Max attempts: @maxFailedAttempts
                     </small>
                 </div>
             </div>
@@ -85,10 +81,10 @@
                 <div class="card-body">
                     <h5 class="card-title text-muted">Failed Attempts</h5>
                     <p class="card-text h3">
-                        @failedAttempts.Count
+                        @(dashboardData?.RecentFailedAttempts?.Count ?? 0)
                     </p>
                     <small class="text-muted">
-                        Ban duration: @SecurityConfig.IpBanDurationMinutes min
+                        Ban duration: @banDurationMinutes min
                     </small>
                 </div>
             </div>
@@ -106,7 +102,7 @@
                     <dl class="row">
                         <dt class="col-sm-6">IP Filtering Enabled:</dt>
                         <dd class="col-sm-6">
-                            @if (ipFilterSettings?.IsEnabled == true)
+                            @if (dashboardData?.IpFilteringEnabled == true)
                             {
                                 <span class="badge bg-success">Yes</span>
                             }
@@ -117,11 +113,11 @@
                         </dd>
                         
                         <dt class="col-sm-6">Filter Mode:</dt>
-                        <dd class="col-sm-6">@(ipFilterSettings?.FilterMode ?? "N/A")</dd>
+                        <dd class="col-sm-6">@(dashboardData?.IpFilterMode ?? "N/A")</dd>
                         
                         <dt class="col-sm-6">Default Action:</dt>
                         <dd class="col-sm-6">
-                            @if (ipFilterSettings?.DefaultAllow == true)
+                            @if (dashboardData?.Whitelist?.Count > 0)
                             {
                                 <span class="badge bg-info">Allow</span>
                             }
@@ -133,7 +129,7 @@
                         
                         <dt class="col-sm-6">Allow Private IPs:</dt>
                         <dd class="col-sm-6">
-                            @if (SecurityConfig.AllowPrivateIps)
+                            @if (dashboardData?.IpFilteringEnabled == true && dashboardData?.Whitelist?.Contains("10.0.0.0/8") == true)
                             {
                                 <span class="badge bg-success">Yes</span>
                             }
@@ -144,10 +140,10 @@
                         </dd>
                         
                         <dt class="col-sm-6">Max Failed Attempts:</dt>
-                        <dd class="col-sm-6">@SecurityConfig.MaxFailedLoginAttempts</dd>
+                        <dd class="col-sm-6">@maxFailedAttempts</dd>
                         
                         <dt class="col-sm-6">Ban Duration:</dt>
-                        <dd class="col-sm-6">@SecurityConfig.IpBanDurationMinutes minutes</dd>
+                        <dd class="col-sm-6">@banDurationMinutes minutes</dd>
                     </dl>
                 </div>
             </div>
@@ -167,7 +163,7 @@
                         <dd class="col-sm-6">
                             @if (!string.IsNullOrEmpty(currentIpAddress))
                             {
-                                var classification = IpClassifier.GetClassification(currentIpAddress);
+                                var classification = SecurityService.ClassifyIpAddress(currentIpAddress);
                                 <span class="badge bg-info">@classification</span>
                             }
                         </dd>
@@ -176,7 +172,8 @@
                         <dd class="col-sm-6">
                             @if (!string.IsNullOrEmpty(currentIpAddress))
                             {
-                                @if (IpClassifier.IsPrivateOrIntranet(currentIpAddress))
+                                var classification = SecurityService.ClassifyIpAddress(currentIpAddress);
+                                @if (classification == IpClassification.Private || classification == IpClassification.Loopback || classification == IpClassification.LinkLocal)
                                 {
                                     <span class="badge bg-success">Yes</span>
                                 }
@@ -314,7 +311,7 @@
                     <h5 class="mb-0">Recent Failed Login Attempts</h5>
                 </div>
                 <div class="card-body">
-                    @if (failedAttempts.Any())
+                    @if (dashboardData?.RecentFailedAttempts?.Any() == true)
                     {
                         <div class="table-responsive">
                             <table class="table table-sm">
@@ -326,7 +323,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var attempt in failedAttempts.OrderByDescending(a => a.Value).Take(10))
+                                    @foreach (var attempt in dashboardData.RecentFailedAttempts.OrderByDescending(a => a.Value).Take(10))
                                     {
                                         <tr>
                                             <td><code>@attempt.Key</code></td>
@@ -334,7 +331,7 @@
                                                 <span class="badge bg-warning">@attempt.Value</span>
                                             </td>
                                             <td>
-                                                @IpClassifier.GetClassification(attempt.Key)
+                                                @SecurityService.ClassifyIpAddress(attempt.Key)
                                             </td>
                                         </tr>
                                     }
@@ -356,7 +353,7 @@
                     <h5 class="mb-0">Currently Banned IPs</h5>
                 </div>
                 <div class="card-body">
-                    @if (bannedIps.Any())
+                    @if (dashboardData?.BannedIps?.Any() == true)
                     {
                         <div class="table-responsive">
                             <table class="table table-sm">
@@ -368,15 +365,15 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var ip in bannedIps)
+                                    @foreach (var bannedIp in dashboardData.BannedIps)
                                     {
                                         <tr>
-                                            <td><code>@ip</code></td>
+                                            <td><code>@bannedIp.Key</code></td>
                                             <td>
-                                                @IpClassifier.GetClassification(ip)
+                                                @SecurityService.ClassifyIpAddress(bannedIp.Key)
                                             </td>
                                             <td>
-                                                <button class="btn btn-sm btn-warning" @onclick="() => UnbanIp(ip)">
+                                                <button class="btn btn-sm btn-warning" @onclick="() => UnbanIp(bannedIp.Key)">
                                                     <i class="bi bi-unlock"></i> Unban
                                                 </button>
                                             </td>
@@ -400,12 +397,12 @@
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
-    private IpFilterSettingsDto? ipFilterSettings;
+    private SecurityDashboardData? dashboardData;
     private List<IpFilterDto> whitelistFilters = new();
     private List<IpFilterDto> blacklistFilters = new();
-    private Dictionary<string, int> failedAttempts = new();
-    private List<string> bannedIps = new();
     private string currentIpAddress = "";
+    private int maxFailedAttempts = 5;
+    private int banDurationMinutes = 30;
 
     protected override async Task OnInitializedAsync()
     {
@@ -422,15 +419,20 @@
     {
         try
         {
-            // Load IP filter settings
-            ipFilterSettings = await IpFilterService.GetIpFilterSettingsAsync();
+            // Load security dashboard data from unified service
+            dashboardData = await SecurityService.GetSecurityDashboardDataAsync();
             
-            // Separate whitelist and blacklist filters
+            // Load IP filter settings from database
+            var ipFilterSettings = await IpFilterService.GetIpFilterSettingsAsync();
+            
+            // Separate whitelist and blacklist filters from database
             whitelistFilters = ipFilterSettings.WhitelistFilters.Where(f => f.IsEnabled).ToList();
             blacklistFilters = ipFilterSettings.BlacklistFilters.Where(f => f.IsEnabled).ToList();
-
-            // Load failed attempts and banned IPs from cache
-            await LoadCacheData();
+            
+            // Get security options for display
+            var securityOptions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Options.IOptions<ConduitLLM.WebUI.Options.SecurityOptions>>(HttpContext?.RequestServices ?? throw new InvalidOperationException());
+            maxFailedAttempts = securityOptions.Value.FailedLogin.MaxAttempts;
+            banDurationMinutes = securityOptions.Value.FailedLogin.BanDurationMinutes;
         }
         catch (Exception ex)
         {
@@ -438,29 +440,6 @@
         }
     }
 
-    private Task LoadCacheData()
-    {
-        failedAttempts.Clear();
-        bannedIps.Clear();
-
-        // This is a simplified version - in production, you'd want to properly enumerate cache entries
-        // For now, we'll check a reasonable range of IPs
-        // Note: This is for demonstration - real implementation would need proper cache enumeration
-        
-        // Check if we're using distributed cache
-        if (FailedLoginTracking is DistributedFailedLoginTrackingService)
-        {
-            Logger.LogInformation("Using distributed cache - full enumeration not implemented in demo");
-            // In a real implementation, you'd query Redis for keys matching the pattern
-        }
-        else
-        {
-            Logger.LogInformation("Using in-memory cache - checking known IPs");
-            // For demo purposes, we can't enumerate MemoryCache entries
-        }
-        
-        return Task.CompletedTask;
-    }
 
     private async Task RefreshData()
     {
@@ -472,15 +451,7 @@
     {
         try
         {
-            if (FailedLoginTracking is DistributedFailedLoginTrackingService distributedTracking)
-            {
-                await distributedTracking.ClearFailedAttemptsAsync(ipAddress);
-            }
-            else
-            {
-                FailedLoginTracking.ClearFailedAttempts(ipAddress);
-            }
-
+            await SecurityService.ClearFailedLoginAttemptsAsync(ipAddress);
             await RefreshData();
         }
         catch (Exception ex)

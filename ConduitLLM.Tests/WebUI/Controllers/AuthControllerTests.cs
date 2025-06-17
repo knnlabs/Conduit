@@ -22,7 +22,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
     {
         private readonly Mock<IGlobalSettingService> _mockSettingService;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
-        private readonly Mock<IFailedLoginTrackingService> _mockFailedLoginTracking;
+        private readonly Mock<ISecurityService> _mockSecurityService;
         private readonly AuthController _controller;
         private readonly DefaultHttpContext _httpContext;
 
@@ -30,12 +30,12 @@ namespace ConduitLLM.Tests.WebUI.Controllers
         {
             _mockSettingService = new Mock<IGlobalSettingService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
-            _mockFailedLoginTracking = new Mock<IFailedLoginTrackingService>();
+            _mockSecurityService = new Mock<ISecurityService>();
             
             _controller = new AuthController(
                 _mockSettingService.Object,
                 _mockLogger.Object,
-                _mockFailedLoginTracking.Object
+                _mockSecurityService.Object
             );
 
             // Setup HTTP context with authentication service
@@ -78,7 +78,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             var response = JObject.Parse(json);
             Assert.True(response["success"]!.Value<bool>());
             Assert.Equal("/", response["redirectUrl"]!.Value<string>());
-            _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts("127.0.0.1"), Times.Once);
+            _mockSecurityService.Verify(x => x.ClearFailedLoginAttemptsAsync("127.0.0.1"), Times.Once);
         }
 
         [Fact]
@@ -103,7 +103,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             var response = JObject.Parse(json);
             Assert.True(response["success"]!.Value<bool>());
             Assert.Equal("/dashboard", response["redirectUrl"]!.Value<string>());
-            _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts("127.0.0.1"), Times.Once);
+            _mockSecurityService.Verify(x => x.ClearFailedLoginAttemptsAsync("127.0.0.1"), Times.Once);
         }
 
         [Fact]
@@ -121,8 +121,8 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             var json = JsonConvert.SerializeObject(unauthorizedResult.Value);
             var response = JObject.Parse(json);
             Assert.Equal("Invalid master key", response["message"]!.Value<string>());
-            _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin("127.0.0.1"), Times.Once);
-            _mockFailedLoginTracking.Verify(x => x.ClearFailedAttempts(It.IsAny<string>()), Times.Never);
+            _mockSecurityService.Verify(x => x.RecordFailedLoginAsync("127.0.0.1"), Times.Once);
+            _mockSecurityService.Verify(x => x.ClearFailedLoginAttemptsAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -131,7 +131,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             // Arrange
             Environment.SetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY", "test-key");
             var request = new LoginRequest { MasterKey = "test-key" };
-            _mockFailedLoginTracking.Setup(x => x.IsBanned("127.0.0.1")).Returns(true);
+            _mockSecurityService.Setup(x => x.IsIpBannedAsync("127.0.0.1")).ReturnsAsync(true);
 
             // Act
             var result = await _controller.Login(request);
@@ -142,7 +142,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             var json = JsonConvert.SerializeObject(statusResult.Value);
             var response = JObject.Parse(json);
             Assert.Equal("Too many failed login attempts. Please try again later.", response["message"]!.Value<string>());
-            _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin(It.IsAny<string>()), Times.Never);
+            _mockSecurityService.Verify(x => x.RecordFailedLoginAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -159,7 +159,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             var json = JsonConvert.SerializeObject(badRequestResult.Value);
             var response = JObject.Parse(json);
             Assert.Equal("Master key is required", response["message"]!.Value<string>());
-            _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin(It.IsAny<string>()), Times.Never);
+            _mockSecurityService.Verify(x => x.RecordFailedLoginAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -174,7 +174,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             await _controller.Login(request);
 
             // Assert
-            _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin("192.168.1.100"), Times.Once);
+            _mockSecurityService.Verify(x => x.RecordFailedLoginAsync("192.168.1.100"), Times.Once);
         }
 
         [Fact]
@@ -189,7 +189,7 @@ namespace ConduitLLM.Tests.WebUI.Controllers
             await _controller.Login(request);
 
             // Assert
-            _mockFailedLoginTracking.Verify(x => x.RecordFailedLogin("192.168.1.200"), Times.Once);
+            _mockSecurityService.Verify(x => x.RecordFailedLoginAsync("192.168.1.200"), Times.Once);
         }
 
         [Fact]
