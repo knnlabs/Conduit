@@ -72,6 +72,23 @@ if (!string.IsNullOrEmpty(redisUrl))
 // Add memory cache for failed login tracking
 builder.Services.AddMemoryCache();
 
+// Configure distributed cache
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = builder.Configuration["CONDUIT_REDIS_INSTANCE_NAME"] ?? "conduit:";
+    });
+    Console.WriteLine($"[Conduit WebUI] Redis distributed cache configured: {redisConnectionString}");
+}
+else
+{
+    // Fall back to in-memory distributed cache
+    builder.Services.AddDistributedMemoryCache();
+    Console.WriteLine("[Conduit WebUI] Using in-memory distributed cache");
+}
+
 // Register security services
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityConfigurationService, ConduitLLM.WebUI.Services.SecurityConfigurationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IIpAddressClassifier, ConduitLLM.WebUI.Services.IpAddressClassifier>();
