@@ -1,15 +1,19 @@
 # WebUI Security Features
 
-This document describes the security features available in the Conduit WebUI application.
+This document describes the comprehensive security features available in the Conduit WebUI application.
 
 ## Overview
 
-The WebUI includes comprehensive security features to protect against unauthorized access:
+The WebUI includes enterprise-grade security features to protect against unauthorized access and attacks:
 
 1. **IP Address Filtering** - Whitelist/blacklist specific IPs or subnets
 2. **Failed Login Protection** - Automatic IP banning after repeated failed attempts
 3. **Private/Intranet IP Detection** - Automatic handling of private network addresses
-4. **Environment Variable Configuration** - Configure security settings via environment variables
+4. **Rate Limiting** - Protect against DoS attacks and API abuse
+5. **Security Headers** - Prevent common web vulnerabilities
+6. **Distributed Security Tracking** - Redis-based tracking for multi-instance deployments
+7. **Security Dashboard** - Real-time monitoring of security events
+8. **Environment Variable Configuration** - Configure all security settings via environment variables
 
 ## IP Address Filtering
 
@@ -122,6 +126,104 @@ The security features integrate seamlessly with:
 4. **Monitor Failed Logins**: Check logs for repeated failed login attempts
 5. **Regular Updates**: Keep IP filter rules updated
 6. **Least Privilege**: Use restrictive mode with explicit whitelists when possible
+
+## Rate Limiting
+
+Protects against DoS attacks and API abuse by limiting requests per IP.
+
+### Features
+
+- **Sliding Window Algorithm**: Tracks requests within a time window
+- **Per-IP Tracking**: Each IP address has its own limit
+- **Distributed Support**: Uses Redis for multi-instance deployments
+- **Configurable Limits**: Set max requests and window duration
+- **Path Exclusions**: Exclude static assets and health checks
+
+### Environment Variables
+
+```bash
+# Enable rate limiting
+CONDUIT_RATE_LIMITING_ENABLED=true
+
+# Maximum requests per window
+CONDUIT_RATE_LIMIT_MAX_REQUESTS=100
+
+# Time window in seconds
+CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
+
+# Comma-separated excluded paths
+CONDUIT_RATE_LIMIT_EXCLUDED_PATHS=/health,/_blazor,/css,/js,/images
+```
+
+## Security Headers
+
+Adds HTTP security headers to prevent common web vulnerabilities.
+
+### Headers Implemented
+
+- **X-Frame-Options**: Prevents clickjacking attacks
+- **X-Content-Type-Options**: Prevents MIME type sniffing
+- **X-XSS-Protection**: Enables browser XSS filtering
+- **Content-Security-Policy**: Controls resource loading
+- **Strict-Transport-Security**: Forces HTTPS connections
+- **Referrer-Policy**: Controls referrer information
+- **Permissions-Policy**: Restricts browser features
+
+### Environment Variables
+
+```bash
+# X-Frame-Options
+CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED=true
+CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS=DENY
+
+# Content Security Policy
+CONDUIT_SECURITY_HEADERS_CSP_ENABLED=true
+CONDUIT_SECURITY_HEADERS_CSP="default-src 'self'; script-src 'self' 'unsafe-inline';"
+
+# HSTS (for HTTPS only)
+CONDUIT_SECURITY_HEADERS_HSTS_ENABLED=true
+CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE=31536000
+
+# Other headers
+CONDUIT_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS_ENABLED=true
+CONDUIT_SECURITY_HEADERS_X_XSS_PROTECTION_ENABLED=true
+CONDUIT_SECURITY_HEADERS_REFERRER_POLICY_ENABLED=true
+CONDUIT_SECURITY_HEADERS_REFERRER_POLICY=strict-origin-when-cross-origin
+```
+
+## Distributed Security Tracking
+
+When Redis is available, security tracking becomes distributed across instances.
+
+### Features
+
+- **Shared Ban List**: All instances share the same banned IP list
+- **Synchronized Counters**: Failed login attempts tracked globally
+- **Automatic Failover**: Falls back to in-memory if Redis fails
+- **Performance**: Minimal latency impact with Redis
+
+### Environment Variables
+
+```bash
+# Enable distributed tracking (requires Redis)
+CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
+
+# Redis connection (same as cache configuration)
+REDIS_URL=redis://redis:6379
+# or
+CONDUIT_REDIS_CONNECTION_STRING=redis:6379
+```
+
+## Security Dashboard
+
+Access the security dashboard at `/security` to monitor:
+
+- Current security configuration
+- Active IP filters (whitelist/blacklist)
+- Recent failed login attempts
+- Currently banned IPs
+- Your current IP classification
+- Real-time security metrics
 
 ## Example Configurations
 

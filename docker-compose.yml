@@ -123,6 +123,19 @@ services:
       # Failed Login Protection
       # CONDUIT_MAX_FAILED_ATTEMPTS: "5"
       # CONDUIT_IP_BAN_DURATION_MINUTES: "30"
+      # CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING: "true"  # Use Redis for distributed ban tracking
+      # Rate Limiting
+      # CONDUIT_RATE_LIMITING_ENABLED: "true"
+      # CONDUIT_RATE_LIMIT_MAX_REQUESTS: "100"
+      # CONDUIT_RATE_LIMIT_WINDOW_SECONDS: "60"
+      # CONDUIT_RATE_LIMIT_EXCLUDED_PATHS: "/health,/_blazor,/css,/js,/images"
+      # Security Headers
+      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED: "true"
+      # CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS: "DENY"
+      # CONDUIT_SECURITY_HEADERS_CSP_ENABLED: "true"
+      # CONDUIT_SECURITY_HEADERS_CSP: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+      # CONDUIT_SECURITY_HEADERS_HSTS_ENABLED: "true"
+      # CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE: "31536000"
     ports:
       - "5001:8080"
     restart: on-failure

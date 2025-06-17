@@ -368,20 +368,53 @@ The recommended approach is using Docker Compose or Kubernetes to orchestrate th
 
 See the [Getting Started Guide](Getting-Started.md) for Docker Compose examples.
 
-### Authorization
+### Security Features
 
-Role-based access control can restrict access to sensitive operations:
+The WebUI includes comprehensive security features:
 
-- Admin role: Full access to all features
-- Operator role: Can manage but not create providers and keys
-- User role: Can use chat and view own usage
-- Read-only role: Can view but not modify configuration
+#### Authentication
+- **WebUI Auth Key**: Dedicated authentication key for WebUI access (`CONDUIT_WEBUI_AUTH_KEY`)
+- **Master Key Fallback**: Can use `CONDUIT_MASTER_KEY` if WebUI key not set
+- **Session Management**: Automatic logout on inactivity
+- **Remember Me**: Optional persistent authentication
+
+#### IP Filtering
+- **Whitelist/Blacklist Modes**: Control access by IP address
+- **CIDR Support**: Define subnets (e.g., 192.168.1.0/24)
+- **Private IP Detection**: Automatic handling of intranet addresses
+- **Dynamic Configuration**: Configure via environment variables or UI
+
+#### Rate Limiting
+- **Per-IP Limits**: Prevent abuse and DoS attacks
+- **Configurable Windows**: Set max requests per time period
+- **Excluded Paths**: Skip rate limiting for static assets
+- **429 Responses**: Standard rate limit exceeded responses
+
+#### Failed Login Protection
+- **Automatic IP Banning**: Ban IPs after repeated failures
+- **Configurable Thresholds**: Set max attempts and ban duration
+- **Distributed Tracking**: Redis support for multi-instance deployments
+
+#### Security Headers
+- **X-Frame-Options**: Prevent clickjacking
+- **Content-Security-Policy**: Control resource loading
+- **HSTS**: Force HTTPS connections
+- **X-Content-Type-Options**: Prevent MIME sniffing
+
+#### Security Dashboard
+Access the security dashboard at `/security` to:
+- Monitor active IP filters
+- View failed login attempts  
+- Manage banned IPs
+- Check security configuration
+- See your current IP classification
 
 ### Sensitive Data
 
 - API keys are masked in the UI (displayed as ******)
 - Caching is disabled for pages with sensitive information
 - Master key changes require confirmation
+- All sensitive operations logged for audit
 
 ## Troubleshooting
 

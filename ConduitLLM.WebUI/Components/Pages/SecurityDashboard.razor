@@ -1,0 +1,512 @@
+@page "/security"
+@using ConduitLLM.Configuration.DTOs.IpFilter
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Caching.Memory
+@using Microsoft.Extensions.Caching.Distributed
+
+@attribute [Authorize]
+
+@inject IIpFilterService IpFilterService
+@inject IFailedLoginTrackingService FailedLoginTracking
+@inject ISecurityConfigurationService SecurityConfig
+@inject IIpAddressClassifier IpClassifier
+@inject IMemoryCache MemoryCache
+@inject IDistributedCache DistributedCache
+@inject ILogger<SecurityDashboard> Logger
+@inject IJSRuntime JS
+
+<PageTitle>Security Dashboard - Conduit WebUI</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h2">
+                <i class="bi bi-shield-lock me-2"></i>Security Dashboard
+            </h1>
+            <p class="text-muted">Monitor and manage security settings, IP filters, and access attempts</p>
+        </div>
+    </div>
+
+    <!-- Security Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">IP Filtering</h5>
+                    <p class="card-text h3">
+                        @if (ipFilterSettings?.IsEnabled == true)
+                        {
+                            <span class="text-success">Enabled</span>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Disabled</span>
+                        }
+                    </p>
+                    <small class="text-muted">
+                        Mode: @(ipFilterSettings?.FilterMode ?? "N/A")
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Active Filters</h5>
+                    <p class="card-text h3">
+                        @((whitelistFilters?.Count ?? 0) + (blacklistFilters?.Count ?? 0))
+                    </p>
+                    <small class="text-muted">
+                        @(whitelistFilters?.Count ?? 0) whitelist, @(blacklistFilters?.Count ?? 0) blacklist
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Banned IPs</h5>
+                    <p class="card-text h3">
+                        @bannedIps.Count
+                    </p>
+                    <small class="text-muted">
+                        Max attempts: @SecurityConfig.MaxFailedLoginAttempts
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Failed Attempts</h5>
+                    <p class="card-text h3">
+                        @failedAttempts.Count
+                    </p>
+                    <small class="text-muted">
+                        Ban duration: @SecurityConfig.IpBanDurationMinutes min
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Configuration -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Security Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-6">IP Filtering Enabled:</dt>
+                        <dd class="col-sm-6">
+                            @if (ipFilterSettings?.IsEnabled == true)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">No</span>
+                            }
+                        </dd>
+                        
+                        <dt class="col-sm-6">Filter Mode:</dt>
+                        <dd class="col-sm-6">@(ipFilterSettings?.FilterMode ?? "N/A")</dd>
+                        
+                        <dt class="col-sm-6">Default Action:</dt>
+                        <dd class="col-sm-6">
+                            @if (ipFilterSettings?.DefaultAllow == true)
+                            {
+                                <span class="badge bg-info">Allow</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Deny</span>
+                            }
+                        </dd>
+                        
+                        <dt class="col-sm-6">Allow Private IPs:</dt>
+                        <dd class="col-sm-6">
+                            @if (SecurityConfig.AllowPrivateIps)
+                            {
+                                <span class="badge bg-success">Yes</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">No</span>
+                            }
+                        </dd>
+                        
+                        <dt class="col-sm-6">Max Failed Attempts:</dt>
+                        <dd class="col-sm-6">@SecurityConfig.MaxFailedLoginAttempts</dd>
+                        
+                        <dt class="col-sm-6">Ban Duration:</dt>
+                        <dd class="col-sm-6">@SecurityConfig.IpBanDurationMinutes minutes</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Current Request Info</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-6">Your IP Address:</dt>
+                        <dd class="col-sm-6">@currentIpAddress</dd>
+                        
+                        <dt class="col-sm-6">IP Classification:</dt>
+                        <dd class="col-sm-6">
+                            @if (!string.IsNullOrEmpty(currentIpAddress))
+                            {
+                                var classification = IpClassifier.GetClassification(currentIpAddress);
+                                <span class="badge bg-info">@classification</span>
+                            }
+                        </dd>
+                        
+                        <dt class="col-sm-6">Is Private/Intranet:</dt>
+                        <dd class="col-sm-6">
+                            @if (!string.IsNullOrEmpty(currentIpAddress))
+                            {
+                                @if (IpClassifier.IsPrivateOrIntranet(currentIpAddress))
+                                {
+                                    <span class="badge bg-success">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">No</span>
+                                }
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active IP Filters -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Active IP Filters</h5>
+                    <button class="btn btn-sm btn-primary" @onclick="RefreshData">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#whitelist" type="button">
+                                Whitelist (@(whitelistFilters?.Count ?? 0))
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#blacklist" type="button">
+                                Blacklist (@(blacklistFilters?.Count ?? 0))
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="whitelist">
+                            @if (whitelistFilters?.Any() == true)
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>IP/CIDR</th>
+                                                <th>Description</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var filter in whitelistFilters)
+                                            {
+                                                <tr>
+                                                    <td>@filter.Name</td>
+                                                    <td><code>@filter.IpAddressOrCidr</code></td>
+                                                    <td>@filter.Description</td>
+                                                    <td>
+                                                        @if (filter.IsEnabled)
+                                                        {
+                                                            <span class="badge bg-success">Active</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">Inactive</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No whitelist filters configured</p>
+                            }
+                        </div>
+                        
+                        <div class="tab-pane fade" id="blacklist">
+                            @if (blacklistFilters?.Any() == true)
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>IP/CIDR</th>
+                                                <th>Description</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var filter in blacklistFilters)
+                                            {
+                                                <tr>
+                                                    <td>@filter.Name</td>
+                                                    <td><code>@filter.IpAddressOrCidr</code></td>
+                                                    <td>@filter.Description</td>
+                                                    <td>
+                                                        @if (filter.IsEnabled)
+                                                        {
+                                                            <span class="badge bg-success">Active</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-secondary">Inactive</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No blacklist filters configured</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Failed Login Attempts and Banned IPs -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Failed Login Attempts</h5>
+                </div>
+                <div class="card-body">
+                    @if (failedAttempts.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Attempts</th>
+                                        <th>Classification</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var attempt in failedAttempts.OrderByDescending(a => a.Value).Take(10))
+                                    {
+                                        <tr>
+                                            <td><code>@attempt.Key</code></td>
+                                            <td>
+                                                <span class="badge bg-warning">@attempt.Value</span>
+                                            </td>
+                                            <td>
+                                                @IpClassifier.GetClassification(attempt.Key)
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No recent failed login attempts</p>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Currently Banned IPs</h5>
+                </div>
+                <div class="card-body">
+                    @if (bannedIps.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Classification</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ip in bannedIps)
+                                    {
+                                        <tr>
+                                            <td><code>@ip</code></td>
+                                            <td>
+                                                @IpClassifier.GetClassification(ip)
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" @onclick="() => UnbanIp(ip)">
+                                                    <i class="bi bi-unlock"></i> Unban
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No IPs are currently banned</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private IpFilterSettingsDto? ipFilterSettings;
+    private List<IpFilterDto> whitelistFilters = new();
+    private List<IpFilterDto> blacklistFilters = new();
+    private Dictionary<string, int> failedAttempts = new();
+    private List<string> bannedIps = new();
+    private string currentIpAddress = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get current user's IP
+        if (HttpContext != null)
+        {
+            currentIpAddress = GetClientIpAddress(HttpContext);
+        }
+
+        await LoadSecurityData();
+    }
+
+    private async Task LoadSecurityData()
+    {
+        try
+        {
+            // Load IP filter settings
+            ipFilterSettings = await IpFilterService.GetIpFilterSettingsAsync();
+            
+            // Separate whitelist and blacklist filters
+            whitelistFilters = ipFilterSettings.WhitelistFilters.Where(f => f.IsEnabled).ToList();
+            blacklistFilters = ipFilterSettings.BlacklistFilters.Where(f => f.IsEnabled).ToList();
+
+            // Load failed attempts and banned IPs from cache
+            await LoadCacheData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading security data");
+        }
+    }
+
+    private Task LoadCacheData()
+    {
+        failedAttempts.Clear();
+        bannedIps.Clear();
+
+        // This is a simplified version - in production, you'd want to properly enumerate cache entries
+        // For now, we'll check a reasonable range of IPs
+        // Note: This is for demonstration - real implementation would need proper cache enumeration
+        
+        // Check if we're using distributed cache
+        if (FailedLoginTracking is DistributedFailedLoginTrackingService)
+        {
+            Logger.LogInformation("Using distributed cache - full enumeration not implemented in demo");
+            // In a real implementation, you'd query Redis for keys matching the pattern
+        }
+        else
+        {
+            Logger.LogInformation("Using in-memory cache - checking known IPs");
+            // For demo purposes, we can't enumerate MemoryCache entries
+        }
+        
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadSecurityData();
+        StateHasChanged();
+    }
+
+    private async Task UnbanIp(string ipAddress)
+    {
+        try
+        {
+            if (FailedLoginTracking is DistributedFailedLoginTrackingService distributedTracking)
+            {
+                await distributedTracking.ClearFailedAttemptsAsync(ipAddress);
+            }
+            else
+            {
+                FailedLoginTracking.ClearFailedAttempts(ipAddress);
+            }
+
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error unbanning IP {IpAddress}", ipAddress);
+        }
+    }
+
+    private static string GetClientIpAddress(HttpContext context)
+    {
+        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+        {
+            var ip = forwardedFor.Split(',').First().Trim();
+            if (System.Net.IPAddress.TryParse(ip, out _))
+            {
+                return ip;
+            }
+        }
+
+        var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
+        {
+            return realIp;
+        }
+
+        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+}

@@ -53,16 +53,85 @@ Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
 
+// Configure Redis connection string early for security services
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+if (!string.IsNullOrEmpty(redisUrl))
+{
+    try
+    {
+        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
+    }
+    catch
+    {
+        // Failed to parse REDIS_URL, will use legacy connection string if available
+    }
+}
+
 // Add memory cache for failed login tracking
 builder.Services.AddMemoryCache();
 
 // Register security services
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityConfigurationService, ConduitLLM.WebUI.Services.SecurityConfigurationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IIpAddressClassifier, ConduitLLM.WebUI.Services.IpAddressClassifier>();
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+
+// Register failed login tracking service - use distributed version if Redis is available
+var useDistributedTracking = !string.IsNullOrEmpty(redisConnectionString) && 
+    builder.Configuration.GetValue<bool>("CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING", true);
+
+if (useDistributedTracking)
+{
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.DistributedFailedLoginTrackingService>();
+    Console.WriteLine("[Conduit WebUI] Using distributed (Redis) failed login tracking");
+}
+else
+{
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+    Console.WriteLine("[Conduit WebUI] Using in-memory failed login tracking");
+}
 
 // Register IP filter service adapter (for compatibility with Admin API)
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IIpFilterService, ConduitLLM.WebUI.Services.Adapters.IpFilterServiceAdapter>();
+
+// Configure IpFilterOptions from environment variables
+builder.Services.Configure<ConduitLLM.Configuration.Options.IpFilterOptions>(options =>
+{
+    // Map environment variables to options
+    var config = builder.Configuration;
+    
+    // Basic settings
+    options.Enabled = config.GetValue<bool>("CONDUIT_IP_FILTERING_ENABLED", false);
+    options.DefaultAllow = config.GetValue<bool>("CONDUIT_IP_FILTER_DEFAULT_ALLOW", true);
+    options.BypassForAdminUi = config.GetValue<bool>("CONDUIT_IP_FILTER_BYPASS_ADMIN_UI", true);
+    options.EnableIpv6 = config.GetValue<bool>("CONDUIT_IP_FILTER_ENABLE_IPV6", true);
+    
+    // Excluded endpoints
+    var excludedEndpoints = config["CONDUIT_IP_FILTER_EXCLUDED_ENDPOINTS"];
+    if (!string.IsNullOrWhiteSpace(excludedEndpoints))
+    {
+        options.ExcludedEndpoints = excludedEndpoints.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(e => e.Trim())
+            .ToList();
+    }
+    else
+    {
+        // Default excluded endpoints
+        options.ExcludedEndpoints = new List<string> 
+        { 
+            "/health", 
+            "/health/ready", 
+            "/health/live", 
+            "/login", 
+            "/logout",
+            "/_blazor",
+            "/css",
+            "/js",
+            "/images",
+            "/favicon.ico"
+        };
+    }
+});
 
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -217,22 +286,7 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddAntiforgery();
 
 // Configure Data Protection with Redis persistence
-// Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-if (!string.IsNullOrEmpty(redisUrl))
-{
-    try
-    {
-        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-    }
-    catch
-    {
-        // Failed to parse REDIS_URL, will use legacy connection string if available
-    }
-}
-
+// Redis connection string was already configured earlier
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Add standardized health checks
@@ -397,6 +451,12 @@ app.UseStaticFiles();
 // app.UseHttpsRedirection(); // Removed as HTTPS is handled by external proxy (e.g., Railway)
 
 app.UseRouting();
+
+// Add security headers middleware (should be early in pipeline)
+app.UseSecurityHeaders();
+
+// Add rate limiting middleware
+app.UseRateLimiting();
 
 // Add resilience logging middleware
 app.UseMiddleware<ConduitLLM.WebUI.Middleware.ResilienceLoggingMiddleware>();
