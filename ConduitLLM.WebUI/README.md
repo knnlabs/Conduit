@@ -19,16 +19,52 @@ The WebUI communicates primarily with the Http project through HTTP/HTTPS endpoi
 - Visualization of LLM tasks, status, and results
 - Management of jobs, settings, and user access (if enabled)
 - Secure communication with backend services
+- **Enterprise Security Features**:
+  - IP address filtering (whitelist/blacklist with CIDR support)
+  - Rate limiting to prevent DoS attacks
+  - Failed login protection with automatic IP banning
+  - Security headers (X-Frame-Options, CSP, HSTS, etc.)
+  - Private/intranet IP detection and handling
+  - Distributed security tracking with Redis
+- **Security Dashboard** at `/security` for real-time monitoring
 
 ## Configuration
 
 ### Environment Variables
-The WebUI can be configured using environment variables, especially for port and endpoint management:
+The WebUI can be configured using environment variables for port management, security, and other features:
 
+#### Port Configuration
 - `WebUIHttpPort` (default: **5001**): HTTP port for the WebUI
 - `WebUIHttpsPort` (default: **5002**): HTTPS port for the WebUI
 
-These are typically set via Docker environment variables or directly when running the application. The application uses these to set the `ASPNETCORE_URLS` variable for Kestrel hosting.
+#### Authentication
+- `CONDUIT_MASTER_KEY`: Master key for system administration
+- `CONDUIT_WEBUI_AUTH_KEY`: Dedicated authentication key for WebUI access (recommended)
+
+#### Security Configuration
+- **IP Filtering**:
+  - `CONDUIT_IP_FILTERING_ENABLED`: Enable/disable IP filtering (true/false)
+  - `CONDUIT_IP_FILTER_MODE`: Filter mode ("permissive" or "restrictive")
+  - `CONDUIT_IP_FILTER_ALLOW_PRIVATE`: Auto-allow private/intranet IPs (true/false)
+  - `CONDUIT_IP_FILTER_WHITELIST`: Comma-separated allowed IPs/CIDRs
+  - `CONDUIT_IP_FILTER_BLACKLIST`: Comma-separated blocked IPs/CIDRs
+
+- **Rate Limiting**:
+  - `CONDUIT_RATE_LIMITING_ENABLED`: Enable rate limiting (true/false)
+  - `CONDUIT_RATE_LIMIT_MAX_REQUESTS`: Max requests per window (default: 100)
+  - `CONDUIT_RATE_LIMIT_WINDOW_SECONDS`: Time window in seconds (default: 60)
+
+- **Failed Login Protection**:
+  - `CONDUIT_MAX_FAILED_ATTEMPTS`: Max failed logins before ban (default: 5)
+  - `CONDUIT_IP_BAN_DURATION_MINUTES`: Ban duration in minutes (default: 30)
+  - `CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING`: Use Redis for distributed tracking
+
+- **Security Headers**:
+  - `CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS`: X-Frame-Options value (default: "DENY")
+  - `CONDUIT_SECURITY_HEADERS_CSP`: Content Security Policy
+  - `CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE`: HSTS max age in seconds
+
+These are typically set via Docker environment variables or directly when running the application.
 
 #### Example (Docker Compose):
 ```yaml
@@ -91,6 +127,43 @@ Substitute with your configured ports if different.
 - For local development, ensure backend services (`ConduitLLM.Http`) are running and accessible.
 - Ports and endpoints can be freely reconfigured for local or containerized deployments.
 - For advanced configuration, see the shared `ConduitLLM.Configuration` project.
+
+## Security
+
+The WebUI includes comprehensive security features to protect your deployment:
+
+### Authentication
+- Uses either `CONDUIT_WEBUI_AUTH_KEY` (recommended) or `CONDUIT_MASTER_KEY` for access
+- Session-based authentication with configurable timeout
+- Automatic logout on inactivity
+
+### IP Filtering
+- Whitelist or blacklist specific IP addresses or CIDR subnets
+- Automatic detection and handling of private/intranet IPs
+- Can be configured via environment variables or Admin API
+
+### Rate Limiting
+- Protects against DoS attacks and API abuse
+- Configurable per-IP request limits
+- Sliding window algorithm with Redis support
+
+### Security Dashboard
+Access the security dashboard at `/security` (requires authentication) to:
+- Monitor active IP filters
+- View failed login attempts
+- Manage banned IPs
+- Check security configuration
+- See real-time security metrics
+
+### Best Practices
+1. Always use HTTPS in production (handled by reverse proxy)
+2. Set strong, unique values for `CONDUIT_WEBUI_AUTH_KEY`
+3. Enable IP filtering in production environments
+4. Configure appropriate rate limits for your use case
+5. Monitor the security dashboard regularly
+6. Use distributed tracking with Redis for multi-instance deployments
+
+For detailed security documentation, see [Security Features](docs/SECURITY-FEATURES.md).
 
 ## Troubleshooting
 - If ports are in use, adjust `WebUIHttpPort`/`WebUIHttpsPort` or stop existing processes using Docker commands (`docker compose down`).

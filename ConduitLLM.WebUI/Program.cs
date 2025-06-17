@@ -53,11 +53,102 @@ Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
 
+// Configure Redis connection string early for security services
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+if (!string.IsNullOrEmpty(redisUrl))
+{
+    try
+    {
+        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
+    }
+    catch
+    {
+        // Failed to parse REDIS_URL, will use legacy connection string if available
+    }
+}
+
 // Add memory cache for failed login tracking
 builder.Services.AddMemoryCache();
 
-// Register failed login tracking service
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+// Configure distributed cache
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = builder.Configuration["CONDUIT_REDIS_INSTANCE_NAME"] ?? "conduit:";
+    });
+    Console.WriteLine($"[Conduit WebUI] Redis distributed cache configured: {redisConnectionString}");
+}
+else
+{
+    // Fall back to in-memory distributed cache
+    builder.Services.AddDistributedMemoryCache();
+    Console.WriteLine("[Conduit WebUI] Using in-memory distributed cache");
+}
+
+// Register security services
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.ISecurityConfigurationService, ConduitLLM.WebUI.Services.SecurityConfigurationService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IIpAddressClassifier, ConduitLLM.WebUI.Services.IpAddressClassifier>();
+
+// Register failed login tracking service - use distributed version if Redis is available
+var useDistributedTracking = !string.IsNullOrEmpty(redisConnectionString) && 
+    builder.Configuration.GetValue<bool>("CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING", true);
+
+if (useDistributedTracking)
+{
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.DistributedFailedLoginTrackingService>();
+    Console.WriteLine("[Conduit WebUI] Using distributed (Redis) failed login tracking");
+}
+else
+{
+    builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFailedLoginTrackingService, ConduitLLM.WebUI.Services.FailedLoginTrackingService>();
+    Console.WriteLine("[Conduit WebUI] Using in-memory failed login tracking");
+}
+
+// Register IP filter service adapter (for compatibility with Admin API)
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IIpFilterService, ConduitLLM.WebUI.Services.Adapters.IpFilterServiceAdapter>();
+
+// Configure IpFilterOptions from environment variables
+builder.Services.Configure<ConduitLLM.Configuration.Options.IpFilterOptions>(options =>
+{
+    // Map environment variables to options
+    var config = builder.Configuration;
+    
+    // Basic settings
+    options.Enabled = config.GetValue<bool>("CONDUIT_IP_FILTERING_ENABLED", false);
+    options.DefaultAllow = config.GetValue<bool>("CONDUIT_IP_FILTER_DEFAULT_ALLOW", true);
+    options.BypassForAdminUi = config.GetValue<bool>("CONDUIT_IP_FILTER_BYPASS_ADMIN_UI", true);
+    options.EnableIpv6 = config.GetValue<bool>("CONDUIT_IP_FILTER_ENABLE_IPV6", true);
+    
+    // Excluded endpoints
+    var excludedEndpoints = config["CONDUIT_IP_FILTER_EXCLUDED_ENDPOINTS"];
+    if (!string.IsNullOrWhiteSpace(excludedEndpoints))
+    {
+        options.ExcludedEndpoints = excludedEndpoints.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(e => e.Trim())
+            .ToList();
+    }
+    else
+    {
+        // Default excluded endpoints
+        options.ExcludedEndpoints = new List<string> 
+        { 
+            "/health", 
+            "/health/ready", 
+            "/health/live", 
+            "/login", 
+            "/logout",
+            "/_blazor",
+            "/css",
+            "/js",
+            "/images",
+            "/favicon.ico"
+        };
+    }
+});
 
 // Add services to the container.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -212,22 +303,7 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddAntiforgery();
 
 // Configure Data Protection with Redis persistence
-// Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-if (!string.IsNullOrEmpty(redisUrl))
-{
-    try
-    {
-        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-    }
-    catch
-    {
-        // Failed to parse REDIS_URL, will use legacy connection string if available
-    }
-}
-
+// Redis connection string was already configured earlier
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Add standardized health checks
@@ -257,6 +333,25 @@ using (var scope = app.Services.CreateScope())
     {
         ConduitLLM.Configuration.Services.RedisUrlValidator.ValidateAndLog(envRedisUrl, logger, "WebUI Service");
     }
+
+    // Log security configuration
+    var securityConfig = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.ISecurityConfigurationService>();
+    var ipFilterSettings = securityConfig.GetIpFilterSettings();
+    
+    logger.LogInformation("=== Security Configuration ===");
+    logger.LogInformation("IP Filtering: {Status}", ipFilterSettings.IsEnabled ? "Enabled" : "Disabled");
+    if (ipFilterSettings.IsEnabled)
+    {
+        logger.LogInformation("  - Mode: {Mode}", ipFilterSettings.FilterMode);
+        logger.LogInformation("  - Default Action: {Action}", ipFilterSettings.DefaultAllow ? "Allow" : "Deny");
+        logger.LogInformation("  - Allow Private IPs: {AllowPrivate}", securityConfig.AllowPrivateIps);
+        logger.LogInformation("  - Whitelist Rules: {Count}", ipFilterSettings.WhitelistFilters.Count);
+        logger.LogInformation("  - Blacklist Rules: {Count}", ipFilterSettings.BlacklistFilters.Count);
+    }
+    logger.LogInformation("Failed Login Protection: Enabled");
+    logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityConfig.MaxFailedLoginAttempts);
+    logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityConfig.IpBanDurationMinutes);
+    logger.LogInformation("==============================");
 }
 
 // Initialize Master Key using InitialSetupService
@@ -374,6 +469,12 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Add security headers middleware (should be early in pipeline)
+app.UseSecurityHeaders();
+
+// Add rate limiting middleware
+app.UseRateLimiting();
+
 // Add resilience logging middleware
 app.UseMiddleware<ConduitLLM.WebUI.Middleware.ResilienceLoggingMiddleware>();
 
@@ -382,6 +483,9 @@ app.UseAntiforgery();
 // Add authentication middleware before authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add IP filtering middleware after authentication but before other middleware
+app.UseIpFiltering();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
@@ -399,13 +503,17 @@ Console.WriteLine("[Conduit WebUI] Blazor components and controllers registered"
 
 // --- Add Minimal API endpoint for Login ---
 // Changed rememberMe to nullable bool (bool?)
-app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking) =>
+app.MapPost("/account/login", async (HttpContext context, [FromForm] string masterKey, [FromForm] bool? rememberMe, [FromForm] string? returnUrl, ILogger<Program> logger, ConduitLLM.WebUI.Interfaces.IGlobalSettingService globalSettingService, ConduitLLM.WebUI.Services.IFailedLoginTrackingService failedLoginTracking, ConduitLLM.WebUI.Services.IIpAddressClassifier ipClassifier) =>
 {
     logger.LogInformation("POST /account/login received.");
     logger.LogInformation("Remember me checkbox value: {RememberMe}", rememberMe);
     
     // Get client IP
     var clientIp = GetClientIpAddress(context);
+    
+    // Log IP classification for debugging
+    var ipClassification = ipClassifier.GetClassification(clientIp);
+    logger.LogInformation("Login attempt from {IpAddress} (Classification: {Classification})", clientIp, ipClassification);
     
     // Check if IP is banned
     if (failedLoginTracking.IsBanned(clientIp))
@@ -475,7 +583,7 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
             new System.Security.Claims.ClaimsPrincipal(claimsIdentity),
             authProperties);
 
-        return Results.Redirect(returnUrl ?? "/");
+        return Results.Redirect(!string.IsNullOrEmpty(returnUrl) ? returnUrl : "/");
     }
     else
     {

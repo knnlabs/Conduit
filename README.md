@@ -30,6 +30,8 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **Streaming Support**: Real-time token streaming for responsive applications
 - **Audio API Support**: Complete audio capabilities including transcription (STT), text-to-speech (TTS), and real-time audio streaming
 - **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
+- **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
+- **Security Dashboard**: Real-time monitoring of security events and access attempts
 - **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
 - **Extensible Architecture**: Easily add support for new LLM providers
 
@@ -278,6 +280,28 @@ CONDUIT_MASTER_KEY=your-secure-master-key
 
 # Legacy format (still supported)
 AdminApi__MasterKey=your-secure-master-key
+```
+
+#### Security Configuration (WebUI)
+```bash
+# WebUI Authentication
+CONDUIT_WEBUI_AUTH_KEY=your-webui-auth-key  # Separate key for WebUI access
+
+# IP Filtering
+CONDUIT_IP_FILTERING_ENABLED=true
+CONDUIT_IP_FILTER_MODE=permissive          # or "restrictive"
+CONDUIT_IP_FILTER_ALLOW_PRIVATE=true       # Auto-allow private IPs
+CONDUIT_IP_FILTER_WHITELIST=192.168.1.0/24,10.0.0.0/8
+CONDUIT_IP_FILTER_BLACKLIST=203.0.113.0/24
+
+# Rate Limiting
+CONDUIT_RATE_LIMITING_ENABLED=true
+CONDUIT_RATE_LIMIT_MAX_REQUESTS=100
+CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
+
+# Failed Login Protection
+CONDUIT_MAX_FAILED_ATTEMPTS=5
+CONDUIT_IP_BAN_DURATION_MINUTES=30
 ```
 
 For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).

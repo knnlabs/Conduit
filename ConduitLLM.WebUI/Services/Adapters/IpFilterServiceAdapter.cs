@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.WebUI.Interfaces;
+using ConduitLLM.WebUI.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +14,7 @@ namespace ConduitLLM.WebUI.Services.Adapters
     /// <summary>
     /// Adapter that bridges the IP filter service interface with the Admin API client
     /// </summary>
-    public class IpFilterServiceAdapter
+    public class IpFilterServiceAdapter : IIpFilterService
     {
         private readonly IAdminApiClient _adminApiClient;
         private readonly ILogger<IpFilterServiceAdapter> _logger;
@@ -44,39 +45,76 @@ namespace ConduitLLM.WebUI.Services.Adapters
         }
 
         /// <summary>
+        /// Gets all enabled IP filters
+        /// </summary>
+        /// <returns>Collection of enabled IP filters</returns>
+        public async Task<IEnumerable<IpFilterDto>> GetEnabledFiltersAsync()
+        {
+            var filters = await GetAllFiltersAsync();
+            return filters.Where(f => f.IsEnabled);
+        }
+
+        /// <summary>
         /// Creates a new IP filter
         /// </summary>
         /// <param name="filter">The filter to create</param>
-        /// <returns>The created filter</returns>
-        public async Task<IpFilterDto?> CreateFilterAsync(CreateIpFilterDto filter)
+        /// <returns>Success result with the created filter or error message</returns>
+        public async Task<(bool Success, string? ErrorMessage, IpFilterDto? Filter)> CreateFilterAsync(CreateIpFilterDto filter)
         {
-            return await _adminApiClient.CreateIpFilterAsync(filter);
+            try
+            {
+                var created = await _adminApiClient.CreateIpFilterAsync(filter);
+                return (true, null, created);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create IP filter");
+                return (false, ex.Message, null);
+            }
         }
 
         /// <summary>
         /// Updates an IP filter
         /// </summary>
         /// <param name="filter">The filter update data</param>
-        /// <returns>The updated filter</returns>
-        public async Task<IpFilterDto?> UpdateFilterAsync(UpdateIpFilterDto filter)
+        /// <returns>Success result with error message if failed</returns>
+        public async Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto filter)
         {
             if (filter.Id == 0)
             {
                 _logger.LogWarning("Attempted to update IP filter with ID 0");
-                return null;
+                return (false, "Invalid filter ID");
             }
 
-            return await _adminApiClient.UpdateIpFilterAsync(filter.Id, filter);
+            try
+            {
+                var updated = await _adminApiClient.UpdateIpFilterAsync(filter.Id, filter);
+                return (updated != null, updated == null ? "Failed to update filter" : null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update IP filter");
+                return (false, ex.Message);
+            }
         }
 
         /// <summary>
         /// Deletes an IP filter
         /// </summary>
         /// <param name="id">The filter ID</param>
-        /// <returns>True if deleted successfully</returns>
-        public async Task<bool> DeleteFilterAsync(int id)
+        /// <returns>Success result with error message if failed</returns>
+        public async Task<(bool Success, string? ErrorMessage)> DeleteFilterAsync(int id)
         {
-            return await _adminApiClient.DeleteIpFilterAsync(id);
+            try
+            {
+                var result = await _adminApiClient.DeleteIpFilterAsync(id);
+                return (result, result ? null : "Failed to delete filter");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete IP filter");
+                return (false, ex.Message);
+            }
         }
 
         /// <summary>
@@ -129,6 +167,71 @@ namespace ConduitLLM.WebUI.Services.Adapters
             };
 
             return settings;
+        }
+
+        /// <summary>
+        /// Checks if an IP address is allowed based on the current filters
+        /// </summary>
+        /// <param name="ipAddress">The IP address to check</param>
+        /// <returns>True if the IP address is allowed, false otherwise</returns>
+        public async Task<bool> IsIpAllowedAsync(string ipAddress)
+        {
+            try
+            {
+                var settings = await GetIpFilterSettingsAsync();
+                
+                // If filtering is disabled, allow all
+                if (!settings.IsEnabled)
+                    return true;
+
+                // Check against blacklist
+                foreach (var filter in settings.BlacklistFilters.Where(f => f.IsEnabled))
+                {
+                    if (IpAddressValidator.IsIpInCidrRange(ipAddress, filter.IpAddressOrCidr))
+                        return false; // Blocked by blacklist
+                }
+
+                // Check against whitelist
+                var hasWhitelist = settings.WhitelistFilters.Any(f => f.IsEnabled);
+                if (hasWhitelist)
+                {
+                    foreach (var filter in settings.WhitelistFilters.Where(f => f.IsEnabled))
+                    {
+                        if (IpAddressValidator.IsIpInCidrRange(ipAddress, filter.IpAddressOrCidr))
+                            return true; // Allowed by whitelist
+                    }
+                    return false; // Not in whitelist
+                }
+
+                // No whitelist, not in blacklist - use default
+                return settings.DefaultAllow;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to check if IP {IpAddress} is allowed", ipAddress);
+                return true; // Allow on error to avoid blocking legitimate access
+            }
+        }
+
+        /// <summary>
+        /// Updates the IP filter settings
+        /// </summary>
+        /// <param name="settings">The new settings</param>
+        /// <returns>Success result with error message if failed</returns>
+        public async Task<(bool Success, string? ErrorMessage)> UpdateIpFilterSettingsAsync(IpFilterSettingsDto settings)
+        {
+            try
+            {
+                // Try to call the method on the admin API client if it exists
+                dynamic dynamicClient = _adminApiClient;
+                await dynamicClient.UpdateIpFilterSettingsAsync(settings);
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update IP filter settings");
+                return (false, ex.Message);
+            }
         }
     }
 }

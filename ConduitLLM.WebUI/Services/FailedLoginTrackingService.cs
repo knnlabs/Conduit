@@ -33,24 +33,19 @@ namespace ConduitLLM.WebUI.Services
     public class FailedLoginTrackingService : IFailedLoginTrackingService
     {
         private readonly IMemoryCache _memoryCache;
-        private readonly IConfiguration _configuration;
+        private readonly ISecurityConfigurationService _securityConfig;
         private readonly ILogger<FailedLoginTrackingService> _logger;
 
         private const string FAILED_ATTEMPTS_PREFIX = "failed_attempts_";
         private const string IP_BAN_PREFIX = "ip_ban_";
-        private const string MAX_FAILED_ATTEMPTS_KEY = "CONDUIT_MAX_FAILED_ATTEMPTS";
-        private const string IP_BAN_DURATION_KEY = "CONDUIT_IP_BAN_DURATION_MINUTES";
-        
-        private const int DEFAULT_MAX_FAILED_ATTEMPTS = 5;
-        private const int DEFAULT_BAN_DURATION_MINUTES = 30;
 
         public FailedLoginTrackingService(
             IMemoryCache memoryCache,
-            IConfiguration configuration,
+            ISecurityConfigurationService securityConfig,
             ILogger<FailedLoginTrackingService> logger)
         {
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _securityConfig = securityConfig ?? throw new ArgumentNullException(nameof(securityConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -60,14 +55,14 @@ namespace ConduitLLM.WebUI.Services
             var cacheKey = $"{FAILED_ATTEMPTS_PREFIX}{ipAddress}";
             var attempts = _memoryCache.GetOrCreate(cacheKey, entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromMinutes(GetBanDuration());
+                entry.SlidingExpiration = TimeSpan.FromMinutes(_securityConfig.IpBanDurationMinutes);
                 return 0;
             });
 
             attempts++;
-            _memoryCache.Set(cacheKey, attempts, TimeSpan.FromMinutes(GetBanDuration()));
+            _memoryCache.Set(cacheKey, attempts, TimeSpan.FromMinutes(_securityConfig.IpBanDurationMinutes));
 
-            var maxAttempts = GetMaxFailedAttempts();
+            var maxAttempts = _securityConfig.MaxFailedLoginAttempts;
             _logger.LogWarning("Failed login attempt {Attempts}/{MaxAttempts} from IP: {IpAddress}", 
                 attempts, maxAttempts, ipAddress);
 
@@ -95,25 +90,9 @@ namespace ConduitLLM.WebUI.Services
         private void BanIpAddress(string ipAddress)
         {
             var banKey = $"{IP_BAN_PREFIX}{ipAddress}";
-            var banDuration = GetBanDuration();
+            var banDuration = _securityConfig.IpBanDurationMinutes;
             _memoryCache.Set(banKey, true, TimeSpan.FromMinutes(banDuration));
             _logger.LogWarning("Banned IP address {IpAddress} for {Duration} minutes", ipAddress, banDuration);
-        }
-
-        private int GetMaxFailedAttempts()
-        {
-            var value = _configuration[MAX_FAILED_ATTEMPTS_KEY];
-            if (int.TryParse(value, out var attempts) && attempts > 0)
-                return attempts;
-            return DEFAULT_MAX_FAILED_ATTEMPTS;
-        }
-
-        private int GetBanDuration()
-        {
-            var value = _configuration[IP_BAN_DURATION_KEY];
-            if (int.TryParse(value, out var duration) && duration > 0)
-                return duration;
-            return DEFAULT_BAN_DURATION_MINUTES;
         }
     }
 }

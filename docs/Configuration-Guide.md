@@ -300,12 +300,86 @@ The WebUI provides an interactive way to configure all aspects of the system:
 4. **Virtual Keys**: Manage API access and budgets
 5. **Global Settings**: Configure system-wide settings
 
+## Security Configuration
+
+ConduitLLM includes comprehensive security features that can be configured via environment variables:
+
+### IP Filtering
+
+Control access by IP address:
+
+```bash
+# Enable IP filtering
+CONDUIT_IP_FILTERING_ENABLED=true
+
+# Mode: "permissive" (blacklist) or "restrictive" (whitelist)
+CONDUIT_IP_FILTER_MODE=restrictive
+
+# Whitelist specific IPs or subnets
+CONDUIT_IP_FILTER_WHITELIST=192.168.1.0/24,10.0.0.0/8
+
+# Auto-allow private IPs
+CONDUIT_IP_FILTER_ALLOW_PRIVATE=true
+```
+
+### Rate Limiting
+
+Prevent DoS attacks:
+
+```bash
+# Enable rate limiting
+CONDUIT_RATE_LIMITING_ENABLED=true
+
+# Max requests per time window
+CONDUIT_RATE_LIMIT_MAX_REQUESTS=100
+CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+### Failed Login Protection
+
+Automatically ban IPs after failed login attempts:
+
+```bash
+# Max failed attempts before ban
+CONDUIT_MAX_FAILED_ATTEMPTS=5
+
+# Ban duration in minutes
+CONDUIT_IP_BAN_DURATION_MINUTES=30
+```
+
+### Security Headers
+
+Add HTTP security headers:
+
+```bash
+# X-Frame-Options to prevent clickjacking
+CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS=DENY
+
+# Content Security Policy
+CONDUIT_SECURITY_HEADERS_CSP_ENABLED=true
+CONDUIT_SECURITY_HEADERS_CSP="default-src 'self';"
+
+# HSTS for HTTPS enforcement
+CONDUIT_SECURITY_HEADERS_HSTS_ENABLED=true
+CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE=31536000
+```
+
+### Security Dashboard
+
+Access the security dashboard at `/security` to:
+- Monitor IP filters
+- View failed login attempts
+- Manage banned IPs
+- Check security configuration
+
 ## Configuration Best Practices
 
 1. **Security**:
    - Use environment variables for sensitive information
    - Rotate the master key periodically
-   - Limit access to the WebUI
+   - Configure IP filtering for production deployments
+   - Enable rate limiting to prevent abuse
+   - Use strong authentication keys
 
 2. **Performance**:
    - Enable caching for frequently used prompts

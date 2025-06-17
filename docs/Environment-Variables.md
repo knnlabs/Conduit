@@ -62,10 +62,53 @@ ConduitLLM provides comprehensive security configuration options:
 
 ### IP Access Control
 
-The existing IP filtering middleware (configured through the Admin API) provides additional IP-based access control:
-- Whitelist/blacklist configuration
-- CIDR subnet support
-- Integration with the failed login tracking system
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_IP_FILTERING_ENABLED` | Boolean | `false` | Enable/disable IP filtering middleware. |
+| `CONDUIT_IP_FILTER_MODE` | String | `permissive` | Filter mode: `permissive` (blacklist) or `restrictive` (whitelist). |
+| `CONDUIT_IP_FILTER_ALLOW_PRIVATE` | Boolean | `true` | Automatically allow private/intranet IP addresses (RFC 1918 ranges). |
+| `CONDUIT_IP_FILTER_WHITELIST` | String | *None* | Comma-separated list of allowed IPs or CIDR ranges (e.g., `192.168.1.0/24,10.0.0.0/8`). |
+| `CONDUIT_IP_FILTER_BLACKLIST` | String | *None* | Comma-separated list of blocked IPs or CIDR ranges. |
+| `CONDUIT_IP_FILTER_DEFAULT_ALLOW` | Boolean | `true` | Default action when no rules match. |
+| `CONDUIT_IP_FILTER_BYPASS_ADMIN_UI` | Boolean | `true` | Bypass filtering for admin UI paths. |
+
+The IP filtering middleware provides enterprise-grade access control:
+- Whitelist/blacklist configuration with CIDR subnet support
+- Automatic detection and handling of private/intranet IPs
+- Integration with failed login tracking system
+- Dynamic configuration via environment variables or Admin API
+
+### Rate Limiting
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_RATE_LIMITING_ENABLED` | Boolean | `false` | Enable/disable rate limiting middleware to prevent DoS attacks. |
+| `CONDUIT_RATE_LIMIT_MAX_REQUESTS` | Integer | 100 | Maximum number of requests allowed per time window. |
+| `CONDUIT_RATE_LIMIT_WINDOW_SECONDS` | Integer | 60 | Time window in seconds for rate limiting. |
+| `CONDUIT_RATE_LIMIT_EXCLUDED_PATHS` | String | `/health,/_blazor,/css,/js,/images` | Comma-separated list of paths excluded from rate limiting. |
+
+### Security Headers
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS_ENABLED` | Boolean | `true` | Enable X-Frame-Options header to prevent clickjacking. |
+| `CONDUIT_SECURITY_HEADERS_X_FRAME_OPTIONS` | String | `DENY` | X-Frame-Options value (`DENY`, `SAMEORIGIN`). |
+| `CONDUIT_SECURITY_HEADERS_CSP_ENABLED` | Boolean | `false` | Enable Content Security Policy header. |
+| `CONDUIT_SECURITY_HEADERS_CSP` | String | `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';` | Content Security Policy directive. |
+| `CONDUIT_SECURITY_HEADERS_HSTS_ENABLED` | Boolean | `true` | Enable HTTP Strict Transport Security (HTTPS only). |
+| `CONDUIT_SECURITY_HEADERS_HSTS_MAX_AGE` | Integer | 31536000 | HSTS max age in seconds (default: 1 year). |
+| `CONDUIT_SECURITY_HEADERS_X_CONTENT_TYPE_OPTIONS_ENABLED` | Boolean | `true` | Enable X-Content-Type-Options header to prevent MIME sniffing. |
+| `CONDUIT_SECURITY_HEADERS_X_XSS_PROTECTION_ENABLED` | Boolean | `true` | Enable X-XSS-Protection header. |
+| `CONDUIT_SECURITY_HEADERS_REFERRER_POLICY_ENABLED` | Boolean | `true` | Enable Referrer-Policy header. |
+| `CONDUIT_SECURITY_HEADERS_REFERRER_POLICY` | String | `strict-origin-when-cross-origin` | Referrer-Policy value. |
+| `CONDUIT_SECURITY_HEADERS_PERMISSIONS_POLICY_ENABLED` | Boolean | `true` | Enable Permissions-Policy header. |
+| `CONDUIT_SECURITY_HEADERS_PERMISSIONS_POLICY` | String | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` | Permissions-Policy directive. |
+
+### Distributed Security Tracking
+
+| Environment Variable | Type | Default | Description |
+|---------------------|------|---------|-------------|
+| `CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING` | Boolean | `false` | Enable distributed security tracking with Redis for multi-instance deployments. |
 
 ### Network Security
 
@@ -73,7 +116,7 @@ The existing IP filtering middleware (configured through the Admin API) provides
 |---------------------|------|---------|-------------|
 | `CONDUIT_ENABLE_HTTPS_REDIRECTION` | Boolean | `true` | When true, HTTP requests are redirected to HTTPS. **Set to `false` when running behind a reverse proxy that handles HTTPS termination.** |
 | `CONDUIT_CORS_ORIGINS` | String | `*` | Comma-separated list of allowed origins for CORS. Use `*` to allow all origins (not recommended for production). |
-| `CONDUIT_REDIS_CONNECTION_STRING` | String | *None* | Redis connection string for Data Protection key persistence. When provided, ASP.NET Core Data Protection keys are stored in Redis for distributed scenarios. Format: `redis-host:6379` or full connection string. |
+| `CONDUIT_REDIS_CONNECTION_STRING` | String | *None* | Redis connection string for Data Protection key persistence and distributed security tracking. When provided, ASP.NET Core Data Protection keys are stored in Redis for distributed scenarios. Format: `redis-host:6379` or full connection string. |
 
 ### Data Protection Keys
 
@@ -118,8 +161,6 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
 | `CONDUIT_INSECURE` | Boolean | `false` | When set to `true`, disables authentication requirements for the WebUI. **WARNING: Only use in development environments. Never enable in production.** |
-| `CONDUIT_MAX_FAILED_ATTEMPTS` | Integer | 5 | Maximum number of failed login attempts before an IP address is temporarily banned. |
-| `CONDUIT_IP_BAN_DURATION_MINUTES` | Integer | 30 | Duration in minutes that an IP address remains banned after exceeding the maximum failed login attempts. |
 
 ### AutoLogin Feature
 
@@ -186,8 +227,16 @@ services:
       - CONDUIT_ENABLE_HTTPS_REDIRECTION=false
       - CONDUIT_CORS_ORIGINS=*
       - CONDUIT_REDIS_CONNECTION_STRING=redis:6379
+      # Security Settings
       - CONDUIT_MAX_FAILED_ATTEMPTS=5
       - CONDUIT_IP_BAN_DURATION_MINUTES=30
+      - CONDUIT_IP_FILTERING_ENABLED=true
+      - CONDUIT_IP_FILTER_MODE=permissive
+      - CONDUIT_IP_FILTER_ALLOW_PRIVATE=true
+      - CONDUIT_RATE_LIMITING_ENABLED=true
+      - CONDUIT_RATE_LIMIT_MAX_REQUESTS=100
+      - CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
+      - CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
     ports:
       - "5000:5000"
     depends_on:
