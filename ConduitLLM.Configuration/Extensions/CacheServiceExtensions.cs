@@ -2,9 +2,11 @@ using System;
 
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -140,6 +142,47 @@ namespace ConduitLLM.Configuration.Extensions
                 if (!string.IsNullOrEmpty(cacheTypeEnv))
                 {
                     options.CacheType = cacheTypeEnv;
+                }
+            });
+
+            // Configure Redis connection string from environment variables
+            // Priority: REDIS_URL -> CONDUIT_REDIS_CONNECTION_STRING -> config
+            services.Configure<CacheOptions>(options =>
+            {
+                var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+                var legacyConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+                
+                if (!string.IsNullOrEmpty(redisUrl))
+                {
+                    // Get logger for validation
+                    var loggerFactory = services.BuildServiceProvider().GetService<ILoggerFactory>();
+                    var logger = loggerFactory?.CreateLogger("CacheConfiguration") ?? 
+                                Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+                    
+                    // Validate the Redis URL
+                    var isValid = RedisUrlValidator.ValidateAndLog(redisUrl, logger, "CacheService");
+                    
+                    if (isValid)
+                    {
+                        try
+                        {
+                            // Parse Redis URL format into connection string
+                            options.RedisConnectionString = RedisUrlParser.ParseRedisUrl(redisUrl);
+                            // IsEnabled and CacheType will be automatically set by computed properties
+                            return; // Successfully parsed, don't need to check legacy
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Failed to parse REDIS_URL, will fall back to legacy configuration");
+                            // Don't fail startup over this - fall through to legacy check
+                        }
+                    }
+                }
+                
+                // Fall back to legacy connection string if REDIS_URL not provided or failed
+                if (!string.IsNullOrEmpty(legacyConnectionString))
+                {
+                    options.RedisConnectionString = legacyConnectionString;
                 }
             });
 

@@ -253,6 +253,35 @@ docker compose up -d
 
 *Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The container exposes HTTP ports only.*
 
+### Environment Variables
+
+ConduitLLM uses simplified environment variables for easier configuration:
+
+#### Redis Cache Configuration
+```bash
+# New simplified format (recommended)
+REDIS_URL=redis://localhost:6379
+CONDUIT_REDIS_INSTANCE_NAME=conduit:  # Optional, defaults to "conduitllm-cache"
+
+# Legacy format (still supported)
+CONDUIT_REDIS_CONNECTION_STRING=localhost:6379
+CONDUIT_CACHE_ENABLED=true
+CONDUIT_CACHE_TYPE=Redis
+```
+
+When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
+
+#### Master Key Configuration
+```bash
+# Standardized across all services
+CONDUIT_MASTER_KEY=your-secure-master-key
+
+# Legacy format (still supported)
+AdminApi__MasterKey=your-secure-master-key
+```
+
+For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
+
 ## Usage
 
 ### Using the API

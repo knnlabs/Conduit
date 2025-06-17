@@ -16,7 +16,7 @@ services:
       - DetailedErrors=true
       - AdminApiUrl=http://admin:8080  # Point to admin container
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
-      - ConnectionStrings__RedisConnection=redis:6379
+      - REDIS_URL=redis://redis:6379
     volumes:
       # Mount source code for hot reload
       - ./ConduitLLM.WebUI:/src/ConduitLLM.WebUI
@@ -90,8 +90,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
-      - ConnectionStrings__RedisConnection=redis:6379
-      - MasterKey=${CONDUIT_MASTER_KEY:-development-key-change-me}
+      - REDIS_URL=redis://redis:6379
+      - CONDUIT_MASTER_KEY=${CONDUIT_MASTER_KEY:-development-key-change-me}
     ports:
       - "5002:8080"
     depends_on:
@@ -116,7 +116,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
-      - ConnectionStrings__RedisConnection=redis:6379
+      - REDIS_URL=redis://redis:6379
       - AdminApiUrl=http://admin:8080
     ports:
       - "5000:8080"
