@@ -40,7 +40,9 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
             if (context.Resource is HttpContext httpContext)
             {
                 // Get the configured master key
-                string? masterKey = _configuration[MASTER_KEY_CONFIG_KEY];
+                // Check for CONDUIT_MASTER_KEY first (new standard), then fall back to AdminApi:MasterKey
+                string? masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+                                   ?? _configuration[MASTER_KEY_CONFIG_KEY];
 
                 if (string.IsNullOrEmpty(masterKey))
                 {

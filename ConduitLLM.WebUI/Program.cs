@@ -206,7 +206,22 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddAntiforgery();
 
 // Configure Data Protection with Redis persistence
+// Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+if (!string.IsNullOrEmpty(redisUrl))
+{
+    try
+    {
+        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
+    }
+    catch
+    {
+        // Failed to parse REDIS_URL, will use legacy connection string if available
+    }
+}
+
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Add standardized health checks
@@ -223,11 +238,19 @@ builder.Services.AddConduitContextManagement(builder.Configuration);
 
 var app = builder.Build();
 
-// Log usage mode
+// Log usage mode, deprecation warnings, and validate Redis URL
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     logger.LogInformation("Using Admin API mode. All services are using provider implementations.");
+    ConduitLLM.Configuration.Extensions.DeprecationWarnings.LogEnvironmentVariableDeprecations(logger);
+    
+    // Validate Redis URL if provided
+    var envRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+    if (!string.IsNullOrEmpty(envRedisUrl))
+    {
+        ConduitLLM.Configuration.Services.RedisUrlValidator.ValidateAndLog(envRedisUrl, logger, "WebUI Service");
+    }
 }
 
 // Initialize Master Key using InitialSetupService

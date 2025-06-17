@@ -54,7 +54,9 @@ public class AdminAuthenticationMiddleware
             return;
         }
 
-        string? masterKey = _configuration[MASTER_KEY_CONFIG_KEY];
+        // Check for CONDUIT_MASTER_KEY first (new standard), then fall back to AdminApi:MasterKey
+        string? masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+                           ?? _configuration[MASTER_KEY_CONFIG_KEY];
 
         if (string.IsNullOrEmpty(masterKey))
         {

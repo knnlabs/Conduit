@@ -41,9 +41,8 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      CONDUIT_CACHE_ENABLED: "true"
-      CONDUIT_CACHE_TYPE: "Redis"
-      CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
+      # Using new REDIS_URL format (old variables still work for backward compatibility)
+      REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       Conduit__PerformanceTracking__Enabled: "true"
       Conduit__PerformanceTracking__IncludeInResponse: "true"
@@ -70,7 +69,11 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
-      AdminApi__MasterKey: alpha
+      # Using new CONDUIT_MASTER_KEY (old AdminApi__MasterKey still works)
+      CONDUIT_MASTER_KEY: alpha
+      # Redis cache configuration - using new REDIS_URL format
+      REDIS_URL: "redis://redis:6379"
+      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://webui:8080
       AdminApi__AllowedOrigins__1: http://localhost:5001
     ports:
@@ -99,10 +102,8 @@ services:
       CONDUIT_MASTER_KEY: alpha
       CONDUIT_INSECURE: "true"
       CONDUIT_API_BASE_URL: http://api:8080
-      # Redis cache configuration
-      CONDUIT_CACHE_ENABLED: "true"
-      CONDUIT_CACHE_TYPE: "Redis"
-      CONDUIT_REDIS_CONNECTION_STRING: "redis:6379"
+      # Redis cache configuration - using new REDIS_URL format
+      REDIS_URL: "redis://redis:6379"
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       # Version check configuration
       CONDUIT_VERSION_CHECK_ENABLED: "true"

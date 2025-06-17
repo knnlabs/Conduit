@@ -156,10 +156,26 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
 
 // Register cache service based on configuration
-builder.Services.AddSingleton<ConduitLLM.Configuration.Services.ICacheService, ConduitLLM.Configuration.Services.CacheService>();
+builder.Services.AddCacheService(builder.Configuration);
 
 // Configure Data Protection with Redis persistence
+// Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+if (!string.IsNullOrEmpty(redisUrl))
+{
+    try
+    {
+        redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
+    }
+    catch
+    {
+        // Failed to parse REDIS_URL, will use legacy connection string if available
+        // Validation will be logged during startup after logger is available
+    }
+}
+
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
 // Register Configuration adapters (moved from Core)
@@ -215,8 +231,8 @@ builder.Services.AddControllers();
 // Add standardized health checks (skip in test environment to avoid conflicts)
 if (builder.Environment.EnvironmentName != "Test")
 {
-    var redisHealthConnection = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisHealthConnection);
+    // Use the same Redis connection string we configured above for health checks
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString);
 
     // Add audio-specific health checks if audio services are configured
     if (builder.Configuration.GetSection("AudioService:Providers").Exists())
@@ -229,6 +245,20 @@ if (builder.Environment.EnvironmentName != "Test")
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
 
 var app = builder.Build();
+
+// Log deprecation warnings and validate Redis URL
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    ConduitLLM.Configuration.Extensions.DeprecationWarnings.LogEnvironmentVariableDeprecations(logger);
+    
+    // Validate Redis URL if provided
+    var envRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+    if (!string.IsNullOrEmpty(envRedisUrl))
+    {
+        ConduitLLM.Configuration.Services.RedisUrlValidator.ValidateAndLog(envRedisUrl, logger, "Http Service");
+    }
+}
 
 // Initialize database - Always run unless explicitly told to skip
 // This ensures users get automatic schema updates when pulling new versions

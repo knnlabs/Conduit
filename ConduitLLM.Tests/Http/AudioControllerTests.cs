@@ -23,14 +23,14 @@ namespace ConduitLLM.Tests.Http
     public class AudioControllerTests
     {
         private readonly Mock<IAudioRouter> _mockAudioRouter;
-        private readonly Mock<Configuration.Services.IVirtualKeyService> _mockVirtualKeyService;
+        private readonly Mock<ConduitLLM.Configuration.Services.IVirtualKeyService> _mockVirtualKeyService;
         private readonly Mock<ILogger<AudioController>> _mockLogger;
         private readonly AudioController _controller;
 
         public AudioControllerTests()
         {
             _mockAudioRouter = new Mock<IAudioRouter>();
-            _mockVirtualKeyService = new Mock<Configuration.Services.IVirtualKeyService>();
+            _mockVirtualKeyService = new Mock<ConduitLLM.Configuration.Services.IVirtualKeyService>();
             _mockLogger = new Mock<ILogger<AudioController>>();
             _controller = new AudioController(
                 _mockAudioRouter.Object,

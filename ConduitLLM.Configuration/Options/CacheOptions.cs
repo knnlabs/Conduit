@@ -13,15 +13,28 @@ namespace ConduitLLM.Configuration.Options
         /// </summary>
         public const string SectionName = "Cache";
 
+        private bool? _isEnabledOverride;
+        private string? _cacheTypeOverride;
+
         /// <summary>
         /// Whether the cache is enabled
+        /// Auto-enables when Redis is configured unless explicitly overridden
         /// </summary>
-        public bool IsEnabled { get; set; } = false;
+        public bool IsEnabled 
+        { 
+            get => _isEnabledOverride ?? !string.IsNullOrWhiteSpace(RedisConnectionString);
+            set => _isEnabledOverride = value;
+        }
 
         /// <summary>
         /// The type of cache to use
+        /// Automatically set to "Redis" when Redis is configured unless explicitly overridden
         /// </summary>
-        public string CacheType { get; set; } = "Memory";
+        public string CacheType 
+        { 
+            get => _cacheTypeOverride ?? (!string.IsNullOrWhiteSpace(RedisConnectionString) ? "Redis" : "Memory");
+            set => _cacheTypeOverride = value;
+        }
 
         /// <summary>
         /// Default absolute expiration time in minutes
