@@ -583,7 +583,7 @@ app.MapPost("/account/login", async (HttpContext context, [FromForm] string mast
             new System.Security.Claims.ClaimsPrincipal(claimsIdentity),
             authProperties);
 
-        return Results.Redirect(returnUrl ?? "/");
+        return Results.Redirect(!string.IsNullOrEmpty(returnUrl) ? returnUrl : "/");
     }
     else
     {
