@@ -39,7 +39,8 @@
     "api",
     "client",
     "typescript",
-    "admin"
+    "admin",
+    "knn-labs"
   ],
   "author": "Conduit Team",
   "license": "MIT",
