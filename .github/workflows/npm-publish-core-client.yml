@@ -139,7 +139,11 @@ jobs:
             # Use npm version to calculate new version (dry-run)
             NEW_VERSION=$(npm version $VERSION_TYPE --no-git-tag-version --preid=dev | sed 's/^v//')
             # Reset the change
-            git checkout package.json package-lock.json
+            git checkout package.json
+            # Don't reset package-lock.json as it might not exist yet
+            if [ -f package-lock.json ]; then
+              git checkout package-lock.json
+            fi
           fi
           
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -155,7 +159,9 @@ jobs:
           npm version $NEW_VERSION --no-git-tag-version
           
           # Commit version bump
-          git add package.json package-lock.json
+          git add package.json
+          # Force add package-lock.json as it might be gitignored
+          git add -f package-lock.json
           git commit -m "chore: bump @conduit/core-client to v$NEW_VERSION [skip ci]"
           
           # Create git tag
