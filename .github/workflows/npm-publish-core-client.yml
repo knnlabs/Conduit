@@ -162,7 +162,7 @@ jobs:
           git add package.json
           # Force add package-lock.json as it might be gitignored
           git add -f package-lock.json
-          git commit -m "chore: bump @conduit/core-client to v$NEW_VERSION [skip ci]"
+          git commit -m "chore: bump @knn_labs/conduit-core-client to v$NEW_VERSION [skip ci]"
           
           # Create git tag
           git tag "core-client-v$NEW_VERSION"
@@ -198,11 +198,11 @@ jobs:
             --title "Core Client v$VERSION" \
             --notes "## Core Client v$VERSION
           
-          Published to NPM: https://www.npmjs.com/package/@conduit/core-client/v/$VERSION
+          Published to NPM: https://www.npmjs.com/package/@knn_labs/conduit-core-client/v/$VERSION
           
           ### Installation
           \`\`\`bash
-          npm install @conduit/core-client@$VERSION
+          npm install @knn_labs/conduit-core-client@$VERSION
           \`\`\`
           
           ### What's Changed
@@ -224,7 +224,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
-          echo "**Package**: @conduit/core-client" >> $GITHUB_STEP_SUMMARY
+          echo "**Package**: @knn_labs/conduit-core-client" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ steps.version.outputs.current_version }} → ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**NPM Tag**: ${{ steps.version.outputs.npm_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
@@ -235,16 +235,16 @@ jobs:
             echo "### Installation" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
             if [[ "${{ steps.version.outputs.npm_tag }}" == "dev" ]]; then
-              echo "npm install @conduit/core-client@dev" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-core-client@dev" >> $GITHUB_STEP_SUMMARY
             else
-              echo "npm install @conduit/core-client@latest" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-core-client@latest" >> $GITHUB_STEP_SUMMARY
               echo "# or" >> $GITHUB_STEP_SUMMARY
-              echo "npm install @conduit/core-client@${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-core-client@${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             fi
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Links" >> $GITHUB_STEP_SUMMARY
-            echo "- 📦 [NPM Package](https://www.npmjs.com/package/@conduit/core-client)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📦 [NPM Package](https://www.npmjs.com/package/@knn_labs/conduit-core-client)" >> $GITHUB_STEP_SUMMARY
             echo "- 🏷️ [Git Tag](https://github.com/${{ github.repository }}/releases/tag/core-client-v${{ steps.version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
           fi
 

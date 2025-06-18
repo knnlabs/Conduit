@@ -153,7 +153,7 @@ jobs:
           
           # Commit version bump
           git add package.json package-lock.json
-          git commit -m "chore: bump @conduit/admin-client to v$NEW_VERSION [skip ci]"
+          git commit -m "chore: bump @knn_labs/conduit-admin-client to v$NEW_VERSION [skip ci]"
           
           # Create git tag
           git tag "admin-client-v$NEW_VERSION"
@@ -189,11 +189,11 @@ jobs:
             --title "Admin Client v$VERSION" \
             --notes "## Admin Client v$VERSION
           
-          Published to NPM: https://www.npmjs.com/package/@conduit/admin-client/v/$VERSION
+          Published to NPM: https://www.npmjs.com/package/@knn_labs/conduit-admin-client/v/$VERSION
           
           ### Installation
           \`\`\`bash
-          npm install @conduit/admin-client@$VERSION
+          npm install @knn_labs/conduit-admin-client@$VERSION
           \`\`\`
           
           ### What's Changed
@@ -215,7 +215,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
-          echo "**Package**: @conduit/admin-client" >> $GITHUB_STEP_SUMMARY
+          echo "**Package**: @knn_labs/conduit-admin-client" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ steps.version.outputs.current_version }} → ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**NPM Tag**: ${{ steps.version.outputs.npm_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
@@ -226,16 +226,16 @@ jobs:
             echo "### Installation" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
             if [[ "${{ steps.version.outputs.npm_tag }}" == "dev" ]]; then
-              echo "npm install @conduit/admin-client@dev" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-admin-client@dev" >> $GITHUB_STEP_SUMMARY
             else
-              echo "npm install @conduit/admin-client@latest" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-admin-client@latest" >> $GITHUB_STEP_SUMMARY
               echo "# or" >> $GITHUB_STEP_SUMMARY
-              echo "npm install @conduit/admin-client@${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+              echo "npm install @knn_labs/conduit-admin-client@${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
             fi
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Links" >> $GITHUB_STEP_SUMMARY
-            echo "- 📦 [NPM Package](https://www.npmjs.com/package/@conduit/admin-client)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📦 [NPM Package](https://www.npmjs.com/package/@knn_labs/conduit-admin-client)" >> $GITHUB_STEP_SUMMARY
             echo "- 🏷️ [Git Tag](https://github.com/${{ github.repository }}/releases/tag/admin-client-v${{ steps.version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
           fi
 
