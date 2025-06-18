@@ -12,19 +12,19 @@ This package uses GitHub Actions for automated publishing to NPM with different 
 - **Trigger**: Every push to `dev` branch
 - **Version**: Prerelease with `-dev` suffix (e.g., `1.0.1-dev.0`, `1.0.1-dev.1`)
 - **NPM Tag**: `dev`
-- **Installation**: `npm install @conduit/admin-client@dev`
+- **Installation**: `npm install conduit-admin-client@dev`
 
 ### Production Releases (`master` branch)
 - **Trigger**: Push to `master` branch OR manual workflow dispatch
 - **Version**: Semantic versioning (patch/minor/major)
 - **NPM Tag**: `latest`
-- **Installation**: `npm install @conduit/admin-client@latest`
+- **Installation**: `npm install conduit-admin-client@latest`
 
 ## Manual Publishing
 
 ### Prerequisites
 1. Set up NPM_TOKEN in GitHub repository secrets
-2. Ensure you have publish permissions for `@conduit/admin-client`
+2. Ensure you have publish permissions for `conduit-admin-client`
 
 ### Local Development Publishing
 ```bash
@@ -74,24 +74,24 @@ Add these secrets in your GitHub repository settings:
 
 ### Latest Stable Version
 ```bash
-npm install @conduit/admin-client
+npm install conduit-admin-client
 # or specifically
-npm install @conduit/admin-client@latest
+npm install conduit-admin-client@latest
 ```
 
 ### Development Version
 ```bash
-npm install @conduit/admin-client@dev
+npm install conduit-admin-client@dev
 ```
 
 ### Specific Version
 ```bash
-npm install @conduit/admin-client@1.2.3
+npm install conduit-admin-client@1.2.3
 ```
 
 ## Monitoring
 
-- **NPM Package**: https://www.npmjs.com/package/@conduit/admin-client
+- **NPM Package**: https://www.npmjs.com/package/conduit-admin-client
 - **GitHub Releases**: https://github.com/knnlabs/Conduit/releases
 - **Workflow Status**: Actions tab in GitHub repository
 
