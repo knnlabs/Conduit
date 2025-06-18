@@ -1,5 +1,5 @@
-@page "/virtualkeys/edit/{id?}"
-@attribute [Authorize(Policy = "MasterKeyPolicy")]
+@page "/virtualkeys/edit/{Id:int?}"
+@attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Extensions.Logging
 @using ConduitLLM.WebUI.Services
