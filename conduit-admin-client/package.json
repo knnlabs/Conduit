@@ -20,7 +20,13 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && npm run test",
+    "publish:dev": "npm version prerelease --preid=dev && npm publish --tag dev",
+    "publish:stable": "npm publish --tag latest",
+    "version:dev": "npm version prerelease --preid=dev --no-git-tag-version",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version"
   },
   "files": [
     "dist",
@@ -59,8 +65,17 @@
   "engines": {
     "node": ">=16.0.0"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/conduit/admin-client.git"
+    "url": "https://github.com/knnlabs/Conduit.git",
+    "directory": "conduit-admin-client"
+  },
+  "homepage": "https://github.com/knnlabs/Conduit/tree/master/conduit-admin-client",
+  "bugs": {
+    "url": "https://github.com/knnlabs/Conduit/issues"
   }
 }
