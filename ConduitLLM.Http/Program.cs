@@ -15,6 +15,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
+using ConduitLLM.Http.Middleware; // Added for Security middleware extensions
 using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
@@ -127,6 +128,9 @@ else
 
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
+
+// Add Core API Security services
+builder.Services.AddCoreApiSecurity(builder.Configuration);
 
 // Add all the service registrations BEFORE calling builder.Build()
 // Register HttpClientFactory - REQUIRED for LLMClientFactory
@@ -310,6 +314,18 @@ else
 
 // Enable CORS
 app.UseCors();
+
+// Add security headers
+app.UseCoreApiSecurityHeaders();
+
+// Add Virtual Key authentication
+app.UseVirtualKeyAuthentication();
+
+// Add security middleware (IP filtering, rate limiting, ban checks)
+app.UseCoreApiSecurity();
+
+// Enable rate limiting (now that Virtual Keys are authenticated)
+app.UseRateLimiter();
 
 // Enable WebSockets for real-time communication
 app.UseWebSockets(new WebSocketOptions
