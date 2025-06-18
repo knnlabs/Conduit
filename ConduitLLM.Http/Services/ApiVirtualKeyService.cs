@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -279,11 +280,15 @@ namespace ConduitLLM.Http.Services
                 return null;
             }
 
-            // The key should be a hash already, and we'll query directly
-            var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(key);
+            // Hash the incoming key before looking it up
+            var keyHash = HashKey(key);
+            _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}", 
+                key.Length > 10 ? key.Substring(0, 10) : key, keyHash);
+            
+            var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)
             {
-                _logger.LogWarning("No matching virtual key found");
+                _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
                 return null;
             }
 
@@ -509,7 +514,14 @@ namespace ConduitLLM.Http.Services
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             var bytes = System.Text.Encoding.UTF8.GetBytes(key);
             var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
+            
+            // Convert to hex string to match Admin API format
+            var builder = new StringBuilder();
+            foreach (byte b in hash)
+            {
+                builder.Append(b.ToString("x2"));
+            }
+            return builder.ToString();
         }
         
         // Helper method to map VirtualKey entity to VirtualKeyDto

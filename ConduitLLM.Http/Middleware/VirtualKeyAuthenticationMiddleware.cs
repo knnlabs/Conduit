@@ -54,6 +54,10 @@ namespace ConduitLLM.Http.Middleware
                 await context.Response.WriteAsJsonAsync(new { error = "Missing or invalid authentication" });
                 return;
             }
+            
+            _logger.LogInformation("Extracted Virtual Key: {KeyPrefix}... (length: {Length})", 
+                virtualKey.Length > 10 ? virtualKey.Substring(0, 10) : virtualKey,
+                virtualKey.Length);
 
             // Validate Virtual Key
             var validatedKey = await virtualKeyService.ValidateVirtualKeyAsync(virtualKey);

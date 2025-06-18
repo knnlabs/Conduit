@@ -9,6 +9,7 @@ using ConduitLLM.WebUI.Models;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ConduitLLM.WebUI.Services;
 
@@ -20,6 +21,8 @@ public class ConduitApiClient : IConduitApiClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<ConduitApiClient> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IServiceProvider _serviceProvider;
+    private string? _webUIVirtualKey;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ConduitApiClient"/> class.
@@ -27,20 +30,19 @@ public class ConduitApiClient : IConduitApiClient
     /// <param name="httpClient">The HttpClient instance for making API requests.</param>
     /// <param name="configuration">Configuration to read API settings.</param>
     /// <param name="logger">Logger for diagnostic information.</param>
+    /// <param name="serviceProvider">Service provider for accessing other services.</param>
     public ConduitApiClient(
         HttpClient httpClient,
         IConfiguration configuration,
-        ILogger<ConduitApiClient> logger)
+        ILogger<ConduitApiClient> logger,
+        IServiceProvider serviceProvider)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         // Note: HttpClient BaseAddress is configured in Program.cs via dependency injection
         // Don't override it here as it may be different for local dev vs containerized deployment
-
-        // Note: Virtual key authentication is handled per-request in the methods below
-        // We don't set a default authorization header here because the virtual key
-        // may be selected dynamically by the user
 
         // Configure JSON serialization options for snake_case (OpenAI format)
         _jsonOptions = new JsonSerializerOptions
@@ -48,6 +50,41 @@ public class ConduitApiClient : IConduitApiClient
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
+    }
+
+    /// <summary>
+    /// Gets the WebUI virtual key from settings if not already loaded
+    /// </summary>
+    private async Task<string?> GetWebUIVirtualKeyAsync()
+    {
+        if (_webUIVirtualKey != null)
+        {
+            _logger.LogDebug("Using cached WebUI virtual key");
+            return _webUIVirtualKey;
+        }
+
+        try
+        {
+            _logger.LogDebug("Loading WebUI virtual key from settings...");
+            using var scope = _serviceProvider.CreateScope();
+            var globalSettingService = scope.ServiceProvider.GetRequiredService<IGlobalSettingService>();
+            _webUIVirtualKey = await globalSettingService.GetSettingAsync("WebUI_VirtualKey");
+            
+            if (!string.IsNullOrEmpty(_webUIVirtualKey))
+            {
+                _logger.LogInformation("Loaded WebUI virtual key from settings (length: {Length})", _webUIVirtualKey.Length);
+            }
+            else
+            {
+                _logger.LogWarning("No WebUI virtual key found in settings");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading WebUI virtual key");
+        }
+
+        return _webUIVirtualKey;
     }
 
     /// <summary>
@@ -59,10 +96,13 @@ public class ConduitApiClient : IConduitApiClient
     {
         try
         {
+            // Use provided key or fall back to WebUI virtual key
+            var keyToUse = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            
             using var request = new HttpRequestMessage(HttpMethod.Get, "/v1/models");
-            if (!string.IsNullOrEmpty(virtualKey))
+            if (!string.IsNullOrEmpty(keyToUse))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", virtualKey);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", keyToUse);
             }
             
             using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -98,10 +138,13 @@ public class ConduitApiClient : IConduitApiClient
     {
         try
         {
+            // Use provided key or fall back to WebUI virtual key
+            var keyToUse = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions");
-            if (!string.IsNullOrEmpty(virtualKey))
+            if (!string.IsNullOrEmpty(keyToUse))
             {
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", virtualKey);
+                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", keyToUse);
             }
             
             var json = JsonSerializer.Serialize(request, _jsonOptions);
@@ -132,10 +175,13 @@ public class ConduitApiClient : IConduitApiClient
     {
         try
         {
+            // Use provided key or fall back to WebUI virtual key
+            var keyToUse = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/embeddings");
-            if (!string.IsNullOrEmpty(virtualKey))
+            if (!string.IsNullOrEmpty(keyToUse))
             {
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", virtualKey);
+                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", keyToUse);
             }
             
             var json = JsonSerializer.Serialize(request, _jsonOptions);
@@ -176,10 +222,22 @@ public class ConduitApiClient : IConduitApiClient
         // Ensure streaming is enabled
         request.Stream = true;
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions");
-        if (!string.IsNullOrEmpty(virtualKey))
+        // Use provided key or fall back to WebUI virtual key
+        var keyToUse = virtualKey ?? await GetWebUIVirtualKeyAsync();
+        
+        if (!string.IsNullOrEmpty(keyToUse))
         {
-            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", virtualKey);
+            _logger.LogDebug("Using API key for authentication (length: {Length})", keyToUse.Length);
+        }
+        else
+        {
+            _logger.LogWarning("No API key available for authentication");
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions");
+        if (!string.IsNullOrEmpty(keyToUse))
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", keyToUse);
         }
         
         var json = JsonSerializer.Serialize(request, _jsonOptions);
