@@ -2,42 +2,170 @@ name: "CodeQL Scheduled Scan"
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Weekly scan
+    - cron: '0 0 * * 0' # Weekly scan on Sundays at midnight
   workflow_dispatch: # Allow manual runs
+    inputs:
+      branch:
+        description: 'Branch to scan'
+        required: false
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - dev
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-
+    
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'csharp' ]
+        language: [ 'csharp', 'javascript' ]
+        include:
+          - language: 'csharp'
+            build-mode: 'manual'
+          - language: 'javascript'
+            build-mode: 'none'
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch || 'master' }}
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        queries: security-and-quality
+        config: |
+          query-filters:
+            - exclude:
+                id: js/unused-local-variable
+            - exclude:
+                id: cs/static-field-written-by-instance
 
+    # C# specific build steps
     - name: Set up .NET
+      if: matrix.language == 'csharp'
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      if: matrix.language == 'csharp'
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
     - name: Restore dependencies
+      if: matrix.language == 'csharp'
       run: dotnet restore
 
     - name: Build
+      if: matrix.language == 'csharp'
       run: dotnet build --no-restore --configuration Release
+
+    # JavaScript specific setup (if needed)
+    - name: Setup Node.js
+      if: matrix.language == 'javascript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: |
+          NodeClients/AdminClient/package-lock.json
+          NodeClients/CoreClient/package-lock.json
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+        output: sarif-results
+        upload: true
+
+    - name: Upload SARIF Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results-${{ matrix.language }}
+        path: sarif-results/
+        retention-days: 30
+
+    - name: Generate Security Summary
+      if: always()
+      run: |
+        echo "## CodeQL Security Scan Results - ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.event.inputs.branch || 'master' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Language**: ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Scan Date**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -d sarif-results ]; then
+          # Count issues by severity
+          HIGH_COUNT=0
+          MEDIUM_COUNT=0
+          LOW_COUNT=0
+          
+          for sarif in sarif-results/*.sarif; do
+            if [ -f "$sarif" ]; then
+              HIGH=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$sarif" 2>/dev/null || echo "0")
+              MEDIUM=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "$sarif" 2>/dev/null || echo "0")
+              LOW=$(jq '[.runs[].results[] | select(.level == "note")] | length' "$sarif" 2>/dev/null || echo "0")
+              
+              HIGH_COUNT=$((HIGH_COUNT + HIGH))
+              MEDIUM_COUNT=$((MEDIUM_COUNT + MEDIUM))
+              LOW_COUNT=$((LOW_COUNT + LOW))
+            fi
+          done
+          
+          echo "### Security Issues Found:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔴 **High Severity**: $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟡 **Medium Severity**: $MEDIUM_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟢 **Low Severity**: $LOW_COUNT" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $HIGH_COUNT -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Action Required**: High severity security issues detected!" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "No SARIF results found for analysis." >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Summary job to aggregate results
+  scan-summary:
+    name: Scan Summary
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: codeql-results-*
+          path: all-results
+
+      - name: Generate Combined Report
+        run: |
+          echo "# 🔒 CodeQL Security Scan Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Type**: ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Completion Time**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Results have been uploaded to the Security tab for review." >> $GITHUB_STEP_SUMMARY
