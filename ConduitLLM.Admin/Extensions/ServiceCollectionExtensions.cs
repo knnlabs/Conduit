@@ -3,6 +3,8 @@ using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -19,6 +21,15 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddAdminServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // Configure security options from environment variables
+        services.ConfigureAdminSecurityOptions(configuration);
+
+        // Register security service
+        services.AddSingleton<ISecurityService, SecurityService>();
+
+        // Add memory cache if not already registered
+        services.AddMemoryCache();
+
         // Register authorization policy for master key
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
         services.AddAuthorization(options =>
