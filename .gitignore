@@ -208,3 +208,22 @@ codeql-db*/
 conduit-codeql-db/
 *.trap
 *.trap.gz
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm
+.node_repl_history
+*.tgz
+.yarn-integrity
+
+# TypeScript build outputs
+dist/
+*.tsbuildinfo
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov

@@ -1,21 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ConduitLLM.WebUI.Options;
-using ConduitLLM.WebUI.Interfaces;
-using System.Text.Json;
-using System.Net;
+using ConduitLLM.Admin.Options;
+using ConduitLLM.Admin.Interfaces;
 
-namespace ConduitLLM.WebUI.Services
+namespace ConduitLLM.Admin.Services
 {
     /// <summary>
-    /// Unified security service that handles all security checks in one place
+    /// Unified security service for Admin API
     /// </summary>
     public interface ISecurityService
     {
@@ -25,29 +26,24 @@ namespace ConduitLLM.WebUI.Services
         Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context);
 
         /// <summary>
-        /// Records a failed login attempt
+        /// Records a failed authentication attempt
         /// </summary>
-        Task RecordFailedLoginAsync(string ipAddress);
+        Task RecordFailedAuthAsync(string ipAddress);
 
         /// <summary>
-        /// Clears failed login attempts for an IP
+        /// Clears failed authentication attempts for an IP
         /// </summary>
-        Task ClearFailedLoginAttemptsAsync(string ipAddress);
+        Task ClearFailedAuthAttemptsAsync(string ipAddress);
 
         /// <summary>
-        /// Gets security dashboard data
-        /// </summary>
-        Task<SecurityDashboardData> GetSecurityDashboardDataAsync();
-
-        /// <summary>
-        /// Checks if an IP is banned due to failed logins
+        /// Checks if an IP is banned due to failed authentication
         /// </summary>
         Task<bool> IsIpBannedAsync(string ipAddress);
 
         /// <summary>
-        /// Gets the classification of an IP address
+        /// Validates the API key
         /// </summary>
-        IpClassification ClassifyIpAddress(string ipAddress);
+        bool ValidateApiKey(string providedKey);
     }
 
     /// <summary>
@@ -55,94 +51,96 @@ namespace ConduitLLM.WebUI.Services
     /// </summary>
     public class SecurityCheckResult
     {
+        /// <summary>
+        /// Whether the request is allowed
+        /// </summary>
         public bool IsAllowed { get; set; }
+        
+        /// <summary>
+        /// Reason for denial if not allowed
+        /// </summary>
         public string Reason { get; set; } = "";
+        
+        /// <summary>
+        /// HTTP status code to return
+        /// </summary>
         public int? StatusCode { get; set; }
     }
 
     /// <summary>
-    /// Security dashboard data
-    /// </summary>
-    public class SecurityDashboardData
-    {
-        public bool IpFilteringEnabled { get; set; }
-        public string IpFilterMode { get; set; } = "";
-        public List<string> Whitelist { get; set; } = new();
-        public List<string> Blacklist { get; set; } = new();
-        public bool RateLimitingEnabled { get; set; }
-        public int RateLimitMaxRequests { get; set; }
-        public int RateLimitWindowSeconds { get; set; }
-        public Dictionary<string, BannedIpInfo> BannedIps { get; set; } = new();
-        public Dictionary<string, int> RecentFailedAttempts { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Information about a banned IP
-    /// </summary>
-    public class BannedIpInfo
-    {
-        public DateTime BannedUntil { get; set; }
-        public int FailedAttempts { get; set; }
-    }
-
-    /// <summary>
-    /// IP address classification
-    /// </summary>
-    public enum IpClassification
-    {
-        Unknown,
-        Private,
-        Public,
-        Loopback,
-        LinkLocal
-    }
-
-    /// <summary>
-    /// Implementation of unified security service
+    /// Implementation of unified security service for Admin API
     /// </summary>
     public class SecurityService : ISecurityService
     {
         private readonly SecurityOptions _options;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<SecurityService> _logger;
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
-        private readonly IIpFilterService _ipFilterService;
+        private readonly IAdminIpFilterService _ipFilterService;
 
-        // Cache keys
+        // Cache keys - same as WebUI for shared tracking
         private const string RATE_LIMIT_PREFIX = "rate_limit:";
         private const string FAILED_LOGIN_PREFIX = "failed_login:";
         private const string BAN_PREFIX = "ban:";
 
-        // Private IP ranges
-        private static readonly List<(string Cidr, string Description)> PrivateIpv4Ranges = new()
-        {
-            ("10.0.0.0/8", "Class A private"),
-            ("172.16.0.0/12", "Class B private"),
-            ("192.168.0.0/16", "Class C private"),
-            ("127.0.0.0/8", "Loopback"),
-            ("169.254.0.0/16", "Link-local")
-        };
+        // Service identifier for tracking
+        private const string SERVICE_NAME = "admin-api";
 
+        /// <summary>
+        /// Initializes a new instance of the SecurityService
+        /// </summary>
         public SecurityService(
             IOptions<SecurityOptions> options,
+            IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
             IDistributedCache? distributedCache,
-            IIpFilterService ipFilterService)
+            IAdminIpFilterService ipFilterService)
         {
             _options = options.Value;
+            _configuration = configuration;
             _logger = logger;
             _memoryCache = memoryCache;
             _distributedCache = distributedCache;
             _ipFilterService = ipFilterService;
         }
 
+        /// <inheritdoc/>
         public async Task<SecurityCheckResult> IsRequestAllowedAsync(HttpContext context)
         {
             var clientIp = GetClientIpAddress(context);
             var path = context.Request.Path.Value ?? "";
 
-            // Check rate limiting first (if enabled)
+            // First check API key authentication (unless excluded path)
+            if (!IsPathExcluded(path, new List<string> { "/health", "/swagger" }))
+            {
+                if (!IsApiKeyValid(context))
+                {
+                    // Record failed auth attempt before returning
+                    await RecordFailedAuthAsync(clientIp);
+                    
+                    return new SecurityCheckResult
+                    {
+                        IsAllowed = false,
+                        Reason = "Invalid or missing API key",
+                        StatusCode = 401
+                    };
+                }
+            }
+
+            // Check if IP is banned due to failed authentication
+            if (await IsIpBannedAsync(clientIp))
+            {
+                return new SecurityCheckResult
+                {
+                    IsAllowed = false,
+                    Reason = "IP is banned due to excessive failed authentication attempts",
+                    StatusCode = 403
+                };
+            }
+
+            // Check rate limiting (if enabled)
             if (_options.RateLimiting.Enabled && !IsPathExcluded(path, _options.RateLimiting.ExcludedPaths))
             {
                 var rateLimitResult = await CheckRateLimitAsync(clientIp);
@@ -150,17 +148,6 @@ namespace ConduitLLM.WebUI.Services
                 {
                     return rateLimitResult;
                 }
-            }
-
-            // Check if IP is banned due to failed logins
-            if (await IsIpBannedAsync(clientIp))
-            {
-                return new SecurityCheckResult
-                {
-                    IsAllowed = false,
-                    Reason = "IP is banned due to excessive failed login attempts",
-                    StatusCode = 403
-                };
             }
 
             // Check IP filtering (if enabled)
@@ -176,7 +163,39 @@ namespace ConduitLLM.WebUI.Services
             return new SecurityCheckResult { IsAllowed = true };
         }
 
-        public async Task RecordFailedLoginAsync(string ipAddress)
+        /// <inheritdoc/>
+        public bool ValidateApiKey(string providedKey)
+        {
+            var masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
+                           ?? _configuration["AdminApi:MasterKey"];
+
+            return !string.IsNullOrEmpty(masterKey) && providedKey == masterKey;
+        }
+
+        private bool IsApiKeyValid(HttpContext context)
+        {
+            // Check primary header
+            if (context.Request.Headers.TryGetValue(_options.ApiAuth.ApiKeyHeader, out var apiKey))
+            {
+                if (ValidateApiKey(apiKey!))
+                    return true;
+            }
+
+            // Check alternative headers for backward compatibility
+            foreach (var header in _options.ApiAuth.AlternativeHeaders)
+            {
+                if (context.Request.Headers.TryGetValue(header, out var altKey))
+                {
+                    if (ValidateApiKey(altKey!))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public async Task RecordFailedAuthAsync(string ipAddress)
         {
             var key = $"{FAILED_LOGIN_PREFIX}{ipAddress}";
             var banKey = $"{BAN_PREFIX}{ipAddress}";
@@ -188,7 +207,8 @@ namespace ConduitLLM.WebUI.Services
                 var cachedValue = await _distributedCache.GetStringAsync(key);
                 if (!string.IsNullOrEmpty(cachedValue))
                 {
-                    attempts = JsonSerializer.Deserialize<int>(cachedValue);
+                    var data = JsonSerializer.Deserialize<FailedAuthData>(cachedValue);
+                    attempts = data?.Attempts ?? 0;
                 }
             }
             else
@@ -199,12 +219,14 @@ namespace ConduitLLM.WebUI.Services
             attempts++;
 
             // Check if we should ban the IP
-            if (attempts >= _options.FailedLogin.MaxAttempts)
+            if (attempts >= _options.FailedAuth.MaxAttempts)
             {
                 var banInfo = new BannedIpInfo
                 {
-                    BannedUntil = DateTime.UtcNow.AddMinutes(_options.FailedLogin.BanDurationMinutes),
-                    FailedAttempts = attempts
+                    BannedUntil = DateTime.UtcNow.AddMinutes(_options.FailedAuth.BanDurationMinutes),
+                    FailedAttempts = attempts,
+                    Source = SERVICE_NAME,
+                    Reason = "Exceeded max failed authentication attempts"
                 };
 
                 if (_options.UseDistributedTracking && _distributedCache != null)
@@ -214,15 +236,16 @@ namespace ConduitLLM.WebUI.Services
                         JsonSerializer.Serialize(banInfo),
                         new DistributedCacheEntryOptions
                         {
-                            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.FailedLogin.BanDurationMinutes)
+                            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_options.FailedAuth.BanDurationMinutes)
                         });
                 }
                 else
                 {
-                    _memoryCache.Set(banKey, banInfo, TimeSpan.FromMinutes(_options.FailedLogin.BanDurationMinutes));
+                    _memoryCache.Set(banKey, banInfo, TimeSpan.FromMinutes(_options.FailedAuth.BanDurationMinutes));
                 }
 
-                _logger.LogWarning("IP {IpAddress} has been banned after {Attempts} failed login attempts", ipAddress, attempts);
+                _logger.LogWarning("IP {IpAddress} has been banned after {Attempts} failed authentication attempts", 
+                    ipAddress, attempts);
 
                 // Clear the failed attempts counter
                 if (_options.UseDistributedTracking && _distributedCache != null)
@@ -237,27 +260,35 @@ namespace ConduitLLM.WebUI.Services
             else
             {
                 // Update the failed attempts counter
+                var authData = new FailedAuthData
+                {
+                    Attempts = attempts,
+                    Source = SERVICE_NAME,
+                    LastAttempt = DateTime.UtcNow
+                };
+
                 if (_options.UseDistributedTracking && _distributedCache != null)
                 {
                     await _distributedCache.SetStringAsync(
                         key,
-                        JsonSerializer.Serialize(attempts),
+                        JsonSerializer.Serialize(authData),
                         new DistributedCacheEntryOptions
                         {
-                            SlidingExpiration = TimeSpan.FromMinutes(_options.FailedLogin.BanDurationMinutes)
+                            SlidingExpiration = TimeSpan.FromMinutes(_options.FailedAuth.BanDurationMinutes)
                         });
                 }
                 else
                 {
-                    _memoryCache.Set(key, attempts, TimeSpan.FromMinutes(_options.FailedLogin.BanDurationMinutes));
+                    _memoryCache.Set(key, attempts, TimeSpan.FromMinutes(_options.FailedAuth.BanDurationMinutes));
                 }
 
-                _logger.LogInformation("Failed login attempt {Attempts}/{MaxAttempts} for IP {IpAddress}", 
-                    attempts, _options.FailedLogin.MaxAttempts, ipAddress);
+                _logger.LogInformation("Failed authentication attempt {Attempts}/{MaxAttempts} for IP {IpAddress}", 
+                    attempts, _options.FailedAuth.MaxAttempts, ipAddress);
             }
         }
 
-        public async Task ClearFailedLoginAttemptsAsync(string ipAddress)
+        /// <inheritdoc/>
+        public async Task ClearFailedAuthAttemptsAsync(string ipAddress)
         {
             var key = $"{FAILED_LOGIN_PREFIX}{ipAddress}";
 
@@ -270,9 +301,10 @@ namespace ConduitLLM.WebUI.Services
                 _memoryCache.Remove(key);
             }
 
-            _logger.LogInformation("Cleared failed login attempts for IP {IpAddress}", ipAddress);
+            _logger.LogInformation("Cleared failed authentication attempts for IP {IpAddress}", ipAddress);
         }
 
+        /// <inheritdoc/>
         public async Task<bool> IsIpBannedAsync(string ipAddress)
         {
             var banKey = $"{BAN_PREFIX}{ipAddress}";
@@ -295,62 +327,10 @@ namespace ConduitLLM.WebUI.Services
             return false;
         }
 
-        public async Task<SecurityDashboardData> GetSecurityDashboardDataAsync()
-        {
-            var data = new SecurityDashboardData
-            {
-                IpFilteringEnabled = _options.IpFiltering.Enabled,
-                IpFilterMode = _options.IpFiltering.Mode,
-                Whitelist = _options.IpFiltering.Whitelist,
-                Blacklist = _options.IpFiltering.Blacklist,
-                RateLimitingEnabled = _options.RateLimiting.Enabled,
-                RateLimitMaxRequests = _options.RateLimiting.MaxRequests,
-                RateLimitWindowSeconds = _options.RateLimiting.WindowSeconds
-            };
-
-            // Get banned IPs and failed attempts from cache
-            // This is a simplified version - in production you might want to track these separately
-            await Task.CompletedTask;
-
-            return data;
-        }
-
-        public IpClassification ClassifyIpAddress(string ipAddress)
-        {
-            if (!IPAddress.TryParse(ipAddress, out var ip))
-            {
-                return IpClassification.Unknown;
-            }
-
-            // Check loopback
-            if (IPAddress.IsLoopback(ip))
-            {
-                return IpClassification.Loopback;
-            }
-
-            // Check if it's a private IP
-            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-            {
-                var ipBytes = ip.GetAddressBytes();
-                
-                // Check private ranges
-                if (ipBytes[0] == 10 || // 10.0.0.0/8
-                    (ipBytes[0] == 172 && ipBytes[1] >= 16 && ipBytes[1] <= 31) || // 172.16.0.0/12
-                    (ipBytes[0] == 192 && ipBytes[1] == 168) || // 192.168.0.0/16
-                    (ipBytes[0] == 169 && ipBytes[1] == 254)) // 169.254.0.0/16 (link-local)
-                {
-                    return ipBytes[0] == 169 && ipBytes[1] == 254 ? IpClassification.LinkLocal : IpClassification.Private;
-                }
-            }
-
-            return IpClassification.Public;
-        }
-
         private async Task<SecurityCheckResult> CheckRateLimitAsync(string ipAddress)
         {
-            var key = $"{RATE_LIMIT_PREFIX}{ipAddress}";
+            var key = $"{RATE_LIMIT_PREFIX}{SERVICE_NAME}:{ipAddress}";
             var now = DateTime.UtcNow;
-            var windowStart = now.AddSeconds(-_options.RateLimiting.WindowSeconds);
 
             // Get current request count
             var requestCount = 0;
@@ -359,7 +339,8 @@ namespace ConduitLLM.WebUI.Services
                 var cachedValue = await _distributedCache.GetStringAsync(key);
                 if (!string.IsNullOrEmpty(cachedValue))
                 {
-                    requestCount = JsonSerializer.Deserialize<int>(cachedValue);
+                    var data = JsonSerializer.Deserialize<RateLimitData>(cachedValue);
+                    requestCount = data?.Count ?? 0;
                 }
             }
             else
@@ -383,11 +364,18 @@ namespace ConduitLLM.WebUI.Services
             }
 
             // Update the counter
+            var rateLimitData = new RateLimitData
+            {
+                Count = requestCount,
+                Source = SERVICE_NAME,
+                WindowStart = now
+            };
+
             if (_options.UseDistributedTracking && _distributedCache != null)
             {
                 await _distributedCache.SetStringAsync(
                     key,
-                    JsonSerializer.Serialize(requestCount),
+                    JsonSerializer.Serialize(rateLimitData),
                     new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_options.RateLimiting.WindowSeconds)
@@ -406,10 +394,7 @@ namespace ConduitLLM.WebUI.Services
             // Check if it's a private IP and we allow private IPs
             if (_options.IpFiltering.AllowPrivateIps)
             {
-                var classification = ClassifyIpAddress(ipAddress);
-                if (classification == IpClassification.Private || 
-                    classification == IpClassification.Loopback ||
-                    classification == IpClassification.LinkLocal)
+                if (IsPrivateIp(ipAddress))
                 {
                     _logger.LogDebug("Private/Intranet IP {IpAddress} is automatically allowed", ipAddress);
                     return new SecurityCheckResult { IsAllowed = true };
@@ -435,7 +420,7 @@ namespace ConduitLLM.WebUI.Services
                 };
             }
 
-            // Also check database-based IP filters via the existing service
+            // Also check database-based IP filters
             var isAllowedByDb = await _ipFilterService.IsIpAllowedAsync(ipAddress);
             if (!isAllowedByDb)
             {
@@ -451,6 +436,33 @@ namespace ConduitLLM.WebUI.Services
             return new SecurityCheckResult { IsAllowed = true };
         }
 
+        private bool IsPrivateIp(string ipAddress)
+        {
+            if (!IPAddress.TryParse(ipAddress, out var ip))
+                return false;
+
+            // Check loopback
+            if (IPAddress.IsLoopback(ip))
+                return true;
+
+            // Check private ranges
+            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                var ipBytes = ip.GetAddressBytes();
+                
+                // Check private ranges
+                if (ipBytes[0] == 10 || // 10.0.0.0/8
+                    (ipBytes[0] == 172 && ipBytes[1] >= 16 && ipBytes[1] <= 31) || // 172.16.0.0/12
+                    (ipBytes[0] == 192 && ipBytes[1] == 168) || // 192.168.0.0/16
+                    (ipBytes[0] == 169 && ipBytes[1] == 254)) // 169.254.0.0/16 (link-local)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private bool IsIpInRange(string ipAddress, string rule)
         {
             // Simple IP match
@@ -460,7 +472,7 @@ namespace ConduitLLM.WebUI.Services
             // CIDR range check
             if (rule.Contains('/'))
             {
-                return IpAddressValidator.IsIpInCidrRange(ipAddress, rule);
+                return IsIpInCidrRange(ipAddress, rule);
             }
 
             return false;
@@ -494,6 +506,89 @@ namespace ConduitLLM.WebUI.Services
 
             // Fall back to direct connection IP
             return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        }
+
+        private bool IsIpInCidrRange(string ipAddress, string cidrRange)
+        {
+            try
+            {
+                var parts = cidrRange.Split('/');
+                if (parts.Length != 2)
+                    return false;
+
+                if (!IPAddress.TryParse(ipAddress, out var ip))
+                    return false;
+
+                if (!IPAddress.TryParse(parts[0], out var baseAddress))
+                    return false;
+
+                if (!int.TryParse(parts[1], out var prefixLength))
+                    return false;
+
+                // Only support IPv4 for now
+                if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork ||
+                    baseAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                    return false;
+
+                var ipBytes = ip.GetAddressBytes();
+                var baseBytes = baseAddress.GetAddressBytes();
+
+                // Calculate the mask
+                var maskBytes = new byte[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    if (prefixLength >= 8)
+                    {
+                        maskBytes[i] = 0xFF;
+                        prefixLength -= 8;
+                    }
+                    else if (prefixLength > 0)
+                    {
+                        maskBytes[i] = (byte)(0xFF << (8 - prefixLength));
+                        prefixLength = 0;
+                    }
+                    else
+                    {
+                        maskBytes[i] = 0x00;
+                    }
+                }
+
+                // Check if the IP is in the range
+                for (int i = 0; i < 4; i++)
+                {
+                    if ((ipBytes[i] & maskBytes[i]) != (baseBytes[i] & maskBytes[i]))
+                        return false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Data structures for Redis storage (compatible with WebUI)
+        private class FailedAuthData
+        {
+            public int Attempts { get; set; }
+            public string Source { get; set; } = "";
+            public DateTime LastAttempt { get; set; }
+        }
+
+        private class BannedIpInfo
+        {
+            public DateTime BannedUntil { get; set; }
+            public int FailedAttempts { get; set; }
+            public string Source { get; set; } = "";
+            public string Reason { get; set; } = "";
+        }
+
+        private class RateLimitData
+        {
+            public int Count { get; set; }
+            public string Source { get; set; } = "";
+            public DateTime WindowStart { get; set; }
         }
     }
 }

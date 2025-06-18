@@ -66,4 +66,11 @@ public interface IAdminIpFilterService
     /// <param name="ipAddress">The IP address to check</param>
     /// <returns>Result indicating if the IP is allowed and reason if denied</returns>
     Task<IpCheckResult> CheckIpAddressAsync(string ipAddress);
+
+    /// <summary>
+    /// Checks if an IP address is allowed (simplified method for security service)
+    /// </summary>
+    /// <param name="ipAddress">The IP address to check</param>
+    /// <returns>True if allowed, false otherwise</returns>
+    Task<bool> IsIpAllowedAsync(string ipAddress);
 }

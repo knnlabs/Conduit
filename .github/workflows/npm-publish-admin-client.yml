@@ -1,0 +1,174 @@
+name: Publish Admin Client to NPM
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Clients/Node/Admin/**'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type (patch, minor, major, prerelease)'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Clients/Node/Admin
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: './Clients/Node/Admin/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test
+
+      - name: Build package
+        run: npm run build
+
+      - name: Configure git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Determine version strategy
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              echo "strategy=${{ github.event.inputs.version_type }}" >> $GITHUB_OUTPUT
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            else
+              echo "strategy=patch" >> $GITHUB_OUTPUT
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "strategy=prerelease" >> $GITHUB_OUTPUT
+            echo "tag=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version for dev builds
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          # For dev builds, create a prerelease version
+          npm run version:dev
+          
+          # Extract the new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Update version for production builds
+        if: github.ref == 'refs/heads/master'
+        run: |
+          # For master builds, use the specified version type
+          if [[ "${{ steps.version.outputs.strategy }}" == "prerelease" ]]; then
+            npm run version:dev
+          elif [[ "${{ steps.version.outputs.strategy }}" == "minor" ]]; then
+            npm run version:minor
+          elif [[ "${{ steps.version.outputs.strategy }}" == "major" ]]; then
+            npm run version:major
+          else
+            npm run version:patch
+          fi
+          
+          # Extract the new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "No changes to commit"
+          
+          # Create git tag for the version
+          git tag "admin-client-v$NEW_VERSION"
+
+      - name: Push changes and tags
+        run: |
+          git push origin ${{ github.ref_name }} || echo "Nothing to push"
+          git push origin "admin-client-v$NEW_VERSION" || echo "Tag already exists"
+
+      - name: Publish to NPM
+        run: |
+          if [[ "${{ steps.version.outputs.tag }}" == "dev" ]]; then
+            npm publish --tag dev
+          else
+            npm publish --tag latest
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/master'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: admin-client-v${{ env.NEW_VERSION }}
+          release_name: Admin Client v${{ env.NEW_VERSION }}
+          body: |
+            ## Admin Client v${{ env.NEW_VERSION }}
+            
+            Published to NPM: https://www.npmjs.com/package/@conduit/admin-client/v/${{ env.NEW_VERSION }}
+            
+            ### Installation
+            ```bash
+            npm install @conduit/admin-client@${{ env.NEW_VERSION }}
+            ```
+            
+            ### What's Changed
+            - See commit history for detailed changes
+            
+          draft: false
+          prerelease: false
+
+      - name: Post-publish summary
+        run: |
+          echo "## 📦 Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package**: @conduit/admin-client" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: $NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation Command" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.tag }}" == "dev" ]]; then
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install @conduit/admin-client@dev" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install @conduit/admin-client@latest" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### NPM Package" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View on NPM](https://www.npmjs.com/package/@conduit/admin-client)" >> $GITHUB_STEP_SUMMARY

@@ -460,4 +460,11 @@ public class AdminIpFilterService : IAdminIpFilterService
 
         return false;
     }
+
+    /// <inheritdoc/>
+    public async Task<bool> IsIpAllowedAsync(string ipAddress)
+    {
+        var result = await CheckIpAddressAsync(ipAddress);
+        return result.IsAllowed;
+    }
 }
