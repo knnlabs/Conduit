@@ -1,8 +1,8 @@
 export interface Logger {
-  debug(message: string, ...args: any[]): void;
-  info(message: string, ...args: any[]): void;
-  warn(message: string, ...args: any[]): void;
-  error(message: string, ...args: any[]): void;
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
 }
 
 export interface CacheProvider {
@@ -12,10 +12,27 @@ export interface CacheProvider {
   clear(): Promise<void>;
 }
 
+// Type definition for axios errors
+export interface AxiosError {
+  code?: string;
+  message: string;
+  response?: {
+    status: number;
+    data: unknown;
+    headers: Record<string, string>;
+  };
+  request?: unknown;
+  config?: {
+    url?: string;
+    method?: string;
+    _retry?: number;
+  };
+}
+
 export interface RetryConfig {
   maxRetries: number;
   retryDelay: number;
-  retryCondition?: (error: any) => boolean;
+  retryCondition?: (error: AxiosError) => boolean;
 }
 
 export interface ConduitConfig {
@@ -35,8 +52,8 @@ export interface ConduitConfig {
 export interface RequestConfig {
   method: string;
   url: string;
-  data?: any;
-  params?: any;
+  data?: unknown;
+  params?: Record<string, unknown>;
   headers?: Record<string, string>;
   timeout?: number;
 }

@@ -72,9 +72,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/knnlabs/Conduit.git",
-    "directory": "conduit-admin-client"
+    "directory": "Clients/Node/Admin"
   },
-  "homepage": "https://github.com/knnlabs/Conduit/tree/master/conduit-admin-client",
+  "homepage": "https://github.com/knnlabs/Conduit/tree/master/Clients/Node/Admin",
   "bugs": {
     "url": "https://github.com/knnlabs/Conduit/issues"
   }

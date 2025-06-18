@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider } from './types';
+import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider, AxiosError } from './types';
 import { handleApiError } from '../utils/errors';
 
 export abstract class BaseApiClient {
@@ -32,11 +32,11 @@ export abstract class BaseApiClient {
       return {
         maxRetries: retries,
         retryDelay: 1000,
-        retryCondition: (error: any) => {
+        retryCondition: (error: AxiosError): boolean => {
           return (
             error.code === 'ECONNABORTED' ||
             error.code === 'ETIMEDOUT' ||
-            (error.response && error.response.status >= 500)
+            (error.response?.status !== undefined && error.response.status >= 500)
           );
         },
       };
@@ -66,22 +66,26 @@ export abstract class BaseApiClient {
         });
         return response;
       },
-      async (error) => {
+      async (error: AxiosError) => {
         const config = error.config;
-        if (!config || !config._retry) {
-          config._retry = 0;
+        if (!config || typeof config._retry !== 'number') {
+          if (config) {
+            config._retry = 0;
+          }
         }
 
         if (
+          config &&
+          typeof config._retry === 'number' &&
           config._retry < this.retryConfig.maxRetries &&
           this.retryConfig.retryCondition?.(error)
         ) {
-          config._retry++;
-          const delay = this.retryConfig.retryDelay * Math.pow(2, config._retry - 1);
+          config._retry = (config._retry || 0) + 1;
+          const delay = this.retryConfig.retryDelay * Math.pow(2, (config._retry || 1) - 1);
           
           this.logger?.warn(
-            `Retrying request (attempt ${config._retry}/${this.retryConfig.maxRetries})`,
-            { url: config.url, delay }
+            `Retrying request (attempt ${config._retry || 1}/${this.retryConfig.maxRetries})`,
+            { url: config?.url, delay }
           );
 
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -117,7 +121,7 @@ export abstract class BaseApiClient {
     }
   }
 
-  protected async get<T>(url: string, params?: any, options?: RequestConfig): Promise<T> {
+  protected async get<T>(url: string, params?: Record<string, unknown>, options?: RequestConfig): Promise<T> {
     return this.request<T>({
       method: 'GET',
       url,
@@ -126,7 +130,7 @@ export abstract class BaseApiClient {
     });
   }
 
-  protected async post<T>(url: string, data?: any, options?: RequestConfig): Promise<T> {
+  protected async post<T>(url: string, data?: unknown, options?: RequestConfig): Promise<T> {
     return this.request<T>({
       method: 'POST',
       url,
@@ -135,7 +139,7 @@ export abstract class BaseApiClient {
     });
   }
 
-  protected async put<T>(url: string, data?: any, options?: RequestConfig): Promise<T> {
+  protected async put<T>(url: string, data?: unknown, options?: RequestConfig): Promise<T> {
     return this.request<T>({
       method: 'PUT',
       url,
@@ -152,7 +156,7 @@ export abstract class BaseApiClient {
     });
   }
 
-  protected async patch<T>(url: string, data?: any, options?: RequestConfig): Promise<T> {
+  protected async patch<T>(url: string, data?: unknown, options?: RequestConfig): Promise<T> {
     return this.request<T>({
       method: 'PATCH',
       url,
@@ -161,7 +165,7 @@ export abstract class BaseApiClient {
     });
   }
 
-  protected getCacheKey(prefix: string, ...parts: any[]): string {
+  protected getCacheKey(prefix: string, ...parts: unknown[]): string {
     return [prefix, ...parts.map(p => JSON.stringify(p))].join(':');
   }
 
@@ -174,7 +178,7 @@ export abstract class BaseApiClient {
       return fetcher();
     }
 
-    const cached = await this.cache.get(key) as T | null;
+    const cached = await this.cache.get<T>(key);
     if (cached) {
       this.logger?.debug(`Cache hit: ${key}`);
       return cached;

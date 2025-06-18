@@ -1,5 +1,7 @@
 # Release Strategy for Conduit Admin Client
 
+> **Location**: `Clients/Node/Admin/` - Part of the multi-platform Conduit client library collection.
+
 ## Automated Publishing
 
 This package uses GitHub Actions for automated publishing to NPM with different strategies for dev and production releases.

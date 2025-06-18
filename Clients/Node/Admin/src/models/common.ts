@@ -9,11 +9,11 @@ export interface PaginatedResponse<T> {
 export interface ErrorResponse {
   error: string;
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   statusCode?: number;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: ErrorResponse;
@@ -33,7 +33,7 @@ export interface FilterOptions {
   pageSize?: number;
 }
 
-export interface DateRange {
+export interface DateRange extends Record<string, string> {
   startDate: string;
   endDate: string;
 }

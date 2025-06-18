@@ -2,6 +2,8 @@
 
 A TypeScript client library for the Conduit Admin API, providing programmatic access to all administrative functionality.
 
+> **Note**: This client is part of the Conduit multi-platform client library collection located at `Clients/Node/Admin/`. For other platforms (Python, Go, .NET), see the [main Clients directory](../../README.md).
+
 ## Installation
 
 ```bash
