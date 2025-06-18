@@ -127,14 +127,14 @@ namespace ConduitLLM.Http.Services
             IConfiguration configuration,
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
-            IDistributedCache? distributedCache,
-            IIpFilterService ipFilterService)
+            IIpFilterService ipFilterService,
+            IServiceProvider serviceProvider)
         {
             _options = options.Value;
             _configuration = configuration;
             _logger = logger;
             _memoryCache = memoryCache;
-            _distributedCache = distributedCache;
+            _distributedCache = serviceProvider.GetService<IDistributedCache>();
             _ipFilterService = ipFilterService;
         }
 
