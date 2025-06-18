@@ -1,9 +1,32 @@
 import { VirtualKeyService } from '../../../src/services/VirtualKeyService';
 import { ValidationError, NotImplementedError } from '../../../src/utils/errors';
 import { CreateVirtualKeyRequest } from '../../../src/models/virtualKey';
+import axios from 'axios';
 
 // Mock axios
 jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+// Mock axios instance
+const mockAxiosInstance = {
+  interceptors: {
+    request: {
+      use: jest.fn(),
+    },
+    response: {
+      use: jest.fn(),
+    },
+  },
+  request: jest.fn(),
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  patch: jest.fn(),
+};
+
+// Setup axios.create mock
+mockedAxios.create = jest.fn(() => mockAxiosInstance as any);
 
 describe('VirtualKeyService', () => {
   let service: VirtualKeyService;
@@ -13,8 +36,10 @@ describe('VirtualKeyService', () => {
   };
 
   beforeEach(() => {
-    service = new VirtualKeyService(mockConfig);
     jest.clearAllMocks();
+    // Reset axios mock
+    mockedAxios.create.mockReturnValue(mockAxiosInstance as any);
+    service = new VirtualKeyService(mockConfig);
   });
 
   describe('create', () => {
@@ -42,15 +67,18 @@ describe('VirtualKeyService', () => {
         },
       };
 
-      // Mock the post method
-      jest.spyOn(service as any, 'post').mockResolvedValue(mockResponse);
+      // Mock the axios request directly
+      mockAxiosInstance.request.mockResolvedValue({ data: mockResponse });
 
       const result = await service.create(request);
 
       expect(result).toEqual(mockResponse);
-      expect((service as any).post).toHaveBeenCalledWith(
-        '/virtualkeys',
-        request
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/virtualkeys',
+          data: request
+        })
       );
     });
 
@@ -104,19 +132,24 @@ describe('VirtualKeyService', () => {
         totalPages: 1,
       };
 
+      // Mock the axios request directly
+      mockAxiosInstance.request.mockResolvedValue({ data: mockResponse });
+      
       jest.spyOn(service as any, 'withCache').mockImplementation(
         async (_key: any, fetcher: any) => fetcher()
       );
-      jest.spyOn(service as any, 'get').mockResolvedValue(mockResponse);
 
       const result = await service.list();
 
       expect(result).toEqual(mockResponse);
-      expect((service as any).get).toHaveBeenCalledWith(
-        '/virtualkeys',
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          pageNumber: 1,
-          pageSize: 20,
+          method: 'GET',
+          url: '/virtualkeys',
+          params: expect.objectContaining({
+            pageNumber: 1,
+            pageSize: 20,
+          })
         })
       );
     });
@@ -137,21 +170,26 @@ describe('VirtualKeyService', () => {
         totalPages: 0,
       };
 
+      // Mock the axios request directly
+      mockAxiosInstance.request.mockResolvedValue({ data: mockResponse });
+      
       jest.spyOn(service as any, 'withCache').mockImplementation(
         async (_key: any, fetcher: any) => fetcher()
       );
-      jest.spyOn(service as any, 'get').mockResolvedValue(mockResponse);
 
       const result = await service.list(filters);
 
       expect(result).toEqual(mockResponse);
-      expect((service as any).get).toHaveBeenCalledWith(
-        '/virtualkeys',
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          pageSize: 50,
-          isEnabled: true,
-          budgetDuration: 'Monthly',
-          search: 'production',
+          method: 'GET',
+          url: '/virtualkeys',
+          params: expect.objectContaining({
+            pageSize: 50,
+            isEnabled: true,
+            budgetDuration: 'Monthly',
+            search: 'production',
+          })
         })
       );
     });
@@ -170,14 +208,17 @@ describe('VirtualKeyService', () => {
         budgetRemaining: 50,
       };
 
-      jest.spyOn(service as any, 'post').mockResolvedValue(mockResponse);
+      mockAxiosInstance.request.mockResolvedValue({ data: mockResponse });
 
       const result = await service.validate(key);
 
       expect(result).toEqual(mockResponse);
-      expect((service as any).post).toHaveBeenCalledWith(
-        '/virtualkeys/validate',
-        { key }
+      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: '/virtualkeys/validate',
+          data: { key }
+        })
       );
     });
 
@@ -188,7 +229,7 @@ describe('VirtualKeyService', () => {
         reason: 'Key not found',
       };
 
-      jest.spyOn(service as any, 'post').mockResolvedValue(mockResponse);
+      mockAxiosInstance.request.mockResolvedValue({ data: mockResponse });
 
       const result = await service.validate(key);
 
@@ -231,9 +272,11 @@ describe('VirtualKeyService', () => {
         cache: mockCache,
       });
 
-      jest.spyOn(serviceWithCache as any, 'post').mockResolvedValue({
-        virtualKey: 'ck_test',
-        keyInfo: { id: 1 },
+      mockAxiosInstance.request.mockResolvedValue({ 
+        data: {
+          virtualKey: 'ck_test',
+          keyInfo: { id: 1 },
+        }
       });
 
       await serviceWithCache.create({ keyName: 'Test' });
@@ -254,7 +297,7 @@ describe('VirtualKeyService', () => {
         cache: mockCache,
       });
 
-      jest.spyOn(serviceWithCache as any, 'put').mockResolvedValue(undefined);
+      mockAxiosInstance.request.mockResolvedValue({ data: undefined });
 
       await serviceWithCache.update(1, { keyName: 'Updated' });
 
