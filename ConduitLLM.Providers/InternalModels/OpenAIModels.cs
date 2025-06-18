@@ -35,7 +35,7 @@ namespace ConduitLLM.Providers.InternalModels.OpenAIModels
         // Tool/function calling support
         [JsonPropertyName("tools")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<Tool>? Tools { get; init; }
+        public List<object>? Tools { get; init; }
 
         [JsonPropertyName("tool_choice")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -67,7 +67,7 @@ namespace ConduitLLM.Providers.InternalModels.OpenAIModels
 
         [JsonPropertyName("tool_calls")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<ToolCall>? ToolCalls { get; init; }
+        public List<object>? ToolCalls { get; init; }
 
         [JsonPropertyName("tool_call_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

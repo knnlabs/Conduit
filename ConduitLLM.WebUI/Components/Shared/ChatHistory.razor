@@ -92,6 +92,32 @@
                         {
                             @RenderMessageContent(message.Content?.ToString() ?? string.Empty)
                         }
+                        
+                        @* Display error details if present *@
+                        @if (message.IsError)
+                        {
+                            <div class="error-details">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                <strong>Error:</strong> @message.ErrorMessage
+                            </div>
+                        }
+                        
+                        @* Display function calls if present *@
+                        @if (message.ToolCalls?.Any() == true)
+                        {
+                            <FunctionCallDisplay ToolCalls="@message.ToolCalls"
+                                               ProvidedResults="@ProvidedFunctionResults"
+                                               OnResultSubmitted="@OnFunctionResultSubmitted" />
+                        }
+                        
+                        @* Display tool response indicator *@
+                        @if (!string.IsNullOrEmpty(message.ToolCallId) && message.Role == "tool")
+                        {
+                            <div class="tool-response-indicator">
+                                <i class="fa fa-wrench me-2"></i>
+                                <small>Tool Response (ID: @message.ToolCallId)</small>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -544,6 +570,38 @@
         border-color: rgba(255, 255, 255, 0.2);
     }
     
+    /* Tool response indicator */
+    .tool-response-indicator {
+        margin-top: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        background-color: #e7f3ff;
+        border-radius: 0.25rem;
+        color: #0066cc;
+        font-size: 0.875rem;
+    }
+    
+    [data-bs-theme="dark"] .tool-response-indicator {
+        background-color: rgba(102, 126, 234, 0.1);
+        color: #8da4f5;
+    }
+    
+    /* Error details */
+    .error-details {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        background-color: #fee;
+        border: 1px solid #fcc;
+        border-radius: 0.375rem;
+        color: #c00;
+        font-size: 0.875rem;
+    }
+    
+    [data-bs-theme="dark"] .error-details {
+        background-color: rgba(255, 0, 0, 0.1);
+        border-color: rgba(255, 0, 0, 0.3);
+        color: #ff6b6b;
+    }
+    
     /* Responsive adjustments */
     @@media (max-width: 768px) {
         .message-bubble {
@@ -562,6 +620,8 @@
     [Parameter] public EventCallback<int> OnDeleteMessage { get; set; }
     [Parameter] public EventCallback<int> OnRegenerateMessage { get; set; }
     [Parameter] public EventCallback<Message> OnEditMessage { get; set; }
+    [Parameter] public Dictionary<string, string> ProvidedFunctionResults { get; set; } = new();
+    [Parameter] public EventCallback<(string toolCallId, string result)> OnFunctionResultSubmitted { get; set; }
     
     private ElementReference chatContainer;
     private bool _autoScroll = true;

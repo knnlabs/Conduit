@@ -643,10 +643,15 @@ namespace ConduitLLM.Providers
             List<object>? openAiTools = null;
             if (request.Tools != null && request.Tools.Count > 0)
             {
-                openAiTools = request.Tools.Select(t => new OpenAIModels.Tool
+                openAiTools = request.Tools.Select(t => new
                 {
-                    Name = t.Function?.Name ?? "unknown",
-                    Description = t.Function?.Description
+                    type = t.Type ?? "function",
+                    function = new
+                    {
+                        name = t.Function?.Name ?? "unknown",
+                        description = t.Function?.Description,
+                        parameters = t.Function?.Parameters
+                    }
                 }).Cast<object>().ToList();
             }
 
@@ -670,11 +675,16 @@ namespace ConduitLLM.Providers
                         Role = m.Role,
                         Content = ProviderHelpers.ContentHelper.GetContentAsString(m.Content),
                         Name = m.Name,
-                        ToolCalls = m.ToolCalls?.Select(tc => new OpenAIModels.ToolCall
+                        ToolCalls = m.ToolCalls?.Select(tc => new
                         {
-                            Tool = tc.Type ?? "function",
-                            Name = tc.Function?.Name
-                        }).ToList(),
+                            id = tc.Id,
+                            type = tc.Type ?? "function",
+                            function = new
+                            {
+                                name = tc.Function?.Name,
+                                arguments = tc.Function?.Arguments
+                            }
+                        }).Cast<object>().ToList(),
                         ToolCallId = m.ToolCallId
                     };
                 }
@@ -686,11 +696,16 @@ namespace ConduitLLM.Providers
                         Role = m.Role,
                         Content = MapMultimodalContent(m.Content),
                         Name = m.Name,
-                        ToolCalls = m.ToolCalls?.Select(tc => new OpenAIModels.ToolCall
+                        ToolCalls = m.ToolCalls?.Select(tc => new
                         {
-                            Tool = tc.Type ?? "function",
-                            Name = tc.Function?.Name
-                        }).ToList(),
+                            id = tc.Id,
+                            type = tc.Type ?? "function",
+                            function = new
+                            {
+                                name = tc.Function?.Name,
+                                arguments = tc.Function?.Arguments
+                            }
+                        }).Cast<object>().ToList(),
                         ToolCallId = m.ToolCallId
                     };
                 }
@@ -703,7 +718,7 @@ namespace ConduitLLM.Providers
                 Messages = messages,
                 MaxTokens = request.MaxTokens,
                 Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null,
-                Tools = openAiTools?.Cast<OpenAIModels.Tool>().ToList(),
+                Tools = openAiTools,
                 ToolChoice = openAiToolChoice,
                 ResponseFormat = new OpenAIModels.ResponseFormat { Type = "text" },
                 Stream = request.Stream ?? false
@@ -1099,6 +1114,12 @@ namespace ConduitLLM.Providers
                 mappedChoice.Message.ToolCalls = MapResponseToolCalls(choice.Message.ToolCalls);
             }
 
+            // Handle tool_call_id if present (for tool response messages)
+            if (choice.Message.ToolCallId != null)
+            {
+                mappedChoice.Message.ToolCallId = choice.Message.ToolCallId?.ToString();
+            }
+
             return mappedChoice;
         }
 
@@ -1137,12 +1158,12 @@ namespace ConduitLLM.Providers
         {
             return new CoreModels.ToolCall
             {
-                Id = Guid.NewGuid().ToString(),
-                Type = "function",
+                Id = toolCall.id?.ToString() ?? Guid.NewGuid().ToString(),
+                Type = toolCall.type?.ToString() ?? "function",
                 Function = new CoreModels.FunctionCall
                 {
-                    Name = toolCall.Name != null ? toolCall.Name.ToString() : "unknown",
-                    Arguments = "{}"
+                    Name = toolCall.function?.name?.ToString() ?? "unknown",
+                    Arguments = toolCall.function?.arguments?.ToString() ?? "{}"
                 }
             };
         }
