@@ -1,0 +1,28 @@
+# Source files
+src/
+tests/
+examples/
+
+# Configuration files
+.gitignore
+.eslintrc*
+jest.config.js
+tsconfig.json
+tsup.config.ts
+
+# Development files
+*.log
+*.tmp
+.env*
+coverage/
+.nyc_output/
+
+# IDE files
+.vscode/
+.idea/
+
+# Keep only necessary files
+!dist/
+!README.md
+!LICENSE
+!package.json
