@@ -46,6 +46,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write  # Required for NPM provenance
       
     outputs:
       version: ${{ steps.version.outputs.new_version }}
@@ -65,7 +66,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          # Generate package-lock.json if it doesn't exist
+          if [ ! -f package-lock.json ]; then
+            echo "Generated new package-lock.json"
+          fi
 
       - name: Run quality checks
         run: |

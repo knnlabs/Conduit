@@ -46,6 +46,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write  # Required for NPM provenance
       
     outputs:
       version: ${{ steps.version.outputs.new_version }}
