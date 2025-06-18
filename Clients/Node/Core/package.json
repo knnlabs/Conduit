@@ -40,13 +40,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/conduit-ai/conduit.git",
+    "url": "https://github.com/knnlabs/Conduit.git",
     "directory": "Clients/Node/Core"
   },
   "bugs": {
-    "url": "https://github.com/conduit-ai/conduit/issues"
+    "url": "https://github.com/knnlabs/Conduit/issues"
   },
-  "homepage": "https://github.com/conduit-ai/conduit#readme",
+  "homepage": "https://github.com/knnlabs/Conduit#readme",
   "dependencies": {
     "axios": "^1.6.2"
   },
