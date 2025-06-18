@@ -98,7 +98,7 @@ jobs:
           
           # Display what will be published
           echo "Files to be published:"
-          npm pack --dry-run --json | jq -r '.files[].path'
+          npm pack --dry-run --json | jq -r '.[0].files[].path'
 
       - name: Configure git
         run: |
