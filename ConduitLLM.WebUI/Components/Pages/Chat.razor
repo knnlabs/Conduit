@@ -15,6 +15,7 @@
 @inject IJSRuntime JSRuntime
 @inject IToastService ToastService
 @inject ILogger<Chat> _logger
+@inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @rendermode InteractiveServer
 
 <PageTitle>Chat Playground - ConduitLLM</PageTitle>
@@ -175,15 +176,35 @@
                         </div>
                         
                         <div class="form-group mb-3">
+                            <label for="virtualKeySelect" class="form-label fw-semibold">
+                                <i class="fa fa-key me-2"></i>Virtual Key
+                            </label>
+                            <select id="virtualKeySelect" 
+                                    class="form-select" 
+                                    @bind="selectedVirtualKeyId"
+                                    @bind:after="OnVirtualKeyChanged">
+                                <option value="">-- Select a Virtual Key --</option>
+                                @if (virtualKeys != null)
+                                {
+                                    @foreach (var key in virtualKeys.Where(k => k.IsEnabled))
+                                    {
+                                        <option value="@key.Id">@key.KeyName</option>
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">Select the virtual key to use for API authentication</div>
+                        </div>
+                        
+                        <div class="form-group mb-3">
                             <label for="apiKey" class="form-label fw-semibold">
-                                <i class="fa fa-key me-2"></i>API Key (Optional)
+                                <i class="fa fa-key me-2"></i>API Key Override (Optional)
                             </label>
                             <input type="password" 
                                    id="apiKey" 
                                    class="form-control" 
-                                   placeholder="Override default key"
+                                   placeholder="Override virtual key"
                                    @bind="apiKey" />
-                            <div class="form-text">Overrides the configured key for testing</div>
+                            <div class="form-text">Manually override the selected virtual key</div>
                         </div>
                     </div>
                 </div>
@@ -378,7 +399,10 @@
 @code {
     private ConduitSettings settings => ConduitSettingsOptions.Value;
     private List<ModelProviderMappingDto> modelMappings = new();
+    private List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto> virtualKeys = new();
     private string selectedModelAlias = "";
+    private Guid selectedVirtualKeyId = Guid.Empty;
+    private string? selectedVirtualKeyValue = null;
     private string systemPrompt = "";
     private string userMessage = "";
     private string apiKey = "";
@@ -397,6 +421,8 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadModelMappingsAsync();
+        await LoadVirtualKeysAsync();
+        await LoadSavedVirtualKeyAsync();
         // No need to call StateHasChanged here, Blazor handles it after OnInitializedAsync
     }
 
@@ -422,6 +448,75 @@
             Console.Error.WriteLine($"Error loading model mappings: {ex.Message}");
             ToastService.ShowError($"Error loading model mappings: {ex.Message}");
             modelMappings = new List<ModelProviderMappingDto>();
+        }
+    }
+    
+    private async Task LoadVirtualKeysAsync()
+    {
+        try
+        {
+            var keys = await AdminApiClient.GetAllVirtualKeysAsync();
+            virtualKeys = keys.ToList();
+            _logger.LogInformation("Loaded {Count} virtual keys", virtualKeys.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading virtual keys");
+            ToastService.ShowError($"Error loading virtual keys: {ex.Message}");
+            virtualKeys = new List<ConduitLLM.Configuration.DTOs.VirtualKey.VirtualKeyDto>();
+        }
+    }
+    
+    private async Task LoadSavedVirtualKeyAsync()
+    {
+        try
+        {
+            // Load the saved virtual key ID from global settings
+            var savedKeyId = await GlobalSettingService.GetSettingAsync("Chat_SelectedVirtualKeyId");
+            if (!string.IsNullOrEmpty(savedKeyId) && Guid.TryParse(savedKeyId, out var keyId))
+            {
+                selectedVirtualKeyId = keyId;
+                // Find the key value
+                var key = virtualKeys.FirstOrDefault(k => k.Id == keyId);
+                if (key != null)
+                {
+                    selectedVirtualKeyValue = key.KeyValue;
+                    _logger.LogInformation("Loaded saved virtual key: {KeyName}", key.KeyName);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading saved virtual key");
+        }
+    }
+    
+    private async Task OnVirtualKeyChanged()
+    {
+        try
+        {
+            if (selectedVirtualKeyId != Guid.Empty)
+            {
+                // Find the selected key
+                var key = virtualKeys.FirstOrDefault(k => k.Id == selectedVirtualKeyId);
+                if (key != null)
+                {
+                    selectedVirtualKeyValue = key.KeyValue;
+                    // Save the selection
+                    await GlobalSettingService.SetSettingAsync("Chat_SelectedVirtualKeyId", selectedVirtualKeyId.ToString());
+                    _logger.LogInformation("Selected virtual key: {KeyName}", key.KeyName);
+                }
+            }
+            else
+            {
+                selectedVirtualKeyValue = null;
+                await GlobalSettingService.SetSettingAsync("Chat_SelectedVirtualKeyId", "");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving virtual key selection");
+            ToastService.ShowError($"Error saving selection: {ex.Message}");
         }
     }
 
@@ -468,6 +563,15 @@
                 Stream = _streamResponse
             };
 
+            // Get the virtual key to use
+            string? virtualKeyToUse = !string.IsNullOrEmpty(apiKey) ? apiKey : selectedVirtualKeyValue;
+            
+            if (string.IsNullOrEmpty(virtualKeyToUse))
+            {
+                ToastService.ShowError("Please select a virtual key or provide an API key override.");
+                return;
+            }
+            
             if (_streamResponse)
             {
                 // Handle streaming response using server-side service
@@ -479,7 +583,7 @@
                 
                 PerformanceMetrics? finalMetrics = null;
                 
-                await foreach (var response in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
+                await foreach (var response in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest, virtualKeyToUse))
                 {
                     switch (response.EventType)
                     {
@@ -522,7 +626,7 @@
             else
             {
                 // Handle non-streaming response using server-side service
-                var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest);
+                var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest, virtualKeyToUse);
                 
                 if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
                 {
