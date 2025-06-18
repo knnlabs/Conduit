@@ -33,47 +33,47 @@ export class ConduitError extends Error {
 }
 
 export class AuthenticationError extends ConduitError {
-  constructor(message = 'Authentication failed', details?: any) {
-    super(message, 401, details);
+  constructor(message = 'Authentication failed', details?: any, endpoint?: string, method?: string) {
+    super(message, 401, details, endpoint, method);
   }
 }
 
 export class AuthorizationError extends ConduitError {
-  constructor(message = 'Access forbidden', details?: any) {
-    super(message, 403, details);
+  constructor(message = 'Access forbidden', details?: any, endpoint?: string, method?: string) {
+    super(message, 403, details, endpoint, method);
   }
 }
 
 export class ValidationError extends ConduitError {
-  constructor(message = 'Validation failed', details?: any) {
-    super(message, 400, details);
+  constructor(message = 'Validation failed', details?: any, endpoint?: string, method?: string) {
+    super(message, 400, details, endpoint, method);
   }
 }
 
 export class NotFoundError extends ConduitError {
-  constructor(message = 'Resource not found', details?: any) {
-    super(message, 404, details);
+  constructor(message = 'Resource not found', details?: any, endpoint?: string, method?: string) {
+    super(message, 404, details, endpoint, method);
   }
 }
 
 export class ConflictError extends ConduitError {
-  constructor(message = 'Resource conflict', details?: any) {
-    super(message, 409, details);
+  constructor(message = 'Resource conflict', details?: any, endpoint?: string, method?: string) {
+    super(message, 409, details, endpoint, method);
   }
 }
 
 export class RateLimitError extends ConduitError {
   public retryAfter?: number;
 
-  constructor(message = 'Rate limit exceeded', retryAfter?: number, details?: any) {
-    super(message, 429, details);
+  constructor(message = 'Rate limit exceeded', retryAfter?: number, details?: any, endpoint?: string, method?: string) {
+    super(message, 429, details, endpoint, method);
     this.retryAfter = retryAfter;
   }
 }
 
 export class ServerError extends ConduitError {
-  constructor(message = 'Internal server error', details?: any) {
-    super(message, 500, details);
+  constructor(message = 'Internal server error', details?: any, endpoint?: string, method?: string) {
+    super(message, 500, details, endpoint, method);
   }
 }
 
@@ -102,36 +102,41 @@ export function isConduitError(error: any): error is ConduitError {
 export function handleApiError(error: any, endpoint?: string, method?: string): never {
   if (error.response) {
     const { status, data } = error.response;
-    const message = data?.error || data?.message || error.message;
+    const baseMessage = data?.error || data?.message || error.message;
     const details = data?.details || data;
+    
+    // Enhanced error messages with endpoint information
+    const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
+    const enhancedMessage = `${baseMessage}${endpointInfo}`;
 
     switch (status) {
       case 400:
-        throw new ValidationError(message, details);
+        throw new ValidationError(enhancedMessage, details, endpoint, method);
       case 401:
-        throw new AuthenticationError(message, details);
+        throw new AuthenticationError(enhancedMessage, details, endpoint, method);
       case 403:
-        throw new AuthorizationError(message, details);
+        throw new AuthorizationError(enhancedMessage, details, endpoint, method);
       case 404:
-        throw new NotFoundError(message, details);
+        throw new NotFoundError(enhancedMessage, details, endpoint, method);
       case 409:
-        throw new ConflictError(message, details);
+        throw new ConflictError(enhancedMessage, details, endpoint, method);
       case 429:
         const retryAfter = error.response.headers['retry-after'];
-        throw new RateLimitError(message, retryAfter, details);
+        throw new RateLimitError(enhancedMessage, retryAfter, details, endpoint, method);
       case 500:
       case 502:
       case 503:
       case 504:
-        throw new ServerError(message, details);
+        throw new ServerError(enhancedMessage, details, endpoint, method);
       default:
-        throw new ConduitError(message, status, details, endpoint, method);
+        throw new ConduitError(enhancedMessage, status, details, endpoint, method);
     }
   } else if (error.request) {
+    const endpointInfo = endpoint && method ? ` (${method.toUpperCase()} ${endpoint})` : '';
     if (error.code === 'ECONNABORTED') {
-      throw new TimeoutError('Request timeout', { endpoint, method });
+      throw new TimeoutError(`Request timeout${endpointInfo}`, { endpoint, method });
     }
-    throw new NetworkError('Network error: No response received', {
+    throw new NetworkError(`Network error: No response received${endpointInfo}`, {
       code: error.code,
       endpoint,
       method,

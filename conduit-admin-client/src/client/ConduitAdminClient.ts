@@ -75,12 +75,14 @@ export class ConduitAdminClient {
   static fromEnvironment(env?: {
     CONDUIT_MASTER_KEY?: string;
     CONDUIT_ADMIN_API_URL?: string;
+    CONDUIT_ADMIN_API_BASE_URL?: string;
     CONDUIT_API_URL?: string;
   }): ConduitAdminClient {
     const environment = env || process.env;
     
     const masterKey = environment.CONDUIT_MASTER_KEY;
-    const adminApiUrl = environment.CONDUIT_ADMIN_API_URL;
+    // Support both environment variable names for backward compatibility
+    const adminApiUrl = environment.CONDUIT_ADMIN_API_URL || environment.CONDUIT_ADMIN_API_BASE_URL;
     const conduitApiUrl = environment.CONDUIT_API_URL;
 
     if (!masterKey) {
@@ -88,7 +90,7 @@ export class ConduitAdminClient {
     }
 
     if (!adminApiUrl) {
-      throw new ValidationError('CONDUIT_ADMIN_API_URL environment variable is required');
+      throw new ValidationError('Either CONDUIT_ADMIN_API_URL or CONDUIT_ADMIN_API_BASE_URL environment variable is required');
     }
 
     return new ConduitAdminClient({
@@ -103,6 +105,14 @@ export class ConduitAdminClient {
   }
 
   private normalizeUrl(url: string): string {
-    return url.endsWith('/') ? url.slice(0, -1) : url;
+    // Remove trailing slash
+    const normalized = url.endsWith('/') ? url.slice(0, -1) : url;
+    
+    // Auto-append /api if not already present
+    if (!normalized.endsWith('/api')) {
+      return `${normalized}/api`;
+    }
+    
+    return normalized;
   }
 }

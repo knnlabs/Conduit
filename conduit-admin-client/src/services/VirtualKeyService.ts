@@ -16,7 +16,6 @@ import {
   VirtualKeyFilters,
   VirtualKeyStatistics,
 } from '../models/virtualKey';
-import { PaginatedResponse } from '../models/common';
 import { ValidationError, NotImplementedError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -48,7 +47,7 @@ export class VirtualKeyService extends BaseApiClient {
     return response;
   }
 
-  async list(filters?: VirtualKeyFilters): Promise<PaginatedResponse<VirtualKeyDto>> {
+  async list(filters?: VirtualKeyFilters): Promise<VirtualKeyDto[]> {
     const params = {
       pageNumber: filters?.pageNumber || 1,
       pageSize: filters?.pageSize || DEFAULT_PAGE_SIZE,
@@ -68,9 +67,9 @@ export class VirtualKeyService extends BaseApiClient {
     };
 
     const cacheKey = this.getCacheKey('virtual-keys', params);
-    return this.withCache<PaginatedResponse<VirtualKeyDto>>(
+    return this.withCache<VirtualKeyDto[]>(
       cacheKey,
-      () => super.get<PaginatedResponse<VirtualKeyDto>>(ENDPOINTS.VIRTUAL_KEYS.BASE, params),
+      () => super.get<VirtualKeyDto[]>(ENDPOINTS.VIRTUAL_KEYS.BASE, params),
       CACHE_TTL.SHORT
     );
   }
@@ -99,8 +98,7 @@ export class VirtualKeyService extends BaseApiClient {
       search: query,
       pageSize: 100,
     };
-    const response = await this.list(filters);
-    return response.items;
+    return this.list(filters);
   }
 
   async resetSpend(id: number): Promise<void> {

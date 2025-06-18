@@ -6,6 +6,7 @@ export interface VirtualKeyDto {
   id: number;
   keyName: string;
   apiKey?: string;
+  keyPrefix?: string;
   allowedModels: string;
   maxBudget: number;
   currentSpend: number;

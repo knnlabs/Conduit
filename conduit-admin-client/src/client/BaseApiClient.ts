@@ -1,11 +1,11 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiClientConfig, RequestConfig, RetryConfig, Logger } from './types';
+import { ApiClientConfig, RequestConfig, RetryConfig, Logger, CacheProvider } from './types';
 import { handleApiError } from '../utils/errors';
 
 export abstract class BaseApiClient {
   protected readonly axios: AxiosInstance;
   protected readonly logger?: Logger;
-  protected readonly cache?: any;
+  protected readonly cache?: CacheProvider;
   protected readonly retryConfig: RetryConfig;
 
   constructor(config: ApiClientConfig) {
