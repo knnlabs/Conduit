@@ -1,0 +1,972 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Conduit Core API",
+    "description": "OpenAI-compatible API gateway for multiple LLM providers.\n\nThis API provides a unified interface to interact with various Large Language Model providers including OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others.\n\n## Authentication\nAll endpoints require authentication using Virtual Keys. Include your key in the Authorization header:\n```\nAuthorization: Bearer condt_yourvirtualkey\n```\n\n## Base URL\n- Development: `http://localhost:5002/v1`\n- Production: Configure based on your deployment\n\n## Features\n- Full OpenAI client compatibility\n- Streaming responses via Server-Sent Events\n- Multimodal support (text + images)\n- Function calling\n- JSON response format\n- Multiple provider routing\n- Usage tracking and cost management",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Conduit Support",
+      "url": "https://github.com/yourusername/conduit"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5002/v1",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://api.conduit.example.com/v1",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "summary": "Create chat completion",
+        "description": "Creates a model response for the given chat conversation. Compatible with OpenAI's chat completions API.",
+        "operationId": "createChatCompletion",
+        "tags": ["Chat"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionChunk"
+                },
+                "description": "Server-sent events stream when stream=true"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "List available models",
+        "description": "Lists the currently available models, and provides basic information about each one.",
+        "operationId": "listModels",
+        "tags": ["Models"],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["object", "data"],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": ["list"]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/embeddings": {
+      "post": {
+        "summary": "Create embeddings",
+        "description": "Creates an embedding vector representing the input text. Note: This endpoint is not fully implemented yet.",
+        "operationId": "createEmbedding",
+        "tags": ["Embeddings"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/images/generations": {
+      "post": {
+        "summary": "Create image",
+        "description": "Creates an image given a prompt.",
+        "operationId": "createImage",
+        "tags": ["Images"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageGenerationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/completions": {
+      "post": {
+        "summary": "Create completion (Legacy)",
+        "description": "Legacy completions endpoint. Use /chat/completions instead.",
+        "operationId": "createCompletion",
+        "deprecated": true,
+        "tags": ["Legacy"],
+        "responses": {
+          "501": {
+            "description": "Not implemented",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Virtual Key authentication (condt_*)"
+      }
+    },
+    "schemas": {
+      "ChatCompletionRequest": {
+        "type": "object",
+        "required": ["model", "messages"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "ID of the model to use",
+            "example": "gpt-4"
+          },
+          "messages": {
+            "type": "array",
+            "description": "List of messages comprising the conversation so far",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "minItems": 1
+          },
+          "temperature": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 1,
+            "description": "Sampling temperature between 0 and 2"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "description": "Maximum number of tokens to generate",
+            "example": 1024
+          },
+          "top_p": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 1,
+            "description": "Nucleus sampling parameter"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Number of chat completion choices to generate"
+          },
+          "stream": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to stream back partial progress"
+          },
+          "stop": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 4
+              }
+            ],
+            "description": "Sequences where the API will stop generating further tokens"
+          },
+          "presence_penalty": {
+            "type": "number",
+            "format": "double",
+            "minimum": -2,
+            "maximum": 2,
+            "default": 0,
+            "description": "Penalize new tokens based on whether they appear in the text so far"
+          },
+          "frequency_penalty": {
+            "type": "number",
+            "format": "double",
+            "minimum": -2,
+            "maximum": 2,
+            "default": 0,
+            "description": "Penalize new tokens based on their existing frequency in the text"
+          },
+          "logit_bias": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -100,
+              "maximum": 100
+            },
+            "description": "Modify the likelihood of specified tokens appearing in the completion"
+          },
+          "user": {
+            "type": "string",
+            "description": "Unique identifier representing your end-user"
+          },
+          "tools": {
+            "type": "array",
+            "description": "List of tools the model may call",
+            "items": {
+              "$ref": "#/components/schemas/Tool"
+            }
+          },
+          "tool_choice": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["none", "auto"]
+              },
+              {
+                "$ref": "#/components/schemas/ToolChoice"
+              }
+            ],
+            "description": "Controls which tool is called by the model"
+          },
+          "response_format": {
+            "$ref": "#/components/schemas/ResponseFormat"
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Random seed for deterministic outputs"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant", "function", "tool"],
+            "description": "Role of the message author"
+          },
+          "content": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ContentPart"
+                }
+              }
+            ],
+            "description": "Content of the message"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the function (when role is function)"
+          },
+          "function_call": {
+            "$ref": "#/components/schemas/FunctionCall",
+            "description": "Function call made by the assistant"
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            },
+            "description": "Tool calls made by the assistant"
+          }
+        }
+      },
+      "ContentPart": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["type", "text"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["text"]
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["type", "image_url"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["image_url"]
+              },
+              "image_url": {
+                "type": "object",
+                "required": ["url"],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "detail": {
+                    "type": "string",
+                    "enum": ["auto", "low", "high"],
+                    "default": "auto"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Tool": {
+        "type": "object",
+        "required": ["type", "function"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["function"]
+          },
+          "function": {
+            "$ref": "#/components/schemas/FunctionDefinition"
+          }
+        }
+      },
+      "FunctionDefinition": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the function"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the function does"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Parameters the function accepts (JSON Schema)"
+          }
+        }
+      },
+      "ToolChoice": {
+        "type": "object",
+        "required": ["type", "function"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["function"]
+          },
+          "function": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ResponseFormat": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["text", "json_object"]
+          },
+          "schema": {
+            "type": "object",
+            "description": "JSON Schema for structured outputs"
+          }
+        }
+      },
+      "ChatCompletionResponse": {
+        "type": "object",
+        "required": ["id", "object", "created", "model", "choices"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the chat completion"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["chat.completion"]
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix timestamp of when the completion was created"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model used for the completion"
+          },
+          "system_fingerprint": {
+            "type": "string",
+            "description": "System fingerprint for the model configuration"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            }
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        }
+      },
+      "Choice": {
+        "type": "object",
+        "required": ["index", "message", "finish_reason"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Index of the choice in the list"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "finish_reason": {
+            "type": "string",
+            "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"],
+            "description": "Reason the model stopped generating tokens"
+          },
+          "logprobs": {
+            "type": "object",
+            "nullable": true,
+            "description": "Log probabilities for the output tokens"
+          }
+        }
+      },
+      "ChatCompletionChunk": {
+        "type": "object",
+        "required": ["id", "object", "created", "model", "choices"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["chat.completion.chunk"]
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "model": {
+            "type": "string"
+          },
+          "system_fingerprint": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StreamingChoice"
+            }
+          }
+        }
+      },
+      "StreamingChoice": {
+        "type": "object",
+        "required": ["index", "delta"],
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "delta": {
+            "$ref": "#/components/schemas/DeltaContent"
+          },
+          "finish_reason": {
+            "type": "string",
+            "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"],
+            "nullable": true
+          }
+        }
+      },
+      "DeltaContent": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant", "function", "tool"]
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "function_call": {
+            "$ref": "#/components/schemas/FunctionCall"
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            }
+          }
+        }
+      },
+      "FunctionCall": {
+        "type": "object",
+        "required": ["name", "arguments"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "string",
+            "description": "JSON-encoded arguments"
+          }
+        }
+      },
+      "ToolCall": {
+        "type": "object",
+        "required": ["id", "type", "function"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["function"]
+          },
+          "function": {
+            "$ref": "#/components/schemas/FunctionCall"
+          }
+        }
+      },
+      "Usage": {
+        "type": "object",
+        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "description": "Number of tokens in the prompt"
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "description": "Number of tokens in the generated completion"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "description": "Total number of tokens used"
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "required": ["id", "object"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Model identifier"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["model"]
+          },
+          "created": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix timestamp of model creation"
+          },
+          "owned_by": {
+            "type": "string",
+            "description": "Organization that owns the model"
+          }
+        }
+      },
+      "EmbeddingRequest": {
+        "type": "object",
+        "required": ["model", "input"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "ID of the model to use"
+          },
+          "input": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "Input text to embed"
+          },
+          "encoding_format": {
+            "type": "string",
+            "enum": ["float", "base64"],
+            "default": "float",
+            "description": "Format to return embeddings in"
+          },
+          "dimensions": {
+            "type": "integer",
+            "description": "Number of dimensions for the output embeddings"
+          },
+          "user": {
+            "type": "string",
+            "description": "Unique identifier representing your end-user"
+          }
+        }
+      },
+      "EmbeddingResponse": {
+        "type": "object",
+        "required": ["object", "data", "model", "usage"],
+        "properties": {
+          "object": {
+            "type": "string",
+            "enum": ["list"]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["object", "embedding", "index"],
+              "properties": {
+                "object": {
+                  "type": "string",
+                  "enum": ["embedding"]
+                },
+                "embedding": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "format": "float"
+                  }
+                },
+                "index": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "model": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "required": ["prompt_tokens", "total_tokens"],
+            "properties": {
+              "prompt_tokens": {
+                "type": "integer"
+              },
+              "total_tokens": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "ImageGenerationRequest": {
+        "type": "object",
+        "required": ["model", "prompt"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "ID of the model to use"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Text description of the desired image(s)"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1,
+            "description": "Number of images to generate"
+          },
+          "quality": {
+            "type": "string",
+            "enum": ["standard", "hd"],
+            "default": "standard",
+            "description": "Quality of the image"
+          },
+          "response_format": {
+            "type": "string",
+            "enum": ["url", "b64_json"],
+            "default": "url",
+            "description": "Format in which generated images are returned"
+          },
+          "size": {
+            "type": "string",
+            "enum": ["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"],
+            "default": "1024x1024",
+            "description": "Size of the generated images"
+          },
+          "style": {
+            "type": "string",
+            "enum": ["vivid", "natural"],
+            "default": "vivid",
+            "description": "Style of the generated images"
+          },
+          "user": {
+            "type": "string",
+            "description": "Unique identifier representing your end-user"
+          }
+        }
+      },
+      "ImageGenerationResponse": {
+        "type": "object",
+        "required": ["created", "data"],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix timestamp of when the images were created"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URL of the generated image"
+                },
+                "b64_json": {
+                  "type": "string",
+                  "description": "Base64-encoded JSON of the generated image"
+                },
+                "revised_prompt": {
+                  "type": "string",
+                  "description": "The prompt that was used to generate the image"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": ["message", "type"],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Human-readable error message"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Error type"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "Error code"
+                  },
+                  "param": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Parameter related to the error"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "RateLimitExceeded": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Chat",
+      "description": "Chat completion endpoints"
+    },
+    {
+      "name": "Models",
+      "description": "Model management endpoints"
+    },
+    {
+      "name": "Embeddings",
+      "description": "Text embedding endpoints"
+    },
+    {
+      "name": "Images",
+      "description": "Image generation endpoints"
+    },
+    {
+      "name": "Legacy",
+      "description": "Deprecated endpoints"
+    }
+  ]
+}

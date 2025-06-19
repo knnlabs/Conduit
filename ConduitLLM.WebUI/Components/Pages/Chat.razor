@@ -9,6 +9,7 @@
 @using ConduitLLM.WebUI.Models
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using System.Text.Json.Nodes
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
 @inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
 @inject IOptions<ConduitSettings> ConduitSettingsOptions
@@ -145,7 +146,9 @@
                                          ShowRawMessage="_showRawMessage"
                                          AutoScroll="_autoScroll"
                                          OnDeleteMessage="DeleteMessage"
-                                         OnRegenerateMessage="RegenerateMessage" />
+                                         OnRegenerateMessage="RegenerateMessage"
+                                         ProvidedFunctionResults="functionResults"
+                                         OnFunctionResultSubmitted="HandleFunctionResult" />
                         </div>
                     </div>
                 </div>
@@ -183,7 +186,7 @@
                                    class="form-control" 
                                    placeholder="Override default key"
                                    @bind="apiKey" />
-                            <div class="form-text">Overrides the configured key for testing</div>
+                            <div class="form-text">Override the default API key for testing</div>
                         </div>
                     </div>
                 </div>
@@ -285,7 +288,7 @@
                 </div>
 
                 <!-- Function Options Card -->
-                <div class="card modern-card">
+                <div class="card modern-card mb-4">
                     <div class="card-header modern-card-header">
                         <h6 class="mb-0">
                             <i class="fa fa-function me-2"></i>Function Calling
@@ -295,26 +298,32 @@
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" 
                                    type="checkbox" 
-                                   id="executeFunctions" 
-                                   @bind="_executeFunctions" />
-                            <label class="form-check-label fw-semibold" for="executeFunctions">
-                                <i class="fa fa-play me-2"></i>Execute Functions
+                                   id="useFunctions" 
+                                   @bind="_useFunctions" />
+                            <label class="form-check-label fw-semibold" for="useFunctions">
+                                <i class="fa fa-toggle-on me-2"></i>Enable Functions
                             </label>
-                            <div class="form-text">Allow function/tool execution</div>
-                        </div>
-                        
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" 
-                                   type="checkbox" 
-                                   id="appendFunctionResult" 
-                                   @bind="_appendFunctionResult" />
-                            <label class="form-check-label fw-semibold" for="appendFunctionResult">
-                                <i class="fa fa-plus me-2"></i>Append Results
-                            </label>
-                            <div class="form-text">Add function results to chat history</div>
+                            <div class="form-text">Include function definitions in requests</div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Function Registry Card -->
+                @if (_useFunctions)
+                {
+                    <div class="card modern-card">
+                        <div class="card-header modern-card-header">
+                            <h6 class="mb-0">
+                                <i class="fa fa-list me-2"></i>Function Registry
+                            </h6>
+                        </div>
+                        <div class="card-body modern-card-body p-2">
+                            <FunctionRegistry Functions="functionDefinitions"
+                                            FunctionsChanged="OnFunctionsChanged"
+                                            ShowHeader="false" />
+                        </div>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -391,8 +400,10 @@
     private string? streamedResponse = null;
     private bool _autoScroll = true;
     private bool _showRawMessage = false;
-    private bool _appendFunctionResult = false;
-    private bool _executeFunctions = false;
+    private bool _useFunctions = false;
+    private List<FunctionDefinitionViewModel> functionDefinitions = new();
+    private Dictionary<string, string> functionResults = new();
+    private FunctionCallState functionCallState = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -445,13 +456,8 @@
             var userChatMessage = new ChatMessage { Role = "user", Content = userMessage, Timestamp = DateTime.Now };
             chatHistory.Add(userChatMessage);
             
-            // Add system message if provided
-            var messages = new List<Message>();
-            if (!string.IsNullOrWhiteSpace(systemPrompt))
-            {
-                messages.Add(new Message { Role = "system", Content = systemPrompt });
-            }
-            messages.Add(userChatMessage);
+            // Build messages list including system prompt and any function results
+            var messages = BuildMessageList();
             
             // Reset user message input
             userMessage = "";
@@ -465,7 +471,9 @@
                 TopP = topP, 
                 Stop = !string.IsNullOrEmpty(stopSequences) ? 
                     stopSequences.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() : null,
-                Stream = _streamResponse
+                Stream = _streamResponse,
+                Tools = _useFunctions ? GetEnabledTools() : null,
+                ToolChoice = _useFunctions && GetEnabledTools()?.Any() == true ? ToolChoice.Auto : null
             };
 
             if (_streamResponse)
@@ -479,8 +487,11 @@
                 
                 PerformanceMetrics? finalMetrics = null;
                 
-                await foreach (var response in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest))
+                try
                 {
+                    // Pass optional API key override if provided, otherwise let it use the default WebUI key
+                    await foreach (var response in ConduitApiClient.CreateStreamingChatCompletionAsync(chatRequest, string.IsNullOrEmpty(apiKey) ? null : apiKey))
+                    {
                     switch (response.EventType)
                     {
                         case "content":
@@ -506,23 +517,36 @@
                             
                         case "error":
                             _logger.LogError("Stream error: {Error}", response.Error);
+                            // Update the assistant message to show error
+                            assistantMessage.ErrorMessage = response.Error?.ToString();
+                            assistantMessage.Content = "I encountered an error while processing your request.";
+                            streamedResponse = "I encountered an error while processing your request.";
                             ToastService.ShowError($"Stream error: {response.Error}");
                             break;
                     }
+                    }
+                    
+                    // Final message is complete
+                    if (!string.IsNullOrEmpty(streamedResponse))
+                    {
+                        // Update the last message (assistant) with complete content and metrics
+                        assistantMessage.Content = streamedResponse;
+                        assistantMessage.PerformanceMetrics = finalMetrics;
+                    }
                 }
-                
-                // Final message is complete
-                if (!string.IsNullOrEmpty(streamedResponse))
+                catch (Exception streamEx)
                 {
-                    // Update the last message (assistant) with complete content and metrics
-                    assistantMessage.Content = streamedResponse;
-                    assistantMessage.PerformanceMetrics = finalMetrics;
+                    // Handle streaming-specific errors
+                    _logger.LogError(streamEx, "Error during streaming");
+                    assistantMessage.ErrorMessage = streamEx.Message;
+                    assistantMessage.Content = "I encountered an error while processing your request.";
+                    throw; // Re-throw to be caught by outer catch
                 }
             }
             else
             {
                 // Handle non-streaming response using server-side service
-                var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest);
+                var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest, string.IsNullOrEmpty(apiKey) ? null : apiKey);
                 
                 if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
                 {
@@ -531,9 +555,16 @@
                     {
                         Role = assistantMessage.Role,
                         Content = assistantMessage.Content,
+                        ToolCalls = assistantMessage.ToolCalls,
                         Timestamp = DateTime.Now,
                         PerformanceMetrics = chatResponse.PerformanceMetrics
                     });
+                    
+                    // Check if the response contains function calls
+                    if (assistantMessage.ToolCalls?.Any() == true)
+                    {
+                        ToastService.ShowInfo($"Function calls requested: {assistantMessage.ToolCalls.Count} function(s) to execute.");
+                    }
                 }
                 else
                 {
@@ -544,6 +575,17 @@
         }
         catch (Exception ex)
         {
+            // Add error message to chat history
+            var errorMessage = new ChatMessage
+            {
+                Role = "assistant",
+                Content = "I encountered an error while processing your request.",
+                ErrorMessage = ex.Message,
+                Timestamp = DateTime.Now
+            };
+            chatHistory.Add(errorMessage);
+            
+            // Also show toast for visibility
             ToastService.ShowError($"Request failed: {ex.Message}");
             Console.Error.WriteLine(ex.ToString());
         }
@@ -632,6 +674,128 @@
                 // Trigger a new request
                 await SendRequest();
             }
+        }
+    }
+    
+    private List<Message> BuildMessageList()
+    {
+        var messages = new List<Message>();
+        
+        // Add system message if provided
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            messages.Add(new Message { Role = "system", Content = systemPrompt });
+        }
+        
+        // Add all chat history messages
+        foreach (var msg in chatHistory)
+        {
+            messages.Add(msg);
+        }
+        
+        return messages;
+    }
+    
+    private List<Tool>? GetEnabledTools()
+    {
+        var enabledFunctions = functionDefinitions.Where(f => f.IsEnabled).ToList();
+        if (!enabledFunctions.Any()) return null;
+        
+        return enabledFunctions.Select(f => new Tool
+        {
+            Type = "function",
+            Function = new FunctionDefinition
+            {
+                Name = f.Name,
+                Description = f.Description,
+                Parameters = f.GetParametersAsJson()
+            }
+        }).ToList();
+    }
+    
+    private Task OnFunctionsChanged(List<FunctionDefinitionViewModel> functions)
+    {
+        functionDefinitions = functions;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+    
+    private async Task HandleFunctionResult((string toolCallId, string result) data)
+    {
+        functionResults[data.toolCallId] = data.result;
+        
+        // Find the assistant message with this tool call
+        var assistantMessage = chatHistory.LastOrDefault(m => 
+            m.Role == "assistant" && 
+            m.ToolCalls?.Any(tc => tc.Id == data.toolCallId) == true);
+            
+        if (assistantMessage != null)
+        {
+            // Add the tool response message
+            var toolResponse = new ChatMessage
+            {
+                Role = "tool",
+                Content = data.result,
+                ToolCallId = data.toolCallId,
+                Timestamp = DateTime.Now
+            };
+            chatHistory.Add(toolResponse);
+            
+            // Continue the conversation to get the final response
+            await ContinueAfterFunctionCall();
+        }
+    }
+    
+    private async Task ContinueAfterFunctionCall()
+    {
+        isLoading = true;
+        
+        try
+        {
+            // Build the complete message history including tool responses
+            var messages = BuildMessageList();
+            
+            // Create request payload without streaming for simplicity
+            var chatRequest = new ChatCompletionRequest
+            {
+                Model = selectedModelAlias,
+                Messages = messages,
+                Temperature = temperature,
+                TopP = topP,
+                Stream = false // Don't stream the follow-up response for simplicity
+            };
+            
+            // Get the response
+            var chatResponse = await ConduitApiClient.CreateChatCompletionAsync(chatRequest, 
+                string.IsNullOrEmpty(apiKey) ? null : apiKey);
+                
+            if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
+            {
+                var assistantMessage = chatResponse.Choices[0].Message;
+                chatHistory.Add(new ChatMessage
+                {
+                    Role = assistantMessage.Role,
+                    Content = assistantMessage.Content,
+                    ToolCalls = assistantMessage.ToolCalls,
+                    Timestamp = DateTime.Now,
+                    PerformanceMetrics = chatResponse.PerformanceMetrics
+                });
+                
+                // Check if there are more function calls
+                if (assistantMessage.ToolCalls?.Any() == true)
+                {
+                    ToastService.ShowInfo("Additional function calls requested. Please provide the results.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error continuing after function call: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
         }
     }
 }

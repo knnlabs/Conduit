@@ -14,44 +14,176 @@ on:
 
 # Set permissions required for GitHub Pages deployment
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20
 
 jobs:
   build:
+    name: Build Documentation
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: website/package-lock.json
+          
       - name: Install dependencies
         run: npm ci
         working-directory: website
+        
       - name: Build website
         run: npm run build
         working-directory: website
+        env:
+          NODE_ENV: production
+          
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docusaurus-build
+          path: website/build
+          retention-days: 1
+          
+      - name: Generate Build Summary
+        run: |
+          echo "## 📚 Documentation Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Node Version**: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Time**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          
+          # Check build size
+          if [ -d website/build ]; then
+            BUILD_SIZE=$(du -sh website/build | cut -f1)
+            echo "**Build Size**: $BUILD_SIZE" >> $GITHUB_STEP_SUMMARY
+            
+            # Count files
+            HTML_COUNT=$(find website/build -name "*.html" | wc -l)
+            JS_COUNT=$(find website/build -name "*.js" | wc -l)
+            CSS_COUNT=$(find website/build -name "*.css" | wc -l)
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Build Statistics:" >> $GITHUB_STEP_SUMMARY
+            echo "- HTML files: $HTML_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "- JavaScript files: $JS_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "- CSS files: $CSS_COUNT" >> $GITHUB_STEP_SUMMARY
+          fi
 
-  deploy:
-    if: github.event_name != 'pull_request'
+  preview:
+    name: Deploy Preview
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name == 'pull_request'
+    
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          node-version: 18
-          cache: npm
-          cache-dependency-path: website/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-        working-directory: website
-      - name: Build website
-        run: npm run build
-        working-directory: website
+          name: docusaurus-build
+          path: website/build
+          
+      - name: Deploy to Netlify Preview
+        id: netlify
+        uses: nwtgck/actions-netlify@v2
+        with:
+          publish-dir: ./website/build
+          production-deploy: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "PR Preview from GitHub Actions"
+          enable-commit-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        continue-on-error: true
+        
+      - name: Comment PR with preview URL
+        if: steps.netlify.outputs.deploy-url
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.netlify.outputs.deploy-url }}';
+            const body = `## 📚 Documentation Preview\n\n🔗 **Preview URL**: ${url}\n\nThis preview will be updated automatically as you push new commits.`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Documentation Preview')
+            );
+            
+            // Update or create comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docusaurus-build
+          path: website/build
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/build
+          
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./website/build
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: Generate Deployment Summary
+        run: |
+          echo "## 🚀 Documentation Deployed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL**: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed at**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

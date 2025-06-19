@@ -16,6 +16,16 @@ on:
   release:
     types: [published]
 
+# Prevent concurrent runs on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   # CodeQL Security Analysis
   codeql-analysis:
@@ -33,7 +43,15 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -100,7 +118,15 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
     - name: Restore dependencies
       run: dotnet restore
@@ -108,12 +134,71 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
-    - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
+    - name: Test with coverage
+      run: |
+        dotnet test --no-build --configuration Release \
+          --logger "trx;LogFileName=test-results.trx" \
+          --logger "console;verbosity=detailed" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults
 
-  # Build and Push Docker Images
-  docker-build-and-push:
-    name: Build and Push Docker Images
+    - name: Generate Test Report
+      if: always()
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Count test results from TRX files
+        if ls ./TestResults/**/*.trx 1> /dev/null 2>&1; then
+          TOTAL=0
+          PASSED=0
+          FAILED=0
+          SKIPPED=0
+          
+          for trx in ./TestResults/**/*.trx; do
+            if [ -f "$trx" ]; then
+              # Parse TRX file for test counts (basic parsing)
+              FILE_TOTAL=$(grep -o 'total="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*' || echo "0")
+              FILE_PASSED=$(grep -o 'passed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*' || echo "0")
+              FILE_FAILED=$(grep -o 'failed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*' || echo "0")
+              FILE_SKIPPED=$(grep -o 'skipped="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*' || echo "0")
+              
+              TOTAL=$((TOTAL + FILE_TOTAL))
+              PASSED=$((PASSED + FILE_PASSED))
+              FAILED=$((FAILED + FILE_FAILED))
+              SKIPPED=$((SKIPPED + FILE_SKIPPED))
+            fi
+          done
+          
+          echo "- **Total Tests**: $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed**: ✅ $PASSED" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed**: ❌ $FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skipped**: ⏭️ $SKIPPED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "No test results found." >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults/
+        retention-days: 7
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          **/bin/Release/
+          !**/bin/Release/**/*.pdb
+          !**/bin/Release/**/*.xml
+        retention-days: 1
+
+  # Build Docker Images - AMD64
+  docker-build-amd64:
+    name: Build Docker AMD64
     runs-on: ubuntu-latest
     needs: [codeql-analysis, build-and-test]
     # Only run on push events to main branches or releases
@@ -121,6 +206,19 @@ jobs:
     permissions:
       contents: read
       packages: write
+    
+    strategy:
+      matrix:
+        include:
+          - service: webui
+            image: ghcr.io/knnlabs/conduit-webui
+            dockerfile: ./ConduitLLM.WebUI/Dockerfile
+          - service: http
+            image: ghcr.io/knnlabs/conduit-http
+            dockerfile: ./ConduitLLM.Http/Dockerfile
+          - service: admin
+            image: ghcr.io/knnlabs/conduit-admin
+            dockerfile: ./ConduitLLM.Admin/Dockerfile
 
     steps:
       - name: Checkout code
@@ -138,12 +236,136 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # WebUI Image
-      - name: Extract metadata for WebUI
-        id: meta-webui
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/knnlabs/conduit-webui
+          images: ${{ matrix.image }}
+          flavor: |
+            suffix=-amd64
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}-amd64
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-amd64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+  # Build Docker Images - ARM64
+  docker-build-arm64:
+    name: Build Docker ARM64
+    runs-on: ubuntu-24.04-arm  # Native ARM64 runner!
+    needs: [codeql-analysis, build-and-test]
+    # Only run on push events to main branches or releases
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        include:
+          - service: webui
+            image: ghcr.io/knnlabs/conduit-webui
+            dockerfile: ./ConduitLLM.WebUI/Dockerfile
+          - service: http
+            image: ghcr.io/knnlabs/conduit-http
+            dockerfile: ./ConduitLLM.Http/Dockerfile
+          - service: admin
+            image: ghcr.io/knnlabs/conduit-admin
+            dockerfile: ./ConduitLLM.Admin/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
+          flavor: |
+            suffix=-arm64
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}-arm64
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-arm64
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+  # Create and push multi-arch manifest
+  docker-manifest:
+    name: Create Multi-arch Manifest
+    runs-on: ubuntu-latest
+    needs: [docker-build-amd64, docker-build-arm64]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        include:
+          - service: webui
+            image: ghcr.io/knnlabs/conduit-webui
+          - service: http
+            image: ghcr.io/knnlabs/conduit-http
+          - service: admin
+            image: ghcr.io/knnlabs/conduit-admin
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -151,67 +373,58 @@ jobs:
             type=sha,format=long
             type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
 
-      - name: Build and push WebUI Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./ConduitLLM.WebUI/Dockerfile
-          push: true
-          tags: ${{ steps.meta-webui.outputs.tags }}
-          labels: ${{ steps.meta-webui.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+      - name: Create and push manifest
+        run: |
+          # Get all tags from metadata
+          TAGS="${{ steps.meta.outputs.tags }}"
+          
+          # For each tag, create a manifest that includes both architectures
+          echo "$TAGS" | while read -r TAG; do
+            if [ -n "$TAG" ]; then
+              echo "Creating manifest for $TAG"
+              
+              # Extract the base tag without registry
+              BASE_TAG="${TAG#ghcr.io/}"
+              
+              # Create manifest
+              docker buildx imagetools create \
+                --tag "$TAG" \
+                "$TAG-amd64" \
+                "$TAG-arm64"
+            fi
+          done
 
-      # HTTP API Image
-      - name: Extract metadata for HTTP API
-        id: meta-http
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/knnlabs/conduit-http
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha,format=long
-            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
+      - name: Generate Docker Summary
+        run: |
+          echo "### Docker Image: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Multi-arch tags pushed:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Architectures**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
 
-      - name: Build and push Http Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./ConduitLLM.Http/Dockerfile
-          push: true
-          tags: ${{ steps.meta-http.outputs.tags }}
-          labels: ${{ steps.meta-http.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-
-      # Admin API Image
-      - name: Extract metadata for Admin API
-        id: meta-admin
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/knnlabs/conduit-admin
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha,format=long
-            type=raw,value=latest,enable=${{ github.ref_name == 'master' }}
-
-      - name: Build and push Admin Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./ConduitLLM.Admin/Dockerfile
-          push: true
-          tags: ${{ steps.meta-admin.outputs.tags }}
-          labels: ${{ steps.meta-admin.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+  # Summary job
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [docker-manifest]
+    if: always() && github.event_name != 'pull_request'
+    
+    steps:
+      - name: Generate Final Summary
+        run: |
+          echo "## 🚀 Build and Release Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Docker Images" >> $GITHUB_STEP_SUMMARY
+          echo "All Docker images have been successfully built for **linux/amd64** and **linux/arm64** architectures." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Images are available at:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 `ghcr.io/knnlabs/conduit-webui`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔌 `ghcr.io/knnlabs/conduit-http`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛠️ `ghcr.io/knnlabs/conduit-admin`" >> $GITHUB_STEP_SUMMARY

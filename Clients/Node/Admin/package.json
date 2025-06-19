@@ -1,6 +1,6 @@
 {
-  "name": "conduit-admin-client",
-  "version": "1.0.0",
+  "name": "@knn_labs/conduit-admin-client",
+  "version": "1.0.0-dev.20250618194930",
   "description": "TypeScript client library for Conduit Admin API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -39,7 +39,8 @@
     "api",
     "client",
     "typescript",
-    "admin"
+    "admin",
+    "knn-labs"
   ],
   "author": "Conduit Team",
   "license": "MIT",
@@ -71,7 +72,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/knnlabs/Conduit.git",
+    "url": "https://github.com/knnlabs/Conduit.git",
     "directory": "Clients/Node/Admin"
   },
   "homepage": "https://github.com/knnlabs/Conduit/tree/master/Clients/Node/Admin",

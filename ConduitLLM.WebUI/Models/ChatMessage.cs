@@ -13,6 +13,16 @@ namespace ConduitLLM.WebUI.Models
         public PerformanceMetrics? PerformanceMetrics { get; set; }
 
         /// <summary>
+        /// Error information if the message represents a failed request.
+        /// </summary>
+        public string? ErrorMessage { get; set; }
+
+        /// <summary>
+        /// Indicates if this message represents an error state.
+        /// </summary>
+        public bool IsError => !string.IsNullOrEmpty(ErrorMessage);
+
+        /// <summary>
         /// Creates a ChatMessage from a regular Message.
         /// </summary>
         public static ChatMessage FromMessage(Message message, PerformanceMetrics? performanceMetrics = null)

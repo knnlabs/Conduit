@@ -306,11 +306,23 @@ using (var scope = app.Services.CreateScope())
     logger.LogInformation("==============================");
 }
 
-// Initialize Master Key using InitialSetupService
+// Initialize Master Key and WebUI Virtual Key using InitialSetupService
 using (var scope = app.Services.CreateScope())
 {
     var initialSetupService = scope.ServiceProvider.GetRequiredService<ConduitLLM.WebUI.Services.InitialSetupService>();
     await initialSetupService.EnsureMasterKeyExistsAsync();
+    
+    // Also ensure WebUI virtual key exists for API authentication
+    try
+    {
+        await initialSetupService.EnsureWebUIVirtualKeyExistsAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to ensure WebUI virtual key exists. This may impact API authentication.");
+        // Don't throw - allow the app to start even if virtual key creation fails
+    }
 
     // Verify the authentication keys are set and accessible
     var envWebUIKey = Environment.GetEnvironmentVariable("CONDUIT_WEBUI_AUTH_KEY");

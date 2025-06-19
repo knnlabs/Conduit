@@ -7,17 +7,17 @@ A TypeScript client library for the Conduit Admin API, providing programmatic ac
 ## Installation
 
 ```bash
-npm install conduit-admin-client
+npm install @knn_labs/conduit-admin-client
 # or
-yarn add conduit-admin-client
+yarn add @knn_labs/conduit-admin-client
 # or
-pnpm add conduit-admin-client
+pnpm add @knn_labs/conduit-admin-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { ConduitAdminClient } from 'conduit-admin-client';
+import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
 
 // Initialize the client
 const client = new ConduitAdminClient({
@@ -164,7 +164,7 @@ import {
   NotFoundError,
   RateLimitError,
   NotImplementedError 
-} from 'conduit-admin-client';
+} from '@knn_labs/conduit-admin-client';
 
 try {
   await client.virtualKeys.getById(999);
