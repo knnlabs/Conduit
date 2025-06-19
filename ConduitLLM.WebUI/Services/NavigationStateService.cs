@@ -11,6 +11,7 @@ namespace ConduitLLM.WebUI.Services
     public class NavigationStateService : INavigationStateService, IDisposable
     {
         private readonly IAdminApiClient _adminApiClient;
+        private readonly IConduitApiClient _conduitApiClient;
         private readonly ILogger<NavigationStateService> _logger;
         private readonly ConcurrentDictionary<string, NavigationItemState> _stateCache;
         private readonly SemaphoreSlim _refreshSemaphore;
@@ -27,10 +28,12 @@ namespace ConduitLLM.WebUI.Services
         /// Initializes a new instance of the <see cref="NavigationStateService"/> class.
         /// </summary>
         /// <param name="adminApiClient">The admin API client for checking prerequisites.</param>
+        /// <param name="conduitApiClient">The conduit API client for discovery API access.</param>
         /// <param name="logger">The logger instance.</param>
-        public NavigationStateService(IAdminApiClient adminApiClient, ILogger<NavigationStateService> logger)
+        public NavigationStateService(IAdminApiClient adminApiClient, IConduitApiClient conduitApiClient, ILogger<NavigationStateService> logger)
         {
             _adminApiClient = adminApiClient ?? throw new ArgumentNullException(nameof(adminApiClient));
+            _conduitApiClient = conduitApiClient ?? throw new ArgumentNullException(nameof(conduitApiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _stateCache = new ConcurrentDictionary<string, NavigationItemState>();
             _refreshSemaphore = new SemaphoreSlim(1, 1);
@@ -69,6 +72,50 @@ namespace ConduitLLM.WebUI.Services
             }
 
             return new Dictionary<string, NavigationItemState>(_stateCache);
+        }
+
+        /// <summary>
+        /// Gets detailed capability status information for diagnostics.
+        /// </summary>
+        /// <returns>Detailed capability status information.</returns>
+        public async Task<CapabilityStatusInfo> GetCapabilityStatusAsync()
+        {
+            try
+            {
+                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
+                var status = new CapabilityStatusInfo();
+
+                if (mappings?.Any() == true)
+                {
+                    status.TotalConfiguredModels = mappings.Count(m => m.IsEnabled);
+                    status.ImageGenerationModels = mappings.Count(m => m.IsEnabled && m.SupportsImageGeneration);
+                    status.VisionModels = mappings.Count(m => m.IsEnabled && m.SupportsVision);
+                    status.AudioTranscriptionModels = mappings.Count(m => m.IsEnabled && m.SupportsAudioTranscription);
+                    status.TextToSpeechModels = mappings.Count(m => m.IsEnabled && m.SupportsTextToSpeech);
+                    status.RealtimeAudioModels = mappings.Count(m => m.IsEnabled && m.SupportsRealtimeAudio);
+
+                    status.ConfiguredModels = mappings
+                        .Where(m => m.IsEnabled)
+                        .Select(m => new ModelCapabilityInfo
+                        {
+                            ModelId = m.ModelId,
+                            ProviderId = m.ProviderId,
+                            SupportsImageGeneration = m.SupportsImageGeneration,
+                            SupportsVision = m.SupportsVision,
+                            SupportsAudioTranscription = m.SupportsAudioTranscription,
+                            SupportsTextToSpeech = m.SupportsTextToSpeech,
+                            SupportsRealtimeAudio = m.SupportsRealtimeAudio
+                        })
+                        .ToList();
+                }
+
+                return status;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting capability status");
+                return new CapabilityStatusInfo { HasError = true, ErrorMessage = ex.Message };
+            }
         }
 
         /// <summary>
@@ -252,26 +299,73 @@ namespace ConduitLLM.WebUI.Services
         {
             try
             {
-                // Get all model mappings from Admin API
+                // Primary: Check database-configured models via Admin API
                 var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
-                
-                // NOTE: Temporary solution using known image generation models
-                // This should be replaced with proper capability detection when DTOs expose 
-                // the SupportsImageGeneration field from the ModelProviderMapping entity
-                var knownImageModels = new[] { "dall-e-2", "dall-e-3", "minimax-image", "image-01", "stable-diffusion-xl" };
-                var hasImageModels = mappings?.Any(m => 
+                var hasConfiguredImageModels = mappings?.Any(m => 
                     m.IsEnabled && 
-                    knownImageModels.Contains(m.ModelId, StringComparer.OrdinalIgnoreCase)) ?? false;
+                    m.SupportsImageGeneration) ?? false;
 
-                var newState = new NavigationItemState
+                if (hasConfiguredImageModels)
                 {
-                    IsEnabled = hasImageModels,
-                    TooltipMessage = hasImageModels ? null : "Configure image generation models (DALL-E, MiniMax, or Stable Diffusion) to use image generation",
-                    RequiredConfigurationUrl = hasImageModels ? null : "/model-mappings",
-                    ShowIndicator = !hasImageModels
+                    var newState = new NavigationItemState
+                    {
+                        IsEnabled = true,
+                        TooltipMessage = null,
+                        RequiredConfigurationUrl = null,
+                        ShowIndicator = false
+                    };
+                    UpdateState("/image-generation", newState);
+                    return;
+                }
+
+                // Fallback: Check if any mapped models support image generation via Discovery API
+                var hasDiscoveredImageModels = false;
+                if (mappings?.Any() == true)
+                {
+                    foreach (var mapping in mappings.Where(m => m.IsEnabled))
+                    {
+                        try
+                        {
+                            var supportsImageGen = await _conduitApiClient.TestModelCapabilityAsync(
+                                mapping.ModelId, "ImageGeneration");
+                            if (supportsImageGen)
+                            {
+                                hasDiscoveredImageModels = true;
+                                _logger.LogInformation("Discovered image generation capability for model: {Model}", mapping.ModelId);
+                                break;
+                            }
+                        }
+                        catch (Exception discEx)
+                        {
+                            _logger.LogDebug(discEx, "Could not test image generation capability for model: {Model}", mapping.ModelId);
+                        }
+                    }
+                }
+
+                // Generate detailed feedback based on discovery results
+                string tooltipMessage;
+                if (hasDiscoveredImageModels)
+                {
+                    tooltipMessage = "Image generation available (discovered via capability testing - consider updating model configuration)";
+                }
+                else if (mappings?.Any(m => m.IsEnabled) == true)
+                {
+                    tooltipMessage = $"No image generation models found among {mappings.Count(m => m.IsEnabled)} configured models. Add DALL-E, MiniMax, or Stable Diffusion models.";
+                }
+                else
+                {
+                    tooltipMessage = "No models configured. Add and configure LLM providers with image generation capabilities.";
+                }
+
+                var finalState = new NavigationItemState
+                {
+                    IsEnabled = hasDiscoveredImageModels,
+                    TooltipMessage = tooltipMessage,
+                    RequiredConfigurationUrl = hasDiscoveredImageModels ? null : "/model-mappings",
+                    ShowIndicator = !hasDiscoveredImageModels
                 };
 
-                UpdateState("/image-generation", newState);
+                UpdateState("/image-generation", finalState);
             }
             catch (Exception ex)
             {
@@ -281,7 +375,7 @@ namespace ConduitLLM.WebUI.Services
                 var fallbackState = new NavigationItemState
                 {
                     IsEnabled = false,
-                    TooltipMessage = "Unable to verify image generation models - check admin API connection",
+                    TooltipMessage = "Unable to verify image generation models - check API connection",
                     ShowIndicator = true
                 };
                 

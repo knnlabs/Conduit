@@ -156,6 +156,122 @@ else
                     <small class="text-muted">Current ProviderModelId value: "@dtoMapping.ProviderModelId"</small>
                 </div>
             </div>
+
+            <!-- Capability Configuration Section -->
+            <div class="mb-4">
+                <h5 class="mb-3">
+                    <i class="fa fa-cogs me-2 text-primary"></i>Model Capabilities
+                </h5>
+                <div class="alert alert-info mb-3">
+                    <i class="fa fa-info-circle me-2"></i>
+                    <strong>Configure Capabilities:</strong> Select the capabilities this model supports. 
+                    This helps Conduit determine which features are available and route requests appropriately.
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card capability-section">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fa fa-image me-2"></i>Media Generation</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsImageGeneration" 
+                                           @bind="dtoMapping.SupportsImageGeneration">
+                                    <label class="form-check-label" for="supportsImageGeneration">
+                                        <i class="fa fa-image me-1 text-purple"></i>Image Generation
+                                        <small class="text-muted d-block">Generate images from text prompts</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card capability-section">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fa fa-eye me-2"></i>Vision</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsVision" 
+                                           @bind="dtoMapping.SupportsVision">
+                                    <label class="form-check-label" for="supportsVision">
+                                        <i class="fa fa-eye me-1 text-info"></i>Vision
+                                        <small class="text-muted d-block">Analyze and understand images</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card capability-section">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fa fa-microphone me-2"></i>Audio Processing</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsAudioTranscription" 
+                                           @bind="dtoMapping.SupportsAudioTranscription">
+                                    <label class="form-check-label" for="supportsAudioTranscription">
+                                        <i class="fa fa-microphone me-1 text-primary"></i>Audio Transcription
+                                        <small class="text-muted d-block">Convert speech to text</small>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsTextToSpeech" 
+                                           @bind="dtoMapping.SupportsTextToSpeech">
+                                    <label class="form-check-label" for="supportsTextToSpeech">
+                                        <i class="fa fa-volume-up me-1 text-success"></i>Text-to-Speech
+                                        <small class="text-muted d-block">Convert text to speech</small>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsRealtimeAudio" 
+                                           @bind="dtoMapping.SupportsRealtimeAudio">
+                                    <label class="form-check-label" for="supportsRealtimeAudio">
+                                        <i class="fa fa-bolt me-1 text-warning"></i>Realtime Audio
+                                        <small class="text-muted d-block">Real-time audio processing</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card capability-section">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fa fa-cogs me-2"></i>Advanced</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="isDefault" 
+                                           @bind="dtoMapping.IsDefault">
+                                    <label class="form-check-label" for="isDefault">
+                                        <i class="fa fa-star me-1 text-warning"></i>Default Model
+                                        <small class="text-muted d-block">Use as default for this capability type</small>
+                                    </label>
+                                </div>
+                                
+                                @if (dtoMapping.IsDefault)
+                                {
+                                    <div class="mb-2">
+                                        <label for="defaultCapabilityType" class="form-label small">Default for capability:</label>
+                                        <input type="text" class="form-control form-control-sm" id="defaultCapabilityType" 
+                                               @bind="dtoMapping.DefaultCapabilityType" 
+                                               placeholder="e.g., chat, image-generation, transcription" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
             
         <div class="d-flex gap-2 mt-4">
@@ -473,7 +589,16 @@ else
                     ProviderModelName = dtoMapping.ProviderModelId,
                     ProviderCredentialId = int.Parse(dtoMapping.ProviderId),
                     IsEnabled = true,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    // Map capability fields from DTO to entity
+                    SupportsImageGeneration = dtoMapping.SupportsImageGeneration,
+                    SupportsVision = dtoMapping.SupportsVision,
+                    SupportsAudioTranscription = dtoMapping.SupportsAudioTranscription,
+                    SupportsTextToSpeech = dtoMapping.SupportsTextToSpeech,
+                    SupportsRealtimeAudio = dtoMapping.SupportsRealtimeAudio,
+                    // Map advanced fields
+                    IsDefault = dtoMapping.IsDefault,
+                    DefaultCapabilityType = dtoMapping.DefaultCapabilityType
                 };
                 result = await AdminApiClient.UpdateModelProviderMappingAsync(dtoMapping.Id, mappingEntity);
                 
@@ -493,7 +618,16 @@ else
                     ProviderCredentialId = int.Parse(dtoMapping.ProviderId),
                     IsEnabled = true,
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    // Map capability fields from DTO to entity
+                    SupportsImageGeneration = dtoMapping.SupportsImageGeneration,
+                    SupportsVision = dtoMapping.SupportsVision,
+                    SupportsAudioTranscription = dtoMapping.SupportsAudioTranscription,
+                    SupportsTextToSpeech = dtoMapping.SupportsTextToSpeech,
+                    SupportsRealtimeAudio = dtoMapping.SupportsRealtimeAudio,
+                    // Map advanced fields
+                    IsDefault = dtoMapping.IsDefault,
+                    DefaultCapabilityType = dtoMapping.DefaultCapabilityType
                 };
                 result = await AdminApiClient.CreateModelProviderMappingAsync(mappingEntity);
                 
@@ -542,3 +676,33 @@ else
         NavigationManager.NavigateTo("/configuration");
     }
 }
+
+<style>
+    .capability-section {
+        border: 1px solid #e9ecef;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .capability-section .card-header {
+        border-bottom: 1px solid #e9ecef;
+        background-color: #f8f9fa !important;
+    }
+    
+    .capability-section .card-body {
+        padding: 1rem;
+    }
+    
+    .form-check-label {
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    .form-check-label small {
+        font-weight: 400;
+        font-size: 0.8rem;
+    }
+    
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+</style>

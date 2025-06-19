@@ -56,13 +56,12 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc/>
-        public override async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
+        public override IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException("MiniMax provider does not support chat completions streaming.");
-            yield break;
         }
 
         /// <inheritdoc/>

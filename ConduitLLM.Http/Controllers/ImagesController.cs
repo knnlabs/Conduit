@@ -122,7 +122,7 @@ namespace ConduitLLM.Http.Controllers
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping.ProviderName
+                                    ["provider"] = mapping?.ProviderName ?? "unknown"
                                 }
                             };
 

@@ -152,6 +152,20 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             existingMapping.ProviderCredentialId = mapping.ProviderCredentialId;
             existingMapping.IsEnabled = mapping.IsEnabled;
             existingMapping.MaxContextTokens = mapping.MaxContextTokens;
+            
+            // Update capability fields
+            existingMapping.SupportsVision = mapping.SupportsVision;
+            existingMapping.SupportsAudioTranscription = mapping.SupportsAudioTranscription;
+            existingMapping.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
+            existingMapping.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
+            existingMapping.SupportsImageGeneration = mapping.SupportsImageGeneration;
+            existingMapping.TokenizerType = mapping.TokenizerType;
+            existingMapping.SupportedVoices = mapping.SupportedVoices;
+            existingMapping.SupportedLanguages = mapping.SupportedLanguages;
+            existingMapping.SupportedFormats = mapping.SupportedFormats;
+            existingMapping.IsDefault = mapping.IsDefault;
+            existingMapping.DefaultCapabilityType = mapping.DefaultCapabilityType;
+            
             existingMapping.UpdatedAt = DateTime.UtcNow;
 
             // Update the mapping

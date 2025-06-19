@@ -23,7 +23,10 @@ namespace ConduitLLM.WebUI.Services.Resilience
         {
             return HttpPolicyExtensions
                 .HandleTransientHttpError() // Handles HttpRequestException and 5XX, 408 status codes
-                .OrResult(msg => !msg.IsSuccessStatusCode && msg.StatusCode != HttpStatusCode.NotFound)
+                .OrResult(msg => !msg.IsSuccessStatusCode && 
+                                msg.StatusCode != HttpStatusCode.NotFound && 
+                                msg.StatusCode != HttpStatusCode.Unauthorized && 
+                                msg.StatusCode != HttpStatusCode.Forbidden)
                 .WaitAndRetryAsync(
                     retryCount,
                     retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff: 2, 4, 8 seconds
@@ -56,7 +59,10 @@ namespace ConduitLLM.WebUI.Services.Resilience
 
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
-                .OrResult(msg => !msg.IsSuccessStatusCode && msg.StatusCode != HttpStatusCode.NotFound)
+                .OrResult(msg => !msg.IsSuccessStatusCode && 
+                                msg.StatusCode != HttpStatusCode.NotFound && 
+                                msg.StatusCode != HttpStatusCode.Unauthorized && 
+                                msg.StatusCode != HttpStatusCode.Forbidden)
                 .CircuitBreakerAsync(
                     handledEventsAllowedBeforeBreaking,
                     durationOfBreak.Value,

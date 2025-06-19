@@ -472,4 +472,40 @@ public class ConduitApiClient : IConduitApiClient
             return false;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<List<string>> GetProviderModelsAsync(
+        string providerName,
+        bool forceRefresh = false,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var queryParams = forceRefresh ? "?forceRefresh=true" : "";
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/provider-models/{providerName}{queryParams}");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? _webUIVirtualKey ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var models = JsonSerializer.Deserialize<List<string>>(content, _jsonOptions);
+                return models ?? new List<string>();
+            }
+            
+            _logger.LogWarning("Failed to get models for provider {ProviderName}: {StatusCode}", 
+                providerName, response.StatusCode);
+            return new List<string>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting models for provider {ProviderName}", providerName);
+            return new List<string>();
+        }
+    }
 }

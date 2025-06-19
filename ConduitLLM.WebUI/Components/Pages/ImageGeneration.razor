@@ -348,12 +348,10 @@
             
             var imageGenModels = new List<ImageModel>();
             
-            // Check specific known image generation models from the mappings
-            var knownImageModels = new[] { "dall-e-2", "dall-e-3", "minimax-image", "image-01", "stable-diffusion-xl" };
-            
+            // Check for models with image generation capability using proper DTO fields
             foreach (var dto in mappingDtos ?? Enumerable.Empty<ModelProviderMappingDto>())
             {
-                if (knownImageModels.Contains(dto.ModelId, StringComparer.OrdinalIgnoreCase))
+                if (dto.IsEnabled && dto.SupportsImageGeneration)
                 {
                     _logger.LogInformation("Found known image generation model: {Model}", dto.ModelId);
                     

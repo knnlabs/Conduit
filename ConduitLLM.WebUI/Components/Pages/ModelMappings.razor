@@ -39,6 +39,14 @@
                 <i class="fa fa-cloud me-2"></i>
                 <span class="small">@(providerCredentials?.Count ?? 0) Providers</span>
             </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-image me-2 text-purple"></i>
+                <span class="small">@GetImageGenerationCount() Image Gen</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-eye me-2 text-info"></i>
+                <span class="small">@GetVisionCount() Vision</span>
+            </div>
         </Statistics>
     </PageHeader>
 
@@ -99,6 +107,12 @@
                                 <th class="border-0 fw-semibold">
                                     <i class="fa fa-robot me-2"></i>Provider Model
                                 </th>
+                                <th class="border-0 fw-semibold">
+                                    <i class="fa fa-cogs me-2"></i>Capabilities
+                                </th>
+                                <th class="border-0 fw-semibold text-center">
+                                    <i class="fa fa-power-off me-2"></i>Status
+                                </th>
                                 <th class="border-0 fw-semibold text-center">Actions</th>
                             </tr>
                         </thead>
@@ -119,6 +133,36 @@
                                     </td>
                                     <td>
                                         <code class="text-muted">@mapping.ProviderModelId</code>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var capability in GetCapabilities(mapping))
+                                            {
+                                                <span class="badge capability-badge @GetCapabilityBadgeClass(capability.Key)" title="@capability.Value">
+                                                    <i class="@GetCapabilityIcon(capability.Key) me-1"></i>@capability.Key
+                                                </span>
+                                            }
+                                            @if (!GetCapabilities(mapping).Any())
+                                            {
+                                                <span class="badge capability-badge bg-secondary" title="No specific capabilities configured">
+                                                    <i class="fa fa-comment me-1"></i>Chat Only
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (mapping.IsEnabled)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fa fa-check me-1"></i>Enabled
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa fa-pause me-1"></i>Disabled
+                                            </span>
+                                        }
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
@@ -297,6 +341,87 @@
         var provider = providerCredentials.FirstOrDefault(p => p.Id == id);
         return provider?.ProviderName ?? "Unknown";
     }
+
+    /// <summary>
+    /// Gets the capabilities of a model mapping as a dictionary of capability name to description.
+    /// </summary>
+    private Dictionary<string, string> GetCapabilities(ConfigDTOs.ModelProviderMappingDto mapping)
+    {
+        var capabilities = new Dictionary<string, string>();
+
+        if (mapping.SupportsImageGeneration)
+            capabilities.Add("Image Gen", "Generate images from text prompts");
+        if (mapping.SupportsVision)
+            capabilities.Add("Vision", "Analyze and understand images");
+        if (mapping.SupportsAudioTranscription)
+            capabilities.Add("Transcription", "Convert speech to text");
+        if (mapping.SupportsTextToSpeech)
+            capabilities.Add("TTS", "Convert text to speech");
+        if (mapping.SupportsRealtimeAudio)
+            capabilities.Add("Realtime", "Real-time audio processing");
+
+        return capabilities;
+    }
+
+    /// <summary>
+    /// Gets the appropriate CSS class for a capability badge.
+    /// </summary>
+    private string GetCapabilityBadgeClass(string capability)
+    {
+        return capability switch
+        {
+            "Image Gen" => "bg-purple text-white",
+            "Vision" => "bg-info text-white",
+            "Transcription" => "bg-primary text-white",
+            "TTS" => "bg-success text-white",
+            "Realtime" => "bg-warning text-dark",
+            "Embeddings" => "bg-dark text-white",
+            "Image Input" => "bg-info text-white",
+            "Video Input" => "bg-danger text-white",
+            "Documents" => "bg-secondary text-white",
+            "Functions" => "bg-primary text-white",
+            "Streaming" => "bg-success text-white",
+            _ => "bg-light text-dark"
+        };
+    }
+
+    /// <summary>
+    /// Gets the appropriate icon for a capability.
+    /// </summary>
+    private string GetCapabilityIcon(string capability)
+    {
+        return capability switch
+        {
+            "Image Gen" => "fa fa-image",
+            "Vision" => "fa fa-eye",
+            "Transcription" => "fa fa-microphone",
+            "TTS" => "fa fa-volume-up",
+            "Realtime" => "fa fa-bolt",
+            "Embeddings" => "fa fa-vector-square",
+            "Image Input" => "fa fa-file-image",
+            "Video Input" => "fa fa-video",
+            "Documents" => "fa fa-file-text",
+            "Functions" => "fa fa-cogs",
+            "Streaming" => "fa fa-stream",
+            _ => "fa fa-question"
+        };
+    }
+
+    /// <summary>
+    /// Gets the count of models with image generation capability.
+    /// </summary>
+    private int GetImageGenerationCount()
+    {
+        return modelMappings?.Count(m => m.IsEnabled && m.SupportsImageGeneration) ?? 0;
+    }
+
+    /// <summary>
+    /// Gets the count of models with vision capability.
+    /// </summary>
+    private int GetVisionCount()
+    {
+        return modelMappings?.Count(m => m.IsEnabled && m.SupportsVision) ?? 0;
+    }
 }
 
 <style>
@@ -317,5 +442,22 @@
         padding: 2px 6px;
         border-radius: 3px;
         font-size: 0.875rem;
+    }
+    
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+    
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+    
+    .capability-badge {
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .capability-badge i {
+        font-size: 0.7rem;
     }
 </style>

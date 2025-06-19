@@ -77,4 +77,18 @@ public interface IConduitApiClient
         string capability,
         string? virtualKey = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets models available for a specific provider.
+    /// </summary>
+    /// <param name="providerName">The name of the provider.</param>
+    /// <param name="forceRefresh">Whether to force a refresh of cached models.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A list of model identifiers for the provider.</returns>
+    Task<List<string>> GetProviderModelsAsync(
+        string providerName,
+        bool forceRefresh = false,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
 }
