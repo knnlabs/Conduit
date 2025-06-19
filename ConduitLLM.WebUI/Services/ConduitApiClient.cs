@@ -439,4 +439,37 @@ public class ConduitApiClient : IConduitApiClient
         public string Id { get; set; } = "";
         public string Object { get; set; } = "model";
     }
+
+    /// <inheritdoc />
+    public async Task<bool> TestModelCapabilityAsync(
+        string modelName,
+        string capability,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"v1/discovery/models/{modelName}/capabilities/{capability}");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? _webUIVirtualKey ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = JsonSerializer.Deserialize<Dictionary<string, bool>>(content, _jsonOptions);
+                return result?.GetValueOrDefault("supported", false) ?? false;
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing model capability {Model} for {Capability}", modelName, capability);
+            return false;
+        }
+    }
 }

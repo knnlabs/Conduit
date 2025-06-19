@@ -52,5 +52,10 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// The maximum number of tokens the model's context window can handle.
         /// </summary>
         public int? MaxContextTokens { get; set; }
+        
+        /// <summary>
+        /// Indicates whether this model supports image generation.
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; }
     }
 }

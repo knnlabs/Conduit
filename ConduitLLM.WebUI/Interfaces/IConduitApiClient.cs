@@ -63,4 +63,18 @@ public interface IConduitApiClient
         ImageGenerationRequest request,
         string? virtualKey = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tests if a model supports a specific capability.
+    /// </summary>
+    /// <param name="modelName">The name of the model to test.</param>
+    /// <param name="capability">The capability to test for.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>True if the model supports the capability, false otherwise.</returns>
+    Task<bool> TestModelCapabilityAsync(
+        string modelName,
+        string capability,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
 }

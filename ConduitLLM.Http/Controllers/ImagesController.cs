@@ -55,29 +55,48 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
                 }
 
-                // Use discovery service to check if model supports image generation
                 var modelName = request.Model ?? "dall-e-3";
-                var supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
-                    modelName, 
-                    ModelCapability.ImageGeneration);
+                
+                // First check model mappings for image generation capability
+                var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
+                bool supportsImageGen = false;
+                
+                if (mapping != null)
+                {
+                    // Check if the mapping indicates image generation support
+                    supportsImageGen = mapping.SupportsImageGeneration;
+                    
+                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
+                        modelName, supportsImageGen);
+                }
+                else
+                {
+                    // Fall back to discovery service if no mapping exists
+                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
+                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
+                        modelName, 
+                        ModelCapability.ImageGeneration);
+                }
                 
                 if (!supportsImageGen)
                 {
                     return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
                 }
 
-                // Get provider mapping for the model
-                var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
+                // If we don't have a mapping, try to create a client anyway (for direct model names)
                 if (mapping == null)
                 {
-                    return BadRequest(new { error = new { message = $"No provider mapping found for model {modelName}", type = "invalid_request_error" } });
+                    _logger.LogWarning("No provider mapping found for model {Model}, attempting direct client creation", modelName);
                 }
 
                 // Create client for the model
                 var client = _clientFactory.GetClient(modelName);
                 
-                // Update request with the provider's model ID
-                request.Model = mapping.ProviderModelId;
+                // Update request with the provider's model ID if we have a mapping
+                if (mapping != null)
+                {
+                    request.Model = mapping.ProviderModelId;
+                }
                 
                 // Generate images
                 var response = await client.CreateImageAsync(request);

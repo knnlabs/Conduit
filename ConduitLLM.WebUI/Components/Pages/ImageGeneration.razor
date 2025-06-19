@@ -310,23 +310,85 @@
     private bool isGenerating = false;
     private ImageData? modalImage;
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
-        LoadAvailableModels();
+        await LoadAvailableModels();
         LoadRecentPrompts();
-        return Task.CompletedTask;
     }
 
-    private void LoadAvailableModels()
+    private async Task LoadAvailableModels()
     {
-        // Define available image generation models
-        availableModels = new List<ImageModel>
+        try
         {
-            new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
-            new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" },
-            new ImageModel { ModelName = "image-01", DisplayName = "MiniMax Image", Provider = "minimax" },
-            new ImageModel { ModelName = "stable-diffusion-xl", DisplayName = "Stable Diffusion XL", Provider = "replicate" }
-        };
+            // Get all model mappings from Admin API
+            var mappingDtos = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            _logger.LogInformation("Retrieved {Count} model mappings from Admin API", mappingDtos?.Count() ?? 0);
+            
+            var imageGenModels = new List<ImageModel>();
+            
+            // Check specific known image generation models from the mappings
+            var knownImageModels = new[] { "dall-e-2", "dall-e-3", "minimax-image", "image-01", "stable-diffusion-xl" };
+            
+            foreach (var dto in mappingDtos ?? Enumerable.Empty<ModelProviderMappingDto>())
+            {
+                if (knownImageModels.Contains(dto.ModelId, StringComparer.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("Found known image generation model: {Model}", dto.ModelId);
+                    
+                    // Get provider name from provider ID if needed
+                    var providerName = dto.ProviderId;
+                    if (int.TryParse(dto.ProviderId, out var providerId))
+                    {
+                        // Provider ID is numeric, try to resolve the name
+                        var providers = await AdminApiClient.GetAllProviderCredentialsAsync();
+                        var provider = providers?.FirstOrDefault(p => p.Id == providerId);
+                        if (provider != null)
+                        {
+                            providerName = provider.ProviderName;
+                        }
+                    }
+                    
+                    imageGenModels.Add(new ImageModel
+                    {
+                        ModelName = dto.ModelId,
+                        DisplayName = $"{dto.ModelId} ({providerName})",
+                        Provider = providerName
+                    });
+                }
+            }
+            
+            // If no models found in mappings, use known defaults
+            if (!imageGenModels.Any())
+            {
+                _logger.LogInformation("No image generation models found in mappings, using defaults");
+                imageGenModels = new List<ImageModel>
+                {
+                    new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
+                    new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" },
+                    new ImageModel { ModelName = "minimax-image", DisplayName = "MiniMax Image", Provider = "minimax" }
+                };
+            }
+            
+            availableModels = imageGenModels;
+            
+            // Set default model if current selection is not available
+            if (!availableModels.Any(m => m.ModelName == selectedModel) && availableModels.Any())
+            {
+                selectedModel = availableModels.First().ModelName;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading available models");
+            ToastService.ShowError("Failed to load available models");
+            
+            // Fall back to defaults
+            availableModels = new List<ImageModel>
+            {
+                new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
+                new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" }
+            };
+        }
     }
 
     private void LoadRecentPrompts()

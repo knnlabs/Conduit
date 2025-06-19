@@ -962,6 +962,10 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
         {
             try
             {
+                _logger.LogInformation("TestProviderConnectionWithCredentialsAsync called for provider {ProviderName} with API key starting with: {ApiKeyPrefix}", 
+                    providerCredential?.ProviderName, 
+                    providerCredential?.ApiKey?.Substring(0, Math.Min(10, providerCredential?.ApiKey?.Length ?? 0)) ?? "[EMPTY]");
+                
                 var response = await _httpClient.PostAsJsonAsync(
                     "api/providercredentials/test",
                     providerCredential,

@@ -135,6 +135,7 @@
                                 </label>
                                 <input type="password" class="form-control shadow-sm" id="apiKey" 
                                        @bind="provider.ApiKey" 
+                                       @bind:event="oninput"
                                        placeholder="@(originalApiKey?.Length > 0 ? "••••••••" : "sk-...")" />
                                 <small class="text-muted mt-1">
                                     <i class="fa fa-shield-alt me-1"></i>
@@ -378,7 +379,8 @@
                     // Keep track of the original API key existence
                     if (!string.IsNullOrEmpty(existingProvider.ApiKey))
                     {
-                        originalApiKey = "PLACEHOLDER"; // Just indicate it exists
+                        originalApiKey = existingProvider.ApiKey; // Store the masked value
+                        provider.ApiKey = ""; // Clear the API key field so user can type a new one
                     }
                 }
                 else
@@ -544,18 +546,19 @@
 
         try
         {
-            // Test the connection using the appropriate method based on whether the provider is saved
-            ProviderConnectionTestResultDto? testResult;
-            if (!string.IsNullOrEmpty(Id))
-            {
-                // For existing providers, use the ID-based test
-                testResult = await ProviderCredentialService.TestConnectionAsync(provider.ProviderName);
-            }
-            else
-            {
-                // For new providers, use the credentials-based test
-                testResult = await ProviderCredentialService.TestProviderConnectionWithCredentialsAsync(provider);
-            }
+            _logger.LogInformation("Testing connection for provider {ProviderName} with API key starting with: {ApiKeyPrefix}", 
+                provider.ProviderName, 
+                provider.ApiKey?.Substring(0, Math.Min(10, provider.ApiKey.Length)) ?? "[EMPTY]");
+            
+            // Always use the credentials-based test to test what's currently in the form
+            // This ensures we test the API key that's been typed, not what's stored in the database
+            ProviderConnectionTestResultDto? testResult = await ProviderCredentialService.TestProviderConnectionWithCredentialsAsync(provider);
+            
+            _logger.LogInformation("Test result for provider {ProviderName}: Success={Success}, Message={Message}, ErrorDetails={ErrorDetails}", 
+                provider.ProviderName, 
+                testResult?.Success ?? false, 
+                testResult?.Message ?? "null", 
+                testResult?.ErrorDetails ?? "null");
             
             if (testResult != null && testResult.Success)
             {

@@ -9,6 +9,7 @@ INSERT INTO ModelProviderMappings (
     ProviderCredentialId, 
     ProviderModelName,
     SupportsVision,
+    SupportsImageGeneration,
     TokenizerType,
     IsDefault,
     DefaultCapabilityType,
@@ -20,6 +21,7 @@ SELECT
     pc.Id,
     'image-01',
     0,  -- Image generation, not vision input
+    1,  -- Supports image generation
     NULL,
     0,
     NULL,

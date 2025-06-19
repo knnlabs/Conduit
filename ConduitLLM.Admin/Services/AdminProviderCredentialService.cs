@@ -188,6 +188,10 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
+                _logger.LogInformation("Testing provider connection for {ProviderName} with API key starting with: {ApiKeyPrefix}", 
+                    providerCredential.ProviderName, 
+                    string.IsNullOrEmpty(providerCredential.ApiKey) ? "[EMPTY]" : providerCredential.ApiKey.Substring(0, Math.Min(10, providerCredential.ApiKey.Length)));
+                
                 var startTime = DateTime.UtcNow;
                 var result = new ProviderConnectionTestResultDto
                 {
@@ -239,6 +243,8 @@ namespace ConduitLLM.Admin.Services
 
                 // Construct the API URL based on provider type
                 var apiUrl = GetHealthCheckUrl(actualCredential);
+                
+                _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
 
                 // Make the request
                 var responseMessage = await client.GetAsync(apiUrl);
@@ -262,6 +268,24 @@ namespace ConduitLLM.Admin.Services
 
                     switch (providerName)
                     {
+                        case "openai":
+                            _logger.LogInformation("Performing additional OpenAI authentication check");
+
+                            // OpenAI's /v1/models endpoint returns 200 OK even without auth
+                            // We need to check if we actually get models back with proper auth
+                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, actualCredential);
+
+                            if (!openAIAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI requires a valid API key for accessing models";
+                                return result;
+                            }
+
+                            _logger.LogInformation("OpenAI authentication check passed");
+                            break;
+
                         case "openrouter":
                             _logger.LogInformation("Performing additional OpenRouter authentication check");
 
@@ -398,14 +422,14 @@ namespace ConduitLLM.Admin.Services
             return credential.ProviderName.ToLowerInvariant() switch
             {
                 // OpenAI-compatible providers
-                "openai" => $"{baseUrl}/v1/models",
-                "anthropic" => $"{baseUrl}/v1/models",
-                "cohere" => $"{baseUrl}/v1/models",
-                "mistral" or "mistralai" => $"{baseUrl}/v1/models",
-                "groq" => $"{baseUrl}/v1/models",
-                "openrouter" => $"{baseUrl}/api/v1/models",
-                "fireworks" or "fireworksai" => $"{baseUrl}/v1/models",
-                "openai-compatible" or "openaicompatible" => $"{baseUrl}/v1/models",
+                "openai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "anthropic" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "cohere" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "mistral" or "mistralai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "groq" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "openrouter" => baseUrl?.EndsWith("/api/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/api/v1/models",
+                "fireworks" or "fireworksai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "openai-compatible" or "openaicompatible" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
 
                 // Cloud providers with custom endpoints
                 "azure" => $"{baseUrl}/openai/models?api-version=2023-05-15",
@@ -567,6 +591,103 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error verifying Google Gemini authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies OpenAI authentication by making a test request
+        /// </summary>
+        /// <param name="client">The HTTP client with authorization header set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyOpenAIAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                // OpenAI's /v1/models endpoint can return data even without proper auth
+                // We need to make a request that definitely requires authentication
+                
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl.TrimEnd('/')
+                    : "https://api.openai.com";
+
+                // Remove /v1 if it's already in the base URL
+                if (baseUrl.EndsWith("/v1"))
+                {
+                    baseUrl = baseUrl.Substring(0, baseUrl.Length - 3);
+                }
+
+                // First, try to list models and check the response carefully
+                var modelsUrl = $"{baseUrl}/v1/models";
+                var modelsResponse = await client.GetAsync(modelsUrl);
+                
+                if (modelsResponse.StatusCode == HttpStatusCode.Unauthorized || 
+                    modelsResponse.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    var responseContent = await modelsResponse.Content.ReadAsStringAsync();
+                    _logger.LogWarning("OpenAI authentication failed: {Status} - {Content}",
+                        modelsResponse.StatusCode, responseContent.Replace(Environment.NewLine, ""));
+                    return false;
+                }
+                
+                if (modelsResponse.StatusCode == HttpStatusCode.OK)
+                {
+                    var content = await modelsResponse.Content.ReadAsStringAsync();
+                    _logger.LogInformation("OpenAI models endpoint returned 200 OK. Response length: {Length}, First 500 chars: {Content}", 
+                        content.Length, 
+                        content.Substring(0, Math.Min(500, content.Length)));
+                    
+                    // Check for error response in the content
+                    if (content.Contains("\"error\"") && 
+                        (content.Contains("invalid_api_key") || 
+                         content.Contains("Incorrect API key") ||
+                         content.Contains("Invalid authentication")))
+                    {
+                        _logger.LogWarning("OpenAI returned error in response body indicating invalid API key");
+                        return false;
+                    }
+                    
+                    // Parse the response to check if we have actual model data
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(content);
+                        var root = doc.RootElement;
+                        
+                        // Check if we have a data array with actual models
+                        if (root.TryGetProperty("data", out var dataElement) && 
+                            dataElement.GetArrayLength() > 0)
+                        {
+                            // Verify that at least one model has an ID
+                            foreach (var model in dataElement.EnumerateArray())
+                            {
+                                if (model.TryGetProperty("id", out var idElement) && 
+                                    !string.IsNullOrWhiteSpace(idElement.GetString()))
+                                {
+                                    _logger.LogInformation("OpenAI authentication successful - found valid model data");
+                                    return true;
+                                }
+                            }
+                        }
+                        
+                        _logger.LogWarning("OpenAI models response has no valid model data");
+                        return false;
+                    }
+                    catch (JsonException)
+                    {
+                        _logger.LogWarning("OpenAI models response is not valid JSON");
+                        return false;
+                    }
+                }
+
+                // For any other status codes, the authentication is invalid
+                _logger.LogWarning("OpenAI returned unexpected status: {Status} - treating as invalid", modelsResponse.StatusCode);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying OpenAI authentication");
+                // If we can't verify, assume it's invalid to be safe
                 return false;
             }
         }

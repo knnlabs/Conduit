@@ -64,6 +64,18 @@ namespace ConduitLLM.WebUI.DTOs
             ModelAlias = mapping.ModelAlias;
             ProviderModelId = mapping.ProviderModelId;
             ProviderName = mapping.ProviderName;
+            DeploymentName = mapping.DeploymentName;
+            SupportsVision = mapping.SupportsVision;
+            SupportsAudioTranscription = mapping.SupportsAudioTranscription;
+            SupportsTextToSpeech = mapping.SupportsTextToSpeech;
+            SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
+            SupportsImageGeneration = mapping.SupportsImageGeneration;
+            TokenizerType = mapping.TokenizerType;
+            SupportedVoices = mapping.SupportedVoices;
+            SupportedLanguages = mapping.SupportedLanguages;
+            SupportedFormats = mapping.SupportedFormats;
+            IsDefault = mapping.IsDefault;
+            DefaultCapabilityType = mapping.DefaultCapabilityType;
             // Additional properties like DeploymentName if needed
             if (mapping.GetType().FullName == "ConduitLLM.Configuration.Entities.ModelProviderMapping")
             {
@@ -94,6 +106,17 @@ namespace ConduitLLM.WebUI.DTOs
                 ProviderCredentialId = int.TryParse(this.ProviderName, out int id) ? id : 0,
                 IsEnabled = true,
                 MaxContextTokens = null,
+                SupportsVision = this.SupportsVision,
+                SupportsAudioTranscription = this.SupportsAudioTranscription,
+                SupportsTextToSpeech = this.SupportsTextToSpeech,
+                SupportsRealtimeAudio = this.SupportsRealtimeAudio,
+                SupportsImageGeneration = this.SupportsImageGeneration,
+                TokenizerType = this.TokenizerType,
+                SupportedVoices = this.SupportedVoices,
+                SupportedLanguages = this.SupportedLanguages,
+                SupportedFormats = this.SupportedFormats,
+                IsDefault = this.IsDefault,
+                DefaultCapabilityType = this.DefaultCapabilityType,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
