@@ -1,0 +1,272 @@
+name: Auto-Version and Publish Node Clients
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'Clients/Node/**'
+      - '!Clients/Node/**/package.json'  # Don't trigger on version bumps
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version increment type (master branch only)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      force_run:
+        description: 'Force run even without changes'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core-changed: ${{ steps.changes.outputs.core }}
+      admin-changed: ${{ steps.changes.outputs.admin }}
+      should-run: ${{ steps.should-run.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -E '^Clients/Node/Core/' | grep -v package.json; then
+            echo "core=true" >> $GITHUB_OUTPUT
+            echo "Core client changes detected"
+          else
+            echo "core=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if git diff --name-only HEAD~1 HEAD | grep -E '^Clients/Node/Admin/' | grep -v package.json; then
+            echo "admin=true" >> $GITHUB_OUTPUT
+            echo "Admin client changes detected"
+          else
+            echo "admin=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Should run workflow
+        id: should-run
+        run: |
+          if [[ "${{ steps.changes.outputs.core }}" == "true" || "${{ steps.changes.outputs.admin }}" == "true" || "${{ github.event.inputs.force_run }}" == "true" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+            echo "No client changes detected, skipping workflow"
+          fi
+
+  version-and-publish:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-run == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Determine version strategy
+        id: strategy
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          if [[ "$BRANCH_NAME" == "dev" ]]; then
+            echo "version-type=prerelease" >> $GITHUB_OUTPUT
+            echo "preid=dev" >> $GITHUB_OUTPUT
+            echo "npm-tag=dev" >> $GITHUB_OUTPUT
+            echo "commit-back=false" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == "master" ]]; then
+            # Check commit message for version hints
+            if echo "${{ github.event.head_commit.message }}" | grep -i "breaking\|major"; then
+              VERSION_TYPE="major"
+            elif echo "${{ github.event.head_commit.message }}" | grep -i "feat\|feature\|minor"; then
+              VERSION_TYPE="minor"
+            else
+              VERSION_TYPE="${{ github.event.inputs.version_type || 'patch' }}"
+            fi
+            echo "version-type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+            echo "preid=" >> $GITHUB_OUTPUT
+            echo "npm-tag=latest" >> $GITHUB_OUTPUT
+            echo "commit-back=true" >> $GITHUB_OUTPUT
+          fi
+
+      # Core Client Processing
+      - name: Process Core Client
+        if: needs.detect-changes.outputs.core-changed == 'true' || github.event.inputs.force_run == 'true'
+        run: |
+          echo "🔨 Processing Core client..."
+          cd Clients/Node/Core
+          
+          # Install dependencies
+          npm ci
+          
+          # Get current version for logging
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current Core version: $CURRENT_VERSION"
+          
+          # Version the package
+          if [[ "${{ steps.strategy.outputs.version-type }}" == "prerelease" ]]; then
+            npm version prerelease --preid=${{ steps.strategy.outputs.preid }} --no-git-tag-version
+          else
+            npm version ${{ steps.strategy.outputs.version-type }} --no-git-tag-version
+          fi
+          
+          # Get new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New Core version: $NEW_VERSION"
+          echo "CORE_NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          
+          # Build and test
+          npm run build
+          npm test
+          
+          echo "✅ Core client ready for publishing"
+
+      # Admin Client Processing  
+      - name: Process Admin Client
+        if: needs.detect-changes.outputs.admin-changed == 'true' || github.event.inputs.force_run == 'true'
+        run: |
+          echo "🔨 Processing Admin client..."
+          cd Clients/Node/Admin
+          
+          # Install dependencies
+          npm ci
+          
+          # Get current version for logging
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current Admin version: $CURRENT_VERSION"
+          
+          # Version the package
+          if [[ "${{ steps.strategy.outputs.version-type }}" == "prerelease" ]]; then
+            npm version prerelease --preid=${{ steps.strategy.outputs.preid }} --no-git-tag-version
+          else
+            npm version ${{ steps.strategy.outputs.version-type }} --no-git-tag-version
+          fi
+          
+          # Get new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New Admin version: $NEW_VERSION"
+          echo "ADMIN_NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          
+          # Build and test
+          npm run build
+          npm test
+          
+          echo "✅ Admin client ready for publishing"
+
+      # Commit version changes (master only)
+      - name: Commit version changes
+        if: steps.strategy.outputs.commit-back == 'true'
+        run: |
+          # Check if there are any changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Prepare commit message
+          COMMIT_MSG="chore: bump client versions [skip ci]"
+          if [[ -n "$CORE_NEW_VERSION" && -n "$ADMIN_NEW_VERSION" ]]; then
+            COMMIT_MSG="chore: bump clients to Core v$CORE_NEW_VERSION, Admin v$ADMIN_NEW_VERSION [skip ci]"
+          elif [[ -n "$CORE_NEW_VERSION" ]]; then
+            COMMIT_MSG="chore: bump @knn_labs/conduit-core-client to v$CORE_NEW_VERSION [skip ci]"
+          elif [[ -n "$ADMIN_NEW_VERSION" ]]; then
+            COMMIT_MSG="chore: bump @knn_labs/conduit-admin-client to v$ADMIN_NEW_VERSION [skip ci]"
+          fi
+          
+          # Stage and commit
+          git add Clients/Node/*/package.json
+          git commit -m "$COMMIT_MSG"
+          
+          # Push with retry logic
+          for i in {1..3}; do
+            if git push; then
+              echo "✅ Version changes committed and pushed"
+              break
+            else
+              echo "⚠️ Push failed, attempt $i/3. Pulling and retrying..."
+              git pull --rebase
+              if [[ $i == 3 ]]; then
+                echo "❌ Failed to push after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      # Publish Core Client to NPM
+      - name: Publish Core Client to NPM
+        if: (needs.detect-changes.outputs.core-changed == 'true' || github.event.inputs.force_run == 'true') && env.CORE_NEW_VERSION != ''
+        run: |
+          cd Clients/Node/Core
+          echo "📦 Publishing Core client v$CORE_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
+          npm publish --tag ${{ steps.strategy.outputs.npm-tag }}
+          echo "✅ Core client published successfully"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Publish Admin Client to NPM
+      - name: Publish Admin Client to NPM
+        if: (needs.detect-changes.outputs.admin-changed == 'true' || github.event.inputs.force_run == 'true') && env.ADMIN_NEW_VERSION != ''
+        run: |
+          cd Clients/Node/Admin
+          echo "📦 Publishing Admin client v$ADMIN_NEW_VERSION to NPM with tag: ${{ steps.strategy.outputs.npm-tag }}"
+          npm publish --tag ${{ steps.strategy.outputs.npm-tag }}
+          echo "✅ Admin client published successfully"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Summary
+      - name: Workflow Summary
+        run: |
+          echo "🎉 Workflow completed successfully!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  Branch: ${{ steps.strategy.outputs.branch }}"
+          echo "  Version type: ${{ steps.strategy.outputs.version-type }}"
+          echo "  NPM tag: ${{ steps.strategy.outputs.npm-tag }}"
+          if [[ -n "$CORE_NEW_VERSION" ]]; then
+            echo "  Core client: v$CORE_NEW_VERSION"
+          fi
+          if [[ -n "$ADMIN_NEW_VERSION" ]]; then
+            echo "  Admin client: v$ADMIN_NEW_VERSION"
+          fi
+          echo ""
+          echo "📦 Installation commands:"
+          if [[ "${{ steps.strategy.outputs.npm-tag }}" == "dev" ]]; then
+            if [[ -n "$CORE_NEW_VERSION" ]]; then
+              echo "  npm install @knn_labs/conduit-core-client@dev"
+            fi
+            if [[ -n "$ADMIN_NEW_VERSION" ]]; then
+              echo "  npm install @knn_labs/conduit-admin-client@dev"
+            fi
+          else
+            if [[ -n "$CORE_NEW_VERSION" ]]; then
+              echo "  npm install @knn_labs/conduit-core-client@latest"
+            fi
+            if [[ -n "$ADMIN_NEW_VERSION" ]]; then
+              echo "  npm install @knn_labs/conduit-admin-client@latest"
+            fi
+          fi

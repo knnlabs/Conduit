@@ -18,6 +18,17 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- NuGet Package Configuration -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>ConduitLLM.Core</PackageId>
+    <Title>Conduit LLM Core Library</Title>
+    <Description>Core interfaces, models, and business logic for Conduit LLM multi-provider gateway</Description>
+    <PackageTags>llm;ai;core;interfaces;conduit;openai;anthropic</PackageTags>
+    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>

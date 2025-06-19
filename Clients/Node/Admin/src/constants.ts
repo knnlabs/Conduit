@@ -24,6 +24,15 @@ export const ENDPOINTS = {
     TEST: '/providercredentials/test',
   },
 
+  // Provider Models
+  PROVIDER_MODELS: {
+    BY_PROVIDER: (providerId: string) => `/provider-models/${providerId}`,
+    CACHED: (providerId: string) => `/provider-models/${providerId}/cached`,
+    REFRESH: (providerId: string) => `/provider-models/${providerId}/refresh`,
+    TEST_CONNECTION: '/provider-models/test-connection',
+    SUMMARY: '/provider-models/summary',
+  },
+
   // Model Provider Mappings
   MODEL_MAPPINGS: {
     BASE: '/modelprovidermapping',

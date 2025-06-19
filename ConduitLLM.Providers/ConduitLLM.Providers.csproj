@@ -21,7 +21,18 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable> <!-- Added to enable nullable context -->
+    <Nullable>enable</Nullable>
+    
+    <!-- NuGet Package Configuration -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>ConduitLLM.Providers</PackageId>
+    <Title>Conduit LLM Providers Library</Title>
+    <Description>LLM provider implementations for OpenAI, Anthropic, AWS Bedrock, and other providers in the Conduit LLM gateway</Description>
+    <PackageTags>llm;ai;providers;openai;anthropic;bedrock;conduit;gpt;claude</PackageTags>
+    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>

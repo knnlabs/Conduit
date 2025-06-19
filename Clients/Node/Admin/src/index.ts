@@ -16,6 +16,7 @@ export * from './models/system';
 // Services
 export { VirtualKeyService } from './services/VirtualKeyService';
 export { ProviderService } from './services/ProviderService';
+export { ProviderModelsService } from './services/ProviderModelsService';
 export { ModelMappingService } from './services/ModelMappingService';
 export { SettingsService } from './services/SettingsService';
 export { IpFilterService } from './services/IpFilterService';
@@ -23,8 +24,9 @@ export { ModelCostService } from './services/ModelCostService';
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 
-// Errors
+// Utilities
 export * from './utils/errors';
+export * from './utils/capabilities';
 
 // Constants
 export * from './constants';
