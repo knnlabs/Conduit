@@ -202,8 +202,8 @@ namespace ConduitLLM.Admin.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                // If the credential has an ID, get the actual credential (with the real API key)
-                // Otherwise, use the provided credential directly (for testing unsaved providers)
+                // For testing, merge form values with stored values
+                // Use form values when provided, fall back to stored values when form fields are empty
                 ProviderCredential actualCredential;
                 if (providerCredential.Id > 0)
                 {
@@ -215,7 +215,15 @@ namespace ConduitLLM.Admin.Services
                         result.ErrorDetails = "Provider not found in database";
                         return result;
                     }
-                    actualCredential = dbCredential;
+                    
+                    // Create test credential using form values when provided, stored values as fallback
+                    actualCredential = new ProviderCredential
+                    {
+                        ProviderName = providerCredential.ProviderName,
+                        ApiKey = !string.IsNullOrEmpty(providerCredential.ApiKey) ? providerCredential.ApiKey : dbCredential.ApiKey,
+                        BaseUrl = !string.IsNullOrEmpty(providerCredential.ApiBase) ? providerCredential.ApiBase : dbCredential.BaseUrl,
+                        IsEnabled = true
+                    };
                 }
                 else
                 {
