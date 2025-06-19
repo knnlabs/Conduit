@@ -99,6 +99,9 @@ namespace ConduitLLM.WebUI.Services
                 // Audio Providers prerequisites
                 tasks.Add(CheckAudioProvidersPrerequisitesAsync());
 
+                // Image Generation prerequisites
+                tasks.Add(CheckImageGenerationPrerequisitesAsync());
+
                 await Task.WhenAll(tasks);
 
                 _lastRefresh = DateTime.UtcNow;
@@ -242,6 +245,47 @@ namespace ConduitLLM.WebUI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking audio providers prerequisites");
+            }
+        }
+
+        private async Task CheckImageGenerationPrerequisitesAsync()
+        {
+            try
+            {
+                // Get all model mappings from Admin API
+                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
+                
+                // NOTE: Temporary solution using known image generation models
+                // This should be replaced with proper capability detection when DTOs expose 
+                // the SupportsImageGeneration field from the ModelProviderMapping entity
+                var knownImageModels = new[] { "dall-e-2", "dall-e-3", "minimax-image", "image-01", "stable-diffusion-xl" };
+                var hasImageModels = mappings?.Any(m => 
+                    m.IsEnabled && 
+                    knownImageModels.Contains(m.ModelId, StringComparer.OrdinalIgnoreCase)) ?? false;
+
+                var newState = new NavigationItemState
+                {
+                    IsEnabled = hasImageModels,
+                    TooltipMessage = hasImageModels ? null : "Configure image generation models (DALL-E, MiniMax, or Stable Diffusion) to use image generation",
+                    RequiredConfigurationUrl = hasImageModels ? null : "/model-mappings",
+                    ShowIndicator = !hasImageModels
+                };
+
+                UpdateState("/image-generation", newState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking image generation prerequisites");
+                
+                // Set a safe default state when API is not available
+                var fallbackState = new NavigationItemState
+                {
+                    IsEnabled = false,
+                    TooltipMessage = "Unable to verify image generation models - check admin API connection",
+                    ShowIndicator = true
+                };
+                
+                UpdateState("/image-generation", fallbackState);
             }
         }
 
