@@ -195,9 +195,10 @@ namespace ConduitLLM.Tests.WebUI.Models
             Assert.NotNull(properties["limit"]);
             
             var limitProp = properties["limit"];
-            Assert.Equal(1, limitProp["minimum"]?.GetValue<int>());
-            Assert.Equal(100, limitProp["maximum"]?.GetValue<int>());
-            Assert.Equal(10, limitProp["default"]?.GetValue<int>());
+            Assert.NotNull(limitProp);
+            Assert.Equal(1, limitProp!["minimum"]?.GetValue<int>());
+            Assert.Equal(100, limitProp!["maximum"]?.GetValue<int>());
+            Assert.Equal(10, limitProp!["default"]?.GetValue<int>());
         }
 
         [Theory]
