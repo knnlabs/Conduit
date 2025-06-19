@@ -17,6 +17,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - For UI changes, verify in the browser with developer tools open
 - Clean up temporary test files and scripts after completing features
 
+## Git Branching Rules
+- **NEVER push to origin/master** - The master branch is protected
+- **ALWAYS push to origin/dev** - All development work goes to the dev branch
+- Create feature branches from dev when working on new features
+- Pull requests should target the dev branch, not master
+- The dev branch will be merged to master through proper release processes
+
 ## Code Style Guidelines
 - **Naming**: 
   - Interfaces prefixed with 'I' (e.g., `ILLMClient`)
