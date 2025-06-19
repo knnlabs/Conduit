@@ -28,6 +28,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppressio
 using Microsoft.Extensions.Options; // Added for IOptions
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
+using StackExchange.Redis; // Added for Redis-based task service
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -158,6 +159,7 @@ builder.Services.AddRepositories();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
 // Register cache service based on configuration
 builder.Services.AddCacheService(builder.Configuration);
@@ -188,8 +190,29 @@ builder.Services.AddConfigurationAdapters();
 // Register provider model list service
 builder.Services.AddScoped<ModelListService>();
 
+// Register async task service
+var useRedisForTasks = builder.Configuration.GetValue<bool>("ConduitLLM:Tasks:UseRedis", false);
+if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
+{
+    // Use Redis for distributed task management
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
+    {
+        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisAsyncTaskService>>();
+        return new ConduitLLM.Core.Services.RedisAsyncTaskService(redis, logger);
+    });
+}
+else
+{
+    // Use in-memory task service for single instance deployments
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService, ConduitLLM.Core.Services.InMemoryAsyncTaskService>();
+}
+
 // Register Conduit service
 builder.Services.AddScoped<Conduit>();
+
+// Register File Retrieval Service
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IFileRetrievalService, ConduitLLM.Core.Services.FileRetrievalService>();
 
 // Register Audio services
 builder.Services.AddConduitAudioServices(builder.Configuration);
@@ -211,6 +234,26 @@ builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtim
 // Register Audio routing
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
+
+// Register Media Storage Service
+var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
+if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
+        builder.Configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
+    builder.Services.AddSingleton<IMediaStorageService, S3MediaStorageService>();
+}
+else
+{
+    // Use in-memory storage for development
+    builder.Services.AddSingleton<IMediaStorageService>(provider =>
+    {
+        var logger = provider.GetRequiredService<ILogger<InMemoryMediaStorageService>>();
+        var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000";
+        var baseUrl = urls.Split(';').First();
+        return new InMemoryMediaStorageService(logger, baseUrl);
+    });
+}
 
 // Add CORS support for WebUI requests
 builder.Services.AddCors(options =>

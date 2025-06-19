@@ -1,0 +1,487 @@
+@page "/image-generation"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
+@using Microsoft.Extensions.Options
+@using ConduitLLM.Core.Models
+@using ConduitLLM.Configuration
+@using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.WebUI.Models
+@using System.Text.Json
+@inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
+@inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
+@inject IOptions<ConduitSettings> ConduitSettingsOptions
+@inject IJSRuntime JSRuntime
+@inject IToastService ToastService
+@inject ILogger<ImageGeneration> _logger
+@using ConduitLLM.WebUI.Services
+@rendermode InteractiveServer
+
+<PageTitle>Image Generation - ConduitLLM</PageTitle>
+
+<div class="container container-xxl">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="image-gen-header bg-gradient-primary text-white rounded-4 p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="h3 mb-2">
+                            <i class="fa fa-image me-3"></i>Image Generation
+                        </h1>
+                        <p class="mb-0 opacity-90">
+                            Create images from text descriptions using AI models
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="image-stats">
+                            <div class="stat-item">
+                                <i class="fa fa-palette me-2"></i>
+                                <span class="small">@availableModels.Count Models Available</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-lg-8">
+            <!-- Generation Interface Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h5 class="mb-0">
+                        <i class="fa fa-magic me-2"></i>Create Image
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Prompt Input -->
+                    <div class="form-group mb-4">
+                        <label for="imagePrompt" class="form-label fw-semibold">
+                            <i class="fa fa-edit me-2"></i>Image Description
+                        </label>
+                        <textarea id="imagePrompt" 
+                                  class="form-control" 
+                                  rows="4" 
+                                  placeholder="Describe the image you want to create... e.g., 'A serene mountain landscape at sunset with a lake reflecting the orange sky'"
+                                  @bind="imagePrompt"></textarea>
+                        <div class="form-text">
+                            Be specific about colors, styles, composition, and details you want in the image
+                        </div>
+                    </div>
+                    
+                    <!-- Size Selection -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-expand me-2"></i>Image Size
+                            </label>
+                            <select class="form-select" @bind="selectedSize">
+                                <option value="1024x1024">Square (1024x1024)</option>
+                                <option value="1792x1024">Landscape (1792x1024)</option>
+                                <option value="1024x1792">Portrait (1024x1792)</option>
+                                @if (selectedModel?.StartsWith("dall-e-2") == true)
+                                {
+                                    <option value="512x512">Small Square (512x512)</option>
+                                    <option value="256x256">Tiny Square (256x256)</option>
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-hashtag me-2"></i>Number of Images
+                            </label>
+                            <select class="form-select" @bind="numberOfImages">
+                                <option value="1">1 Image</option>
+                                <option value="2">2 Images</option>
+                                <option value="3">3 Images</option>
+                                <option value="4">4 Images</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Quality Settings (for DALL-E 3) -->
+                    @if (selectedModel == "dall-e-3")
+                    {
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa fa-gem me-2"></i>Quality
+                                </label>
+                                <select class="form-select" @bind="quality">
+                                    <option value="standard">Standard</option>
+                                    <option value="hd">HD (Higher detail)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa fa-paint-brush me-2"></i>Style
+                                </label>
+                                <select class="form-select" @bind="style">
+                                    <option value="vivid">Vivid (Hyper-real)</option>
+                                    <option value="natural">Natural (More natural)</option>
+                                </select>
+                            </div>
+                        </div>
+                    }
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="button" 
+                                class="btn btn-primary btn-lg" 
+                                @onclick="GenerateImage" 
+                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(imagePrompt))">
+                            @if (isGenerating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Generating...</span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-magic me-2"></i>
+                                <span>Generate Image</span>
+                            }
+                        </button>
+                        
+                        <button type="button" 
+                                class="btn btn-outline-secondary" 
+                                @onclick="ClearAll" 
+                                disabled="@isGenerating">
+                            <i class="fa fa-eraser me-2"></i>
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generated Images Display -->
+            @if (generatedImages.Any())
+            {
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fa fa-images me-2"></i>Generated Images
+                            </h5>
+                            <span class="badge bg-secondary">@generatedImages.Count images</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            @foreach (var (image, index) in generatedImages.Select((img, idx) => (img, idx)))
+                            {
+                                <div class="col-12 col-md-6">
+                                    <div class="generated-image-container position-relative">
+                                        <img src="@image.Url" 
+                                             alt="Generated image @(index + 1)" 
+                                             class="img-fluid rounded shadow-sm w-100"
+                                             style="cursor: pointer;"
+                                             @onclick="() => ShowImageModal(image)" />
+                                        
+                                        <div class="image-actions position-absolute top-0 end-0 p-2">
+                                            <button class="btn btn-sm btn-light shadow-sm me-1" 
+                                                    title="Download"
+                                                    @onclick="() => DownloadImage(image)">
+                                                <i class="fa fa-download"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-light shadow-sm" 
+                                                    title="Delete"
+                                                    @onclick="() => RemoveImage(image)">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <div class="col-12 col-lg-4">
+            <!-- Model Settings Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0">
+                    <h6 class="mb-0">
+                        <i class="fa fa-sliders-h me-2"></i>Model Settings
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label for="modelSelect" class="form-label fw-semibold">
+                            <i class="fa fa-robot me-2"></i>Image Model
+                        </label>
+                        <select id="modelSelect" 
+                                class="form-select" 
+                                @bind="selectedModel"
+                                @bind:after="OnModelChanged">
+                            @foreach (var model in availableModels)
+                            {
+                                <option value="@model.ModelName">@model.DisplayName</option>
+                            }
+                        </select>
+                        <div class="form-text">@GetModelDescription(selectedModel)</div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="apiKey" class="form-label fw-semibold">
+                            <i class="fa fa-key me-2"></i>API Key (Optional)
+                        </label>
+                        <input type="password" 
+                               id="apiKey" 
+                               class="form-control" 
+                               placeholder="Override default key"
+                               @bind="apiKey" />
+                        <div class="form-text">Override the default API key for testing</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generation History Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-0">
+                    <h6 class="mb-0">
+                        <i class="fa fa-history me-2"></i>Recent Prompts
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if (recentPrompts.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var prompt in recentPrompts.Take(5))
+                            {
+                                <a href="#" 
+                                   class="list-group-item list-group-item-action small py-2"
+                                   @onclick="() => UsePrompt(prompt)"
+                                   @onclick:preventDefault="true">
+                                    <div class="text-truncate">@prompt</div>
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">No recent prompts</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+@if (modalImage != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.8);">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Generated Image</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body text-center p-0">
+                    <img src="@modalImage.Url" alt="Full size image" class="img-fluid" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="() => DownloadImage(modalImage)">
+                        <i class="fa fa-download me-2"></i>Download
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ImageModel> availableModels = new();
+    private List<ImageData> generatedImages = new();
+    private List<string> recentPrompts = new();
+    
+    private string imagePrompt = "";
+    private string selectedModel = "dall-e-3";
+    private string selectedSize = "1024x1024";
+    private int numberOfImages = 1;
+    private string quality = "standard";
+    private string style = "vivid";
+    private string? apiKey;
+    private bool isGenerating = false;
+    private ImageData? modalImage;
+
+    protected override Task OnInitializedAsync()
+    {
+        LoadAvailableModels();
+        LoadRecentPrompts();
+        return Task.CompletedTask;
+    }
+
+    private void LoadAvailableModels()
+    {
+        // Define available image generation models
+        availableModels = new List<ImageModel>
+        {
+            new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
+            new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" },
+            new ImageModel { ModelName = "image-01", DisplayName = "MiniMax Image", Provider = "minimax" },
+            new ImageModel { ModelName = "stable-diffusion-xl", DisplayName = "Stable Diffusion XL", Provider = "replicate" }
+        };
+    }
+
+    private void LoadRecentPrompts()
+    {
+        // In a real implementation, this would load from local storage or a database
+        recentPrompts = new List<string>
+        {
+            "A serene mountain landscape at sunset",
+            "Futuristic cityscape with flying cars",
+            "Abstract art with vibrant colors",
+            "Cute robot playing with a kitten",
+            "Underwater coral reef ecosystem"
+        };
+    }
+
+    private async Task GenerateImage()
+    {
+        if (string.IsNullOrWhiteSpace(imagePrompt))
+        {
+            ToastService.ShowWarning("Please enter an image description");
+            return;
+        }
+
+        isGenerating = true;
+        try
+        {
+            var request = new ImageGenerationRequest
+            {
+                Prompt = imagePrompt,
+                Model = selectedModel,
+                N = numberOfImages,
+                Size = selectedSize,
+                Quality = quality,
+                Style = style,
+                ResponseFormat = "url"
+            };
+
+            var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
+            
+            if (response?.Data != null)
+            {
+                generatedImages.AddRange(response.Data);
+                
+                // Add to recent prompts
+                if (!recentPrompts.Contains(imagePrompt))
+                {
+                    recentPrompts.Insert(0, imagePrompt);
+                    if (recentPrompts.Count > 10)
+                        recentPrompts.RemoveAt(recentPrompts.Count - 1);
+                }
+                
+                ToastService.ShowSuccess($"Successfully generated {response.Data.Count} image(s)");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating image");
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private void OnModelChanged()
+    {
+        // Adjust settings based on selected model
+        if (selectedModel == "dall-e-2")
+        {
+            // DALL-E 2 only supports 1 image at a time in some configurations
+            if (numberOfImages > 1)
+                numberOfImages = 1;
+                
+            // Reset to standard size if using DALL-E 3 specific sizes
+            if (selectedSize == "1792x1024" || selectedSize == "1024x1792")
+                selectedSize = "1024x1024";
+        }
+    }
+
+    private string GetModelDescription(string model)
+    {
+        return model switch
+        {
+            "dall-e-3" => "Latest OpenAI model with best quality and detail",
+            "dall-e-2" => "Previous OpenAI model, faster but less detailed",
+            "image-01" => "MiniMax's image generation model",
+            "stable-diffusion-xl" => "Open-source model with artistic flexibility",
+            _ => "Image generation model"
+        };
+    }
+
+    private void UsePrompt(string prompt)
+    {
+        imagePrompt = prompt;
+    }
+
+    private void ClearAll()
+    {
+        imagePrompt = "";
+        generatedImages.Clear();
+    }
+
+    private void RemoveImage(ImageData image)
+    {
+        generatedImages.Remove(image);
+    }
+
+    private void ShowImageModal(ImageData image)
+    {
+        modalImage = image;
+    }
+
+    private void CloseModal()
+    {
+        modalImage = null;
+    }
+
+    private async Task DownloadImage(ImageData image)
+    {
+        if (!string.IsNullOrEmpty(image.Url))
+        {
+            await JSRuntime.InvokeVoidAsync("downloadImage", image.Url, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+        }
+    }
+
+    private class ImageModel
+    {
+        public string ModelName { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Provider { get; set; } = "";
+    }
+}
+
+<style>
+    .image-gen-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .generated-image-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+    
+    .generated-image-container:hover .image-actions {
+        opacity: 1;
+    }
+    
+    .image-actions {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .modal.show {
+        display: block !important;
+    }
+</style>

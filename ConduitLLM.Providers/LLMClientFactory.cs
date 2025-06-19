@@ -195,6 +195,11 @@ public class LLMClientFactory : ILLMClientFactory
                 client = new OpenAICompatibleGenericClient(credentials, modelId, openAiCompatibleLogger, _httpClientFactory, defaultModels);
                 break;
 
+            case "minimax":
+                var miniMaxLogger = _loggerFactory.CreateLogger<MiniMaxClient>();
+                client = new MiniMaxClient(credentials, modelId, miniMaxLogger, _httpClientFactory, defaultModels);
+                break;
+
             case "ultravox":
                 var ultravoxLogger = _loggerFactory.CreateLogger<UltravoxClient>();
                 client = new UltravoxClient(credentials, modelId, ultravoxLogger, _httpClientFactory, defaultModels);

@@ -51,4 +51,16 @@ public interface IConduitApiClient
         EmbeddingRequest request,
         string? virtualKey = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates an image generation request to the API.
+    /// </summary>
+    /// <param name="request">The image generation request.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The image generation response.</returns>
+    Task<ImageGenerationResponse?> CreateImageAsync(
+        ImageGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
 }

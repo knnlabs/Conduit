@@ -118,3 +118,63 @@ Focus documentation efforts in this order:
 4. **Controller classes** - Public API endpoints
 5. **Service classes** - Business logic implementation
 6. **Helper and utility classes** - Supporting functionality
+
+## Media Storage Configuration
+
+Conduit supports storing generated images and videos using either in-memory storage (for development) or S3-compatible storage (for production).
+
+### Development (In-Memory Storage)
+By default, Conduit uses in-memory storage for development. Generated media files are stored in memory and served directly by the API.
+
+### Production (S3-Compatible Storage)
+For production deployments, configure S3-compatible storage (AWS S3, Cloudflare R2, MinIO, etc.):
+
+```bash
+# Storage provider configuration
+export CONDUITLLM__STORAGE__PROVIDER=S3
+
+# S3 configuration
+export CONDUITLLM__STORAGE__S3__SERVICEURL=https://your-s3-endpoint.com  # Optional for AWS S3
+export CONDUITLLM__STORAGE__S3__ACCESSKEY=your-access-key
+export CONDUITLLM__STORAGE__S3__SECRETKEY=your-secret-key
+export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
+export CONDUITLLM__STORAGE__S3__REGION=auto  # Or specific region like us-east-1
+export CONDUITLLM__STORAGE__S3__PUBLICBASEURL=https://cdn.yourdomain.com  # Optional CDN URL
+```
+
+### Cloudflare R2 Example
+```bash
+export CONDUITLLM__STORAGE__PROVIDER=S3
+export CONDUITLLM__STORAGE__S3__SERVICEURL=https://<account-id>.r2.cloudflarestorage.com
+export CONDUITLLM__STORAGE__S3__ACCESSKEY=<r2-access-key>
+export CONDUITLLM__STORAGE__S3__SECRETKEY=<r2-secret-key>
+export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
+export CONDUITLLM__STORAGE__S3__REGION=auto
+```
+
+### Image Generation API
+The image generation endpoint is available at:
+```
+POST /v1/images/generations
+```
+
+This endpoint follows OpenAI's image generation API format and supports providers like OpenAI (DALL-E), MiniMax, and Replicate.
+
+#### Supported Image Generation Models
+- **OpenAI**: `dall-e-2`, `dall-e-3`
+- **MiniMax**: `minimax-image` (maps to `image-01`)
+- **Replicate**: Various models via model name
+
+### MiniMax Models
+MiniMax provides both chat and image generation capabilities:
+
+#### Chat Model with Vision
+- **Model**: `minimax-chat` (maps to `abab6.5-chat`)
+- **Features**: Text generation with image understanding
+- **Context**: 245K tokens
+- **Max Output**: 8K tokens
+
+#### Image Generation
+- **Model**: `minimax-image` (maps to `image-01`)
+- **Aspect Ratios**: 1:1, 16:9, 9:16, 4:3, 3:4, and more
+- **Features**: Prompt optimization, high-quality generation

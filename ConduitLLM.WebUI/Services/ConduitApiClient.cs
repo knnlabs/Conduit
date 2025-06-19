@@ -380,6 +380,52 @@ public class ConduitApiClient : IConduitApiClient
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ImageGenerationResponse?> CreateImageAsync(
+        ImageGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/images/generations");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Add request body
+            var jsonContent = JsonSerializer.Serialize(request, _jsonOptions);
+            requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<ImageGenerationResponse>(responseContent, _jsonOptions);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Image generation request failed with status {StatusCode}: {Error}", 
+                    response.StatusCode, errorContent);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating image");
+            throw;
+        }
+    }
+
     // Helper class for models response
     private class ModelsResponse
     {

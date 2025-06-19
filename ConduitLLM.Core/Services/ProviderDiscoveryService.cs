@@ -1,0 +1,392 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Interfaces.Configuration;
+using ConduitLLM.Configuration;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace ConduitLLM.Core.Services
+{
+    /// <summary>
+    /// Service for discovering provider capabilities and available models.
+    /// </summary>
+    public class ProviderDiscoveryService : IProviderDiscoveryService
+    {
+        private readonly ILLMClientFactory _clientFactory;
+        private readonly ConduitLLM.Configuration.IProviderCredentialService _credentialService;
+        private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
+        private readonly ILogger<ProviderDiscoveryService> _logger;
+        private readonly IMemoryCache _cache;
+        private const string CacheKeyPrefix = "provider_capabilities_";
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
+
+        // Known model patterns and their capabilities
+        private static readonly Dictionary<string, Func<string, ModelCapabilities>> KnownModelPatterns = new()
+        {
+            // OpenAI
+            ["gpt-4"] = modelId => new ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = modelId.Contains("vision"),
+                FunctionCalling = true,
+                ToolUse = true,
+                JsonMode = true,
+                MaxTokens = modelId.Contains("32k") ? 32768 : 8192,
+                MaxOutputTokens = 4096
+            },
+            ["gpt-3.5"] = _ => new ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                FunctionCalling = true,
+                ToolUse = true,
+                JsonMode = true,
+                MaxTokens = 16385,
+                MaxOutputTokens = 4096
+            },
+            ["dall-e"] = modelId => new ModelCapabilities
+            {
+                ImageGeneration = true,
+                SupportedImageSizes = modelId.Contains("3") 
+                    ? new List<string> { "1024x1024", "1792x1024", "1024x1792" }
+                    : new List<string> { "256x256", "512x512", "1024x1024" }
+            },
+            ["text-embedding"] = _ => new ModelCapabilities
+            {
+                Embeddings = true
+            },
+
+            // Anthropic Claude
+            ["claude"] = modelId => new ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = modelId.Contains("vision") || modelId.Contains("3-5"),
+                ToolUse = true,
+                JsonMode = false,
+                MaxTokens = modelId.Contains("200k") ? 200000 : 100000,
+                MaxOutputTokens = 4096
+            },
+
+            // MiniMax
+            ["abab"] = _ => new ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = true,
+                MaxTokens = 245760,
+                MaxOutputTokens = 8192
+            },
+            ["image-01"] = _ => new ModelCapabilities
+            {
+                ImageGeneration = true,
+                SupportedImageSizes = new List<string> 
+                { 
+                    "1:1", "16:9", "9:16", "4:3", "3:4", 
+                    "2.35:1", "1:2.35", "21:9", "9:21" 
+                }
+            },
+            ["video-01"] = _ => new ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = new List<string> 
+                { 
+                    "720x480", "1280x720", "1920x1080", "720x1280", "1080x1920" 
+                },
+                MaxVideoDurationSeconds = 6
+            },
+
+            // Google
+            ["gemini"] = modelId => new ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = true,
+                VideoUnderstanding = modelId.Contains("pro"),
+                FunctionCalling = true,
+                ToolUse = true,
+                MaxTokens = modelId.Contains("1.5") ? 1048576 : 32768,
+                MaxOutputTokens = 8192
+            },
+
+            // Replicate
+            ["flux"] = _ => new ModelCapabilities
+            {
+                ImageGeneration = true,
+                SupportedImageSizes = new List<string> { "Any custom size" }
+            },
+            ["stable-diffusion"] = _ => new ModelCapabilities
+            {
+                ImageGeneration = true,
+                SupportedImageSizes = new List<string> { "512x512", "768x768", "1024x1024" }
+            }
+        };
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ProviderDiscoveryService"/> class.
+        /// </summary>
+        public ProviderDiscoveryService(
+            ILLMClientFactory clientFactory,
+            ConduitLLM.Configuration.IProviderCredentialService credentialService,
+            ConduitLLM.Configuration.IModelProviderMappingService mappingService,
+            ILogger<ProviderDiscoveryService> logger,
+            IMemoryCache cache)
+        {
+            _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+            _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
+            _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        }
+
+        /// <inheritdoc/>
+        public async Task<Dictionary<string, DiscoveredModel>> DiscoverModelsAsync(CancellationToken cancellationToken = default)
+        {
+            var allModels = new Dictionary<string, DiscoveredModel>();
+
+            // Get all known providers from the system
+            var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere" };
+
+            foreach (var providerName in knownProviders)
+            {
+                try
+                {
+                    var credentials = await _credentialService.GetCredentialByProviderNameAsync(providerName);
+                    if (credentials != null && credentials.IsEnabled)
+                    {
+                        var providerModels = await DiscoverProviderModelsAsync(
+                            providerName, 
+                            credentials.ApiKey, 
+                            cancellationToken);
+
+                        foreach (var model in providerModels)
+                        {
+                            allModels[model.Key] = model.Value;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to discover models for provider {Provider}", providerName);
+                }
+            }
+
+            // Add any configured model mappings that weren't discovered
+            var modelMappings = await _mappingService.GetAllMappingsAsync();
+            foreach (var mapping in modelMappings)
+            {
+                if (!allModels.ContainsKey(mapping.ModelAlias))
+                {
+                    allModels[mapping.ModelAlias] = InferModelCapabilities(
+                        mapping.ModelAlias, 
+                        mapping.ProviderName, 
+                        mapping.ProviderModelId);
+                }
+            }
+
+            return allModels;
+        }
+
+        /// <inheritdoc/>
+        public async Task<Dictionary<string, DiscoveredModel>> DiscoverProviderModelsAsync(
+            string providerName, 
+            string? apiKey = null, 
+            CancellationToken cancellationToken = default)
+        {
+            var cacheKey = $"{CacheKeyPrefix}{providerName}";
+            
+            // Check cache first
+            if (_cache.TryGetValue<Dictionary<string, DiscoveredModel>>(cacheKey, out var cachedModels))
+            {
+                _logger.LogDebug("Using cached capabilities for provider {Provider}", providerName);
+                return cachedModels!;
+            }
+
+            var models = new Dictionary<string, DiscoveredModel>();
+
+            try
+            {
+                // Get client for provider
+                var client = _clientFactory.GetClientByProvider(providerName);
+
+                // Try to list models from the provider
+                try
+                {
+                    var modelList = await client.ListModelsAsync(apiKey, cancellationToken);
+                    
+                    foreach (var modelId in modelList)
+                    {
+                        var discoveredModel = InferModelCapabilities(modelId, providerName, modelId);
+                        models[modelId] = discoveredModel;
+                    }
+
+                    _logger.LogInformation("Discovered {Count} models from provider {Provider}", 
+                        models.Count, providerName);
+                }
+                catch (NotSupportedException)
+                {
+                    _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
+                    // Fall back to known models for this provider
+                    AddKnownModelsForProvider(providerName, models);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
+                // Fall back to known models for this provider
+                AddKnownModelsForProvider(providerName, models);
+            }
+
+            // Cache the results
+            _cache.Set(cacheKey, models, _cacheExpiration);
+
+            return models;
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> TestModelCapabilityAsync(
+            string modelName, 
+            ModelCapability capability, 
+            CancellationToken cancellationToken = default)
+        {
+            // First check if we have cached information
+            var allModels = await DiscoverModelsAsync(cancellationToken);
+            
+            if (allModels.TryGetValue(modelName, out var model))
+            {
+                return capability switch
+                {
+                    ModelCapability.Chat => model.Capabilities.Chat,
+                    ModelCapability.ChatStream => model.Capabilities.ChatStream,
+                    ModelCapability.Embeddings => model.Capabilities.Embeddings,
+                    ModelCapability.ImageGeneration => model.Capabilities.ImageGeneration,
+                    ModelCapability.Vision => model.Capabilities.Vision,
+                    ModelCapability.VideoGeneration => model.Capabilities.VideoGeneration,
+                    ModelCapability.VideoUnderstanding => model.Capabilities.VideoUnderstanding,
+                    ModelCapability.FunctionCalling => model.Capabilities.FunctionCalling,
+                    ModelCapability.ToolUse => model.Capabilities.ToolUse,
+                    ModelCapability.JsonMode => model.Capabilities.JsonMode,
+                    _ => false
+                };
+            }
+
+            // If not found, try to infer from model name
+            var inferredModel = InferModelCapabilities(modelName, "unknown", modelName);
+            return TestCapability(inferredModel.Capabilities, capability);
+        }
+
+        /// <inheritdoc/>
+        public async Task RefreshCapabilitiesAsync(CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Refreshing provider capabilities cache");
+            
+            // Clear all cached entries for known providers
+            var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere" };
+            foreach (var providerName in knownProviders)
+            {
+                var cacheKey = $"{CacheKeyPrefix}{providerName}";
+                _cache.Remove(cacheKey);
+            }
+
+            // Re-discover all models
+            await DiscoverModelsAsync(cancellationToken);
+        }
+
+        private DiscoveredModel InferModelCapabilities(string modelAlias, string provider, string modelId)
+        {
+            var capabilities = new ModelCapabilities();
+            var lowerModelId = modelId.ToLowerInvariant();
+
+            // Try to match against known patterns
+            foreach (var pattern in KnownModelPatterns)
+            {
+                if (lowerModelId.Contains(pattern.Key))
+                {
+                    capabilities = pattern.Value(lowerModelId);
+                    break;
+                }
+            }
+
+            // If no pattern matched, use provider-specific defaults
+            if (!HasAnyCapability(capabilities))
+            {
+                capabilities = GetProviderDefaults(provider);
+            }
+
+            return new DiscoveredModel
+            {
+                ModelId = modelAlias,
+                Provider = provider,
+                DisplayName = modelAlias,
+                Capabilities = capabilities,
+                LastVerified = DateTime.UtcNow,
+                Metadata = new Dictionary<string, object>
+                {
+                    ["original_model_id"] = modelId,
+                    ["inferred"] = true
+                }
+            };
+        }
+
+        private bool HasAnyCapability(ModelCapabilities capabilities)
+        {
+            return capabilities.Chat || capabilities.Embeddings || 
+                   capabilities.ImageGeneration || capabilities.VideoGeneration;
+        }
+
+        private ModelCapabilities GetProviderDefaults(string provider)
+        {
+            return provider.ToLowerInvariant() switch
+            {
+                "openai" => new ModelCapabilities { Chat = true, ChatStream = true },
+                "anthropic" => new ModelCapabilities { Chat = true, ChatStream = true, ToolUse = true },
+                "google" => new ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
+                "minimax" => new ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
+                "replicate" => new ModelCapabilities { ImageGeneration = true },
+                _ => new ModelCapabilities { Chat = true }
+            };
+        }
+
+        private void AddKnownModelsForProvider(string provider, Dictionary<string, DiscoveredModel> models)
+        {
+            var knownModels = provider.ToLowerInvariant() switch
+            {
+                "openai" => new[] { "gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "dall-e-3", "dall-e-2" },
+                "anthropic" => new[] { "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307" },
+                "google" => new[] { "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro" },
+                "minimax" => new[] { "abab6.5-chat", "abab6.5s-chat", "abab5.5-chat", "image-01", "video-01" },
+                _ => Array.Empty<string>()
+            };
+
+            foreach (var modelId in knownModels)
+            {
+                models[modelId] = InferModelCapabilities(modelId, provider, modelId);
+            }
+        }
+
+        private bool TestCapability(ModelCapabilities capabilities, ModelCapability capability)
+        {
+            return capability switch
+            {
+                ModelCapability.Chat => capabilities.Chat,
+                ModelCapability.ChatStream => capabilities.ChatStream,
+                ModelCapability.Embeddings => capabilities.Embeddings,
+                ModelCapability.ImageGeneration => capabilities.ImageGeneration,
+                ModelCapability.Vision => capabilities.Vision,
+                ModelCapability.VideoGeneration => capabilities.VideoGeneration,
+                ModelCapability.VideoUnderstanding => capabilities.VideoUnderstanding,
+                ModelCapability.FunctionCalling => capabilities.FunctionCalling,
+                ModelCapability.ToolUse => capabilities.ToolUse,
+                ModelCapability.JsonMode => capabilities.JsonMode,
+                _ => false
+            };
+        }
+    }
+}

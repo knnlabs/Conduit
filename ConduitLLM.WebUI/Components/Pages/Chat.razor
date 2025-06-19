@@ -5,6 +5,7 @@
 @using ConduitLLM.Configuration
 @using ConduitLLM.Configuration.DTOs
 @using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.Components.Forms
 @using ConduitLLM.WebUI.Components.Shared
 @using ConduitLLM.WebUI.Models
 @using System.Text.Json
@@ -96,6 +97,37 @@
                                       rows="4" 
                                       placeholder="Type your message here..." 
                                       @bind="userMessage"></textarea>
+                        </div>
+                        
+                        <!-- Image Upload -->
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-image me-2"></i>Attach Images (Optional)
+                            </label>
+                            <div class="image-upload-area">
+                                <InputFile OnChange="@HandleImageUpload" multiple accept="image/*" class="form-control" />
+                                <div class="form-text">Upload images to use with vision-capable models (e.g., GPT-4 Vision, Claude 3)</div>
+                            </div>
+                            
+                            @if (attachedImages.Any())
+                            {
+                                <div class="attached-images-preview mt-3">
+                                    <div class="row g-2">
+                                        @foreach (var (image, index) in attachedImages.Select((img, idx) => (img, idx)))
+                                        {
+                                            <div class="col-3">
+                                                <div class="position-relative">
+                                                    <img src="@image.DataUrl" alt="Attached image @(index + 1)" class="img-thumbnail w-100" style="height: 100px; object-fit: cover;" />
+                                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" 
+                                                            @onclick="() => RemoveImage(index)">
+                                                        <i class="fa fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
                         
                         <!-- Action Buttons -->
@@ -382,6 +414,26 @@
     .bg-gradient-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
+    
+    .image-upload-area {
+        position: relative;
+    }
+    
+    .attached-images-preview {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .attached-images-preview .img-thumbnail {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .attached-images-preview .img-thumbnail:hover {
+        transform: scale(1.05);
+    }
 </style>
 
 @code {
@@ -404,6 +456,17 @@
     private List<FunctionDefinitionViewModel> functionDefinitions = new();
     private Dictionary<string, string> functionResults = new();
     private FunctionCallState functionCallState = new();
+    
+    // Image upload related
+    private List<AttachedImage> attachedImages = new();
+    private const long MaxFileSize = 20 * 1024 * 1024; // 20MB max file size
+    
+    private class AttachedImage
+    {
+        public string FileName { get; set; } = "";
+        public string DataUrl { get; set; } = "";
+        public string ContentType { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -453,14 +516,37 @@
         try
         {
             // Add user message to chat history
-            var userChatMessage = new ChatMessage { Role = "user", Content = userMessage, Timestamp = DateTime.Now };
+            object messageContent;
+            if (attachedImages.Any())
+            {
+                // Create multimodal content with text and images
+                var contentParts = new List<object>();
+                contentParts.Add(new TextContentPart { Text = userMessage });
+                
+                foreach (var image in attachedImages)
+                {
+                    contentParts.Add(new ImageUrlContentPart 
+                    { 
+                        ImageUrl = new ImageUrl { Url = image.DataUrl }
+                    });
+                }
+                
+                messageContent = contentParts;
+            }
+            else
+            {
+                messageContent = userMessage;
+            }
+            
+            var userChatMessage = new ChatMessage { Role = "user", Content = messageContent, Timestamp = DateTime.Now };
             chatHistory.Add(userChatMessage);
             
             // Build messages list including system prompt and any function results
             var messages = BuildMessageList();
             
-            // Reset user message input
+            // Reset user message input and clear attached images
             userMessage = "";
+            attachedImages.Clear();
             
             // Create request payload
             var chatRequest = new ChatCompletionRequest
@@ -641,7 +727,60 @@
     {
         chatHistory.Clear();
         streamedResponse = null;
+        attachedImages.Clear();
         StateHasChanged();
+    }
+    
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        foreach (var imageFile in e.GetMultipleFiles())
+        {
+            if (imageFile.Size > MaxFileSize)
+            {
+                ToastService.ShowError($"File {imageFile.Name} is too large. Maximum size is 20MB.");
+                continue;
+            }
+            
+            if (!imageFile.ContentType.StartsWith("image/"))
+            {
+                ToastService.ShowError($"File {imageFile.Name} is not an image.");
+                continue;
+            }
+            
+            try
+            {
+                // Read the image and convert to base64
+                using var stream = imageFile.OpenReadStream(MaxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                var bytes = ms.ToArray();
+                var base64 = Convert.ToBase64String(bytes);
+                var dataUrl = $"data:{imageFile.ContentType};base64,{base64}";
+                
+                attachedImages.Add(new AttachedImage
+                {
+                    FileName = imageFile.Name,
+                    DataUrl = dataUrl,
+                    ContentType = imageFile.ContentType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading image {FileName}", imageFile.Name);
+                ToastService.ShowError($"Error uploading {imageFile.Name}: {ex.Message}");
+            }
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void RemoveImage(int index)
+    {
+        if (index >= 0 && index < attachedImages.Count)
+        {
+            attachedImages.RemoveAt(index);
+            StateHasChanged();
+        }
     }
     
     private Task DeleteMessage(int index)
