@@ -4,6 +4,7 @@ export { ConduitAdminClient } from './client/ConduitAdminClient';
 // Types
 export * from './client/types';
 export * from './models/common';
+export * from './models/discovery';
 export * from './models/virtualKey';
 export * from './models/provider';
 export * from './models/modelMapping';
@@ -23,6 +24,7 @@ export { IpFilterService } from './services/IpFilterService';
 export { ModelCostService } from './services/ModelCostService';
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
+export { DiscoveryService } from './services/DiscoveryService';
 
 // Utilities
 export * from './utils/errors';

@@ -7,6 +7,8 @@ import { IpFilterService } from '../services/IpFilterService';
 import { ModelCostService } from '../services/ModelCostService';
 import { AnalyticsService } from '../services/AnalyticsService';
 import { SystemService } from '../services/SystemService';
+import { DiscoveryService } from '../services/DiscoveryService';
+import { ProviderModelsService } from '../services/ProviderModelsService';
 import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
@@ -40,6 +42,8 @@ export class ConduitAdminClient {
   public readonly modelCosts: ModelCostService;
   public readonly analytics: AnalyticsService;
   public readonly system: SystemService;
+  public readonly discovery: DiscoveryService;
+  public readonly providerModels: ProviderModelsService;
 
   private readonly config: ConduitConfig;
 
@@ -70,6 +74,8 @@ export class ConduitAdminClient {
     this.modelCosts = new ModelCostService(baseConfig);
     this.analytics = new AnalyticsService(baseConfig);
     this.system = new SystemService(baseConfig);
+    this.discovery = new DiscoveryService(baseConfig);
+    this.providerModels = new ProviderModelsService(baseConfig);
   }
 
   static fromEnvironment(env?: {

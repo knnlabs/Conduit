@@ -96,6 +96,16 @@ export const ENDPOINTS = {
     AUDIO_BY_PROVIDER: (provider: string) => `/audioconfiguration/${provider}`,
     ROUTER: '/router/configuration',
   },
+
+  // Discovery (note: these endpoints don't use /api prefix)
+  DISCOVERY: {
+    MODELS: '/v1/discovery/models',
+    PROVIDER_MODELS: (provider: string) => `/v1/discovery/providers/${provider}/models`,
+    MODEL_CAPABILITY: (model: string, capability: string) => `/v1/discovery/models/${model}/capabilities/${capability}`,
+    BULK_CAPABILITIES: '/v1/discovery/bulk/capabilities',
+    BULK_MODELS: '/v1/discovery/bulk/models',
+    REFRESH: '/v1/discovery/refresh',
+  },
 } as const;
 
 export const DEFAULT_PAGE_SIZE = 20;
