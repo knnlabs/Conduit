@@ -9,7 +9,7 @@ using ConduitLLM.Configuration.Repositories; // Added for repository interfaces
 using ConduitLLM.Core;
 using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Interfaces; // Added for IVirtualKeyCache
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Routing; // Added for DefaultLLMClientFactory
 using ConduitLLM.Core.Services;
@@ -19,7 +19,7 @@ using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
 using ConduitLLM.Http.Middleware; // Added for Security middleware extensions
 using ConduitLLM.Http.Security;
-using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService
+using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualKeyCache, CachedApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 
@@ -160,13 +160,13 @@ builder.Services.AddRepositories();
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
-builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
+// Virtual Key service registration will be done after Redis configuration
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
 // Register cache service based on configuration
 builder.Services.AddCacheService(builder.Configuration);
 
-// Configure Data Protection with Redis persistence
+// Configure Redis connection for all Redis-dependent services
 // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
 var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
@@ -185,6 +185,28 @@ if (!string.IsNullOrEmpty(redisUrl))
 }
 
 builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
+// Register Virtual Key service with optional Redis caching
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    // Use Redis-cached Virtual Key service for high-performance validation
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        return ConnectionMultiplexer.Connect(redisConnectionString);
+    });
+    
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, CachedApiVirtualKeyService>();
+    
+    Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode)");
+}
+else
+{
+    // Fall back to direct database Virtual Key service
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
+    
+    Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode)");
+}
 
 // Register Configuration adapters (moved from Core)
 builder.Services.AddConfigurationAdapters();
@@ -290,8 +312,33 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 
 // Register batch spend update service for optimized Virtual Key operations
-builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>();
-builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>();
+builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
+{
+    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Configuration.Services.BatchSpendUpdateService>>();
+    var batchService = new ConduitLLM.Configuration.Services.BatchSpendUpdateService(serviceProvider, logger);
+    
+    // Wire up cache invalidation event if Redis cache is available
+    var cache = serviceProvider.GetService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
+    if (cache != null)
+    {
+        batchService.SpendUpdatesCompleted += async (keyHashes) =>
+        {
+            try
+            {
+                await cache.InvalidateVirtualKeysAsync(keyHashes);
+                logger.LogDebug("Cache invalidated for {Count} Virtual Keys after batch spend update", keyHashes.Length);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate cache after batch spend update");
+            }
+        };
+    }
+    
+    return batchService;
+});
+builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
+    serviceProvider.GetRequiredService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>());
 
 // Add standardized health checks (skip in test environment to avoid conflicts)
 if (builder.Environment.EnvironmentName != "Test")

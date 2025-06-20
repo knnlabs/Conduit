@@ -14,6 +14,7 @@ namespace ConduitLLM.Configuration.Services
 {
     /// <summary>
     /// Background service that batches Virtual Key spend updates to reduce database writes
+    /// Provides events for cache invalidation integration
     /// </summary>
     public class BatchSpendUpdateService : BackgroundService
     {
@@ -22,6 +23,12 @@ namespace ConduitLLM.Configuration.Services
         private readonly ConcurrentDictionary<int, decimal> _pendingSpendUpdates = new();
         private readonly Timer _flushTimer;
         private readonly TimeSpan _flushInterval = TimeSpan.FromSeconds(30); // Flush every 30 seconds
+        
+        /// <summary>
+        /// Event raised after successful batch spend updates with the key hashes that were updated
+        /// Allows external cache invalidation without tight coupling
+        /// </summary>
+        public event Action<string[]>? SpendUpdatesCompleted;
 
         /// <summary>
         /// Initializes a new instance of the BatchSpendUpdateService
@@ -113,6 +120,29 @@ namespace ConduitLLM.Configuration.Services
                 
                 _logger.LogInformation("Batch updated spend for {Count} Virtual Keys, {AffectedRows} rows modified", 
                     updates.Length, affectedRows);
+
+                // Raise event for cache invalidation (if any subscribers)
+                if (affectedRows > 0 && SpendUpdatesCompleted != null)
+                {
+                    var keyHashes = virtualKeys
+                        .Where(vk => updates.Any(u => u.Key == vk.Id))
+                        .Select(vk => vk.KeyHash)
+                        .ToArray();
+                    
+                    if (keyHashes.Length > 0)
+                    {
+                        try
+                        {
+                            SpendUpdatesCompleted.Invoke(keyHashes);
+                            _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", keyHashes.Length);
+                        }
+                        catch (Exception eventEx)
+                        {
+                            _logger.LogWarning(eventEx, "Error in SpendUpdatesCompleted event handler");
+                            // Don't fail the operation if event handler fails
+                        }
+                    }
+                }
 
                 return updates.Length;
             }

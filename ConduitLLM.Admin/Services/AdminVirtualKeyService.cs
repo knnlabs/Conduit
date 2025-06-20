@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +25,7 @@ namespace ConduitLLM.Admin.Services
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
+        private readonly IVirtualKeyCache? _cache; // Optional cache for invalidation
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -32,14 +34,17 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="virtualKeyRepository">The virtual key repository</param>
         /// <param name="spendHistoryRepository">The spend history repository</param>
+        /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
+            IVirtualKeyCache? cache,
             ILogger<AdminVirtualKeyService> logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
+            _cache = cache; // Optional - can be null if Redis not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -240,7 +245,24 @@ namespace ConduitLLM.Admin.Services
 
             key.UpdatedAt = DateTime.UtcNow;
 
-            return await _virtualKeyRepository.UpdateAsync(key);
+            var result = await _virtualKeyRepository.UpdateAsync(key);
+            
+            if (result && _cache != null)
+            {
+                // Invalidate cache after spend reset
+                try
+                {
+                    await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
+                    _logger.LogDebug("Invalidated cache for Virtual Key after spend reset: {KeyId}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to invalidate cache for Virtual Key {KeyId} after spend reset", id);
+                    // Don't fail the operation if cache invalidation fails
+                }
+            }
+            
+            return result;
         }
 
         /// <inheritdoc />
@@ -338,7 +360,24 @@ namespace ConduitLLM.Admin.Services
             key.CurrentSpend += cost;
             key.UpdatedAt = DateTime.UtcNow;
 
-            return await _virtualKeyRepository.UpdateAsync(key);
+            var result = await _virtualKeyRepository.UpdateAsync(key);
+            
+            if (result && _cache != null)
+            {
+                // Invalidate cache after spend update
+                try
+                {
+                    await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
+                    _logger.LogDebug("Invalidated cache for Virtual Key after spend update: {KeyId}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to invalidate cache for Virtual Key {KeyId} after spend update", id);
+                    // Don't fail the operation if cache invalidation fails
+                }
+            }
+            
+            return result;
         }
 
         /// <inheritdoc />

@@ -1,10 +1,13 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache
+using ConduitLLM.Configuration.Repositories; // For repository interfaces
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
 
@@ -38,8 +41,16 @@ public static class ServiceCollectionExtensions
                 policy.Requirements.Add(new MasterKeyRequirement()));
         });
 
-        // Register services
-        services.AddScoped<IAdminVirtualKeyService, AdminVirtualKeyService>();
+        // Register AdminVirtualKeyService with optional cache dependency using factory
+        services.AddScoped<IAdminVirtualKeyService>(serviceProvider =>
+        {
+            var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
+            var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+            var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
+            
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, logger);
+        });
         services.AddScoped<IAdminModelProviderMappingService, AdminModelProviderMappingService>();
         services.AddScoped<IAdminRouterService, AdminRouterService>();
         services.AddScoped<IAdminLogService, AdminLogService>();
