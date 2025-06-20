@@ -444,5 +444,34 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        /// <inheritdoc />
+        public async Task<List<ProviderHealthRecord>> GetAllRecordsAsync(DateTime? since = null, int? limit = null)
+        {
+            try
+            {
+                var query = _dbContext.ProviderHealthRecords.AsQueryable();
+
+                if (since.HasValue)
+                {
+                    query = query.Where(r => r.TimestampUtc >= since.Value);
+                }
+
+                // Order by timestamp descending
+                query = query.OrderByDescending(r => r.TimestampUtc);
+
+                if (limit.HasValue)
+                {
+                    query = query.Take(limit.Value);
+                }
+
+                return await query.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all health records");
+                throw;
+            }
+        }
     }
 }

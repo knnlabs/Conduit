@@ -122,10 +122,30 @@ public class ModelCapabilityValidationService : IModelCapabilityValidationServic
         {
             try
             {
-                var actuallySupportsVision = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, "Vision");
-                if (!actuallySupportsVision)
+                // Use bulk API when possible for better performance
+                var capabilityTests = new List<(string Model, string Capability)>
                 {
-                    result.Errors.Add($"Model {mapping.ModelId} is configured to support vision but capability test failed");
+                    (mapping.ModelId, "Vision")
+                };
+                
+                var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
+                var key = $"{mapping.ModelId}:Vision";
+                
+                if (bulkResults.TryGetValue(key, out var actuallySupportsVision))
+                {
+                    if (!actuallySupportsVision)
+                    {
+                        result.Errors.Add($"Model {mapping.ModelId} is configured to support vision but capability test failed");
+                    }
+                }
+                else
+                {
+                    // Fallback to individual API call
+                    var fallbackResult = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, "Vision");
+                    if (!fallbackResult)
+                    {
+                        result.Errors.Add($"Model {mapping.ModelId} is configured to support vision but capability test failed");
+                    }
                 }
             }
             catch (Exception ex)
@@ -142,10 +162,30 @@ public class ModelCapabilityValidationService : IModelCapabilityValidationServic
         {
             try
             {
-                var actuallySupportsImageGen = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, "ImageGeneration");
-                if (!actuallySupportsImageGen)
+                // Use bulk API when possible for better performance
+                var capabilityTests = new List<(string Model, string Capability)>
                 {
-                    result.Errors.Add($"Model {mapping.ModelId} is configured to support image generation but capability test failed");
+                    (mapping.ModelId, "ImageGeneration")
+                };
+                
+                var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
+                var key = $"{mapping.ModelId}:ImageGeneration";
+                
+                if (bulkResults.TryGetValue(key, out var actuallySupportsImageGen))
+                {
+                    if (!actuallySupportsImageGen)
+                    {
+                        result.Errors.Add($"Model {mapping.ModelId} is configured to support image generation but capability test failed");
+                    }
+                }
+                else
+                {
+                    // Fallback to individual API call
+                    var fallbackResult = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, "ImageGeneration");
+                    if (!fallbackResult)
+                    {
+                        result.Errors.Add($"Model {mapping.ModelId} is configured to support image generation but capability test failed");
+                    }
                 }
             }
             catch (Exception ex)
@@ -213,7 +253,7 @@ public class ModelCapabilityValidationService : IModelCapabilityValidationServic
     {
         try
         {
-            // Test for undeclared capabilities
+            // Test for undeclared capabilities using bulk API
             var capabilitiesToTest = new[]
             {
                 ("Vision", mapping.SupportsVision),
@@ -222,21 +262,52 @@ public class ModelCapabilityValidationService : IModelCapabilityValidationServic
                 ("ChatStream", true) // Most models should support streaming
             };
 
-            foreach (var (capability, isDeclared) in capabilitiesToTest)
+            // Collect undeclared capabilities for bulk testing
+            var bulkTests = capabilitiesToTest
+                .Where(ct => !ct.Item2)
+                .Select(ct => (mapping.ModelId, ct.Item1))
+                .ToList();
+
+            if (bulkTests.Any())
             {
-                if (!isDeclared)
+                try
                 {
-                    try
+                    var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(bulkTests);
+                    
+                    foreach (var (capability, isDeclared) in capabilitiesToTest)
                     {
-                        var actuallySupports = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, capability);
-                        if (actuallySupports)
+                        if (!isDeclared)
                         {
-                            result.Recommendations.Add($"Model {mapping.ModelId} appears to support {capability} but it's not configured - consider enabling this capability");
+                            var key = $"{mapping.ModelId}:{capability}";
+                            if (bulkResults.TryGetValue(key, out var actuallySupports) && actuallySupports)
+                            {
+                                result.Recommendations.Add($"Model {mapping.ModelId} appears to support {capability} but it's not configured - consider enabling this capability");
+                            }
                         }
                     }
-                    catch (Exception ex)
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Bulk capability testing failed, falling back to individual tests for model: {Model}", mapping.ModelId);
+                    
+                    // Fallback to individual testing
+                    foreach (var (capability, isDeclared) in capabilitiesToTest)
                     {
-                        _logger.LogDebug(ex, "Could not test {Capability} for model: {Model}", capability, mapping.ModelId);
+                        if (!isDeclared)
+                        {
+                            try
+                            {
+                                var actuallySupports = await _conduitApiClient.TestModelCapabilityAsync(mapping.ModelId, capability);
+                                if (actuallySupports)
+                                {
+                                    result.Recommendations.Add($"Model {mapping.ModelId} appears to support {capability} but it's not configured - consider enabling this capability");
+                                }
+                            }
+                            catch (Exception individualEx)
+                            {
+                                _logger.LogDebug(individualEx, "Could not test {Capability} for model: {Model}", capability, mapping.ModelId);
+                            }
+                        }
                     }
                 }
             }

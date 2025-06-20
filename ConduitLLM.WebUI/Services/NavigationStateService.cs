@@ -318,26 +318,57 @@ namespace ConduitLLM.WebUI.Services
                     return;
                 }
 
-                // Fallback: Check if any mapped models support image generation via Discovery API
+                // Fallback: Check if any mapped models support image generation via Discovery API (using bulk API)
                 var hasDiscoveredImageModels = false;
                 if (mappings?.Any() == true)
                 {
-                    foreach (var mapping in mappings.Where(m => m.IsEnabled))
+                    try
                     {
-                        try
+                        var enabledMappings = mappings.Where(m => m.IsEnabled).ToList();
+                        if (enabledMappings.Any())
                         {
-                            var supportsImageGen = await _conduitApiClient.TestModelCapabilityAsync(
-                                mapping.ModelId, "ImageGeneration");
-                            if (supportsImageGen)
+                            // Use bulk API to test all models at once
+                            var capabilityTests = enabledMappings
+                                .Select(m => (m.ModelId, "ImageGeneration"))
+                                .ToList();
+                            
+                            var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
+                            
+                            // Check if any model supports image generation
+                            foreach (var mapping in enabledMappings)
                             {
-                                hasDiscoveredImageModels = true;
-                                _logger.LogInformation("Discovered image generation capability for model: {Model}", mapping.ModelId);
-                                break;
+                                var key = $"{mapping.ModelId}:ImageGeneration";
+                                if (bulkResults.TryGetValue(key, out var supportsImageGen) && supportsImageGen)
+                                {
+                                    hasDiscoveredImageModels = true;
+                                    _logger.LogInformation("Discovered image generation capability for model: {Model}", mapping.ModelId);
+                                    break;
+                                }
                             }
                         }
-                        catch (Exception discEx)
+                    }
+                    catch (Exception discEx)
+                    {
+                        _logger.LogDebug(discEx, "Could not test bulk image generation capabilities, falling back to individual tests");
+                        
+                        // Fallback to individual API calls if bulk fails
+                        foreach (var mapping in mappings.Where(m => m.IsEnabled))
                         {
-                            _logger.LogDebug(discEx, "Could not test image generation capability for model: {Model}", mapping.ModelId);
+                            try
+                            {
+                                var supportsImageGen = await _conduitApiClient.TestModelCapabilityAsync(
+                                    mapping.ModelId, "ImageGeneration");
+                                if (supportsImageGen)
+                                {
+                                    hasDiscoveredImageModels = true;
+                                    _logger.LogInformation("Discovered image generation capability for model: {Model}", mapping.ModelId);
+                                    break;
+                                }
+                            }
+                            catch (Exception individualEx)
+                            {
+                                _logger.LogDebug(individualEx, "Could not test image generation capability for model: {Model}", mapping.ModelId);
+                            }
                         }
                     }
                 }

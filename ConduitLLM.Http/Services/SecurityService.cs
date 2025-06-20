@@ -178,7 +178,7 @@ namespace ConduitLLM.Http.Services
             // Check IP-based rate limiting (if enabled)
             if (_options.RateLimiting.Enabled && !IsPathExcluded(path, _options.RateLimiting.ExcludedPaths))
             {
-                var rateLimitResult = await CheckIpRateLimitAsync(clientIp);
+                var rateLimitResult = await CheckIpRateLimitAsync(clientIp, path);
                 if (!rateLimitResult.IsAllowed)
                 {
                     return rateLimitResult;
@@ -486,8 +486,19 @@ namespace ConduitLLM.Http.Services
             }
         }
 
-        private async Task<SecurityCheckResult> CheckIpRateLimitAsync(string ipAddress)
+        private async Task<SecurityCheckResult> CheckIpRateLimitAsync(string ipAddress, string path = "")
         {
+            // Check discovery-specific rate limiting first
+            if (_options.RateLimiting.Discovery.Enabled && IsDiscoveryPath(path))
+            {
+                var discoveryResult = await CheckDiscoveryRateLimitAsync(ipAddress, path);
+                if (!discoveryResult.IsAllowed)
+                {
+                    return discoveryResult;
+                }
+            }
+
+            // Check general IP rate limiting
             var key = $"{RATE_LIMIT_PREFIX}{SERVICE_NAME}:{ipAddress}";
             var now = DateTime.UtcNow;
 
@@ -517,12 +528,13 @@ namespace ConduitLLM.Http.Services
                 return new SecurityCheckResult
                 {
                     IsAllowed = false,
-                    Reason = "Rate limit exceeded",
+                    Reason = $"Rate limit exceeded for path {path}",
                     StatusCode = 429,
                     Headers = new Dictionary<string, string>
                     {
                         ["Retry-After"] = _options.RateLimiting.WindowSeconds.ToString(),
-                        ["X-RateLimit-Limit"] = _options.RateLimiting.MaxRequests.ToString()
+                        ["X-RateLimit-Limit"] = _options.RateLimiting.MaxRequests.ToString(),
+                        ["X-RateLimit-Scope"] = "general"
                     }
                 };
             }
@@ -730,6 +742,130 @@ namespace ConduitLLM.Http.Services
 
             // Fall back to direct connection IP
             return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        }
+
+        /// <summary>
+        /// Checks if the path is a discovery-related endpoint
+        /// </summary>
+        private bool IsDiscoveryPath(string path)
+        {
+            return _options.RateLimiting.Discovery.DiscoveryPaths
+                .Any(discoveryPath => path.Contains(discoveryPath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Checks discovery-specific rate limits
+        /// </summary>
+        private async Task<SecurityCheckResult> CheckDiscoveryRateLimitAsync(string ipAddress, string path)
+        {
+            var discoveryKey = $"{RATE_LIMIT_PREFIX}discovery:{ipAddress}";
+            var now = DateTime.UtcNow;
+
+            // Get current discovery request count
+            var discoveryCount = await GetRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
+            discoveryCount++;
+
+            if (discoveryCount > _options.RateLimiting.Discovery.MaxRequests)
+            {
+                _logger.LogWarning("Discovery rate limit exceeded for {IpAddress}: {Count} requests in {Window} seconds for path {Path}",
+                    ipAddress, discoveryCount, _options.RateLimiting.Discovery.WindowSeconds, path);
+
+                return new SecurityCheckResult
+                {
+                    IsAllowed = false,
+                    Reason = $"Discovery rate limit exceeded for path {path}",
+                    StatusCode = 429,
+                    Headers = new Dictionary<string, string>
+                    {
+                        ["Retry-After"] = _options.RateLimiting.Discovery.WindowSeconds.ToString(),
+                        ["X-RateLimit-Limit"] = _options.RateLimiting.Discovery.MaxRequests.ToString(),
+                        ["X-RateLimit-Scope"] = "discovery",
+                        ["X-RateLimit-Remaining"] = Math.Max(0, _options.RateLimiting.Discovery.MaxRequests - discoveryCount).ToString()
+                    }
+                };
+            }
+
+            // Check per-model capability rate limiting for capability endpoints
+            if (path.Contains("/capabilities/", StringComparison.OrdinalIgnoreCase))
+            {
+                var modelMatch = ExtractModelFromPath(path);
+                if (!string.IsNullOrEmpty(modelMatch))
+                {
+                    var capabilityResult = await CheckModelCapabilityRateLimitAsync(ipAddress, modelMatch);
+                    if (!capabilityResult.IsAllowed)
+                    {
+                        return capabilityResult;
+                    }
+                }
+            }
+
+            // Increment discovery counter
+            await IncrementRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
+
+            return new SecurityCheckResult { IsAllowed = true };
+        }
+
+        /// <summary>
+        /// Checks per-model capability rate limits
+        /// </summary>
+        private async Task<SecurityCheckResult> CheckModelCapabilityRateLimitAsync(string ipAddress, string modelName)
+        {
+            var capabilityKey = $"{RATE_LIMIT_PREFIX}capability:{ipAddress}:{modelName}";
+            var now = DateTime.UtcNow;
+
+            var capabilityCount = await GetRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
+            capabilityCount++;
+
+            if (capabilityCount > _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel)
+            {
+                _logger.LogWarning("Model capability rate limit exceeded for {IpAddress} and model {Model}: {Count} requests in {Window} seconds",
+                    ipAddress, modelName, capabilityCount, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
+
+                return new SecurityCheckResult
+                {
+                    IsAllowed = false,
+                    Reason = $"Capability check rate limit exceeded for model {modelName}",
+                    StatusCode = 429,
+                    Headers = new Dictionary<string, string>
+                    {
+                        ["Retry-After"] = _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds.ToString(),
+                        ["X-RateLimit-Limit"] = _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel.ToString(),
+                        ["X-RateLimit-Scope"] = "model-capability",
+                        ["X-RateLimit-Model"] = modelName
+                    }
+                };
+            }
+
+            // Increment capability counter
+            await IncrementRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
+
+            return new SecurityCheckResult { IsAllowed = true };
+        }
+
+        /// <summary>
+        /// Extracts model name from capability path
+        /// </summary>
+        private string ExtractModelFromPath(string path)
+        {
+            try
+            {
+                // Match patterns like /v1/discovery/models/{model}/capabilities/{capability}
+                var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < segments.Length - 2; i++)
+                {
+                    if (segments[i].Equals("models", StringComparison.OrdinalIgnoreCase) && 
+                        i + 2 < segments.Length && 
+                        segments[i + 2].Equals("capabilities", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return segments[i + 1];
+                    }
+                }
+                return "";
+            }
+            catch
+            {
+                return "";
+            }
         }
 
         // Data structures for Redis storage (compatible with WebUI/Admin)

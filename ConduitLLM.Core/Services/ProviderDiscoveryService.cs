@@ -154,12 +154,16 @@ namespace ConduitLLM.Core.Services
             // Get all known providers from the system
             var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere" };
 
+            // Load all credentials in one query instead of N individual queries
+            var allCredentials = await _credentialService.GetAllCredentialsAsync();
+            var credentialLookup = allCredentials.ToDictionary(c => c.ProviderName.ToLowerInvariant(), c => c);
+
             foreach (var providerName in knownProviders)
             {
                 try
                 {
-                    var credentials = await _credentialService.GetCredentialByProviderNameAsync(providerName);
-                    if (credentials != null && credentials.IsEnabled)
+                    if (credentialLookup.TryGetValue(providerName.ToLowerInvariant(), out var credentials) 
+                        && credentials.IsEnabled)
                     {
                         var providerModels = await DiscoverProviderModelsAsync(
                             providerName, 

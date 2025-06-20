@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using static ConduitLLM.Core.Interfaces.IProviderDiscoveryService;
 
 namespace ConduitLLM.Http.Controllers
 {
@@ -163,6 +167,134 @@ namespace ConduitLLM.Http.Controllers
         }
 
         /// <summary>
+        /// Tests multiple model capabilities in a single request to reduce API calls.
+        /// </summary>
+        /// <param name="request">The bulk capability test request.</param>
+        /// <returns>Results for all requested capability tests.</returns>
+        [HttpPost("bulk/capabilities")]
+        public async Task<IActionResult> TestBulkCapabilities([FromBody] BulkCapabilityTestRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var results = new List<CapabilityTestResult>();
+
+                foreach (var test in request.Tests)
+                {
+                    try
+                    {
+                        // Validate capability name
+                        if (!Enum.TryParse<ModelCapability>(test.Capability, true, out var capabilityEnum))
+                        {
+                            results.Add(new CapabilityTestResult
+                            {
+                                Model = test.Model,
+                                Capability = test.Capability,
+                                Supported = false,
+                                Error = $"Unknown capability: {test.Capability}"
+                            });
+                            continue;
+                        }
+
+                        var supported = await _discoveryService.TestModelCapabilityAsync(test.Model, capabilityEnum);
+                        
+                        results.Add(new CapabilityTestResult
+                        {
+                            Model = test.Model,
+                            Capability = test.Capability,
+                            Supported = supported
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error testing capability {Capability} for model {Model}", test.Capability, test.Model);
+                        results.Add(new CapabilityTestResult
+                        {
+                            Model = test.Model,
+                            Capability = test.Capability,
+                            Supported = false,
+                            Error = $"Error testing capability: {ex.Message}"
+                        });
+                    }
+                }
+
+                return Ok(new BulkCapabilityTestResponse
+                {
+                    Results = results,
+                    TotalTests = request.Tests.Count,
+                    SuccessfulTests = results.Count(r => r.Error == null),
+                    FailedTests = results.Count(r => r.Error != null)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing bulk capability tests");
+                return StatusCode(500, new { error = new { message = "An error occurred while processing bulk capability tests", type = "server_error" } });
+            }
+        }
+
+        /// <summary>
+        /// Gets discovery information for multiple models in a single request.
+        /// </summary>
+        /// <param name="request">The bulk discovery request.</param>
+        /// <returns>Discovery information for all requested models.</returns>
+        [HttpPost("bulk/models")]
+        public async Task<IActionResult> GetBulkModels([FromBody] BulkModelDiscoveryRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var allModels = await _discoveryService.DiscoverModelsAsync();
+                var results = new List<ModelDiscoveryResult>();
+
+                foreach (var modelId in request.Models)
+                {
+                    if (allModels.TryGetValue(modelId, out var modelInfo))
+                    {
+                        results.Add(new ModelDiscoveryResult
+                        {
+                            Model = modelId,
+                            Provider = modelInfo.Provider,
+                            DisplayName = modelInfo.DisplayName,
+                            Capabilities = ConvertCapabilitiesToDictionary(modelInfo.Capabilities),
+                            Found = true
+                        });
+                    }
+                    else
+                    {
+                        results.Add(new ModelDiscoveryResult
+                        {
+                            Model = modelId,
+                            Found = false,
+                            Error = $"Model '{modelId}' not found"
+                        });
+                    }
+                }
+
+                return Ok(new BulkModelDiscoveryResponse
+                {
+                    Results = results,
+                    TotalRequested = request.Models.Count,
+                    FoundModels = results.Count(r => r.Found),
+                    NotFoundModels = results.Count(r => !r.Found)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing bulk model discovery");
+                return StatusCode(500, new { error = new { message = "An error occurred while processing bulk model discovery", type = "server_error" } });
+            }
+        }
+
+        /// <summary>
         /// Refreshes the capability cache for all providers.
         /// </summary>
         /// <returns>No content on success.</returns>
@@ -180,6 +312,26 @@ namespace ConduitLLM.Http.Controllers
                 _logger.LogError(ex, "Error refreshing capabilities");
                 return StatusCode(500, new { error = new { message = "An error occurred while refreshing capabilities", type = "server_error" } });
             }
+        }
+
+        /// <summary>
+        /// Converts ModelCapabilities to a dictionary for serialization.
+        /// </summary>
+        private static Dictionary<string, bool> ConvertCapabilitiesToDictionary(ModelCapabilities capabilities)
+        {
+            return new Dictionary<string, bool>
+            {
+                [nameof(capabilities.Chat)] = capabilities.Chat,
+                [nameof(capabilities.ChatStream)] = capabilities.ChatStream,
+                [nameof(capabilities.Embeddings)] = capabilities.Embeddings,
+                [nameof(capabilities.ImageGeneration)] = capabilities.ImageGeneration,
+                [nameof(capabilities.Vision)] = capabilities.Vision,
+                [nameof(capabilities.VideoGeneration)] = capabilities.VideoGeneration,
+                [nameof(capabilities.VideoUnderstanding)] = capabilities.VideoUnderstanding,
+                [nameof(capabilities.FunctionCalling)] = capabilities.FunctionCalling,
+                [nameof(capabilities.ToolUse)] = capabilities.ToolUse,
+                [nameof(capabilities.JsonMode)] = capabilities.JsonMode
+            };
         }
     }
 }

@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.WebUI.Models;
+using ConduitLLM.WebUI.Services;
 
 namespace ConduitLLM.WebUI.Interfaces;
 
@@ -89,6 +90,30 @@ public interface IConduitApiClient
     Task<List<string>> GetProviderModelsAsync(
         string providerName,
         bool forceRefresh = false,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tests multiple model capabilities in a single bulk request to reduce API calls.
+    /// </summary>
+    /// <param name="capabilityTests">List of model-capability pairs to test.</param>
+    /// <param name="virtualKey">Optional virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping model+capability keys to test results.</returns>
+    Task<Dictionary<string, bool>> TestBulkModelCapabilitiesAsync(
+        List<(string Model, string Capability)> capabilityTests,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets discovery information for multiple models in a single bulk request.
+    /// </summary>
+    /// <param name="modelIds">List of model IDs to get information for.</param>
+    /// <param name="virtualKey">Optional virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping model IDs to their discovery information.</returns>
+    Task<Dictionary<string, ModelDiscoveryInfo>> GetBulkModelDiscoveryAsync(
+        List<string> modelIds,
         string? virtualKey = null,
         CancellationToken cancellationToken = default);
 }
