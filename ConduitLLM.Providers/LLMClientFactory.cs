@@ -21,6 +21,7 @@ public class LLMClientFactory : ILLMClientFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IPerformanceMetricsService? _performanceMetricsService;
+    private readonly IModelCapabilityService? _capabilityService;
 
     // Removed compatibility flag as migration is now complete
 
@@ -31,16 +32,19 @@ public class LLMClientFactory : ILLMClientFactory
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="performanceMetricsService">Optional performance metrics service.</param>
+    /// <param name="capabilityService">Optional model capability service.</param>
     public LLMClientFactory(
         IOptions<ConduitSettings> settingsOptions,
         ILoggerFactory loggerFactory,
         IHttpClientFactory httpClientFactory,
-        IPerformanceMetricsService? performanceMetricsService = null)
+        IPerformanceMetricsService? performanceMetricsService = null,
+        IModelCapabilityService? capabilityService = null)
     {
         _settings = settingsOptions.Value ?? throw new ArgumentNullException(nameof(settingsOptions), "Conduit settings cannot be null.");
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _performanceMetricsService = performanceMetricsService;
+        _capabilityService = capabilityService;
     }
 
     /// <inheritdoc />
@@ -112,7 +116,7 @@ public class LLMClientFactory : ILLMClientFactory
             // OpenAI-compatible clients
             case "openai":
                 var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                client = new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory, defaultModels);
+                client = new OpenAIClient(credentials, modelId, openAiLogger, _httpClientFactory, _capabilityService, defaultModels);
                 break;
 
             case "azure":

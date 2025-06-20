@@ -291,6 +291,39 @@ public class BedrockCohereBilledUnits
     public int? OutputTokens { get; set; }
 }
 
+/// <summary>
+/// Bedrock Cohere embedding request
+/// </summary>
+public class BedrockCohereEmbeddingRequest
+{
+    [JsonPropertyName("texts")]
+    public List<string> Texts { get; set; } = new();
+    
+    [JsonPropertyName("input_type")]
+    public string? InputType { get; set; } = "search_document";
+    
+    [JsonPropertyName("truncate")]
+    public string? Truncate { get; set; } = "END";
+}
+
+/// <summary>
+/// Bedrock Cohere embedding response
+/// </summary>
+public class BedrockCohereEmbeddingResponse
+{
+    [JsonPropertyName("embeddings")]
+    public List<List<float>> Embeddings { get; set; } = new();
+    
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+    
+    [JsonPropertyName("response_type")]
+    public string? ResponseType { get; set; }
+    
+    [JsonPropertyName("meta")]
+    public BedrockCohereMeta? Meta { get; set; }
+}
+
 // --- Meta Llama Models for Bedrock ---
 
 /// <summary>
@@ -382,6 +415,33 @@ public class BedrockTitanResult
     public string? CompletionReason { get; set; }
 }
 
+/// <summary>
+/// Bedrock Amazon Titan embedding request
+/// </summary>
+public class BedrockTitanEmbeddingRequest
+{
+    [JsonPropertyName("inputText")]
+    public string InputText { get; set; } = null!;
+    
+    [JsonPropertyName("dimensions")]
+    public int? Dimensions { get; set; }
+    
+    [JsonPropertyName("normalize")]
+    public bool? Normalize { get; set; }
+}
+
+/// <summary>
+/// Bedrock Amazon Titan embedding response
+/// </summary>
+public class BedrockTitanEmbeddingResponse
+{
+    [JsonPropertyName("embedding")]
+    public List<float> Embedding { get; set; } = new();
+    
+    [JsonPropertyName("inputTextTokenCount")]
+    public int? InputTextTokenCount { get; set; }
+}
+
 // --- AI21 Models for Bedrock ---
 
 /// <summary>
@@ -463,4 +523,158 @@ public class BedrockAI21FinishReason
 {
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+}
+
+// --- Stability AI Models for Bedrock ---
+
+/// <summary>
+/// Bedrock Stability AI image generation request
+/// </summary>
+public class BedrockStabilityImageRequest
+{
+    [JsonPropertyName("text_prompts")]
+    public List<BedrockStabilityTextPrompt> TextPrompts { get; set; } = new();
+    
+    [JsonPropertyName("cfg_scale")]
+    public int? CfgScale { get; set; } = 7;
+    
+    [JsonPropertyName("clip_guidance_preset")]
+    public string? ClipGuidancePreset { get; set; } = "NONE";
+    
+    [JsonPropertyName("height")]
+    public int? Height { get; set; } = 512;
+    
+    [JsonPropertyName("width")]
+    public int? Width { get; set; } = 512;
+    
+    [JsonPropertyName("samples")]
+    public int? Samples { get; set; } = 1;
+    
+    [JsonPropertyName("seed")]
+    public int? Seed { get; set; }
+    
+    [JsonPropertyName("steps")]
+    public int? Steps { get; set; } = 50;
+    
+    [JsonPropertyName("style_preset")]
+    public string? StylePreset { get; set; }
+    
+    [JsonPropertyName("sampler")]
+    public string? Sampler { get; set; }
+}
+
+/// <summary>
+/// Text prompt for Stability AI
+/// </summary>
+public class BedrockStabilityTextPrompt
+{
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = null!;
+    
+    [JsonPropertyName("weight")]
+    public float? Weight { get; set; } = 1.0f;
+}
+
+/// <summary>
+/// Bedrock Stability AI image generation response
+/// </summary>
+public class BedrockStabilityImageResponse
+{
+    [JsonPropertyName("result")]
+    public string? Result { get; set; }
+    
+    [JsonPropertyName("artifacts")]
+    public List<BedrockStabilityArtifact>? Artifacts { get; set; }
+}
+
+/// <summary>
+/// Stability AI image artifact
+/// </summary>
+public class BedrockStabilityArtifact
+{
+    [JsonPropertyName("base64")]
+    public string? Base64 { get; set; }
+    
+    [JsonPropertyName("seed")]
+    public int? Seed { get; set; }
+    
+    [JsonPropertyName("finishReason")]
+    public string? FinishReason { get; set; }
+}
+
+// --- Streaming Response Models ---
+
+/// <summary>
+/// Bedrock Claude streaming response
+/// </summary>
+public class BedrockClaudeStreamingResponse
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    
+    [JsonPropertyName("index")]
+    public int? Index { get; set; }
+    
+    [JsonPropertyName("delta")]
+    public BedrockClaudeStreamingDelta? Delta { get; set; }
+    
+    [JsonPropertyName("stop_reason")]
+    public string? StopReason { get; set; }
+    
+    [JsonPropertyName("stop_sequence")]
+    public string? StopSequence { get; set; }
+    
+    [JsonPropertyName("usage")]
+    public BedrockClaudeUsage? Usage { get; set; }
+}
+
+/// <summary>
+/// Claude streaming delta content
+/// </summary>
+public class BedrockClaudeStreamingDelta
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+}
+
+/// <summary>
+/// Bedrock Cohere streaming response
+/// </summary>
+public class BedrockCohereStreamingResponse
+{
+    [JsonPropertyName("is_finished")]
+    public bool? IsFinished { get; set; }
+    
+    [JsonPropertyName("event_type")]
+    public string? EventType { get; set; }
+    
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+    
+    [JsonPropertyName("finish_reason")]
+    public string? FinishReason { get; set; }
+    
+    [JsonPropertyName("generation_id")]
+    public string? GenerationId { get; set; }
+}
+
+/// <summary>
+/// Bedrock Llama streaming response
+/// </summary>
+public class BedrockLlamaStreamingResponse
+{
+    [JsonPropertyName("generation")]
+    public string? Generation { get; set; }
+    
+    [JsonPropertyName("prompt_token_count")]
+    public int? PromptTokenCount { get; set; }
+    
+    [JsonPropertyName("generation_token_count")]
+    public int? GenerationTokenCount { get; set; }
+    
+    [JsonPropertyName("stop_reason")]
+    public string? StopReason { get; set; }
 }

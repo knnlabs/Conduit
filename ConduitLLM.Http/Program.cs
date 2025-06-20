@@ -11,8 +11,10 @@ using ConduitLLM.Core.Exceptions; // Add namespace for custom exceptions
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Routing; // Added for DefaultLLMClientFactory
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
+using ConduitLLM.Http.Authentication; // Added for VirtualKeyAuthenticationHandler
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
 using ConduitLLM.Http.Middleware; // Added for Security middleware extensions
@@ -272,6 +274,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Add Authentication and Authorization
+builder.Services.AddAuthentication("VirtualKey")
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, VirtualKeyAuthenticationHandler>(
+        "VirtualKey", options => { });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder("VirtualKey")
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
 // Add Controller support
 builder.Services.AddControllers();
 
@@ -361,7 +375,11 @@ app.UseCors();
 // Add security headers
 app.UseCoreApiSecurityHeaders();
 
-// Add Virtual Key authentication
+// Add authentication and authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Add Virtual Key authentication (kept for compatibility with non-controller endpoints)
 app.UseVirtualKeyAuthentication();
 
 // Add security middleware (IP filtering, rate limiting, ban checks)

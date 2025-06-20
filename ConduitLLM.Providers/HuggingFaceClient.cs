@@ -456,12 +456,171 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override Task<ImageGenerationResponse> CreateImageAsync(
+        public override async Task<ImageGenerationResponse> CreateImageAsync(
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException("Image generation is not yet supported in the HuggingFace client.");
+            ValidateRequest(request, "CreateImage");
+
+            var modelId = request.Model ?? ProviderModelId;
+            
+            // Check if this is an image generation model
+            if (!IsImageGenerationModel(modelId))
+            {
+                throw new UnsupportedProviderException($"Model '{modelId}' does not support image generation. Use a diffusion model like 'stabilityai/stable-diffusion-2-1' or 'runwayml/stable-diffusion-v1-5'.");
+            }
+
+            // Parse size if provided
+            int width = 512, height = 512;
+            if (!string.IsNullOrEmpty(request.Size))
+            {
+                var sizeParts = request.Size.Split('x');
+                if (sizeParts.Length == 2 && 
+                    int.TryParse(sizeParts[0], out width) && 
+                    int.TryParse(sizeParts[1], out height))
+                {
+                    // Valid size format like "1024x1024"
+                }
+                else
+                {
+                    // Default to common sizes based on string
+                    (width, height) = request.Size?.ToLowerInvariant() switch
+                    {
+                        "1024x1024" => (1024, 1024),
+                        "768x768" => (768, 768),
+                        "512x768" => (512, 768),
+                        "768x512" => (768, 512),
+                        _ => (512, 512)
+                    };
+                }
+            }
+
+            var hfRequest = new HuggingFaceImageGenerationRequest
+            {
+                Inputs = request.Prompt,
+                Parameters = new HuggingFaceImageParameters
+                {
+                    GuidanceScale = 7.5, // Default guidance scale for diffusion models
+                    NumInferenceSteps = 50, // Default steps
+                    Seed = Random.Shared.Next(),
+                    TargetSize = new HuggingFaceImageSize
+                    {
+                        Width = width,
+                        Height = height
+                    }
+                },
+                Options = new HuggingFaceOptions
+                {
+                    WaitForModel = true,
+                    UseCache = false
+                }
+            };
+
+            try
+            {
+                var endpoint = GetHuggingFaceEndpoint(modelId);
+                
+                // Configure HTTP client for image generation
+                using var httpClient = HttpClientFactory?.CreateClient() ?? new HttpClient();
+                ConfigureHttpClient(httpClient, apiKey ?? Credentials.ApiKey ?? string.Empty);
+                
+                // Add specific headers for image generation
+                httpClient.DefaultRequestHeaders.Add("Accept", "image/png, image/jpeg, application/json");
+                
+                var json = JsonSerializer.Serialize(hfRequest, DefaultJsonOptions);
+                var content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"));
+
+                Logger.LogDebug("Sending HuggingFace image generation request to {Endpoint}", endpoint);
+                Logger.LogDebug("Request payload: {Payload}", json);
+
+                var response = await httpClient.PostAsync(endpoint, content, cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    Logger.LogError("HuggingFace image generation failed with status {StatusCode}: {Error}", 
+                        response.StatusCode, errorContent);
+                    
+                    throw new LLMCommunicationException(
+                        $"HuggingFace image generation request failed with status {response.StatusCode}: {errorContent}");
+                }
+
+                var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+                
+                if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Response is binary image data
+                    var imageBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                    var base64Image = Convert.ToBase64String(imageBytes);
+
+                    Logger.LogDebug("Received image data: {Size} bytes, Content-Type: {ContentType}", 
+                        imageBytes.Length, contentType);
+
+                    var imageObjects = new List<ImageData>();
+                    
+                    // Create multiple images if requested
+                    for (int i = 0; i < request.N; i++)
+                    {
+                        // For HuggingFace, we typically get one image per request
+                        // For multiple images, we'd need to make multiple requests
+                        if (i == 0)
+                        {
+                            imageObjects.Add(new ImageData
+                            {
+                                B64Json = base64Image
+                            });
+                        }
+                        else
+                        {
+                            // Make additional requests for multiple images
+                            // This is a simplified approach - in production, you might want to parallelize
+                            var additionalResponse = await httpClient.PostAsync(endpoint, content, cancellationToken);
+                            if (additionalResponse.IsSuccessStatusCode)
+                            {
+                                var additionalImageBytes = await additionalResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+                                var additionalBase64 = Convert.ToBase64String(additionalImageBytes);
+                                
+                                imageObjects.Add(new ImageData
+                                {
+                                    B64Json = additionalBase64
+                                });
+                            }
+                        }
+                    }
+
+                    return new ImageGenerationResponse
+                    {
+                        Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        Data = imageObjects
+                    };
+                }
+                else
+                {
+                    // Response might be JSON with error or other format
+                    var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+                    Logger.LogError("Unexpected response format from HuggingFace image generation: {ContentType}, {Response}", 
+                        contentType, responseText);
+                    
+                    throw new LLMCommunicationException(
+                        $"Unexpected response format from HuggingFace image generation: {contentType}");
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "HTTP error during HuggingFace image generation: {Message}", ex.Message);
+                throw new LLMCommunicationException($"HTTP error during HuggingFace image generation: {ex.Message}", ex);
+            }
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+            {
+                Logger.LogError(ex, "Timeout during HuggingFace image generation");
+                throw new LLMCommunicationException("HuggingFace image generation request timed out", ex);
+            }
+            catch (JsonException ex)
+            {
+                Logger.LogError(ex, "JSON serialization error during HuggingFace image generation: {Message}", ex.Message);
+                throw new LLMCommunicationException($"JSON error during HuggingFace image generation: {ex.Message}", ex);
+            }
         }
 
         #region Helper Methods
@@ -475,6 +634,38 @@ namespace ConduitLLM.Providers
             }
 
             return modelId;
+        }
+
+        /// <summary>
+        /// Determines if a model supports image generation based on its name.
+        /// </summary>
+        private bool IsImageGenerationModel(string modelId)
+        {
+            // Common image generation model patterns
+            var imageModelPatterns = new[]
+            {
+                "stable-diffusion",
+                "diffusion",
+                "dalle",
+                "midjourney",
+                "imagen",
+                "flux",
+                "kandinsky",
+                "playground",
+                "runwayml/stable-diffusion",
+                "stabilityai/stable-diffusion",
+                "CompVis/stable-diffusion",
+                "hakurei/waifu-diffusion",
+                "nitrosocke/Arcane-Diffusion",
+                "dreamlike-art/dreamlike-diffusion",
+                "andite/anything",
+                "wavymulder/Analog-Diffusion",
+                "22h/vintedois-diffusion",
+                "prompthero/openjourney"
+            };
+
+            var lowerModelId = modelId.ToLowerInvariant();
+            return imageModelPatterns.Any(pattern => lowerModelId.Contains(pattern.ToLowerInvariant()));
         }
 
         private string FormatChatMessages(List<Message> messages)

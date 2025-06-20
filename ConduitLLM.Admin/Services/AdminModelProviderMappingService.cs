@@ -219,4 +219,202 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             return Enumerable.Empty<ProviderDataDto>();
         }
     }
+
+    /// <inheritdoc />
+    public async Task<BulkModelMappingResponse> CreateBulkMappingsAsync(BulkModelMappingRequest request)
+    {
+        _logger.LogInformation("Creating bulk model provider mappings for {Count} models", request.Mappings.Count);
+
+        var response = new BulkModelMappingResponse
+        {
+            TotalProcessed = request.Mappings.Count
+        };
+
+        // Pre-validate provider IDs to avoid repeated lookups
+        var validProviders = new HashSet<int>();
+        var invalidProviders = new HashSet<string>();
+
+        for (int i = 0; i < request.Mappings.Count; i++)
+        {
+            var mappingDto = request.Mappings[i];
+
+            try
+            {
+                // Validate provider ID format and existence
+                if (string.IsNullOrEmpty(mappingDto.ProviderId) || 
+                    !int.TryParse(mappingDto.ProviderId, out int providerId))
+                {
+                    response.Failed.Add(new BulkMappingError
+                    {
+                        Index = i,
+                        Mapping = mappingDto,
+                        ErrorMessage = $"Invalid provider ID format: {mappingDto.ProviderId}",
+                        ErrorType = BulkMappingErrorType.Validation
+                    });
+                    continue;
+                }
+
+                // Check provider existence (with caching)
+                if (!validProviders.Contains(providerId) && !invalidProviders.Contains(mappingDto.ProviderId))
+                {
+                    var provider = await _credentialRepository.GetByIdAsync(providerId);
+                    if (provider == null)
+                    {
+                        invalidProviders.Add(mappingDto.ProviderId);
+                        response.Failed.Add(new BulkMappingError
+                        {
+                            Index = i,
+                            Mapping = mappingDto,
+                            ErrorMessage = $"Provider not found with ID: {providerId}",
+                            ErrorType = BulkMappingErrorType.ProviderNotFound
+                        });
+                        continue;
+                    }
+                    validProviders.Add(providerId);
+                }
+                else if (invalidProviders.Contains(mappingDto.ProviderId))
+                {
+                    response.Failed.Add(new BulkMappingError
+                    {
+                        Index = i,
+                        Mapping = mappingDto,
+                        ErrorMessage = $"Provider not found with ID: {providerId}",
+                        ErrorType = BulkMappingErrorType.ProviderNotFound
+                    });
+                    continue;
+                }
+
+                // Check for duplicate model ID
+                var existingMapping = await _mappingRepository.GetByModelAliasAsync(mappingDto.ModelId);
+                if (existingMapping != null)
+                {
+                    if (request.ReplaceExisting)
+                    {
+                        // Update the existing mapping
+                        var updateDto = new ModelProviderMappingDto
+                        {
+                            Id = existingMapping.Id,
+                            ModelId = mappingDto.ModelId,
+                            ProviderModelId = mappingDto.ProviderModelId,
+                            ProviderId = mappingDto.ProviderId,
+                            Priority = mappingDto.Priority,
+                            IsEnabled = mappingDto.IsEnabled,
+                            Capabilities = mappingDto.Capabilities,
+                            MaxContextLength = mappingDto.MaxContextLength,
+                            SupportsVision = mappingDto.SupportsVision,
+                            SupportsAudioTranscription = mappingDto.SupportsAudioTranscription,
+                            SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
+                            SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
+                            SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                            TokenizerType = mappingDto.TokenizerType,
+                            SupportedVoices = mappingDto.SupportedVoices,
+                            SupportedLanguages = mappingDto.SupportedLanguages,
+                            SupportedFormats = mappingDto.SupportedFormats,
+                            IsDefault = mappingDto.IsDefault,
+                            DefaultCapabilityType = mappingDto.DefaultCapabilityType,
+                            Notes = mappingDto.Notes,
+                            CreatedAt = existingMapping.CreatedAt,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        bool updateSuccess = await UpdateMappingAsync(updateDto);
+                        if (updateSuccess)
+                        {
+                            var updatedMapping = await GetMappingByIdAsync(existingMapping.Id);
+                            if (updatedMapping != null)
+                            {
+                                response.Updated.Add(updatedMapping);
+                            }
+                        }
+                        else
+                        {
+                            response.Failed.Add(new BulkMappingError
+                            {
+                                Index = i,
+                                Mapping = mappingDto,
+                                ErrorMessage = "Failed to update existing mapping",
+                                ErrorType = BulkMappingErrorType.SystemError
+                            });
+                        }
+                    }
+                    else
+                    {
+                        response.Failed.Add(new BulkMappingError
+                        {
+                            Index = i,
+                            Mapping = mappingDto,
+                            ErrorMessage = $"Model ID already exists: {mappingDto.ModelId}. Use ReplaceExisting=true to update.",
+                            ErrorType = BulkMappingErrorType.Duplicate
+                        });
+                    }
+                    continue;
+                }
+
+                // Create the new mapping
+                var createDto = new ModelProviderMappingDto
+                {
+                    ModelId = mappingDto.ModelId,
+                    ProviderModelId = mappingDto.ProviderModelId,
+                    ProviderId = mappingDto.ProviderId,
+                    Priority = mappingDto.Priority,
+                    IsEnabled = mappingDto.IsEnabled,
+                    Capabilities = mappingDto.Capabilities,
+                    MaxContextLength = mappingDto.MaxContextLength,
+                    SupportsVision = mappingDto.SupportsVision,
+                    SupportsAudioTranscription = mappingDto.SupportsAudioTranscription,
+                    SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
+                    SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
+                    SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                    TokenizerType = mappingDto.TokenizerType,
+                    SupportedVoices = mappingDto.SupportedVoices,
+                    SupportedLanguages = mappingDto.SupportedLanguages,
+                    SupportedFormats = mappingDto.SupportedFormats,
+                    IsDefault = mappingDto.IsDefault,
+                    DefaultCapabilityType = mappingDto.DefaultCapabilityType,
+                    Notes = mappingDto.Notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                bool createSuccess = await AddMappingAsync(createDto);
+                if (createSuccess)
+                {
+                    var createdMapping = await GetMappingByModelIdAsync(mappingDto.ModelId);
+                    if (createdMapping != null)
+                    {
+                        response.Created.Add(createdMapping);
+                    }
+                }
+                else
+                {
+                    response.Failed.Add(new BulkMappingError
+                    {
+                        Index = i,
+                        Mapping = mappingDto,
+                        ErrorMessage = "Failed to create mapping",
+                        ErrorType = BulkMappingErrorType.SystemError
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing bulk mapping at index {Index} for model {ModelId}", 
+                    i, mappingDto.ModelId.Replace(Environment.NewLine, ""));
+                
+                response.Failed.Add(new BulkMappingError
+                {
+                    Index = i,
+                    Mapping = mappingDto,
+                    ErrorMessage = $"System error: {ex.Message}",
+                    Details = ex.ToString(),
+                    ErrorType = BulkMappingErrorType.SystemError
+                });
+            }
+        }
+
+        _logger.LogInformation("Bulk mapping operation completed. Created: {Created}, Updated: {Updated}, Failed: {Failed}",
+            response.Created.Count, response.Updated.Count, response.Failed.Count);
+
+        return response;
+    }
 }

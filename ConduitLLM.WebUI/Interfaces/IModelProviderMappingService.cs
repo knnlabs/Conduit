@@ -56,5 +56,12 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <returns>List of provider data with IDs and names</returns>
         Task<IEnumerable<ConfigDTO.ProviderDataDto>> GetProvidersAsync();
+
+        /// <summary>
+        /// Creates multiple model provider mappings in a single operation
+        /// </summary>
+        /// <param name="request">The bulk mapping request containing mappings to create</param>
+        /// <returns>The bulk mapping response with results and errors</returns>
+        Task<ConfigDTO.BulkModelMappingResponse> CreateBulkAsync(ConfigDTO.BulkModelMappingRequest request);
     }
 }

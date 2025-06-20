@@ -27,6 +27,10 @@ namespace ConduitLLM.Http.Services
         private readonly IRealtimeConnectionManager _connectionManager;
         private readonly IRealtimeUsageTracker _usageTracker;
         private readonly ILogger<RealtimeProxyService> _logger;
+        
+        // Enhanced metrics tracking
+        private readonly Dictionary<string, ConnectionMetrics> _connectionMetrics = new();
+        private readonly object _metricsLock = new();
 
         public RealtimeProxyService(
             IRealtimeMessageTranslator translator,
@@ -54,6 +58,12 @@ namespace ConduitLLM.Http.Services
                 connectionId,
                 model.Replace(Environment.NewLine, ""),
                 provider?.Replace(Environment.NewLine, "") ?? "default");
+
+            // Initialize connection metrics
+            lock (_metricsLock)
+            {
+                _connectionMetrics[connectionId] = new ConnectionMetrics();
+            }
 
             // Validate virtual key has permissions
             if (!virtualKey.IsEnabled || (virtualKey.MaxBudget.HasValue && virtualKey.CurrentSpend >= virtualKey.MaxBudget.Value))
@@ -192,10 +202,16 @@ namespace ConduitLLM.Http.Services
                         // Track input audio usage
                         var audioDuration = audioFrame.AudioData.Length / (double)(audioFrame.SampleRate * audioFrame.Channels * 2); // 16-bit audio
                         await _usageTracker.RecordAudioUsageAsync(connectionId, audioDuration, isInput: true);
+                        
+                        // Track bytes sent to provider
+                        UpdateConnectionMetrics(connectionId, bytesSent: audioFrame.AudioData.Length);
                     }
                     else if (result.MessageType == WebSocketMessageType.Text)
                     {
                         var message = Encoding.UTF8.GetString(buffer.Array!, 0, result.Count);
+                        
+                        // Track bytes sent to provider
+                        UpdateConnectionMetrics(connectionId, bytesSent: result.Count);
 
                         // Try to parse as JSON control message
                         try
@@ -240,6 +256,9 @@ namespace ConduitLLM.Http.Services
                     _logger.LogError(ex,
                 "WebSocket error in client->provider proxy for {ConnectionId}",
                 connectionId);
+                    
+                    // Track error
+                    UpdateConnectionMetrics(connectionId, lastError: ex.Message);
                     break;
                 }
             }
@@ -275,6 +294,9 @@ namespace ConduitLLM.Http.Services
                             true,
                             cancellationToken);
 
+                        // Track bytes received from provider
+                        UpdateConnectionMetrics(connectionId, bytesReceived: messageBytes.Length);
+
                         // Track usage based on response type
                         await TrackResponseUsageAsync(connectionId, response, virtualKey);
                     }
@@ -283,6 +305,9 @@ namespace ConduitLLM.Http.Services
                         _logger.LogError(ex,
                 "Error processing provider response for {ConnectionId}",
                 connectionId);
+                        
+                        // Track error
+                        UpdateConnectionMetrics(connectionId, lastError: ex.Message);
                     }
                 }
             }
@@ -296,6 +321,9 @@ namespace ConduitLLM.Http.Services
                 _logger.LogError(ex,
                 "Error in provider->client proxy for {ConnectionId}",
                 connectionId);
+                
+                // Track error
+                UpdateConnectionMetrics(connectionId, lastError: ex.Message);
             }
         }
 
@@ -404,12 +432,27 @@ namespace ConduitLLM.Http.Services
                 var estimatedCost = stats.EstimatedCost;
                 if (estimatedCost > 0)
                 {
-                    // TODO: Need to look up virtual key entity to update spend
-                    // var virtualKeyEntity = await _virtualKeyService.GetVirtualKeyByKeyValueAsync(virtualKey);
-                    // if (virtualKeyEntity != null)
-                    // {
-                    //     await _virtualKeyService.UpdateSpendAsync(virtualKeyEntity.Id, estimatedCost);
-                    // }
+                    try
+                    {
+                        var virtualKeyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
+                        if (virtualKeyEntity != null)
+                        {
+                            await _virtualKeyService.UpdateSpendAsync(virtualKeyEntity.Id, estimatedCost);
+                            _logger.LogDebug("Updated virtual key {VirtualKeyId} spend by ${Cost:F4} for connection {ConnectionId}",
+                                virtualKeyEntity.Id, estimatedCost, connectionId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Virtual key not found for key value during spend update for connection {ConnectionId}",
+                                connectionId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to update virtual key spend for connection {ConnectionId}, cost: ${Cost:F4}",
+                            connectionId, estimatedCost);
+                        // Don't throw - continue processing even if spend tracking fails
+                    }
                 }
 
                 _logger.LogDebug("Updated usage for connection {ConnectionId}: {TotalTokens} tokens",
@@ -548,6 +591,13 @@ namespace ConduitLLM.Http.Services
             if (info == null)
                 return null;
 
+            // Get enhanced metrics
+            ConnectionMetrics? metrics = null;
+            lock (_metricsLock)
+            {
+                _connectionMetrics.TryGetValue(connectionId, out metrics);
+            }
+
             return new ProxyConnectionStatus
             {
                 ConnectionId = connectionId,
@@ -564,10 +614,10 @@ namespace ConduitLLM.Http.Services
                 LastActivityAt = info.LastActivity,
                 MessagesToProvider = info.Usage?.MessagesSent ?? 0,
                 MessagesFromProvider = info.Usage?.MessagesReceived ?? 0,
-                BytesSent = 0, // Not tracked in current implementation
-                BytesReceived = 0, // Not tracked in current implementation
+                BytesSent = metrics?.BytesSent ?? 0,
+                BytesReceived = metrics?.BytesReceived ?? 0,
                 EstimatedCost = info.EstimatedCost,
-                LastError = null // Not tracked in current implementation
+                LastError = metrics?.LastError
             };
         }
 
@@ -578,8 +628,53 @@ namespace ConduitLLM.Http.Services
                 return false;
 
             await _connectionManager.UnregisterConnectionAsync(connectionId);
+            
+            // Clean up metrics
+            lock (_metricsLock)
+            {
+                _connectionMetrics.Remove(connectionId);
+            }
+            
             return await Task.FromResult(true);
         }
+
+        /// <summary>
+        /// Updates connection metrics for enhanced tracking.
+        /// </summary>
+        private void UpdateConnectionMetrics(string connectionId, long bytesSent = 0, long bytesReceived = 0, string? lastError = null)
+        {
+            lock (_metricsLock)
+            {
+                if (!_connectionMetrics.ContainsKey(connectionId))
+                {
+                    _connectionMetrics[connectionId] = new ConnectionMetrics();
+                }
+
+                var metrics = _connectionMetrics[connectionId];
+                metrics.BytesSent += bytesSent;
+                metrics.BytesReceived += bytesReceived;
+                metrics.LastActivityAt = DateTime.UtcNow;
+                
+                if (!string.IsNullOrEmpty(lastError))
+                {
+                    metrics.LastError = lastError;
+                    metrics.ErrorCount++;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enhanced metrics for realtime connections.
+    /// </summary>
+    internal class ConnectionMetrics
+    {
+        public long BytesSent { get; set; }
+        public long BytesReceived { get; set; }
+        public string? LastError { get; set; }
+        public int ErrorCount { get; set; }
+        public DateTime LastActivityAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>

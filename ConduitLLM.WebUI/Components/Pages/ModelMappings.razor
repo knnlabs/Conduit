@@ -57,11 +57,28 @@
                 <h5 class="mb-0">
                     <i class="fa fa-sitemap me-2 text-success"></i>Model Mappings
                 </h5>
-                <button class="btn btn-primary modern-btn modern-btn-primary" 
-                        @onclick="AddMapping"
-                        disabled="@(!providerCredentials?.Any() ?? true)">
-                    <i class="fa fa-plus me-1"></i> Add Model Mapping
-                </button>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-primary modern-btn modern-btn-primary" 
+                            @onclick="AddMapping"
+                            disabled="@(!providerCredentials?.Any() ?? true)">
+                        <i class="fa fa-plus me-1"></i> Add Model Mapping
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary dropdown-toggle dropdown-toggle-split modern-btn modern-btn-primary" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false"
+                            disabled="@(!providerCredentials?.Any() ?? true)">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" @onclick="AddMapping" @onclick:preventDefault="true">
+                            <i class="fa fa-plus me-2"></i>Single Mapping
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" @onclick="AddBulkMapping" @onclick:preventDefault="true">
+                            <i class="fa fa-layer-group me-2"></i>Bulk Add Mappings
+                        </a></li>
+                    </ul>
+                </div>
             </div>
         </div>
         
@@ -286,6 +303,11 @@
     private void AddMapping()
     {
         NavigationManager.NavigateTo("/configuration/mapping/edit");
+    }
+
+    private void AddBulkMapping()
+    {
+        NavigationManager.NavigateTo("/model-mappings/bulk");
     }
 
     private void EditMapping(int id)

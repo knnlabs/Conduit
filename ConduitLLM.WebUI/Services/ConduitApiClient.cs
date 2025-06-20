@@ -452,7 +452,7 @@ public class ConduitApiClient : IConduitApiClient
             var request = new HttpRequestMessage(HttpMethod.Get, $"v1/discovery/models/{modelName}/capabilities/{capability}");
             
             // Use the provided virtual key or the WebUI's key
-            var apiKey = virtualKey ?? _webUIVirtualKey ?? throw new InvalidOperationException("No API key available");
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             
             var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -486,7 +486,7 @@ public class ConduitApiClient : IConduitApiClient
             var request = new HttpRequestMessage(HttpMethod.Get, $"api/provider-models/{providerName}{queryParams}");
             
             // Use the provided virtual key or the WebUI's key
-            var apiKey = virtualKey ?? _webUIVirtualKey ?? throw new InvalidOperationException("No API key available");
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             
             var response = await _httpClient.SendAsync(request, cancellationToken);

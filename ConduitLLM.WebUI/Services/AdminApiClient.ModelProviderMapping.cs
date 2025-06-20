@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -127,6 +128,59 @@ namespace ConduitLLM.WebUI.Services
             {
                 _logger.LogError(ex, "Error retrieving providers list from Admin API");
                 return Enumerable.Empty<ConfigDTO.ProviderDataDto>();
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ConfigDTO.BulkModelMappingResponse> CreateBulkAsync(ConfigDTO.BulkModelMappingRequest request)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/modelprovidermapping/bulk", request, _jsonOptions);
+                response.EnsureSuccessStatusCode();
+
+                var result = await response.Content.ReadFromJsonAsync<ConfigDTO.BulkModelMappingResponse>(_jsonOptions);
+                return result ?? new ConfigDTO.BulkModelMappingResponse
+                {
+                    TotalProcessed = request.Mappings.Count,
+                    Failed = request.Mappings.Select((mapping, index) => new ConfigDTO.BulkMappingError
+                    {
+                        Index = index,
+                        Mapping = mapping,
+                        ErrorMessage = "Unknown error occurred during bulk creation",
+                        ErrorType = ConfigDTO.BulkMappingErrorType.SystemError
+                    }).ToList()
+                };
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error during bulk model mapping creation");
+                return new ConfigDTO.BulkModelMappingResponse
+                {
+                    TotalProcessed = request.Mappings.Count,
+                    Failed = request.Mappings.Select((mapping, index) => new ConfigDTO.BulkMappingError
+                    {
+                        Index = index,
+                        Mapping = mapping,
+                        ErrorMessage = $"HTTP error: {ex.Message}",
+                        ErrorType = ConfigDTO.BulkMappingErrorType.SystemError
+                    }).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during bulk model mapping creation");
+                return new ConfigDTO.BulkModelMappingResponse
+                {
+                    TotalProcessed = request.Mappings.Count,
+                    Failed = request.Mappings.Select((mapping, index) => new ConfigDTO.BulkMappingError
+                    {
+                        Index = index,
+                        Mapping = mapping,
+                        ErrorMessage = $"System error: {ex.Message}",
+                        ErrorType = ConfigDTO.BulkMappingErrorType.SystemError
+                    }).ToList()
+                };
             }
         }
 

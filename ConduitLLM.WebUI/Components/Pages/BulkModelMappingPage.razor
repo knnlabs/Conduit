@@ -1,0 +1,736 @@
+@page "/model-mappings/bulk"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
+@using System.Text.Json
+@using ConduitLLM.Configuration
+@using ConfigDTOs = ConduitLLM.Configuration.DTOs
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+@using System.Threading.Tasks
+@using Microsoft.JSInterop
+@using ConduitLLM.WebUI.Components.Shared
+
+@inject NavigationManager NavigationManager
+@inject ILogger<BulkModelMappingPage> Logger
+@inject Interfaces.IAdminApiClient AdminApiClient
+@inject ConduitLLM.WebUI.Interfaces.IModelProviderMappingService ModelMappingService
+@inject ConduitLLM.WebUI.Interfaces.IModelCostService ModelCostService
+@inject IConduitApiClient ConduitApiClient
+@inject IJSRuntime JSRuntime
+@inject IToastService ToastService
+@rendermode InteractiveServer
+
+<PageTitle>Bulk Add Model Mappings - ConduitLLM</PageTitle>
+
+<div class="container container-xxl">
+    <!-- Header Section -->
+    <PageHeader Title="Bulk Add Model Mappings" 
+                Description="Add multiple model mappings for a provider at once"
+                Icon="fa-layer-group">
+        <Statistics>
+            <div class="stat-item">
+                <i class="fa fa-layer-group me-2"></i>
+                <span class="small">@(selectedModels?.Count ?? 0) Selected</span>
+            </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-cloud me-2"></i>
+                <span class="small">@(availableModels?.Count ?? 0) Available</span>
+            </div>
+            @if (modelInfoCache.Any())
+            {
+                <div class="stat-item mt-2">
+                    <i class="fa fa-dollar-sign me-2 text-success"></i>
+                    <span class="small">@modelInfoCache.Count(kvp => kvp.Value.HasCostInfo) With Cost Data</span>
+                </div>
+            }
+        </Statistics>
+    </PageHeader>
+
+    <!-- Step 1: Provider Selection -->
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header">
+            <h5 class="mb-0">
+                <i class="fa fa-cloud me-2 text-primary"></i>Step 1: Select Provider
+            </h5>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (providers == null)
+            {
+                <LoadingSpinner Message="Loading providers..." />
+            }
+            else if (!providers.Any())
+            {
+                <div class="alert modern-alert modern-alert-warning">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    <strong>No Providers:</strong> No LLM providers are configured. 
+                    <a href="/llm-providers" class="alert-link">Configure providers first</a>.
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Provider</label>
+                        <select class="form-select modern-form-control" 
+                                @onchange="OnProviderChanged" 
+                                value="@selectedProviderId">
+                            <option value="">Select a provider...</option>
+                            @foreach (var provider in providers)
+                            {
+                                <option value="@provider.Id">@provider.ProviderName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Step 2: Model Selection -->
+    @if (!string.IsNullOrEmpty(selectedProviderId))
+    {
+        <div class="card modern-card mb-4">
+            <div class="card-header modern-card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fa fa-list me-2 text-success"></i>Step 2: Select Models
+                    </h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary me-2" @onclick="SelectAllModels">
+                            <i class="fa fa-check-square me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearSelection">
+                            <i class="fa fa-square me-1"></i>Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body modern-card-body">
+                @if (loadingModels)
+                {
+                    <LoadingSpinner Message="Loading available models..." />
+                }
+                else if (availableModels == null || !availableModels.Any())
+                {
+                    <div class="alert modern-alert modern-alert-info">
+                        <i class="fa fa-info-circle me-2"></i>
+                        No models found for this provider or unable to fetch models.
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var model in availableModels)
+                        {
+                            var modelInfo = modelInfoCache.GetValueOrDefault(model);
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card h-100 model-card @(selectedModels.Contains(model) ? "border-success bg-success bg-opacity-10" : "border-light")">
+                                    <div class="card-body p-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="model-@model" 
+                                                   checked="@selectedModels.Contains(model)"
+                                                   @onchange="@(args => ToggleModelSelection(model, (bool)args.Value!))" />
+                                            <label class="form-check-label fw-medium" for="model-@model">
+                                                @model
+                                            </label>
+                                        </div>
+                                        
+                                        @if (modelInfo?.HasCostInfo == true)
+                                        {
+                                            <div class="mt-2">
+                                                <div class="cost-info">
+                                                    <small class="text-muted d-block">
+                                                        <i class="fa fa-dollar-sign me-1 text-success"></i>@modelInfo.CostDisplay
+                                                    </small>
+                                                    @if (modelInfo.Cost!.ImageCostPerImage.HasValue)
+                                                    {
+                                                        <small class="text-muted d-block">
+                                                            <i class="fa fa-image me-1 text-info"></i>Images: $@modelInfo.Cost.ImageCostPerImage.Value.ToString("F4")/image
+                                                        </small>
+                                                    }
+                                                    @if (modelInfo.Cost!.AudioCostPerMinute.HasValue)
+                                                    {
+                                                        <small class="text-muted d-block">
+                                                            <i class="fa fa-microphone me-1 text-warning"></i>Audio: $@modelInfo.Cost.AudioCostPerMinute.Value.ToString("F4")/min
+                                                        </small>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fa fa-info-circle me-1"></i>No cost data available
+                                                </small>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Step 3: Configuration -->
+    @if (selectedModels?.Any() == true)
+    {
+        <div class="card modern-card mb-4">
+            <div class="card-header modern-card-header">
+                <h5 class="mb-0">
+                    <i class="fa fa-cogs me-2 text-warning"></i>Step 3: Configure Mappings
+                </h5>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Default Priority</label>
+                        <input type="number" class="form-control modern-form-control" 
+                               @bind="defaultPriority" min="1" max="100" />
+                        <div class="form-text">Lower numbers have higher priority</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="replaceExisting" @bind="replaceExisting" />
+                            <label class="form-check-label" for="replaceExisting">
+                                Replace existing mappings
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="supportsVision" @bind="supportsVision" />
+                            <label class="form-check-label" for="supportsVision">
+                                <i class="fa fa-eye me-1 text-info"></i>Vision Support
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="supportsImageGeneration" @bind="supportsImageGeneration" />
+                            <label class="form-check-label" for="supportsImageGeneration">
+                                <i class="fa fa-image me-1 text-purple"></i>Image Generation
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="supportsAudioTranscription" @bind="supportsAudioTranscription" />
+                            <label class="form-check-label" for="supportsAudioTranscription">
+                                <i class="fa fa-microphone me-1 text-danger"></i>Audio Transcription
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="supportsTextToSpeech" @bind="supportsTextToSpeech" />
+                            <label class="form-check-label" for="supportsTextToSpeech">
+                                <i class="fa fa-volume-up me-1 text-success"></i>Text-to-Speech
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Review and Create -->
+        <div class="card modern-card mb-4">
+            <div class="card-header modern-card-header">
+                <h5 class="mb-0">
+                    <i class="fa fa-eye me-2 text-info"></i>Step 4: Review and Create
+                </h5>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="alert modern-alert modern-alert-info mb-3">
+                    <i class="fa fa-info-circle me-2"></i>
+                    Ready to create <strong>@selectedModels.Count</strong> model mappings for <strong>@GetSelectedProviderName()</strong>.
+                </div>
+
+                @if (selectedModels.Any())
+                {
+                    var selectedWithCost = selectedModels.Where(m => modelInfoCache.GetValueOrDefault(m)?.HasCostInfo == true).Count();
+                    var selectedWithoutCost = selectedModels.Count - selectedWithCost;
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="small-stat-card bg-success bg-opacity-10 border-success">
+                                <i class="fa fa-dollar-sign text-success me-2"></i>
+                                <span><strong>@selectedWithCost</strong> with cost data</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small-stat-card bg-warning bg-opacity-10 border-warning">
+                                <i class="fa fa-question-circle text-warning me-2"></i>
+                                <span><strong>@selectedWithoutCost</strong> without cost data</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success modern-btn modern-btn-success" 
+                            @onclick="CreateBulkMappings" 
+                            disabled="@isCreating">
+                        @if (isCreating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="fa fa-plus me-2"></i>
+                        }
+                        Create @selectedModels.Count Mappings
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary modern-btn" 
+                            @onclick="GoBack"
+                            disabled="@isCreating">
+                        <i class="fa fa-arrow-left me-1"></i>Back to Mappings
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Results -->
+    @if (bulkResult != null)
+    {
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
+                <h5 class="mb-0">
+                    <i class="fa fa-chart-bar me-2 text-primary"></i>Bulk Creation Results
+                </h5>
+            </div>
+            <div class="card-body modern-card-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card bg-success bg-opacity-10 border-success">
+                            <div class="stat-icon text-success">
+                                <i class="fa fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@bulkResult.SuccessCount</div>
+                                <div class="stat-label">Created/Updated</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card bg-danger bg-opacity-10 border-danger">
+                            <div class="stat-icon text-danger">
+                                <i class="fa fa-exclamation-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@bulkResult.FailureCount</div>
+                                <div class="stat-label">Failed</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card bg-info bg-opacity-10 border-info">
+                            <div class="stat-icon text-info">
+                                <i class="fa fa-layer-group"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@bulkResult.TotalProcessed</div>
+                                <div class="stat-label">Total Processed</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card bg-primary bg-opacity-10 border-primary">
+                            <div class="stat-icon text-primary">
+                                <i class="fa fa-percentage"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">@(bulkResult.TotalProcessed > 0 ? (bulkResult.SuccessCount * 100 / bulkResult.TotalProcessed) : 0)%</div>
+                                <div class="stat-label">Success Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (bulkResult.Failed?.Any() == true)
+                {
+                    <div class="alert modern-alert modern-alert-danger">
+                        <h6><i class="fa fa-exclamation-triangle me-2"></i>Failures</h6>
+                        <ul class="mb-0">
+                            @foreach (var error in bulkResult.Failed.Take(10))
+                            {
+                                <li>@error.Mapping.ModelId: @error.ErrorMessage</li>
+                            }
+                            @if (bulkResult.Failed.Count > 10)
+                            {
+                                <li><em>... and @(bulkResult.Failed.Count - 10) more errors</em></li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-primary modern-btn modern-btn-primary" @onclick="GoBack">
+                        <i class="fa fa-list me-1"></i>View All Mappings
+                    </button>
+                    <button type="button" class="btn btn-outline-primary modern-btn" @onclick="StartOver">
+                        <i class="fa fa-plus me-1"></i>Create More Mappings
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ConfigDTOs.ProviderDataDto>? providers;
+    private string selectedProviderId = "";
+    private List<string>? availableModels;
+    private Dictionary<string, ModelInfo> modelInfoCache = new();
+    private HashSet<string> selectedModels = new();
+    private bool loadingModels = false;
+    private bool isCreating = false;
+
+    // Helper class to store model information with cost data
+    private class ModelInfo
+    {
+        public string ModelId { get; set; } = "";
+        public ConfigDTOs.ModelCostDto? Cost { get; set; }
+        public bool HasCostInfo => Cost != null;
+        public string CostDisplay => HasCostInfo ? 
+            $"In: ${Cost!.InputTokenCost:F6}/1K, Out: ${Cost!.OutputTokenCost:F6}/1K" : 
+            "No cost data";
+    }
+
+    // Configuration options
+    private int defaultPriority = 1;
+    private bool replaceExisting = false;
+    private bool supportsVision = false;
+    private bool supportsImageGeneration = false;
+    private bool supportsAudioTranscription = false;
+    private bool supportsTextToSpeech = false;
+
+    // Results
+    private ConfigDTOs.BulkModelMappingResponse? bulkResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProviders();
+    }
+
+    private async Task LoadProviders()
+    {
+        try
+        {
+            providers = (await ModelMappingService.GetProvidersAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading providers");
+            ToastService.ShowError("Failed to load providers");
+        }
+    }
+
+    private async Task OnProviderChanged(ChangeEventArgs e)
+    {
+        selectedProviderId = e.Value?.ToString() ?? "";
+        selectedModels.Clear();
+        availableModels = null;
+        bulkResult = null;
+
+        if (!string.IsNullOrEmpty(selectedProviderId))
+        {
+            await LoadProviderModels();
+        }
+    }
+
+    private async Task LoadProviderModels()
+    {
+        loadingModels = true;
+        try
+        {
+            // Get the provider name from the ID
+            var provider = providers?.FirstOrDefault(p => p.Id.ToString() == selectedProviderId);
+            if (provider != null)
+            {
+                // Get available models from provider
+                availableModels = (await ConduitApiClient.GetProviderModelsAsync(provider.ProviderName, forceRefresh: true)).ToList();
+                
+                // Clear previous model info cache
+                modelInfoCache.Clear();
+                
+                // Load cost information for each model
+                await LoadModelCostInformation(provider.ProviderName);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading provider models for provider {ProviderId}", selectedProviderId);
+            ToastService.ShowError("Failed to load provider models");
+            availableModels = new List<string>();
+        }
+        finally
+        {
+            loadingModels = false;
+        }
+    }
+
+    private async Task LoadModelCostInformation(string providerName)
+    {
+        try
+        {
+            if (availableModels == null) return;
+
+            // Get all model costs to match against our models
+            var allModelCosts = await ModelCostService.GetAllModelCostsAsync();
+            
+            foreach (var modelId in availableModels)
+            {
+                var modelInfo = new ModelInfo { ModelId = modelId };
+                
+                // Try to find cost information for this model
+                // First try exact match, then pattern matching
+                var exactCost = allModelCosts.FirstOrDefault(c => 
+                    string.Equals(c.ModelIdPattern, modelId, StringComparison.OrdinalIgnoreCase));
+                
+                if (exactCost != null)
+                {
+                    modelInfo.Cost = exactCost;
+                }
+                else
+                {
+                    // Try pattern matching - look for patterns that would match this model
+                    var patternCost = allModelCosts.FirstOrDefault(c => 
+                        IsPatternMatch(c.ModelIdPattern, modelId) || 
+                        IsPatternMatch(c.ModelIdPattern, $"{providerName}/{modelId}"));
+                    
+                    if (patternCost != null)
+                    {
+                        modelInfo.Cost = patternCost;
+                    }
+                }
+                
+                modelInfoCache[modelId] = modelInfo;
+            }
+            
+            Logger.LogInformation("Loaded cost information for {Count} models from provider {Provider}", 
+                modelInfoCache.Count(kvp => kvp.Value.HasCostInfo), providerName);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading model cost information for provider {Provider}", providerName);
+            // Don't show error to user as this is supplementary information
+        }
+    }
+
+    private bool IsPatternMatch(string pattern, string modelId)
+    {
+        if (string.IsNullOrEmpty(pattern) || string.IsNullOrEmpty(modelId))
+            return false;
+            
+        // Simple wildcard matching - convert to regex-like pattern
+        var regexPattern = pattern
+            .Replace("*", ".*")
+            .Replace("?", ".");
+            
+        try
+        {
+            return System.Text.RegularExpressions.Regex.IsMatch(modelId, $"^{regexPattern}$", 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void ToggleModelSelection(string model, bool selected)
+    {
+        if (selected)
+        {
+            selectedModels.Add(model);
+        }
+        else
+        {
+            selectedModels.Remove(model);
+        }
+    }
+
+    private void SelectAllModels()
+    {
+        if (availableModels != null)
+        {
+            selectedModels = availableModels.ToHashSet();
+        }
+    }
+
+    private void ClearSelection()
+    {
+        selectedModels.Clear();
+    }
+
+    private string GetSelectedProviderName()
+    {
+        return providers?.FirstOrDefault(p => p.Id.ToString() == selectedProviderId)?.ProviderName ?? "Unknown Provider";
+    }
+
+    private async Task CreateBulkMappings()
+    {
+        if (selectedModels.Count == 0 || string.IsNullOrEmpty(selectedProviderId))
+            return;
+
+        isCreating = true;
+        try
+        {
+            var request = new ConfigDTOs.BulkModelMappingRequest
+            {
+                ReplaceExisting = replaceExisting,
+                ValidateProviderModels = true,
+                Mappings = selectedModels.Select(model => new ConfigDTOs.CreateModelProviderMappingDto
+                {
+                    ModelId = model,
+                    ProviderModelId = model,
+                    ProviderId = selectedProviderId,
+                    Priority = defaultPriority,
+                    IsEnabled = true,
+                    SupportsVision = supportsVision,
+                    SupportsImageGeneration = supportsImageGeneration,
+                    SupportsAudioTranscription = supportsAudioTranscription,
+                    SupportsTextToSpeech = supportsTextToSpeech,
+                    SupportsRealtimeAudio = false
+                }).ToList()
+            };
+
+            bulkResult = await ModelMappingService.CreateBulkAsync(request);
+
+            if (bulkResult.IsSuccess)
+            {
+                ToastService.ShowSuccess($"Successfully created {bulkResult.SuccessCount} model mappings!");
+            }
+            else
+            {
+                ToastService.ShowWarning($"Created {bulkResult.SuccessCount} mappings, {bulkResult.FailureCount} failed");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating bulk mappings");
+            ToastService.ShowError("Failed to create bulk mappings");
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/model-mappings");
+    }
+
+    private void StartOver()
+    {
+        selectedProviderId = "";
+        selectedModels.Clear();
+        availableModels = null;
+        bulkResult = null;
+        defaultPriority = 1;
+        replaceExisting = false;
+        supportsVision = false;
+        supportsImageGeneration = false;
+        supportsAudioTranscription = false;
+        supportsTextToSpeech = false;
+    }
+}
+
+<style>
+    .stat-card {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .stat-icon {
+        font-size: 1.5rem;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+        margin-top: 0.25rem;
+    }
+
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--bs-success);
+        border-color: var(--bs-success);
+    }
+
+    .card.border-success {
+        transition: all 0.2s ease;
+    }
+
+    .card.border-success:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .model-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .model-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .cost-info {
+        padding: 0.5rem;
+        background: rgba(0,0,0,0.03);
+        border-radius: 0.25rem;
+        border-left: 3px solid var(--bs-success);
+    }
+
+    .cost-info small {
+        line-height: 1.3;
+    }
+
+    .small-stat-card {
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        font-size: 0.875rem;
+    }
+</style>

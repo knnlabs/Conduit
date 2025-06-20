@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 using ConduitLLM.Admin.Interfaces;
@@ -249,6 +250,58 @@ _logger.LogError(ex, "Error creating model provider mapping for model ID {ModelI
         {
             _logger.LogError(ex, "Error getting providers");
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving providers");
+        }
+    }
+
+    /// <summary>
+    /// Creates multiple model provider mappings in a single operation
+    /// </summary>
+    /// <param name="request">The bulk mapping request containing mappings to create</param>
+    /// <returns>The bulk mapping response with results and errors</returns>
+    [HttpPost("bulk")]
+    [Authorize(Policy = "MasterKeyPolicy")]
+    [ProducesResponseType(typeof(BulkModelMappingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreateBulkMappings([FromBody] BulkModelMappingRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest("Bulk mapping request cannot be null");
+        }
+
+        if (request.Mappings == null || !request.Mappings.Any())
+        {
+            return BadRequest("At least one mapping must be provided");
+        }
+
+        try
+        {
+            var response = await _mappingService.CreateBulkMappingsAsync(request);
+            
+            // Return 200 OK even if some mappings failed - the response contains success/failure details
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating bulk model provider mappings");
+            
+            // Return a response indicating complete failure
+            var errorResponse = new BulkModelMappingResponse
+            {
+                TotalProcessed = request.Mappings.Count,
+                Failed = request.Mappings.Select((mapping, index) => new BulkMappingError
+                {
+                    Index = index,
+                    Mapping = mapping,
+                    ErrorMessage = $"System error: {ex.Message}",
+                    ErrorType = BulkMappingErrorType.SystemError
+                }).ToList()
+            };
+
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
         }
     }
 }
