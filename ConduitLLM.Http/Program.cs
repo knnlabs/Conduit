@@ -289,6 +289,10 @@ builder.Services.AddAuthorization(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Register batch spend update service for optimized Virtual Key operations
+builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUpdateService>();
+builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>();
+
 // Add standardized health checks (skip in test environment to avoid conflicts)
 if (builder.Environment.EnvironmentName != "Test")
 {

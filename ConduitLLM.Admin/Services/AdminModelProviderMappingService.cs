@@ -111,6 +111,20 @@ _logger.LogError(ex, "Error adding model provider mapping for model ID: {ModelId
         }
     }
 
+    /// <summary>
+    /// Bulk validation method to check provider existence efficiently
+    /// </summary>
+    /// <param name="providerIds">Provider IDs to validate</param>
+    /// <returns>Dictionary of provider ID to existence status</returns>
+    public async Task<Dictionary<int, bool>> ValidateProvidersAsync(IEnumerable<int> providerIds)
+    {
+        var distinctIds = providerIds.Distinct().ToList();
+        var allProviders = await _credentialRepository.GetAllAsync();
+        var existingProviderIds = new HashSet<int>(allProviders.Select(p => p.Id));
+        
+        return distinctIds.ToDictionary(id => id, id => existingProviderIds.Contains(id));
+    }
+
     /// <inheritdoc />
     public async Task<bool> UpdateMappingAsync(ModelProviderMappingDto mappingDto)
     {
@@ -230,9 +244,11 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             TotalProcessed = request.Mappings.Count
         };
 
-        // Pre-validate provider IDs to avoid repeated lookups
-        var validProviders = new HashSet<int>();
-        var invalidProviders = new HashSet<string>();
+        // BULK OPTIMIZATION: Pre-load all providers and existing mappings to avoid N+1 queries
+        var allProviders = await _credentialRepository.GetAllAsync();
+        var providerLookup = allProviders.ToDictionary(p => p.Id, p => p);
+        var allMappings = await _mappingRepository.GetAllAsync();
+        var existingMappingsLookup = allMappings.ToDictionary(m => m.ModelAlias.ToLowerInvariant(), m => m);
 
         for (int i = 0; i < request.Mappings.Count; i++)
         {
@@ -240,7 +256,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
 
             try
             {
-                // Validate provider ID format and existence
+                // Validate provider ID format
                 if (string.IsNullOrEmpty(mappingDto.ProviderId) || 
                     !int.TryParse(mappingDto.ProviderId, out int providerId))
                 {
@@ -254,25 +270,8 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                     continue;
                 }
 
-                // Check provider existence (with caching)
-                if (!validProviders.Contains(providerId) && !invalidProviders.Contains(mappingDto.ProviderId))
-                {
-                    var provider = await _credentialRepository.GetByIdAsync(providerId);
-                    if (provider == null)
-                    {
-                        invalidProviders.Add(mappingDto.ProviderId);
-                        response.Failed.Add(new BulkMappingError
-                        {
-                            Index = i,
-                            Mapping = mappingDto,
-                            ErrorMessage = $"Provider not found with ID: {providerId}",
-                            ErrorType = BulkMappingErrorType.ProviderNotFound
-                        });
-                        continue;
-                    }
-                    validProviders.Add(providerId);
-                }
-                else if (invalidProviders.Contains(mappingDto.ProviderId))
+                // Check provider existence using pre-loaded lookup
+                if (!providerLookup.ContainsKey(providerId))
                 {
                     response.Failed.Add(new BulkMappingError
                     {
@@ -284,9 +283,9 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                     continue;
                 }
 
-                // Check for duplicate model ID
-                var existingMapping = await _mappingRepository.GetByModelAliasAsync(mappingDto.ModelId);
-                if (existingMapping != null)
+                // Check for duplicate model ID using pre-loaded lookup
+                var modelKeyLookup = mappingDto.ModelId.ToLowerInvariant();
+                if (existingMappingsLookup.TryGetValue(modelKeyLookup, out var existingMapping))
                 {
                     if (request.ReplaceExisting)
                     {

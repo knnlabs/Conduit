@@ -154,8 +154,15 @@ namespace ConduitLLM.Core.Services
             // Get all known providers from the system
             var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere" };
 
-            // Load all credentials in one query instead of N individual queries
-            var allCredentials = await _credentialService.GetAllCredentialsAsync();
+            // BULK OPTIMIZATION: Load all credentials and mappings in parallel to avoid N+1 queries
+            var credentialsTask = _credentialService.GetAllCredentialsAsync();
+            var mappingsTask = _mappingService.GetAllMappingsAsync();
+            
+            await Task.WhenAll(credentialsTask, mappingsTask);
+            
+            var allCredentials = await credentialsTask;
+            var modelMappings = await mappingsTask;
+            
             var credentialLookup = allCredentials.ToDictionary(c => c.ProviderName.ToLowerInvariant(), c => c);
 
             foreach (var providerName in knownProviders)
@@ -182,8 +189,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            // Add any configured model mappings that weren't discovered
-            var modelMappings = await _mappingService.GetAllMappingsAsync();
+            // Add any configured model mappings that weren't discovered (using pre-loaded data)
             foreach (var mapping in modelMappings)
             {
                 if (!allModels.ContainsKey(mapping.ModelAlias))
