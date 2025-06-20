@@ -23,6 +23,8 @@ using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualK
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
 
+using MassTransit; // Added for event bus infrastructure
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
@@ -196,7 +198,18 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     });
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
-    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, CachedApiVirtualKeyService>();
+    
+    // Register CachedApiVirtualKeyService with event publishing dependency
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
+    {
+        var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
+        var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+        var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
+        var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+        var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
+        
+        return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
+    });
     
     Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode)");
 }
@@ -207,6 +220,34 @@ else
     
     Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode)");
 }
+
+// Register MassTransit event bus with in-memory transport
+// Note: Redis is not supported as a transport in MassTransit, only for saga persistence
+builder.Services.AddMassTransit(x =>
+{
+    // Add event consumers for Core API
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
+    
+    x.UsingInMemory((context, cfg) =>
+    {
+        // NOTE: Using in-memory transport for single-instance deployments
+        // Redis is used for caching and data protection, not message transport
+        // For multi-instance production, consider RabbitMQ, Azure Service Bus, or Amazon SQS
+        
+        // Configure retry policy for reliability
+        cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+        
+        // Configure delayed redelivery for failed messages
+        cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+        
+        // Configure endpoints
+        cfg.ConfigureEndpoints(context);
+    });
+});
+
+Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
 
 // Register Configuration adapters (moved from Core)
 builder.Services.AddConfigurationAdapters();

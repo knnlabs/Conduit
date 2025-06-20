@@ -9,7 +9,9 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Interfaces.Configuration;
 using ConduitLLM.Configuration;
+using ConduitLLM.Core.Events;
 using Microsoft.Extensions.Caching.Memory;
+using MassTransit;
 
 namespace ConduitLLM.Core.Services
 {
@@ -23,14 +25,15 @@ namespace ConduitLLM.Core.Services
         private readonly ConduitLLM.Configuration.IModelProviderMappingService _mappingService;
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
+        private readonly IPublishEndpoint? _publishEndpoint;
         private const string CacheKeyPrefix = "provider_capabilities_";
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
 
         // Known model patterns and their capabilities
-        private static readonly Dictionary<string, Func<string, ModelCapabilities>> KnownModelPatterns = new()
+        private static readonly Dictionary<string, Func<string, ConduitLLM.Core.Interfaces.ModelCapabilities>> KnownModelPatterns = new()
         {
             // OpenAI
-            ["gpt-4"] = modelId => new ModelCapabilities
+            ["gpt-4"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
                 ChatStream = true,
@@ -41,7 +44,7 @@ namespace ConduitLLM.Core.Services
                 MaxTokens = modelId.Contains("32k") ? 32768 : 8192,
                 MaxOutputTokens = 4096
             },
-            ["gpt-3.5"] = _ => new ModelCapabilities
+            ["gpt-3.5"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
                 ChatStream = true,
@@ -51,20 +54,20 @@ namespace ConduitLLM.Core.Services
                 MaxTokens = 16385,
                 MaxOutputTokens = 4096
             },
-            ["dall-e"] = modelId => new ModelCapabilities
+            ["dall-e"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 ImageGeneration = true,
                 SupportedImageSizes = modelId.Contains("3") 
                     ? new List<string> { "1024x1024", "1792x1024", "1024x1792" }
                     : new List<string> { "256x256", "512x512", "1024x1024" }
             },
-            ["text-embedding"] = _ => new ModelCapabilities
+            ["text-embedding"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Embeddings = true
             },
 
             // Anthropic Claude
-            ["claude"] = modelId => new ModelCapabilities
+            ["claude"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
                 ChatStream = true,
@@ -76,7 +79,7 @@ namespace ConduitLLM.Core.Services
             },
 
             // MiniMax
-            ["abab"] = _ => new ModelCapabilities
+            ["abab"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
                 ChatStream = true,
@@ -84,7 +87,7 @@ namespace ConduitLLM.Core.Services
                 MaxTokens = 245760,
                 MaxOutputTokens = 8192
             },
-            ["image-01"] = _ => new ModelCapabilities
+            ["image-01"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> 
@@ -93,7 +96,7 @@ namespace ConduitLLM.Core.Services
                     "2.35:1", "1:2.35", "21:9", "9:21" 
                 }
             },
-            ["video-01"] = _ => new ModelCapabilities
+            ["video-01"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 VideoGeneration = true,
                 SupportedVideoResolutions = new List<string> 
@@ -104,7 +107,7 @@ namespace ConduitLLM.Core.Services
             },
 
             // Google
-            ["gemini"] = modelId => new ModelCapabilities
+            ["gemini"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
                 ChatStream = true,
@@ -117,12 +120,12 @@ namespace ConduitLLM.Core.Services
             },
 
             // Replicate
-            ["flux"] = _ => new ModelCapabilities
+            ["flux"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> { "Any custom size" }
             },
-            ["stable-diffusion"] = _ => new ModelCapabilities
+            ["stable-diffusion"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> { "512x512", "768x768", "1024x1024" }
@@ -137,13 +140,15 @@ namespace ConduitLLM.Core.Services
             ConduitLLM.Configuration.IProviderCredentialService credentialService,
             ConduitLLM.Configuration.IModelProviderMappingService mappingService,
             ILogger<ProviderDiscoveryService> logger,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IPublishEndpoint? publishEndpoint = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
         }
 
         /// <inheritdoc/>
@@ -257,6 +262,65 @@ namespace ConduitLLM.Core.Services
             // Cache the results
             _cache.Set(cacheKey, models, _cacheExpiration);
 
+            // Publish ModelCapabilitiesDiscovered event to eliminate redundant discovery calls
+            if (_publishEndpoint != null && models.Count > 0)
+            {
+                try
+                {
+                    // Convert DiscoveredModel to ModelCapabilities for the event
+                    var modelCapabilities = models.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => new ConduitLLM.Core.Events.ModelCapabilities
+                        {
+                            SupportsImageGeneration = kvp.Value.Capabilities.ImageGeneration,
+                            SupportsVision = kvp.Value.Capabilities.Vision,
+                            SupportsEmbeddings = kvp.Value.Capabilities.Embeddings,
+                            SupportsAudioTranscription = false, // Not supported in current interface
+                            SupportsTextToSpeech = false, // Not supported in current interface
+                            SupportsRealtimeAudio = false, // Not supported in current interface
+                            SupportsFunctionCalling = kvp.Value.Capabilities.FunctionCalling,
+                            AdditionalCapabilities = new Dictionary<string, object>
+                            {
+                                ["chat"] = kvp.Value.Capabilities.Chat,
+                                ["chatStream"] = kvp.Value.Capabilities.ChatStream,
+                                ["toolUse"] = kvp.Value.Capabilities.ToolUse,
+                                ["jsonMode"] = kvp.Value.Capabilities.JsonMode,
+                                ["maxTokens"] = kvp.Value.Capabilities.MaxTokens,
+                                ["maxOutputTokens"] = kvp.Value.Capabilities.MaxOutputTokens
+                            }
+                        });
+
+                    // Get provider ID from credentials
+                    var providerId = await GetProviderIdAsync(providerName);
+
+                    await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
+                    {
+                        ProviderId = providerId,
+                        ProviderName = providerName,
+                        ModelCapabilities = modelCapabilities,
+                        DiscoveredAt = DateTime.UtcNow,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogDebug("Published ModelCapabilitiesDiscovered event for provider {ProviderName} with {ModelCount} models",
+                        providerName, models.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to publish ModelCapabilitiesDiscovered event for provider {ProviderName} - discovery succeeded but event not sent",
+                        providerName);
+                    // Don't fail the operation if event publishing fails
+                }
+            }
+            else if (models.Count == 0)
+            {
+                _logger.LogDebug("No models discovered for provider {ProviderName} - skipping ModelCapabilitiesDiscovered event", providerName);
+            }
+            else
+            {
+                _logger.LogDebug("Event publishing not configured - skipping ModelCapabilitiesDiscovered event for provider {ProviderName}", providerName);
+            }
+
             return models;
         }
 
@@ -309,9 +373,38 @@ namespace ConduitLLM.Core.Services
             await DiscoverModelsAsync(cancellationToken);
         }
 
+        /// <inheritdoc/>
+        public async Task RefreshProviderCapabilitiesAsync(string providerName, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(providerName))
+            {
+                throw new ArgumentException("Provider name cannot be null or empty", nameof(providerName));
+            }
+
+            _logger.LogInformation("Refreshing capabilities cache for provider: {ProviderName}", providerName);
+            
+            // Clear cached entries for the specific provider
+            var cacheKey = $"{CacheKeyPrefix}{providerName.ToLowerInvariant()}";
+            _cache.Remove(cacheKey);
+            
+            try
+            {
+                // Re-discover models for this specific provider
+                var discoveredModels = await DiscoverProviderModelsAsync(providerName, null, cancellationToken);
+                
+                _logger.LogInformation("Successfully refreshed capabilities for provider {ProviderName}: {ModelCount} models discovered", 
+                    providerName, discoveredModels.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh capabilities for provider {ProviderName}", providerName);
+                // Don't throw - this is called from event handlers and shouldn't fail the entire event processing
+            }
+        }
+
         private DiscoveredModel InferModelCapabilities(string modelAlias, string provider, string modelId)
         {
-            var capabilities = new ModelCapabilities();
+            var capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities();
             var lowerModelId = modelId.ToLowerInvariant();
 
             // Try to match against known patterns
@@ -345,22 +438,22 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private bool HasAnyCapability(ModelCapabilities capabilities)
+        private bool HasAnyCapability(ConduitLLM.Core.Interfaces.ModelCapabilities capabilities)
         {
             return capabilities.Chat || capabilities.Embeddings || 
                    capabilities.ImageGeneration || capabilities.VideoGeneration;
         }
 
-        private ModelCapabilities GetProviderDefaults(string provider)
+        private ConduitLLM.Core.Interfaces.ModelCapabilities GetProviderDefaults(string provider)
         {
             return provider.ToLowerInvariant() switch
             {
-                "openai" => new ModelCapabilities { Chat = true, ChatStream = true },
-                "anthropic" => new ModelCapabilities { Chat = true, ChatStream = true, ToolUse = true },
-                "google" => new ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
-                "minimax" => new ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
-                "replicate" => new ModelCapabilities { ImageGeneration = true },
-                _ => new ModelCapabilities { Chat = true }
+                "openai" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true },
+                "anthropic" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true, ToolUse = true },
+                "google" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
+                "minimax" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
+                "replicate" => new ConduitLLM.Core.Interfaces.ModelCapabilities { ImageGeneration = true },
+                _ => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true }
             };
         }
 
@@ -381,7 +474,7 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private bool TestCapability(ModelCapabilities capabilities, ModelCapability capability)
+        private bool TestCapability(ConduitLLM.Core.Interfaces.ModelCapabilities capabilities, ModelCapability capability)
         {
             return capability switch
             {
@@ -397,6 +490,32 @@ namespace ConduitLLM.Core.Services
                 ModelCapability.JsonMode => capabilities.JsonMode,
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// Gets the provider ID from the credential service for a given provider name
+        /// </summary>
+        /// <param name="providerName">The provider name to look up</param>
+        /// <returns>The provider ID, or 0 if not found</returns>
+        private async Task<int> GetProviderIdAsync(string providerName)
+        {
+            try
+            {
+                // Get provider credential to find the ID
+                var credential = await _credentialService.GetCredentialByProviderNameAsync(providerName);
+                if (credential != null)
+                {
+                    return credential.Id;
+                }
+                
+                _logger.LogDebug("No provider credential found for provider name: {ProviderName}", providerName);
+                return 0; // Return 0 if provider not found
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error getting provider ID for provider name: {ProviderName}", providerName);
+                return 0; // Return 0 on error to avoid failing event publishing
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 
+using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
@@ -41,15 +42,16 @@ public static class ServiceCollectionExtensions
                 policy.Requirements.Add(new MasterKeyRequirement()));
         });
 
-        // Register AdminVirtualKeyService with optional cache dependency using factory
+        // Register AdminVirtualKeyService with optional cache and event publishing dependencies
         services.AddScoped<IAdminVirtualKeyService>(serviceProvider =>
         {
             var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
             var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, logger);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
         });
         services.AddScoped<IAdminModelProviderMappingService, AdminModelProviderMappingService>();
         services.AddScoped<IAdminRouterService, AdminRouterService>();
@@ -62,7 +64,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminGlobalSettingService, AdminGlobalSettingService>();
         services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
         services.AddScoped<IAdminModelCostService, AdminModelCostService>();
-        services.AddScoped<IAdminProviderCredentialService, AdminProviderCredentialService>();
+        // Register AdminProviderCredentialService with optional event publishing dependency
+        services.AddScoped<IAdminProviderCredentialService>(serviceProvider =>
+        {
+            var providerCredentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminProviderCredentialService>>();
+            
+            return new AdminProviderCredentialService(providerCredentialRepository, httpClientFactory, publishEndpoint, logger);
+        });
 
         // Register audio-related services
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();

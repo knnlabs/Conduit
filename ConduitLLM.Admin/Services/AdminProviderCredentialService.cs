@@ -13,7 +13,9 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Events;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -27,6 +29,7 @@ namespace ConduitLLM.Admin.Services
     {
         private readonly IProviderCredentialRepository _providerCredentialRepository;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly ILogger<AdminProviderCredentialService> _logger;
 
         /// <summary>
@@ -34,14 +37,17 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="providerCredentialRepository">The provider credential repository</param>
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
+        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
             IProviderCredentialRepository providerCredentialRepository,
             IHttpClientFactory httpClientFactory,
+            IPublishEndpoint? publishEndpoint,
             ILogger<AdminProviderCredentialService> logger)
         {
             _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -78,6 +84,37 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+
+                // Publish ProviderCredentialUpdated event (creation is treated as an update)
+                if (_publishEndpoint != null)
+                {
+                    try
+                    {
+                        await _publishEndpoint.Publish(new ProviderCredentialUpdated
+                        {
+                            ProviderId = createdCredential.Id,
+                            ProviderName = createdCredential.ProviderName,
+                            IsEnabled = createdCredential.IsEnabled,
+                            ChangedProperties = new[] { "ProviderName", "ApiKey", "BaseUrl", "IsEnabled" }, // All properties for creation
+                            CorrelationId = Guid.NewGuid().ToString()
+                        });
+
+                        _logger.LogDebug("Published ProviderCredentialUpdated event for new provider {ProviderName} (ID: {ProviderId})",
+                            createdCredential.ProviderName, createdCredential.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to publish ProviderCredentialUpdated event for provider {ProviderName} - operation succeeded but event not sent", 
+                            createdCredential.ProviderName);
+                        // Don't fail the operation if event publishing fails
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialUpdated event for provider {ProviderName}", 
+                        createdCredential.ProviderName);
+                }
+
                 return createdCredential.ToDto();
             }
             catch (Exception ex)
@@ -92,11 +129,44 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                // Get provider info before deletion for event publishing
+                var providerToDelete = await _providerCredentialRepository.GetByIdAsync(id);
+                
                 var result = await _providerCredentialRepository.DeleteAsync(id);
 
                 if (result)
                 {
                     _logger.LogInformation("Deleted provider credential with ID {Id}", id);
+
+                    // Publish ProviderCredentialDeleted event
+                    if (_publishEndpoint != null && providerToDelete != null)
+                    {
+                        try
+                        {
+                            await _publishEndpoint.Publish(new ProviderCredentialDeleted
+                            {
+                                ProviderId = providerToDelete.Id,
+                                ProviderName = providerToDelete.ProviderName,
+                                CorrelationId = Guid.NewGuid().ToString()
+                            });
+
+                            _logger.LogDebug("Published ProviderCredentialDeleted event for provider {ProviderName} (ID: {ProviderId})",
+                                providerToDelete.ProviderName, providerToDelete.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to publish ProviderCredentialDeleted event for provider ID {ProviderId} - operation succeeded but event not sent", id);
+                            // Don't fail the operation if event publishing fails
+                        }
+                    }
+                    else if (providerToDelete == null)
+                    {
+                        _logger.LogDebug("Provider credential not found before deletion - skipping ProviderCredentialDeleted event for ID {Id}", id);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialDeleted event for provider ID {Id}", id);
+                    }
                 }
                 else
                 {
@@ -383,6 +453,24 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
+                // Track changed properties for event publishing
+                var changedProperties = new List<string>();
+                
+                // Check what properties are actually changing
+                // Note: ProviderName cannot be changed in updates, so we don't check it
+                    
+                if (providerCredential.ApiKey != null && existingCredential.ApiKey != providerCredential.ApiKey)
+                    changedProperties.Add(nameof(existingCredential.ApiKey));
+                    
+                if (providerCredential.ApiBase != null && existingCredential.BaseUrl != providerCredential.ApiBase)
+                    changedProperties.Add(nameof(existingCredential.BaseUrl));
+                    
+                if (existingCredential.IsEnabled != providerCredential.IsEnabled)
+                    changedProperties.Add(nameof(existingCredential.IsEnabled));
+                    
+                // Note: Organization, ModelEndpoint, and AdditionalConfig are not mapped to the entity yet
+                // They are only in the DTOs, so we skip them for now
+
                 // Update entity
                 existingCredential.UpdateFrom(providerCredential);
 
@@ -392,6 +480,39 @@ namespace ConduitLLM.Admin.Services
                 if (result)
                 {
                     _logger.LogInformation("Updated provider credential with ID {Id}", providerCredential.Id);
+
+                    // Publish ProviderCredentialUpdated event if there were actual changes
+                    if (changedProperties.Count > 0 && _publishEndpoint != null)
+                    {
+                        try
+                        {
+                            await _publishEndpoint.Publish(new ProviderCredentialUpdated
+                            {
+                                ProviderId = existingCredential.Id,
+                                ProviderName = existingCredential.ProviderName,
+                                IsEnabled = existingCredential.IsEnabled,
+                                ChangedProperties = changedProperties.ToArray(),
+                                CorrelationId = Guid.NewGuid().ToString()
+                            });
+
+                            _logger.LogDebug("Published ProviderCredentialUpdated event for provider {ProviderName} (ID: {ProviderId}) with changes: {ChangedProperties}",
+                                existingCredential.ProviderName, existingCredential.Id, string.Join(", ", changedProperties));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to publish ProviderCredentialUpdated event for provider ID {ProviderId} - operation succeeded but event not sent", 
+                                providerCredential.Id);
+                            // Don't fail the operation if event publishing fails
+                        }
+                    }
+                    else if (changedProperties.Count == 0)
+                    {
+                        _logger.LogDebug("No changes detected for provider credential {ProviderId} - skipping event publishing", providerCredential.Id);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialUpdated event for provider ID {ProviderId}", providerCredential.Id);
+                    }
                 }
                 else
                 {

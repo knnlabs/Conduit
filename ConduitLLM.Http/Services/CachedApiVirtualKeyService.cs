@@ -8,6 +8,8 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Events;
+using MassTransit;
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
 namespace ConduitLLM.Http.Services
@@ -21,17 +23,20 @@ namespace ConduitLLM.Http.Services
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyCache _cache;
+        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly ILogger<CachedApiVirtualKeyService> _logger;
 
         public CachedApiVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
+            IPublishEndpoint? publishEndpoint,
             ILogger<CachedApiVirtualKeyService> logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -350,28 +355,62 @@ namespace ConduitLLM.Http.Services
         /// <inheritdoc />
         public async Task<bool> UpdateSpendAsync(int keyId, decimal cost)
         {
-            if (cost <= 0) return true; // No cost to add, consider it successful
-
-            var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId);
-            if (virtualKey == null) return false;
+            if (cost <= 0) 
+            {
+                _logger.LogDebug("Spend update for key {KeyId} has zero or negative cost {Cost} - skipping", keyId, cost);
+                return true; // No cost to add, consider it successful
+            }
 
             try
             {
-                // Update spend and timestamp
-                virtualKey.CurrentSpend += cost;
-                virtualKey.UpdatedAt = DateTime.UtcNow;
-
-                bool success = await _virtualKeyRepository.UpdateAsync(virtualKey);
-                if (success)
+                if (_publishEndpoint != null)
                 {
-                    // Invalidate cache after spend update
-                    await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
+                    // NEW: Event-driven approach - publish SpendUpdateRequested event
+                    var requestId = Guid.NewGuid().ToString();
                     
-                    _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}",
-                        keyId, virtualKey.CurrentSpend);
-                }
+                    await _publishEndpoint.Publish(new SpendUpdateRequested
+                    {
+                        KeyId = keyId,
+                        Amount = cost,
+                        RequestId = requestId,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
 
-                return success;
+                    _logger.LogInformation("Published spend update request for key ID {KeyId}, amount {Cost}, requestId {RequestId}",
+                        keyId, cost, requestId);
+                    
+                    // Event-driven approach returns true immediately - processing happens asynchronously
+                    // The SpendUpdateProcessor will handle the actual database update and cache invalidation
+                    return true;
+                }
+                else
+                {
+                    // FALLBACK: Legacy direct database update approach
+                    _logger.LogDebug("Event publishing not configured - falling back to direct database update for key {KeyId}", keyId);
+                    
+                    var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId);
+                    if (virtualKey == null) 
+                    {
+                        _logger.LogWarning("Virtual key {KeyId} not found for spend update", keyId);
+                        return false;
+                    }
+
+                    // Update spend and timestamp
+                    virtualKey.CurrentSpend += cost;
+                    virtualKey.UpdatedAt = DateTime.UtcNow;
+
+                    bool success = await _virtualKeyRepository.UpdateAsync(virtualKey);
+                    if (success)
+                    {
+                        // Invalidate cache after spend update
+                        await _cache.InvalidateVirtualKeyAsync(virtualKey.KeyHash);
+                        
+                        _logger.LogInformation("Updated spend for key ID {KeyId}. New spend: {CurrentSpend}",
+                            keyId, virtualKey.CurrentSpend);
+                    }
+
+                    return success;
+                }
             }
             catch (Exception ex)
             {

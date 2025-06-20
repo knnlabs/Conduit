@@ -31,6 +31,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 _mockVirtualKeyRepository.Object,
                 _mockSpendHistoryRepository.Object,
                 null, // cache is optional, pass null for tests
+                null, // publishEndpoint is optional, pass null for tests
                 _mockLogger.Object);
         }
 

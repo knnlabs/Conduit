@@ -5,6 +5,8 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Providers.Extensions;
 
+using MassTransit; // Added for event bus infrastructure
+
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
@@ -105,6 +107,32 @@ public partial class Program
         }
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
+
+        // Register MassTransit event bus with in-memory transport for Admin API
+        // Note: Redis is not supported as a transport in MassTransit, only for saga persistence
+        builder.Services.AddMassTransit(x =>
+        {
+            // Admin API primarily publishes events, minimal consumers
+            // We'll add consumers here as needed
+            
+            x.UsingInMemory((context, cfg) =>
+            {
+                // NOTE: Using in-memory transport for single-instance deployments
+                // Redis is used for caching and data protection, not message transport
+                // For multi-instance production, consider RabbitMQ, Azure Service Bus, or Amazon SQS
+                
+                // Configure retry policy for reliability
+                cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+                
+                // Configure delayed redelivery for failed messages
+                cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+                
+                // Configure endpoints
+                cfg.ConfigureEndpoints(context);
+            });
+        });
+        
+        Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
 
         // Add standardized health checks
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
