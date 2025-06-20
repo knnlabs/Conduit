@@ -1,6 +1,6 @@
 {
   "name": "@knn_labs/conduit-admin-client",
-  "version": "1.1.0-dev.20250619235602",
+  "version": "1.1.0",
   "description": "TypeScript client library for Conduit Admin API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -23,11 +23,10 @@
     "prepublishOnly": "npm run build && npm run test",
     "publish:dev": "npm version prerelease --preid=dev && npm publish --tag dev",
     "publish:stable": "npm publish --tag latest",
-    "version:dev": "npm version prerelease --preid=dev.$(date +%Y%m%d%H%M%S) --no-git-tag-version",
+    "version:dev": "npm version prerelease --preid=dev --no-git-tag-version",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
-    "version:auto": "node -e \"const branch = require('child_process').execSync('git branch --show-current', {encoding:'utf8'}).trim(); const script = branch === 'dev' ? 'version:dev' : 'version:patch'; require('child_process').execSync('npm run ' + script, {stdio:'inherit'});\""
   },
   "files": [
     "dist",
