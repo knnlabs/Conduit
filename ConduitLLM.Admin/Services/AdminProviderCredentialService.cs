@@ -575,6 +575,9 @@ namespace ConduitLLM.Admin.Services
                 // Audio/specialized providers
                 "ultravox" => $"{baseUrl}/", // Ultravox is realtime audio
                 "elevenlabs" or "eleven-labs" => $"{baseUrl}/v1/user", // ElevenLabs user endpoint for health check
+                
+                // MiniMax - use models endpoint with v1 prefix
+                "minimax" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/chat/completions" : $"{baseUrl}/v1/chat/completions",
 
                 _ => $"{baseUrl}/models" // Generic endpoint for other providers
             };
@@ -848,6 +851,7 @@ namespace ConduitLLM.Admin.Services
                 "openai-compatible" or "openaicompatible" => "http://localhost:8000",
                 "ultravox" => "https://api.ultravox.ai",
                 "elevenlabs" or "eleven-labs" => "https://api.elevenlabs.io",
+                "minimax" => "https://api.minimax.io",
                 _ => "https://api.example.com" // Generic fallback
             };
         }
