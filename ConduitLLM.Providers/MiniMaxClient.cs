@@ -129,11 +129,13 @@ namespace ConduitLLM.Providers
                 }
 
                 // Check for MiniMax error response
-                if (response.BaseResp?.StatusCode != 0)
+#pragma warning disable CS8602 // Dereference of a possibly null reference - BaseResp is checked for null above
+                if (response.BaseResp is not null && response.BaseResp.StatusCode != 0)
+#pragma warning restore CS8602
                 {
                     Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}", 
-                        response.BaseResp?.StatusCode, response.BaseResp?.StatusMsg);
-                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp?.StatusMsg}");
+                        response.BaseResp.StatusCode, response.BaseResp.StatusMsg);
+                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp.StatusMsg}");
                 }
 
                 return ConvertToCoreResponse(response, request.Model ?? ProviderModelId);
@@ -183,7 +185,7 @@ namespace ConduitLLM.Providers
                         chunk.Id, chunk.Choices?.Count ?? 0);
                     
                     // Check for MiniMax error response
-                    if (chunk.BaseResp != null && chunk.BaseResp.StatusCode != 0)
+                    if (chunk.BaseResp is not null && chunk.BaseResp.StatusCode != 0)
                     {
                         Logger.LogError("MiniMax streaming error: {StatusCode} - {StatusMsg}", 
                             chunk.BaseResp.StatusCode, chunk.BaseResp.StatusMsg);
@@ -272,7 +274,7 @@ namespace ConduitLLM.Providers
                 Logger.LogInformation("MiniMax image response object: {Response}", responseJson);
                 
                 // Check for MiniMax error response
-                if (response.BaseResp != null && response.BaseResp.StatusCode != 0)
+                if (response.BaseResp is not null && response.BaseResp.StatusCode != 0)
                 {
                     Logger.LogError("MiniMax image generation error: {StatusCode} - {StatusMsg}", 
                         response.BaseResp.StatusCode, response.BaseResp.StatusMsg);

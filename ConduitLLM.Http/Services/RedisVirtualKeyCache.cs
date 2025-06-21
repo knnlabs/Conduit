@@ -30,7 +30,7 @@ namespace ConduitLLM.Http.Services
             _logger = logger;
 
             // Subscribe to invalidation messages
-            _subscriber.Subscribe(InvalidationChannel, OnKeyInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnKeyInvalidated);
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace ConduitLLM.Http.Services
                 await _database.KeyDeleteAsync(cacheKey);
                 
                 // Notify ALL instances to invalidate their caches
-                await _subscriber.PublishAsync(InvalidationChannel, keyHash);
+                await _subscriber.PublishAsync(RedisChannel.Literal(InvalidationChannel), keyHash);
                 
                 _logger.LogInformation("Invalidated Virtual Key across all instances: {KeyHash}", keyHash);
             }
