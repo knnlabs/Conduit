@@ -47,6 +47,12 @@ services:
       Conduit__PerformanceTracking__Enabled: "true"
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
+      Logging__LogLevel__Default: "Information"
+      Logging__LogLevel__ConduitLLM: "Information"
+      Logging__LogLevel__ConduitLLM__Providers: "Debug"
+      Logging__LogLevel__ConduitLLM__Providers__MiniMaxClient: "Debug"
+      # Configure the public base URL for media storage
+      CONDUITLLM__MEDIA_BASE_URL: http://localhost:5000
     ports:
       - "5000:8080"
     restart: on-failure

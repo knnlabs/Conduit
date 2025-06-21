@@ -185,7 +185,7 @@
                             {
                                 <div class="col-12 col-md-6">
                                     <div class="generated-image-container position-relative">
-                                        <img src="@image.Url" 
+                                        <img src="@GetImageSource(image)" 
                                              alt="Generated image @(index + 1)" 
                                              class="img-fluid rounded shadow-sm w-100"
                                              style="cursor: pointer;"
@@ -326,7 +326,7 @@
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <div class="modal-body text-center p-0">
-                    <img src="@modalImage.Url" alt="Full size image" class="img-fluid" />
+                    <img src="@GetImageSource(modalImage)" alt="Full size image" class="img-fluid" />
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" @onclick="() => DownloadImage(modalImage)">
@@ -357,7 +357,16 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAvailableModels();
-        await LoadRecentPrompts();
+        // LoadRecentPrompts moved to OnAfterRenderAsync to avoid JS interop during SSR
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadRecentPrompts();
+            StateHasChanged();
+        }
     }
 
     private async Task LoadAvailableModels()
@@ -505,7 +514,7 @@
                 Size = selectedSize,
                 Quality = quality,
                 Style = style,
-                ResponseFormat = "url"
+                ResponseFormat = "b64_json"
             };
 
             var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
@@ -645,11 +654,25 @@
         modalImage = null;
     }
 
+    private string GetImageSource(ImageData image)
+    {
+        if (!string.IsNullOrEmpty(image.B64Json))
+        {
+            return $"data:image/png;base64,{image.B64Json}";
+        }
+        else if (!string.IsNullOrEmpty(image.Url))
+        {
+            return image.Url;
+        }
+        return "";
+    }
+
     private async Task DownloadImage(ImageData image)
     {
-        if (!string.IsNullOrEmpty(image.Url))
+        var imageSource = GetImageSource(image);
+        if (!string.IsNullOrEmpty(imageSource))
         {
-            await JSRuntime.InvokeVoidAsync("downloadImage", image.Url, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+            await JSRuntime.InvokeVoidAsync("downloadImage", imageSource, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
         }
     }
 

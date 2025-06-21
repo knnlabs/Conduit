@@ -100,7 +100,8 @@ namespace ConduitLLM.Http.Authentication
                 "/health",
                 "/health/ready",
                 "/health/live",
-                "/metrics"
+                "/metrics",
+                "/v1/media/public"
             };
 
             return Array.Exists(excludedPaths, excludedPath => 

@@ -211,7 +211,7 @@
     private ConfigDTOs.ProviderCredentialDto currentProvider = new();
     
     private readonly List<string> _supportedProviders = new List<string> {
-        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Gemini", "Mistral", "Groq", "HuggingFace", "AWS Bedrock", "SageMaker", "VertexAI", "Fireworks", "OpenRouter", "Cerebras"
+        "OpenAI", "OpenAI Compatible", "Anthropic", "Cohere", "Gemini", "Mistral", "Groq", "HuggingFace", "AWS Bedrock", "SageMaker", "VertexAI", "Fireworks", "OpenRouter", "Cerebras", "MiniMax"
     };
     
     protected override async Task OnInitializedAsync()
@@ -324,6 +324,7 @@
             "Fireworks" => "Connect to a variety of open-source and first-party models",
             "OpenRouter" => "Route requests to various models through OpenRouter",
             "Cerebras" => "Connect to models running on Cerebras infrastructure",
+            "MiniMax" => "Connect to MiniMax's multimodal models for chat and image generation",
             _ => "Connect to AI models through this provider"
         };
     }

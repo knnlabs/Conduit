@@ -314,9 +314,33 @@ else
     builder.Services.AddSingleton<IMediaStorageService>(provider =>
     {
         var logger = provider.GetRequiredService<ILogger<InMemoryMediaStorageService>>();
-        var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000";
-        var baseUrl = urls.Split(';').First();
-        return new InMemoryMediaStorageService(logger, baseUrl);
+        
+        // Try to get the public base URL from configuration
+        var mediaBaseUrl = builder.Configuration["CONDUITLLM:MEDIA_BASE_URL"] 
+            ?? builder.Configuration["Media:BaseUrl"]
+            ?? builder.Configuration["CONDUIT_MEDIA_BASE_URL"]
+            ?? Environment.GetEnvironmentVariable("CONDUITLLM__MEDIA_BASE_URL");
+            
+        // If not configured, try to determine from environment
+        if (string.IsNullOrEmpty(mediaBaseUrl))
+        {
+            var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000";
+            var firstUrl = urls.Split(';').First();
+            
+            // Replace wildcard bindings with localhost for media URLs
+            if (firstUrl.Contains("+:") || firstUrl.Contains("*:"))
+            {
+                var port = firstUrl.Split(':').Last();
+                mediaBaseUrl = $"http://localhost:{port}";
+            }
+            else
+            {
+                mediaBaseUrl = firstUrl;
+            }
+        }
+        
+        logger.LogInformation("Media storage base URL configured as: {BaseUrl}", mediaBaseUrl);
+        return new InMemoryMediaStorageService(logger, mediaBaseUrl);
     });
 }
 
@@ -347,6 +371,9 @@ builder.Services.AddAuthorization(options =>
     options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder("VirtualKey")
         .RequireAuthenticatedUser()
         .Build();
+    
+    // Allow endpoints to opt out of authentication with [AllowAnonymous]
+    options.FallbackPolicy = null;
 });
 
 // Add Controller support

@@ -101,28 +101,86 @@ namespace ConduitLLM.Http.Controllers
                 // Generate images
                 var response = await client.CreateImageAsync(request);
 
-                // Store generated images if they're base64
-                if (request.ResponseFormat == "b64_json" || response.Data.Any(d => !string.IsNullOrEmpty(d.B64Json)))
+                // Store generated images if they're base64 or external URLs
+                for (int i = 0; i < response.Data.Count; i++)
                 {
-                    for (int i = 0; i < response.Data.Count; i++)
+                    var imageData = response.Data[i];
+                    Stream? imageStream = null;
+                    string contentType = "image/png";
+                    string extension = "png";
+                    
+                    try
                     {
-                        var imageData = response.Data[i];
                         if (!string.IsNullOrEmpty(imageData.B64Json))
                         {
                             // Convert base64 to bytes
                             var imageBytes = Convert.FromBase64String(imageData.B64Json);
+                            imageStream = new MemoryStream(imageBytes);
+                        }
+                        else if (!string.IsNullOrEmpty(imageData.Url) && 
+                                (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                                 imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            // Download external image to proxy it through our storage
+                            using var httpClient = new System.Net.Http.HttpClient();
+                            httpClient.Timeout = TimeSpan.FromSeconds(30);
+                            
+                            var imageResponse = await httpClient.GetAsync(imageData.Url);
+                            if (imageResponse.IsSuccessStatusCode)
+                            {
+                                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
+                                imageStream = new MemoryStream(imageBytes);
+                                
+                                // Try to determine content type from response
+                                if (imageResponse.Content.Headers.ContentType != null)
+                                {
+                                    contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
+                                    extension = contentType.Split('/').LastOrDefault() ?? "png";
+                                    if (extension == "jpeg") extension = "jpg";
+                                }
+                                else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
+                                         imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    contentType = "image/jpeg";
+                                    extension = "jpg";
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
+                                    imageData.Url, imageResponse.StatusCode);
+                                continue;
+                            }
+                        }
+                        
+                        if (imageStream != null)
+                        {
+                            // Read the image bytes first if we need base64
+                            byte[]? imageBytes = null;
+                            if (request.ResponseFormat == "b64_json")
+                            {
+                                // Read bytes for base64 conversion
+                                using (var ms = new MemoryStream())
+                                {
+                                    await imageStream.CopyToAsync(ms);
+                                    imageBytes = ms.ToArray();
+                                }
+                                // Create new stream for storage
+                                imageStream = new MemoryStream(imageBytes);
+                            }
                             
                             // Store in media storage
                             var metadata = new MediaMetadata
                             {
-                                ContentType = "image/png", // Default to PNG for generated images
-                                FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{i}.png",
+                                ContentType = contentType,
+                                FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{i}.{extension}",
                                 MediaType = MediaType.Image,
                                 CustomMetadata = new()
                                 {
                                     ["prompt"] = request.Prompt,
                                     ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderName ?? "unknown"
+                                    ["provider"] = mapping?.ProviderName ?? "unknown",
+                                    ["originalUrl"] = imageData.Url ?? ""
                                 }
                             };
 
@@ -131,19 +189,28 @@ namespace ConduitLLM.Http.Controllers
                                 metadata.CreatedBy = request.User;
                             }
 
-                            var storageResult = await _storageService.StoreAsync(
-                                new MemoryStream(imageBytes), 
-                                metadata);
+                            var storageResult = await _storageService.StoreAsync(imageStream, metadata);
 
-                            // Update response with URL
+                            // Update response with our proxied URL
                             imageData.Url = storageResult.Url;
                             
-                            // Clear base64 data if user requested URL format
-                            if (request.ResponseFormat == "url")
+                            // Handle response format
+                            if (request.ResponseFormat == "b64_json" && imageBytes != null)
                             {
+                                // Use the bytes we already read
+                                imageData.B64Json = Convert.ToBase64String(imageBytes);
+                                imageData.Url = null; // Clear URL when returning base64
+                            }
+                            else if (request.ResponseFormat == "url")
+                            {
+                                // Clear any base64 data when URL format is requested
                                 imageData.B64Json = null;
                             }
                         }
+                    }
+                    finally
+                    {
+                        imageStream?.Dispose();
                     }
                 }
 

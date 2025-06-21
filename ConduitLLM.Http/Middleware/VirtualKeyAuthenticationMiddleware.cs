@@ -178,14 +178,15 @@ namespace ConduitLLM.Http.Middleware
 
         private bool IsPathExcluded(PathString path)
         {
-            // Exclude health checks, metrics, and documentation
+            // Exclude health checks, metrics, documentation, and public media
             var excludedPaths = new[]
             {
                 "/health",
                 "/metrics",
                 "/swagger",
                 "/_framework",
-                "/favicon.ico"
+                "/favicon.ico",
+                "/v1/media/public"
             };
 
             return excludedPaths.Any(excluded => 

@@ -319,26 +319,40 @@ namespace ConduitLLM.Admin.Services
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {actualCredential.ApiKey}");
                 }
 
-                // Construct the API URL based on provider type
-                var apiUrl = GetHealthCheckUrl(actualCredential);
+                // Special handling for providers that don't support GET requests
+                var providerNameLower = providerCredential.ProviderName.ToLowerInvariant();
+                TimeSpan responseTime;
                 
-                _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
-
-                // Make the request
-                var responseMessage = await client.GetAsync(apiUrl);
-                var responseTime = DateTime.UtcNow - startTime;
-
-                // Check the response
-                result.Success = responseMessage.IsSuccessStatusCode;
-                if (!result.Success)
+                if (providerNameLower == "minimax")
                 {
-                    var errorContent = await responseMessage.Content.ReadAsStringAsync();
-                    result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
-                    result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
-                        ? errorContent
-                        : "Response content too large to display";
+                    // MiniMax doesn't have a GET health check endpoint, skip to special handling
+                    result.Success = true;
+                    responseTime = TimeSpan.Zero; // Will be updated after actual test
                 }
                 else
+                {
+                    // Construct the API URL based on provider type
+                    var apiUrl = GetHealthCheckUrl(actualCredential);
+                    
+                    _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
+
+                    // Make the request
+                    var responseMessage = await client.GetAsync(apiUrl);
+                    responseTime = DateTime.UtcNow - startTime;
+
+                    // Check the response
+                    result.Success = responseMessage.IsSuccessStatusCode;
+                    if (!result.Success)
+                    {
+                        var errorContent = await responseMessage.Content.ReadAsStringAsync();
+                        result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
+                        result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
+                            ? errorContent
+                            : "Response content too large to display";
+                    }
+                }
+                
+                if (result.Success)
                 {
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
@@ -400,6 +414,23 @@ namespace ConduitLLM.Admin.Services
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
                             _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+                            
+                        case "minimax":
+                            _logger.LogInformation("Performing MiniMax authentication check via chat completion");
+                            
+                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, actualCredential);
+                            responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
+                            
+                            if (!miniMaxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - MiniMax requires a valid API key for making requests";
+                                return result;
+                            }
+                            
+                            _logger.LogInformation("MiniMax authentication check passed");
                             break;
                     }
 
@@ -820,6 +851,71 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogWarning(ex, "Error verifying OpenAI authentication");
                 // If we can't verify, assume it's invalid to be safe
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies MiniMax authentication by making a minimal chat completion request
+        /// </summary>
+        /// <param name="client">The HTTP client with authorization header set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyMiniMaxAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl
+                    : "https://api.minimax.io";
+
+                // MiniMax doesn't have a GET endpoint, so we need to make a minimal POST request
+                var testRequest = new
+                {
+                    model = "abab6.5-chat",
+                    messages = new[]
+                    {
+                        new { role = "user", content = "test" }
+                    },
+                    max_tokens = 1,
+                    stream = false
+                };
+
+                var json = JsonSerializer.Serialize(testRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var chatUrl = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
+                var response = await client.PostAsync(chatUrl, content);
+
+                _logger.LogInformation("MiniMax test request returned status {StatusCode}", (int)response.StatusCode);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return false;
+                }
+
+                // Even if the request fails for other reasons (like insufficient credits),
+                // if we didn't get an auth error, the key is valid
+                if (response.StatusCode == HttpStatusCode.OK || 
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.PaymentRequired ||
+                    response.StatusCode == HttpStatusCode.NotAcceptable ||
+                    response.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    return true;
+                }
+
+                // Log unexpected status codes
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("MiniMax returned unexpected status {StatusCode}: {Content}", 
+                    (int)response.StatusCode, responseContent);
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying MiniMax authentication");
                 return false;
             }
         }
