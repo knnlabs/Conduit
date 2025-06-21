@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -24,19 +27,31 @@ namespace ConduitLLM.Http.Controllers
         private readonly ILogger<ImagesController> _logger;
         private readonly IProviderDiscoveryService _discoveryService;
         private readonly IModelProviderMappingService _modelMappingService;
+        private readonly IImageGenerationQueue _imageQueue;
+        private readonly IAsyncTaskService _taskService;
+        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IVirtualKeyService _virtualKeyService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
             IMediaStorageService storageService,
             ILogger<ImagesController> logger,
             IProviderDiscoveryService discoveryService,
-            IModelProviderMappingService modelMappingService)
+            IModelProviderMappingService modelMappingService,
+            IImageGenerationQueue imageQueue,
+            IAsyncTaskService taskService,
+            IPublishEndpoint publishEndpoint,
+            IVirtualKeyService virtualKeyService)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
             _logger = logger;
             _discoveryService = discoveryService;
             _modelMappingService = modelMappingService;
+            _imageQueue = imageQueue;
+            _taskService = taskService;
+            _publishEndpoint = publishEndpoint;
+            _virtualKeyService = virtualKeyService;
         }
 
         /// <summary>
@@ -45,7 +60,7 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="request">The image generation request.</param>
         /// <returns>Generated images.</returns>
         [HttpPost("generations")]
-        public async Task<IActionResult> CreateImage([FromBody] ImageGenerationRequest request)
+        public async Task<IActionResult> CreateImage([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
         {
             try
             {
@@ -220,6 +235,221 @@ namespace ConduitLLM.Http.Controllers
             {
                 _logger.LogError(ex, "Error generating images");
                 return StatusCode(500, new { error = new { message = "An error occurred while generating images", type = "server_error" } });
+            }
+        }
+
+        /// <summary>
+        /// Creates an async image generation task.
+        /// </summary>
+        /// <param name="request">The image generation request.</param>
+        /// <returns>Task information with status URL.</returns>
+        [HttpPost("generations/async")]
+        public async Task<IActionResult> CreateImageAsync([FromBody] ConduitLLM.Core.Models.ImageGenerationRequest request)
+        {
+            try
+            {
+                // Validate request
+                if (string.IsNullOrWhiteSpace(request.Prompt))
+                {
+                    return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
+                }
+
+                var modelName = request.Model ?? "dall-e-3";
+                
+                // Check model capabilities
+                var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);
+                bool supportsImageGen = false;
+                
+                if (mapping != null)
+                {
+                    supportsImageGen = mapping.SupportsImageGeneration;
+                    _logger.LogInformation("Model {Model} mapping found, supports image generation: {Supports}", 
+                        modelName, supportsImageGen);
+                }
+                else
+                {
+                    _logger.LogInformation("No mapping found for {Model}, using discovery service", modelName);
+                    supportsImageGen = await _discoveryService.TestModelCapabilityAsync(
+                        modelName, 
+                        ModelCapability.ImageGeneration);
+                }
+                
+                if (!supportsImageGen)
+                {
+                    return BadRequest(new { error = new { message = $"Model {modelName} does not support image generation", type = "invalid_request_error" } });
+                }
+
+                // Get virtual key information
+                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                if (string.IsNullOrEmpty(virtualKeyHash))
+                {
+                    return Unauthorized(new { error = new { message = "Invalid authentication", type = "authentication_error" } });
+                }
+
+                var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyHash);
+                if (virtualKey == null)
+                {
+                    return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
+                }
+
+                // Create task ID
+                var taskId = Guid.NewGuid().ToString();
+                
+                // Create async task
+                var createdTaskId = await _taskService.CreateTaskAsync("image_generation", new
+                {
+                    taskId = taskId,
+                    request = request,
+                    model = modelName,
+                    virtualKeyId = virtualKey.Id
+                });
+
+                // Create and enqueue the generation request
+                var generationRequest = new ImageGenerationRequested
+                {
+                    TaskId = taskId,
+                    VirtualKeyId = virtualKey.Id,
+                    VirtualKeyHash = virtualKeyHash,
+                    Request = new ConduitLLM.Core.Events.ImageGenerationRequest
+                    {
+                        Prompt = request.Prompt,
+                        Model = request.Model,
+                        N = request.N,
+                        Size = request.Size,
+                        Quality = request.Quality,
+                        Style = request.Style,
+                        ResponseFormat = request.ResponseFormat,
+                        User = request.User
+                    },
+                    UserId = HttpContext.User.FindFirst("sub")?.Value ?? "anonymous",
+                    Priority = 0, // Normal priority
+                    RequestedAt = DateTime.UtcNow,
+                    CorrelationId = Guid.NewGuid().ToString()
+                };
+
+                // Enqueue for processing
+                await _imageQueue.EnqueueAsync(generationRequest);
+
+                // Return accepted response with task information
+                var response = new
+                {
+                    taskId = taskId,
+                    status = "queued",
+                    statusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
+                    created = DateTime.UtcNow
+                };
+
+                return Accepted(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating async image generation task");
+                return StatusCode(500, new { error = new { message = "An error occurred while creating the task", type = "server_error" } });
+            }
+        }
+
+        /// <summary>
+        /// Gets the status of an async image generation task.
+        /// </summary>
+        /// <param name="taskId">The task ID.</param>
+        /// <returns>Current task status and results if completed.</returns>
+        [HttpGet("generations/{taskId}/status")]
+        public async Task<IActionResult> GetGenerationStatus(string taskId)
+        {
+            try
+            {
+                // Get task from service
+                var task = await _taskService.GetTaskStatusAsync(taskId);
+                if (task == null)
+                {
+                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                }
+
+                // Verify user owns this task
+                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                if (task.Metadata != null)
+                {
+                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
+                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
+                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
+                    {
+                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(Convert.ToInt32(keyIdObj.ToString()));
+                        if (taskVirtualKey == null || taskVirtualKey.KeyHash != virtualKeyHash)
+                        {
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                    }
+                }
+
+                // Build response
+                var response = new
+                {
+                    taskId = task.TaskId,
+                    status = task.State.ToString().ToLowerInvariant(),
+                    created = task.CreatedAt,
+                    updated = task.UpdatedAt,
+                    progress = task.ProgressPercentage,
+                    result = task.State == TaskState.Completed ? task.Result : null,
+                    error = task.State == TaskState.Failed ? task.Error : null
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting task status for {TaskId}", taskId);
+                return StatusCode(500, new { error = new { message = "An error occurred while getting task status", type = "server_error" } });
+            }
+        }
+
+        /// <summary>
+        /// Cancels an async image generation task if it hasn't started processing yet.
+        /// </summary>
+        /// <param name="taskId">The task ID to cancel.</param>
+        /// <returns>Cancellation result.</returns>
+        [HttpDelete("generations/{taskId}")]
+        public async Task<IActionResult> CancelGeneration(string taskId)
+        {
+            try
+            {
+                // Get task from service
+                var task = await _taskService.GetTaskStatusAsync(taskId);
+                if (task == null)
+                {
+                    return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                }
+
+                // Verify user owns this task
+                var virtualKeyHash = HttpContext.User.FindFirst("key_hash")?.Value;
+                if (task.Metadata != null)
+                {
+                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
+                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
+                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
+                    {
+                        var taskVirtualKey = await _virtualKeyService.GetVirtualKeyInfoForValidationAsync(Convert.ToInt32(keyIdObj.ToString()));
+                        if (taskVirtualKey == null || taskVirtualKey.KeyHash != virtualKeyHash)
+                        {
+                            return NotFound(new { error = new { message = "Task not found", type = "not_found_error" } });
+                        }
+                    }
+                }
+
+                // Check if task can be cancelled
+                if (task.State == TaskState.Completed || task.State == TaskState.Failed)
+                {
+                    return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
+                }
+
+                // Cancel the task
+                await _taskService.UpdateTaskStatusAsync(taskId, TaskState.Failed, error: "Cancelled by user");
+
+                return Ok(new { message = "Task cancelled successfully", taskId = taskId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
+                return StatusCode(500, new { error = new { message = "An error occurred while cancelling the task", type = "server_error" } });
             }
         }
 

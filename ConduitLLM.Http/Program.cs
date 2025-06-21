@@ -230,6 +230,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
     
+    // Add image generation consumer
+    x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
+    
     x.UsingInMemory((context, cfg) =>
     {
         // NOTE: Using in-memory transport for single-instance deployments
@@ -299,6 +302,28 @@ builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtim
 // Register Audio routing
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
+
+// Register Image Generation Queue (using Redis for multi-instance support)
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IImageGenerationQueue>(sp =>
+    {
+        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisImageGenerationQueue>>();
+        return new ConduitLLM.Core.Services.RedisImageGenerationQueue(redis, logger);
+    });
+    
+    // Add background service for processing image generation tasks
+    builder.Services.AddHostedService<ImageGenerationBackgroundService>();
+    
+    Console.WriteLine("[Conduit] Image generation queue configured with Redis (distributed mode)");
+}
+else
+{
+    // For development without Redis, we'll use a simple in-memory queue
+    // Note: This won't support multiple instances
+    Console.WriteLine("[Conduit] WARNING: Redis not configured. Image generation queue will not support multiple instances.");
+}
 
 // Register Media Storage Service
 var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
