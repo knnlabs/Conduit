@@ -24,6 +24,11 @@
     <!-- WebUI reference removed, now using API client -->
   </ItemGroup>
 
+  <!-- Exclude appsettings.json from being copied when referenced as a project dependency -->
+  <ItemGroup>
+    <Content Update="appsettings.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <!--
   DEPENDENCY ISSUE RESOLVED:
   The circular dependency between ConduitLLM.Admin and ConduitLLM.WebUI has been resolved.

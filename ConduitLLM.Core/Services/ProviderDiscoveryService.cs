@@ -305,8 +305,8 @@ namespace ConduitLLM.Core.Services
                                 ["chatStream"] = kvp.Value.Capabilities.ChatStream,
                                 ["toolUse"] = kvp.Value.Capabilities.ToolUse,
                                 ["jsonMode"] = kvp.Value.Capabilities.JsonMode,
-                                ["maxTokens"] = kvp.Value.Capabilities.MaxTokens,
-                                ["maxOutputTokens"] = kvp.Value.Capabilities.MaxOutputTokens
+                                ["maxTokens"] = kvp.Value.Capabilities.MaxTokens ?? 0,
+                                ["maxOutputTokens"] = kvp.Value.Capabilities.MaxOutputTokens ?? 0
                             }
                         });
 

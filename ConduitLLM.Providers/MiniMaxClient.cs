@@ -129,11 +129,11 @@ namespace ConduitLLM.Providers
                 }
 
                 // Check for MiniMax error response
-                if (response.BaseResp != null && response.BaseResp.StatusCode != 0)
+                if (response.BaseResp?.StatusCode != 0)
                 {
                     Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}", 
-                        response.BaseResp.StatusCode, response.BaseResp.StatusMsg);
-                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp.StatusMsg}");
+                        response.BaseResp?.StatusCode, response.BaseResp?.StatusMsg);
+                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp?.StatusMsg}");
                 }
 
                 return ConvertToCoreResponse(response, request.Model ?? ProviderModelId);

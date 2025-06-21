@@ -10,11 +10,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Only copy directories that are essential for the HTTP build
+# Copy directories that are essential for the HTTP build
 COPY ["ConduitLLM.Http", "/src/ConduitLLM.Http"]
 COPY ["ConduitLLM.Core", "/src/ConduitLLM.Core"]
 COPY ["ConduitLLM.Configuration", "/src/ConduitLLM.Configuration"]
 COPY ["ConduitLLM.Providers", "/src/ConduitLLM.Providers"]
+COPY ["ConduitLLM.Admin", "/src/ConduitLLM.Admin"]
 COPY ["ConduitLLM.WebUI", "/src/ConduitLLM.WebUI"]
 # Copy solution file if it exists
 COPY ["*.sln", "/src/"]
