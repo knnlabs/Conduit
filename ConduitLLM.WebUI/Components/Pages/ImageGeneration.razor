@@ -55,8 +55,8 @@
                 Make sure to:
             </p>
             <ul class="mb-0 mt-2">
-                <li>Add provider credentials (e.g., OpenAI API key)</li>
-                <li>Create model mappings for image models (e.g., dall-e-3, dall-e-2)</li>
+                <li>Add provider credentials</li>
+                <li>Create model mappings for image generation models</li>
                 <li>Enable "Supports Image Generation" for those models</li>
             </ul>
         </div>
@@ -97,11 +97,8 @@
                                 <option value="1024x1024">Square (1024x1024)</option>
                                 <option value="1792x1024">Landscape (1792x1024)</option>
                                 <option value="1024x1792">Portrait (1024x1792)</option>
-                                @if (selectedModel?.StartsWith("dall-e-2") == true)
-                                {
-                                    <option value="512x512">Small Square (512x512)</option>
-                                    <option value="256x256">Tiny Square (256x256)</option>
-                                }
+                                <option value="512x512">Small Square (512x512)</option>
+                                <option value="256x256">Tiny Square (256x256)</option>
                             </select>
                         </div>
                         
@@ -118,31 +115,28 @@
                         </div>
                     </div>
                     
-                    <!-- Quality Settings (for DALL-E 3) -->
-                    @if (selectedModel == "dall-e-3")
-                    {
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">
-                                    <i class="fa fa-gem me-2"></i>Quality
-                                </label>
-                                <select class="form-select" @bind="quality">
-                                    <option value="standard">Standard</option>
-                                    <option value="hd">HD (Higher detail)</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">
-                                    <i class="fa fa-paint-brush me-2"></i>Style
-                                </label>
-                                <select class="form-select" @bind="style">
-                                    <option value="vivid">Vivid (Hyper-real)</option>
-                                    <option value="natural">Natural (More natural)</option>
-                                </select>
-                            </div>
+                    <!-- Quality Settings -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-gem me-2"></i>Quality
+                            </label>
+                            <select class="form-select" @bind="quality">
+                                <option value="standard">Standard</option>
+                                <option value="hd">HD (Higher detail)</option>
+                            </select>
                         </div>
-                    }
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-paint-brush me-2"></i>Style
+                            </label>
+                            <select class="form-select" @bind="style">
+                                <option value="vivid">Vivid (Hyper-real)</option>
+                                <option value="natural">Natural (More natural)</option>
+                            </select>
+                        </div>
+                    </div>
                     
                     <!-- Action Buttons -->
                     <div class="d-flex gap-2">
@@ -351,7 +345,7 @@
     private List<PromptHistoryItem> recentPrompts = new();
     
     private string imagePrompt = "";
-    private string selectedModel = "dall-e-3";
+    private string selectedModel = "";
     private string selectedSize = "1024x1024";
     private int numberOfImages = 1;
     private string quality = "standard";
@@ -413,10 +407,11 @@
             
             availableModels = imageGenModels;
             
-            // Set default model if current selection is not available
-            if (!availableModels.Any(m => m.ModelName == selectedModel) && availableModels.Any())
+            // Set default model if current selection is not available or empty
+            if ((string.IsNullOrEmpty(selectedModel) || !availableModels.Any(m => m.ModelName == selectedModel)) && availableModels.Any())
             {
                 selectedModel = availableModels.First().ModelName;
+                _logger.LogInformation("Set default selected model to: {Model}", selectedModel);
             }
         }
         catch (Exception ex)
@@ -493,6 +488,12 @@
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(selectedModel))
+        {
+            ToastService.ShowWarning("Please select an image generation model");
+            return;
+        }
+
         isGenerating = true;
         try
         {
@@ -532,29 +533,14 @@
 
     private void OnModelChanged()
     {
-        // Adjust settings based on selected model
-        if (selectedModel == "dall-e-2")
-        {
-            // DALL-E 2 only supports 1 image at a time in some configurations
-            if (numberOfImages > 1)
-                numberOfImages = 1;
-                
-            // Reset to standard size if using DALL-E 3 specific sizes
-            if (selectedSize == "1792x1024" || selectedSize == "1024x1792")
-                selectedSize = "1024x1024";
-        }
+        // Model changed - could add generic logic here if needed
+        // Model-specific constraints should be handled by the API based on actual capabilities
     }
 
     private string GetModelDescription(string model)
     {
-        return model switch
-        {
-            "dall-e-3" => "Latest OpenAI model with best quality and detail",
-            "dall-e-2" => "Previous OpenAI model, faster but less detailed",
-            "image-01" => "MiniMax's image generation model",
-            "stable-diffusion-xl" => "Open-source model with artistic flexibility",
-            _ => "Image generation model"
-        };
+        // Return a generic description - specific model details should come from configuration
+        return "Image generation model";
     }
 
     private async Task AddToPromptHistory(string prompt)

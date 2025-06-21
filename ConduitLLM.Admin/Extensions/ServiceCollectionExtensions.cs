@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
-using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache
+using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
 
 using MassTransit; // For IPublishEndpoint
@@ -79,6 +79,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
         services.AddScoped<IAdminAudioUsageService, AdminAudioUsageService>();
+
+        // Register database-aware LLM client factory (must be registered before discovery service)
+        services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
+
+        // Register discovery service
+        services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
         // Configure CORS for the Admin API
         services.AddCors(options =>

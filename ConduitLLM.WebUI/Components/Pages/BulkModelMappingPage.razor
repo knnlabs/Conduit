@@ -139,35 +139,75 @@
                                             </label>
                                         </div>
                                         
-                                        @if (modelInfo?.HasCostInfo == true)
+                                        @if (modelInfo != null)
                                         {
-                                            <div class="mt-2">
-                                                <div class="cost-info">
-                                                    <small class="text-muted d-block">
-                                                        <i class="fa fa-dollar-sign me-1 text-success"></i>@modelInfo.CostDisplay
-                                                    </small>
-                                                    @if (modelInfo.Cost!.ImageCostPerImage.HasValue)
-                                                    {
+                                            <!-- Cost Information -->
+                                            @if (modelInfo.HasCostInfo)
+                                            {
+                                                <div class="mt-2">
+                                                    <div class="cost-info">
                                                         <small class="text-muted d-block">
-                                                            <i class="fa fa-image me-1 text-info"></i>Images: $@modelInfo.Cost.ImageCostPerImage.Value.ToString("F4")/image
+                                                            <i class="fa fa-dollar-sign me-1 text-success"></i>@modelInfo.CostDisplay
                                                         </small>
-                                                    }
-                                                    @if (modelInfo.Cost!.AudioCostPerMinute.HasValue)
-                                                    {
-                                                        <small class="text-muted d-block">
-                                                            <i class="fa fa-microphone me-1 text-warning"></i>Audio: $@modelInfo.Cost.AudioCostPerMinute.Value.ToString("F4")/min
-                                                        </small>
-                                                    }
+                                                        @if (modelInfo.Cost!.ImageCostPerImage.HasValue)
+                                                        {
+                                                            <small class="text-muted d-block">
+                                                                <i class="fa fa-image me-1 text-info"></i>Images: $@modelInfo.Cost.ImageCostPerImage.Value.ToString("F4")/image
+                                                            </small>
+                                                        }
+                                                        @if (modelInfo.Cost!.AudioCostPerMinute.HasValue)
+                                                        {
+                                                            <small class="text-muted d-block">
+                                                                <i class="fa fa-microphone me-1 text-warning"></i>Audio: $@modelInfo.Cost.AudioCostPerMinute.Value.ToString("F4")/min
+                                                            </small>
+                                                        }
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="mt-2">
-                                                <small class="text-muted">
-                                                    <i class="fa fa-info-circle me-1"></i>No cost data available
-                                                </small>
-                                            </div>
+                                            }
+                                            
+                                            <!-- Discovered Capabilities -->
+                                            @if (modelInfo.HasDiscoveredCapabilities)
+                                            {
+                                                <div class="mt-2 pt-2 border-top">
+                                                    <small class="text-muted d-block mb-1">
+                                                        <i class="fa fa-magic me-1 text-primary"></i><strong>Detected Capabilities:</strong>
+                                                    </small>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        @if (modelInfo.DiscoveredCapabilities!.Capabilities!.Vision)
+                                                        {
+                                                            <span class="badge bg-info bg-opacity-10 text-info">
+                                                                <i class="fa fa-eye me-1"></i>Vision
+                                                            </span>
+                                                        }
+                                                        @if (modelInfo.DiscoveredCapabilities.Capabilities.ImageGeneration)
+                                                        {
+                                                            <span class="badge bg-purple bg-opacity-10 text-purple">
+                                                                <i class="fa fa-image me-1"></i>Image Gen
+                                                            </span>
+                                                        }
+                                                        @if (modelInfo.DiscoveredCapabilities.Capabilities.Embeddings)
+                                                        {
+                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                                                <i class="fa fa-vector-square me-1"></i>Embeddings
+                                                            </span>
+                                                        }
+                                                        @if (modelInfo.DiscoveredCapabilities.Capabilities.FunctionCalling)
+                                                        {
+                                                            <span class="badge bg-warning bg-opacity-10 text-warning">
+                                                                <i class="fa fa-code me-1"></i>Functions
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                            else if (!modelInfo.HasCostInfo)
+                                            {
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        <i class="fa fa-info-circle me-1"></i>No additional data
+                                                    </small>
+                                                </div>
+                                            }
                                         }
                                     </div>
                                 </div>
@@ -189,6 +229,11 @@
                 </h5>
             </div>
             <div class="card-body modern-card-body">
+                <div class="alert alert-info mb-3">
+                    <i class="fa fa-magic me-2"></i>
+                    <strong>Auto-detected capabilities:</strong> Models with detected capabilities will use those settings automatically. 
+                    The options below will be used as defaults for models without detected capabilities.
+                </div>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Default Priority</label>
@@ -397,7 +442,7 @@
     private bool loadingModels = false;
     private bool isCreating = false;
 
-    // Helper class to store model information with cost data
+    // Helper class to store model information with cost data and capabilities
     private class ModelInfo
     {
         public string ModelId { get; set; } = "";
@@ -406,6 +451,16 @@
         public string CostDisplay => HasCostInfo ? 
             $"In: ${Cost!.InputTokenCost:F6}/1K, Out: ${Cost!.OutputTokenCost:F6}/1K" : 
             "No cost data";
+        
+        // Discovered capabilities
+        public DiscoveredModel? DiscoveredCapabilities { get; set; }
+        public bool HasDiscoveredCapabilities => DiscoveredCapabilities?.Capabilities != null;
+        
+        // Selected capabilities (can be manually overridden)
+        public bool SupportsVision { get; set; }
+        public bool SupportsImageGeneration { get; set; }
+        public bool SupportsAudioTranscription { get; set; }
+        public bool SupportsTextToSpeech { get; set; }
     }
 
     // Configuration options
@@ -467,6 +522,9 @@
                 
                 // Load cost information for each model
                 await LoadModelCostInformation(provider.ProviderName);
+                
+                // Discover capabilities for each model
+                await DiscoverModelCapabilities(provider.ProviderName);
             }
         }
         catch (Exception ex)
@@ -592,18 +650,29 @@
             {
                 ReplaceExisting = replaceExisting,
                 ValidateProviderModels = true,
-                Mappings = selectedModels.Select(model => new ConfigDTOs.CreateModelProviderMappingDto
+                Mappings = selectedModels.Select(model => 
                 {
-                    ModelId = model,
-                    ProviderModelId = model,
-                    ProviderId = selectedProviderId,
-                    Priority = defaultPriority,
-                    IsEnabled = true,
-                    SupportsVision = supportsVision,
-                    SupportsImageGeneration = supportsImageGeneration,
-                    SupportsAudioTranscription = supportsAudioTranscription,
-                    SupportsTextToSpeech = supportsTextToSpeech,
-                    SupportsRealtimeAudio = false
+                    // Get model-specific capabilities if available
+                    var modelInfo = modelInfoCache.GetValueOrDefault(model);
+                    
+                    return new ConfigDTOs.CreateModelProviderMappingDto
+                    {
+                        ModelId = model,
+                        ProviderModelId = model,
+                        ProviderId = selectedProviderId,
+                        Priority = defaultPriority,
+                        IsEnabled = true,
+                        // Use discovered capabilities if available, otherwise use the global settings
+                        SupportsVision = modelInfo?.HasDiscoveredCapabilities == true ? 
+                            modelInfo.SupportsVision : supportsVision,
+                        SupportsImageGeneration = modelInfo?.HasDiscoveredCapabilities == true ? 
+                            modelInfo.SupportsImageGeneration : supportsImageGeneration,
+                        SupportsAudioTranscription = modelInfo?.HasDiscoveredCapabilities == true ? 
+                            modelInfo.SupportsAudioTranscription : supportsAudioTranscription,
+                        SupportsTextToSpeech = modelInfo?.HasDiscoveredCapabilities == true ? 
+                            modelInfo.SupportsTextToSpeech : supportsTextToSpeech,
+                        SupportsRealtimeAudio = false
+                    };
                 }).ToList()
             };
 
@@ -646,6 +715,78 @@
         supportsImageGeneration = false;
         supportsAudioTranscription = false;
         supportsTextToSpeech = false;
+    }
+
+    private async Task DiscoverModelCapabilities(string providerName)
+    {
+        if (availableModels == null) return;
+
+        try
+        {
+            Logger.LogInformation("Starting capability discovery for {Count} models from provider {Provider}", 
+                availableModels.Count, providerName);
+
+            // Try to discover all models at once first
+            try
+            {
+                var allDiscoveredModels = await AdminApiClient.DiscoverProviderModelsAsync(providerName);
+                
+                foreach (var discovered in allDiscoveredModels)
+                {
+                    // Match discovered models with our available models
+                    var modelId = availableModels.FirstOrDefault(m => 
+                        m.Equals(discovered.ModelId, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (modelId != null && modelInfoCache.TryGetValue(modelId, out var modelInfo))
+                    {
+                        modelInfo.DiscoveredCapabilities = discovered;
+                        
+                        // Set initial capability values based on discovery
+                        if (discovered.Capabilities != null)
+                        {
+                            modelInfo.SupportsVision = discovered.Capabilities.Vision;
+                            modelInfo.SupportsImageGeneration = discovered.Capabilities.ImageGeneration;
+                            // Note: Audio capabilities need to be inferred as they're not in the discovery model
+                        }
+                    }
+                }
+                
+                Logger.LogInformation("Discovered capabilities for {Count} models", 
+                    modelInfoCache.Count(kvp => kvp.Value.HasDiscoveredCapabilities));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to discover all models at once, falling back to individual discovery");
+                
+                // Fallback: Try discovering models individually
+                foreach (var modelId in availableModels.Take(10)) // Limit to avoid too many API calls
+                {
+                    try
+                    {
+                        var discovered = await AdminApiClient.DiscoverModelCapabilitiesAsync(providerName, modelId);
+                        if (discovered != null && modelInfoCache.TryGetValue(modelId, out var modelInfo))
+                        {
+                            modelInfo.DiscoveredCapabilities = discovered;
+                            
+                            if (discovered.Capabilities != null)
+                            {
+                                modelInfo.SupportsVision = discovered.Capabilities.Vision;
+                                modelInfo.SupportsImageGeneration = discovered.Capabilities.ImageGeneration;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore individual model discovery failures
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error discovering model capabilities for provider {Provider}", providerName);
+            // Don't show error to user as this is supplementary information
+        }
     }
 }
 

@@ -92,6 +92,7 @@ else
                     <div>
                         <input type="text" class="form-control" id="providerModelIdInput"
                                @bind="dtoMapping.ProviderModelId"
+                               @bind:after="@OnModelSelected"
                                placeholder="Enter model ID"
                                disabled="@string.IsNullOrEmpty(dtoMapping.ProviderId)" />
                         
@@ -130,6 +131,7 @@ else
                             <InputModelSearchableDropdown 
                                 Models="@providerModels"
                                 @bind-Value="@dtoMapping.ProviderModelId"
+                                @bind-Value:after="@OnModelSelected"
                                 ProviderName="@providerName"
                                 ModelCosts="@modelCosts"
                                 Disabled="@(isLoadingModels || string.IsNullOrEmpty(dtoMapping.ProviderId))" />
@@ -161,12 +163,43 @@ else
             <div class="mb-4">
                 <h5 class="mb-3">
                     <i class="fa fa-cogs me-2 text-primary"></i>Model Capabilities
+                    @if (!string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId) && !string.IsNullOrWhiteSpace(providerName))
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" 
+                                @onclick="@(async () => await DiscoverCapabilitiesAsync())"
+                                disabled="@isDiscovering">
+                            @if (isDiscovering)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                <span>Discovering...</span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-magic me-1"></i><span>Auto-detect</span>
+                            }
+                        </button>
+                    }
                 </h5>
                 <div class="alert alert-info mb-3">
                     <i class="fa fa-info-circle me-2"></i>
                     <strong>Configure Capabilities:</strong> Select the capabilities this model supports. 
                     This helps Conduit determine which features are available and route requests appropriately.
+                    @if (!string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId))
+                    {
+                        <span class="d-block mt-1">
+                            <i class="fa fa-lightbulb-o me-1"></i>You can use <strong>Auto-detect</strong> to automatically discover capabilities for the selected model.
+                        </span>
+                    }
                 </div>
+                
+                @if (!string.IsNullOrWhiteSpace(discoveryStatus))
+                {
+                    <div class="alert @(discoverySuccessful ? "alert-success" : "alert-warning") alert-dismissible fade show mb-3">
+                        <i class="fa @(discoverySuccessful ? "fa-check-circle" : "fa-exclamation-triangle") me-2"></i>
+                        @discoveryStatus
+                        <button type="button" class="btn-close" @onclick="@(() => discoveryStatus = "")" aria-label="Close"></button>
+                    </div>
+                }
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -320,6 +353,9 @@ else
     private bool showModelTextbox = false; // Whether to show textbox instead of dropdown
     private bool isSaving = false;
     private List<ConfigDTO.ModelCostDto> modelCosts = new();
+    private bool isDiscovering = false;
+    private string discoveryStatus = "";
+    private bool discoverySuccessful = false;
 
     private string SelectedProviderId
     {
@@ -675,6 +711,72 @@ else
     {
         NavigationManager.NavigateTo("/configuration");
     }
+
+    private void OnModelSelected()
+    {
+        // Clear previous discovery status when model changes
+        discoveryStatus = "";
+        discoverySuccessful = false;
+        
+        // Optionally auto-discover capabilities when model is selected
+        // For now, we'll let the user click the Auto-detect button
+    }
+
+    private async Task DiscoverCapabilitiesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(dtoMapping.ProviderModelId) || string.IsNullOrWhiteSpace(providerName))
+        {
+            return;
+        }
+
+        isDiscovering = true;
+        discoveryStatus = "";
+        StateHasChanged();
+
+        try
+        {
+            _logger.LogInformation("Discovering capabilities for model {ModelId} from provider {Provider}", 
+                dtoMapping.ProviderModelId, providerName);
+
+            // Call the Admin API to discover model capabilities
+            var discoveredModel = await AdminApiClient.DiscoverModelCapabilitiesAsync(providerName, dtoMapping.ProviderModelId);
+
+            if (discoveredModel != null && discoveredModel.Capabilities != null)
+                {
+                    // Update the mapping with discovered capabilities
+                    var caps = discoveredModel.Capabilities;
+                    
+                    // Map capabilities to DTO fields
+                    dtoMapping.SupportsImageGeneration = caps.ImageGeneration;
+                    dtoMapping.SupportsVision = caps.Vision;
+                    // Note: Audio capabilities would need to be inferred or mapped differently
+                    // as the discovery model doesn't have direct audio transcription/TTS fields
+                    
+                    discoveryStatus = $"Successfully discovered capabilities for {discoveredModel.DisplayName ?? dtoMapping.ProviderModelId}";
+                    discoverySuccessful = true;
+                    
+                    _logger.LogInformation("Discovered capabilities: ImageGen={ImageGen}, Vision={Vision}", 
+                        caps.ImageGeneration, caps.Vision);
+                }
+            else
+            {
+                discoveryStatus = $"Model '{dtoMapping.ProviderModelId}' not found for provider '{providerName}'";
+                discoverySuccessful = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error discovering model capabilities");
+            discoveryStatus = $"Error discovering capabilities: {ex.Message}";
+            discoverySuccessful = false;
+        }
+        finally
+        {
+            isDiscovering = false;
+            StateHasChanged();
+        }
+    }
+
 }
 
 <style>

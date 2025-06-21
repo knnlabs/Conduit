@@ -54,7 +54,7 @@ namespace ConduitLLM.Core.Utilities
 
             try
             {
-                var request = CreateJsonRequest(method, endpoint, requestData, headers, options);
+                var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
                 logger?.LogDebug("Sending {Method} request to {Endpoint}", method, endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
@@ -95,7 +95,8 @@ namespace ConduitLLM.Core.Utilities
             string endpoint,
             TRequest requestData,
             IDictionary<string, string>? headers,
-            JsonSerializerOptions options)
+            JsonSerializerOptions options,
+            ILogger? logger = null)
         {
             var request = new HttpRequestMessage(method, endpoint);
 
@@ -103,6 +104,7 @@ namespace ConduitLLM.Core.Utilities
             if (requestData != null)
             {
                 var requestJson = JsonSerializer.Serialize(requestData, options);
+                logger?.LogInformation("Sending JSON request: {Json}", requestJson);
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
 
@@ -133,6 +135,15 @@ namespace ConduitLLM.Core.Utilities
             {
                 var errorContent = await ReadErrorContentAsync(response, cancellationToken);
                 logger?.LogError("API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                
+                // Check for OpenAI quota error pattern (null message with image_generation_user_error)
+                if (errorContent.Contains("\"message\": null") && errorContent.Contains("image_generation_user_error"))
+                {
+                    logger?.LogWarning("Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
+                    throw new LLMCommunicationException(
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your OpenAI account status. Raw error: {errorContent}");
+                }
+                
                 throw new LLMCommunicationException(
                     $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}");
             }
