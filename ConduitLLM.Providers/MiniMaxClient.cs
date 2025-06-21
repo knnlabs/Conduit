@@ -76,8 +76,65 @@ namespace ConduitLLM.Providers
                 };
 
                 var endpoint = $"{_baseUrl}/v1/chat/completions";
-                var response = await HttpClientHelper.SendJsonRequestAsync<MiniMaxChatCompletionRequest, MiniMaxChatCompletionResponse>(
-                    httpClient, HttpMethod.Post, endpoint, miniMaxRequest, null, null, Logger, cancellationToken);
+                // Log the request for debugging
+                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
+                Logger.LogInformation("MiniMax request: {Request}", requestJson);
+
+                // Make direct HTTP call to debug
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
+                httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
+                
+                var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+                var rawContent = await httpResponse.Content.ReadAsStringAsync();
+                
+                Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
+                Logger.LogInformation("MiniMax raw response: {Response}", rawContent);
+                
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    throw new LLMCommunicationException($"MiniMax API returned {httpResponse.StatusCode}: {rawContent}");
+                }
+                
+                // Now deserialize
+                MiniMaxChatCompletionResponse response;
+                try
+                {
+                    response = JsonSerializer.Deserialize<MiniMaxChatCompletionResponse>(rawContent, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                    })!;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error deserializing MiniMax response: {Response}", rawContent);
+                    throw new LLMCommunicationException("Failed to deserialize MiniMax response", ex);
+                }
+
+                // Log the raw response for debugging
+                if (response == null)
+                {
+                    Logger.LogWarning("MiniMax response is null");
+                }
+                else
+                {
+                    var responseJson = JsonSerializer.Serialize(response);
+                    Logger.LogInformation("MiniMax response: {Response}", responseJson);
+                    Logger.LogInformation("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
+                    if (response.Choices != null && response.Choices.Count > 0)
+                    {
+                        Logger.LogInformation("First choice message: {Message}", 
+                            JsonSerializer.Serialize(response.Choices[0].Message));
+                    }
+                }
+
+                // Check for MiniMax error response
+                if (response.BaseResp != null && response.BaseResp.StatusCode != 0)
+                {
+                    Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}", 
+                        response.BaseResp.StatusCode, response.BaseResp.StatusMsg);
+                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp.StatusMsg}");
+                }
 
                 return ConvertToCoreResponse(response, request.Model ?? ProviderModelId);
             }, "CreateChatCompletion", cancellationToken);
@@ -115,14 +172,33 @@ namespace ConduitLLM.Providers
             var response = await Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
                 httpClient, HttpMethod.Post, endpoint, miniMaxRequest, null, null, Logger, cancellationToken);
 
+            Logger.LogInformation("MiniMax streaming response status: {StatusCode}", response.StatusCode);
+
             await foreach (var chunk in Core.Utilities.StreamHelper.ProcessSseStreamAsync<MiniMaxStreamChunk>(
                 response, Logger, null, cancellationToken))
             {
                 if (chunk != null)
                 {
+                    Logger.LogDebug("Received MiniMax chunk with ID: {Id}, Choices: {ChoiceCount}", 
+                        chunk.Id, chunk.Choices?.Count ?? 0);
+                    
+                    // Check for MiniMax error response
+                    if (chunk.BaseResp != null && chunk.BaseResp.StatusCode != 0)
+                    {
+                        Logger.LogError("MiniMax streaming error: {StatusCode} - {StatusMsg}", 
+                            chunk.BaseResp.StatusCode, chunk.BaseResp.StatusMsg);
+                        throw new LLMCommunicationException($"MiniMax error: {chunk.BaseResp.StatusMsg}");
+                    }
+                    
                     yield return ConvertToChunk(chunk, request.Model ?? ProviderModelId);
                 }
+                else
+                {
+                    Logger.LogDebug("Received null chunk from MiniMax stream");
+                }
             }
+            
+            Logger.LogInformation("MiniMax streaming completed");
         }
 
         /// <inheritdoc/>
@@ -232,9 +308,13 @@ namespace ConduitLLM.Providers
             // Map user-friendly names to MiniMax model IDs
             return modelName switch
             {
-                "minimax-chat" => "abab6.5-chat",
+                "minimax-chat" => "MiniMax-Text-01",
+                "abab6.5-chat" => "MiniMax-Text-01",
+                "abab6.5s-chat" => "MiniMax-Text-01",
+                "abab5.5-chat" => "MiniMax-Text-01",
                 "minimax-image" => "image-01",
                 "minimax-video" => "video-01",
+                "MiniMax-Text-01" => "MiniMax-Text-01", // Pass through if already mapped
                 _ => modelName // Pass through if already a valid model ID
             };
         }
@@ -309,6 +389,9 @@ namespace ConduitLLM.Providers
 
         private ChatCompletionResponse ConvertToCoreResponse(MiniMaxChatCompletionResponse miniMaxResponse, string modelId)
         {
+            Logger.LogDebug("Converting MiniMax response: Id={Id}, ChoiceCount={ChoiceCount}, BaseResp={BaseResp}", 
+                miniMaxResponse.Id, miniMaxResponse.Choices?.Count ?? 0, miniMaxResponse.BaseResp?.StatusCode);
+            
             var response = new ChatCompletionResponse
             {
                 Id = miniMaxResponse.Id ?? Guid.NewGuid().ToString(),
@@ -322,6 +405,9 @@ namespace ConduitLLM.Providers
             {
                 foreach (var choice in miniMaxResponse.Choices)
                 {
+                    Logger.LogDebug("MiniMax choice: Index={Index}, Role={Role}, Content={Content}, FinishReason={FinishReason}", 
+                        choice.Index, choice.Message?.Role, choice.Message?.Content?.ToString()?.Substring(0, Math.Min(50, choice.Message?.Content?.ToString()?.Length ?? 0)), choice.FinishReason);
+                    
                     response.Choices.Add(new Choice
                     {
                         Index = choice.Index,
@@ -351,6 +437,9 @@ namespace ConduitLLM.Providers
 
         private ChatCompletionChunk ConvertToChunk(MiniMaxStreamChunk miniMaxChunk, string modelId)
         {
+            Logger.LogDebug("Converting MiniMax chunk: Id={Id}, ChoiceCount={ChoiceCount}", 
+                miniMaxChunk.Id, miniMaxChunk.Choices?.Count ?? 0);
+            
             var chunk = new ChatCompletionChunk
             {
                 Id = miniMaxChunk.Id ?? Guid.NewGuid().ToString(),
@@ -364,13 +453,19 @@ namespace ConduitLLM.Providers
             {
                 foreach (var choice in miniMaxChunk.Choices)
                 {
+                    var content = choice.Delta?.Content;
+                    var role = choice.Delta?.Role;
+                    
+                    Logger.LogDebug("MiniMax choice: Index={Index}, Content={Content}, Role={Role}, FinishReason={FinishReason}", 
+                        choice.Index, content, role, choice.FinishReason);
+                    
                     chunk.Choices.Add(new StreamingChoice
                     {
                         Index = choice.Index,
                         Delta = new DeltaContent
                         {
-                            Role = choice.Delta?.Role,
-                            Content = choice.Delta?.Content,
+                            Role = role,
+                            Content = content,
                             ToolCalls = ConvertDeltaFunctionCallToToolCalls(choice.Delta?.FunctionCall)
                         },
                         FinishReason = choice.FinishReason
@@ -515,6 +610,14 @@ namespace ConduitLLM.Providers
             [System.Text.Json.Serialization.JsonPropertyName("content")]
             public object Content { get; set; } = string.Empty;
 
+            [System.Text.Json.Serialization.JsonPropertyName("name")]
+            [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+            public string? Name { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("audio_content")]
+            [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+            public string? AudioContent { get; set; }
+
             [System.Text.Json.Serialization.JsonPropertyName("function_call")]
             [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
             public MiniMaxFunctionCall? FunctionCall { get; set; }
@@ -542,6 +645,9 @@ namespace ConduitLLM.Providers
             [System.Text.Json.Serialization.JsonPropertyName("model")]
             public string? Model { get; set; }
 
+            [System.Text.Json.Serialization.JsonPropertyName("object")]
+            public string? Object { get; set; }
+
             [System.Text.Json.Serialization.JsonPropertyName("choices")]
             public List<MiniMaxChoice>? Choices { get; set; }
 
@@ -550,6 +656,22 @@ namespace ConduitLLM.Providers
 
             [System.Text.Json.Serialization.JsonPropertyName("base_resp")]
             public BaseResponse? BaseResp { get; set; }
+
+            // MiniMax specific fields
+            [System.Text.Json.Serialization.JsonPropertyName("input_sensitive")]
+            public bool? InputSensitive { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive")]
+            public bool? OutputSensitive { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("input_sensitive_type")]
+            public int? InputSensitiveType { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive_type")]
+            public int? OutputSensitiveType { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive_int")]
+            public int? OutputSensitiveInt { get; set; }
         }
 
         private class MiniMaxChoice
@@ -575,11 +697,33 @@ namespace ConduitLLM.Providers
             [System.Text.Json.Serialization.JsonPropertyName("model")]
             public string? Model { get; set; }
 
+            [System.Text.Json.Serialization.JsonPropertyName("object")]
+            public string? Object { get; set; }
+
             [System.Text.Json.Serialization.JsonPropertyName("choices")]
             public List<MiniMaxStreamChoice>? Choices { get; set; }
 
             [System.Text.Json.Serialization.JsonPropertyName("usage")]
             public MiniMaxUsage? Usage { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("base_resp")]
+            public BaseResponse? BaseResp { get; set; }
+
+            // MiniMax specific fields
+            [System.Text.Json.Serialization.JsonPropertyName("input_sensitive")]
+            public bool? InputSensitive { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive")]
+            public bool? OutputSensitive { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("input_sensitive_type")]
+            public int? InputSensitiveType { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive_type")]
+            public int? OutputSensitiveType { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("output_sensitive_int")]
+            public int? OutputSensitiveInt { get; set; }
         }
 
         private class MiniMaxStreamChoice
@@ -604,6 +748,13 @@ namespace ConduitLLM.Providers
 
             [System.Text.Json.Serialization.JsonPropertyName("function_call")]
             public MiniMaxFunctionCall? FunctionCall { get; set; }
+
+            // MiniMax specific fields that appear in streaming responses
+            [System.Text.Json.Serialization.JsonPropertyName("name")]
+            public string? Name { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("audio_content")]
+            public object? AudioContent { get; set; }
         }
 
         private class MiniMaxUsage
@@ -616,6 +767,9 @@ namespace ConduitLLM.Providers
 
             [System.Text.Json.Serialization.JsonPropertyName("total_tokens")]
             public int TotalTokens { get; set; }
+
+            [System.Text.Json.Serialization.JsonPropertyName("total_characters")]
+            public int? TotalCharacters { get; set; }
         }
 
         private class MiniMaxImageGenerationRequest
