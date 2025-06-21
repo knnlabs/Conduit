@@ -416,7 +416,31 @@ public class ConduitApiClient : IConduitApiClient
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogError("Image generation request failed with status {StatusCode}: {Error}", 
                     response.StatusCode, errorContent);
-                return null;
+                
+                // Try to parse error response
+                string errorMessage = $"Image generation failed with status {response.StatusCode}";
+                try
+                {
+                    var errorResponse = JsonSerializer.Deserialize<JsonElement>(errorContent, _jsonOptions);
+                    if (errorResponse.TryGetProperty("error", out var error))
+                    {
+                        if (error.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                        {
+                            errorMessage = message.GetString() ?? errorMessage;
+                        }
+                        else if (error.TryGetProperty("type", out var type) && type.GetString() == "image_generation_user_error")
+                        {
+                            errorMessage = "Image generation failed. This may be due to quota limits or billing issues with your OpenAI account.";
+                        }
+                    }
+                }
+                catch
+                {
+                    // If we can't parse the error, use the raw content
+                    errorMessage = $"Image generation failed: {errorContent}";
+                }
+                
+                throw new HttpRequestException(errorMessage, null, response.StatusCode);
             }
         }
         catch (Exception ex)

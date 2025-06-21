@@ -510,7 +510,7 @@
 
             var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
             
-            if (response?.Data != null)
+            if (response?.Data != null && response.Data.Any())
             {
                 generatedImages.AddRange(response.Data);
                 
@@ -518,6 +518,12 @@
                 await AddToPromptHistory(imagePrompt);
                 
                 ToastService.ShowSuccess($"Successfully generated {response.Data.Count} image(s)");
+            }
+            else
+            {
+                // Response was null or had no data
+                ToastService.ShowError("Failed to generate image. Please check your API configuration and try again.");
+                _logger.LogWarning("Image generation returned null or empty response");
             }
         }
         catch (Exception ex)
