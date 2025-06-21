@@ -292,6 +292,11 @@ namespace ConduitLLM.Admin.Services
                 return false;
             }
 
+            // TODO: Media Cleanup - When deleting a virtual key, we need to also delete all associated
+            // media files (images/videos) from storage. Currently, these files become orphaned.
+            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+            // IMPORTANT: This is a production concern - orphaned media will grow storage costs!
+            
             var result = await _virtualKeyRepository.DeleteAsync(id);
 
             if (result)
@@ -725,6 +730,13 @@ namespace ConduitLLM.Admin.Services
         public async Task PerformMaintenanceAsync()
         {
             _logger.LogInformation("Starting virtual key maintenance tasks");
+
+            // TODO: Media Lifecycle Maintenance - Add the following tasks:
+            // 1. Clean up expired media (based on MediaRecord.ExpiresAt)
+            // 2. Clean up orphaned media (virtual key deleted but media remains)
+            // 3. Prune old media based on retention policy (e.g., >90 days)
+            // 4. Update storage usage statistics per virtual key
+            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
 
             try
             {

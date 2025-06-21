@@ -206,6 +206,11 @@ namespace ConduitLLM.Http.Controllers
 
                             var storageResult = await _storageService.StoreAsync(imageStream, metadata);
 
+                            // TODO: Media Ownership Tracking - We need to record this media in a database table
+                            // to track which virtual key owns it. Currently we only store CreatedBy in metadata.
+                            // Without DB tracking, we can't clean up media when virtual keys are deleted.
+                            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+                            
                             // Update response with our proxied URL
                             imageData.Url = storageResult.Url;
                             

@@ -159,6 +159,20 @@ export CONDUITLLM__STORAGE__S3__BUCKETNAME=conduit-media
 export CONDUITLLM__STORAGE__S3__REGION=auto
 ```
 
+### Important: Media Lifecycle Management
+
+**WARNING**: Generated media files (images/videos) are currently not cleaned up when virtual keys are deleted. This is a known limitation that will lead to:
+- Ever-growing storage costs
+- Orphaned media files in your CDN/S3 bucket
+- No ability to track storage usage per virtual key
+
+**Temporary Workarounds**:
+1. Use S3 lifecycle policies to auto-delete old files
+2. Manually clean up orphaned media periodically
+3. Monitor your storage usage and costs
+
+See `docs/TODO-Media-Lifecycle-Management.md` for the planned implementation to address this.
+
 ### Image Generation API
 The image generation endpoint is available at:
 ```

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
@@ -25,6 +26,7 @@ namespace ConduitLLM.Core.Services
         private readonly IModelProviderMappingService _modelMappingService;
         private readonly IProviderDiscoveryService _discoveryService;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
         public ImageGenerationOrchestrator(
@@ -35,6 +37,7 @@ namespace ConduitLLM.Core.Services
             IModelProviderMappingService modelMappingService,
             IProviderDiscoveryService discoveryService,
             IVirtualKeyService virtualKeyService,
+            IHttpClientFactory httpClientFactory,
             ILogger<ImageGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory;
@@ -44,6 +47,7 @@ namespace ConduitLLM.Core.Services
             _modelMappingService = modelMappingService;
             _discoveryService = discoveryService;
             _virtualKeyService = virtualKeyService;
+            _httpClientFactory = httpClientFactory;
             _logger = logger;
         }
 
@@ -120,6 +124,7 @@ namespace ConduitLLM.Core.Services
                     
                     // Store image if needed
                     string? finalUrl = imageData.Url;
+                    
                     if (!string.IsNullOrEmpty(imageData.B64Json))
                     {
                         // Store base64 image
@@ -142,6 +147,80 @@ namespace ConduitLLM.Core.Services
                         using var imageStream = new System.IO.MemoryStream(imageBytes);
                         var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
                         finalUrl = storageResult.Url;
+                    }
+                    else if (!string.IsNullOrEmpty(imageData.Url) && 
+                            (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                             imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Download and store URL-based images
+                        try
+                        {
+                            using var httpClient = _httpClientFactory.CreateClient();
+                            httpClient.Timeout = TimeSpan.FromSeconds(30);
+                            
+                            var imageResponse = await httpClient.GetAsync(imageData.Url);
+                            if (imageResponse.IsSuccessStatusCode)
+                            {
+                                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
+                                
+                                // Determine content type and extension
+                                var contentType = "image/png";
+                                var extension = "png";
+                                
+                                if (imageResponse.Content.Headers.ContentType != null)
+                                {
+                                    contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
+                                    extension = contentType.Split('/').LastOrDefault() ?? "png";
+                                    if (extension == "jpeg") extension = "jpg";
+                                }
+                                else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
+                                         imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    contentType = "image/jpeg";
+                                    extension = "jpg";
+                                }
+                                
+                                var metadata = new Dictionary<string, string>
+                                {
+                                    ["prompt"] = request.Request.Prompt,
+                                    ["model"] = modelInfo.ModelId,
+                                    ["provider"] = modelInfo.Provider,
+                                    ["originalUrl"] = imageData.Url
+                                };
+                                
+                                var mediaMetadata = new MediaMetadata
+                                {
+                                    ContentType = contentType,
+                                    FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{i}.{extension}",
+                                    MediaType = MediaType.Image,
+                                    CustomMetadata = metadata
+                                };
+                                
+                                // Add CreatedBy if we have virtual key info
+                                if (request.VirtualKeyId > 0)
+                                {
+                                    mediaMetadata.CreatedBy = request.VirtualKeyId.ToString();
+                                }
+                                
+                                using var imageStream = new System.IO.MemoryStream(imageBytes);
+                                var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
+                                finalUrl = storageResult.Url;
+                                
+                                _logger.LogInformation("Downloaded and stored image from {OriginalUrl} to {StorageUrl}", 
+                                    imageData.Url, finalUrl);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
+                                    imageData.Url, imageResponse.StatusCode);
+                                // Keep original URL as fallback
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to download and store image from URL: {Url}", imageData.Url);
+                            // Keep original URL as fallback
+                        }
                     }
                     
                     processedImages.Add(new ConduitLLM.Core.Events.ImageData
