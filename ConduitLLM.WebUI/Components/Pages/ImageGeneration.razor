@@ -44,6 +44,24 @@
         </div>
     </div>
 
+    @if (!availableModels.Any())
+    {
+        <div class="alert alert-info mb-4" role="alert">
+            <h4 class="alert-heading">
+                <i class="fa fa-info-circle me-2"></i>No Image Generation Models Available
+            </h4>
+            <p class="mb-0">
+                To use image generation, you need to configure models with image generation support in the Admin panel. 
+                Make sure to:
+            </p>
+            <ul class="mb-0 mt-2">
+                <li>Add provider credentials (e.g., OpenAI API key)</li>
+                <li>Create model mappings for image models (e.g., dall-e-3, dall-e-2)</li>
+                <li>Enable "Supports Image Generation" for those models</li>
+            </ul>
+        </div>
+    }
+
     <div class="row">
         <div class="col-12 col-lg-8">
             <!-- Generation Interface Card -->
@@ -131,7 +149,7 @@
                         <button type="button" 
                                 class="btn btn-primary btn-lg" 
                                 @onclick="GenerateImage" 
-                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(imagePrompt))">
+                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(imagePrompt) || !availableModels.Any())">
                             @if (isGenerating)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -213,15 +231,25 @@
                         <label for="modelSelect" class="form-label fw-semibold">
                             <i class="fa fa-robot me-2"></i>Image Model
                         </label>
-                        <select id="modelSelect" 
-                                class="form-select" 
-                                @bind="selectedModel"
-                                @bind:after="OnModelChanged">
-                            @foreach (var model in availableModels)
-                            {
-                                <option value="@model.ModelName">@model.DisplayName</option>
-                            }
-                        </select>
+                        @if (availableModels.Any())
+                        {
+                            <select id="modelSelect" 
+                                    class="form-select" 
+                                    @bind="selectedModel"
+                                    @bind:after="OnModelChanged">
+                                @foreach (var model in availableModels)
+                                {
+                                    <option value="@model.ModelName">@model.DisplayName</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-0">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                No image generation models configured. Please add models with image generation support in the Admin panel.
+                            </div>
+                        }
                         <div class="form-text">@GetModelDescription(selectedModel)</div>
                     </div>
                     
@@ -377,16 +405,10 @@
                 }
             }
             
-            // If no models found in mappings, use known defaults
+            // If no models found in mappings, keep the list empty
             if (!imageGenModels.Any())
             {
-                _logger.LogInformation("No image generation models found in mappings, using defaults");
-                imageGenModels = new List<ImageModel>
-                {
-                    new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
-                    new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" },
-                    new ImageModel { ModelName = "minimax-image", DisplayName = "MiniMax Image", Provider = "minimax" }
-                };
+                _logger.LogWarning("No image generation models found in mappings. Please configure models with SupportsImageGeneration=true in the Admin API.");
             }
             
             availableModels = imageGenModels;
@@ -402,12 +424,9 @@
             _logger.LogError(ex, "Error loading available models");
             ToastService.ShowError("Failed to load available models");
             
-            // Fall back to defaults
-            availableModels = new List<ImageModel>
-            {
-                new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
-                new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" }
-            };
+            // Keep the list empty if loading fails
+            availableModels = new List<ImageModel>();
+            ToastService.ShowWarning("No image generation models available. Please configure models in the Admin panel.");
         }
     }
 
