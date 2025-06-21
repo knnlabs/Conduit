@@ -37,11 +37,11 @@ namespace ConduitLLM.Core.Services
             {
                 Chat = true,
                 ChatStream = true,
-                Vision = modelId.Contains("vision"),
+                Vision = modelId.Contains("vision") || modelId.Contains("gpt-4-turbo") || modelId.Contains("gpt-4o"),
                 FunctionCalling = true,
                 ToolUse = true,
                 JsonMode = true,
-                MaxTokens = modelId.Contains("32k") ? 32768 : 8192,
+                MaxTokens = modelId.Contains("32k") ? 32768 : (modelId.Contains("turbo") ? 128000 : 8192),
                 MaxOutputTokens = 4096
             },
             ["gpt-3.5"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
@@ -71,7 +71,7 @@ namespace ConduitLLM.Core.Services
             {
                 Chat = true,
                 ChatStream = true,
-                Vision = modelId.Contains("vision") || modelId.Contains("3-5"),
+                Vision = modelId.Contains("vision") || modelId.Contains("claude-3"),
                 ToolUse = true,
                 JsonMode = false,
                 MaxTokens = modelId.Contains("200k") ? 200000 : 100000,
@@ -113,8 +113,8 @@ namespace ConduitLLM.Core.Services
                 ChatStream = true,
                 Vision = true,
                 VideoUnderstanding = modelId.Contains("pro"),
-                FunctionCalling = true,
-                ToolUse = true,
+                FunctionCalling = false,  // Gemini models use a different function calling approach
+                ToolUse = false,
                 MaxTokens = modelId.Contains("1.5") ? 1048576 : 32768,
                 MaxOutputTokens = 8192
             },
@@ -129,6 +129,26 @@ namespace ConduitLLM.Core.Services
             {
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> { "512x512", "768x768", "1024x1024" }
+            },
+            
+            // Mistral
+            ["mistral"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                FunctionCalling = false,
+                ToolUse = false,
+                JsonMode = false
+            },
+            
+            // Meta Llama
+            ["llama"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                FunctionCalling = false,
+                ToolUse = false,
+                JsonMode = false
             }
         };
 
@@ -157,7 +177,7 @@ namespace ConduitLLM.Core.Services
             var allModels = new Dictionary<string, DiscoveredModel>();
 
             // Get all known providers from the system
-            var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere" };
+            var knownProviders = new[] { "openai", "anthropic", "google", "minimax", "replicate", "mistral", "cohere", "openrouter" };
 
             // BULK OPTIMIZATION: Load all credentials and mappings in parallel to avoid N+1 queries
             var credentialsTask = _credentialService.GetAllCredentialsAsync();
@@ -407,13 +427,46 @@ namespace ConduitLLM.Core.Services
             var capabilities = new ConduitLLM.Core.Interfaces.ModelCapabilities();
             var lowerModelId = modelId.ToLowerInvariant();
 
-            // Try to match against known patterns
-            foreach (var pattern in KnownModelPatterns)
+            // Special handling for OpenRouter models (format: provider/model-name)
+            if (provider.ToLowerInvariant() == "openrouter" && modelId.Contains("/"))
             {
-                if (lowerModelId.Contains(pattern.Key))
+                var parts = modelId.Split('/', 2);
+                if (parts.Length == 2)
                 {
-                    capabilities = pattern.Value(lowerModelId);
-                    break;
+                    var underlyingProvider = parts[0].ToLowerInvariant();
+                    var underlyingModel = parts[1].ToLowerInvariant();
+                    
+                    // Use the underlying model name for pattern matching
+                    lowerModelId = underlyingModel;
+                    
+                    // Also check if the full model ID matches any patterns
+                    var fullModelId = modelId.ToLowerInvariant();
+                    foreach (var pattern in KnownModelPatterns)
+                    {
+                        if (fullModelId.Contains(pattern.Key) || lowerModelId.Contains(pattern.Key))
+                        {
+                            capabilities = pattern.Value(lowerModelId);
+                            break;
+                        }
+                    }
+                    
+                    // If no pattern matched, use defaults based on the underlying provider
+                    if (!HasAnyCapability(capabilities))
+                    {
+                        capabilities = GetProviderDefaults(underlyingProvider);
+                    }
+                }
+            }
+            else
+            {
+                // Standard pattern matching for non-OpenRouter providers
+                foreach (var pattern in KnownModelPatterns)
+                {
+                    if (lowerModelId.Contains(pattern.Key))
+                    {
+                        capabilities = pattern.Value(lowerModelId);
+                        break;
+                    }
                 }
             }
 
@@ -453,7 +506,8 @@ namespace ConduitLLM.Core.Services
                 "google" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
                 "minimax" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true, Vision = true },
                 "replicate" => new ConduitLLM.Core.Interfaces.ModelCapabilities { ImageGeneration = true },
-                _ => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true }
+                "openrouter" => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true },
+                _ => new ConduitLLM.Core.Interfaces.ModelCapabilities { Chat = true, ChatStream = true }
             };
         }
 
@@ -465,6 +519,12 @@ namespace ConduitLLM.Core.Services
                 "anthropic" => new[] { "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307" },
                 "google" => new[] { "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro" },
                 "minimax" => new[] { "abab6.5-chat", "abab6.5s-chat", "abab5.5-chat", "image-01", "video-01" },
+                "openrouter" => new[] { 
+                    "anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "anthropic/claude-3-haiku",
+                    "openai/gpt-4-turbo", "openai/gpt-4", "openai/gpt-3.5-turbo",
+                    "google/gemini-pro", "google/gemini-pro-vision",
+                    "meta-llama/llama-3-70b-instruct", "mistralai/mistral-large"
+                },
                 _ => Array.Empty<string>()
             };
 
