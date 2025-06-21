@@ -478,24 +478,86 @@
     {
         try
         {
-            // Use AdminApiClient directly
-            var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
-            modelMappings = mappings.ToList();
+            // Get all model mappings from Admin API
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            
+            if (!allMappings.Any())
+            {
+                Console.WriteLine("[Chat Component] No model mappings found");
+                modelMappings = new List<ModelProviderMappingDto>();
+                return;
+            }
+            
+            // Extract model IDs for capability discovery
+            var modelIds = allMappings.Select(m => m.ModelId).ToList();
+            Console.WriteLine($"[Chat Component] Testing capabilities for {modelIds.Count} models");
+            
+            // Get model capabilities using Discovery API
+            var discoveryInfo = await ConduitApiClient.GetBulkModelDiscoveryAsync(modelIds);
+            
+            // Filter models to only include those suitable for chat:
+            // 1. Must support "chat" capability
+            // 2. Exclude image-generation-only models (models that only do image generation without chat)
+            var chatSuitableModels = new List<ModelProviderMappingDto>();
+            
+            foreach (var mapping in allMappings)
+            {
+                if (discoveryInfo.TryGetValue(mapping.ModelId, out var modelInfo))
+                {
+                    // Check if model supports chat
+                    var supportsChat = modelInfo.Capabilities.GetValueOrDefault("chat", false);
+                    
+                    // Check if it's an image-generation-only model
+                    var supportsImageGeneration = modelInfo.Capabilities.GetValueOrDefault("image_generation", false);
+                    var isImageGenerationOnly = supportsImageGeneration && !supportsChat;
+                    
+                    // Include the model if it supports chat and is not image-generation-only
+                    if (supportsChat && !isImageGenerationOnly)
+                    {
+                        chatSuitableModels.Add(mapping);
+                        Console.WriteLine($"[Chat Component] Including chat-capable model: {mapping.ModelId}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Chat Component] Excluding model {mapping.ModelId} - Chat: {supportsChat}, ImageGenOnly: {isImageGenerationOnly}");
+                    }
+                }
+                else
+                {
+                    // If we can't get capability info, include the model with a warning
+                    // This ensures the chat page still works if the discovery API has issues
+                    chatSuitableModels.Add(mapping);
+                    Console.WriteLine($"[Chat Component] Including model {mapping.ModelId} (capability info unavailable)");
+                }
+            }
+            
+            modelMappings = chatSuitableModels;
             
             // Select the first model by default if no model is selected
             if (string.IsNullOrEmpty(selectedModelAlias) && modelMappings.Any())
             {
                 selectedModelAlias = modelMappings.First().ModelId;
-                Console.WriteLine($"[Chat Component] Auto-selected first model: {selectedModelAlias}");
+                Console.WriteLine($"[Chat Component] Auto-selected first chat-capable model: {selectedModelAlias}");
             }
             
-            Console.WriteLine($"[Chat Component] Loaded {modelMappings.Count} model mappings");
+            Console.WriteLine($"[Chat Component] Loaded {modelMappings.Count} chat-capable models out of {allMappings.Count()} total models");
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading model mappings: {ex.Message}");
             ToastService.ShowError($"Error loading model mappings: {ex.Message}");
-            modelMappings = new List<ModelProviderMappingDto>();
+            
+            // Fallback: Load all models if capability filtering fails
+            try
+            {
+                var fallbackMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
+                modelMappings = fallbackMappings.ToList();
+                Console.WriteLine($"[Chat Component] Fallback: Loaded {modelMappings.Count} models without capability filtering");
+            }
+            catch
+            {
+                modelMappings = new List<ModelProviderMappingDto>();
+            }
         }
     }
 
