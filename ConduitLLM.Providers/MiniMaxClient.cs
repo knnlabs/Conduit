@@ -115,17 +115,16 @@ namespace ConduitLLM.Providers
                 if (response == null)
                 {
                     Logger.LogWarning("MiniMax response is null");
+                    throw new LLMCommunicationException("MiniMax returned null response");
                 }
-                else
+
+                var responseJson = JsonSerializer.Serialize(response);
+                Logger.LogInformation("MiniMax response: {Response}", responseJson);
+                Logger.LogInformation("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
+                if (response.Choices != null && response.Choices.Count > 0)
                 {
-                    var responseJson = JsonSerializer.Serialize(response);
-                    Logger.LogInformation("MiniMax response: {Response}", responseJson);
-                    Logger.LogInformation("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
-                    if (response.Choices != null && response.Choices.Count > 0)
-                    {
-                        Logger.LogInformation("First choice message: {Message}", 
-                            JsonSerializer.Serialize(response.Choices[0].Message));
-                    }
+                    Logger.LogInformation("First choice message: {Message}", 
+                        JsonSerializer.Serialize(response.Choices[0].Message));
                 }
 
                 // Check for MiniMax error response
