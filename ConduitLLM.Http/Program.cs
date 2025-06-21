@@ -22,6 +22,7 @@ using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualKeyCache, CachedApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
+using ConduitLLM.Admin.Services; // Added for DatabaseAwareLLMClientFactory
 
 using MassTransit; // Added for event bus infrastructure
 
@@ -142,7 +143,8 @@ builder.Services.AddCoreApiSecurity(builder.Configuration);
 builder.Services.AddHttpClient();
 
 // Add dependencies needed for the Conduit service
-builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.LLMClientFactory>();
+// Use DatabaseAwareLLMClientFactory to get provider credentials from database
+builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
 
 // Add performance metrics service
