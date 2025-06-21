@@ -129,13 +129,11 @@ namespace ConduitLLM.Providers
                 }
 
                 // Check for MiniMax error response
-#pragma warning disable CS8602 // Dereference of a possibly null reference - BaseResp is checked for null above
-                if (response.BaseResp is not null && response.BaseResp.StatusCode != 0)
-#pragma warning restore CS8602
+                if (response.BaseResp is { } baseResp && baseResp.StatusCode != 0)
                 {
                     Logger.LogError("MiniMax error: {StatusCode} - {StatusMsg}", 
-                        response.BaseResp.StatusCode, response.BaseResp.StatusMsg);
-                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp.StatusMsg}");
+                        baseResp.StatusCode, baseResp.StatusMsg);
+                    throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
                 }
 
                 return ConvertToCoreResponse(response, request.Model ?? ProviderModelId);
@@ -185,11 +183,11 @@ namespace ConduitLLM.Providers
                         chunk.Id, chunk.Choices?.Count ?? 0);
                     
                     // Check for MiniMax error response
-                    if (chunk.BaseResp is not null && chunk.BaseResp.StatusCode != 0)
+                    if (chunk.BaseResp is { } baseResp && baseResp.StatusCode != 0)
                     {
                         Logger.LogError("MiniMax streaming error: {StatusCode} - {StatusMsg}", 
-                            chunk.BaseResp.StatusCode, chunk.BaseResp.StatusMsg);
-                        throw new LLMCommunicationException($"MiniMax error: {chunk.BaseResp.StatusMsg}");
+                            baseResp.StatusCode, baseResp.StatusMsg);
+                        throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
                     }
                     
                     yield return ConvertToChunk(chunk, request.Model ?? ProviderModelId);
@@ -274,11 +272,11 @@ namespace ConduitLLM.Providers
                 Logger.LogInformation("MiniMax image response object: {Response}", responseJson);
                 
                 // Check for MiniMax error response
-                if (response.BaseResp is not null && response.BaseResp.StatusCode != 0)
+                if (response.BaseResp is { } baseResp && baseResp.StatusCode != 0)
                 {
                     Logger.LogError("MiniMax image generation error: {StatusCode} - {StatusMsg}", 
-                        response.BaseResp.StatusCode, response.BaseResp.StatusMsg);
-                    throw new LLMCommunicationException($"MiniMax error: {response.BaseResp.StatusMsg}");
+                        baseResp.StatusCode, baseResp.StatusMsg);
+                    throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
                 }
 
                 // Map MiniMax response to Core response
@@ -506,7 +504,7 @@ namespace ConduitLLM.Providers
         private ChatCompletionResponse ConvertToCoreResponse(MiniMaxChatCompletionResponse miniMaxResponse, string modelId)
         {
             Logger.LogDebug("Converting MiniMax response: Id={Id}, ChoiceCount={ChoiceCount}, BaseResp={BaseResp}", 
-                miniMaxResponse.Id, miniMaxResponse.Choices?.Count ?? 0, miniMaxResponse.BaseResp?.StatusCode);
+                miniMaxResponse.Id, miniMaxResponse.Choices?.Count ?? 0, miniMaxResponse.BaseResp?.StatusCode ?? 0);
             
             var response = new ChatCompletionResponse
             {
