@@ -362,39 +362,34 @@ await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
 
 ### Configuration
 
+#### RabbitMQ Configuration
+
+For production deployments with multiple service instances, configure RabbitMQ:
+
+```bash
+# Core API and Admin API RabbitMQ Configuration
+export CONDUITLLM__RABBITMQ__HOST=rabbitmq              # RabbitMQ host (use actual hostname in production)
+export CONDUITLLM__RABBITMQ__PORT=5672                  # AMQP port
+export CONDUITLLM__RABBITMQ__USERNAME=conduit           # RabbitMQ username
+export CONDUITLLM__RABBITMQ__PASSWORD=<secure-password> # RabbitMQ password
+export CONDUITLLM__RABBITMQ__VHOST=/                    # Virtual host
+export CONDUITLLM__RABBITMQ__PREFETCHCOUNT=10           # Consumer prefetch count
+export CONDUITLLM__RABBITMQ__PARTITIONCOUNT=10          # Number of partitions for ordered processing
+```
+
 #### MassTransit Registration
 
+The event bus automatically detects RabbitMQ configuration and switches from in-memory to RabbitMQ transport:
+
 **Core API** (`ConduitLLM.Http/Program.cs`)
-```csharp
-builder.Services.AddMassTransit(x =>
-{
-    // Register event consumers
-    x.AddConsumer<VirtualKeyCacheInvalidationHandler>();
-    x.AddConsumer<SpendUpdateProcessor>();
-    x.AddConsumer<ProviderCredentialEventHandler>();
-    
-    // Configure transport
-    x.UsingInMemory((context, cfg) =>
-    {
-        cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
-        cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
-        cfg.ConfigureEndpoints(context);
-    });
-});
-```
+- Configures consumers for cache invalidation, spend processing, and provider events
+- Uses partitioned queues for ordered event processing per entity
+- Supports both in-memory (single instance) and RabbitMQ (multi-instance) transports
 
 **Admin API** (`ConduitLLM.Admin/Program.cs`)
-```csharp
-builder.Services.AddMassTransit(x =>
-{
-    // Admin API primarily publishes events
-    x.UsingInMemory((context, cfg) =>
-    {
-        cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
-        cfg.ConfigureEndpoints(context);
-    });
-});
-```
+- Publisher-only configuration (no consumers)
+- Simplified RabbitMQ setup for event publishing
+- Supports both in-memory and RabbitMQ transports
 
 #### Service Registration
 
@@ -454,23 +449,22 @@ Spend update processed for key {KeyId}: {Amount}
 - **After**: Event-driven updates provide real-time data consistency
 - **Benefit**: Reduces unnecessary API calls and database queries
 
+### Multi-Instance Deployment with RabbitMQ
+
+As of the latest update, Conduit now supports RabbitMQ for horizontal scaling:
+
+1. **Automatic Transport Detection**: The system automatically uses RabbitMQ when configured via environment variables
+2. **Partitioned Processing**: Events are routed to partition queues based on entity IDs for ordered processing
+3. **Durable Messaging**: All queues and messages are durable by default
+4. **Health Monitoring**: RabbitMQ connectivity is included in health checks
+
+To enable RabbitMQ, simply set the environment variables documented above. The system will:
+- Switch from in-memory to RabbitMQ transport automatically
+- Create necessary exchanges and queues on startup
+- Route events based on partition keys for ordered processing
+- Handle connection failures with automatic recovery
+
 ### Future Enhancements
-
-#### Multi-Instance Deployment
-For production deployments with multiple service instances:
-
-1. **Replace In-Memory Transport**:
-   ```csharp
-   x.UsingRabbitMq((context, cfg) =>
-   {
-       cfg.Host("rabbitmq://localhost");
-       // ... configuration
-   });
-   ```
-
-2. **Add Message Persistence**: Enable durable queues and message persistence
-
-3. **Implement Saga Patterns**: For complex multi-step workflows
 
 #### Additional Events
 - **UserActivity events** for audit logging

@@ -28,6 +28,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: conduit
+      RABBITMQ_DEFAULT_PASS: conduitpass
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -37,6 +55,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
@@ -53,6 +73,14 @@ services:
       Logging__LogLevel__ConduitLLM__Providers__MiniMaxClient: "Debug"
       # Configure the public base URL for media storage
       CONDUITLLM__MEDIA_BASE_URL: http://localhost:5000
+      # RabbitMQ configuration
+      CONDUITLLM__RABBITMQ__HOST: rabbitmq
+      CONDUITLLM__RABBITMQ__PORT: 5672
+      CONDUITLLM__RABBITMQ__USERNAME: conduit
+      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
+      CONDUITLLM__RABBITMQ__VHOST: /
+      CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
+      CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
     ports:
       - "5000:8080"
     restart: on-failure
@@ -72,6 +100,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
@@ -82,6 +112,12 @@ services:
       CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://webui:8080
       AdminApi__AllowedOrigins__1: http://localhost:5001
+      # RabbitMQ configuration
+      CONDUITLLM__RABBITMQ__HOST: rabbitmq
+      CONDUITLLM__RABBITMQ__PORT: 5672
+      CONDUITLLM__RABBITMQ__USERNAME: conduit
+      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
+      CONDUITLLM__RABBITMQ__VHOST: /
     ports:
       - "5002:8080"
     restart: on-failure
@@ -155,3 +191,4 @@ services:
 volumes:
   pgdata:
   redis-data:
+  rabbitmq-data:

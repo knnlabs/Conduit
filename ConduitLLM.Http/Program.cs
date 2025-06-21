@@ -221,8 +221,14 @@ else
     Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode)");
 }
 
-// Register MassTransit event bus with in-memory transport
-// Note: Redis is not supported as a transport in MassTransit, only for saga persistence
+// Configure RabbitMQ settings
+var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
+    ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
+
+// Check if RabbitMQ is configured
+var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
+
+// Register MassTransit event bus
 builder.Services.AddMassTransit(x =>
 {
     // Add event consumers for Core API
@@ -233,24 +239,53 @@ builder.Services.AddMassTransit(x =>
     // Add image generation consumer
     x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
     
-    x.UsingInMemory((context, cfg) =>
+    if (useRabbitMq)
     {
-        // NOTE: Using in-memory transport for single-instance deployments
-        // Redis is used for caching and data protection, not message transport
-        // For multi-instance production, consider RabbitMQ, Azure Service Bus, or Amazon SQS
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            // Configure RabbitMQ connection
+            cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
+            {
+                h.Username(rabbitMqConfig.Username);
+                h.Password(rabbitMqConfig.Password);
+                h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+            });
+            
+            // Configure prefetch count for consumer concurrency
+            cfg.PrefetchCount = rabbitMqConfig.PrefetchCount;
+            
+            // Configure retry policy for reliability
+            cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+            
+            // Configure delayed redelivery for failed messages
+            cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure endpoints with automatic topology
+            cfg.ConfigureEndpoints(context);
+        });
         
-        // Configure retry policy for reliability
-        cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+        Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+    }
+    else
+    {
+        x.UsingInMemory((context, cfg) =>
+        {
+            // NOTE: Using in-memory transport for single-instance deployments
+            // Configure RabbitMQ environment variables for multi-instance production
+            
+            // Configure retry policy for reliability
+            cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+            
+            // Configure delayed redelivery for failed messages
+            cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure endpoints
+            cfg.ConfigureEndpoints(context);
+        });
         
-        // Configure delayed redelivery for failed messages
-        cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
-        
-        // Configure endpoints
-        cfg.ConfigureEndpoints(context);
-    });
+        Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
+    }
 });
-
-Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
 
 // Register Configuration adapters (moved from Core)
 builder.Services.AddConfigurationAdapters();
@@ -437,7 +472,7 @@ builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUp
 if (builder.Environment.EnvironmentName != "Test")
 {
     // Use the same Redis connection string we configured above for health checks
-    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString);
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, true, rabbitMqConfig);
 
     // Add audio-specific health checks if audio services are configured
     if (builder.Configuration.GetSection("AudioService:Providers").Exists())
