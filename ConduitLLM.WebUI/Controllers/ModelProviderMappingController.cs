@@ -138,7 +138,7 @@ namespace ConduitLLM.WebUI.Controllers
         /// <response code="400">If the request is invalid</response>
         /// <response code="500">If an error occurs</response>
         [HttpPost]
-        public async Task<IActionResult> CreateMapping([FromBody] ModelProviderMapping mapping)
+        public async Task<IActionResult> CreateMapping([FromBody] ConduitLLM.Configuration.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
@@ -174,7 +174,7 @@ namespace ConduitLLM.WebUI.Controllers
         /// <response code="404">If the mapping is not found</response>
         /// <response code="500">If an error occurs</response>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateMapping(int id, [FromBody] ModelProviderMapping mapping)
+        public async Task<IActionResult> UpdateMapping(int id, [FromBody] ConduitLLM.Configuration.ModelProviderMapping mapping)
         {
             if (mapping == null)
             {
