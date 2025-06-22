@@ -119,14 +119,16 @@ namespace ConduitLLM.Admin.Services
 
             // Publish VirtualKeyCreated event for cache synchronization
             // This is critical for the Core API to recognize the new key
-            // Use VirtualKeyUpdated event since we don't have a VirtualKeyCreated event defined
-            // The Core API will treat this as a cache invalidation/refresh
             await PublishEventAsync(
-                new VirtualKeyUpdated
+                new VirtualKeyCreated
                 {
                     KeyId = virtualKey.Id,
                     KeyHash = virtualKey.KeyHash,
-                    ChangedProperties = new[] { "Created" }, // Special marker for creation
+                    KeyName = virtualKey.KeyName,
+                    CreatedAt = virtualKey.CreatedAt,
+                    IsEnabled = virtualKey.IsEnabled,
+                    AllowedModels = virtualKey.AllowedModels,
+                    MaxBudget = virtualKey.MaxBudget,
                     CorrelationId = Guid.NewGuid().ToString()
                 },
                 $"create virtual key {virtualKey.Id}",

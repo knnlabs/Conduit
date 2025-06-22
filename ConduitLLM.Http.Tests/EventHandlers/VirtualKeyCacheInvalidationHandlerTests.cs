@@ -59,18 +59,22 @@ namespace ConduitLLM.Http.Tests.EventHandlers
         }
 
         [Fact]
-        public async Task Consume_VirtualKeyUpdated_WithCreatedMarker_InvalidatesCache()
+        public async Task Consume_VirtualKeyCreated_InvalidatesCache()
         {
             // Arrange
-            var @event = new VirtualKeyUpdated
+            var @event = new VirtualKeyCreated
             {
                 KeyId = 456,
                 KeyHash = "new-key-hash",
-                ChangedProperties = new[] { "Created" }, // Special marker for new keys
+                KeyName = "New Test Key",
+                CreatedAt = DateTime.UtcNow,
+                IsEnabled = true,
+                AllowedModels = "gpt-4",
+                MaxBudget = 100,
                 CorrelationId = Guid.NewGuid().ToString()
             };
 
-            var context = new Mock<ConsumeContext<VirtualKeyUpdated>>();
+            var context = new Mock<ConsumeContext<VirtualKeyCreated>>();
             context.Setup(c => c.Message).Returns(@event);
 
             // Act
@@ -82,7 +86,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
                 x => x.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("properties changed: Created")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Virtual Key cache invalidated for newly created key")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

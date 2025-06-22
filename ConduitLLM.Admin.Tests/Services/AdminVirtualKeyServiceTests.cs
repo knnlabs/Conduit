@@ -133,13 +133,15 @@ namespace ConduitLLM.Admin.Tests.Services
             // Assert
             Assert.NotNull(result);
 
-            // Verify that VirtualKeyUpdated event was published with "Created" marker
+            // Verify that VirtualKeyCreated event was published
             _mockPublishEndpoint.Verify(p => p.Publish(
-                It.Is<VirtualKeyUpdated>(e => 
+                It.Is<VirtualKeyCreated>(e => 
                     e.KeyId == 1 &&
                     e.KeyHash == "generated-hash-abc123" &&
-                    e.ChangedProperties.Length == 1 &&
-                    e.ChangedProperties[0] == "Created"),
+                    e.KeyName == "New Virtual Key" &&
+                    e.IsEnabled == true &&
+                    e.AllowedModels == "gpt-4" &&
+                    e.MaxBudget == 100),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
         }

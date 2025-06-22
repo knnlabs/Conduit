@@ -39,6 +39,53 @@ namespace ConduitLLM.Core.Events
     // ===============================
 
     /// <summary>
+    /// Raised when a new virtual key is created
+    /// Critical for cache initialization and real-time synchronization
+    /// </summary>
+    public record VirtualKeyCreated : DomainEvent
+    {
+        /// <summary>
+        /// Virtual Key database ID
+        /// </summary>
+        public int KeyId { get; init; }
+        
+        /// <summary>
+        /// Virtual Key hash for cache operations
+        /// </summary>
+        public string KeyHash { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Key name for logging and audit purposes
+        /// </summary>
+        public string KeyName { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// When the key was created
+        /// </summary>
+        public DateTime CreatedAt { get; init; }
+        
+        /// <summary>
+        /// Whether the key is enabled at creation
+        /// </summary>
+        public bool IsEnabled { get; init; } = true;
+        
+        /// <summary>
+        /// Allowed models at creation (if specified)
+        /// </summary>
+        public string? AllowedModels { get; init; }
+        
+        /// <summary>
+        /// Maximum budget at creation (if specified)
+        /// </summary>
+        public decimal? MaxBudget { get; init; }
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => KeyId.ToString();
+    }
+
+    /// <summary>
     /// Raised when a virtual key is updated (properties changed)
     /// Critical for cache invalidation across all services
     /// </summary>

@@ -237,6 +237,11 @@ The event-driven system is built on **MassTransit** with domain events for criti
 
 #### Virtual Key Events
 
+**VirtualKeyCreated**
+- **Trigger**: When a new virtual key is created in Admin API
+- **Consumers**: Cache invalidation in Core API to ensure immediate recognition
+- **Partition Key**: Virtual Key ID (ensures ordered processing)
+
 **VirtualKeyUpdated**
 - **Trigger**: When virtual key properties are modified in Admin API
 - **Consumers**: Cache invalidation in Core API
@@ -304,6 +309,19 @@ Events are partitioned by entity ID to ensure:
 
 **AdminVirtualKeyService** (`ConduitLLM.Admin`)
 ```csharp
+// Publishes VirtualKeyCreated when a new key is created
+await _publishEndpoint.Publish(new VirtualKeyCreated
+{
+    KeyId = virtualKey.Id,
+    KeyHash = virtualKey.KeyHash,
+    KeyName = virtualKey.KeyName,
+    CreatedAt = virtualKey.CreatedAt,
+    IsEnabled = virtualKey.IsEnabled,
+    AllowedModels = virtualKey.AllowedModels,
+    MaxBudget = virtualKey.MaxBudget,
+    CorrelationId = Guid.NewGuid().ToString()
+});
+
 // Publishes VirtualKeyUpdated when properties change
 await _publishEndpoint.Publish(new VirtualKeyUpdated
 {
@@ -341,7 +359,7 @@ await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
 #### Event Consumers
 
 **VirtualKeyCacheInvalidationHandler** (`ConduitLLM.Http`)
-- Handles `VirtualKeyUpdated`, `VirtualKeyDeleted`, `SpendUpdated`
+- Handles `VirtualKeyCreated`, `VirtualKeyUpdated`, `VirtualKeyDeleted`, `SpendUpdated`
 - Invalidates Redis cache entries for affected virtual keys
 - Ensures cache consistency across service instances
 
@@ -356,6 +374,13 @@ await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
 - Cleans up cached provider data
 
 ### Event Flow Examples
+
+#### Virtual Key Creation Flow
+1. **Admin API**: User creates a new virtual key via REST API
+2. **AdminVirtualKeyService**: Creates key in database and publishes `VirtualKeyCreated`
+3. **Core API**: `VirtualKeyCacheInvalidationHandler` receives event
+4. **Redis Cache**: Any stale entries for the key hash are invalidated
+5. **Next Request**: Fresh data loaded from database, new key immediately available
 
 #### Virtual Key Update Flow
 1. **Admin API**: User updates virtual key via REST API
