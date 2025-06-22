@@ -164,7 +164,7 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<ModelCapabilities?> GetModelCapabilityAsync(string model)
+        private async Task<Models.Configuration.ModelCapabilities?> GetModelCapabilityAsync(string model)
         {
             if (string.IsNullOrWhiteSpace(model))
             {
@@ -174,7 +174,7 @@ namespace ConduitLLM.Core.Services
 
             var cacheKey = $"{CacheKeyPrefix}Model:{model}";
             
-            return await _cache.GetOrCreateAsync<ModelCapabilities?>(cacheKey, entry =>
+            return await _cache.GetOrCreateAsync<Models.Configuration.ModelCapabilities?>(cacheKey, entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(CacheExpirationMinutes);
                 
@@ -186,11 +186,11 @@ namespace ConduitLLM.Core.Services
                 if (modelConfig == null)
                 {
                     _logger.LogDebug("Model {Model} not found in configuration", model);
-                    return Task.FromResult<ModelCapabilities?>(null);
+                    return Task.FromResult<Models.Configuration.ModelCapabilities?>(null);
                 }
                 
                 _logger.LogDebug("Loaded capabilities for model {Model} from configuration", model);
-                return Task.FromResult<ModelCapabilities?>(modelConfig.Capabilities);
+                return Task.FromResult<Models.Configuration.ModelCapabilities?>(modelConfig.Capabilities);
             });
         }
     }

@@ -40,6 +40,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       admin:
         condition: service_healthy
     command: ["dotnet", "watch", "run", "--project", "ConduitLLM.WebUI", "--no-restore"]
@@ -81,6 +83,26 @@ services:
     networks:
       - conduit-network
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: conduit-rabbitmq-dev
+    environment:
+      RABBITMQ_DEFAULT_USER: conduit
+      RABBITMQ_DEFAULT_PASS: conduitpass
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data-dev:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - conduit-network
+
   admin:
     build:
       context: .
@@ -92,12 +114,20 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
       - REDIS_URL=redis://redis:6379
       - CONDUIT_MASTER_KEY=${CONDUIT_MASTER_KEY:-development-key-change-me}
+      # RabbitMQ configuration
+      - CONDUITLLM__RABBITMQ__HOST=rabbitmq
+      - CONDUITLLM__RABBITMQ__PORT=5672
+      - CONDUITLLM__RABBITMQ__USERNAME=conduit
+      - CONDUITLLM__RABBITMQ__PASSWORD=conduitpass
+      - CONDUITLLM__RABBITMQ__VHOST=/
     ports:
       - "5002:8080"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -118,12 +148,22 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=conduitllm;Username=conduitllm;Password=conduitllm
       - REDIS_URL=redis://redis:6379
       - AdminApiUrl=http://admin:8080
+      # RabbitMQ configuration
+      - CONDUITLLM__RABBITMQ__HOST=rabbitmq
+      - CONDUITLLM__RABBITMQ__PORT=5672
+      - CONDUITLLM__RABBITMQ__USERNAME=conduit
+      - CONDUITLLM__RABBITMQ__PASSWORD=conduitpass
+      - CONDUITLLM__RABBITMQ__VHOST=/
+      - CONDUITLLM__RABBITMQ__PREFETCHCOUNT=10
+      - CONDUITLLM__RABBITMQ__PARTITIONCOUNT=10
     ports:
       - "5000:8080"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       admin:
         condition: service_healthy
@@ -137,6 +177,7 @@ services:
 
 volumes:
   postgres-data-dev:
+  rabbitmq-data-dev:
 
 networks:
   conduit-network:

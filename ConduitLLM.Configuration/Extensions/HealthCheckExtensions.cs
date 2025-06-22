@@ -24,12 +24,14 @@ namespace ConduitLLM.Configuration.Extensions
         /// <param name="connectionString">Database connection string.</param>
         /// <param name="redisConnection">Redis connection string (optional).</param>
         /// <param name="includeProviderCheck">Whether to include provider health check (default: true).</param>
+        /// <param name="rabbitMqConfig">RabbitMQ configuration (optional).</param>
         /// <returns>The configured health check builder.</returns>
         public static IHealthChecksBuilder AddConduitHealthChecks(
             this IServiceCollection services,
             string? connectionString = null,
             string? redisConnection = null,
-            bool includeProviderCheck = true)
+            bool includeProviderCheck = true,
+            RabbitMqConfiguration? rabbitMqConfig = null)
         {
             var healthChecksBuilder = services.AddHealthChecks();
 
@@ -51,6 +53,16 @@ namespace ConduitLLM.Configuration.Extensions
                     failureStatus: HealthStatus.Degraded,
                     tags: new[] { "cache", "redis", "ready" },
                     args: new object[] { redisConnection });
+            }
+
+            // Add RabbitMQ health check if configuration is provided
+            if (rabbitMqConfig != null && !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost")
+            {
+                healthChecksBuilder.AddTypeActivatedCheck<RabbitMqHealthCheck>(
+                    "rabbitmq",
+                    failureStatus: HealthStatus.Degraded,
+                    tags: new[] { "messaging", "rabbitmq", "ready" },
+                    args: new object[] { rabbitMqConfig });
             }
 
             // Add provider health check only if requested and repositories are available

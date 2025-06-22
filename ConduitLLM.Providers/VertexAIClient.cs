@@ -342,14 +342,14 @@ namespace ConduitLLM.Providers
             {
                 InternalModels.ExtendedModelInfo.Create("gemini-1.0-pro", ProviderName, "gemini-1.0-pro")
                     .WithName("Gemini 1.0 Pro")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = true,
                         TextGeneration = true,
                         Embeddings = false,
                         ImageGeneration = false
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 32768,
                         MaxOutputTokens = 8192
@@ -357,7 +357,7 @@ namespace ConduitLLM.Providers
 
                 InternalModels.ExtendedModelInfo.Create("gemini-1.0-pro-vision", ProviderName, "gemini-1.0-pro-vision")
                     .WithName("Gemini 1.0 Pro Vision")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = true,
                         TextGeneration = true,
@@ -365,7 +365,7 @@ namespace ConduitLLM.Providers
                         ImageGeneration = false,
                         Vision = true
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 32768,
                         MaxOutputTokens = 4096
@@ -373,7 +373,7 @@ namespace ConduitLLM.Providers
 
                 InternalModels.ExtendedModelInfo.Create("gemini-1.5-pro", ProviderName, "gemini-1.5-pro")
                     .WithName("Gemini 1.5 Pro")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = true,
                         TextGeneration = true,
@@ -381,7 +381,7 @@ namespace ConduitLLM.Providers
                         ImageGeneration = false,
                         Vision = true
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 1000000,
                         MaxOutputTokens = 8192
@@ -389,7 +389,7 @@ namespace ConduitLLM.Providers
 
                 InternalModels.ExtendedModelInfo.Create("gemini-1.5-flash", ProviderName, "gemini-1.5-flash")
                     .WithName("Gemini 1.5 Flash")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = true,
                         TextGeneration = true,
@@ -397,7 +397,7 @@ namespace ConduitLLM.Providers
                         ImageGeneration = false,
                         Vision = true
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 1000000,
                         MaxOutputTokens = 8192
@@ -405,14 +405,14 @@ namespace ConduitLLM.Providers
 
                 InternalModels.ExtendedModelInfo.Create("text-bison@002", ProviderName, "text-bison@002")
                     .WithName("Text Bison")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = false,
                         TextGeneration = true,
                         Embeddings = false,
                         ImageGeneration = false
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 8192,
                         MaxOutputTokens = 1024
@@ -420,14 +420,14 @@ namespace ConduitLLM.Providers
 
                 InternalModels.ExtendedModelInfo.Create("chat-bison@002", ProviderName, "chat-bison@002")
                     .WithName("Chat Bison")
-                    .WithCapabilities(new ModelCapabilities
+                    .WithCapabilities(new InternalModels.ModelCapabilities
                     {
                         Chat = true,
                         TextGeneration = true,
                         Embeddings = false,
                         ImageGeneration = false
                     })
-                    .WithTokenLimits(new ModelTokenLimits
+                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                     {
                         MaxInputTokens = 8192,
                         MaxOutputTokens = 2048

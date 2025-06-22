@@ -336,7 +336,7 @@ namespace ConduitLLM.Providers
 
                                 return InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id)
                                     .WithName(m.DisplayName ?? m.Id)
-                                    .WithCapabilities(new ModelCapabilities
+                                    .WithCapabilities(new InternalModels.ModelCapabilities
                                     {
                                         Chat = true,
                                         TextGeneration = true,
@@ -344,7 +344,7 @@ namespace ConduitLLM.Providers
                                         ImageGeneration = false,
                                         Vision = isVisionCapable
                                     })
-                                    .WithTokenLimits(new ModelTokenLimits
+                                    .WithTokenLimits(new InternalModels.ModelTokenLimits
                                     {
                                         MaxInputTokens = m.InputTokenLimit,
                                         MaxOutputTokens = m.OutputTokenLimit
@@ -352,7 +352,7 @@ namespace ConduitLLM.Providers
                             })
                             .ToList();
 
-                        Logger.LogInformation($"Successfully retrieved {chatModels.Count} chat-compatible models from Gemini.");
+                        Logger.LogInformation("Successfully retrieved {Count} chat-compatible models from Gemini.", chatModels.Count);
                         return chatModels;
                     },
                     "GetModelsAsync",

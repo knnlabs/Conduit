@@ -604,9 +604,9 @@ namespace ConduitLLM.Providers
                 originalModelAlias);
         }
 
-        private ModelCapabilities DetermineModelCapabilities(OllamaModelInfo modelInfo)
+        private InternalModels.ModelCapabilities DetermineModelCapabilities(OllamaModelInfo modelInfo)
         {
-            var capabilities = new ModelCapabilities
+            var capabilities = new InternalModels.ModelCapabilities
             {
                 Chat = true, // Most Ollama models support chat
                 TextGeneration = true,

@@ -11,7 +11,7 @@
     <!-- No theme providers needed with standard Blazor -->
 </CascadingValue>
 
-<ToastContainer />
+<ConduitLLM.WebUI.Components.Shared.ToastContainer />
 
 <div class="page-wrapper @(InsecureModeProvider.IsInsecureMode ? "has-security-banner" : "")">
     @if (InsecureModeProvider.IsInsecureMode)
@@ -97,7 +97,7 @@
         
         <!-- Side Navigation -->
         <div class="sidebar">
-            <NavMenu @rendermode="InteractiveServer" />
+            <NavMenu />
         </div>
         
         <!-- Main Content Area -->

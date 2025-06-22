@@ -52,6 +52,11 @@ public class ModelProviderMapping
     public bool SupportsRealtimeAudio { get; set; }
 
     /// <summary>
+    /// Indicates whether this model supports image generation.
+    /// </summary>
+    public bool SupportsImageGeneration { get; set; }
+
+    /// <summary>
     /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
     /// </summary>
     public string? TokenizerType { get; set; }

@@ -52,6 +52,61 @@ namespace ConduitLLM.Configuration.DTOs
         public int? MaxContextLength { get; set; }
 
         /// <summary>
+        /// Whether this model supports vision/image input capabilities
+        /// </summary>
+        public bool SupportsVision { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports audio transcription capabilities
+        /// </summary>
+        public bool SupportsAudioTranscription { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports text-to-speech capabilities
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports real-time audio streaming capabilities
+        /// </summary>
+        public bool SupportsRealtimeAudio { get; set; } = false;
+
+        /// <summary>
+        /// Whether this model supports image generation capabilities
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; } = false;
+
+        /// <summary>
+        /// The tokenizer type used by this model
+        /// </summary>
+        public string? TokenizerType { get; set; }
+
+        /// <summary>
+        /// JSON array of supported voices for TTS models
+        /// </summary>
+        public string? SupportedVoices { get; set; }
+
+        /// <summary>
+        /// JSON array of supported languages for this model
+        /// </summary>
+        public string? SupportedLanguages { get; set; }
+
+        /// <summary>
+        /// JSON array of supported audio formats for this model
+        /// </summary>
+        public string? SupportedFormats { get; set; }
+
+        /// <summary>
+        /// Whether this model is the default for its capability type
+        /// </summary>
+        public bool IsDefault { get; set; } = false;
+
+        /// <summary>
+        /// The capability type this model is default for (if IsDefault is true)
+        /// </summary>
+        public string? DefaultCapabilityType { get; set; }
+
+        /// <summary>
         /// Date when the mapping was created
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

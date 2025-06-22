@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 
+using ConduitLLM.WebUI.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -14,7 +13,7 @@ namespace ConduitLLM.WebUI.Services
     /// </summary>
     public class ProviderModelsService
     {
-        private readonly HttpClient _httpClient;
+        private readonly IConduitApiClient _conduitApiClient;
         private readonly IMemoryCache _memoryCache;
         private readonly ILogger<ProviderModelsService> _logger;
 
@@ -24,16 +23,15 @@ namespace ConduitLLM.WebUI.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderModelsService"/> class.
         /// </summary>
-        /// <param name="httpClientFactory">Factory for creating HTTP clients.</param>
+        /// <param name="conduitApiClient">Conduit API client for making authenticated requests.</param>
         /// <param name="memoryCache">Memory cache for storing model lists.</param>
         /// <param name="logger">Logger for diagnostic information.</param>
         public ProviderModelsService(
-            IHttpClientFactory httpClientFactory,
+            IConduitApiClient conduitApiClient,
             IMemoryCache memoryCache,
             ILogger<ProviderModelsService> logger)
         {
-            _httpClient = httpClientFactory?.CreateClient("ConduitAPI")
-                ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _conduitApiClient = conduitApiClient ?? throw new ArgumentNullException(nameof(conduitApiClient));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -64,29 +62,16 @@ namespace ConduitLLM.WebUI.Services
             {
                 _logger.LogInformation("Fetching models for provider {ProviderName} from API", providerName);
 
-                // Call the API
-                var response = await _httpClient.GetAsync(
-                    $"api/provider-models/{providerName}?forceRefresh={forceRefresh}");
+                // Use the authenticated ConduitApiClient
+                var models = await _conduitApiClient.GetProviderModelsAsync(providerName, forceRefresh);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var models = await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+                _logger.LogInformation("Retrieved {Count} models for provider {ProviderName}",
+                    models.Count, providerName);
 
-                    _logger.LogInformation("Retrieved {Count} models for provider {ProviderName}",
-                        models.Count, providerName);
+                // Cache the results
+                _memoryCache.Set(cacheKey, models, _cacheDuration);
 
-                    // Cache the results
-                    _memoryCache.Set(cacheKey, models, _cacheDuration);
-
-                    return models;
-                }
-
-                // Handle error responses
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("Error retrieving models for provider {ProviderName}: {StatusCode} - {ErrorContent}",
-                    providerName, response.StatusCode, errorContent);
-
-                return new List<string>();
+                return models;
             }
             catch (Exception ex)
             {

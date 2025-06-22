@@ -228,14 +228,14 @@ namespace ConduitLLM.Providers
                         ProviderName,
                         "meta/llama-3-70b-instruct:a532122398cff93aa48f32d63902fa4545c4fb642f91e3e51bcf5d2f8da23eff")
                         .WithName("Llama-3 70B Instruct")
-                        .WithCapabilities(new ModelCapabilities
+                        .WithCapabilities(new InternalModels.ModelCapabilities
                         {
                             Chat = true,
                             TextGeneration = true,
                             Embeddings = false,
                             ImageGeneration = false
                         })
-                        .WithTokenLimits(new ModelTokenLimits
+                        .WithTokenLimits(new InternalModels.ModelTokenLimits
                         {
                             MaxInputTokens = 32000,
                             MaxOutputTokens = 4096
@@ -246,14 +246,14 @@ namespace ConduitLLM.Providers
                         ProviderName,
                         "meta/llama-3-8b-instruct:dd2c4157802af9020a7272a6e5c27f3dd56ec1026a7556e193ee8e8738549590")
                         .WithName("Llama-3 8B Instruct")
-                        .WithCapabilities(new ModelCapabilities
+                        .WithCapabilities(new InternalModels.ModelCapabilities
                         {
                             Chat = true,
                             TextGeneration = true,
                             Embeddings = false,
                             ImageGeneration = false
                         })
-                        .WithTokenLimits(new ModelTokenLimits
+                        .WithTokenLimits(new InternalModels.ModelTokenLimits
                         {
                             MaxInputTokens = 16000,
                             MaxOutputTokens = 4096
@@ -264,7 +264,7 @@ namespace ConduitLLM.Providers
                         ProviderName,
                         "stability-ai/sdxl:4a1ee9c9f06e811f991e83a0d1ee9c9ca2d6dc03d6cd7c9322bfff81c350da82")
                         .WithName("SDXL 1.0")
-                        .WithCapabilities(new ModelCapabilities
+                        .WithCapabilities(new InternalModels.ModelCapabilities
                         {
                             Chat = false,
                             TextGeneration = false,

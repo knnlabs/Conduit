@@ -26,6 +26,12 @@ namespace ConduitLLM.WebUI.Interfaces
         Task RefreshStatesAsync();
 
         /// <summary>
+        /// Gets detailed capability status information for diagnostics.
+        /// </summary>
+        /// <returns>Detailed capability status information.</returns>
+        Task<CapabilityStatusInfo> GetCapabilityStatusAsync();
+
+        /// <summary>
         /// Event raised when any navigation state changes.
         /// </summary>
         event EventHandler<NavigationStateChangedEventArgs>? NavigationStateChanged;

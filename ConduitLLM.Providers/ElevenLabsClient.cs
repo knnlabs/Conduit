@@ -434,7 +434,7 @@ namespace ConduitLLM.Providers
                     Id = "eleven_monolingual_v1",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities
+                    Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,
                         TextToSpeech = true,
@@ -447,7 +447,7 @@ namespace ConduitLLM.Providers
                     Id = "eleven_multilingual_v2",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities
+                    Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,
                         TextToSpeech = true,
@@ -460,7 +460,7 @@ namespace ConduitLLM.Providers
                     Id = "eleven_conversational_v1",
                     OwnedBy = "elevenlabs",
                     Provider = "ElevenLabs",
-                    Capabilities = new ModelCapabilities
+                    Capabilities = new InternalModels.ModelCapabilities
                     {
                         Chat = false,
                         TextToSpeech = false,

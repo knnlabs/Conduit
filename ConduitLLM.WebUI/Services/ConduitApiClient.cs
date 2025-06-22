@@ -380,6 +380,76 @@ public class ConduitApiClient : IConduitApiClient
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ImageGenerationResponse?> CreateImageAsync(
+        ImageGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/images/generations");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Add request body
+            var jsonContent = JsonSerializer.Serialize(request, _jsonOptions);
+            requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<ImageGenerationResponse>(responseContent, _jsonOptions);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Image generation request failed with status {StatusCode}: {Error}", 
+                    response.StatusCode, errorContent);
+                
+                // Try to parse error response
+                string errorMessage = $"Image generation failed with status {response.StatusCode}";
+                try
+                {
+                    var errorResponse = JsonSerializer.Deserialize<JsonElement>(errorContent, _jsonOptions);
+                    if (errorResponse.TryGetProperty("error", out var error))
+                    {
+                        if (error.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                        {
+                            errorMessage = message.GetString() ?? errorMessage;
+                        }
+                        else if (error.TryGetProperty("type", out var type) && type.GetString() == "image_generation_user_error")
+                        {
+                            errorMessage = "Image generation failed. This may be due to quota limits or billing issues with your OpenAI account.";
+                        }
+                    }
+                }
+                catch
+                {
+                    // If we can't parse the error, use the raw content
+                    errorMessage = $"Image generation failed: {errorContent}";
+                }
+                
+                throw new HttpRequestException(errorMessage, null, response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating image");
+            throw;
+        }
+    }
+
     // Helper class for models response
     private class ModelsResponse
     {
@@ -393,4 +463,246 @@ public class ConduitApiClient : IConduitApiClient
         public string Id { get; set; } = "";
         public string Object { get; set; } = "model";
     }
+
+    /// <inheritdoc />
+    public async Task<bool> TestModelCapabilityAsync(
+        string modelName,
+        string capability,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"v1/discovery/models/{modelName}/capabilities/{capability}");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = JsonSerializer.Deserialize<Dictionary<string, bool>>(content, _jsonOptions);
+                return result?.GetValueOrDefault("supported", false) ?? false;
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing model capability {Model} for {Capability}", modelName, capability);
+            return false;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<string>> GetProviderModelsAsync(
+        string providerName,
+        bool forceRefresh = false,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var queryParams = forceRefresh ? "?forceRefresh=true" : "";
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/provider-models/{providerName}{queryParams}");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var models = JsonSerializer.Deserialize<List<string>>(content, _jsonOptions);
+                return models ?? new List<string>();
+            }
+            
+            _logger.LogWarning("Failed to get models for provider {ProviderName}: {StatusCode}", 
+                providerName, response.StatusCode);
+            return new List<string>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting models for provider {ProviderName}", providerName);
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Tests multiple model capabilities in a single bulk request to reduce API calls.
+    /// </summary>
+    /// <param name="capabilityTests">List of model-capability pairs to test.</param>
+    /// <param name="virtualKey">Optional virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping model+capability keys to test results.</returns>
+    public async Task<Dictionary<string, bool>> TestBulkModelCapabilitiesAsync(
+        List<(string Model, string Capability)> capabilityTests,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var bulkRequest = new
+            {
+                tests = capabilityTests.Select(t => new { model = t.Model, capability = t.Capability }).ToList()
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "v1/discovery/bulk/capabilities");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var jsonContent = JsonSerializer.Serialize(bulkRequest, _jsonOptions);
+            request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var bulkResponse = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+                
+                var results = new Dictionary<string, bool>();
+                
+                if (bulkResponse.TryGetProperty("results", out var resultsArray))
+                {
+                    foreach (var result in resultsArray.EnumerateArray())
+                    {
+                        if (result.TryGetProperty("model", out var modelProp) &&
+                            result.TryGetProperty("capability", out var capabilityProp) &&
+                            result.TryGetProperty("supported", out var supportedProp))
+                        {
+                            var key = $"{modelProp.GetString()}:{capabilityProp.GetString()}";
+                            results[key] = supportedProp.GetBoolean();
+                        }
+                    }
+                }
+                
+                return results;
+            }
+            
+            _logger.LogWarning("Bulk capability test failed with status {StatusCode}", response.StatusCode);
+            return new Dictionary<string, bool>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing bulk model capabilities");
+            return new Dictionary<string, bool>();
+        }
+    }
+
+    /// <summary>
+    /// Gets discovery information for multiple models in a single bulk request.
+    /// </summary>
+    /// <param name="modelIds">List of model IDs to get information for.</param>
+    /// <param name="virtualKey">Optional virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping model IDs to their discovery information.</returns>
+    public async Task<Dictionary<string, ModelDiscoveryInfo>> GetBulkModelDiscoveryAsync(
+        List<string> modelIds,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var bulkRequest = new
+            {
+                models = modelIds
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "v1/discovery/bulk/models");
+            
+            // Use the provided virtual key or the WebUI's key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync() ?? throw new InvalidOperationException("No API key available");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            
+            var jsonContent = JsonSerializer.Serialize(bulkRequest, _jsonOptions);
+            request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var bulkResponse = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
+                
+                var results = new Dictionary<string, ModelDiscoveryInfo>();
+                
+                if (bulkResponse.TryGetProperty("results", out var resultsArray))
+                {
+                    foreach (var result in resultsArray.EnumerateArray())
+                    {
+                        if (result.TryGetProperty("model", out var modelProp) &&
+                            result.TryGetProperty("found", out var foundProp) &&
+                            foundProp.GetBoolean())
+                        {
+                            var modelId = modelProp.GetString();
+                            if (modelId != null)
+                            {
+                                var discoveryInfo = new ModelDiscoveryInfo
+                                {
+                                    ModelId = modelId,
+                                    Provider = result.TryGetProperty("provider", out var providerProp) ? providerProp.GetString() : null,
+                                    DisplayName = result.TryGetProperty("displayName", out var displayNameProp) ? displayNameProp.GetString() : null,
+                                    Capabilities = new Dictionary<string, bool>()
+                                };
+                                
+                                if (result.TryGetProperty("capabilities", out var capabilitiesProp))
+                                {
+                                    foreach (var capability in capabilitiesProp.EnumerateObject())
+                                    {
+                                        discoveryInfo.Capabilities[capability.Name] = capability.Value.GetBoolean();
+                                    }
+                                }
+                                
+                                results[modelId] = discoveryInfo;
+                            }
+                        }
+                    }
+                }
+                
+                return results;
+            }
+            
+            _logger.LogWarning("Bulk model discovery failed with status {StatusCode}", response.StatusCode);
+            return new Dictionary<string, ModelDiscoveryInfo>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting bulk model discovery");
+            return new Dictionary<string, ModelDiscoveryInfo>();
+        }
+    }
+}
+
+/// <summary>
+/// Model discovery information returned by bulk API.
+/// </summary>
+public class ModelDiscoveryInfo
+{
+    /// <summary>
+    /// The model ID.
+    /// </summary>
+    public string ModelId { get; set; } = "";
+
+    /// <summary>
+    /// The provider name.
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// The display name of the model.
+    /// </summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// Model capabilities as a dictionary.
+    /// </summary>
+    public Dictionary<string, bool> Capabilities { get; set; } = new();
 }

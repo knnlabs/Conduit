@@ -92,6 +92,11 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsRealtimeAudio { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports image generation.
+        /// </summary>
+        public bool SupportsImageGeneration { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").
         /// </summary>
         [MaxLength(50)]

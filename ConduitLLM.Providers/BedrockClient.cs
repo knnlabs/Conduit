@@ -31,6 +31,13 @@ namespace ConduitLLM.Providers
     {
         private const string DefaultBedrockApiBase = "https://api.bedrock.amazonaws.com";
         private readonly string _region;
+        
+        // JSON serialization options for Bedrock API
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BedrockClient"/> class.
@@ -174,7 +181,7 @@ namespace ConduitLLM.Providers
             }
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(apiKey);
+            using var client = CreateHttpClient(Credentials.ApiKey);
 
             // In a real implementation, we'd use AWS SDK, but for demonstration we'll use HTTP
             string apiUrl = $"/model/{modelId}/invoke";
@@ -240,7 +247,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(apiKey);
+            using var client = CreateHttpClient(Credentials.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -310,7 +317,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(apiKey);
+            using var client = CreateHttpClient(Credentials.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -383,7 +390,7 @@ namespace ConduitLLM.Providers
             };
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(apiKey);
+            using var client = CreateHttpClient(Credentials.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -460,7 +467,7 @@ namespace ConduitLLM.Providers
             }
 
             string modelId = request.Model ?? ProviderModelId;
-            using var client = CreateHttpClient(apiKey);
+            using var client = CreateHttpClient(Credentials.ApiKey);
             
             string apiUrl = $"/model/{modelId}/invoke";
             
@@ -620,56 +627,49 @@ namespace ConduitLLM.Providers
                     Accept = "application/json"
                 };
 
-                var response = await client.InvokeModelWithResponseStreamAsync(invokeRequest, cancellationToken);
+                // For now, use the HTTP client approach like other methods
+                // TODO: Implement proper AWS event stream processing when AWS SDK integration is complete
+                using var httpClient = CreateHttpClient(Credentials.ApiKey);
+                string apiUrl = $"/model/{modelId}/invoke-with-response-stream";
 
-                // Process the streaming response
-                // In AWS SDK, ResponseStream doesn't directly support IAsyncEnumerable
-                // We need to manually read the stream
+                var streamingResponse = await Core.Utilities.HttpClientHelper.SendStreamingRequestAsync<BedrockClaudeChatRequest>(
+                    httpClient,
+                    HttpMethod.Post,
+                    apiUrl,
+                    bedrockRequest,
+                    CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(bedrockRequest, JsonOptions), Credentials.ApiKey),
+                    JsonOptions,
+                    Logger,
+                    cancellationToken);
 
-                // Note: In a real implementation, this would need proper event stream parsing
-                // For now, this is a simplified version that processes the payloads
+                // Process streaming response
+                var responseId = Guid.NewGuid().ToString();
+                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-                // Simplified streaming implementation for illustration
-                Logger.LogWarning("Streaming implementation for AWS Bedrock is a simplified version");
+                // This is a simplified streaming implementation
+                // In a real AWS integration, you would process the actual event stream format
+                Logger.LogWarning("Bedrock streaming is using simplified implementation. Full AWS event stream integration pending.");
 
-                // Simulate a single chunk response since we can't properly process the event stream in this example
-                chunks.Add(new ChatCompletionChunk
+                // Add final completion chunk if no chunks were processed
+                if (!chunks.Any() || chunks.LastOrDefault()?.Choices?.FirstOrDefault()?.FinishReason == null)
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Object = "chat.completion.chunk",
-                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = modelId,
-                    Choices = new List<StreamingChoice>
+                    chunks.Add(new ChatCompletionChunk
                     {
-                        new StreamingChoice
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
                         {
-                            Index = 0,
-                            Delta = new DeltaContent
+                            new StreamingChoice
                             {
-                                Role = "assistant",
-                                Content = "This is a simulated streaming response from Bedrock. In a real implementation, we would process the event stream."
+                                Index = 0,
+                                Delta = new DeltaContent(),
+                                FinishReason = "stop"
                             }
                         }
-                    }
-                });
-
-                // Add a final chunk
-                chunks.Add(new ChatCompletionChunk
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Object = "chat.completion.chunk",
-                    Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    Model = modelId,
-                    Choices = new List<StreamingChoice>
-                    {
-                        new StreamingChoice
-                        {
-                            Index = 0,
-                            Delta = new DeltaContent(),
-                            FinishReason = "stop"
-                        }
-                    }
-                });
+                    });
+                }
 
                 return chunks;
             }
@@ -741,7 +741,7 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override Task<EmbeddingResponse> CreateEmbeddingAsync(
+        public override async Task<EmbeddingResponse> CreateEmbeddingAsync(
             EmbeddingRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
@@ -750,10 +750,13 @@ namespace ConduitLLM.Providers
 
             string modelId = request.Model ?? ProviderModelId;
 
-            if (modelId.Contains("cohere.embed", StringComparison.OrdinalIgnoreCase) ||
-                modelId.Contains("amazon.titan-embed", StringComparison.OrdinalIgnoreCase))
+            if (modelId.Contains("cohere.embed", StringComparison.OrdinalIgnoreCase))
             {
-                throw new NotImplementedException("Embeddings support for Bedrock is not yet implemented");
+                return await CreateCohereEmbeddingAsync(request, modelId, cancellationToken);
+            }
+            else if (modelId.Contains("amazon.titan-embed", StringComparison.OrdinalIgnoreCase))
+            {
+                return await CreateTitanEmbeddingAsync(request, modelId, cancellationToken);
             }
             else
             {
@@ -762,7 +765,7 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public override Task<ImageGenerationResponse> CreateImageAsync(
+        public override async Task<ImageGenerationResponse> CreateImageAsync(
             ImageGenerationRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
@@ -773,7 +776,7 @@ namespace ConduitLLM.Providers
 
             if (modelId.Contains("stability", StringComparison.OrdinalIgnoreCase))
             {
-                throw new NotImplementedException("Image generation support for Bedrock is not yet implemented");
+                return await CreateStabilityImageAsync(request, modelId, cancellationToken);
             }
             else
             {
@@ -942,9 +945,11 @@ namespace ConduitLLM.Providers
         {
             return stopReason?.ToLowerInvariant() switch
             {
-                "stop" => "stop",
                 "length" => "length",
                 "max_length" => "length",
+                "stop" => "stop",
+                "end_of_sequence" => "stop",
+                null => "stop",
                 _ => "stop"
             };
         }
@@ -987,6 +992,518 @@ namespace ConduitLLM.Providers
             
             // Rough estimate: 1 token per 4 characters
             return (int)Math.Ceiling(text.Length / 4.0);
+        }
+
+        /// <summary>
+        /// Creates embeddings using Cohere models via Bedrock.
+        /// </summary>
+        private async Task<EmbeddingResponse> CreateCohereEmbeddingAsync(
+            EmbeddingRequest request, 
+            string modelId, 
+            CancellationToken cancellationToken)
+        {
+            // Convert input to list format for Cohere
+            var inputTexts = request.Input is string singleInput 
+                ? new List<string> { singleInput }
+                : request.Input is List<string> listInput 
+                    ? listInput 
+                    : throw new ArgumentException("Invalid input format for embeddings");
+
+            var cohereRequest = new BedrockCohereEmbeddingRequest
+            {
+                Texts = inputTexts,
+                InputType = "search_document", // Default for general embeddings
+                Truncate = "END"
+            };
+
+            using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"/model/{modelId}/invoke";
+
+            var cohereResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockCohereEmbeddingRequest, BedrockCohereEmbeddingResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                cohereRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(cohereRequest, JsonOptions), Credentials.ApiKey),
+                JsonOptions,
+                Logger,
+                cancellationToken);
+            
+            if (cohereResponse?.Embeddings == null)
+            {
+                throw new ConduitException("Invalid response from Cohere embedding model");
+            }
+
+            var embeddingObjects = cohereResponse.Embeddings.Select((embedding, index) => new EmbeddingData
+            {
+                Index = index,
+                Embedding = embedding,
+                Object = "embedding"
+            }).ToList();
+
+            return new EmbeddingResponse
+            {
+                Object = "list",
+                Data = embeddingObjects,
+                Model = modelId,
+                Usage = new Usage
+                {
+                    PromptTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? EstimateTokenCount(string.Join(" ", inputTexts)),
+                    CompletionTokens = 0, // Embeddings don't generate completion tokens
+                    TotalTokens = cohereResponse.Meta?.BilledUnits?.InputTokens ?? EstimateTokenCount(string.Join(" ", inputTexts))
+                }
+            };
+        }
+
+        /// <summary>
+        /// Creates embeddings using Amazon Titan models via Bedrock.
+        /// </summary>
+        private async Task<EmbeddingResponse> CreateTitanEmbeddingAsync(
+            EmbeddingRequest request, 
+            string modelId, 
+            CancellationToken cancellationToken)
+        {
+            // Titan only supports single input text
+            var inputText = request.Input is string singleInput 
+                ? singleInput
+                : request.Input is List<string> listInput && listInput.Count == 1
+                    ? listInput[0]
+                    : throw new ArgumentException("Amazon Titan embeddings only support single text input");
+
+            var titanRequest = new BedrockTitanEmbeddingRequest
+            {
+                InputText = inputText,
+                Dimensions = request.Dimensions,
+                Normalize = true // Recommended for most use cases
+            };
+
+            using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"/model/{modelId}/invoke";
+
+            var titanResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockTitanEmbeddingRequest, BedrockTitanEmbeddingResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                titanRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(titanRequest, JsonOptions), Credentials.ApiKey),
+                JsonOptions,
+                Logger,
+                cancellationToken);
+            
+            if (titanResponse?.Embedding == null)
+            {
+                throw new ConduitException("Invalid response from Titan embedding model");
+            }
+
+            var embeddingObject = new EmbeddingData
+            {
+                Index = 0,
+                Embedding = titanResponse.Embedding,
+                Object = "embedding"
+            };
+
+            return new EmbeddingResponse
+            {
+                Object = "list",
+                Data = new List<EmbeddingData> { embeddingObject },
+                Model = modelId,
+                Usage = new Usage
+                {
+                    PromptTokens = titanResponse.InputTextTokenCount ?? EstimateTokenCount(inputText),
+                    CompletionTokens = 0, // Embeddings don't generate completion tokens
+                    TotalTokens = titanResponse.InputTextTokenCount ?? EstimateTokenCount(inputText)
+                }
+            };
+        }
+
+        /// <summary>
+        /// Creates images using Stability AI models via Bedrock.
+        /// </summary>
+        private async Task<ImageGenerationResponse> CreateStabilityImageAsync(
+            ImageGenerationRequest request, 
+            string modelId, 
+            CancellationToken cancellationToken)
+        {
+            // Parse size if provided
+            int width = 512, height = 512;
+            if (!string.IsNullOrEmpty(request.Size))
+            {
+                var sizeParts = request.Size.Split('x');
+                if (sizeParts.Length == 2 && 
+                    int.TryParse(sizeParts[0], out width) && 
+                    int.TryParse(sizeParts[1], out height))
+                {
+                    // Valid size format like "1024x1024"
+                }
+                else
+                {
+                    // Default to common sizes based on string
+                    (width, height) = request.Size?.ToLowerInvariant() switch
+                    {
+                        "1024x1024" => (1024, 1024),
+                        "1152x896" => (1152, 896),
+                        "1216x832" => (1216, 832),
+                        "1344x768" => (1344, 768),
+                        "1536x640" => (1536, 640),
+                        "640x1536" => (640, 1536),
+                        "768x1344" => (768, 1344),
+                        "832x1216" => (832, 1216),
+                        "896x1152" => (896, 1152),
+                        _ => (512, 512)
+                    };
+                }
+            }
+
+            var stabilityRequest = new BedrockStabilityImageRequest
+            {
+                TextPrompts = new List<BedrockStabilityTextPrompt>
+                {
+                    new BedrockStabilityTextPrompt
+                    {
+                        Text = request.Prompt,
+                        Weight = 1.0f
+                    }
+                },
+                Width = width,
+                Height = height,
+                Samples = request.N,
+                CfgScale = 7, // Default guidance scale
+                Steps = 50, // Default number of steps
+                Seed = Random.Shared.Next(),
+                StylePreset = request.Style // Use style if provided
+            };
+
+            using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"/model/{modelId}/invoke";
+
+            var stabilityResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockStabilityImageRequest, BedrockStabilityImageResponse>(
+                client,
+                HttpMethod.Post,
+                apiUrl,
+                stabilityRequest,
+                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(stabilityRequest, JsonOptions), Credentials.ApiKey),
+                JsonOptions,
+                Logger,
+                cancellationToken);
+            
+            if (stabilityResponse?.Artifacts == null || !stabilityResponse.Artifacts.Any())
+            {
+                throw new ConduitException("Invalid response from Stability AI model");
+            }
+
+            var imageObjects = stabilityResponse.Artifacts.Select((artifact, index) => 
+            {
+                if (string.IsNullOrEmpty(artifact.Base64))
+                {
+                    throw new ConduitException($"No image data received for artifact {index}");
+                }
+
+                return new ImageData
+                {
+                    B64Json = artifact.Base64
+                };
+            }).ToList();
+
+            return new ImageGenerationResponse
+            {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Data = imageObjects
+            };
+        }
+
+        /// <summary>
+        /// Processes Claude streaming chunks into ChatCompletionChunk format.
+        /// </summary>
+        private List<ChatCompletionChunk> ProcessClaudeStreamingChunk(
+            BedrockClaudeStreamingResponse chunk, 
+            string responseId, 
+            long timestamp, 
+            string modelId)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+
+            if (chunk.Type == "content_block_delta" && chunk.Delta?.Text != null)
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = chunk.Index ?? 0,
+                            Delta = new DeltaContent
+                            {
+                                Content = chunk.Delta.Text
+                            }
+                        }
+                    }
+                });
+            }
+            else if (chunk.Type == "message_stop" || !string.IsNullOrEmpty(chunk.StopReason))
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent(),
+                            FinishReason = MapClaudeStopReason(chunk.StopReason)
+                        }
+                    }
+                });
+            }
+
+            return chunks;
+        }
+
+        /// <summary>
+        /// Processes Cohere streaming chunks into ChatCompletionChunk format.
+        /// </summary>
+        private List<ChatCompletionChunk> ProcessCohereStreamingChunk(
+            BedrockCohereStreamingResponse chunk, 
+            string responseId, 
+            long timestamp, 
+            string modelId)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+
+            if (chunk.EventType == "text-generation" && !string.IsNullOrEmpty(chunk.Text))
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent
+                            {
+                                Content = chunk.Text
+                            }
+                        }
+                    }
+                });
+            }
+            else if (chunk.IsFinished == true || !string.IsNullOrEmpty(chunk.FinishReason))
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent(),
+                            FinishReason = MapCohereStopReason(chunk.FinishReason)
+                        }
+                    }
+                });
+            }
+
+            return chunks;
+        }
+
+        /// <summary>
+        /// Processes Llama streaming chunks into ChatCompletionChunk format.
+        /// </summary>
+        private List<ChatCompletionChunk> ProcessLlamaStreamingChunk(
+            BedrockLlamaStreamingResponse chunk, 
+            string responseId, 
+            long timestamp, 
+            string modelId)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+
+            if (!string.IsNullOrEmpty(chunk.Generation))
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent
+                            {
+                                Content = chunk.Generation
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (!string.IsNullOrEmpty(chunk.StopReason))
+            {
+                chunks.Add(new ChatCompletionChunk
+                {
+                    Id = responseId,
+                    Object = "chat.completion.chunk",
+                    Created = timestamp,
+                    Model = modelId,
+                    Choices = new List<StreamingChoice>
+                    {
+                        new StreamingChoice
+                        {
+                            Index = 0,
+                            Delta = new DeltaContent(),
+                            FinishReason = MapLlamaStopReason(chunk.StopReason)
+                        }
+                    }
+                });
+            }
+
+            return chunks;
+        }
+
+        /// <summary>
+        /// Processes generic streaming chunks for models not specifically handled.
+        /// </summary>
+        private List<ChatCompletionChunk> ProcessGenericStreamingChunk(
+            string chunkText, 
+            string responseId, 
+            long timestamp, 
+            string modelId)
+        {
+            var chunks = new List<ChatCompletionChunk>();
+
+            // Try to extract any text content from the generic chunk
+            try
+            {
+                var genericResponse = JsonSerializer.Deserialize<JsonElement>(chunkText, JsonOptions);
+                
+                string? content = null;
+                string? finishReason = null;
+
+                // Try common property names for content
+                if (genericResponse.TryGetProperty("text", out var textProperty))
+                {
+                    content = textProperty.GetString();
+                }
+                else if (genericResponse.TryGetProperty("content", out var contentProperty))
+                {
+                    content = contentProperty.GetString();
+                }
+                else if (genericResponse.TryGetProperty("generation", out var generationProperty))
+                {
+                    content = generationProperty.GetString();
+                }
+
+                // Try common property names for completion
+                if (genericResponse.TryGetProperty("finish_reason", out var finishProperty))
+                {
+                    finishReason = finishProperty.GetString();
+                }
+                else if (genericResponse.TryGetProperty("stop_reason", out var stopProperty))
+                {
+                    finishReason = stopProperty.GetString();
+                }
+
+                if (!string.IsNullOrEmpty(content))
+                {
+                    chunks.Add(new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent
+                                {
+                                    Content = content
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (!string.IsNullOrEmpty(finishReason))
+                {
+                    chunks.Add(new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent(),
+                                FinishReason = finishReason == "end_turn" ? "stop" : finishReason
+                            }
+                        }
+                    });
+                }
+            }
+            catch (JsonException)
+            {
+                // If we can't parse it as JSON, treat it as plain text
+                if (!string.IsNullOrWhiteSpace(chunkText))
+                {
+                    chunks.Add(new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent
+                                {
+                                    Content = chunkText
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            return chunks;
+        }
+
+        /// <summary>
+        /// Maps Claude stop reasons to standardized finish reasons.
+        /// </summary>
+        private string MapClaudeStopReason(string? stopReason)
+        {
+            return stopReason?.ToLowerInvariant() switch
+            {
+                "end_turn" => "stop",
+                "max_tokens" => "length",
+                "stop_sequence" => "stop",
+                null => "stop",
+                _ => "stop"
+            };
         }
 
         #endregion

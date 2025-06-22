@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Providers.InternalModels;
@@ -64,6 +65,7 @@ namespace ConduitLLM.Providers
         }
 
         private readonly bool _isAzure;
+        private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
         /// Initializes a new instance of the OpenAIClient class.
@@ -72,6 +74,8 @@ namespace ConduitLLM.Providers
         /// <param name="providerModelId">The specific model ID to use with this provider. For Azure, this is the deployment name.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
+        /// <param name="capabilityService">Optional service for model capability detection and validation.</param>
+        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <param name="providerName">Optional provider name override. If not specified, uses credentials.ProviderName or defaults to "openai".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
@@ -80,6 +84,7 @@ namespace ConduitLLM.Providers
             string providerModelId,
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory,
+            IModelCapabilityService? capabilityService = null,
             ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
@@ -92,6 +97,7 @@ namespace ConduitLLM.Providers
                 defaultModels)
         {
             _isAzure = (providerName ?? credentials.ProviderName ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
+            _capabilityService = capabilityService;
 
             // Specific validation for Azure credentials
             if (_isAzure && string.IsNullOrWhiteSpace(credentials.ApiBase))
@@ -461,8 +467,20 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            await Task.CompletedTask;
-            return true; // OpenAI always supports transcription with Whisper
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    return await _capabilityService.SupportsAudioTranscriptionAsync(ProviderModelId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to check transcription capability via ModelCapabilityService, falling back to default");
+                }
+            }
+            
+            // Fallback: OpenAI generally supports transcription with Whisper models
+            return true;
         }
 
         /// <summary>
@@ -471,7 +489,19 @@ namespace ConduitLLM.Providers
         public async Task<List<string>> GetSupportedFormatsAsync(
             CancellationToken cancellationToken = default)
         {
-            await Task.CompletedTask;
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    return await _capabilityService.GetSupportedFormatsAsync(ProviderModelId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to get supported formats via ModelCapabilityService, falling back to default");
+                }
+            }
+            
+            // Fallback: OpenAI Whisper supported formats
             return new List<string> { "mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm" };
         }
 
@@ -481,8 +511,19 @@ namespace ConduitLLM.Providers
         public async Task<List<string>> GetSupportedLanguagesAsync(
             CancellationToken cancellationToken = default)
         {
-            await Task.CompletedTask;
-            // Whisper supports many languages
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    return await _capabilityService.GetSupportedLanguagesAsync(ProviderModelId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to get supported languages via ModelCapabilityService, falling back to default");
+                }
+            }
+            
+            // Fallback: Whisper supports many languages
             return new List<string>
             {
                 "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr",
@@ -505,8 +546,20 @@ namespace ConduitLLM.Providers
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            await Task.CompletedTask;
-            return true; // OpenAI always supports TTS
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    return await _capabilityService.SupportsTextToSpeechAsync(ProviderModelId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to check TTS capability via ModelCapabilityService, falling back to default");
+                }
+            }
+            
+            // Fallback: OpenAI generally supports TTS
+            return true;
         }
 
         /// <summary>
@@ -583,7 +636,7 @@ namespace ConduitLLM.Providers
                         {
                             var model = ExtendedModelInfo.Create(m.DeploymentId, ProviderName, m.DeploymentId)
                                 .WithName(m.Model ?? m.DeploymentId)
-                                .WithCapabilities(new ModelCapabilities
+                                .WithCapabilities(new InternalModels.ModelCapabilities
                                 {
                                     Chat = true,
                                     TextGeneration = true
@@ -620,10 +673,23 @@ namespace ConduitLLM.Providers
             return session;
         }
 
-        public Task<bool> SupportsRealtimeAsync(string model, CancellationToken cancellationToken = default)
+        public async Task<bool> SupportsRealtimeAsync(string model, CancellationToken cancellationToken = default)
         {
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    return await _capabilityService.SupportsRealtimeAudioAsync(model);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to check realtime capability via ModelCapabilityService, falling back to default");
+                }
+            }
+            
+            // Fallback: Check against known OpenAI realtime models
             var supportedModels = new[] { "gpt-4o-realtime-preview", "gpt-4o-realtime-preview-2024-10-01" };
-            return Task.FromResult(supportedModels.Contains(model));
+            return supportedModels.Contains(model);
         }
 
         public Task<RealtimeCapabilities> GetRealtimeCapabilitiesAsync(CancellationToken cancellationToken = default)
@@ -844,8 +910,20 @@ namespace ConduitLLM.Providers
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
 
-            // TODO: When ModelCapabilityService is available in providers, use:
-            // var defaultModel = await _capabilityService.GetDefaultModelAsync("openai", "transcription");
+            // Use ModelCapabilityService if available
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    var defaultModel = _capabilityService.GetDefaultModelAsync("openai", "transcription").GetAwaiter().GetResult();
+                    if (!string.IsNullOrWhiteSpace(defaultModel))
+                        return defaultModel;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to get default transcription model via ModelCapabilityService");
+                }
+            }
 
             // Fallback to hardcoded default for backward compatibility
             return "whisper-1";
@@ -868,6 +946,21 @@ namespace ConduitLLM.Providers
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
 
+            // Use ModelCapabilityService if available
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    var defaultModel = _capabilityService.GetDefaultModelAsync("openai", "tts").GetAwaiter().GetResult();
+                    if (!string.IsNullOrWhiteSpace(defaultModel))
+                        return defaultModel;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to get default TTS model via ModelCapabilityService");
+                }
+            }
+
             // Fallback to hardcoded default for backward compatibility
             return "tts-1";
         }
@@ -888,6 +981,21 @@ namespace ConduitLLM.Providers
             var globalDefault = DefaultModels?.Realtime?.DefaultRealtimeModel;
             if (!string.IsNullOrWhiteSpace(globalDefault))
                 return globalDefault;
+
+            // Use ModelCapabilityService if available
+            if (_capabilityService != null)
+            {
+                try
+                {
+                    var defaultModel = _capabilityService.GetDefaultModelAsync("openai", "realtime").GetAwaiter().GetResult();
+                    if (!string.IsNullOrWhiteSpace(defaultModel))
+                        return defaultModel;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to get default realtime model via ModelCapabilityService");
+                }
+            }
 
             // Fallback to hardcoded default for backward compatibility
             return "gpt-4o-realtime-preview";

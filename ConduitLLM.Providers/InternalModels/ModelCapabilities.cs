@@ -69,5 +69,28 @@ namespace ConduitLLM.Providers.InternalModels
         /// Gets or sets the list of supported audio operations.
         /// </summary>
         public List<AudioOperation>? SupportedAudioOperations { get; set; }
+
+        /// <summary>
+        /// Converts the capabilities to a dictionary for serialization.
+        /// </summary>
+        /// <returns>A dictionary representation of the capabilities.</returns>
+        public Dictionary<string, object?> ToDictionary()
+        {
+            return new Dictionary<string, object?>
+            {
+                [nameof(Chat)] = Chat,
+                [nameof(TextGeneration)] = TextGeneration,
+                [nameof(Embeddings)] = Embeddings,
+                [nameof(ImageGeneration)] = ImageGeneration,
+                [nameof(Vision)] = Vision,
+                [nameof(FunctionCalling)] = FunctionCalling,
+                [nameof(ToolUsage)] = ToolUsage,
+                [nameof(JsonMode)] = JsonMode,
+                [nameof(AudioTranscription)] = AudioTranscription,
+                [nameof(TextToSpeech)] = TextToSpeech,
+                [nameof(RealtimeAudio)] = RealtimeAudio,
+                [nameof(SupportedAudioOperations)] = SupportedAudioOperations
+            };
+        }
     }
 }

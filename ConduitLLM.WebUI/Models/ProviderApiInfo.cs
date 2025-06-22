@@ -21,7 +21,8 @@ namespace ConduitLLM.WebUI.Models
             { "huggingface", "https://huggingface.co/settings/tokens" },
             { "replicate", "https://replicate.com/account/api-tokens" },
             { "ollama", "https://github.com/ollama/ollama" },
-            { "fireworks", "https://app.fireworks.ai/users/settings/api-keys" }
+            { "fireworks", "https://app.fireworks.ai/users/settings/api-keys" },
+            { "minimax", "https://www.minimaxi.com/user-center/basic-information" }
         };
 
         private static readonly Dictionary<string, string> _documentationUrls = new(StringComparer.OrdinalIgnoreCase)
@@ -37,7 +38,8 @@ namespace ConduitLLM.WebUI.Models
             { "huggingface", "https://huggingface.co/docs" },
             { "replicate", "https://replicate.com/docs" },
             { "ollama", "https://github.com/ollama/ollama/blob/main/docs/api.md" },
-            { "fireworks", "https://readme.fireworks.ai/" }
+            { "fireworks", "https://readme.fireworks.ai/" },
+            { "minimax", "https://www.minimaxi.com/document" }
         };
 
         /// <summary>

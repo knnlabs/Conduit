@@ -95,9 +95,55 @@ namespace ConduitLLM.Http.Options
         public int WindowSeconds { get; set; } = 60;
 
         /// <summary>
+        /// Discovery-specific rate limiting configuration
+        /// </summary>
+        public DiscoveryRateLimitOptions Discovery { get; set; } = new();
+
+        /// <summary>
         /// Paths to exclude from rate limiting
         /// </summary>
         public List<string> ExcludedPaths { get; set; } = new() { "/health", "/metrics", "/swagger" };
+    }
+
+    /// <summary>
+    /// Discovery API specific rate limiting configuration
+    /// </summary>
+    public class DiscoveryRateLimitOptions
+    {
+        /// <summary>
+        /// Whether discovery-specific rate limiting is enabled
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Maximum discovery requests per IP per window
+        /// </summary>
+        public int MaxRequests { get; set; } = 500; // Increased from 100 with bulk API
+
+        /// <summary>
+        /// Time window in seconds for discovery requests
+        /// </summary>
+        public int WindowSeconds { get; set; } = 300; // 5 minutes
+
+        /// <summary>
+        /// Paths that count towards discovery rate limits
+        /// </summary>
+        public List<string> DiscoveryPaths { get; set; } = new() 
+        { 
+            "/v1/discovery/", 
+            "/v1/models/",
+            "/capabilities/"
+        };
+
+        /// <summary>
+        /// Maximum capability check requests per model per IP per window
+        /// </summary>
+        public int MaxCapabilityChecksPerModel { get; set; } = 20; // Increased from 5
+
+        /// <summary>
+        /// Time window for per-model capability checks in seconds
+        /// </summary>
+        public int CapabilityCheckWindowSeconds { get; set; } = 600; // 10 minutes
     }
 
     /// <summary>

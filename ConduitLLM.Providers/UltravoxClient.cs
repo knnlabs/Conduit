@@ -183,7 +183,7 @@ namespace ConduitLLM.Providers
                     Id = "ultravox-v1",
                     OwnedBy = "ultravox",
                     Provider = "Ultravox",
-                    Capabilities = new ModelCapabilities
+                    Capabilities = new InternalModels.ModelCapabilities
                     {
                         RealtimeAudio = true,
                         SupportedAudioOperations = new List<AudioOperation> { AudioOperation.Realtime }
@@ -194,7 +194,7 @@ namespace ConduitLLM.Providers
                     Id = "ultravox-telephony",
                     OwnedBy = "ultravox",
                     Provider = "Ultravox",
-                    Capabilities = new ModelCapabilities
+                    Capabilities = new InternalModels.ModelCapabilities
                     {
                         RealtimeAudio = true,
                         SupportedAudioOperations = new List<AudioOperation> { AudioOperation.Realtime }

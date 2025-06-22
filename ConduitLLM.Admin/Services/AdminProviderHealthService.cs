@@ -129,16 +129,8 @@ _logger.LogError(ex, "Error creating health configuration for provider '{Provide
                 var latestStatuses = await _providerHealthRepository.GetAllLatestStatusesAsync();
                 var providerNames = latestStatuses.Keys.ToList();
 
-                var allRecords = new List<ProviderHealthRecord>();
-                foreach (var providerName in providerNames)
-                {
-                    var providerRecords = await _providerHealthRepository.GetStatusHistoryAsync(
-                        providerName: providerName,
-                        since: DateTime.MinValue, // Get all records regardless of time
-                        limit: int.MaxValue); // No limit on number of records
-
-                    allRecords.AddRange(providerRecords);
-                }
+                // Use bulk query instead of N individual queries
+                var allRecords = await _providerHealthRepository.GetAllRecordsAsync();
 
                 return allRecords.Select(r => r.ToDto()).ToList();
             }
@@ -473,8 +465,8 @@ _logger.LogError(ex, "Error triggering health check for provider '{ProviderName}
 
             try
             {
-                var credentials = await _providerCredentialRepository.GetAllAsync();
-                return credentials.Any(c => c.ProviderName.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+                var credential = await _providerCredentialRepository.GetByProviderNameAsync(providerName);
+                return credential != null;
             }
             catch (Exception ex)
             {

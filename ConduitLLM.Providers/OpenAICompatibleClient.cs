@@ -519,21 +519,42 @@ namespace ConduitLLM.Providers
             {
                 using var client = CreateHttpClient(apiKey);
 
-                var openAiRequest = new OpenAIModels.ImageGenerationRequest
-                {
-                    Prompt = request.Prompt,
-                    Model = request.Model ?? ProviderModelId,
-                    N = request.N,
-                    Size = request.Size,
-                    Quality = request.Quality,
-                    Style = request.Style,
-                    ResponseFormat = "b64_json",
-                    User = request.User ?? string.Empty
-                };
+                // Only include quality and style for DALL-E 3
+                var modelName = request.Model ?? ProviderModelId;
+                var openAiRequest = modelName?.Contains("dall-e-3", StringComparison.OrdinalIgnoreCase) == true
+                    ? new OpenAIModels.ImageGenerationRequest
+                    {
+                        Prompt = request.Prompt,
+                        Model = request.Model ?? ProviderModelId,
+                        N = request.N,
+                        Size = request.Size ?? "1024x1024",
+                        Quality = request.Quality,
+                        Style = request.Style,
+                        ResponseFormat = request.ResponseFormat ?? "url",
+                        User = request.User
+                    }
+                    : new OpenAIModels.ImageGenerationRequest
+                    {
+                        Prompt = request.Prompt,
+                        Model = request.Model ?? ProviderModelId,
+                        N = request.N,
+                        Size = request.Size ?? "1024x1024",
+                        ResponseFormat = request.ResponseFormat ?? "url",
+                        User = request.User
+                    };
 
                 var endpoint = GetImageGenerationEndpoint();
 
-                Logger.LogDebug("Creating images using {Provider} at {Endpoint}", ProviderName, endpoint);
+                Logger.LogInformation("Creating images using {Provider} at {Endpoint} with model {Model}, prompt: {Prompt}, size: {Size}, format: {Format}", 
+                    ProviderName, endpoint, openAiRequest.Model, 
+                    openAiRequest.Prompt?.Substring(0, Math.Min(50, openAiRequest.Prompt?.Length ?? 0)), 
+                    openAiRequest.Size, openAiRequest.ResponseFormat);
+                    
+                // Log a warning about potential quota issues if using OpenAI
+                if (ProviderName.Equals("openai", StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger.LogWarning("Note: OpenAI image generation errors with null messages often indicate quota/billing issues");
+                }
 
                 var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<OpenAIModels.ImageGenerationRequest, OpenAIModels.ImageGenerationResponse>(
                     client,

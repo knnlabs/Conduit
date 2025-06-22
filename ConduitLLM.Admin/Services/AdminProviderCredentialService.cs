@@ -13,7 +13,9 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Events;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -27,6 +29,7 @@ namespace ConduitLLM.Admin.Services
     {
         private readonly IProviderCredentialRepository _providerCredentialRepository;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly ILogger<AdminProviderCredentialService> _logger;
 
         /// <summary>
@@ -34,14 +37,17 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="providerCredentialRepository">The provider credential repository</param>
         /// <param name="httpClientFactory">The HTTP client factory for connection testing</param>
+        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminProviderCredentialService(
             IProviderCredentialRepository providerCredentialRepository,
             IHttpClientFactory httpClientFactory,
+            IPublishEndpoint? publishEndpoint,
             ILogger<AdminProviderCredentialService> logger)
         {
             _providerCredentialRepository = providerCredentialRepository ?? throw new ArgumentNullException(nameof(providerCredentialRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -78,6 +84,37 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 _logger.LogInformation("Created provider credential for '{ProviderName}'", providerCredential.ProviderName.Replace(Environment.NewLine, ""));
+
+                // Publish ProviderCredentialUpdated event (creation is treated as an update)
+                if (_publishEndpoint != null)
+                {
+                    try
+                    {
+                        await _publishEndpoint.Publish(new ProviderCredentialUpdated
+                        {
+                            ProviderId = createdCredential.Id,
+                            ProviderName = createdCredential.ProviderName,
+                            IsEnabled = createdCredential.IsEnabled,
+                            ChangedProperties = new[] { "ProviderName", "ApiKey", "BaseUrl", "IsEnabled" }, // All properties for creation
+                            CorrelationId = Guid.NewGuid().ToString()
+                        });
+
+                        _logger.LogDebug("Published ProviderCredentialUpdated event for new provider {ProviderName} (ID: {ProviderId})",
+                            createdCredential.ProviderName, createdCredential.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to publish ProviderCredentialUpdated event for provider {ProviderName} - operation succeeded but event not sent", 
+                            createdCredential.ProviderName);
+                        // Don't fail the operation if event publishing fails
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialUpdated event for provider {ProviderName}", 
+                        createdCredential.ProviderName);
+                }
+
                 return createdCredential.ToDto();
             }
             catch (Exception ex)
@@ -92,11 +129,44 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                // Get provider info before deletion for event publishing
+                var providerToDelete = await _providerCredentialRepository.GetByIdAsync(id);
+                
                 var result = await _providerCredentialRepository.DeleteAsync(id);
 
                 if (result)
                 {
                     _logger.LogInformation("Deleted provider credential with ID {Id}", id);
+
+                    // Publish ProviderCredentialDeleted event
+                    if (_publishEndpoint != null && providerToDelete != null)
+                    {
+                        try
+                        {
+                            await _publishEndpoint.Publish(new ProviderCredentialDeleted
+                            {
+                                ProviderId = providerToDelete.Id,
+                                ProviderName = providerToDelete.ProviderName,
+                                CorrelationId = Guid.NewGuid().ToString()
+                            });
+
+                            _logger.LogDebug("Published ProviderCredentialDeleted event for provider {ProviderName} (ID: {ProviderId})",
+                                providerToDelete.ProviderName, providerToDelete.Id);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to publish ProviderCredentialDeleted event for provider ID {ProviderId} - operation succeeded but event not sent", id);
+                            // Don't fail the operation if event publishing fails
+                        }
+                    }
+                    else if (providerToDelete == null)
+                    {
+                        _logger.LogDebug("Provider credential not found before deletion - skipping ProviderCredentialDeleted event for ID {Id}", id);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialDeleted event for provider ID {Id}", id);
+                    }
                 }
                 else
                 {
@@ -188,6 +258,10 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
+                _logger.LogInformation("Testing provider connection for {ProviderName} with API key starting with: {ApiKeyPrefix}", 
+                    providerCredential.ProviderName, 
+                    string.IsNullOrEmpty(providerCredential.ApiKey) ? "[EMPTY]" : providerCredential.ApiKey.Substring(0, Math.Min(10, providerCredential.ApiKey.Length)));
+                
                 var startTime = DateTime.UtcNow;
                 var result = new ProviderConnectionTestResultDto
                 {
@@ -198,8 +272,8 @@ namespace ConduitLLM.Admin.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                // If the credential has an ID, get the actual credential (with the real API key)
-                // Otherwise, use the provided credential directly (for testing unsaved providers)
+                // For testing, merge form values with stored values
+                // Use form values when provided, fall back to stored values when form fields are empty
                 ProviderCredential actualCredential;
                 if (providerCredential.Id > 0)
                 {
@@ -211,7 +285,15 @@ namespace ConduitLLM.Admin.Services
                         result.ErrorDetails = "Provider not found in database";
                         return result;
                     }
-                    actualCredential = dbCredential;
+                    
+                    // Create test credential using form values when provided, stored values as fallback
+                    actualCredential = new ProviderCredential
+                    {
+                        ProviderName = providerCredential.ProviderName,
+                        ApiKey = !string.IsNullOrEmpty(providerCredential.ApiKey) ? providerCredential.ApiKey : dbCredential.ApiKey,
+                        BaseUrl = !string.IsNullOrEmpty(providerCredential.ApiBase) ? providerCredential.ApiBase : dbCredential.BaseUrl,
+                        IsEnabled = true
+                    };
                 }
                 else
                 {
@@ -237,24 +319,40 @@ namespace ConduitLLM.Admin.Services
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {actualCredential.ApiKey}");
                 }
 
-                // Construct the API URL based on provider type
-                var apiUrl = GetHealthCheckUrl(actualCredential);
-
-                // Make the request
-                var responseMessage = await client.GetAsync(apiUrl);
-                var responseTime = DateTime.UtcNow - startTime;
-
-                // Check the response
-                result.Success = responseMessage.IsSuccessStatusCode;
-                if (!result.Success)
+                // Special handling for providers that don't support GET requests
+                var providerNameLower = providerCredential.ProviderName.ToLowerInvariant();
+                TimeSpan responseTime;
+                
+                if (providerNameLower == "minimax")
                 {
-                    var errorContent = await responseMessage.Content.ReadAsStringAsync();
-                    result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
-                    result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
-                        ? errorContent
-                        : "Response content too large to display";
+                    // MiniMax doesn't have a GET health check endpoint, skip to special handling
+                    result.Success = true;
+                    responseTime = TimeSpan.Zero; // Will be updated after actual test
                 }
                 else
+                {
+                    // Construct the API URL based on provider type
+                    var apiUrl = GetHealthCheckUrl(actualCredential);
+                    
+                    _logger.LogInformation("Testing provider {ProviderName} at URL: {ApiUrl}", providerCredential.ProviderName, apiUrl);
+
+                    // Make the request
+                    var responseMessage = await client.GetAsync(apiUrl);
+                    responseTime = DateTime.UtcNow - startTime;
+
+                    // Check the response
+                    result.Success = responseMessage.IsSuccessStatusCode;
+                    if (!result.Success)
+                    {
+                        var errorContent = await responseMessage.Content.ReadAsStringAsync();
+                        result.Message = $"Status: {(int)responseMessage.StatusCode} {responseMessage.ReasonPhrase}";
+                        result.ErrorDetails = !string.IsNullOrEmpty(errorContent) && errorContent.Length <= 1000
+                            ? errorContent
+                            : "Response content too large to display";
+                    }
+                }
+                
+                if (result.Success)
                 {
                     // Some providers have public endpoints that return 200 without auth
                     // We need additional validation for these providers
@@ -262,6 +360,24 @@ namespace ConduitLLM.Admin.Services
 
                     switch (providerName)
                     {
+                        case "openai":
+                            _logger.LogInformation("Performing additional OpenAI authentication check");
+
+                            // OpenAI's /v1/models endpoint returns 200 OK even without auth
+                            // We need to check if we actually get models back with proper auth
+                            var openAIAuthSuccessful = await VerifyOpenAIAuthenticationAsync(client, actualCredential);
+
+                            if (!openAIAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - OpenAI requires a valid API key for accessing models";
+                                return result;
+                            }
+
+                            _logger.LogInformation("OpenAI authentication check passed");
+                            break;
+
                         case "openrouter":
                             _logger.LogInformation("Performing additional OpenRouter authentication check");
 
@@ -298,6 +414,23 @@ namespace ConduitLLM.Admin.Services
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
                             _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+                            
+                        case "minimax":
+                            _logger.LogInformation("Performing MiniMax authentication check via chat completion");
+                            
+                            var miniMaxAuthSuccessful = await VerifyMiniMaxAuthenticationAsync(client, actualCredential);
+                            responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
+                            
+                            if (!miniMaxAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - MiniMax requires a valid API key for making requests";
+                                return result;
+                            }
+                            
+                            _logger.LogInformation("MiniMax authentication check passed");
                             break;
                     }
 
@@ -351,6 +484,24 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
+                // Track changed properties for event publishing
+                var changedProperties = new List<string>();
+                
+                // Check what properties are actually changing
+                // Note: ProviderName cannot be changed in updates, so we don't check it
+                    
+                if (providerCredential.ApiKey != null && existingCredential.ApiKey != providerCredential.ApiKey)
+                    changedProperties.Add(nameof(existingCredential.ApiKey));
+                    
+                if (providerCredential.ApiBase != null && existingCredential.BaseUrl != providerCredential.ApiBase)
+                    changedProperties.Add(nameof(existingCredential.BaseUrl));
+                    
+                if (existingCredential.IsEnabled != providerCredential.IsEnabled)
+                    changedProperties.Add(nameof(existingCredential.IsEnabled));
+                    
+                // Note: Organization, ModelEndpoint, and AdditionalConfig are not mapped to the entity yet
+                // They are only in the DTOs, so we skip them for now
+
                 // Update entity
                 existingCredential.UpdateFrom(providerCredential);
 
@@ -360,6 +511,39 @@ namespace ConduitLLM.Admin.Services
                 if (result)
                 {
                     _logger.LogInformation("Updated provider credential with ID {Id}", providerCredential.Id);
+
+                    // Publish ProviderCredentialUpdated event if there were actual changes
+                    if (changedProperties.Count > 0 && _publishEndpoint != null)
+                    {
+                        try
+                        {
+                            await _publishEndpoint.Publish(new ProviderCredentialUpdated
+                            {
+                                ProviderId = existingCredential.Id,
+                                ProviderName = existingCredential.ProviderName,
+                                IsEnabled = existingCredential.IsEnabled,
+                                ChangedProperties = changedProperties.ToArray(),
+                                CorrelationId = Guid.NewGuid().ToString()
+                            });
+
+                            _logger.LogDebug("Published ProviderCredentialUpdated event for provider {ProviderName} (ID: {ProviderId}) with changes: {ChangedProperties}",
+                                existingCredential.ProviderName, existingCredential.Id, string.Join(", ", changedProperties));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to publish ProviderCredentialUpdated event for provider ID {ProviderId} - operation succeeded but event not sent", 
+                                providerCredential.Id);
+                            // Don't fail the operation if event publishing fails
+                        }
+                    }
+                    else if (changedProperties.Count == 0)
+                    {
+                        _logger.LogDebug("No changes detected for provider credential {ProviderId} - skipping event publishing", providerCredential.Id);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Event publishing not configured - skipping ProviderCredentialUpdated event for provider ID {ProviderId}", providerCredential.Id);
+                    }
                 }
                 else
                 {
@@ -398,14 +582,14 @@ namespace ConduitLLM.Admin.Services
             return credential.ProviderName.ToLowerInvariant() switch
             {
                 // OpenAI-compatible providers
-                "openai" => $"{baseUrl}/v1/models",
-                "anthropic" => $"{baseUrl}/v1/models",
-                "cohere" => $"{baseUrl}/v1/models",
-                "mistral" or "mistralai" => $"{baseUrl}/v1/models",
-                "groq" => $"{baseUrl}/v1/models",
-                "openrouter" => $"{baseUrl}/api/v1/models",
-                "fireworks" or "fireworksai" => $"{baseUrl}/v1/models",
-                "openai-compatible" or "openaicompatible" => $"{baseUrl}/v1/models",
+                "openai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "anthropic" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "cohere" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "mistral" or "mistralai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "groq" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "openrouter" => baseUrl?.EndsWith("/api/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/api/v1/models",
+                "fireworks" or "fireworksai" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
+                "openai-compatible" or "openaicompatible" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/models" : $"{baseUrl}/v1/models",
 
                 // Cloud providers with custom endpoints
                 "azure" => $"{baseUrl}/openai/models?api-version=2023-05-15",
@@ -422,6 +606,9 @@ namespace ConduitLLM.Admin.Services
                 // Audio/specialized providers
                 "ultravox" => $"{baseUrl}/", // Ultravox is realtime audio
                 "elevenlabs" or "eleven-labs" => $"{baseUrl}/v1/user", // ElevenLabs user endpoint for health check
+                
+                // MiniMax - use models endpoint with v1 prefix
+                "minimax" => baseUrl?.EndsWith("/v1") == true ? $"{baseUrl}/chat/completions" : $"{baseUrl}/v1/chat/completions",
 
                 _ => $"{baseUrl}/models" // Generic endpoint for other providers
             };
@@ -572,6 +759,168 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <summary>
+        /// Verifies OpenAI authentication by making a test request
+        /// </summary>
+        /// <param name="client">The HTTP client with authorization header set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyOpenAIAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                // OpenAI's /v1/models endpoint can return data even without proper auth
+                // We need to make a request that definitely requires authentication
+                
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl.TrimEnd('/')
+                    : "https://api.openai.com";
+
+                // Remove /v1 if it's already in the base URL
+                if (baseUrl.EndsWith("/v1"))
+                {
+                    baseUrl = baseUrl.Substring(0, baseUrl.Length - 3);
+                }
+
+                // First, try to list models and check the response carefully
+                var modelsUrl = $"{baseUrl}/v1/models";
+                var modelsResponse = await client.GetAsync(modelsUrl);
+                
+                if (modelsResponse.StatusCode == HttpStatusCode.Unauthorized || 
+                    modelsResponse.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    var responseContent = await modelsResponse.Content.ReadAsStringAsync();
+                    _logger.LogWarning("OpenAI authentication failed: {Status} - {Content}",
+                        modelsResponse.StatusCode, responseContent.Replace(Environment.NewLine, ""));
+                    return false;
+                }
+                
+                if (modelsResponse.StatusCode == HttpStatusCode.OK)
+                {
+                    var content = await modelsResponse.Content.ReadAsStringAsync();
+                    _logger.LogInformation("OpenAI models endpoint returned 200 OK. Response length: {Length}, First 500 chars: {Content}", 
+                        content.Length, 
+                        content.Substring(0, Math.Min(500, content.Length)));
+                    
+                    // Check for error response in the content
+                    if (content.Contains("\"error\"") && 
+                        (content.Contains("invalid_api_key") || 
+                         content.Contains("Incorrect API key") ||
+                         content.Contains("Invalid authentication")))
+                    {
+                        _logger.LogWarning("OpenAI returned error in response body indicating invalid API key");
+                        return false;
+                    }
+                    
+                    // Parse the response to check if we have actual model data
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(content);
+                        var root = doc.RootElement;
+                        
+                        // Check if we have a data array with actual models
+                        if (root.TryGetProperty("data", out var dataElement) && 
+                            dataElement.GetArrayLength() > 0)
+                        {
+                            // Verify that at least one model has an ID
+                            foreach (var model in dataElement.EnumerateArray())
+                            {
+                                if (model.TryGetProperty("id", out var idElement) && 
+                                    !string.IsNullOrWhiteSpace(idElement.GetString()))
+                                {
+                                    _logger.LogInformation("OpenAI authentication successful - found valid model data");
+                                    return true;
+                                }
+                            }
+                        }
+                        
+                        _logger.LogWarning("OpenAI models response has no valid model data");
+                        return false;
+                    }
+                    catch (JsonException)
+                    {
+                        _logger.LogWarning("OpenAI models response is not valid JSON");
+                        return false;
+                    }
+                }
+
+                // For any other status codes, the authentication is invalid
+                _logger.LogWarning("OpenAI returned unexpected status: {Status} - treating as invalid", modelsResponse.StatusCode);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying OpenAI authentication");
+                // If we can't verify, assume it's invalid to be safe
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies MiniMax authentication by making a minimal chat completion request
+        /// </summary>
+        /// <param name="client">The HTTP client with authorization header set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyMiniMaxAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl
+                    : "https://api.minimax.io";
+
+                // MiniMax doesn't have a GET endpoint, so we need to make a minimal POST request
+                var testRequest = new
+                {
+                    model = "abab6.5-chat",
+                    messages = new[]
+                    {
+                        new { role = "user", content = "test" }
+                    },
+                    max_tokens = 1,
+                    stream = false
+                };
+
+                var json = JsonSerializer.Serialize(testRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var chatUrl = $"{baseUrl.TrimEnd('/')}/v1/chat/completions";
+                var response = await client.PostAsync(chatUrl, content);
+
+                _logger.LogInformation("MiniMax test request returned status {StatusCode}", (int)response.StatusCode);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                    response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return false;
+                }
+
+                // Even if the request fails for other reasons (like insufficient credits),
+                // if we didn't get an auth error, the key is valid
+                if (response.StatusCode == HttpStatusCode.OK || 
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.PaymentRequired ||
+                    response.StatusCode == HttpStatusCode.NotAcceptable ||
+                    response.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    return true;
+                }
+
+                // Log unexpected status codes
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("MiniMax returned unexpected status {StatusCode}: {Content}", 
+                    (int)response.StatusCode, responseContent);
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying MiniMax authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Gets the default base URL for a provider
         /// </summary>
         /// <param name="providerName">The provider name</param>
@@ -598,6 +947,7 @@ namespace ConduitLLM.Admin.Services
                 "openai-compatible" or "openaicompatible" => "http://localhost:8000",
                 "ultravox" => "https://api.ultravox.ai",
                 "elevenlabs" or "eleven-labs" => "https://api.elevenlabs.io",
+                "minimax" => "https://api.minimax.io",
                 _ => "https://api.example.com" // Generic fallback
             };
         }

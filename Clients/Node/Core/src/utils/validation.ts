@@ -1,5 +1,7 @@
 import type { ChatCompletionRequest } from '../models/chat';
+import type { ImageGenerationRequest } from '../models/images';
 import { ValidationError } from './errors';
+import { IMAGE_MODEL_CAPABILITIES } from '../models/images';
 
 export function validateChatCompletionRequest(request: ChatCompletionRequest): void {
   if (!request.model) {
@@ -74,5 +76,80 @@ export function validateChatCompletionRequest(request: ChatCompletionRequest): v
 
   if (request.max_tokens !== undefined && request.max_tokens < 1) {
     throw new ValidationError('max_tokens must be at least 1', 'max_tokens');
+  }
+}
+
+export function validateImageGenerationRequest(request: ImageGenerationRequest): void {
+  if (!request.prompt) {
+    throw new ValidationError('Prompt is required', 'prompt');
+  }
+
+  if (request.prompt.trim().length === 0) {
+    throw new ValidationError('Prompt cannot be empty', 'prompt');
+  }
+
+  // Validate model-specific constraints
+  if (request.model && IMAGE_MODEL_CAPABILITIES[request.model as keyof typeof IMAGE_MODEL_CAPABILITIES]) {
+    const capabilities = IMAGE_MODEL_CAPABILITIES[request.model as keyof typeof IMAGE_MODEL_CAPABILITIES];
+    
+    if (request.prompt.length > capabilities.maxPromptLength) {
+      throw new ValidationError(
+        `Prompt exceeds maximum length of ${capabilities.maxPromptLength} characters for model ${request.model}`,
+        'prompt'
+      );
+    }
+
+    if (request.n !== undefined && request.n > capabilities.maxImages) {
+      throw new ValidationError(
+        `Number of images (${request.n}) exceeds maximum of ${capabilities.maxImages} for model ${request.model}`,
+        'n'
+      );
+    }
+
+    if (request.size && !capabilities.supportedSizes.includes(request.size as any)) {
+      throw new ValidationError(
+        `Size '${request.size}' is not supported for model ${request.model}. Supported sizes: ${capabilities.supportedSizes.join(', ')}`,
+        'size'
+      );
+    }
+
+    if (request.quality && !capabilities.supportedQualities.includes(request.quality as any)) {
+      throw new ValidationError(
+        `Quality '${request.quality}' is not supported for model ${request.model}. Supported qualities: ${capabilities.supportedQualities.join(', ')}`,
+        'quality'
+      );
+    }
+
+    if (request.style && capabilities.supportedStyles.length > 0 && !capabilities.supportedStyles.includes(request.style as any)) {
+      throw new ValidationError(
+        `Style '${request.style}' is not supported for model ${request.model}. Supported styles: ${capabilities.supportedStyles.join(', ')}`,
+        'style'
+      );
+    }
+  }
+
+  // General validations
+  if (request.n !== undefined && (request.n < 1 || request.n > 10)) {
+    throw new ValidationError('Number of images must be between 1 and 10', 'n');
+  }
+
+  if (request.response_format && !['url', 'b64_json'].includes(request.response_format)) {
+    throw new ValidationError('response_format must be either "url" or "b64_json"', 'response_format');
+  }
+
+  if (request.quality && !['standard', 'hd'].includes(request.quality)) {
+    throw new ValidationError('quality must be either "standard" or "hd"', 'quality');
+  }
+
+  if (request.style && !['vivid', 'natural'].includes(request.style)) {
+    throw new ValidationError('style must be either "vivid" or "natural"', 'style');
+  }
+
+  const validSizes = ['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792'];
+  if (request.size && !validSizes.includes(request.size)) {
+    throw new ValidationError(
+      `size must be one of: ${validSizes.join(', ')}`,
+      'size'
+    );
   }
 }

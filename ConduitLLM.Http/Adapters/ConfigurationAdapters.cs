@@ -54,7 +54,8 @@ namespace ConduitLLM.Http.Adapters
                     ProviderModelId = m.ProviderModelId,
                     DeploymentName = m.DeploymentName,
                     IsEnabled = true, // Default
-                    MaxContextTokens = null // Default
+                    MaxContextTokens = null, // Default
+                    SupportsImageGeneration = m.SupportsImageGeneration
                 }).ToList();
             }
 
@@ -70,7 +71,8 @@ namespace ConduitLLM.Http.Adapters
                     ProviderModelId = mapping.ProviderModelId,
                     DeploymentName = mapping.DeploymentName,
                     IsEnabled = true, // Default
-                    MaxContextTokens = null // Default
+                    MaxContextTokens = null, // Default
+                    SupportsImageGeneration = mapping.SupportsImageGeneration
                 };
             }
         }

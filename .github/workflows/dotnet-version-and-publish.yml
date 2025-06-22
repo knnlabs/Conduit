@@ -1,0 +1,372 @@
+name: Auto-Version and Publish .NET Packages
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+    paths:
+      - 'ConduitLLM.Configuration/**'
+      - 'ConduitLLM.Core/**'
+      - 'ConduitLLM.Providers/**'
+      - 'Directory.Build.props'
+      - '!**/*.md'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version increment type (master branch only)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      force_run:
+        description: 'Force run even without changes'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      configuration-changed: ${{ steps.changes.outputs.configuration }}
+      core-changed: ${{ steps.changes.outputs.core }}
+      providers-changed: ${{ steps.changes.outputs.providers }}
+      should-run: ${{ steps.should-run.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          echo "Analyzing changes between HEAD~1 and HEAD..."
+          
+          # Check for Configuration changes
+          if git diff --name-only HEAD~1 HEAD | grep -E '^ConduitLLM\.Configuration/' | grep -v '\.md$'; then
+            echo "configuration=true" >> $GITHUB_OUTPUT
+            echo "📦 ConduitLLM.Configuration changes detected"
+          else
+            echo "configuration=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Core changes
+          if git diff --name-only HEAD~1 HEAD | grep -E '^ConduitLLM\.Core/' | grep -v '\.md$'; then
+            echo "core=true" >> $GITHUB_OUTPUT
+            echo "📦 ConduitLLM.Core changes detected"
+          else
+            echo "core=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Providers changes
+          if git diff --name-only HEAD~1 HEAD | grep -E '^ConduitLLM\.Providers/' | grep -v '\.md$'; then
+            echo "providers=true" >> $GITHUB_OUTPUT
+            echo "📦 ConduitLLM.Providers changes detected"
+          else
+            echo "providers=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Directory.Build.props changes
+          if git diff --name-only HEAD~1 HEAD | grep -E '^Directory\.Build\.props$'; then
+            echo "All projects affected by Directory.Build.props changes"
+            echo "configuration=true" >> $GITHUB_OUTPUT
+            echo "core=true" >> $GITHUB_OUTPUT
+            echo "providers=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Should run workflow
+        id: should-run
+        run: |
+          if [[ "${{ steps.changes.outputs.configuration }}" == "true" || 
+                "${{ steps.changes.outputs.core }}" == "true" || 
+                "${{ steps.changes.outputs.providers }}" == "true" || 
+                "${{ github.event.inputs.force_run }}" == "true" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "✅ Changes detected, will proceed with versioning"
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+            echo "⏭️ No relevant changes detected, skipping workflow"
+          fi
+
+  version-and-publish:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-run == 'true'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Determine version strategy
+        id: strategy
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          # Get current version from Directory.Build.props
+          CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' Directory.Build.props | head -1)
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📋 Current version: $CURRENT_VERSION"
+          
+          if [[ "$BRANCH_NAME" == "dev" ]]; then
+            # For dev: create prerelease with timestamp
+            BUILD_NUMBER=$(date +%Y%m%d%H%M%S)
+            if [[ "$CURRENT_VERSION" =~ -dev ]]; then
+              # Already a dev version, increment
+              BASE_VERSION=$(echo "$CURRENT_VERSION" | cut -d'-' -f1)
+              NEW_VERSION="$BASE_VERSION-dev.$BUILD_NUMBER"
+            else
+              # Convert stable to dev version
+              NEW_VERSION="$CURRENT_VERSION-dev.$BUILD_NUMBER"
+            fi
+            echo "version-type=prerelease" >> $GITHUB_OUTPUT
+            echo "nuget-source=github" >> $GITHUB_OUTPUT
+            echo "commit-back=false" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH_NAME" == "master" ]]; then
+            # For master: semantic versioning
+            if echo "${{ github.event.head_commit.message }}" | grep -iE "breaking|major|BREAKING"; then
+              VERSION_TYPE="major"
+            elif echo "${{ github.event.head_commit.message }}" | grep -iE "feat|feature|minor"; then
+              VERSION_TYPE="minor"
+            else
+              VERSION_TYPE="${{ github.event.inputs.version_type || 'patch' }}"
+            fi
+            
+            # Parse current version and increment
+            IFS='.' read -ra VERSION_PARTS <<< "${CURRENT_VERSION%%-*}"
+            MAJOR=${VERSION_PARTS[0]}
+            MINOR=${VERSION_PARTS[1]:-0}
+            PATCH=${VERSION_PARTS[2]:-0}
+            
+            case $VERSION_TYPE in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            echo "version-type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+            echo "nuget-source=nuget" >> $GITHUB_OUTPUT
+            echo "commit-back=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "🎯 New version: $NEW_VERSION"
+
+      - name: Update version in Directory.Build.props
+        run: |
+          NEW_VERSION="${{ steps.strategy.outputs.new-version }}"
+          echo "🔄 Updating Directory.Build.props to version $NEW_VERSION"
+          
+          # Update version in Directory.Build.props
+          # For assembly versions, use numeric-only version (strip prerelease suffix)
+          NUMERIC_VERSION=$(echo "$NEW_VERSION" | sed 's/-.*$//')
+          
+          sed -i "s|<Version>[^<]*</Version>|<Version>$NEW_VERSION</Version>|g" Directory.Build.props
+          sed -i "s|<AssemblyVersion>[^<]*</AssemblyVersion>|<AssemblyVersion>$NUMERIC_VERSION</AssemblyVersion>|g" Directory.Build.props
+          sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$NUMERIC_VERSION</FileVersion>|g" Directory.Build.props
+          sed -i "s|<InformationalVersion>[^<]*</InformationalVersion>|<InformationalVersion>$NEW_VERSION</InformationalVersion>|g" Directory.Build.props
+          
+          echo "✅ Version updated in Directory.Build.props"
+          grep -A2 -B2 "<Version>" Directory.Build.props
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack NuGet packages
+        run: |
+          echo "📦 Creating NuGet packages..."
+          
+          # Pack only the library projects that should be published
+          dotnet pack ConduitLLM.Configuration/ConduitLLM.Configuration.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            --verbosity normal
+            
+          dotnet pack ConduitLLM.Core/ConduitLLM.Core.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            --verbosity normal
+            
+          dotnet pack ConduitLLM.Providers/ConduitLLM.Providers.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            --verbosity normal
+          
+          echo "📋 Packages created:"
+          ls -la ./nupkgs/
+
+      - name: Commit version changes
+        if: steps.strategy.outputs.commit-back == 'true'
+        run: |
+          # Check if there are any changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          NEW_VERSION="${{ steps.strategy.outputs.new-version }}"
+          VERSION_TYPE="${{ steps.strategy.outputs.version-type }}"
+          
+          # Prepare commit message
+          COMMIT_MSG="chore: bump .NET packages to v$NEW_VERSION ($VERSION_TYPE) [skip ci]"
+          
+          # Stage and commit
+          git add Directory.Build.props
+          git commit -m "$COMMIT_MSG"
+          
+          # Push with retry logic
+          for i in {1..3}; do
+            if git push; then
+              echo "✅ Version changes committed and pushed"
+              break
+            else
+              echo "⚠️ Push failed, attempt $i/3. Pulling and retrying..."
+              git pull --rebase
+              if [[ $i == 3 ]]; then
+                echo "❌ Failed to push after 3 attempts"
+                exit 1
+              fi
+            fi
+          done
+
+      - name: Publish to GitHub Packages (dev branch)
+        if: steps.strategy.outputs.nuget-source == 'github'
+        run: |
+          echo "📤 Publishing to GitHub Packages..."
+          
+          dotnet nuget add source \
+            --username ${{ github.actor }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --store-password-in-clear-text \
+            --name github \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          
+          for package in ./nupkgs/*.nupkg; do
+            echo "Publishing $package to GitHub Packages..."
+            dotnet nuget push "$package" \
+              --source "github" \
+              --api-key ${{ secrets.GITHUB_TOKEN }} \
+              --skip-duplicate
+          done
+          
+          echo "✅ Packages published to GitHub Packages"
+
+      - name: Publish to NuGet.org (master branch)
+        if: steps.strategy.outputs.nuget-source == 'nuget'
+        run: |
+          echo "📤 Publishing to NuGet.org..."
+          
+          if [[ -z "${{ secrets.NUGET_API_KEY }}" ]]; then
+            echo "⚠️ NUGET_API_KEY secret not found. Skipping NuGet.org publishing."
+            echo "To enable NuGet.org publishing, add your API key as a repository secret."
+            exit 0
+          fi
+          
+          for package in ./nupkgs/*.nupkg; do
+            echo "Publishing $package to NuGet.org..."
+            dotnet nuget push "$package" \
+              --source https://api.nuget.org/v3/index.json \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --skip-duplicate
+          done
+          
+          echo "✅ Packages published to NuGet.org"
+
+      - name: Create GitHub Release (master branch only)
+        if: steps.strategy.outputs.commit-back == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.strategy.outputs.new-version }}
+          release_name: Release v${{ steps.strategy.outputs.new-version }}
+          body: |
+            ## .NET Packages v${{ steps.strategy.outputs.new-version }}
+            
+            ### Changes
+            - Auto-generated release for .NET packages
+            - Version type: ${{ steps.strategy.outputs.version-type }}
+            
+            ### Packages
+            - `ConduitLLM.Configuration` v${{ steps.strategy.outputs.new-version }}
+            - `ConduitLLM.Core` v${{ steps.strategy.outputs.new-version }}
+            - `ConduitLLM.Providers` v${{ steps.strategy.outputs.new-version }}
+            
+            ### Installation
+            ```bash
+            dotnet add package ConduitLLM.Core --version ${{ steps.strategy.outputs.new-version }}
+            dotnet add package ConduitLLM.Providers --version ${{ steps.strategy.outputs.new-version }}
+            dotnet add package ConduitLLM.Configuration --version ${{ steps.strategy.outputs.new-version }}
+            ```
+          draft: false
+          prerelease: false
+
+      - name: Workflow Summary
+        run: |
+          echo "🎉 .NET Package Versioning Complete!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  Branch: ${{ steps.strategy.outputs.branch }}"
+          echo "  Version: ${{ steps.strategy.outputs.new-version }}"
+          echo "  Type: ${{ steps.strategy.outputs.version-type }}"
+          echo "  Published to: ${{ steps.strategy.outputs.nuget-source }}"
+          echo ""
+          echo "📦 Packages:"
+          echo "  - ConduitLLM.Configuration v${{ steps.strategy.outputs.new-version }}"
+          echo "  - ConduitLLM.Core v${{ steps.strategy.outputs.new-version }}"
+          echo "  - ConduitLLM.Providers v${{ steps.strategy.outputs.new-version }}"
+          echo ""
+          echo "💡 Installation:"
+          if [[ "${{ steps.strategy.outputs.nuget-source }}" == "github" ]]; then
+            echo "  # Add GitHub Packages source first:"
+            echo "  dotnet nuget add source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json -n github"
+            echo ""
+            echo "  # Install packages:"
+            echo "  dotnet add package ConduitLLM.Core --version ${{ steps.strategy.outputs.new-version }} --source github"
+          else
+            echo "  dotnet add package ConduitLLM.Core --version ${{ steps.strategy.outputs.new-version }}"
+            echo "  dotnet add package ConduitLLM.Providers --version ${{ steps.strategy.outputs.new-version }}"
+            echo "  dotnet add package ConduitLLM.Configuration --version ${{ steps.strategy.outputs.new-version }}"
+          fi

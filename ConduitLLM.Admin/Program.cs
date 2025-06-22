@@ -5,6 +5,8 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Providers.Extensions;
 
+using MassTransit; // Added for event bus infrastructure
+
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
@@ -106,9 +108,62 @@ public partial class Program
 
         builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 
+        // Configure RabbitMQ settings
+        var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
+            ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
+
+        // Check if RabbitMQ is configured
+        var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
+
+        // Register MassTransit event bus for Admin API
+        builder.Services.AddMassTransit(x =>
+        {
+            // Admin API is a publisher-only service, no consumers needed
+            
+            if (useRabbitMq)
+            {
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    // Configure RabbitMQ connection
+                    cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
+                    {
+                        h.Username(rabbitMqConfig.Username);
+                        h.Password(rabbitMqConfig.Password);
+                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+                    });
+                    
+                    // Configure retry policy for publishing
+                    cfg.UseMessageRetry(r => r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2)));
+                    
+                    // Admin API only publishes events, no special configuration needed
+                });
+                
+                Console.WriteLine($"[ConduitLLM.Admin] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+            }
+            else
+            {
+                x.UsingInMemory((context, cfg) =>
+                {
+                    // NOTE: Using in-memory transport for single-instance deployments
+                    // Configure RabbitMQ environment variables for multi-instance production
+                    
+                    // Configure retry policy for reliability
+                    cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+                    
+                    // Configure delayed redelivery for failed messages
+                    cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+                    
+                    // Configure endpoints
+                    cfg.ConfigureEndpoints(context);
+                });
+                
+                Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
+            }
+        });
+
         // Add standardized health checks
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString);
+        builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString, false, rabbitMqConfig);
 
         var app = builder.Build();
 

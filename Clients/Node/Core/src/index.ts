@@ -16,6 +16,23 @@ export type {
 } from './models/models';
 
 export type {
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+  ImageEditRequest,
+  ImageEditResponse,
+  ImageVariationRequest,
+  ImageVariationResponse,
+  ImageData,
+  ImageModel,
+} from './models/images';
+
+export {
+  IMAGE_MODELS,
+  IMAGE_MODEL_CAPABILITIES,
+  IMAGE_DEFAULTS,
+} from './models/images';
+
+export type {
   Usage,
   ResponseFormat,
   FunctionDefinition,
@@ -35,4 +52,6 @@ export {
   NetworkError,
   StreamError,
 } from './utils/errors';
+
+export * from './utils/capabilities';
 

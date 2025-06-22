@@ -153,8 +153,55 @@ public class HuggingFaceImageGenerationRequest
     [JsonPropertyName("inputs")]
     public string Inputs { get; set; } = null!;
 
+    [JsonPropertyName("parameters")]
+    public HuggingFaceImageParameters? Parameters { get; set; }
+
     [JsonPropertyName("options")]
     public HuggingFaceOptions? Options { get; set; }
+}
+
+/// <summary>
+/// HuggingFace image generation parameters
+/// </summary>
+public class HuggingFaceImageParameters
+{
+    [JsonPropertyName("guidance_scale")]
+    public double? GuidanceScale { get; set; }
+
+    [JsonPropertyName("negative_prompt")]
+    public string? NegativePrompt { get; set; }
+
+    [JsonPropertyName("num_inference_steps")]
+    public int? NumInferenceSteps { get; set; }
+
+    [JsonPropertyName("seed")]
+    public int? Seed { get; set; }
+
+    [JsonPropertyName("target_size")]
+    public HuggingFaceImageSize? TargetSize { get; set; }
+}
+
+/// <summary>
+/// HuggingFace image size
+/// </summary>
+public class HuggingFaceImageSize
+{
+    [JsonPropertyName("width")]
+    public int Width { get; set; }
+
+    [JsonPropertyName("height")]
+    public int Height { get; set; }
+}
+
+/// <summary>
+/// HuggingFace image generation response (binary data)
+/// </summary>
+public class HuggingFaceImageGenerationResponse
+{
+    // HuggingFace returns raw binary image data (PNG/JPEG)
+    // We'll handle this differently in the client
+    public byte[] ImageData { get; set; } = Array.Empty<byte>();
+    public string ContentType { get; set; } = "image/png";
 }
 
 /// <summary>

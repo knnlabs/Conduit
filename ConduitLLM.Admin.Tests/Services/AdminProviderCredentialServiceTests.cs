@@ -33,6 +33,7 @@ namespace ConduitLLM.Admin.Tests.Services
             _service = new AdminProviderCredentialService(
                 _mockProviderCredentialRepository.Object,
                 _mockHttpClientFactory.Object,
+                null, // publishEndpoint - null for testing
                 _mockLogger.Object);
         }
 
@@ -198,7 +199,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 .ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent("{\"data\": []}")
+                    Content = new StringContent("{\"data\": [{\"id\": \"gpt-3.5-turbo\", \"object\": \"model\"}]}")
                 });
 
             var httpClient = new HttpClient(mockHandler.Object);

@@ -210,5 +210,151 @@ namespace ConduitLLM.WebUI.Services.Adapters
                 return Enumerable.Empty<ProviderDataDto>();
             }
         }
+
+        /// <summary>
+        /// Creates multiple model provider mappings in a single operation
+        /// </summary>
+        /// <param name="request">The bulk mapping request containing mappings to create</param>
+        /// <returns>The bulk mapping response with results and errors</returns>
+        public async Task<BulkModelMappingResponse> CreateBulkAsync(BulkModelMappingRequest request)
+        {
+            try
+            {
+                // Check if AdminApiClient implements bulk operations
+                if (_adminApiClient is IModelProviderMappingService mappingService)
+                {
+                    return await mappingService.CreateBulkAsync(request);
+                }
+
+                // Fallback: implement bulk operations by calling individual creates
+                var response = new BulkModelMappingResponse
+                {
+                    TotalProcessed = request.Mappings.Count
+                };
+
+                for (int i = 0; i < request.Mappings.Count; i++)
+                {
+                    var mappingRequest = request.Mappings[i];
+                    try
+                    {
+                        // Check for existing mapping
+                        var existingMapping = await GetByModelIdAsync(mappingRequest.ModelId);
+                        if (existingMapping != null)
+                        {
+                            if (request.ReplaceExisting)
+                            {
+                                // Update existing mapping
+                                existingMapping.ProviderModelId = mappingRequest.ProviderModelId;
+                                existingMapping.ProviderId = mappingRequest.ProviderId;
+                                existingMapping.Priority = mappingRequest.Priority;
+                                existingMapping.IsEnabled = mappingRequest.IsEnabled;
+                                existingMapping.SupportsVision = mappingRequest.SupportsVision;
+                                existingMapping.SupportsImageGeneration = mappingRequest.SupportsImageGeneration;
+                                existingMapping.SupportsAudioTranscription = mappingRequest.SupportsAudioTranscription;
+                                existingMapping.SupportsTextToSpeech = mappingRequest.SupportsTextToSpeech;
+                                existingMapping.SupportsRealtimeAudio = mappingRequest.SupportsRealtimeAudio;
+
+                                var updatedMapping = await UpdateAsync(existingMapping);
+                                if (updatedMapping != null)
+                                {
+                                    response.Updated.Add(updatedMapping);
+                                }
+                                else
+                                {
+                                    response.Failed.Add(new BulkMappingError
+                                    {
+                                        Index = i,
+                                        Mapping = mappingRequest,
+                                        ErrorMessage = "Failed to update existing mapping",
+                                        ErrorType = BulkMappingErrorType.SystemError
+                                    });
+                                }
+                            }
+                            else
+                            {
+                                response.Failed.Add(new BulkMappingError
+                                {
+                                    Index = i,
+                                    Mapping = mappingRequest,
+                                    ErrorMessage = $"Model ID already exists: {mappingRequest.ModelId}",
+                                    ErrorType = BulkMappingErrorType.Duplicate
+                                });
+                            }
+                            continue;
+                        }
+
+                        // Create new mapping
+                        var newMappingDto = new ModelProviderMappingDto
+                        {
+                            ModelId = mappingRequest.ModelId,
+                            ProviderModelId = mappingRequest.ProviderModelId,
+                            ProviderId = mappingRequest.ProviderId,
+                            Priority = mappingRequest.Priority,
+                            IsEnabled = mappingRequest.IsEnabled,
+                            SupportsVision = mappingRequest.SupportsVision,
+                            SupportsImageGeneration = mappingRequest.SupportsImageGeneration,
+                            SupportsAudioTranscription = mappingRequest.SupportsAudioTranscription,
+                            SupportsTextToSpeech = mappingRequest.SupportsTextToSpeech,
+                            SupportsRealtimeAudio = mappingRequest.SupportsRealtimeAudio,
+                            Capabilities = mappingRequest.Capabilities,
+                            MaxContextLength = mappingRequest.MaxContextLength,
+                            TokenizerType = mappingRequest.TokenizerType,
+                            SupportedVoices = mappingRequest.SupportedVoices,
+                            SupportedLanguages = mappingRequest.SupportedLanguages,
+                            SupportedFormats = mappingRequest.SupportedFormats,
+                            IsDefault = mappingRequest.IsDefault,
+                            DefaultCapabilityType = mappingRequest.DefaultCapabilityType,
+                            Notes = mappingRequest.Notes
+                        };
+
+                        var createdMapping = await CreateAsync(newMappingDto);
+                        if (createdMapping != null)
+                        {
+                            response.Created.Add(createdMapping);
+                        }
+                        else
+                        {
+                            response.Failed.Add(new BulkMappingError
+                            {
+                                Index = i,
+                                Mapping = mappingRequest,
+                                ErrorMessage = "Failed to create mapping",
+                                ErrorType = BulkMappingErrorType.SystemError
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing bulk mapping at index {Index}", i);
+                        response.Failed.Add(new BulkMappingError
+                        {
+                            Index = i,
+                            Mapping = mappingRequest,
+                            ErrorMessage = $"System error: {ex.Message}",
+                            ErrorType = BulkMappingErrorType.SystemError
+                        });
+                    }
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in bulk mapping operation");
+                
+                // Return complete failure response
+                return new BulkModelMappingResponse
+                {
+                    TotalProcessed = request.Mappings.Count,
+                    Failed = request.Mappings.Select((mapping, index) => new BulkMappingError
+                    {
+                        Index = index,
+                        Mapping = mapping,
+                        ErrorMessage = $"System error: {ex.Message}",
+                        ErrorType = BulkMappingErrorType.SystemError
+                    }).ToList()
+                };
+            }
+        }
     }
 }

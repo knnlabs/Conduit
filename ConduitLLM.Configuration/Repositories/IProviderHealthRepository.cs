@@ -116,5 +116,13 @@ namespace ConduitLLM.Configuration.Repositories
         /// <param name="since">The start time (UTC) for counting failures</param>
         /// <returns>The count of consecutive failures</returns>
         Task<int> GetConsecutiveFailuresAsync(string providerName, DateTime since);
+
+        /// <summary>
+        /// Gets all health records for all providers - efficient bulk operation
+        /// </summary>
+        /// <param name="since">Optional start time filter</param>
+        /// <param name="limit">Optional limit on total records</param>
+        /// <returns>All health records matching the criteria</returns>
+        Task<List<ProviderHealthRecord>> GetAllRecordsAsync(DateTime? since = null, int? limit = null);
     }
 }

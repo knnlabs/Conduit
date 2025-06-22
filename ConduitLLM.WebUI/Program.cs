@@ -191,7 +191,7 @@ Console.WriteLine("[Conduit WebUI] Registering controllers");
 // Register core services
 builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
-builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastService, ConduitLLM.WebUI.Services.ToastService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastNotificationService, ConduitLLM.WebUI.Services.ToastNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.NavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
@@ -218,7 +218,17 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client =>
     client.BaseAddress = new Uri(GetApiBaseUrl());
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {client.BaseAddress}");
 })
-.AddAdminApiResiliencePolicies();
+.AddResiliencePolicies(options =>
+{
+    options.RetryCount = 3;
+    options.CircuitBreakerThreshold = 5;
+    options.TimeoutSeconds = 60; // Increased timeout for image generation
+})
+.ConfigureHttpClient(client =>
+{
+    // Set a default timeout on the HttpClient itself as a safety net
+    client.Timeout = TimeSpan.FromSeconds(120); // Even longer timeout for the HTTP client
+});
 
 // Register Admin API client and compatibility services
 builder.Services.AddAdminApiClient(builder.Configuration);
@@ -228,6 +238,7 @@ builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderHealthService>(s
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderCredentialService>(sp => sp.GetRequiredService<AdminApiClient>());
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IProviderStatusService, ConduitLLM.WebUI.Services.ProviderStatusService>();
 builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelCostService>(sp => sp.GetRequiredService<AdminApiClient>());
+builder.Services.AddScoped<ConduitLLM.WebUI.Interfaces.IModelProviderMappingService>(sp => sp.GetRequiredService<AdminApiClient>());
 
 // Register global setting repository adapter for CacheStatusService
 builder.Services.AddScoped<ConduitLLM.Configuration.Repositories.IGlobalSettingRepository, ConduitLLM.WebUI.Services.AdminApiGlobalSettingRepositoryAdapter>();

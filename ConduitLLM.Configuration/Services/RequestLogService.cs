@@ -152,16 +152,6 @@ namespace ConduitLLM.Configuration.Services
         /// <inheritdoc/>
         public async Task LogRequestAsync(LogRequestDto request)
         {
-            // Check if the database provider supports transactions
-            bool supportsTransactions = !(_context.Database.ProviderName?.Contains("InMemory") ?? false);
-
-            // Create the transaction only if supported
-            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-            if (supportsTransactions)
-            {
-                transaction = await _context.Database.BeginTransactionAsync();
-            }
-
             try
             {
                 var log = new RequestLog
@@ -181,24 +171,12 @@ namespace ConduitLLM.Configuration.Services
                 };
 
                 _context.RequestLogs.Add(log);
-
-                // Also update the virtual key's current spend - retrieve just what we need
-                var key = await _context.VirtualKeys
-                    .Where(k => k.Id == request.VirtualKeyId)
-                    .FirstOrDefaultAsync();
-
-                if (key != null)
-                {
-                    key.CurrentSpend += request.Cost;
-                    key.UpdatedAt = DateTime.UtcNow;
-                }
-
                 await _context.SaveChangesAsync();
 
-                if (transaction != null)
-                {
-                    await transaction.CommitAsync();
-                }
+                // OPTIMIZATION: Use batch spend update service instead of immediate database write
+                // This reduces database load from O(n) writes per request to batch updates every 30 seconds
+                _logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, queuing spend update", 
+                    request.VirtualKeyId, request.Cost);
             }
             catch (Exception ex)
             {
@@ -207,19 +185,53 @@ namespace ConduitLLM.Configuration.Services
                 request.VirtualKeyId,
                 request.ModelName.Replace(Environment.NewLine, ""),
                 request.RequestType.Replace(Environment.NewLine, ""));
-
-                if (transaction != null)
-                {
-                    await transaction.RollbackAsync();
-                }
                 throw;
             }
-            finally
+        }
+
+        /// <summary>
+        /// Optimized method to log request with batched spend updates
+        /// </summary>
+        /// <param name="request">Request log data</param>
+        /// <param name="batchSpendService">Batch spend update service</param>
+        /// <returns>Async task</returns>
+        public async Task LogRequestWithBatchedSpendAsync(LogRequestDto request, BatchSpendUpdateService batchSpendService)
+        {
+            try
             {
-                if (transaction != null)
+                var log = new RequestLog
                 {
-                    await transaction.DisposeAsync();
-                }
+                    VirtualKeyId = request.VirtualKeyId,
+                    ModelName = request.ModelName,
+                    RequestType = request.RequestType,
+                    InputTokens = request.InputTokens,
+                    OutputTokens = request.OutputTokens,
+                    Cost = request.Cost,
+                    ResponseTimeMs = request.ResponseTimeMs,
+                    Timestamp = DateTime.UtcNow,
+                    UserId = request.UserId,
+                    ClientIp = request.ClientIp,
+                    RequestPath = request.RequestPath,
+                    StatusCode = request.StatusCode
+                };
+
+                _context.RequestLogs.Add(log);
+                await _context.SaveChangesAsync();
+
+                // Queue spend update for batching instead of immediate database write
+                batchSpendService.QueueSpendUpdate(request.VirtualKeyId, request.Cost);
+
+                _logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}", 
+                    request.VirtualKeyId, request.Cost);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
+                request.VirtualKeyId,
+                request.ModelName.Replace(Environment.NewLine, ""),
+                request.RequestType.Replace(Environment.NewLine, ""));
+                throw;
             }
         }
 

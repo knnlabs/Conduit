@@ -542,6 +542,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsAudioTranscription")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("SupportsImageGeneration")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("SupportsRealtimeAudio")
                         .HasColumnType("INTEGER");
 
