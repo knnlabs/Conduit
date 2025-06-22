@@ -41,7 +41,7 @@
                                 <span class="status-text text-danger">Unhealthy</span>
                             }
                         </div>
-                        <button class="btn btn-sm btn-outline-primary" @onclick="CheckHealthNow">
+                        <button class="btn btn-sm btn-outline-primary ms-2" @onclick="CheckHealthNow">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
                     </div>
@@ -49,7 +49,7 @@
 
                 @if (!HealthService.IsHealthy && !string.IsNullOrEmpty(HealthService.LastErrorMessage))
                 {
-                    <div class="alert alert-danger alert-sm mt-3 mb-2">
+                    <div class="alert alert-danger alert-sm mt-3 mb-0">
                         <i class="bi bi-exclamation-circle me-1"></i>
                         @HealthService.LastErrorMessage
                     </div>
@@ -261,12 +261,13 @@
 
     .health-status-card {
         min-width: 380px;
+        padding: 0;
     }
 
     .status-header {
-        padding-bottom: 12px;
+        padding: 0 0 1rem 0;
         border-bottom: 1px solid var(--bs-border-color);
-        margin-bottom: 16px;
+        margin-bottom: 1.5rem;
     }
 
     .status-text {
@@ -275,19 +276,20 @@
     }
 
     .alert-sm {
-        padding: 0.5rem 0.75rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
+        margin-bottom: 0;
     }
 
     .info-section, .health-checks-section {
-        margin-bottom: 20px;
+        margin-bottom: 1.5rem;
     }
 
     .section-title {
         font-size: 0.875rem;
         font-weight: 600;
         color: var(--bs-secondary, #6c757d);
-        margin-bottom: 8px;
+        margin-bottom: 1rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -298,14 +300,14 @@
 
     .info-grid {
         display: grid;
-        gap: 8px;
+        gap: 0.75rem;
     }
 
     .info-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 4px 0;
+        padding: 0.25rem 0;
     }
 
     .info-label {
@@ -331,13 +333,13 @@
     .health-check-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 0.75rem;
     }
 
     .health-check-item {
-        padding: 12px;
+        padding: 1rem;
         background: var(--bs-gray-100);
-        border-radius: 6px;
+        border-radius: 0.5rem;
         position: relative;
     }
 
@@ -349,7 +351,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 4px;
+        margin-bottom: 0.5rem;
     }
 
     .check-name {
@@ -369,7 +371,7 @@
     .check-description {
         font-size: 0.8rem;
         color: var(--bs-secondary, #6c757d);
-        margin-top: 4px;
+        margin-top: 0.5rem;
     }
 
     [data-bs-theme="dark"] .check-description {
@@ -379,13 +381,13 @@
     .check-error {
         font-size: 0.8rem;
         color: var(--bs-danger);
-        margin-top: 4px;
+        margin-top: 0.5rem;
     }
 
     .check-duration {
         position: absolute;
-        bottom: 4px;
-        right: 8px;
+        bottom: 0.5rem;
+        right: 0.75rem;
         font-size: 0.7rem;
         color: var(--bs-secondary, #6c757d);
     }
@@ -395,15 +397,15 @@
     }
 
     .provider-details {
-        margin-top: 8px;
-        padding-left: 16px;
+        margin-top: 0.75rem;
+        padding-left: 1rem;
     }
 
     .provider-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 2px 0;
+        padding: 0.25rem 0;
         font-size: 0.8rem;
     }
 
@@ -423,8 +425,8 @@
         text-align: right;
         font-size: 0.8rem;
         color: var(--bs-secondary, #6c757d);
-        margin-top: 8px;
-        padding-top: 8px;
+        margin-top: 1rem;
+        padding-top: 1rem;
         border-top: 1px solid var(--bs-border-color);
     }
 
@@ -434,16 +436,16 @@
 
     .action-links {
         display: flex;
-        gap: 16px;
-        padding-top: 16px;
-        margin-top: 4px;
+        gap: 1rem;
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
         border-top: 1px solid var(--bs-border-color);
     }
 
     .action-link {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 0.5rem;
         font-size: 0.875rem;
         color: var(--bs-link-color, #0d6efd);
         text-decoration: none;
@@ -464,7 +466,8 @@
     }
 
     .btn-outline-primary {
-        padding: 0.25rem 0.5rem;
+        padding: 0.375rem 0.75rem;
         font-size: 0.75rem;
+        border-radius: 0.375rem;
     }
 </style>
