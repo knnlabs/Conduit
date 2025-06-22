@@ -12,6 +12,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -23,12 +24,11 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Service for managing virtual keys through the Admin API
     /// </summary>
-    public class AdminVirtualKeyService : IAdminVirtualKeyService
+    public class AdminVirtualKeyService : EventPublishingServiceBase, IAdminVirtualKeyService
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly IVirtualKeyCache? _cache; // Optional cache for invalidation
-        private readonly IPublishEndpoint? _publishEndpoint; // Optional event publishing
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -46,12 +46,15 @@ namespace ConduitLLM.Admin.Services
             IVirtualKeyCache? cache,
             IPublishEndpoint? publishEndpoint,
             ILogger<AdminVirtualKeyService> logger)
+            : base(publishEndpoint, logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache; // Optional - can be null if Redis not configured
-            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Log event publishing configuration status
+            LogEventPublishingConfiguration(nameof(AdminVirtualKeyService));
         }
 
         /// <inheritdoc />
@@ -116,33 +119,18 @@ namespace ConduitLLM.Admin.Services
 
             // Publish VirtualKeyCreated event for cache synchronization
             // This is critical for the Core API to recognize the new key
-            if (_publishEndpoint != null)
-            {
-                try
+            // Use VirtualKeyUpdated event since we don't have a VirtualKeyCreated event defined
+            // The Core API will treat this as a cache invalidation/refresh
+            await PublishEventAsync(
+                new VirtualKeyUpdated
                 {
-                    // Use VirtualKeyUpdated event since we don't have a VirtualKeyCreated event defined
-                    // The Core API will treat this as a cache invalidation/refresh
-                    await _publishEndpoint.Publish(new VirtualKeyUpdated
-                    {
-                        KeyId = virtualKey.Id,
-                        KeyHash = virtualKey.KeyHash,
-                        ChangedProperties = new[] { "Created" }, // Special marker for creation
-                        CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogDebug("Published VirtualKeyUpdated event for newly created key {KeyId} (name: {KeyName})", 
-                        virtualKey.Id, virtualKey.KeyName);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish event for newly created key {KeyId} - key created but event not sent", virtualKey.Id);
-                    // Don't fail the operation if event publishing fails
-                }
-            }
-            else
-            {
-                _logger.LogDebug("Event publishing not configured - skipping event for newly created key {KeyId}", virtualKey.Id);
-            }
+                    KeyId = virtualKey.Id,
+                    KeyHash = virtualKey.KeyHash,
+                    ChangedProperties = new[] { "Created" }, // Special marker for creation
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                $"create virtual key {virtualKey.Id}",
+                new { KeyName = virtualKey.KeyName });
 
             // Map to response DTO
             var keyDto = MapToDto(virtualKey);
@@ -265,31 +253,16 @@ namespace ConduitLLM.Admin.Services
             if (result)
             {
                 // Publish VirtualKeyUpdated event for cache invalidation and cross-service coordination
-                if (_publishEndpoint != null)
-                {
-                    try
+                await PublishEventAsync(
+                    new VirtualKeyUpdated
                     {
-                        await _publishEndpoint.Publish(new VirtualKeyUpdated
-                        {
-                            KeyId = key.Id,
-                            KeyHash = key.KeyHash,
-                            ChangedProperties = changedProperties.ToArray(),
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-
-                        _logger.LogDebug("Published VirtualKeyUpdated event for key {KeyId} with changes: {ChangedProperties}", 
-                            id, string.Join(", ", changedProperties));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to publish VirtualKeyUpdated event for key {KeyId} - operation succeeded but event not sent", id);
-                        // Don't fail the operation if event publishing fails
-                    }
-                }
-                else
-                {
-                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyUpdated event for key {KeyId}", id);
-                }
+                        KeyId = key.Id,
+                        KeyHash = key.KeyHash,
+                        ChangedProperties = changedProperties.ToArray(),
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"update virtual key {id}",
+                    new { ChangedProperties = string.Join(", ", changedProperties) });
 
                 // Legacy cache invalidation (will be replaced by event-driven invalidation)
                 if (_cache != null)
@@ -332,31 +305,16 @@ namespace ConduitLLM.Admin.Services
             if (result)
             {
                 // Publish VirtualKeyDeleted event for cache invalidation and cleanup
-                if (_publishEndpoint != null)
-                {
-                    try
+                await PublishEventAsync(
+                    new VirtualKeyDeleted
                     {
-                        await _publishEndpoint.Publish(new VirtualKeyDeleted
-                        {
-                            KeyId = key.Id,
-                            KeyHash = key.KeyHash,
-                            KeyName = key.KeyName,
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-
-                        _logger.LogDebug("Published VirtualKeyDeleted event for key {KeyId} (name: {KeyName})", 
-                            key.Id, key.KeyName);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to publish VirtualKeyDeleted event for key {KeyId} - operation succeeded but event not sent", id);
-                        // Don't fail the operation if event publishing fails
-                    }
-                }
-                else
-                {
-                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyDeleted event for key {KeyId}", id);
-                }
+                        KeyId = key.Id,
+                        KeyHash = key.KeyHash,
+                        KeyName = key.KeyName,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"delete virtual key {key.Id}",
+                    new { KeyName = key.KeyName });
             }
 
             return result;

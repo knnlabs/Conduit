@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 using MassTransit;
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
 
@@ -18,12 +19,11 @@ namespace ConduitLLM.Http.Services
     /// High-performance Virtual Key service with Redis caching and immediate invalidation
     /// Maintains security guarantees while providing ~50x performance improvement
     /// </summary>
-    public class CachedApiVirtualKeyService : IVirtualKeyService
+    public class CachedApiVirtualKeyService : EventPublishingServiceBase, IVirtualKeyService
     {
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyCache _cache;
-        private readonly IPublishEndpoint? _publishEndpoint;
         private readonly ILogger<CachedApiVirtualKeyService> _logger;
 
         public CachedApiVirtualKeyService(
@@ -32,12 +32,15 @@ namespace ConduitLLM.Http.Services
             ConduitLLM.Core.Interfaces.IVirtualKeyCache cache,
             IPublishEndpoint? publishEndpoint,
             ILogger<CachedApiVirtualKeyService> logger)
+            : base(publishEndpoint, logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Log event publishing configuration status
+            LogEventPublishingConfiguration(nameof(CachedApiVirtualKeyService));
         }
 
         /// <inheritdoc />
@@ -363,21 +366,21 @@ namespace ConduitLLM.Http.Services
 
             try
             {
-                if (_publishEndpoint != null)
+                if (IsEventPublishingEnabled)
                 {
-                    // NEW: Event-driven approach - publish SpendUpdateRequested event
+                    // Event-driven approach - publish SpendUpdateRequested event
                     var requestId = Guid.NewGuid().ToString();
                     
-                    await _publishEndpoint.Publish(new SpendUpdateRequested
-                    {
-                        KeyId = keyId,
-                        Amount = cost,
-                        RequestId = requestId,
-                        CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogInformation("Published spend update request for key ID {KeyId}, amount {Cost}, requestId {RequestId}",
-                        keyId, cost, requestId);
+                    await PublishEventAsync(
+                        new SpendUpdateRequested
+                        {
+                            KeyId = keyId,
+                            Amount = cost,
+                            RequestId = requestId,
+                            CorrelationId = Guid.NewGuid().ToString()
+                        },
+                        $"spend update for key {keyId}",
+                        new { KeyId = keyId, Amount = cost, RequestId = requestId });
                     
                     // Event-driven approach returns true immediately - processing happens asynchronously
                     // The SpendUpdateProcessor will handle the actual database update and cache invalidation
@@ -385,8 +388,8 @@ namespace ConduitLLM.Http.Services
                 }
                 else
                 {
-                    // FALLBACK: Legacy direct database update approach
-                    _logger.LogDebug("Event publishing not configured - falling back to direct database update for key {KeyId}", keyId);
+                    // FALLBACK: Direct database update approach when event bus not configured
+                    _logger.LogDebug("Event publishing not configured - using direct database update for key {KeyId}", keyId);
                     
                     var virtualKey = await _virtualKeyRepository.GetByIdAsync(keyId);
                     if (virtualKey == null) 

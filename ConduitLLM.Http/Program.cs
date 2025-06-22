@@ -335,6 +335,11 @@ builder.Services.AddMassTransit(x =>
         });
         
         Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+        Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events for:");
+        Console.WriteLine("  - Virtual Key updates (cache invalidation across instances)");
+        Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
+        Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
+        Console.WriteLine("  - Model capability discovery (shared across all instances)");
     }
     else
     {
@@ -354,6 +359,11 @@ builder.Services.AddMassTransit(x =>
         });
         
         Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
+        Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events locally");
+        Console.WriteLine("[Conduit] WARNING: For production multi-instance deployments, configure RabbitMQ:");
+        Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__HOST to your RabbitMQ host");
+        Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__USERNAME and CONDUITLLM__RABBITMQ__PASSWORD");
+        Console.WriteLine("  - This enables cache consistency and ordered processing across instances");
     }
 });
 
