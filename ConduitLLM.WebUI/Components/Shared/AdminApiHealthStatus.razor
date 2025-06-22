@@ -9,20 +9,20 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
-<div class="admin-api-status">
-    <Hovercard Position="bottom-end" Delay="200">
+<div class="admin-api-status" @onkeydown="HandleKeyDown">
+    <Hovercard Position="bottom-end" Delay="200" @ref="hovercardRef">
         <ChildContent>
             @if (HealthService.IsHealthy)
             {
-                <span class="status-indicator healthy">
-                    <i class="bi bi-check-circle-fill"></i>
-                </span>
+                <button class="status-indicator healthy" aria-label="System Health Status - Healthy" title="System Health - Click for details">
+                    <i class="fa fa-heart-pulse"></i>
+                </button>
             }
             else
             {
-                <span class="status-indicator unhealthy">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </span>
+                <button class="status-indicator unhealthy" aria-label="System Health Status - Unhealthy" title="System Health - Issues Detected">
+                    <i class="fa fa-heart-crack"></i>
+                </button>
             }
         </ChildContent>
         <HovercardContent>
@@ -32,17 +32,17 @@
                         <div class="d-flex align-items-center">
                             @if (HealthService.IsHealthy)
                             {
-                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                <i class="fa fa-check-circle text-success me-2"></i>
                                 <span class="status-text text-success">Healthy</span>
                             }
                             else
                             {
-                                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                                <i class="fa fa-triangle-exclamation text-danger me-2"></i>
                                 <span class="status-text text-danger">Unhealthy</span>
                             }
                         </div>
                         <button class="btn btn-sm btn-outline-primary ms-2" @onclick="CheckHealthNow">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                            <i class="fa fa-arrow-rotate-right"></i> Refresh
                         </button>
                     </div>
                 </div>
@@ -50,7 +50,7 @@
                 @if (!HealthService.IsHealthy && !string.IsNullOrEmpty(HealthService.LastErrorMessage))
                 {
                     <div class="alert alert-danger alert-sm mt-3 mb-0">
-                        <i class="bi bi-exclamation-circle me-1"></i>
+                        <i class="fa fa-circle-exclamation me-1"></i>
                         @HealthService.LastErrorMessage
                     </div>
                 }
@@ -99,7 +99,7 @@
                                     @if (!string.IsNullOrEmpty(check.Exception))
                                     {
                                         <div class="check-error">
-                                            <i class="bi bi-exclamation-circle"></i> @check.Exception
+                                            <i class="fa fa-circle-exclamation"></i> @check.Exception
                                         </div>
                                     }
                                     @if (check.Name == "providers" && check.Data != null)
@@ -130,13 +130,13 @@
 
                 <div class="action-links">
                     <a href="/provider-health" class="action-link">
-                        <i class="bi bi-heart-pulse"></i> Provider Health
+                        <i class="fa fa-heart-pulse"></i> Provider Health
                     </a>
                     <a href="/logs" class="action-link">
-                        <i class="bi bi-journal-text"></i> View Logs
+                        <i class="fa fa-file-lines"></i> View Logs
                     </a>
                     <a href="/configuration" class="action-link">
-                        <i class="bi bi-gear"></i> Configuration
+                        <i class="fa fa-gear"></i> Configuration
                     </a>
                 </div>
             </div>
@@ -146,6 +146,7 @@
 
 @code {
     private Timer? _refreshTimer;
+    private Hovercard? hovercardRef;
 
     protected override void OnInitialized()
     {
@@ -222,6 +223,12 @@
             _ => "text-secondary"
         };
     }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        // The hovercard component handles keyboard navigation
+        // This is just for potential future enhancements
+    }
 }
 
 <style>
@@ -233,24 +240,54 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         cursor: pointer;
-        transition: transform 0.2s ease;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        padding: 0;
+        outline: none;
+        position: relative;
     }
 
     .status-indicator:hover {
         transform: scale(1.1);
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-indicator:focus {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    }
+
+    .status-indicator i {
+        font-size: 1.25rem;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
     }
 
     .healthy {
-        color: #198754;
+        color: #52c41a;
+        background: rgba(82, 196, 26, 0.1);
+        border-color: rgba(82, 196, 26, 0.3);
+    }
+
+    .healthy:hover {
+        background: rgba(82, 196, 26, 0.2);
+        border-color: rgba(82, 196, 26, 0.4);
     }
 
     .unhealthy {
-        color: #dc3545;
+        color: #ff4d4f;
+        background: rgba(255, 77, 79, 0.1);
+        border-color: rgba(255, 77, 79, 0.3);
         animation: pulse 2s infinite;
+    }
+
+    .unhealthy:hover {
+        background: rgba(255, 77, 79, 0.2);
+        border-color: rgba(255, 77, 79, 0.4);
     }
 
     @@keyframes pulse {
