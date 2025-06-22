@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Information
+- **GitHub Repository**: knnlabs/Conduit
+- **Issues URL**: https://github.com/knnlabs/Conduit/issues
+- **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
+
 ## Build Commands
 - Build solution: `dotnet build`
 - Run tests: `dotnet test`

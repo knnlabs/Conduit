@@ -306,8 +306,14 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
     
-    // Add image generation consumer
+    // Add model capabilities consumer
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCapabilitiesDiscoveredHandler>();
+    
+    // Add image generation consumers
     x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationProgressHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationCompletedHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationFailedHandler>();
     
     if (useRabbitMq)
     {
