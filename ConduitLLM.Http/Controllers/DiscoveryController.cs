@@ -316,21 +316,22 @@ namespace ConduitLLM.Http.Controllers
 
         /// <summary>
         /// Converts ModelCapabilities to a dictionary for serialization.
+        /// Uses snake_case naming to match client expectations.
         /// </summary>
         private static Dictionary<string, bool> ConvertCapabilitiesToDictionary(ModelCapabilities capabilities)
         {
             return new Dictionary<string, bool>
             {
-                [nameof(capabilities.Chat)] = capabilities.Chat,
-                [nameof(capabilities.ChatStream)] = capabilities.ChatStream,
-                [nameof(capabilities.Embeddings)] = capabilities.Embeddings,
-                [nameof(capabilities.ImageGeneration)] = capabilities.ImageGeneration,
-                [nameof(capabilities.Vision)] = capabilities.Vision,
-                [nameof(capabilities.VideoGeneration)] = capabilities.VideoGeneration,
-                [nameof(capabilities.VideoUnderstanding)] = capabilities.VideoUnderstanding,
-                [nameof(capabilities.FunctionCalling)] = capabilities.FunctionCalling,
-                [nameof(capabilities.ToolUse)] = capabilities.ToolUse,
-                [nameof(capabilities.JsonMode)] = capabilities.JsonMode
+                ["chat"] = capabilities.Chat,
+                ["chat_stream"] = capabilities.ChatStream,
+                ["embeddings"] = capabilities.Embeddings,
+                ["image_generation"] = capabilities.ImageGeneration,
+                ["vision"] = capabilities.Vision,
+                ["video_generation"] = capabilities.VideoGeneration,
+                ["video_understanding"] = capabilities.VideoUnderstanding,
+                ["function_calling"] = capabilities.FunctionCalling,
+                ["tool_use"] = capabilities.ToolUse,
+                ["json_mode"] = capabilities.JsonMode
             };
         }
     }

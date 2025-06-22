@@ -20,6 +20,7 @@ namespace ConduitLLM.Tests
         private readonly Mock<ConduitLLM.Configuration.IModelProviderMappingService> _mappingServiceMock;
         private readonly Mock<ILogger<ProviderDiscoveryService>> _loggerMock;
         private readonly IMemoryCache _cache;
+        private readonly List<IModelDiscoveryProvider> _discoveryProviders;
         private readonly ProviderDiscoveryService _discoveryService;
 
         public ProviderDiscoveryServiceOpenRouterTests()
@@ -29,13 +30,15 @@ namespace ConduitLLM.Tests
             _mappingServiceMock = new Mock<ConduitLLM.Configuration.IModelProviderMappingService>();
             _loggerMock = new Mock<ILogger<ProviderDiscoveryService>>();
             _cache = new MemoryCache(new MemoryCacheOptions());
+            _discoveryProviders = new List<IModelDiscoveryProvider>(); // Empty list for tests
 
             _discoveryService = new ProviderDiscoveryService(
                 _clientFactoryMock.Object,
                 _credentialServiceMock.Object,
                 _mappingServiceMock.Object,
                 _loggerMock.Object,
-                _cache
+                _cache,
+                _discoveryProviders
             );
         }
 

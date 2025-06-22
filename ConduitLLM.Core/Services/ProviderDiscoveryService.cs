@@ -17,6 +17,7 @@ namespace ConduitLLM.Core.Services
 {
     /// <summary>
     /// Service for discovering provider capabilities and available models.
+    /// Enhanced with dynamic discovery providers for comprehensive metadata extraction.
     /// </summary>
     public class ProviderDiscoveryService : IProviderDiscoveryService
     {
@@ -26,13 +27,47 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger<ProviderDiscoveryService> _logger;
         private readonly IMemoryCache _cache;
         private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEnumerable<IModelDiscoveryProvider> _discoveryProviders;
         private const string CacheKeyPrefix = "provider_capabilities_";
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromHours(24);
 
         // Known model patterns and their capabilities
         private static readonly Dictionary<string, Func<string, ConduitLLM.Core.Interfaces.ModelCapabilities>> KnownModelPatterns = new()
         {
-            // OpenAI
+            // OpenAI - Order matters, more specific patterns first
+            ["gpt-4-vision"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = true,
+                FunctionCalling = true,
+                ToolUse = true,
+                JsonMode = true,
+                MaxTokens = 128000,
+                MaxOutputTokens = 4096
+            },
+            ["gpt-4o"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = true,
+                FunctionCalling = true,
+                ToolUse = true,
+                JsonMode = true,
+                MaxTokens = 128000,
+                MaxOutputTokens = 4096
+            },
+            ["gpt-4-turbo"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                Chat = true,
+                ChatStream = true,
+                Vision = true,
+                FunctionCalling = true,
+                ToolUse = true,
+                JsonMode = true,
+                MaxTokens = 128000,
+                MaxOutputTokens = 4096
+            },
             ["gpt-4"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
             {
                 Chat = true,
@@ -155,12 +190,20 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Initializes a new instance of the <see cref="ProviderDiscoveryService"/> class.
         /// </summary>
+        /// <param name="clientFactory">Factory for creating LLM clients.</param>
+        /// <param name="credentialService">Service for managing provider credentials.</param>
+        /// <param name="mappingService">Service for managing model provider mappings.</param>
+        /// <param name="logger">Logger for diagnostic information.</param>
+        /// <param name="cache">Memory cache for caching discovery results.</param>
+        /// <param name="discoveryProviders">Collection of provider-specific discovery implementations.</param>
+        /// <param name="publishEndpoint">Optional endpoint for publishing events.</param>
         public ProviderDiscoveryService(
             ILLMClientFactory clientFactory,
             ConduitLLM.Configuration.IProviderCredentialService credentialService,
             ConduitLLM.Configuration.IModelProviderMappingService mappingService,
             ILogger<ProviderDiscoveryService> logger,
             IMemoryCache cache,
+            IEnumerable<IModelDiscoveryProvider> discoveryProviders,
             IPublishEndpoint? publishEndpoint = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -168,6 +211,7 @@ namespace ConduitLLM.Core.Services
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _discoveryProviders = discoveryProviders ?? throw new ArgumentNullException(nameof(discoveryProviders));
             _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
         }
 
@@ -246,37 +290,68 @@ namespace ConduitLLM.Core.Services
 
             var models = new Dictionary<string, DiscoveredModel>();
 
-            try
+            // First try enhanced discovery providers
+            var discoveryProvider = _discoveryProviders.FirstOrDefault(p => 
+                string.Equals(p.ProviderName, providerName, StringComparison.OrdinalIgnoreCase));
+            
+            if (discoveryProvider != null && discoveryProvider.SupportsDiscovery)
             {
-                // Get client for provider
-                var client = _clientFactory.GetClientByProvider(providerName);
-
-                // Try to list models from the provider
                 try
                 {
-                    var modelList = await client.ListModelsAsync(apiKey, cancellationToken);
+                    _logger.LogDebug("Using enhanced discovery provider for {Provider}", providerName);
+                    var modelMetadataList = await discoveryProvider.DiscoverModelsAsync(cancellationToken);
                     
-                    foreach (var modelId in modelList)
+                    foreach (var metadata in modelMetadataList)
                     {
-                        var discoveredModel = InferModelCapabilities(modelId, providerName, modelId);
-                        models[modelId] = discoveredModel;
+                        var discoveredModel = ConvertMetadataToDiscoveredModel(metadata);
+                        models[metadata.ModelId] = discoveredModel;
                     }
 
-                    _logger.LogInformation("Discovered {Count} models from provider {Provider}", 
+                    _logger.LogInformation("Enhanced discovery found {Count} models from provider {Provider}", 
                         models.Count, providerName);
                 }
-                catch (NotSupportedException)
+                catch (Exception ex)
                 {
-                    _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
+                    _logger.LogWarning(ex, "Enhanced discovery failed for provider {Provider}, falling back to legacy methods", providerName);
+                    // Continue to fallback methods below
+                }
+            }
+            
+            // If enhanced discovery didn't work or found no models, try legacy client discovery
+            if (models.Count == 0)
+            {
+                try
+                {
+                    // Get client for provider
+                    var client = _clientFactory.GetClientByProvider(providerName);
+
+                    // Try to list models from the provider
+                    try
+                    {
+                        var modelList = await client.ListModelsAsync(apiKey, cancellationToken);
+                        
+                        foreach (var modelId in modelList)
+                        {
+                            var discoveredModel = InferModelCapabilities(modelId, providerName, modelId);
+                            models[modelId] = discoveredModel;
+                        }
+
+                        _logger.LogInformation("Legacy discovery found {Count} models from provider {Provider}", 
+                            models.Count, providerName);
+                    }
+                    catch (NotSupportedException)
+                    {
+                        _logger.LogDebug("Provider {Provider} does not support listing models", providerName);
+                        // Fall back to known models for this provider
+                        AddKnownModelsForProvider(providerName, models);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
                     // Fall back to known models for this provider
                     AddKnownModelsForProvider(providerName, models);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to create client for provider {Provider}", providerName);
-                // Fall back to known models for this provider
-                AddKnownModelsForProvider(providerName, models);
             }
 
             // Cache the results
@@ -532,6 +607,80 @@ namespace ConduitLLM.Core.Services
             {
                 models[modelId] = InferModelCapabilities(modelId, provider, modelId);
             }
+        }
+
+        /// <summary>
+        /// Converts enhanced ModelMetadata from discovery providers to DiscoveredModel format.
+        /// This preserves all the rich metadata while maintaining compatibility with existing interfaces.
+        /// </summary>
+        /// <param name="metadata">Enhanced model metadata from discovery provider.</param>
+        /// <returns>DiscoveredModel compatible with existing code.</returns>
+        private DiscoveredModel ConvertMetadataToDiscoveredModel(ModelMetadata metadata)
+        {
+            var discoveredModel = new DiscoveredModel
+            {
+                ModelId = metadata.ModelId,
+                Provider = metadata.Provider,
+                DisplayName = metadata.DisplayName,
+                Capabilities = metadata.Capabilities,
+                LastVerified = metadata.LastUpdated,
+                Metadata = new Dictionary<string, object>(metadata.AdditionalMetadata)
+            };
+
+            // Add enhanced metadata to the metadata dictionary
+            if (metadata.MaxContextTokens.HasValue)
+            {
+                discoveredModel.Metadata["max_context_tokens"] = metadata.MaxContextTokens.Value;
+            }
+            
+            if (metadata.MaxOutputTokens.HasValue)
+            {
+                discoveredModel.Metadata["max_output_tokens"] = metadata.MaxOutputTokens.Value;
+            }
+            
+            if (metadata.InputTokenCost.HasValue)
+            {
+                discoveredModel.Metadata["input_token_cost"] = metadata.InputTokenCost.Value;
+            }
+            
+            if (metadata.OutputTokenCost.HasValue)
+            {
+                discoveredModel.Metadata["output_token_cost"] = metadata.OutputTokenCost.Value;
+            }
+            
+            if (metadata.ImageCostPerImage.HasValue)
+            {
+                discoveredModel.Metadata["image_cost_per_image"] = metadata.ImageCostPerImage.Value;
+            }
+            
+            if (metadata.SupportedImageSizes.Count > 0)
+            {
+                discoveredModel.Metadata["supported_image_sizes"] = metadata.SupportedImageSizes;
+            }
+            
+            if (metadata.SupportedVideoResolutions.Count > 0)
+            {
+                discoveredModel.Metadata["supported_video_resolutions"] = metadata.SupportedVideoResolutions;
+            }
+            
+            if (metadata.MaxVideoDurationSeconds.HasValue)
+            {
+                discoveredModel.Metadata["max_video_duration_seconds"] = metadata.MaxVideoDurationSeconds.Value;
+            }
+            
+            // Add discovery source information
+            discoveredModel.Metadata["discovery_source"] = metadata.Source.ToString();
+            
+            if (metadata.Warnings.Count > 0)
+            {
+                discoveredModel.Metadata["warnings"] = metadata.Warnings;
+            }
+            
+            // Mark as enhanced discovery
+            discoveredModel.Metadata["enhanced_discovery"] = true;
+            discoveredModel.Metadata["last_updated"] = metadata.LastUpdated;
+
+            return discoveredModel;
         }
 
         private bool TestCapability(ConduitLLM.Core.Interfaces.ModelCapabilities capabilities, ModelCapability capability)

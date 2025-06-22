@@ -83,6 +83,70 @@ public static class ServiceCollectionExtensions
         // Register database-aware LLM client factory (must be registered before discovery service)
         services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 
+        // Register enhanced model discovery providers
+        // Configure HttpClients for each discovery provider
+        services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
+        });
+
+        services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM-Admin/1.0");
+        });
+
+        // Register discovery providers as concrete implementations first
+        services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
+        {
+            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            
+            // Get API key from provider credentials
+            try
+            {
+                var credential = credentialService.GetCredentialByProviderNameAsync("openrouter").GetAwaiter().GetResult();
+                var apiKey = credential?.ApiKey;
+                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
+            }
+            catch
+            {
+                // If we can't get credentials, still register the provider (it will fall back to patterns)
+                return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
+            }
+        });
+
+        services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
+        {
+            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
+            var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+            
+            // Get API key from provider credentials
+            try
+            {
+                var credential = credentialService.GetCredentialByProviderNameAsync("anthropic").GetAwaiter().GetResult();
+                var apiKey = credential?.ApiKey;
+                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
+            }
+            catch
+            {
+                // If we can't get credentials, still register the provider (it will fall back to patterns)
+                return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
+            }
+        });
+
+        // Register the providers as IModelDiscoveryProvider interfaces
+        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
+            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
+
+        services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
+            serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
+
         // Register discovery service
         services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
