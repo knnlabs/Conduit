@@ -71,13 +71,6 @@ namespace ConduitLLM.WebUI.Controllers
         {
             try
             {
-                // Default to last 30 days if no dates provided
-                if (!startDate.HasValue)
-                    startDate = DateTime.UtcNow.AddDays(-30);
-
-                if (!endDate.HasValue)
-                    endDate = DateTime.UtcNow;
-
                 var data = await _costDashboardService.GetDashboardDataAsync(
                     startDate,
                     endDate,
@@ -122,40 +115,20 @@ namespace ConduitLLM.WebUI.Controllers
             try
             {
                 // Validate period
-                if (!string.Equals(period, "day", StringComparison.OrdinalIgnoreCase) &&
-                    !string.Equals(period, "week", StringComparison.OrdinalIgnoreCase) &&
-                    !string.Equals(period, "month", StringComparison.OrdinalIgnoreCase))
+                if (!_costDashboardService.IsValidPeriod(period))
                 {
                     return BadRequest("Invalid period type. Must be 'day', 'week', or 'month'.");
                 }
 
                 // Validate count
-                if (count <= 0 || count > 365)
+                if (!_costDashboardService.IsValidCount(count))
                 {
                     return BadRequest("Count must be between 1 and 365.");
                 }
 
-                // Calculate dates based on period and count
-                DateTime endDate = DateTime.UtcNow;
-                DateTime startDate;
-
-                switch (period.ToLower())
-                {
-                    case "week":
-                        startDate = endDate.AddDays(-7 * count);
-                        break;
-                    case "month":
-                        startDate = endDate.AddMonths(-count);
-                        break;
-                    case "day":
-                    default:
-                        startDate = endDate.AddDays(-count);
-                        break;
-                }
-
-                var data = await _costDashboardService.GetDashboardDataAsync(
-                    startDate,
-                    endDate,
+                var data = await _costDashboardService.GetTrendDataAsync(
+                    period,
+                    count,
                     virtualKeyId,
                     modelName);
 

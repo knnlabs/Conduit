@@ -34,6 +34,10 @@ namespace ConduitLLM.WebUI.Services.Adapters
         {
             try
             {
+                // Apply default dates if not provided
+                startDate ??= DateTime.UtcNow.AddDays(-30);
+                endDate ??= DateTime.UtcNow;
+
                 // Get dashboard data from Admin API
                 var dashboardData = await _adminApiClient.GetCostDashboardAsync(startDate, endDate, virtualKeyId, modelName);
                 
@@ -176,6 +180,54 @@ namespace ConduitLLM.WebUI.Services.Adapters
             }
 
             return new List<DetailedCostDataDto>();
+        }
+
+        /// <inheritdoc />
+        public async Task<CostDashboardDto> GetTrendDataAsync(
+            string period,
+            int count,
+            int? virtualKeyId = null,
+            string? modelName = null)
+        {
+            var (startDate, endDate) = CalculateDateRange(period, count);
+            return await GetDashboardDataAsync(startDate, endDate, virtualKeyId, modelName);
+        }
+
+        /// <inheritdoc />
+        public bool IsValidPeriod(string period)
+        {
+            return string.Equals(period, "day", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(period, "week", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(period, "month", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <inheritdoc />
+        public bool IsValidCount(int count)
+        {
+            return count > 0 && count <= 365;
+        }
+
+        /// <inheritdoc />
+        public (DateTime startDate, DateTime endDate) CalculateDateRange(string period, int count)
+        {
+            var endDate = DateTime.UtcNow;
+            DateTime startDate;
+
+            switch (period.ToLower())
+            {
+                case "week":
+                    startDate = endDate.AddDays(-7 * count);
+                    break;
+                case "month":
+                    startDate = endDate.AddMonths(-count);
+                    break;
+                case "day":
+                default:
+                    startDate = endDate.AddDays(-count);
+                    break;
+            }
+
+            return (startDate, endDate);
         }
     }
 }
