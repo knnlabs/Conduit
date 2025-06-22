@@ -53,7 +53,16 @@ public static class ServiceCollectionExtensions
             
             return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminModelProviderMappingService, AdminModelProviderMappingService>();
+        // Register AdminModelProviderMappingService with optional event publishing dependency
+        services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
+        {
+            var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
+            var credentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
+            
+            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, publishEndpoint, logger);
+        });
         services.AddScoped<IAdminRouterService, AdminRouterService>();
         services.AddScoped<IAdminLogService, AdminLogService>();
         services.AddScoped<IAdminIpFilterService, AdminIpFilterService>();
