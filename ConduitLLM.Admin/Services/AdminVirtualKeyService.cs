@@ -114,6 +114,36 @@ namespace ConduitLLM.Admin.Services
                 await _spendHistoryRepository.CreateAsync(history);
             }
 
+            // Publish VirtualKeyCreated event for cache synchronization
+            // This is critical for the Core API to recognize the new key
+            if (_publishEndpoint != null)
+            {
+                try
+                {
+                    // Use VirtualKeyUpdated event since we don't have a VirtualKeyCreated event defined
+                    // The Core API will treat this as a cache invalidation/refresh
+                    await _publishEndpoint.Publish(new VirtualKeyUpdated
+                    {
+                        KeyId = virtualKey.Id,
+                        KeyHash = virtualKey.KeyHash,
+                        ChangedProperties = new[] { "Created" }, // Special marker for creation
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogDebug("Published VirtualKeyUpdated event for newly created key {KeyId} (name: {KeyName})", 
+                        virtualKey.Id, virtualKey.KeyName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to publish event for newly created key {KeyId} - key created but event not sent", virtualKey.Id);
+                    // Don't fail the operation if event publishing fails
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Event publishing not configured - skipping event for newly created key {KeyId}", virtualKey.Id);
+            }
+
             // Map to response DTO
             var keyDto = MapToDto(virtualKey);
 
