@@ -142,6 +142,9 @@ builder.Services.AddCoreApiSecurity(builder.Configuration);
 // Register HttpClientFactory - REQUIRED for LLMClientFactory
 builder.Services.AddHttpClient();
 
+// Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
+builder.Services.AddConfigurationAdapters();
+
 // Add dependencies needed for the Conduit service
 // Use DatabaseAwareLLMClientFactory to get provider credentials from database
 builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
@@ -288,9 +291,6 @@ builder.Services.AddMassTransit(x =>
         Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
     }
 });
-
-// Register Configuration adapters (moved from Core)
-builder.Services.AddConfigurationAdapters();
 
 // Register provider model list service
 builder.Services.AddScoped<ModelListService>();
