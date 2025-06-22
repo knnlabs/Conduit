@@ -4,7 +4,10 @@ using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +18,7 @@ namespace ConduitLLM.Admin.Services;
 /// <summary>
 /// Service for managing IP filters through the Admin API
 /// </summary>
-public class AdminIpFilterService : IAdminIpFilterService
+public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterService
 {
     private readonly IIpFilterRepository _ipFilterRepository;
     private readonly IOptionsMonitor<IpFilterOptions> _ipFilterOptions;
@@ -26,15 +29,20 @@ public class AdminIpFilterService : IAdminIpFilterService
     /// </summary>
     /// <param name="ipFilterRepository">The IP filter repository</param>
     /// <param name="ipFilterOptions">The IP filter options</param>
+    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminIpFilterService(
         IIpFilterRepository ipFilterRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
+        IPublishEndpoint? publishEndpoint,
         ILogger<AdminIpFilterService> logger)
+        : base(publishEndpoint, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));
         _ipFilterOptions = ipFilterOptions ?? throw new ArgumentNullException(nameof(ipFilterOptions));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        LogEventPublishingConfiguration(nameof(AdminIpFilterService));
     }
 
     /// <inheritdoc/>
@@ -115,6 +123,22 @@ public class AdminIpFilterService : IAdminIpFilterService
             // Save to database
             var createdFilter = await _ipFilterRepository.AddAsync(entity);
 
+            // Publish IpFilterChanged event for cache invalidation and cross-service coordination
+            await PublishEventAsync(
+                new IpFilterChanged
+                {
+                    FilterId = createdFilter.Id,
+                    IpAddressOrCidr = createdFilter.IpAddressOrCidr,
+                    FilterType = createdFilter.FilterType,
+                    IsEnabled = createdFilter.IsEnabled,
+                    ChangeType = "Created",
+                    ChangedProperties = Array.Empty<string>(),
+                    Description = createdFilter.Description ?? string.Empty,
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                $"create IP filter {createdFilter.Id}",
+                new { IpAddressOrCidr = createdFilter.IpAddressOrCidr, FilterType = createdFilter.FilterType });
+
             // Return the created filter
             return (true, null, MapToDto(createdFilter));
         }
@@ -145,11 +169,40 @@ public class AdminIpFilterService : IAdminIpFilterService
                 return (false, "Invalid IP address or CIDR format");
             }
 
-            // Update the entity
-            existingFilter.FilterType = updateFilter.FilterType;
-            existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
-            existingFilter.Description = updateFilter.Description;
-            existingFilter.IsEnabled = updateFilter.IsEnabled;
+            // Track changes for event publishing
+            var changedProperties = new List<string>();
+
+            if (existingFilter.FilterType != updateFilter.FilterType)
+            {
+                existingFilter.FilterType = updateFilter.FilterType;
+                changedProperties.Add(nameof(existingFilter.FilterType));
+            }
+
+            if (existingFilter.IpAddressOrCidr != updateFilter.IpAddressOrCidr)
+            {
+                existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
+                changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
+            }
+
+            if (existingFilter.Description != updateFilter.Description)
+            {
+                existingFilter.Description = updateFilter.Description;
+                changedProperties.Add(nameof(existingFilter.Description));
+            }
+
+            if (existingFilter.IsEnabled != updateFilter.IsEnabled)
+            {
+                existingFilter.IsEnabled = updateFilter.IsEnabled;
+                changedProperties.Add(nameof(existingFilter.IsEnabled));
+            }
+
+            // Only proceed if there are actual changes
+            if (changedProperties.Count == 0)
+            {
+                _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", updateFilter.Id);
+                return (true, null);
+            }
+
             existingFilter.UpdatedAt = DateTime.UtcNow;
 
             // Save to database
@@ -157,6 +210,22 @@ public class AdminIpFilterService : IAdminIpFilterService
 
             if (success)
             {
+                // Publish IpFilterChanged event for cache invalidation and cross-service coordination
+                await PublishEventAsync(
+                    new IpFilterChanged
+                    {
+                        FilterId = existingFilter.Id,
+                        IpAddressOrCidr = existingFilter.IpAddressOrCidr,
+                        FilterType = existingFilter.FilterType,
+                        IsEnabled = existingFilter.IsEnabled,
+                        ChangeType = "Updated",
+                        ChangedProperties = changedProperties.ToArray(),
+                        Description = existingFilter.Description ?? string.Empty,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"update IP filter {existingFilter.Id}",
+                    new { ChangedProperties = string.Join(", ", changedProperties) });
+
                 return (true, null);
             }
             else
@@ -190,6 +259,22 @@ public class AdminIpFilterService : IAdminIpFilterService
 
             if (success)
             {
+                // Publish IpFilterChanged event for cache invalidation and cross-service coordination
+                await PublishEventAsync(
+                    new IpFilterChanged
+                    {
+                        FilterId = existingFilter.Id,
+                        IpAddressOrCidr = existingFilter.IpAddressOrCidr,
+                        FilterType = existingFilter.FilterType,
+                        IsEnabled = existingFilter.IsEnabled,
+                        ChangeType = "Deleted",
+                        ChangedProperties = Array.Empty<string>(),
+                        Description = existingFilter.Description ?? string.Empty,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"delete IP filter {existingFilter.Id}",
+                    new { IpAddressOrCidr = existingFilter.IpAddressOrCidr, FilterType = existingFilter.FilterType });
+
                 return (true, null);
             }
             else

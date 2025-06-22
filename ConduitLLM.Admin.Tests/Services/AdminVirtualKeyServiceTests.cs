@@ -238,7 +238,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to publish event for newly created key")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to publish VirtualKeyUpdated event")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

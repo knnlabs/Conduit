@@ -315,6 +315,11 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationCompletedHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationFailedHandler>();
     
+    // Add Admin API event consumers for cache invalidation
+    x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
+    
     if (useRabbitMq)
     {
         x.UsingRabbitMq((context, cfg) =>
@@ -346,6 +351,9 @@ builder.Services.AddMassTransit(x =>
         Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
         Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
         Console.WriteLine("  - Model capability discovery (shared across all instances)");
+        Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
+        Console.WriteLine("  - IP filter changes (security policy updates)");
+        Console.WriteLine("  - Model cost changes (pricing updates)");
     }
     else
     {

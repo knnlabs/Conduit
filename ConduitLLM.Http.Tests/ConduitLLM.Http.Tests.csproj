@@ -3,9 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <NoWarn>CS8632</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +21,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.70" />
-    <PackageReference Include="MassTransit" Version="8.2.6" />
+    <PackageReference Include="MassTransit" Version="8.1.3" />
   </ItemGroup>
 
   <ItemGroup>
