@@ -25,6 +25,7 @@ namespace ConduitLLM.Tests.TestUtilities
             // Set environment variables as early as possible
             Environment.SetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT", "true");
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
+            Environment.SetEnvironmentVariable("DOTNET_hostBuilder:reloadConfigOnChange", "false");
         }
 
         public TestWebApplicationFactory()
@@ -42,6 +43,7 @@ namespace ConduitLLM.Tests.TestUtilities
             // Ensure environment variables are set before the host is created
             Environment.SetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT", "true");
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
+            Environment.SetEnvironmentVariable("DOTNET_hostBuilder:reloadConfigOnChange", "false");
             
             return base.CreateHost(builder);
         }
@@ -50,14 +52,23 @@ namespace ConduitLLM.Tests.TestUtilities
         {
             builder.UseEnvironment("Test");
             
-            // Add any additional configuration
-            if (AdditionalConfiguration.Count > 0)
+            // Disable file watching in tests to avoid inotify limits
+            builder.UseSetting("hostBuilder:reloadConfigOnChange", "false");
+            
+            // Configure app configuration without file watching
+            builder.ConfigureAppConfiguration((context, config) =>
             {
-                builder.ConfigureAppConfiguration((context, config) =>
-                {
-                    config.AddInMemoryCollection(AdditionalConfiguration);
-                });
-            }
+                // Clear any file-based configuration sources that might use file watching
+                config.Sources.Clear();
+                
+                // Add only in-memory configuration to avoid file watchers
+                config.AddInMemoryCollection(AdditionalConfiguration);
+                
+                // Add essential configuration without file watching
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+                config.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+                config.AddEnvironmentVariables();
+            });
             
             base.ConfigureWebHost(builder);
         }

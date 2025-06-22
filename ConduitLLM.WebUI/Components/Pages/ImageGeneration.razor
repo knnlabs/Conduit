@@ -44,6 +44,24 @@
         </div>
     </div>
 
+    @if (!availableModels.Any())
+    {
+        <div class="alert alert-info mb-4" role="alert">
+            <h4 class="alert-heading">
+                <i class="fa fa-info-circle me-2"></i>No Image Generation Models Available
+            </h4>
+            <p class="mb-0">
+                To use image generation, you need to configure models with image generation support in the Admin panel. 
+                Make sure to:
+            </p>
+            <ul class="mb-0 mt-2">
+                <li>Add provider credentials</li>
+                <li>Create model mappings for image generation models</li>
+                <li>Enable "Supports Image Generation" for those models</li>
+            </ul>
+        </div>
+    }
+
     <div class="row">
         <div class="col-12 col-lg-8">
             <!-- Generation Interface Card -->
@@ -69,6 +87,59 @@
                         </div>
                     </div>
                     
+                    <!-- Image-to-Image Input -->
+                    <div class="form-group mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="fa fa-image me-2"></i>Source Image (Optional - for Image-to-Image)
+                        </label>
+                        <div class="image-upload-area">
+                            <InputFile OnChange="@HandleSourceImageUpload" accept="image/*" class="form-control" />
+                            <div class="form-text">Upload an image to modify or create variations from. Leave empty for text-to-image generation.</div>
+                        </div>
+                        
+                        @if (sourceImage != null)
+                        {
+                            <div class="source-image-preview mt-3">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="position-relative">
+                                        <img src="@sourceImage.DataUrl" alt="Source image" class="img-thumbnail" style="height: 120px; object-fit: cover;" />
+                                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" 
+                                                @onclick="RemoveSourceImage">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold small">Operation Type</label>
+                                            <select class="form-select form-select-sm" @bind="operationType">
+                                                <option value="edit">Edit Image (modify with prompt)</option>
+                                                <option value="variation">Create Variations (ignore prompt)</option>
+                                            </select>
+                                        </div>
+                                        @if (operationType == "edit")
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fa fa-info-circle me-1"></i>
+                                                    The prompt will be used to modify the uploaded image
+                                                </small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fa fa-info-circle me-1"></i>
+                                                    Variations will be created regardless of the prompt
+                                                </small>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
                     <!-- Size Selection -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -79,11 +150,8 @@
                                 <option value="1024x1024">Square (1024x1024)</option>
                                 <option value="1792x1024">Landscape (1792x1024)</option>
                                 <option value="1024x1792">Portrait (1024x1792)</option>
-                                @if (selectedModel?.StartsWith("dall-e-2") == true)
-                                {
-                                    <option value="512x512">Small Square (512x512)</option>
-                                    <option value="256x256">Tiny Square (256x256)</option>
-                                }
+                                <option value="512x512">Small Square (512x512)</option>
+                                <option value="256x256">Tiny Square (256x256)</option>
                             </select>
                         </div>
                         
@@ -100,38 +168,35 @@
                         </div>
                     </div>
                     
-                    <!-- Quality Settings (for DALL-E 3) -->
-                    @if (selectedModel == "dall-e-3")
-                    {
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">
-                                    <i class="fa fa-gem me-2"></i>Quality
-                                </label>
-                                <select class="form-select" @bind="quality">
-                                    <option value="standard">Standard</option>
-                                    <option value="hd">HD (Higher detail)</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">
-                                    <i class="fa fa-paint-brush me-2"></i>Style
-                                </label>
-                                <select class="form-select" @bind="style">
-                                    <option value="vivid">Vivid (Hyper-real)</option>
-                                    <option value="natural">Natural (More natural)</option>
-                                </select>
-                            </div>
+                    <!-- Quality Settings -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-gem me-2"></i>Quality
+                            </label>
+                            <select class="form-select" @bind="quality">
+                                <option value="standard">Standard</option>
+                                <option value="hd">HD (Higher detail)</option>
+                            </select>
                         </div>
-                    }
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                <i class="fa fa-paint-brush me-2"></i>Style
+                            </label>
+                            <select class="form-select" @bind="style">
+                                <option value="vivid">Vivid (Hyper-real)</option>
+                                <option value="natural">Natural (More natural)</option>
+                            </select>
+                        </div>
+                    </div>
                     
                     <!-- Action Buttons -->
                     <div class="d-flex gap-2">
                         <button type="button" 
                                 class="btn btn-primary btn-lg" 
                                 @onclick="GenerateImage" 
-                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(imagePrompt))">
+                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(imagePrompt) || !availableModels.Any())">
                             @if (isGenerating)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -173,7 +238,7 @@
                             {
                                 <div class="col-12 col-md-6">
                                     <div class="generated-image-container position-relative">
-                                        <img src="@image.Url" 
+                                        <img src="@GetImageSource(image)" 
                                              alt="Generated image @(index + 1)" 
                                              class="img-fluid rounded shadow-sm w-100"
                                              style="cursor: pointer;"
@@ -213,15 +278,25 @@
                         <label for="modelSelect" class="form-label fw-semibold">
                             <i class="fa fa-robot me-2"></i>Image Model
                         </label>
-                        <select id="modelSelect" 
-                                class="form-select" 
-                                @bind="selectedModel"
-                                @bind:after="OnModelChanged">
-                            @foreach (var model in availableModels)
-                            {
-                                <option value="@model.ModelName">@model.DisplayName</option>
-                            }
-                        </select>
+                        @if (availableModels.Any())
+                        {
+                            <select id="modelSelect" 
+                                    class="form-select" 
+                                    @bind="selectedModel"
+                                    @bind:after="OnModelChanged">
+                                @foreach (var model in availableModels)
+                                {
+                                    <option value="@model.ModelName">@model.DisplayName</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mb-0">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                No image generation models configured. Please add models with image generation support in the Admin panel.
+                            </div>
+                        }
                         <div class="form-text">@GetModelDescription(selectedModel)</div>
                     </div>
                     
@@ -304,7 +379,7 @@
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <div class="modal-body text-center p-0">
-                    <img src="@modalImage.Url" alt="Full size image" class="img-fluid" />
+                    <img src="@GetImageSource(modalImage)" alt="Full size image" class="img-fluid" />
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" @onclick="() => DownloadImage(modalImage)">
@@ -323,7 +398,7 @@
     private List<PromptHistoryItem> recentPrompts = new();
     
     private string imagePrompt = "";
-    private string selectedModel = "dall-e-3";
+    private string selectedModel = "";
     private string selectedSize = "1024x1024";
     private int numberOfImages = 1;
     private string quality = "standard";
@@ -331,11 +406,33 @@
     private string? apiKey;
     private bool isGenerating = false;
     private ImageData? modalImage;
+    
+    // Image-to-image related fields
+    private AttachedImage? sourceImage;
+    private string operationType = "edit";
+    private const long MaxFileSize = 20 * 1024 * 1024; // 20MB max file size
+    
+    private class AttachedImage
+    {
+        public string FileName { get; set; } = "";
+        public string DataUrl { get; set; } = "";
+        public string ContentType { get; set; } = "";
+        public string Base64Data { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAvailableModels();
-        await LoadRecentPrompts();
+        // LoadRecentPrompts moved to OnAfterRenderAsync to avoid JS interop during SSR
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadRecentPrompts();
+            StateHasChanged();
+        }
     }
 
     private async Task LoadAvailableModels()
@@ -377,24 +474,19 @@
                 }
             }
             
-            // If no models found in mappings, use known defaults
+            // If no models found in mappings, keep the list empty
             if (!imageGenModels.Any())
             {
-                _logger.LogInformation("No image generation models found in mappings, using defaults");
-                imageGenModels = new List<ImageModel>
-                {
-                    new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
-                    new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" },
-                    new ImageModel { ModelName = "minimax-image", DisplayName = "MiniMax Image", Provider = "minimax" }
-                };
+                _logger.LogWarning("No image generation models found in mappings. Please configure models with SupportsImageGeneration=true in the Admin API.");
             }
             
             availableModels = imageGenModels;
             
-            // Set default model if current selection is not available
-            if (!availableModels.Any(m => m.ModelName == selectedModel) && availableModels.Any())
+            // Set default model if current selection is not available or empty
+            if ((string.IsNullOrEmpty(selectedModel) || !availableModels.Any(m => m.ModelName == selectedModel)) && availableModels.Any())
             {
                 selectedModel = availableModels.First().ModelName;
+                _logger.LogInformation("Set default selected model to: {Model}", selectedModel);
             }
         }
         catch (Exception ex)
@@ -402,12 +494,9 @@
             _logger.LogError(ex, "Error loading available models");
             ToastService.ShowError("Failed to load available models");
             
-            // Fall back to defaults
-            availableModels = new List<ImageModel>
-            {
-                new ImageModel { ModelName = "dall-e-3", DisplayName = "DALL-E 3 (OpenAI)", Provider = "openai" },
-                new ImageModel { ModelName = "dall-e-2", DisplayName = "DALL-E 2 (OpenAI)", Provider = "openai" }
-            };
+            // Keep the list empty if loading fails
+            availableModels = new List<ImageModel>();
+            ToastService.ShowWarning("No image generation models available. Please configure models in the Admin panel.");
         }
     }
 
@@ -468,7 +557,25 @@
 
     private async Task GenerateImage()
     {
-        if (string.IsNullOrWhiteSpace(imagePrompt))
+        // Validation
+        if (sourceImage == null && string.IsNullOrWhiteSpace(imagePrompt))
+        {
+            ToastService.ShowWarning("Please enter an image description or upload a source image");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedModel))
+        {
+            ToastService.ShowWarning("Please select an image generation model");
+            return;
+        }
+
+        // For variations, we don't require a prompt
+        if (sourceImage != null && operationType == "variation" && string.IsNullOrWhiteSpace(imagePrompt))
+        {
+            // This is okay for variations
+        }
+        else if (string.IsNullOrWhiteSpace(imagePrompt))
         {
             ToastService.ShowWarning("Please enter an image description");
             return;
@@ -485,19 +592,42 @@
                 Size = selectedSize,
                 Quality = quality,
                 Style = style,
-                ResponseFormat = "url"
+                ResponseFormat = "b64_json"
             };
+
+            // Add image-to-image parameters if source image is provided
+            if (sourceImage != null)
+            {
+                request.Image = sourceImage.Base64Data;
+                request.Operation = operationType;
+                
+                // For variations, use empty prompt if none provided
+                if (operationType == "variation" && string.IsNullOrWhiteSpace(imagePrompt))
+                {
+                    request.Prompt = ""; // Some providers may require an empty prompt for variations
+                }
+            }
 
             var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
             
-            if (response?.Data != null)
+            if (response?.Data != null && response.Data.Any())
             {
                 generatedImages.AddRange(response.Data);
                 
-                // Add to recent prompts
-                await AddToPromptHistory(imagePrompt);
+                // Add to recent prompts (only if we have a meaningful prompt)
+                if (!string.IsNullOrWhiteSpace(imagePrompt))
+                {
+                    await AddToPromptHistory(imagePrompt);
+                }
                 
-                ToastService.ShowSuccess($"Successfully generated {response.Data.Count} image(s)");
+                var operationText = sourceImage != null ? $"{operationType} operation" : "generation";
+                ToastService.ShowSuccess($"Successfully completed {operationText} - {response.Data.Count} image(s) created");
+            }
+            else
+            {
+                // Response was null or had no data
+                ToastService.ShowError("Failed to generate image. Please check your API configuration and try again.");
+                _logger.LogWarning("Image generation returned null or empty response");
             }
         }
         catch (Exception ex)
@@ -513,29 +643,14 @@
 
     private void OnModelChanged()
     {
-        // Adjust settings based on selected model
-        if (selectedModel == "dall-e-2")
-        {
-            // DALL-E 2 only supports 1 image at a time in some configurations
-            if (numberOfImages > 1)
-                numberOfImages = 1;
-                
-            // Reset to standard size if using DALL-E 3 specific sizes
-            if (selectedSize == "1792x1024" || selectedSize == "1024x1792")
-                selectedSize = "1024x1024";
-        }
+        // Model changed - could add generic logic here if needed
+        // Model-specific constraints should be handled by the API based on actual capabilities
     }
 
     private string GetModelDescription(string model)
     {
-        return model switch
-        {
-            "dall-e-3" => "Latest OpenAI model with best quality and detail",
-            "dall-e-2" => "Previous OpenAI model, faster but less detailed",
-            "image-01" => "MiniMax's image generation model",
-            "stable-diffusion-xl" => "Open-source model with artistic flexibility",
-            _ => "Image generation model"
-        };
+        // Return a generic description - specific model details should come from configuration
+        return "Image generation model";
     }
 
     private async Task AddToPromptHistory(string prompt)
@@ -617,6 +732,7 @@
     {
         imagePrompt = "";
         generatedImages.Clear();
+        sourceImage = null;
     }
 
     private void RemoveImage(ImageData image)
@@ -634,12 +750,78 @@
         modalImage = null;
     }
 
+    private string GetImageSource(ImageData image)
+    {
+        if (!string.IsNullOrEmpty(image.B64Json))
+        {
+            return $"data:image/png;base64,{image.B64Json}";
+        }
+        else if (!string.IsNullOrEmpty(image.Url))
+        {
+            return image.Url;
+        }
+        return "";
+    }
+
     private async Task DownloadImage(ImageData image)
     {
-        if (!string.IsNullOrEmpty(image.Url))
+        var imageSource = GetImageSource(image);
+        if (!string.IsNullOrEmpty(imageSource))
         {
-            await JSRuntime.InvokeVoidAsync("downloadImage", image.Url, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+            await JSRuntime.InvokeVoidAsync("downloadImage", imageSource, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
         }
+    }
+
+    private async Task HandleSourceImageUpload(InputFileChangeEventArgs e)
+    {
+        var imageFile = e.File;
+        if (imageFile == null) return;
+
+        if (imageFile.Size > MaxFileSize)
+        {
+            ToastService.ShowError($"File {imageFile.Name} is too large. Maximum size is 20MB.");
+            return;
+        }
+
+        if (!imageFile.ContentType.StartsWith("image/"))
+        {
+            ToastService.ShowError($"File {imageFile.Name} is not an image.");
+            return;
+        }
+
+        try
+        {
+            // Read the image and convert to base64
+            using var stream = imageFile.OpenReadStream(MaxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{imageFile.ContentType};base64,{base64}";
+
+            sourceImage = new AttachedImage
+            {
+                FileName = imageFile.Name,
+                DataUrl = dataUrl,
+                ContentType = imageFile.ContentType,
+                Base64Data = base64
+            };
+
+            ToastService.ShowSuccess($"Source image uploaded: {imageFile.Name}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading source image {FileName}", imageFile.Name);
+            ToastService.ShowError($"Error uploading {imageFile.Name}: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoveSourceImage()
+    {
+        sourceImage = null;
+        StateHasChanged();
     }
 
     private class ImageModel
@@ -688,5 +870,25 @@
     
     .sample-prompt:hover {
         background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .image-upload-area {
+        position: relative;
+    }
+    
+    .source-image-preview {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .source-image-preview .img-thumbnail {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .source-image-preview .img-thumbnail:hover {
+        transform: scale(1.05);
     }
 </style>

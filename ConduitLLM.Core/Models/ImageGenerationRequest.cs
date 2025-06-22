@@ -69,5 +69,30 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("user")]
         public string? User { get; set; }
+
+        /// <summary>
+        /// Base64-encoded image to use as input for image-to-image generation.
+        /// When provided, the prompt will be used to modify or enhance this image.
+        /// Supported by providers like OpenAI (for edits/variations) and Replicate models.
+        /// </summary>
+        [JsonPropertyName("image")]
+        public string? Image { get; set; }
+
+        /// <summary>
+        /// Base64-encoded mask image for image editing (PNG with transparency).
+        /// Only the transparent areas will be edited when both image and mask are provided.
+        /// Primarily used with OpenAI's image editing functionality.
+        /// </summary>
+        [JsonPropertyName("mask")]
+        public string? Mask { get; set; }
+
+        /// <summary>
+        /// The operation type for image generation.
+        /// - "generate": Standard text-to-image generation (default)
+        /// - "edit": Edit existing image using prompt and optional mask
+        /// - "variation": Create variations of existing image
+        /// </summary>
+        [JsonPropertyName("operation")]
+        public string Operation { get; set; } = "generate";
     }
 }

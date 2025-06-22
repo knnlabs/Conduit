@@ -11,7 +11,9 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Events;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -26,6 +28,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly IVirtualKeyCache? _cache; // Optional cache for invalidation
+        private readonly IPublishEndpoint? _publishEndpoint; // Optional event publishing
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -35,16 +38,19 @@ namespace ConduitLLM.Admin.Services
         /// <param name="virtualKeyRepository">The virtual key repository</param>
         /// <param name="spendHistoryRepository">The spend history repository</param>
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
+        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyCache? cache,
+            IPublishEndpoint? publishEndpoint,
             ILogger<AdminVirtualKeyService> logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache; // Optional - can be null if Redis not configured
+            _publishEndpoint = publishEndpoint; // Optional - can be null if MassTransit not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -156,38 +162,120 @@ namespace ConduitLLM.Admin.Services
                 return false;
             }
 
-            // Update properties
-            if (request.KeyName != null)
+            // Track changed properties for event publishing
+            var changedProperties = new List<string>();
+
+            // Update properties and track changes
+            if (request.KeyName != null && key.KeyName != request.KeyName)
+            {
                 key.KeyName = request.KeyName;
+                changedProperties.Add(nameof(key.KeyName));
+            }
 
-            if (request.AllowedModels != null)
+            if (request.AllowedModels != null && key.AllowedModels != request.AllowedModels)
+            {
                 key.AllowedModels = request.AllowedModels;
+                changedProperties.Add(nameof(key.AllowedModels));
+            }
 
-            if (request.MaxBudget.HasValue)
+            if (request.MaxBudget.HasValue && key.MaxBudget != request.MaxBudget)
+            {
                 key.MaxBudget = request.MaxBudget;
+                changedProperties.Add(nameof(key.MaxBudget));
+            }
 
-            if (request.BudgetDuration != null)
+            if (request.BudgetDuration != null && key.BudgetDuration != request.BudgetDuration)
+            {
                 key.BudgetDuration = request.BudgetDuration;
+                changedProperties.Add(nameof(key.BudgetDuration));
+            }
 
-            if (request.IsEnabled.HasValue)
+            if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
+            {
                 key.IsEnabled = request.IsEnabled.Value;
+                changedProperties.Add(nameof(key.IsEnabled));
+            }
 
-            if (request.ExpiresAt.HasValue)
+            if (request.ExpiresAt.HasValue && key.ExpiresAt != request.ExpiresAt)
+            {
                 key.ExpiresAt = request.ExpiresAt;
+                changedProperties.Add(nameof(key.ExpiresAt));
+            }
 
-            if (request.Metadata != null)
+            if (request.Metadata != null && key.Metadata != request.Metadata)
+            {
                 key.Metadata = request.Metadata;
+                changedProperties.Add(nameof(key.Metadata));
+            }
 
-            if (request.RateLimitRpm.HasValue)
+            if (request.RateLimitRpm.HasValue && key.RateLimitRpm != request.RateLimitRpm)
+            {
                 key.RateLimitRpm = request.RateLimitRpm;
+                changedProperties.Add(nameof(key.RateLimitRpm));
+            }
 
-            if (request.RateLimitRpd.HasValue)
+            if (request.RateLimitRpd.HasValue && key.RateLimitRpd != request.RateLimitRpd)
+            {
                 key.RateLimitRpd = request.RateLimitRpd;
+                changedProperties.Add(nameof(key.RateLimitRpd));
+            }
+
+            // Only proceed if there are actual changes
+            if (changedProperties.Count == 0)
+            {
+                _logger.LogDebug("No changes detected for virtual key {KeyId} - skipping update", id);
+                return true;
+            }
 
             key.UpdatedAt = DateTime.UtcNow;
 
             // Save changes
             var result = await _virtualKeyRepository.UpdateAsync(key);
+
+            if (result)
+            {
+                // Publish VirtualKeyUpdated event for cache invalidation and cross-service coordination
+                if (_publishEndpoint != null)
+                {
+                    try
+                    {
+                        await _publishEndpoint.Publish(new VirtualKeyUpdated
+                        {
+                            KeyId = key.Id,
+                            KeyHash = key.KeyHash,
+                            ChangedProperties = changedProperties.ToArray(),
+                            CorrelationId = Guid.NewGuid().ToString()
+                        });
+
+                        _logger.LogDebug("Published VirtualKeyUpdated event for key {KeyId} with changes: {ChangedProperties}", 
+                            id, string.Join(", ", changedProperties));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to publish VirtualKeyUpdated event for key {KeyId} - operation succeeded but event not sent", id);
+                        // Don't fail the operation if event publishing fails
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyUpdated event for key {KeyId}", id);
+                }
+
+                // Legacy cache invalidation (will be replaced by event-driven invalidation)
+                if (_cache != null)
+                {
+                    try
+                    {
+                        await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
+                        _logger.LogDebug("Invalidated cache for Virtual Key after update: {KeyId}", id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to invalidate cache for Virtual Key {KeyId} after update", id);
+                        // Don't fail the operation if cache invalidation fails
+                    }
+                }
+            }
 
             return result;
         }
@@ -204,7 +292,44 @@ namespace ConduitLLM.Admin.Services
                 return false;
             }
 
-            return await _virtualKeyRepository.DeleteAsync(id);
+            // TODO: Media Cleanup - When deleting a virtual key, we need to also delete all associated
+            // media files (images/videos) from storage. Currently, these files become orphaned.
+            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+            // IMPORTANT: This is a production concern - orphaned media will grow storage costs!
+            
+            var result = await _virtualKeyRepository.DeleteAsync(id);
+
+            if (result)
+            {
+                // Publish VirtualKeyDeleted event for cache invalidation and cleanup
+                if (_publishEndpoint != null)
+                {
+                    try
+                    {
+                        await _publishEndpoint.Publish(new VirtualKeyDeleted
+                        {
+                            KeyId = key.Id,
+                            KeyHash = key.KeyHash,
+                            KeyName = key.KeyName,
+                            CorrelationId = Guid.NewGuid().ToString()
+                        });
+
+                        _logger.LogDebug("Published VirtualKeyDeleted event for key {KeyId} (name: {KeyName})", 
+                            key.Id, key.KeyName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to publish VirtualKeyDeleted event for key {KeyId} - operation succeeded but event not sent", id);
+                        // Don't fail the operation if event publishing fails
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Event publishing not configured - skipping VirtualKeyDeleted event for key {KeyId}", id);
+                }
+            }
+
+            return result;
         }
 
         /// <inheritdoc />
@@ -605,6 +730,13 @@ namespace ConduitLLM.Admin.Services
         public async Task PerformMaintenanceAsync()
         {
             _logger.LogInformation("Starting virtual key maintenance tasks");
+
+            // TODO: Media Lifecycle Maintenance - Add the following tasks:
+            // 1. Clean up expired media (based on MediaRecord.ExpiresAt)
+            // 2. Clean up orphaned media (virtual key deleted but media remains)
+            // 3. Prune old media based on retention policy (e.g., >90 days)
+            // 4. Update storage usage statistics per virtual key
+            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
 
             try
             {

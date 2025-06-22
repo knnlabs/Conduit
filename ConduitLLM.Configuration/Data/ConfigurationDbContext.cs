@@ -65,6 +65,16 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
 
+        // TODO: Media Ownership Tracking - Add MediaRecords table to track generated media
+        // This table should include:
+        // - StorageKey (unique identifier)
+        // - VirtualKeyId (foreign key with cascade delete)
+        // - MediaType (image/video)
+        // - Provider, Model, Prompt
+        // - SizeBytes, ContentHash
+        // - CreatedAt, ExpiresAt, LastAccessedAt
+        // See: docs/TODO-Media-Lifecycle-Management.md for schema design
+
         /// <summary>
         /// Database set for provider credentials
         /// </summary>

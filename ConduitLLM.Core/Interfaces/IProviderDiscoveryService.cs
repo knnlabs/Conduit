@@ -46,6 +46,15 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Task representing the async operation.</returns>
         Task RefreshCapabilitiesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Updates the cached capabilities for a specific provider.
+        /// This method is called when provider credentials are updated to refresh the cached model capabilities.
+        /// </summary>
+        /// <param name="providerName">The name of the provider to refresh.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Task representing the async operation.</returns>
+        Task RefreshProviderCapabilitiesAsync(string providerName, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

@@ -30,7 +30,7 @@ namespace ConduitLLM.Http.Services
             _logger = logger;
 
             // Subscribe to invalidation messages
-            _subscriber.Subscribe(InvalidationChannel, OnKeyInvalidated);
+            _subscriber.Subscribe(RedisChannel.Literal(InvalidationChannel), OnKeyInvalidated);
         }
 
         /// <summary>
@@ -52,19 +52,23 @@ namespace ConduitLLM.Http.Services
                 
                 if (cachedValue.HasValue)
                 {
-                    var virtualKey = JsonSerializer.Deserialize<VirtualKey>(cachedValue);
-                    
-                    // Validate key is still enabled and not expired
-                    if (virtualKey != null && IsKeyValid(virtualKey))
+                    var jsonString = (string?)cachedValue;
+                    if (jsonString is not null)
                     {
-                        _logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
-                        return virtualKey;
-                    }
-                    else
-                    {
-                        // Invalid key in cache, remove it
-                        await _database.KeyDeleteAsync(cacheKey);
-                        _logger.LogDebug("Removed invalid Virtual Key from cache: {KeyHash}", keyHash);
+                        var virtualKey = JsonSerializer.Deserialize<VirtualKey>(jsonString);
+                        
+                        // Validate key is still enabled and not expired
+                        if (virtualKey != null && IsKeyValid(virtualKey))
+                        {
+                            _logger.LogDebug("Virtual Key cache hit: {KeyHash}", keyHash);
+                            return virtualKey;
+                        }
+                        else
+                        {
+                            // Invalid key in cache, remove it
+                            await _database.KeyDeleteAsync(cacheKey);
+                            _logger.LogDebug("Removed invalid Virtual Key from cache: {KeyHash}", keyHash);
+                        }
                     }
                 }
                 
@@ -131,7 +135,7 @@ namespace ConduitLLM.Http.Services
                 await _database.KeyDeleteAsync(cacheKey);
                 
                 // Notify ALL instances to invalidate their caches
-                await _subscriber.PublishAsync(InvalidationChannel, keyHash);
+                await _subscriber.PublishAsync(RedisChannel.Literal(InvalidationChannel), keyHash);
                 
                 _logger.LogInformation("Invalidated Virtual Key across all instances: {KeyHash}", keyHash);
             }
@@ -204,11 +208,11 @@ namespace ConduitLLM.Http.Services
                 var cacheKey = KeyPrefix + keyHash;
                 await _database.KeyDeleteAsync(cacheKey);
                 
-                _logger.LogDebug("Invalidated Virtual Key from pub/sub: {KeyHash}", (string)keyHash);
+                _logger.LogDebug("Invalidated Virtual Key from pub/sub: {KeyHash}", keyHash.ToString());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling key invalidation: {KeyHash}", (string)keyHash);
+                _logger.LogError(ex, "Error handling key invalidation: {KeyHash}", keyHash.ToString());
             }
         }
 

@@ -33,6 +33,7 @@ namespace ConduitLLM.Admin.Tests.Services
             _service = new AdminProviderCredentialService(
                 _mockProviderCredentialRepository.Object,
                 _mockHttpClientFactory.Object,
+                null, // publishEndpoint - null for testing
                 _mockLogger.Object);
         }
 

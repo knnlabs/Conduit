@@ -88,6 +88,35 @@
                 <strong>Model Mappings:</strong> Create user-friendly aliases for your LLM models. 
                 For example, map "gpt4" to OpenAI's "gpt-4-turbo-preview" model.
             </div>
+
+            @if (modelMappings?.Any() == true)
+            {
+                <div class="mb-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="Search by model alias, provider, or provider model..."
+                               @bind="searchFilter"
+                               @bind:event="oninput"
+                               @onkeyup="@(async () => await Task.Run(ApplyFilter))" />
+                        @if (!string.IsNullOrEmpty(searchFilter))
+                        {
+                            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(searchFilter))
+                    {
+                        <small class="text-muted mt-1 d-block">
+                            Showing @filteredMappings.Count of @modelMappings.Count mappings
+                        </small>
+                    }
+                </div>
+            }
             
             @if (modelMappings == null)
             {
@@ -134,7 +163,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var mapping in modelMappings.OrderBy(m => m.ModelId))
+                            @foreach (var mapping in filteredMappings)
                             {
                                 <tr class="modern-table-row">
                                     <td>
@@ -253,6 +282,8 @@
     // --- State ---
     private List<ConfigDTOs.ProviderCredentialDto> providerCredentials = new();
     private List<ConfigDTOs.ModelProviderMappingDto> modelMappings = new();
+    private string searchFilter = string.Empty;
+    private List<ConfigDTOs.ModelProviderMappingDto> filteredMappings = new();
     
     protected override async Task OnInitializedAsync()
     {
@@ -290,11 +321,13 @@
         {
             var mappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
             modelMappings = mappings.OrderBy(m => m.ModelId).ToList();
+            ApplyFilter();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading model mappings");
             modelMappings = new List<ConfigDTOs.ModelProviderMappingDto>();
+            filteredMappings = new List<ConfigDTOs.ModelProviderMappingDto>();
         }
     }
     
@@ -336,6 +369,7 @@
             if (success)
             {
                 await LoadModelMappingsAsync();
+                ApplyFilter();
                 ToastService.ShowSuccess($"Model mapping '{mapping.ModelId}' deleted successfully");
             }
             else
@@ -443,6 +477,37 @@
     private int GetVisionCount()
     {
         return modelMappings?.Count(m => m.IsEnabled && m.SupportsVision) ?? 0;
+    }
+
+    /// <summary>
+    /// Applies the search filter to the model mappings.
+    /// </summary>
+    private void ApplyFilter()
+    {
+        if (string.IsNullOrWhiteSpace(searchFilter))
+        {
+            filteredMappings = modelMappings;
+        }
+        else
+        {
+            var filter = searchFilter.ToLowerInvariant();
+            filteredMappings = modelMappings.Where(m =>
+                m.ModelId.ToLowerInvariant().Contains(filter) ||
+                (m.ProviderModelId?.ToLowerInvariant().Contains(filter) ?? false) ||
+                GetProviderNameById(m.ProviderId).ToLowerInvariant().Contains(filter)
+            ).ToList();
+        }
+        
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Clears the search filter.
+    /// </summary>
+    private void ClearSearch()
+    {
+        searchFilter = string.Empty;
+        ApplyFilter();
     }
 }
 

@@ -194,7 +194,30 @@ namespace ConduitLLM.Configuration.Repositories
                 existingEntity.ProviderCredentialId = modelProviderMapping.ProviderCredentialId;
                 existingEntity.IsEnabled = modelProviderMapping.IsEnabled;
                 existingEntity.MaxContextTokens = modelProviderMapping.MaxContextTokens;
+                
+                // Update capability fields
+                existingEntity.SupportsVision = modelProviderMapping.SupportsVision;
+                existingEntity.SupportsAudioTranscription = modelProviderMapping.SupportsAudioTranscription;
+                existingEntity.SupportsTextToSpeech = modelProviderMapping.SupportsTextToSpeech;
+                existingEntity.SupportsRealtimeAudio = modelProviderMapping.SupportsRealtimeAudio;
+                existingEntity.SupportsImageGeneration = modelProviderMapping.SupportsImageGeneration;
+                existingEntity.TokenizerType = modelProviderMapping.TokenizerType;
+                existingEntity.SupportedVoices = modelProviderMapping.SupportedVoices;
+                existingEntity.SupportedLanguages = modelProviderMapping.SupportedLanguages;
+                existingEntity.SupportedFormats = modelProviderMapping.SupportedFormats;
+                existingEntity.IsDefault = modelProviderMapping.IsDefault;
+                existingEntity.DefaultCapabilityType = modelProviderMapping.DefaultCapabilityType;
+                
                 existingEntity.UpdatedAt = DateTime.UtcNow;
+
+                _logger.LogInformation(
+                    "Updating model mapping {ModelAlias}: ImageGen={ImageGen}, Vision={Vision}, TTS={TTS}, Audio={Audio}, Realtime={Realtime}",
+                    existingEntity.ModelAlias,
+                    existingEntity.SupportsImageGeneration,
+                    existingEntity.SupportsVision,
+                    existingEntity.SupportsTextToSpeech,
+                    existingEntity.SupportsAudioTranscription,
+                    existingEntity.SupportsRealtimeAudio);
 
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return true;

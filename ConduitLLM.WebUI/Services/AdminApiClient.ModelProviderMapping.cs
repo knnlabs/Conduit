@@ -185,5 +185,91 @@ namespace ConduitLLM.WebUI.Services
         }
 
         #endregion
+
+        #region Model Discovery
+
+        /// <summary>
+        /// Discovers available models for a specific provider
+        /// </summary>
+        /// <param name="providerName">The provider name</param>
+        /// <returns>List of discovered models</returns>
+        public async Task<IEnumerable<DiscoveredModel>> DiscoverProviderModelsAsync(string providerName)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/ModelProviderMapping/discover/provider/{Uri.EscapeDataString(providerName)}");
+                response.EnsureSuccessStatusCode();
+
+                var result = await response.Content.ReadFromJsonAsync<IEnumerable<DiscoveredModel>>(_jsonOptions);
+                return result ?? Enumerable.Empty<DiscoveredModel>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error discovering models for provider {Provider}", providerName);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Discovers capabilities for a specific model
+        /// </summary>
+        /// <param name="providerName">The provider name</param>
+        /// <param name="modelId">The model ID</param>
+        /// <returns>Model with capabilities</returns>
+        public async Task<DiscoveredModel?> DiscoverModelCapabilitiesAsync(string providerName, string modelId)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(
+                    $"api/ModelProviderMapping/discover/model/{Uri.EscapeDataString(providerName)}/{Uri.EscapeDataString(modelId)}");
+                
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return null;
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content.ReadFromJsonAsync<DiscoveredModel>(_jsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error discovering capabilities for model {ModelId} from provider {Provider}", modelId, providerName);
+                throw;
+            }
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Represents a discovered model with its capabilities
+    /// </summary>
+    public class DiscoveredModel
+    {
+        public string ModelId { get; set; } = "";
+        public string Provider { get; set; } = "";
+        public string? DisplayName { get; set; }
+        public ModelCapabilities? Capabilities { get; set; }
+        public DateTime LastVerified { get; set; }
+    }
+
+    /// <summary>
+    /// Model capabilities
+    /// </summary>
+    public class ModelCapabilities
+    {
+        public bool Chat { get; set; }
+        public bool ChatStream { get; set; }
+        public bool Embeddings { get; set; }
+        public bool ImageGeneration { get; set; }
+        public bool Vision { get; set; }
+        public bool VideoGeneration { get; set; }
+        public bool VideoUnderstanding { get; set; }
+        public bool FunctionCalling { get; set; }
+        public bool ToolUse { get; set; }
+        public bool JsonMode { get; set; }
+        public int? MaxTokens { get; set; }
+        public int? MaxOutputTokens { get; set; }
     }
 }

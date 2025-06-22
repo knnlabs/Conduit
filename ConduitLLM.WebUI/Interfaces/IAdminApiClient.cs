@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.WebUI.Services;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -56,6 +57,21 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="id">The ID of the mapping to delete</param>
         /// <returns>True if successful, false otherwise</returns>
         Task<bool> DeleteModelProviderMappingAsync(int id);
+
+        /// <summary>
+        /// Discovers available models for a specific provider
+        /// </summary>
+        /// <param name="providerName">The provider name</param>
+        /// <returns>List of discovered models with their capabilities</returns>
+        Task<IEnumerable<DiscoveredModel>> DiscoverProviderModelsAsync(string providerName);
+
+        /// <summary>
+        /// Discovers capabilities for a specific model
+        /// </summary>
+        /// <param name="providerName">The provider name</param>
+        /// <param name="modelId">The model ID</param>
+        /// <returns>Model information with capabilities, or null if not found</returns>
+        Task<DiscoveredModel?> DiscoverModelCapabilitiesAsync(string providerName, string modelId);
 
         #endregion
         #region IP Filter Settings

@@ -22,6 +22,9 @@ using ConduitLLM.Http.Security;
 using ConduitLLM.Http.Services; // Added for ApiVirtualKeyService, RedisVirtualKeyCache, CachedApiVirtualKeyService
 using ConduitLLM.Providers; // Assuming LLMClientFactory is here
 using ConduitLLM.Providers.Extensions; // Add namespace for HttpClient extensions
+using ConduitLLM.Admin.Services; // Added for DatabaseAwareLLMClientFactory
+
+using MassTransit; // Added for event bus infrastructure
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -139,8 +142,12 @@ builder.Services.AddCoreApiSecurity(builder.Configuration);
 // Register HttpClientFactory - REQUIRED for LLMClientFactory
 builder.Services.AddHttpClient();
 
+// Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
+builder.Services.AddConfigurationAdapters();
+
 // Add dependencies needed for the Conduit service
-builder.Services.AddScoped<ILLMClientFactory, ConduitLLM.Providers.LLMClientFactory>();
+// Use DatabaseAwareLLMClientFactory to get provider credentials from database
+builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
 builder.Services.AddScoped<ConduitRegistry>();
 
 // Add performance metrics service
@@ -160,6 +167,71 @@ builder.Services.AddRepositories();
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
+
+// Register enhanced model discovery providers
+// Configure HttpClients for each discovery provider
+builder.Services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+});
+
+builder.Services.AddHttpClient<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+});
+
+// Register discovery providers as concrete implementations first
+builder.Services.AddScoped<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(serviceProvider =>
+{
+    var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.OpenRouterDiscoveryProvider));
+    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>>();
+    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+    
+    // Get API key from provider credentials
+    try
+    {
+        var credential = credentialService.GetCredentialByProviderNameAsync("openrouter").GetAwaiter().GetResult();
+        var apiKey = credential?.ApiKey;
+        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, apiKey);
+    }
+    catch
+    {
+        // If we can't get credentials, still register the provider (it will fall back to patterns)
+        return new ConduitLLM.Core.Services.OpenRouterDiscoveryProvider(httpClient, logger, null);
+    }
+});
+
+builder.Services.AddScoped<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>(serviceProvider =>
+{
+    var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient(nameof(ConduitLLM.Core.Services.AnthropicDiscoveryProvider));
+    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>>();
+    var credentialService = serviceProvider.GetRequiredService<ConduitLLM.Configuration.IProviderCredentialService>();
+    
+    // Get API key from provider credentials
+    try
+    {
+        var credential = credentialService.GetCredentialByProviderNameAsync("anthropic").GetAwaiter().GetResult();
+        var apiKey = credential?.ApiKey;
+        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, apiKey);
+    }
+    catch
+    {
+        // If we can't get credentials, still register the provider (it will fall back to patterns)
+        return new ConduitLLM.Core.Services.AnthropicDiscoveryProvider(httpClient, logger, null);
+    }
+});
+
+// Register the providers as IModelDiscoveryProvider interfaces
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
+    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>());
+
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IModelDiscoveryProvider>(serviceProvider =>
+    serviceProvider.GetRequiredService<ConduitLLM.Core.Services.AnthropicDiscoveryProvider>());
+
 // Virtual Key service registration will be done after Redis configuration
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
@@ -196,7 +268,18 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     });
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
-    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, CachedApiVirtualKeyService>();
+    
+    // Register CachedApiVirtualKeyService with event publishing dependency
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
+    {
+        var virtualKeyRepository = serviceProvider.GetRequiredService<IVirtualKeyRepository>();
+        var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+        var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
+        var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+        var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
+        
+        return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
+    });
     
     Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode)");
 }
@@ -208,8 +291,71 @@ else
     Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode)");
 }
 
-// Register Configuration adapters (moved from Core)
-builder.Services.AddConfigurationAdapters();
+// Configure RabbitMQ settings
+var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
+    ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
+
+// Check if RabbitMQ is configured
+var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
+
+// Register MassTransit event bus
+builder.Services.AddMassTransit(x =>
+{
+    // Add event consumers for Core API
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VirtualKeyCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
+    
+    // Add image generation consumer
+    x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
+    
+    if (useRabbitMq)
+    {
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            // Configure RabbitMQ connection
+            cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
+            {
+                h.Username(rabbitMqConfig.Username);
+                h.Password(rabbitMqConfig.Password);
+                h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.HeartbeatInterval));
+            });
+            
+            // Configure prefetch count for consumer concurrency
+            cfg.PrefetchCount = rabbitMqConfig.PrefetchCount;
+            
+            // Configure retry policy for reliability
+            cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+            
+            // Configure delayed redelivery for failed messages
+            cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure endpoints with automatic topology
+            cfg.ConfigureEndpoints(context);
+        });
+        
+        Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+    }
+    else
+    {
+        x.UsingInMemory((context, cfg) =>
+        {
+            // NOTE: Using in-memory transport for single-instance deployments
+            // Configure RabbitMQ environment variables for multi-instance production
+            
+            // Configure retry policy for reliability
+            cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
+            
+            // Configure delayed redelivery for failed messages
+            cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure endpoints
+            cfg.ConfigureEndpoints(context);
+        });
+        
+        Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
+    }
+});
 
 // Register provider model list service
 builder.Services.AddScoped<ModelListService>();
@@ -259,6 +405,28 @@ builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtim
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
 
+// Register Image Generation Queue (using Redis for multi-instance support)
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IImageGenerationQueue>(sp =>
+    {
+        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisImageGenerationQueue>>();
+        return new ConduitLLM.Core.Services.RedisImageGenerationQueue(redis, logger);
+    });
+    
+    // Add background service for processing image generation tasks
+    builder.Services.AddHostedService<ImageGenerationBackgroundService>();
+    
+    Console.WriteLine("[Conduit] Image generation queue configured with Redis (distributed mode)");
+}
+else
+{
+    // For development without Redis, we'll use a simple in-memory queue
+    // Note: This won't support multiple instances
+    Console.WriteLine("[Conduit] WARNING: Redis not configured. Image generation queue will not support multiple instances.");
+}
+
 // Register Media Storage Service
 var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
 if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
@@ -273,9 +441,33 @@ else
     builder.Services.AddSingleton<IMediaStorageService>(provider =>
     {
         var logger = provider.GetRequiredService<ILogger<InMemoryMediaStorageService>>();
-        var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000";
-        var baseUrl = urls.Split(';').First();
-        return new InMemoryMediaStorageService(logger, baseUrl);
+        
+        // Try to get the public base URL from configuration
+        var mediaBaseUrl = builder.Configuration["CONDUITLLM:MEDIA_BASE_URL"] 
+            ?? builder.Configuration["Media:BaseUrl"]
+            ?? builder.Configuration["CONDUIT_MEDIA_BASE_URL"]
+            ?? Environment.GetEnvironmentVariable("CONDUITLLM__MEDIA_BASE_URL");
+            
+        // If not configured, try to determine from environment
+        if (string.IsNullOrEmpty(mediaBaseUrl))
+        {
+            var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5000";
+            var firstUrl = urls.Split(';').First();
+            
+            // Replace wildcard bindings with localhost for media URLs
+            if (firstUrl.Contains("+:") || firstUrl.Contains("*:"))
+            {
+                var port = firstUrl.Split(':').Last();
+                mediaBaseUrl = $"http://localhost:{port}";
+            }
+            else
+            {
+                mediaBaseUrl = firstUrl;
+            }
+        }
+        
+        logger.LogInformation("Media storage base URL configured as: {BaseUrl}", mediaBaseUrl);
+        return new InMemoryMediaStorageService(logger, mediaBaseUrl);
     });
 }
 
@@ -306,6 +498,9 @@ builder.Services.AddAuthorization(options =>
     options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder("VirtualKey")
         .RequireAuthenticatedUser()
         .Build();
+    
+    // Allow endpoints to opt out of authentication with [AllowAnonymous]
+    options.FallbackPolicy = null;
 });
 
 // Add Controller support
@@ -344,7 +539,7 @@ builder.Services.AddHostedService<ConduitLLM.Configuration.Services.BatchSpendUp
 if (builder.Environment.EnvironmentName != "Test")
 {
     // Use the same Redis connection string we configured above for health checks
-    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString);
+    var healthChecksBuilder = builder.Services.AddConduitHealthChecks(dbConnectionString, redisConnectionString, true, rabbitMqConfig);
 
     // Add audio-specific health checks if audio services are configured
     if (builder.Configuration.GetSection("AudioService:Providers").Exists())

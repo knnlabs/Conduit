@@ -218,7 +218,17 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client =>
     client.BaseAddress = new Uri(GetApiBaseUrl());
     Console.WriteLine($"[Conduit WebUI] Configuring ConduitApiClient with BaseAddress: {client.BaseAddress}");
 })
-.AddAdminApiResiliencePolicies();
+.AddResiliencePolicies(options =>
+{
+    options.RetryCount = 3;
+    options.CircuitBreakerThreshold = 5;
+    options.TimeoutSeconds = 60; // Increased timeout for image generation
+})
+.ConfigureHttpClient(client =>
+{
+    // Set a default timeout on the HttpClient itself as a safety net
+    client.Timeout = TimeSpan.FromSeconds(120); // Even longer timeout for the HTTP client
+});
 
 // Register Admin API client and compatibility services
 builder.Services.AddAdminApiClient(builder.Configuration);
