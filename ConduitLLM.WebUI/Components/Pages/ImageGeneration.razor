@@ -87,6 +87,59 @@
                         </div>
                     </div>
                     
+                    <!-- Image-to-Image Input -->
+                    <div class="form-group mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="fa fa-image me-2"></i>Source Image (Optional - for Image-to-Image)
+                        </label>
+                        <div class="image-upload-area">
+                            <InputFile OnChange="@HandleSourceImageUpload" accept="image/*" class="form-control" />
+                            <div class="form-text">Upload an image to modify or create variations from. Leave empty for text-to-image generation.</div>
+                        </div>
+                        
+                        @if (sourceImage != null)
+                        {
+                            <div class="source-image-preview mt-3">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="position-relative">
+                                        <img src="@sourceImage.DataUrl" alt="Source image" class="img-thumbnail" style="height: 120px; object-fit: cover;" />
+                                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" 
+                                                @onclick="RemoveSourceImage">
+                                            <i class="fa fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="form-group">
+                                            <label class="form-label fw-semibold small">Operation Type</label>
+                                            <select class="form-select form-select-sm" @bind="operationType">
+                                                <option value="edit">Edit Image (modify with prompt)</option>
+                                                <option value="variation">Create Variations (ignore prompt)</option>
+                                            </select>
+                                        </div>
+                                        @if (operationType == "edit")
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fa fa-info-circle me-1"></i>
+                                                    The prompt will be used to modify the uploaded image
+                                                </small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fa fa-info-circle me-1"></i>
+                                                    Variations will be created regardless of the prompt
+                                                </small>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
                     <!-- Size Selection -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -353,6 +406,19 @@
     private string? apiKey;
     private bool isGenerating = false;
     private ImageData? modalImage;
+    
+    // Image-to-image related fields
+    private AttachedImage? sourceImage;
+    private string operationType = "edit";
+    private const long MaxFileSize = 20 * 1024 * 1024; // 20MB max file size
+    
+    private class AttachedImage
+    {
+        public string FileName { get; set; } = "";
+        public string DataUrl { get; set; } = "";
+        public string ContentType { get; set; } = "";
+        public string Base64Data { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -491,15 +557,27 @@
 
     private async Task GenerateImage()
     {
-        if (string.IsNullOrWhiteSpace(imagePrompt))
+        // Validation
+        if (sourceImage == null && string.IsNullOrWhiteSpace(imagePrompt))
         {
-            ToastService.ShowWarning("Please enter an image description");
+            ToastService.ShowWarning("Please enter an image description or upload a source image");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(selectedModel))
         {
             ToastService.ShowWarning("Please select an image generation model");
+            return;
+        }
+
+        // For variations, we don't require a prompt
+        if (sourceImage != null && operationType == "variation" && string.IsNullOrWhiteSpace(imagePrompt))
+        {
+            // This is okay for variations
+        }
+        else if (string.IsNullOrWhiteSpace(imagePrompt))
+        {
+            ToastService.ShowWarning("Please enter an image description");
             return;
         }
 
@@ -517,16 +595,33 @@
                 ResponseFormat = "b64_json"
             };
 
+            // Add image-to-image parameters if source image is provided
+            if (sourceImage != null)
+            {
+                request.Image = sourceImage.Base64Data;
+                request.Operation = operationType;
+                
+                // For variations, use empty prompt if none provided
+                if (operationType == "variation" && string.IsNullOrWhiteSpace(imagePrompt))
+                {
+                    request.Prompt = ""; // Some providers may require an empty prompt for variations
+                }
+            }
+
             var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
             
             if (response?.Data != null && response.Data.Any())
             {
                 generatedImages.AddRange(response.Data);
                 
-                // Add to recent prompts
-                await AddToPromptHistory(imagePrompt);
+                // Add to recent prompts (only if we have a meaningful prompt)
+                if (!string.IsNullOrWhiteSpace(imagePrompt))
+                {
+                    await AddToPromptHistory(imagePrompt);
+                }
                 
-                ToastService.ShowSuccess($"Successfully generated {response.Data.Count} image(s)");
+                var operationText = sourceImage != null ? $"{operationType} operation" : "generation";
+                ToastService.ShowSuccess($"Successfully completed {operationText} - {response.Data.Count} image(s) created");
             }
             else
             {
@@ -637,6 +732,7 @@
     {
         imagePrompt = "";
         generatedImages.Clear();
+        sourceImage = null;
     }
 
     private void RemoveImage(ImageData image)
@@ -674,6 +770,58 @@
         {
             await JSRuntime.InvokeVoidAsync("downloadImage", imageSource, $"generated-image-{DateTime.Now:yyyyMMdd-HHmmss}.png");
         }
+    }
+
+    private async Task HandleSourceImageUpload(InputFileChangeEventArgs e)
+    {
+        var imageFile = e.File;
+        if (imageFile == null) return;
+
+        if (imageFile.Size > MaxFileSize)
+        {
+            ToastService.ShowError($"File {imageFile.Name} is too large. Maximum size is 20MB.");
+            return;
+        }
+
+        if (!imageFile.ContentType.StartsWith("image/"))
+        {
+            ToastService.ShowError($"File {imageFile.Name} is not an image.");
+            return;
+        }
+
+        try
+        {
+            // Read the image and convert to base64
+            using var stream = imageFile.OpenReadStream(MaxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{imageFile.ContentType};base64,{base64}";
+
+            sourceImage = new AttachedImage
+            {
+                FileName = imageFile.Name,
+                DataUrl = dataUrl,
+                ContentType = imageFile.ContentType,
+                Base64Data = base64
+            };
+
+            ToastService.ShowSuccess($"Source image uploaded: {imageFile.Name}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading source image {FileName}", imageFile.Name);
+            ToastService.ShowError($"Error uploading {imageFile.Name}: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoveSourceImage()
+    {
+        sourceImage = null;
+        StateHasChanged();
     }
 
     private class ImageModel
@@ -722,5 +870,25 @@
     
     .sample-prompt:hover {
         background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .image-upload-area {
+        position: relative;
+    }
+    
+    .source-image-preview {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .source-image-preview .img-thumbnail {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .source-image-preview .img-thumbnail:hover {
+        transform: scale(1.05);
     }
 </style>
