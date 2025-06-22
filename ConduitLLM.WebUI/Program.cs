@@ -53,6 +53,28 @@ Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
 
+// Validate insecure mode is only enabled in development environments
+if (insecureMode)
+{
+    if (builder.Environment.IsProduction())
+    {
+        throw new InvalidOperationException("SECURITY VIOLATION: Insecure mode cannot be enabled in production environment. Remove CONDUIT_INSECURE environment variable.");
+    }
+    
+    if (builder.Environment.IsStaging())
+    {
+        throw new InvalidOperationException("SECURITY VIOLATION: Insecure mode cannot be enabled in staging environment. Remove CONDUIT_INSECURE environment variable.");
+    }
+    
+    // Log prominent warning for development environment
+    Console.WriteLine("🚨 ==========================================");
+    Console.WriteLine("🚨 WARNING: INSECURE MODE ENABLED");
+    Console.WriteLine("🚨 Authentication is DISABLED!");
+    Console.WriteLine("🚨 This mode is ONLY for development.");
+    Console.WriteLine("🚨 Environment: " + builder.Environment.EnvironmentName);
+    Console.WriteLine("🚨 ==========================================");
+}
+
 // Configure Redis connection string early for security services
 var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
@@ -315,6 +337,14 @@ using (var scope = app.Services.CreateScope())
     logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityOptions.FailedLogin.MaxAttempts);
     logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityOptions.FailedLogin.BanDurationMinutes);
     logger.LogInformation("==============================");
+    
+    // Log insecure mode warning if enabled
+    if (insecureMode)
+    {
+        logger.LogWarning("🚨 INSECURE MODE IS ENABLED - Authentication is bypassed!");
+        logger.LogWarning("🚨 This mode should ONLY be used in development environments.");
+        logger.LogWarning("🚨 Current environment: {Environment}", app.Environment.EnvironmentName);
+    }
 }
 
 // Initialize Master Key and WebUI Virtual Key using InitialSetupService
