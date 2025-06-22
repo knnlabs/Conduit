@@ -493,8 +493,8 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
-// Map standardized health check endpoints
-app.MapConduitHealthChecks();
+// Map health check endpoints with authentication requirement
+app.MapSecureConduitHealthChecks(requireAuthorization: true);
 
 // Map controllers first
 app.MapControllers();

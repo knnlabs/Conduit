@@ -688,8 +688,8 @@ Console.WriteLine("[Conduit API] Controllers registered");
 app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
 Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
 
-// Map standardized health check endpoints
-app.MapConduitHealthChecks();
+// Map health check endpoints with authentication requirement
+app.MapSecureConduitHealthChecks(requireAuthorization: true);
 
 // Add completions endpoint (legacy)
 app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>

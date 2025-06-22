@@ -150,6 +150,83 @@ namespace ConduitLLM.Configuration.Extensions
             return app;
         }
 
+        /// <summary>
+        /// Maps health check endpoints with authentication requirement.
+        /// This should be used for production environments to prevent unauthorized access to sensitive health information.
+        /// </summary>
+        /// <param name="app">The web application.</param>
+        /// <param name="requireAuthorization">Whether to require authorization (default: true).</param>
+        /// <returns>The web application.</returns>
+        public static WebApplication MapSecureConduitHealthChecks(this WebApplication app, bool requireAuthorization = true)
+        {
+            // Check if health checks are registered
+            var healthCheckService = app.Services.GetService<HealthCheckService>();
+            if (healthCheckService == null)
+            {
+                // Health checks not registered (e.g., in test environment)
+                // Map basic endpoints that return success with proper format
+                var basicHealthResponse = new
+                {
+                    status = "Healthy",
+                    checks = Array.Empty<object>(),
+                    totalDuration = 0.0
+                };
+                
+                if (requireAuthorization)
+                {
+                    app.MapGet("/health/live", () => Results.Ok(basicHealthResponse)).RequireAuthorization();
+                    app.MapGet("/health/ready", () => Results.Ok(basicHealthResponse)).RequireAuthorization();
+                    app.MapGet("/health", () => Results.Ok(basicHealthResponse)).RequireAuthorization();
+                }
+                else
+                {
+                    app.MapGet("/health/live", () => Results.Ok(basicHealthResponse));
+                    app.MapGet("/health/ready", () => Results.Ok(basicHealthResponse));
+                    app.MapGet("/health", () => Results.Ok(basicHealthResponse));
+                }
+                return app;
+            }
+
+            // Live probe - basic check if app is running (can be anonymous for k8s)
+            app.MapHealthChecks("/health/live", new HealthCheckOptions
+            {
+                Predicate = _ => false, // No checks, just return 200 if the app is running
+                ResponseWriter = WriteHealthCheckResponse
+            }); // No authorization required for liveness probe
+
+            if (requireAuthorization)
+            {
+                // Ready probe - detailed readiness check (requires auth)
+                app.MapHealthChecks("/health/ready", new HealthCheckOptions
+                {
+                    Predicate = check => check.Tags.Contains("ready"),
+                    ResponseWriter = WriteHealthCheckResponse
+                }).RequireAuthorization();
+
+                // Full health check - all details (requires auth)
+                app.MapHealthChecks("/health", new HealthCheckOptions
+                {
+                    ResponseWriter = WriteHealthCheckResponse
+                }).RequireAuthorization();
+            }
+            else
+            {
+                // Map without authorization requirement
+                app.MapHealthChecks("/health/ready", new HealthCheckOptions
+                {
+                    Predicate = check => check.Tags.Contains("ready"),
+                    ResponseWriter = WriteHealthCheckResponse
+                });
+
+                app.MapHealthChecks("/health", new HealthCheckOptions
+                {
+                    ResponseWriter = WriteHealthCheckResponse
+                });
+            }
+
+            return app;
+        }
+
         private static async Task WriteHealthCheckResponse(HttpContext context, HealthReport report)
         {
             context.Response.ContentType = "application/json";

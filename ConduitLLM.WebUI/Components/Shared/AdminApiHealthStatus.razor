@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
 @using ConduitLLM.WebUI.Interfaces
 @using ConduitLLM.WebUI.Models
 @using System.Threading
@@ -8,25 +9,29 @@
 @inject IAdminApiHealthService HealthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<div class="admin-api-status" @onkeydown="HandleKeyDown">
-    <Hovercard Position="bottom-end" Delay="200" @ref="hovercardRef">
-        <ChildContent>
-            @if (HealthService.IsHealthy)
-            {
-                <button class="status-indicator healthy" aria-label="System Health Status - Healthy" title="System Health - Click for details">
-                    <i class="fa fa-heart-pulse"></i>
-                </button>
-            }
-            else
-            {
-                <button class="status-indicator unhealthy" aria-label="System Health Status - Unhealthy" title="System Health - Issues Detected">
-                    <i class="fa fa-heart-crack"></i>
-                </button>
-            }
-        </ChildContent>
-        <HovercardContent>
-            <div class="health-status-card">
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized>
+            <div class="admin-api-status" @onkeydown="HandleKeyDown">
+                <Hovercard Position="bottom-end" Delay="200" @ref="hovercardRef">
+                    <ChildContent>
+                        @if (HealthService.IsHealthy)
+                        {
+                            <button class="status-indicator healthy" aria-label="System Health Status - Healthy" title="System Health - Click for details">
+                                <i class="fa fa-heart-pulse"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="status-indicator unhealthy" aria-label="System Health Status - Unhealthy" title="System Health - Issues Detected">
+                                <i class="fa fa-heart-crack"></i>
+                            </button>
+                        }
+                    </ChildContent>
+                    <HovercardContent>
+                        <div class="health-status-card">
                 <div class="status-header">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center">
@@ -143,19 +148,32 @@
         </HovercardContent>
     </Hovercard>
 </div>
+        </Authorized>
+        <NotAuthorized>
+            @* Don't show health status to unauthorized users *@
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
 
 @code {
     private Timer? _refreshTimer;
     private Hovercard? hovercardRef;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Start a timer to periodically check health
-        _refreshTimer = new Timer(async _ =>
+        // Only start health checks if user is authenticated
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
         {
-            await HealthService.CheckHealthAsync();
-            await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
+            // Start a timer to periodically check health
+            _refreshTimer = new Timer(async _ =>
+            {
+                await HealthService.CheckHealthAsync();
+                await InvokeAsync(StateHasChanged);
+            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
+        }
+        
+        await base.OnInitializedAsync();
     }
 
     public void Dispose()

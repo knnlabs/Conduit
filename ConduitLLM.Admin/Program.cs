@@ -249,8 +249,8 @@ public partial class Program
 
         app.MapControllers();
 
-        // Map standardized health check endpoints
-        app.MapConduitHealthChecks();
+        // Map health check endpoints with authentication requirement
+        app.MapSecureConduitHealthChecks(requireAuthorization: true);
 
         app.Run();
     }
