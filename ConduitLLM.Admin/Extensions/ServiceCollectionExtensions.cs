@@ -187,6 +187,10 @@ public static class ServiceCollectionExtensions
         // Register discovery service
         services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
 
+        // Register provider health monitoring background service
+        services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));
+        services.AddHostedService<ProviderHealthMonitoringService>();
+
         // Configure CORS for the Admin API
         services.AddCors(options =>
         {

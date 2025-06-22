@@ -224,7 +224,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Setup publish to throw exception
             _mockPublishEndpoint
-                .Setup(p => p.Publish(It.IsAny<VirtualKeyUpdated>(), It.IsAny<CancellationToken>()))
+                .Setup(p => p.Publish(It.IsAny<VirtualKeyCreated>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Event bus error"));
 
             // Act
@@ -240,7 +240,7 @@ namespace ConduitLLM.Admin.Tests.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to publish VirtualKeyUpdated event")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to publish VirtualKeyCreated event")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -290,7 +290,7 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Verify event was published
             _mockPublishEndpoint.Verify(p => p.Publish(
-                It.Is<VirtualKeyUpdated>(e => 
+                It.Is<VirtualKeyCreated>(e => 
                     e.KeyId == 4 &&
                     e.KeyHash == "budget-key-hash"),
                 It.IsAny<CancellationToken>()),
@@ -896,10 +896,10 @@ namespace ConduitLLM.Admin.Tests.Services
                 .Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(createdKey);
 
-            VirtualKeyUpdated? capturedEvent = null;
+            VirtualKeyCreated? capturedEvent = null;
             _mockPublishEndpoint
-                .Setup(p => p.Publish(It.IsAny<VirtualKeyUpdated>(), It.IsAny<CancellationToken>()))
-                .Callback<object, CancellationToken>((evt, ct) => capturedEvent = evt as VirtualKeyUpdated)
+                .Setup(p => p.Publish(It.IsAny<VirtualKeyCreated>(), It.IsAny<CancellationToken>()))
+                .Callback<object, CancellationToken>((evt, ct) => capturedEvent = evt as VirtualKeyCreated)
                 .Returns(Task.CompletedTask);
 
             // Act
@@ -953,9 +953,9 @@ namespace ConduitLLM.Admin.Tests.Services
 
             // Verify create event
             _mockPublishEndpoint.Verify(p => p.Publish(
-                It.Is<VirtualKeyUpdated>(e => 
+                It.Is<VirtualKeyCreated>(e => 
                     e.KeyId == keyId &&
-                    e.ChangedProperties.Contains("Created")),
+                    e.KeyHash == "lifecycle-hash"),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
 
@@ -998,11 +998,17 @@ namespace ConduitLLM.Admin.Tests.Services
                 It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Total: 2 VirtualKeyUpdated events
+            // Total: 1 VirtualKeyCreated event
+            _mockPublishEndpoint.Verify(p => p.Publish(
+                It.IsAny<VirtualKeyCreated>(),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
+                
+            // Total: 1 VirtualKeyUpdated event (from update)
             _mockPublishEndpoint.Verify(p => p.Publish(
                 It.IsAny<VirtualKeyUpdated>(),
                 It.IsAny<CancellationToken>()),
-                Times.Exactly(2));
+                Times.Once);
                 
             // Total: 1 VirtualKeyDeleted event
             _mockPublishEndpoint.Verify(p => p.Publish(

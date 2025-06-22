@@ -493,6 +493,18 @@ Spend update processed for key {KeyId}: {Amount}
 - **After**: Event-driven updates provide real-time data consistency
 - **Benefit**: Reduces unnecessary API calls and database queries
 
+### Real-Time Navigation State Updates
+
+The WebUI navigation state now updates in real-time using SignalR:
+
+1. **SignalR Hub**: Core API exposes `/hubs/navigation-state` for WebSocket connections
+2. **Event-Driven Updates**: Navigation states update instantly when:
+   - Model mappings are created/updated/deleted
+   - Provider health status changes  
+   - Model capabilities are discovered
+3. **Automatic Fallback**: If SignalR connection fails, WebUI falls back to 30-second polling
+4. **Provider Health Monitoring**: Admin API monitors provider health every 5 minutes (configurable)
+
 ### Multi-Instance Deployment with RabbitMQ
 
 As of the latest update, Conduit now supports RabbitMQ for horizontal scaling:

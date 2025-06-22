@@ -320,6 +320,11 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
     
+    // Add navigation state event consumers for real-time updates
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelMappingChangedNotificationConsumer>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ProviderHealthChangedNotificationConsumer>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelCapabilitiesDiscoveredNotificationConsumer>();
+    
     if (useRabbitMq)
     {
         x.UsingRabbitMq((context, cfg) =>
@@ -351,6 +356,8 @@ builder.Services.AddMassTransit(x =>
         Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
         Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
         Console.WriteLine("  - Model capability discovery (shared across all instances)");
+        Console.WriteLine("  - Model mapping changes (real-time WebUI updates via SignalR)");
+        Console.WriteLine("  - Provider health changes (real-time WebUI updates via SignalR)");
         Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
         Console.WriteLine("  - IP filter changes (security policy updates)");
         Console.WriteLine("  - Model cost changes (pricing updates)");
@@ -530,6 +537,15 @@ builder.Services.AddAuthorization(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Add SignalR for real-time navigation state updates
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
+
+// Register navigation state notification service
+builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
+
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
 {
@@ -667,6 +683,10 @@ app.UseWebSockets(new WebSocketOptions
 // Add controllers to the app
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
+
+// Map SignalR hub for real-time navigation state updates
+app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
+Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
 
 // Map standardized health check endpoints
 app.MapConduitHealthChecks();

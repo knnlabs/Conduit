@@ -193,7 +193,7 @@ builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastNotificationService, ConduitLLM.WebUI.Services.ToastNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
-builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.NavigationStateService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.SignalRNavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFileVersionService, ConduitLLM.WebUI.Services.FileVersionService>();
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
