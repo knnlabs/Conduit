@@ -179,7 +179,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default)
+        public Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default)
         {
             // Note: This is a simplified implementation. In production, you might want to:
             // 1. Use Redis SCAN to iterate through keys
@@ -191,7 +191,7 @@ namespace ConduitLLM.Core.Services
             
             // For now, return 0 as we don't have a way to iterate Redis keys efficiently
             // This would need to be implemented based on your Redis setup
-            return 0;
+            return Task.FromResult(0);
         }
 
         private async Task SaveTaskStatusAsync(string taskId, AsyncTaskStatus taskStatus, CancellationToken cancellationToken)
@@ -208,7 +208,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        public Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
         {
             // Note: This implementation is limited by Redis capabilities
             // In production, you would want to maintain a sorted set of pending tasks
@@ -219,7 +219,7 @@ namespace ConduitLLM.Core.Services
                              "Consider using HybridAsyncTaskService or database-backed implementation.");
             
             // Return empty list as we cannot efficiently iterate Redis keys
-            return new List<AsyncTaskStatus>();
+            return Task.FromResult<IList<AsyncTaskStatus>>(new List<AsyncTaskStatus>());
         }
 
         private static string GetTaskKey(string taskId) => $"{TASK_KEY_PREFIX}{taskId}";

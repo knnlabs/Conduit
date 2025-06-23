@@ -37,7 +37,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="taskId">The task ID to cancel.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if cancelled successfully.</returns>
-        Task<bool> CancelTaskAsync(string taskId, CancellationToken cancellationToken = default);
+        new Task<bool> CancelTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes a task.
@@ -45,7 +45,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="taskId">The task ID to delete.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if deleted successfully.</returns>
-        Task<bool> DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
+        new Task<bool> DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all tasks for a virtual key.

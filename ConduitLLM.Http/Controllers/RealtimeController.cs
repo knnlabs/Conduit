@@ -221,7 +221,7 @@ namespace ConduitLLM.Http.Controllers
             return null;
         }
 
-        private bool HasRealtimePermissions(Configuration.Entities.VirtualKey keyEntity)
+        private bool HasRealtimePermissions(ConduitLLM.Configuration.Entities.VirtualKey keyEntity)
         {
             // Check if the key has real-time permissions
             // This could be based on:
