@@ -7,12 +7,29 @@ export * from './models/common';
 export * from './models/discovery';
 export * from './models/virtualKey';
 export * from './models/provider';
-export * from './models/modelMapping';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/modelCost';
 export * from './models/analytics';
 export * from './models/system';
+
+// Export modelMapping types with explicit re-exports to avoid conflicts
+export type {
+  ModelProviderMappingDto,
+  CreateModelProviderMappingDto,
+  UpdateModelProviderMappingDto,
+  ModelMappingFilters,
+  ModelProviderInfo,
+  ModelRoutingInfo,
+  BulkMappingRequest,
+  BulkMappingResponse,
+  ModelMappingSuggestion,
+  DiscoveredModel,
+  ModelCapabilities
+} from './models/modelMapping';
+
+// Re-export CapabilityTestResult from modelMapping (more complete version)
+export type { CapabilityTestResult } from './models/modelMapping';
 
 // Services
 export { VirtualKeyService } from './services/VirtualKeyService';

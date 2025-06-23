@@ -103,7 +103,7 @@ export abstract class BaseApiClient {
     );
   }
 
-  protected async request<T>(config: RequestConfig): Promise<T> {
+  protected async request<T>(config: RequestConfig & { method: string; url: string }): Promise<T> {
     try {
       const axiosConfig: AxiosRequestConfig = {
         method: config.method,
@@ -112,6 +112,7 @@ export abstract class BaseApiClient {
         params: config.params,
         headers: config.headers,
         timeout: config.timeout,
+        responseType: config.responseType,
       };
 
       const response: AxiosResponse<T> = await this.axios.request(axiosConfig);
