@@ -44,6 +44,27 @@
         </div>
     </div>
 
+    @* Display persistent error alert if there's a recent error *@
+    @if (!string.IsNullOrEmpty(lastError) && lastErrorTime.HasValue && (DateTime.Now - lastErrorTime.Value).TotalMinutes < 5)
+    {
+        <div class="alert alert-danger shadow-sm border-0 mb-4" role="alert">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-start flex-grow-1">
+                    <i class="fa fa-exclamation-circle fa-2x me-3"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="alert-heading mb-1">API Error</h6>
+                        <p class="mb-2">@lastError</p>
+                        <small class="text-muted">
+                            <i class="fa fa-clock me-1"></i>
+                            @lastErrorTime.Value.ToString("h:mm:ss tt")
+                        </small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" @onclick="() => { lastError = null; lastErrorTime = null; }" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+
     @if (!availableModels.Any())
     {
         <div class="alert alert-info mb-4" role="alert">
@@ -412,6 +433,10 @@
     private string operationType = "edit";
     private const long MaxFileSize = 20 * 1024 * 1024; // 20MB max file size
     
+    // Error tracking
+    private string? lastError = null;
+    private DateTime? lastErrorTime = null;
+    
     private class AttachedImage
     {
         public string FileName { get; set; } = "";
@@ -491,6 +516,10 @@
         }
         catch (Exception ex)
         {
+            // Set the last error for persistent display
+            lastError = ex.Message;
+            lastErrorTime = DateTime.Now;
+            
             _logger.LogError(ex, "Error loading available models");
             ToastService.ShowError("Failed to load available models");
             
@@ -529,6 +558,7 @@
         }
         catch (Exception ex)
         {
+            // Don't set lastError for localStorage issues - not critical
             _logger.LogError(ex, "Error loading prompt history from localStorage");
             AddSamplePrompts();
         }
@@ -632,6 +662,10 @@
         }
         catch (Exception ex)
         {
+            // Set the last error for persistent display
+            lastError = ex.Message;
+            lastErrorTime = DateTime.Now;
+            
             _logger.LogError(ex, "Error generating image");
             ToastService.ShowError($"Error: {ex.Message}");
         }
@@ -707,6 +741,7 @@
         }
         catch (Exception ex)
         {
+            // Don't set lastError for localStorage issues - not critical
             _logger.LogError(ex, "Error clearing prompt history");
             ToastService.ShowError("Failed to clear prompt history");
         }
@@ -811,6 +846,10 @@
         }
         catch (Exception ex)
         {
+            // Set the last error for persistent display
+            lastError = $"Error uploading {imageFile.Name}: {ex.Message}";
+            lastErrorTime = DateTime.Now;
+            
             _logger.LogError(ex, "Error uploading source image {FileName}", imageFile.Name);
             ToastService.ShowError($"Error uploading {imageFile.Name}: {ex.Message}");
         }

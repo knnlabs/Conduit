@@ -77,6 +77,30 @@ A successful fix will show 0 results in the CSV file.
 
 ## Other Security Considerations
 
+### Insecure Mode Protection
+
+ConduitLLM includes an "insecure mode" (`CONDUIT_INSECURE=true`) that bypasses authentication for development purposes. This mode has strict security controls:
+
+#### Environment Restrictions
+- **Development Only**: Insecure mode can ONLY be enabled in development environments
+- **Automatic Validation**: The application validates the environment at startup
+- **Hard Failure**: If insecure mode is detected in Production or Staging environments, the application will:
+  - Throw an `InvalidOperationException`
+  - Display an error message: "SECURITY VIOLATION: Insecure mode cannot be enabled in [environment]"
+  - Refuse to start until the environment variable is removed
+
+#### Security Indicators
+When insecure mode is active in development:
+- **Console Warnings**: Prominent warnings are displayed at startup with emoji indicators
+- **UI Banner**: A yellow warning banner appears at the top of all pages
+- **Log Warnings**: Warning-level logs are written throughout the application lifecycle
+
+#### Best Practices
+- **Never** set `CONDUIT_INSECURE=true` in production environments
+- Use proper authentication keys (`CONDUIT_WEBUI_AUTH_KEY` or `CONDUIT_MASTER_KEY`) for all non-development deployments
+- Regularly audit environment variables in deployment pipelines
+- Consider using separate configuration files for development vs production
+
 ### API Key Security
 - Virtual keys are hashed before storage using SHA256
 - Never log full API keys, only prefixes

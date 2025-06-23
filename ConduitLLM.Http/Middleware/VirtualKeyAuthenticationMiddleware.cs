@@ -182,6 +182,8 @@ namespace ConduitLLM.Http.Middleware
             var excludedPaths = new[]
             {
                 "/health",
+                "/health/live",
+                "/health/ready",
                 "/metrics",
                 "/swagger",
                 "/_framework",

@@ -53,6 +53,9 @@ namespace ConduitLLM.Configuration.Extensions
             services.AddScoped<IAudioCostRepository, AudioCostRepository>();
             services.AddScoped<IAudioUsageLogRepository, AudioUsageLogRepository>();
 
+            // Register async task repository
+            services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
+
             return services;
         }
 

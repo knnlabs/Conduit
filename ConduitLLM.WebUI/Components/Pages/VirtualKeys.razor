@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject ConduitLLM.WebUI.Interfaces.IAdminApiClient AdminApiClient
+@inject ConduitLLM.WebUI.Interfaces.IConduitApiClient ConduitApiClient
+@inject ConduitLLM.WebUI.Interfaces.IGlobalSettingService GlobalSettingService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime 
 @inject ILogger<VirtualKeys> Logger
@@ -32,6 +34,85 @@
         </Statistics>
     </PageHeader>
     
+    <!-- WebUI Key Status Card -->
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-server me-2 text-primary"></i>WebUI Authentication Status
+            </h5>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (isCheckingWebUIKey)
+            {
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm text-primary me-3" role="status">
+                        <span class="visually-hidden">Checking...</span>
+                    </div>
+                    <span>Checking WebUI virtual key status...</span>
+                </div>
+            }
+            else if (webUIKeyIsValid == true)
+            {
+                <div class="alert alert-success mb-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="alert-heading">
+                                <i class="fa fa-check-circle me-2"></i>WebUI Key is Valid
+                            </h6>
+                            <p class="mb-0">@webUIKeyStatus</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-warning" 
+                                @onclick="RegenerateWebUIKey" 
+                                disabled="@isRegeneratingWebUIKey">
+                            <i class="fa fa-refresh me-2"></i>Regenerate Anyway
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (webUIKeyIsValid == false)
+            {
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">
+                        <i class="fa fa-exclamation-circle me-2"></i>WebUI Key Problem Detected
+                    </h6>
+                    <p>@(webUIKeyStatus ?? "The WebUI authentication key is not configured correctly.")</p>
+                    @if (!string.IsNullOrEmpty(webUIKeyError))
+                    {
+                        <div class="mt-2 p-2 bg-dark text-light rounded">
+                            <small><strong>Error Details:</strong> @webUIKeyError</small>
+                        </div>
+                    }
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="mb-0">Click the button to automatically fix this issue:</p>
+                        <button type="button" class="btn btn-primary" 
+                                @onclick="RegenerateWebUIKey" 
+                                disabled="@isRegeneratingWebUIKey">
+                            @if (isRegeneratingWebUIKey)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Regenerating...</span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-wrench me-2"></i>
+                                <span>Fix WebUI Authentication</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-0">
+                    <h6 class="alert-heading">
+                        <i class="fa fa-question-circle me-2"></i>Unable to Check Status
+                    </h6>
+                    <p class="mb-0">Could not determine WebUI key status. You may need to regenerate it.</p>
+                </div>
+            }
+        </div>
+    </div>
     
     <!-- Main Content Card -->
     <div class="card modern-card">
@@ -267,10 +348,16 @@
 
 @code {
     private List<VirtualKeyDto>? virtualKeys;
+    private bool isCheckingWebUIKey = false;
+    private bool isRegeneratingWebUIKey = false;
+    private string? webUIKeyStatus = null;
+    private bool? webUIKeyIsValid = null;
+    private string? webUIKeyError = null;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
+        await CheckWebUIKeyStatus();
     }
 
     private async Task LoadDataAsync()
@@ -347,6 +434,177 @@
         {
             ToastService.ShowError($"Error resetting spend: {ex.Message}", "Reset Error");
             Logger.LogError(ex, "Error resetting spend for virtual key with ID {KeyId}", id);
+        }
+    }
+
+    private async Task CheckWebUIKeyStatus()
+    {
+        isCheckingWebUIKey = true;
+        webUIKeyIsValid = null;
+        webUIKeyStatus = null;
+        webUIKeyError = null;
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Check if WebUI virtual key exists in global settings
+            var storedKey = await GlobalSettingService.GetSettingAsync("WebUI_VirtualKey");
+            var storedKeyId = await GlobalSettingService.GetSettingAsync("WebUI_VirtualKeyId");
+            
+            if (string.IsNullOrEmpty(storedKey))
+            {
+                webUIKeyIsValid = false;
+                webUIKeyStatus = "No WebUI virtual key found in settings.";
+                return;
+            }
+
+            // Step 2: Try to validate the key by making a test API call
+            try
+            {
+                // Use the ConduitApiClient to test the key
+                var models = await ConduitApiClient.GetAvailableModelsAsync();
+                
+                // If we get here without exception, the key is valid
+                webUIKeyIsValid = true;
+                
+                // Try to find the key details in our virtual keys list
+                if (!string.IsNullOrEmpty(storedKeyId) && int.TryParse(storedKeyId, out var keyId))
+                {
+                    var keyInfo = virtualKeys?.FirstOrDefault(k => k.Id == keyId);
+                    if (keyInfo != null)
+                    {
+                        webUIKeyStatus = $"WebUI is using virtual key '{keyInfo.KeyName}' (ID: {keyId}). API connectivity verified.";
+                    }
+                    else
+                    {
+                        webUIKeyStatus = $"WebUI virtual key is working (ID: {keyId}), but key details not found in list. API connectivity verified.";
+                    }
+                }
+                else
+                {
+                    webUIKeyStatus = "WebUI virtual key is configured and working. API connectivity verified.";
+                }
+            }
+            catch (Exception apiEx)
+            {
+                webUIKeyIsValid = false;
+                webUIKeyStatus = "WebUI virtual key exists but failed API validation.";
+                webUIKeyError = apiEx.Message;
+                Logger.LogError(apiEx, "WebUI key validation failed");
+            }
+        }
+        catch (Exception ex)
+        {
+            webUIKeyIsValid = null;
+            webUIKeyStatus = "Error checking WebUI key status.";
+            webUIKeyError = ex.Message;
+            Logger.LogError(ex, "Error checking WebUI key status");
+        }
+        finally
+        {
+            isCheckingWebUIKey = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RegenerateWebUIKey()
+    {
+        isRegeneratingWebUIKey = true;
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Delete any existing "WebUI Internal Key" virtual keys
+            ToastService.ShowInfo("Step 1/4: Cleaning up old WebUI keys...");
+            
+            var allKeys = await AdminApiClient.GetAllVirtualKeysAsync();
+            var webUIKeys = allKeys.Where(k => k.KeyName == "WebUI Internal Key" || 
+                                              k.KeyName == "WebUI Internal Key (Regenerated)").ToList();
+            
+            foreach (var oldKey in webUIKeys)
+            {
+                try
+                {
+                    await AdminApiClient.DeleteVirtualKeyAsync(oldKey.Id);
+                    Logger.LogInformation("Deleted old WebUI key: {KeyName} (ID: {KeyId})", oldKey.KeyName, oldKey.Id);
+                }
+                catch (Exception deleteEx)
+                {
+                    Logger.LogWarning(deleteEx, "Failed to delete old WebUI key {KeyId}", oldKey.Id);
+                }
+            }
+
+            // Step 2: Create a new virtual key
+            ToastService.ShowInfo("Step 2/4: Creating new WebUI virtual key...");
+            
+            var createRequest = new CreateVirtualKeyRequestDto
+            {
+                KeyName = "WebUI Internal Key (Regenerated)",
+                AllowedModels = null, // Allow all models
+                MaxBudget = null, // No budget limit
+                BudgetDuration = null,
+                ExpiresAt = null, // Never expires
+                Metadata = $"{{\"purpose\": \"Internal WebUI authentication\", \"regenerated\": \"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}\"}}",
+                RateLimitRpm = null, // No rate limit
+                RateLimitRpd = null
+            };
+            
+            var newKeyResponse = await AdminApiClient.GenerateVirtualKeyAsync(createRequest);
+            
+            if (newKeyResponse == null || string.IsNullOrEmpty(newKeyResponse.VirtualKey))
+            {
+                throw new InvalidOperationException("Failed to create new WebUI virtual key - no response received");
+            }
+
+            Logger.LogInformation("Created new WebUI virtual key with ID: {KeyId}", newKeyResponse.KeyInfo.Id);
+
+            // Step 3: Store the new key in global settings
+            ToastService.ShowInfo("Step 3/4: Updating WebUI configuration...");
+            
+            await GlobalSettingService.SetSettingAsync("WebUI_VirtualKey", newKeyResponse.VirtualKey);
+            await GlobalSettingService.SetSettingAsync("WebUI_VirtualKeyId", newKeyResponse.KeyInfo.Id.ToString());
+            
+            Logger.LogInformation("Updated global settings with new WebUI virtual key");
+
+            // Step 4: Verify the new key works
+            ToastService.ShowInfo("Step 4/4: Verifying new key...");
+            
+            // Clear any cached key in ConduitApiClient by making a test call
+            try
+            {
+                var models = await ConduitApiClient.GetAvailableModelsAsync();
+                Logger.LogInformation("Successfully verified new WebUI key - retrieved {Count} models", models?.Count() ?? 0);
+                
+                // Success!
+                ToastService.ShowSuccess("WebUI authentication key regenerated successfully! The WebUI can now connect to the API.", "Success");
+                
+                // Reload the data and check status again
+                await LoadDataAsync();
+                await CheckWebUIKeyStatus();
+            }
+            catch (Exception verifyEx)
+            {
+                Logger.LogError(verifyEx, "Failed to verify new WebUI key");
+                ToastService.ShowError($"Key was created but verification failed: {verifyEx.Message}. You may need to restart the WebUI.", "Verification Failed");
+                
+                // Still reload to show the new state
+                await LoadDataAsync();
+                await CheckWebUIKeyStatus();
+            }
+        }
+        catch (Exception ex)
+        {
+            webUIKeyError = ex.Message;
+            Logger.LogError(ex, "Failed to regenerate WebUI key");
+            ToastService.ShowError($"Failed to regenerate WebUI key: {ex.Message}", "Regeneration Failed");
+            
+            // Check status again to update the UI
+            await CheckWebUIKeyStatus();
+        }
+        finally
+        {
+            isRegeneratingWebUIKey = false;
+            StateHasChanged();
         }
     }
 }

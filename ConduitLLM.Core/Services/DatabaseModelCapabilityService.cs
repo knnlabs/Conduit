@@ -129,6 +129,29 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public async Task<bool> SupportsVideoGenerationAsync(string model)
+        {
+            var cacheKey = $"{CacheKeyPrefix}VideoGeneration:{model}";
+            if (_cache.TryGetValue<bool>(cacheKey, out var cached))
+            {
+                return cached;
+            }
+
+            try
+            {
+                var mapping = await GetMappingByModelNameAsync(model);
+                var result = mapping?.SupportsVideoGeneration ?? false;
+                _cache.Set(cacheKey, result, _cacheExpiration);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking video generation capability for model {Model}", model);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
             var cacheKey = $"{CacheKeyPrefix}Tokenizer:{model}";

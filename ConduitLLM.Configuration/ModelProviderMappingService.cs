@@ -174,5 +174,114 @@ _logger.LogError(ex, "Error updating mapping for model alias {ModelAlias}".Repla
                 throw;
             }
         }
+
+        public async Task<(bool success, string? errorMessage, ModelProviderMapping? createdMapping)> ValidateAndCreateMappingAsync(ModelProviderMapping mapping)
+        {
+            if (mapping == null)
+            {
+                return (false, "Mapping cannot be null", null);
+            }
+
+            try
+            {
+                // Validate that the provider exists
+                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                if (provider == null)
+                {
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
+                    return (false, $"Provider does not exist: {mapping.ProviderName}", null);
+                }
+
+                // Check if a mapping with the same alias already exists
+                var existingMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
+                if (existingMapping != null)
+                {
+                    _logger.LogWarning("Mapping already exists for model alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                    return (false, $"A mapping for this model alias already exists: {mapping.ModelAlias}", null);
+                }
+
+                // Create the mapping
+                await AddMappingAsync(mapping);
+
+                // Return the created mapping
+                var createdMapping = await GetMappingByModelAliasAsync(mapping.ModelAlias);
+                return (true, null, createdMapping);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating model provider mapping for alias {ModelAlias}", mapping.ModelAlias.Replace(Environment.NewLine, ""));
+                return (false, $"An error occurred while creating the model provider mapping: {ex.Message}", null);
+            }
+        }
+
+        public async Task<(bool success, string? errorMessage)> ValidateAndUpdateMappingAsync(int id, ModelProviderMapping mapping)
+        {
+            if (mapping == null)
+            {
+                return (false, "Mapping cannot be null");
+            }
+
+            try
+            {
+                // Check if the mapping exists
+                var existingMapping = await GetMappingByIdAsync(id);
+                if (existingMapping == null)
+                {
+                    _logger.LogWarning("Model provider mapping not found for update {MappingId}", id);
+                    return (false, $"Model provider mapping not found: {id}");
+                }
+
+                // Validate that the provider exists
+                var provider = await _credentialRepository.GetByProviderNameAsync(mapping.ProviderName);
+                if (provider == null)
+                {
+                    _logger.LogWarning("Provider does not exist {ProviderName}", mapping.ProviderName.Replace(Environment.NewLine, ""));
+                    return (false, $"Provider does not exist: {mapping.ProviderName}");
+                }
+
+                // Update the mapping
+                await UpdateMappingAsync(mapping);
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating model provider mapping with ID {Id}", id);
+                return (false, $"An error occurred while updating the model provider mapping: {ex.Message}");
+            }
+        }
+
+        public async Task<bool> ProviderExistsAsync(string providerName)
+        {
+            if (string.IsNullOrEmpty(providerName))
+            {
+                return false;
+            }
+
+            try
+            {
+                var provider = await _credentialRepository.GetByProviderNameAsync(providerName);
+                return provider != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if provider exists: {ProviderName}", providerName.Replace(Environment.NewLine, ""));
+                return false;
+            }
+        }
+
+        public async Task<List<(int Id, string ProviderName)>> GetAvailableProvidersAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Getting all available providers");
+                var providers = await _credentialRepository.GetAllAsync();
+                return providers.Select(p => (p.Id, p.ProviderName)).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available providers");
+                return new List<(int, string)>();
+            }
+        }
     }
 }

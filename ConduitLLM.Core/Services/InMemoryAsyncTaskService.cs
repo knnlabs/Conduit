@@ -48,18 +48,35 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<AsyncTaskStatus> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
+        public Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default)
         {
-            if (_tasks.TryGetValue(taskId, out var status))
+            // For in-memory implementation, we store virtualKeyId in metadata
+            object enrichedMetadata;
+            if (metadata is System.Collections.Generic.Dictionary<string, object> dict)
             {
-                return Task.FromResult(status);
+                enrichedMetadata = new System.Collections.Generic.Dictionary<string, object>(dict) { ["virtualKeyId"] = virtualKeyId };
+            }
+            else
+            {
+                enrichedMetadata = new { virtualKeyId = virtualKeyId, originalMetadata = metadata };
             }
 
-            throw new InvalidOperationException($"Task with ID {taskId} not found");
+            return CreateTaskAsync(taskType, enrichedMetadata, cancellationToken);
         }
 
         /// <inheritdoc/>
-        public Task UpdateTaskStatusAsync(string taskId, TaskState status, object? result = null, string? error = null, CancellationToken cancellationToken = default)
+        public Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
+        {
+            if (_tasks.TryGetValue(taskId, out var status))
+            {
+                return Task.FromResult<AsyncTaskStatus?>(status);
+            }
+
+            return Task.FromResult<AsyncTaskStatus?>(null);
+        }
+
+        /// <inheritdoc/>
+        public Task UpdateTaskStatusAsync(string taskId, TaskState status, int? progress = null, object? result = null, string? error = null, CancellationToken cancellationToken = default)
         {
             if (!_tasks.TryGetValue(taskId, out var taskStatus))
             {
@@ -69,6 +86,11 @@ namespace ConduitLLM.Core.Services
             var now = DateTime.UtcNow;
             taskStatus.State = status;
             taskStatus.UpdatedAt = now;
+
+            if (progress.HasValue)
+            {
+                taskStatus.Progress = progress.Value;
+            }
 
             if (status == TaskState.Completed || status == TaskState.Failed || status == TaskState.Cancelled || status == TaskState.TimedOut)
             {
@@ -104,6 +126,10 @@ namespace ConduitLLM.Core.Services
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var status = await GetTaskStatusAsync(taskId, cancellationToken);
+                if (status == null)
+                {
+                    throw new InvalidOperationException($"Task with ID {taskId} not found");
+                }
 
                 switch (status.State)
                 {
@@ -114,7 +140,7 @@ namespace ConduitLLM.Core.Services
                         return status;
                     
                     case TaskState.Pending:
-                    case TaskState.Running:
+                    case TaskState.Processing:
                         // Continue polling
                         break;
                     
@@ -127,13 +153,24 @@ namespace ConduitLLM.Core.Services
 
             // Timeout reached
             await UpdateTaskStatusAsync(taskId, TaskState.TimedOut, error: "Task polling timed out", cancellationToken: cancellationToken);
-            return await GetTaskStatusAsync(taskId, cancellationToken);
+            var finalStatus = await GetTaskStatusAsync(taskId, cancellationToken);
+            return finalStatus ?? throw new InvalidOperationException($"Task with ID {taskId} not found after timeout");
         }
 
         /// <inheritdoc/>
         public async Task CancelTaskAsync(string taskId, CancellationToken cancellationToken = default)
         {
             await UpdateTaskStatusAsync(taskId, TaskState.Cancelled, error: "Task was cancelled", cancellationToken: cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public Task DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default)
+        {
+            if (_tasks.TryRemove(taskId, out _))
+            {
+                _logger.LogInformation("Deleted task {TaskId}", taskId);
+            }
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
@@ -172,7 +209,7 @@ namespace ConduitLLM.Core.Services
                 throw new InvalidOperationException($"Task with ID {taskId} not found");
             }
 
-            taskStatus.ProgressPercentage = Math.Clamp(progressPercentage, 0, 100);
+            taskStatus.Progress = Math.Clamp(progressPercentage, 0, 100);
             if (!string.IsNullOrEmpty(progressMessage))
             {
                 taskStatus.ProgressMessage = progressMessage;

@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.DTOs.Audio;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.WebUI.Services;
+using ConduitLLM.WebUI.DTOs;
 
 namespace ConduitLLM.WebUI.Interfaces
 {
@@ -460,7 +461,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="startDate">Optional start date filter.</param>
         /// <param name="endDate">Optional end date filter.</param>
         /// <returns>A paged result of request logs.</returns>
-        Task<ConduitLLM.Configuration.DTOs.PagedResult<RequestLogDto>?> GetRequestLogsAsync(
+        Task<ConduitLLM.Configuration.DTOs.PagedResult<ConduitLLM.Configuration.DTOs.RequestLogDto>?> GetRequestLogsAsync(
             int page = 1,
             int pageSize = 20,
             int? virtualKeyId = null,
@@ -473,7 +474,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// </summary>
         /// <param name="logDto">The request log data.</param>
         /// <returns>The created request log.</returns>
-        Task<RequestLogDto?> CreateRequestLogAsync(RequestLogDto logDto);
+        Task<ConduitLLM.Configuration.DTOs.RequestLogDto?> CreateRequestLogAsync(ConduitLLM.Configuration.DTOs.RequestLogDto logDto);
 
         /// <summary>
         /// Gets daily usage statistics.
@@ -499,7 +500,7 @@ namespace ConduitLLM.WebUI.Interfaces
         /// <param name="days">Number of days to include in the summary.</param>
         /// <param name="virtualKeyId">Optional virtual key ID filter.</param>
         /// <returns>Summary statistics.</returns>
-        Task<LogsSummaryDto?> GetLogsSummaryAsync(int days = 7, int? virtualKeyId = null);
+        Task<ConduitLLM.Configuration.DTOs.LogsSummaryDto?> GetLogsSummaryAsync(int days = 7, int? virtualKeyId = null);
 
         #endregion
 

@@ -219,8 +219,8 @@ namespace ConduitLLM.WebUI.Services
 
                 if (costsDtos != null)
                 {
-                    // Convert Configuration.DTOs.Costs DTOs to WebUI DTOs
-                    return costsDtos.Select(dto => new DTOs.VirtualKeyCostDataDto
+                    // Convert Configuration DTOs to WebUI DTOs
+                    return costsDtos.Select(dto => new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
                     {
                         VirtualKeyId = dto.VirtualKeyId,
                         KeyName = dto.KeyName,
@@ -241,13 +241,20 @@ namespace ConduitLLM.WebUI.Services
 
                 if (baseDtos != null)
                 {
-                    // Convert Configuration.DTOs DTOs to WebUI DTOs
+                    // Convert Configuration DTOs to WebUI DTOs
                     return baseDtos.Select(dto => new ConduitLLM.WebUI.DTOs.VirtualKeyCostDataDto
                     {
                         VirtualKeyId = dto.VirtualKeyId,
                         KeyName = dto.KeyName,
                         Cost = dto.Cost,
-                        RequestCount = dto.RequestCount
+                        RequestCount = dto.RequestCount,
+                        // Default values for extended properties
+                        InputTokens = 0,
+                        OutputTokens = 0,
+                        AverageResponseTimeMs = 0,
+                        LastUsedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        LastDayRequests = 0
                     }).ToList();
                 }
 
@@ -1174,7 +1181,7 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
         #region Logs
 
         /// <inheritdoc />
-        public async Task<ConduitLLM.Configuration.DTOs.PagedResult<RequestLogDto>?> GetRequestLogsAsync(
+        public async Task<ConduitLLM.Configuration.DTOs.PagedResult<ConduitLLM.Configuration.DTOs.RequestLogDto>?> GetRequestLogsAsync(
             int page = 1,
             int pageSize = 20,
             int? virtualKeyId = null,
@@ -1214,7 +1221,7 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.PagedResult<RequestLogDto>>(_jsonOptions);
+                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.PagedResult<ConduitLLM.Configuration.DTOs.RequestLogDto>>(_jsonOptions);
             }
             catch (Exception ex)
             {
@@ -1224,13 +1231,13 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
         }
 
         /// <inheritdoc />
-        public async Task<RequestLogDto?> CreateRequestLogAsync(RequestLogDto logDto)
+        public async Task<ConduitLLM.Configuration.DTOs.RequestLogDto?> CreateRequestLogAsync(ConduitLLM.Configuration.DTOs.RequestLogDto logDto)
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync("api/logs", logDto);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<RequestLogDto>(_jsonOptions);
+                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.RequestLogDto>(_jsonOptions);
             }
             catch (Exception ex)
             {
@@ -1307,7 +1314,7 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
         }
 
         /// <inheritdoc />
-        public async Task<LogsSummaryDto?> GetLogsSummaryAsync(int days = 7, int? virtualKeyId = null)
+        public async Task<ConduitLLM.Configuration.DTOs.LogsSummaryDto?> GetLogsSummaryAsync(int days = 7, int? virtualKeyId = null)
         {
             try
             {
@@ -1320,7 +1327,7 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                return await response.Content.ReadFromJsonAsync<LogsSummaryDto>(_jsonOptions);
+                return await response.Content.ReadFromJsonAsync<ConduitLLM.Configuration.DTOs.LogsSummaryDto>(_jsonOptions);
             }
             catch (Exception ex)
             {
@@ -1414,21 +1421,19 @@ _logger.LogError(ex, "Error deleting global setting with key {Key} from Admin AP
 
                 var configResult = await response.Content.ReadFromJsonAsync<List<ConduitLLM.Configuration.DTOs.Costs.DetailedCostDataDto>>(_jsonOptions);
 
-                // Convert from Configuration DTOs to WebUI DTOs
                 if (configResult == null)
                 {
                     return new List<ConduitLLM.WebUI.DTOs.DetailedCostDataDto>();
                 }
 
-                var webUiResult = configResult.Select(dto => new ConduitLLM.WebUI.DTOs.DetailedCostDataDto
+                // Convert Configuration DTOs to WebUI DTOs
+                return configResult.Select(dto => new ConduitLLM.WebUI.DTOs.DetailedCostDataDto
                 {
-                    // Map Configuration DTO properties to WebUI DTO properties
                     Name = dto.Name,
                     Cost = dto.Cost,
-                    Percentage = dto.Percentage
+                    Percentage = dto.Percentage,
+                    RequestCount = 0 // Default value for WebUI-specific property
                 }).ToList();
-
-                return webUiResult;
             }
             catch (Exception ex)
             {

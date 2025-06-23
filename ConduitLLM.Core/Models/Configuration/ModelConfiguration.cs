@@ -80,6 +80,11 @@ namespace ConduitLLM.Core.Models.Configuration
         public bool SupportsEmbeddings { get; set; }
 
         /// <summary>
+        /// Gets or sets whether the model supports video generation.
+        /// </summary>
+        public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>
         /// Gets or sets the tokenizer type for the model.
         /// </summary>
         public string? TokenizerType { get; set; }

@@ -47,6 +47,10 @@
                 <i class="fa fa-eye me-2 text-info"></i>
                 <span class="small">@GetVisionCount() Vision</span>
             </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-video-camera me-2 text-danger"></i>
+                <span class="small">@GetVideoGenerationCount() Video Gen</span>
+            </div>
         </Statistics>
     </PageHeader>
 
@@ -407,6 +411,8 @@
 
         if (mapping.SupportsImageGeneration)
             capabilities.Add("Image Gen", "Generate images from text prompts");
+        if (mapping.SupportsVideoGeneration)
+            capabilities.Add("Video Gen", "Generate videos from text prompts");
         if (mapping.SupportsVision)
             capabilities.Add("Vision", "Analyze and understand images");
         if (mapping.SupportsAudioTranscription)
@@ -427,6 +433,7 @@
         return capability switch
         {
             "Image Gen" => "bg-purple text-white",
+            "Video Gen" => "bg-danger text-white",
             "Vision" => "bg-info text-white",
             "Transcription" => "bg-primary text-white",
             "TTS" => "bg-success text-white",
@@ -449,6 +456,7 @@
         return capability switch
         {
             "Image Gen" => "fa fa-image",
+            "Video Gen" => "fa fa-video-camera",
             "Vision" => "fa fa-eye",
             "Transcription" => "fa fa-microphone",
             "TTS" => "fa fa-volume-up",
@@ -477,6 +485,14 @@
     private int GetVisionCount()
     {
         return modelMappings?.Count(m => m.IsEnabled && m.SupportsVision) ?? 0;
+    }
+
+    /// <summary>
+    /// Gets the count of models with video generation capability.
+    /// </summary>
+    private int GetVideoGenerationCount()
+    {
+        return modelMappings?.Count(m => m.IsEnabled && m.SupportsVideoGeneration) ?? 0;
     }
 
     /// <summary>

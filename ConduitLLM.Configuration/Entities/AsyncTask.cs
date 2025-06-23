@@ -1,0 +1,111 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ConduitLLM.Configuration.Entities
+{
+    /// <summary>
+    /// Represents an asynchronous task with persistent storage.
+    /// </summary>
+    public class AsyncTask
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier for the task.
+        /// </summary>
+        [Key]
+        [MaxLength(50)]
+        public string Id { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the task type (e.g., "image_generation", "video_generation").
+        /// </summary>
+        [Required]
+        [MaxLength(100)]
+        public string Type { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the current state of the task.
+        /// </summary>
+        /// <remarks>
+        /// Stored as integer in database. Values:
+        /// 0 = Pending, 1 = Processing, 2 = Completed,
+        /// 3 = Failed, 4 = Cancelled, 5 = TimedOut
+        /// </remarks>
+        [Required]
+        public int State { get; set; } = 0; // Default to Pending
+
+        /// <summary>
+        /// Gets or sets the JSON-serialized payload/request data.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? Payload { get; set; }
+
+        /// <summary>
+        /// Gets or sets the progress percentage (0-100).
+        /// </summary>
+        public int Progress { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets the progress message.
+        /// </summary>
+        [MaxLength(500)]
+        public string? ProgressMessage { get; set; }
+
+        /// <summary>
+        /// Gets or sets the JSON-serialized result data.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? Result { get; set; }
+
+        /// <summary>
+        /// Gets or sets the error message if the task failed.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? Error { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the task was created.
+        /// </summary>
+        [Required]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets when the task was last updated.
+        /// </summary>
+        [Required]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets when the task was completed.
+        /// </summary>
+        public DateTime? CompletedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the virtual key ID associated with this task.
+        /// </summary>
+        [Required]
+        public int VirtualKeyId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the JSON-serialized metadata.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? Metadata { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the task has been archived.
+        /// </summary>
+        public bool IsArchived { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets when the task was archived.
+        /// </summary>
+        public DateTime? ArchivedAt { get; set; }
+
+        /// <summary>
+        /// Navigation property to the associated virtual key.
+        /// </summary>
+        [ForeignKey(nameof(VirtualKeyId))]
+        public virtual VirtualKey? VirtualKey { get; set; }
+    }
+}

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace ConduitLLM.Core.Interfaces.Configuration
 {
     /// <summary>
@@ -43,5 +45,16 @@ namespace ConduitLLM.Core.Interfaces.Configuration
         /// Cost per image for image generation requests, if applicable.
         /// </summary>
         public decimal? ImageCostPerImage { get; set; }
+
+        /// <summary>
+        /// Cost per second for video generation requests, if applicable.
+        /// </summary>
+        public decimal? VideoCostPerSecond { get; set; }
+
+        /// <summary>
+        /// Additional cost multipliers for different video resolutions.
+        /// Key is resolution (e.g., "1920x1080"), value is multiplier.
+        /// </summary>
+        public Dictionary<string, decimal>? VideoResolutionMultipliers { get; set; }
     }
 }

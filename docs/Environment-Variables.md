@@ -51,7 +51,7 @@ ConduitLLM provides comprehensive security configuration options:
 |---------------------|------|---------|-------------|
 | `CONDUIT_WEBUI_AUTH_KEY` | String | *None* | Authentication key for human access to the WebUI. Recommended for production deployments to separate human access from service-to-service authentication. |
 | `CONDUIT_MASTER_KEY` | String | *Must be provided* | Master key for service-to-service authentication (WebUI → Admin API, LLM API → Admin API). Also used for WebUI authentication if `CONDUIT_WEBUI_AUTH_KEY` is not set. |
-| `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. Only use in isolated development environments. |
+| `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. **ONLY works in Development environments**. The application will throw an error and refuse to start if this is enabled in Production or Staging environments. A prominent warning banner is displayed in the UI when enabled. |
 
 ### Failed Login Protection
 
@@ -160,7 +160,7 @@ The following environment variables are specific to the WebUI service:
 | `CONDUIT_DISABLE_DIRECT_DB_ACCESS` | Boolean | `false` | When true, completely disables direct database access mode, forcing Admin API mode regardless of other settings. Used to prevent legacy mode completely. |
 | `CONDUIT_ADMIN_TIMEOUT_SECONDS` | Integer | 30 | Timeout in seconds for API requests to the Admin service. |
 | `CONDUIT_WEBUI_PORT` | Integer | 5000 | The port on which the WebUI service listens. |
-| `CONDUIT_INSECURE` | Boolean | `false` | When set to `true`, disables authentication requirements for the WebUI. **WARNING: Only use in development environments. Never enable in production.** |
+| `CONDUIT_INSECURE` | Boolean | `false` | **DANGER**: When set to `true`, disables all authentication for the WebUI. **ONLY works in Development environments**. The application will throw an error and refuse to start if this is enabled in Production or Staging environments. |
 
 ### AutoLogin Feature
 

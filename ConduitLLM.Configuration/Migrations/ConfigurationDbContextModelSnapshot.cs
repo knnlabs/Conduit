@@ -17,6 +17,80 @@ namespace ConduitLLM.Configuration.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AsyncTask", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Progress")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProgressMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("text");
+
+                    b.Property<int>("State")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("VirtualKeyId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsArchived");
+
+                    b.HasIndex("State");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("VirtualKeyId");
+
+                    b.HasIndex("IsArchived", "ArchivedAt")
+                        .HasDatabaseName("IX_AsyncTasks_Cleanup");
+
+                    b.HasIndex("VirtualKeyId", "CreatedAt");
+
+                    b.HasIndex("IsArchived", "CompletedAt", "State")
+                        .HasDatabaseName("IX_AsyncTasks_Archival");
+
+                    b.ToTable("AsyncTasks");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioCost", b =>
                 {
                     b.Property<int>("Id")
@@ -551,6 +625,9 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<bool>("SupportsTextToSpeech")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("SupportsVideoGeneration")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("SupportsVision")
                         .HasColumnType("INTEGER");
 
@@ -924,6 +1001,17 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("VirtualKeyId");
 
                     b.ToTable("VirtualKeySpendHistory");
+                });
+
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.AsyncTask", b =>
+                {
+                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
+                        .WithMany()
+                        .HasForeignKey("VirtualKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("VirtualKey");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.AudioProviderConfig", b =>

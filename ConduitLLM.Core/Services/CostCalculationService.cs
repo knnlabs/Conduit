@@ -113,8 +113,24 @@ public class CostCalculationService : ICostCalculationService
             calculatedCost += (usage.ImageCount.Value * modelCost.ImageCostPerImage.Value);
         }
 
-        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, Images: {ImageCount}) is {CalculatedCost}",
-            modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, calculatedCost);
+        // Add video generation cost if applicable
+        if (modelCost.VideoCostPerSecond.HasValue && usage.VideoDurationSeconds.HasValue)
+        {
+            var baseCost = (decimal)usage.VideoDurationSeconds.Value * modelCost.VideoCostPerSecond.Value;
+            
+            // Apply resolution multiplier if available
+            if (modelCost.VideoResolutionMultipliers != null && 
+                !string.IsNullOrEmpty(usage.VideoResolution) &&
+                modelCost.VideoResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+            {
+                baseCost *= multiplier;
+            }
+            
+            calculatedCost += baseCost;
+        }
+
+        _logger.LogDebug("Calculated cost for model {ModelId} with usage (Prompt: {PromptTokens}, Completion: {CompletionTokens}, Images: {ImageCount}, Video: {VideoDuration}s) is {CalculatedCost}",
+            modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount ?? 0, usage.VideoDurationSeconds ?? 0, calculatedCost);
 
         return calculatedCost;
     }

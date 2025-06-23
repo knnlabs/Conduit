@@ -10,6 +10,7 @@ namespace ConduitLLM.Http.EventHandlers
     /// Critical for maintaining cache consistency across all services
     /// </summary>
     public class VirtualKeyCacheInvalidationHandler : 
+        IConsumer<VirtualKeyCreated>,
         IConsumer<VirtualKeyUpdated>,
         IConsumer<VirtualKeyDeleted>,
         IConsumer<SpendUpdated>
@@ -28,6 +29,42 @@ namespace ConduitLLM.Http.EventHandlers
         {
             _cache = cache;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        /// <summary>
+        /// Handles VirtualKeyCreated events by invalidating the cache to force a fresh load
+        /// </summary>
+        /// <param name="context">Message context containing the event</param>
+        public async Task Consume(ConsumeContext<VirtualKeyCreated> context)
+        {
+            var @event = context.Message;
+            
+            try
+            {
+                if (_cache != null)
+                {
+                    // For a newly created key, we want to ensure any stale cache entries are removed
+                    // This forces the next request to load fresh data from the database
+                    await _cache.InvalidateVirtualKeyAsync(@event.KeyHash);
+                    
+                    _logger.LogInformation(
+                        "Virtual Key cache invalidated for newly created key {KeyId} (name: {KeyName}, hash: {KeyHash})",
+                        @event.KeyId, 
+                        @event.KeyName,
+                        @event.KeyHash);
+                }
+                else
+                {
+                    _logger.LogDebug("Virtual Key cache not configured - skipping invalidation for newly created key {KeyId}", @event.KeyId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, 
+                    "Failed to invalidate Virtual Key cache for newly created key {KeyId} (hash: {KeyHash})", 
+                    @event.KeyId, @event.KeyHash);
+                throw; // Re-throw to trigger MassTransit retry logic
+            }
         }
 
         /// <summary>

@@ -31,6 +31,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
+using Microsoft.Extensions.Caching.Distributed;
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 using StackExchange.Redis; // Added for Redis-based task service
@@ -142,8 +143,17 @@ builder.Services.AddCoreApiSecurity(builder.Configuration);
 // Register HttpClientFactory - REQUIRED for LLMClientFactory
 builder.Services.AddHttpClient();
 
+// Add standard LLM provider HTTP clients with timeout/retry policies
+builder.Services.AddLLMProviderHttpClients();
+
+// Add video generation HTTP clients without timeout for long-running operations
+builder.Services.AddVideoGenerationHttpClients();
+
 // Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
 builder.Services.AddConfigurationAdapters();
+
+// Register operation timeout provider for operation-aware timeout policies
+builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
 
 // Add dependencies needed for the Conduit service
 // Use DatabaseAwareLLMClientFactory to get provider credentials from database
@@ -167,6 +177,12 @@ builder.Services.AddRepositories();
 // Register services
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
+
+// Register Model Capability Service
+builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
+
+// Register Video Generation Service
+builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
 
 // Register enhanced model discovery providers
 // Configure HttpClients for each discovery provider
@@ -306,8 +322,33 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
     
-    // Add image generation consumer
+    // Add model capabilities consumer
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCapabilitiesDiscoveredHandler>();
+    
+    // Add image generation consumers
     x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationProgressHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationCompletedHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationFailedHandler>();
+    
+    // Add video generation consumers
+    x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationProgressHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationCompletedHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationFailedHandler>();
+    
+    // Add Admin API event consumers for cache invalidation
+    x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
+    
+    // Add async task cache invalidation handler
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.AsyncTaskCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
+    
+    // Add navigation state event consumers for real-time updates
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelMappingChangedNotificationConsumer>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ProviderHealthChangedNotificationConsumer>();
+    x.AddConsumer<ConduitLLM.Http.Consumers.ModelCapabilitiesDiscoveredNotificationConsumer>();
     
     if (useRabbitMq)
     {
@@ -335,6 +376,16 @@ builder.Services.AddMassTransit(x =>
         });
         
         Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
+        Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events for:");
+        Console.WriteLine("  - Virtual Key updates (cache invalidation across instances)");
+        Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
+        Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
+        Console.WriteLine("  - Model capability discovery (shared across all instances)");
+        Console.WriteLine("  - Model mapping changes (real-time WebUI updates via SignalR)");
+        Console.WriteLine("  - Provider health changes (real-time WebUI updates via SignalR)");
+        Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
+        Console.WriteLine("  - IP filter changes (security policy updates)");
+        Console.WriteLine("  - Model cost changes (pricing updates)");
     }
     else
     {
@@ -354,6 +405,11 @@ builder.Services.AddMassTransit(x =>
         });
         
         Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
+        Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events locally");
+        Console.WriteLine("[Conduit] WARNING: For production multi-instance deployments, configure RabbitMQ:");
+        Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__HOST to your RabbitMQ host");
+        Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__USERNAME and CONDUITLLM__RABBITMQ__PASSWORD");
+        Console.WriteLine("  - This enables cache consistency and ordered processing across instances");
     }
 });
 
@@ -361,15 +417,23 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddScoped<ModelListService>();
 
 // Register async task service
+// Register cancellable task registry
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICancellableTaskRegistry, ConduitLLM.Core.Services.CancellableTaskRegistry>();
+
 var useRedisForTasks = builder.Configuration.GetValue<bool>("ConduitLLM:Tasks:UseRedis", false);
 if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
 {
-    // Use Redis for distributed task management
-    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
+    // Use hybrid database+cache task management for distributed deployments
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
     {
-        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
-        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisAsyncTaskService>>();
-        return new ConduitLLM.Core.Services.RedisAsyncTaskService(redis, logger);
+        var repository = sp.GetRequiredService<ConduitLLM.Configuration.Repositories.IAsyncTaskRepository>();
+        var cache = sp.GetRequiredService<IDistributedCache>();
+        var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
+        
+        return publishEndpoint != null
+            ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
+            : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
     });
 }
 else
@@ -417,6 +481,9 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     
     // Add background service for processing image generation tasks
     builder.Services.AddHostedService<ImageGenerationBackgroundService>();
+    
+    // Add background service for video generation monitoring and cleanup
+    builder.Services.AddHostedService<VideoGenerationBackgroundService>();
     
     Console.WriteLine("[Conduit] Image generation queue configured with Redis (distributed mode)");
 }
@@ -505,6 +572,15 @@ builder.Services.AddAuthorization(options =>
 
 // Add Controller support
 builder.Services.AddControllers();
+
+// Add SignalR for real-time navigation state updates
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
+
+// Register navigation state notification service
+builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
 
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
@@ -634,6 +710,9 @@ app.UseCoreApiSecurity();
 // Enable rate limiting (now that Virtual Keys are authenticated)
 app.UseRateLimiter();
 
+// Add timeout diagnostics middleware
+app.UseMiddleware<ConduitLLM.Core.Middleware.TimeoutDiagnosticsMiddleware>();
+
 // Enable WebSockets for real-time communication
 app.UseWebSockets(new WebSocketOptions
 {
@@ -644,8 +723,13 @@ app.UseWebSockets(new WebSocketOptions
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
-// Map standardized health check endpoints
-app.MapConduitHealthChecks();
+// Map SignalR hub for real-time navigation state updates
+app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
+Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
+
+// Map health check endpoints without authentication requirement
+// Health endpoints should be accessible without authentication for monitoring tools
+app.MapSecureConduitHealthChecks(requireAuthorization: false);
 
 // Add completions endpoint (legacy)
 app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>

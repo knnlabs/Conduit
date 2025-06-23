@@ -53,6 +53,28 @@ Console.WriteLine("[Conduit WebUI] Using Admin API client mode");
 // Check for insecure mode
 bool insecureMode = Environment.GetEnvironmentVariable("CONDUIT_INSECURE")?.ToLowerInvariant() == "true";
 
+// Validate insecure mode is only enabled in development environments
+if (insecureMode)
+{
+    if (builder.Environment.IsProduction())
+    {
+        throw new InvalidOperationException("SECURITY VIOLATION: Insecure mode cannot be enabled in production environment. Remove CONDUIT_INSECURE environment variable.");
+    }
+    
+    if (builder.Environment.IsStaging())
+    {
+        throw new InvalidOperationException("SECURITY VIOLATION: Insecure mode cannot be enabled in staging environment. Remove CONDUIT_INSECURE environment variable.");
+    }
+    
+    // Log prominent warning for development environment
+    Console.WriteLine("🚨 ==========================================");
+    Console.WriteLine("🚨 WARNING: INSECURE MODE ENABLED");
+    Console.WriteLine("🚨 Authentication is DISABLED!");
+    Console.WriteLine("🚨 This mode is ONLY for development.");
+    Console.WriteLine("🚨 Environment: " + builder.Environment.EnvironmentName);
+    Console.WriteLine("🚨 ==========================================");
+}
+
 // Configure Redis connection string early for security services
 var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
 var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
@@ -193,7 +215,7 @@ builder.Services.AddTransient<ConduitLLM.WebUI.Services.InitialSetupService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.NotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IToastNotificationService, ConduitLLM.WebUI.Services.ToastNotificationService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.MarkdownService>();
-builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.NavigationStateService>();
+builder.Services.AddSingleton<ConduitLLM.WebUI.Interfaces.INavigationStateService, ConduitLLM.WebUI.Services.SignalRNavigationStateService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.VersionCheckService>();
 builder.Services.AddSingleton<ConduitLLM.WebUI.Services.IFileVersionService, ConduitLLM.WebUI.Services.FileVersionService>();
 builder.Services.AddSingleton<ICacheMetricsService, CacheMetricsService>();
@@ -210,6 +232,9 @@ if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 
 // Register Conduit API clients with resilience policies
+// Register operation timeout provider for operation-aware timeout policies
+builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
+
 builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()))
     .AddAdminApiResiliencePolicies();
 
@@ -222,12 +247,13 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client =>
 {
     options.RetryCount = 3;
     options.CircuitBreakerThreshold = 5;
-    options.TimeoutSeconds = 60; // Increased timeout for image generation
+    options.TimeoutSeconds = 60; // Default timeout for most operations (video excluded)
 })
 .ConfigureHttpClient(client =>
 {
-    // Set a default timeout on the HttpClient itself as a safety net
-    client.Timeout = TimeSpan.FromSeconds(120); // Even longer timeout for the HTTP client
+    // Set a very long timeout at the HttpClient level for video generation
+    // The Polly policies will control timeouts for non-video endpoints
+    client.Timeout = TimeSpan.FromHours(1);
 });
 
 // Register Admin API client and compatibility services
@@ -315,6 +341,14 @@ using (var scope = app.Services.CreateScope())
     logger.LogInformation("  - Max Attempts: {MaxAttempts}", securityOptions.FailedLogin.MaxAttempts);
     logger.LogInformation("  - Ban Duration: {Minutes} minutes", securityOptions.FailedLogin.BanDurationMinutes);
     logger.LogInformation("==============================");
+    
+    // Log insecure mode warning if enabled
+    if (insecureMode)
+    {
+        logger.LogWarning("🚨 INSECURE MODE IS ENABLED - Authentication is bypassed!");
+        logger.LogWarning("🚨 This mode should ONLY be used in development environments.");
+        logger.LogWarning("🚨 Current environment: {Environment}", app.Environment.EnvironmentName);
+    }
 }
 
 // Initialize Master Key and WebUI Virtual Key using InitialSetupService
@@ -463,8 +497,8 @@ app.UseAuthorization();
 
 // Middleware simplified - deprecated middleware removed as API endpoints moved to ConduitLLM.Http project
 
-// Map standardized health check endpoints
-app.MapConduitHealthChecks();
+// Map health check endpoints with authentication requirement
+app.MapSecureConduitHealthChecks(requireAuthorization: true);
 
 // Map controllers first
 app.MapControllers();

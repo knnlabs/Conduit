@@ -3,11 +3,13 @@ using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Interfaces; // For IVirtualKeyCache and ILLMClientFactory
 using ConduitLLM.Configuration.Repositories; // For repository interfaces
+using ConduitLLM.Configuration.Options;
 
 using MassTransit; // For IPublishEndpoint
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Extensions;
@@ -34,6 +36,10 @@ public static class ServiceCollectionExtensions
         // Add memory cache if not already registered
         services.AddMemoryCache();
 
+        // Add authentication with a custom scheme
+        services.AddAuthentication("MasterKey")
+            .AddScheme<MasterKeyAuthenticationSchemeOptions, MasterKeyAuthenticationHandler>("MasterKey", null);
+
         // Register authorization policy for master key
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
         services.AddAuthorization(options =>
@@ -53,17 +59,52 @@ public static class ServiceCollectionExtensions
             
             return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
         });
-        services.AddScoped<IAdminModelProviderMappingService, AdminModelProviderMappingService>();
+        // Register AdminModelProviderMappingService with optional event publishing dependency
+        services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
+        {
+            var mappingRepository = serviceProvider.GetRequiredService<IModelProviderMappingRepository>();
+            var credentialRepository = serviceProvider.GetRequiredService<IProviderCredentialRepository>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminModelProviderMappingService>>();
+            
+            return new AdminModelProviderMappingService(mappingRepository, credentialRepository, publishEndpoint, logger);
+        });
         services.AddScoped<IAdminRouterService, AdminRouterService>();
         services.AddScoped<IAdminLogService, AdminLogService>();
-        services.AddScoped<IAdminIpFilterService, AdminIpFilterService>();
+        // Register AdminIpFilterService with optional event publishing dependency
+        services.AddScoped<IAdminIpFilterService>(serviceProvider =>
+        {
+            var ipFilterRepository = serviceProvider.GetRequiredService<IIpFilterRepository>();
+            var ipFilterOptions = serviceProvider.GetRequiredService<IOptionsMonitor<IpFilterOptions>>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminIpFilterService>>();
+            
+            return new AdminIpFilterService(ipFilterRepository, ipFilterOptions, publishEndpoint, logger);
+        });
         services.AddScoped<IAdminCostDashboardService, AdminCostDashboardService>();
         services.AddScoped<IAdminDatabaseBackupService, AdminDatabaseBackupService>();
         services.AddScoped<IAdminSystemInfoService, AdminSystemInfoService>();
         services.AddScoped<IAdminNotificationService, AdminNotificationService>();
-        services.AddScoped<IAdminGlobalSettingService, AdminGlobalSettingService>();
+        // Register AdminGlobalSettingService with optional event publishing dependency
+        services.AddScoped<IAdminGlobalSettingService>(serviceProvider =>
+        {
+            var globalSettingRepository = serviceProvider.GetRequiredService<IGlobalSettingRepository>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminGlobalSettingService>>();
+            
+            return new AdminGlobalSettingService(globalSettingRepository, publishEndpoint, logger);
+        });
         services.AddScoped<IAdminProviderHealthService, AdminProviderHealthService>();
-        services.AddScoped<IAdminModelCostService, AdminModelCostService>();
+        // Register AdminModelCostService with optional event publishing dependency
+        services.AddScoped<IAdminModelCostService>(serviceProvider =>
+        {
+            var modelCostRepository = serviceProvider.GetRequiredService<IModelCostRepository>();
+            var requestLogRepository = serviceProvider.GetRequiredService<IRequestLogRepository>();
+            var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminModelCostService>>();
+            
+            return new AdminModelCostService(modelCostRepository, requestLogRepository, publishEndpoint, logger);
+        });
         // Register AdminProviderCredentialService with optional event publishing dependency
         services.AddScoped<IAdminProviderCredentialService>(serviceProvider =>
         {
@@ -149,6 +190,10 @@ public static class ServiceCollectionExtensions
 
         // Register discovery service
         services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
+
+        // Register provider health monitoring background service
+        services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));
+        services.AddHostedService<ProviderHealthMonitoringService>();
 
         // Configure CORS for the Admin API
         services.AddCors(options =>

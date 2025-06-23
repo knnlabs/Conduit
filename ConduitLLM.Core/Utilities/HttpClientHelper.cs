@@ -118,6 +118,24 @@ namespace ConduitLLM.Core.Utilities
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
+            
+            // Log all headers for debugging (especially for authentication issues)
+            if (logger != null && logger.IsEnabled(LogLevel.Debug))
+            {
+                var allHeaders = new List<string>();
+                foreach (var header in request.Headers)
+                {
+                    allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
+                }
+                if (request.Content?.Headers != null)
+                {
+                    foreach (var header in request.Content.Headers)
+                    {
+                        allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
+                    }
+                }
+                logger.LogDebug("Request headers: {Headers}", string.Join("; ", allHeaders));
+            }
 
             return request;
         }
@@ -142,6 +160,15 @@ namespace ConduitLLM.Core.Utilities
                     logger?.LogWarning("Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your OpenAI account status. Raw error: {errorContent}");
+                }
+                
+                // Check for Anthropic authentication errors
+                if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
+                    errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
+                    throw new LLMCommunicationException(
+                        "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.");
                 }
                 
                 throw new LLMCommunicationException(
@@ -211,6 +238,16 @@ namespace ConduitLLM.Core.Utilities
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
                     logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                    
+                    // Check for Anthropic authentication errors
+                    if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
+                        errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
+                    {
+                        logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
+                        throw new LLMCommunicationException(
+                            "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.");
+                    }
+                    
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}");
                 }

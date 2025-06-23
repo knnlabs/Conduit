@@ -8,7 +8,10 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
+using MassTransit;
 using Microsoft.Extensions.Logging;
 
 using static ConduitLLM.Core.Extensions.LoggingSanitizer;
@@ -18,7 +21,7 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Service implementation for managing model costs through the Admin API
     /// </summary>
-    public class AdminModelCostService : IAdminModelCostService
+    public class AdminModelCostService : EventPublishingServiceBase, IAdminModelCostService
     {
         private readonly IModelCostRepository _modelCostRepository;
         private readonly IRequestLogRepository _requestLogRepository;
@@ -29,11 +32,14 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="modelCostRepository">The model cost repository</param>
         /// <param name="requestLogRepository">The request log repository</param>
+        /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
         public AdminModelCostService(
             IModelCostRepository modelCostRepository,
             IRequestLogRepository requestLogRepository,
+            IPublishEndpoint? publishEndpoint,
             ILogger<AdminModelCostService> logger)
+            : base(publishEndpoint, logger)
         {
             _modelCostRepository = modelCostRepository ?? throw new ArgumentNullException(nameof(modelCostRepository));
             _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
@@ -70,6 +76,18 @@ namespace ConduitLLM.Admin.Services
                     throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
                 }
 
+                // Publish ModelCostChanged event for cache invalidation and cross-service coordination
+                await PublishEventAsync(
+                    new ModelCostChanged
+                    {
+                        ModelCostId = createdModelCost.Id,
+                        ModelIdPattern = createdModelCost.ModelIdPattern,
+                        ChangeType = "Created",
+                        ChangedProperties = new[] { "Created" },
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    "CreateModelCost");
+
                 _logger.LogInformation("Created model cost with pattern '{Pattern}'", modelCost.ModelIdPattern.Replace(Environment.NewLine, ""));
                 return createdModelCost.ToDto();
             }
@@ -85,10 +103,28 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
+                // Get model cost info before deletion for event publishing
+                var modelCostToDelete = await _modelCostRepository.GetByIdAsync(id);
+                
                 var result = await _modelCostRepository.DeleteAsync(id);
 
                 if (result)
                 {
+                    // Publish ModelCostChanged event for cache invalidation and cleanup
+                    if (modelCostToDelete != null)
+                    {
+                        await PublishEventAsync(
+                            new ModelCostChanged
+                            {
+                                ModelCostId = id,
+                                ModelIdPattern = modelCostToDelete.ModelIdPattern,
+                                ChangeType = "Deleted",
+                                ChangedProperties = new[] { "Deleted" },
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "DeleteModelCost");
+                    }
+                    
                     _logger.LogInformation("Deleted model cost with ID {Id}",
                 id);
                 }
@@ -266,12 +302,36 @@ namespace ConduitLLM.Admin.Services
 
                             existingModelCost.UpdateFrom(updateDto);
                             await _modelCostRepository.UpdateAsync(existingModelCost);
+                            
+                            // Publish ModelCostChanged event for updated model cost
+                            await PublishEventAsync(
+                                new ModelCostChanged
+                                {
+                                    ModelCostId = existingModelCost.Id,
+                                    ModelIdPattern = existingModelCost.ModelIdPattern,
+                                    ChangeType = "Updated",
+                                    ChangedProperties = new[] { "ImportUpdated" },
+                                    CorrelationId = Guid.NewGuid().ToString()
+                                },
+                                "ImportModelCosts");
                         }
                         else
                         {
                             // Create new model cost
                             var modelCostEntity = modelCost.ToEntity();
-                            await _modelCostRepository.CreateAsync(modelCostEntity);
+                            var newId = await _modelCostRepository.CreateAsync(modelCostEntity);
+                            
+                            // Publish ModelCostChanged event for new model cost
+                            await PublishEventAsync(
+                                new ModelCostChanged
+                                {
+                                    ModelCostId = newId,
+                                    ModelIdPattern = modelCost.ModelIdPattern,
+                                    ChangeType = "Created",
+                                    ChangedProperties = new[] { "ImportCreated" },
+                                    CorrelationId = Guid.NewGuid().ToString()
+                                },
+                                "ImportModelCosts");
                         }
 
                         importedCount++;
@@ -326,6 +386,19 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
+                // Track changes for event publishing
+                var changedProperties = new List<string>();
+                if (existingModelCost.ModelIdPattern != modelCost.ModelIdPattern)
+                    changedProperties.Add(nameof(modelCost.ModelIdPattern));
+                if (existingModelCost.InputTokenCost != modelCost.InputTokenCost)
+                    changedProperties.Add(nameof(modelCost.InputTokenCost));
+                if (existingModelCost.OutputTokenCost != modelCost.OutputTokenCost)
+                    changedProperties.Add(nameof(modelCost.OutputTokenCost));
+                if (existingModelCost.EmbeddingTokenCost != modelCost.EmbeddingTokenCost)
+                    changedProperties.Add(nameof(modelCost.EmbeddingTokenCost));
+                if (existingModelCost.ImageCostPerImage != modelCost.ImageCostPerImage)
+                    changedProperties.Add(nameof(modelCost.ImageCostPerImage));
+
                 // Update entity
                 existingModelCost.UpdateFrom(modelCost);
 
@@ -334,6 +407,21 @@ namespace ConduitLLM.Admin.Services
 
                 if (result)
                 {
+                    // Publish ModelCostChanged event for cache invalidation and cross-service coordination
+                    if (changedProperties.Any())
+                    {
+                        await PublishEventAsync(
+                            new ModelCostChanged
+                            {
+                                ModelCostId = modelCost.Id,
+                                ModelIdPattern = existingModelCost.ModelIdPattern,
+                                ChangeType = "Updated",
+                                ChangedProperties = changedProperties.ToArray(),
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "UpdateModelCost");
+                    }
+                    
                     _logger.LogInformation("Updated model cost with ID {Id}",
                 modelCost.Id);
                 }

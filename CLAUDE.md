@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Information
+- **GitHub Repository**: knnlabs/Conduit
+- **Issues URL**: https://github.com/knnlabs/Conduit/issues
+- **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
+
 ## Build Commands
 - Build solution: `dotnet build`
 - Run tests: `dotnet test`
@@ -232,6 +237,11 @@ The event-driven system is built on **MassTransit** with domain events for criti
 
 #### Virtual Key Events
 
+**VirtualKeyCreated**
+- **Trigger**: When a new virtual key is created in Admin API
+- **Consumers**: Cache invalidation in Core API to ensure immediate recognition
+- **Partition Key**: Virtual Key ID (ensures ordered processing)
+
 **VirtualKeyUpdated**
 - **Trigger**: When virtual key properties are modified in Admin API
 - **Consumers**: Cache invalidation in Core API
@@ -299,6 +309,19 @@ Events are partitioned by entity ID to ensure:
 
 **AdminVirtualKeyService** (`ConduitLLM.Admin`)
 ```csharp
+// Publishes VirtualKeyCreated when a new key is created
+await _publishEndpoint.Publish(new VirtualKeyCreated
+{
+    KeyId = virtualKey.Id,
+    KeyHash = virtualKey.KeyHash,
+    KeyName = virtualKey.KeyName,
+    CreatedAt = virtualKey.CreatedAt,
+    IsEnabled = virtualKey.IsEnabled,
+    AllowedModels = virtualKey.AllowedModels,
+    MaxBudget = virtualKey.MaxBudget,
+    CorrelationId = Guid.NewGuid().ToString()
+});
+
 // Publishes VirtualKeyUpdated when properties change
 await _publishEndpoint.Publish(new VirtualKeyUpdated
 {
@@ -336,7 +359,7 @@ await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
 #### Event Consumers
 
 **VirtualKeyCacheInvalidationHandler** (`ConduitLLM.Http`)
-- Handles `VirtualKeyUpdated`, `VirtualKeyDeleted`, `SpendUpdated`
+- Handles `VirtualKeyCreated`, `VirtualKeyUpdated`, `VirtualKeyDeleted`, `SpendUpdated`
 - Invalidates Redis cache entries for affected virtual keys
 - Ensures cache consistency across service instances
 
@@ -351,6 +374,13 @@ await _publishEndpoint.Publish(new ModelCapabilitiesDiscovered
 - Cleans up cached provider data
 
 ### Event Flow Examples
+
+#### Virtual Key Creation Flow
+1. **Admin API**: User creates a new virtual key via REST API
+2. **AdminVirtualKeyService**: Creates key in database and publishes `VirtualKeyCreated`
+3. **Core API**: `VirtualKeyCacheInvalidationHandler` receives event
+4. **Redis Cache**: Any stale entries for the key hash are invalidated
+5. **Next Request**: Fresh data loaded from database, new key immediately available
 
 #### Virtual Key Update Flow
 1. **Admin API**: User updates virtual key via REST API
@@ -462,6 +492,18 @@ Spend update processed for key {KeyId}: {Amount}
 - **Before**: NavigationStateService polled APIs every 30 seconds
 - **After**: Event-driven updates provide real-time data consistency
 - **Benefit**: Reduces unnecessary API calls and database queries
+
+### Real-Time Navigation State Updates
+
+The WebUI navigation state now updates in real-time using SignalR:
+
+1. **SignalR Hub**: Core API exposes `/hubs/navigation-state` for WebSocket connections
+2. **Event-Driven Updates**: Navigation states update instantly when:
+   - Model mappings are created/updated/deleted
+   - Provider health status changes  
+   - Model capabilities are discovered
+3. **Automatic Fallback**: If SignalR connection fails, WebUI falls back to 30-second polling
+4. **Provider Health Monitoring**: Admin API monitors provider health every 5 minutes (configurable)
 
 ### Multi-Instance Deployment with RabbitMQ
 

@@ -44,6 +44,9 @@ namespace ConduitLLM.Tests.Integration
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health");
 
@@ -92,6 +95,9 @@ namespace ConduitLLM.Tests.Integration
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health/ready");
 
@@ -120,6 +126,9 @@ namespace ConduitLLM.Tests.Integration
                             tags: new[] { "db", "sql", "ready" });
                 });
             }).CreateClient();
+
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await client.GetAsync("/health/ready");
@@ -157,6 +166,9 @@ namespace ConduitLLM.Tests.Integration
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health/ready");
 
@@ -185,6 +197,9 @@ namespace ConduitLLM.Tests.Integration
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health");
 
@@ -212,6 +227,9 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var client = _factory.CreateClient();
+
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await client.GetAsync("/health");
