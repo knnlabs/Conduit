@@ -283,8 +283,8 @@ namespace ConduitLLM.Core.Services
                     
                     try
                     {
-                        // Start progress tracking in background (this is lightweight and can continue as fire-and-forget)
-                        _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
+                        // Start progress tracking via event-driven architecture
+                        await StartProgressTrackingAsync(request);
 
                         _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
                         
@@ -333,63 +333,24 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Tracks progress during video generation.
+        /// Starts progress tracking for a video generation task using event-driven architecture.
         /// </summary>
-        private async Task TrackProgressAsync(VideoGenerationRequested request, CancellationToken cancellationToken)
+        private async Task StartProgressTrackingAsync(VideoGenerationRequested request)
         {
-            var progressIntervals = new[] { 10, 30, 50, 70, 90 };
-            var intervalIndex = 0;
-            var startTime = DateTime.UtcNow;
-
-            while (!cancellationToken.IsCancellationRequested && intervalIndex < progressIntervals.Length)
+            // Publish initial progress check request
+            var progressCheck = new VideoProgressCheckRequested
             {
-                // Check if task is still running
-                var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
-                if (taskStatus == null || taskStatus.State != TaskState.Processing)
-                {
-                    break;
-                }
-
-                // Calculate estimated progress based on time elapsed
-                var elapsed = DateTime.UtcNow - startTime;
-                if (elapsed.TotalSeconds > intervalIndex * 12) // ~1 minute per 10% progress
-                {
-                    var progress = progressIntervals[intervalIndex];
-                    
-                    await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Processing, progress: progress, cancellationToken: cancellationToken);
-                    
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
-                    {
-                        RequestId = request.RequestId,
-                        ProgressPercentage = progress,
-                        Status = GetProgressStatus(progress),
-                        Message = GetProgressMessage(progress),
-                        CorrelationId = request.CorrelationId
-                    });
-                    
-                    // Send webhook notification for progress if configured
-                    if (!string.IsNullOrEmpty(request.WebhookUrl))
-                    {
-                        var webhookPayload = new VideoProgressWebhookPayload
-                        {
-                            TaskId = request.RequestId,
-                            Status = "processing",
-                            ProgressPercentage = progress,
-                            Message = GetProgressMessage(progress),
-                            EstimatedSecondsRemaining = (int)((100 - progress) * 0.6) // Rough estimate
-                        };
-
-                        await _webhookService.SendTaskProgressWebhookAsync(
-                            request.WebhookUrl,
-                            webhookPayload,
-                            request.WebhookHeaders);
-                    }
-                    
-                    intervalIndex++;
-                }
-
-                await Task.Delay(5000, cancellationToken); // Check every 5 seconds
-            }
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                ScheduledAt = DateTime.UtcNow.AddSeconds(5), // First check in 5 seconds
+                IntervalIndex = 0,
+                TotalIntervals = 5, // 10%, 30%, 50%, 70%, 90%
+                StartTime = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            };
+            
+            await _publishEndpoint.Publish(progressCheck);
+            _logger.LogDebug("Initiated progress tracking for video generation {RequestId}", request.RequestId);
         }
 
         /// <summary>
@@ -455,30 +416,6 @@ namespace ConduitLLM.Core.Services
                 "1280x720" or "720x1280" => 1.5m,
                 "720x480" or "480x720" => 1.2m,
                 _ => 1.0m
-            };
-        }
-
-        private string GetProgressStatus(int percentage)
-        {
-            return percentage switch
-            {
-                <= 20 => "initializing",
-                <= 40 => "processing_frames",
-                <= 60 => "rendering",
-                <= 80 => "encoding",
-                _ => "finalizing"
-            };
-        }
-
-        private string GetProgressMessage(int percentage)
-        {
-            return percentage switch
-            {
-                <= 20 => "Initializing video generation pipeline",
-                <= 40 => "Processing frames based on prompt",
-                <= 60 => "Rendering video content",
-                <= 80 => "Encoding video to final format",
-                _ => "Finalizing and preparing for delivery"
             };
         }
 
@@ -652,6 +589,15 @@ namespace ConduitLLM.Core.Services
                         request.WebhookHeaders);
                 }
                 
+                // Cancel progress tracking since task is complete
+                await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+                {
+                    RequestId = request.RequestId,
+                    VirtualKeyId = request.VirtualKeyId,
+                    Reason = "Video generation completed successfully",
+                    CorrelationId = request.CorrelationId
+                });
+                
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
             }
@@ -717,6 +663,15 @@ namespace ConduitLLM.Core.Services
                 FailedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
+            
+            // Cancel progress tracking since task has failed
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = $"Video generation failed: {errorMessage}",
+                CorrelationId = request.CorrelationId
+            });
 
             // Send webhook notification if configured
             if (!string.IsNullOrEmpty(request.WebhookUrl))
@@ -758,6 +713,15 @@ namespace ConduitLLM.Core.Services
             {
                 RequestId = request.RequestId,
                 CancelledAt = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            });
+            
+            // Cancel progress tracking since task is cancelled
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = "Video generation cancelled by user",
                 CorrelationId = request.CorrelationId
             });
 

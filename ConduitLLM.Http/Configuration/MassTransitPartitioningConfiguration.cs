@@ -80,6 +80,25 @@ namespace ConduitLLM.Http.Configuration
                     TimeSpan.FromHours(2)
                 ));
             });
+            
+            // Configure progress tracking endpoints
+            cfg.Send<VideoProgressCheckRequested>(x =>
+            {
+                x.UsePartitioner(p => p.Message.VirtualKeyId);
+            });
+            
+            cfg.ReceiveEndpoint("video-progress-tracking", e =>
+            {
+                // Configure partitioner to ensure ordered processing per virtual key
+                e.ConfigurePartitioner<VideoProgressCheckRequested>(
+                    context,
+                    p => p.Message.PartitionKey);
+                
+                e.ConfigureConsumer<VideoProgressTrackingOrchestrator>(context);
+                
+                // No retry for progress checks - they're time-sensitive
+                e.UseMessageRetry(r => r.None());
+            });
         }
 
         /// <summary>

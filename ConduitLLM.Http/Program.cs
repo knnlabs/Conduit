@@ -357,6 +357,7 @@ builder.Services.AddMassTransit(x =>
     
     // Add video generation consumers
     x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationProgressHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationCompletedHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationFailedHandler>();
