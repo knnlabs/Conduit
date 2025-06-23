@@ -103,9 +103,35 @@ namespace ConduitLLM.Configuration.Entities
         public DateTime? ArchivedAt { get; set; }
 
         /// <summary>
+        /// Gets or sets the ID of the worker/instance that has leased this task.
+        /// </summary>
+        [MaxLength(100)]
+        public string? LeasedBy { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the lease on this task expires.
+        /// </summary>
+        public DateTime? LeaseExpiryTime { get; set; }
+
+        /// <summary>
+        /// Gets or sets the version number for optimistic concurrency control.
+        /// </summary>
+        [ConcurrencyCheck]
+        public int Version { get; set; } = 0;
+
+        /// <summary>
         /// Navigation property to the associated virtual key.
         /// </summary>
         [ForeignKey(nameof(VirtualKeyId))]
         public virtual VirtualKey? VirtualKey { get; set; }
+
+        /// <summary>
+        /// Determines if this task is available for processing.
+        /// </summary>
+        [NotMapped]
+        public bool IsAvailable => 
+            State == 0 && // Pending
+            !IsArchived &&
+            (LeasedBy == null || LeaseExpiryTime == null || LeaseExpiryTime < DateTime.UtcNow);
     }
 }

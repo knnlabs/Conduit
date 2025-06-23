@@ -292,6 +292,9 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
     
+    // Register Redis distributed lock service
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.RedisDistributedLockService>();
+    
     // Register CachedApiVirtualKeyService with event publishing dependency
     builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
     {
@@ -304,14 +307,17 @@ if (!string.IsNullOrEmpty(redisConnectionString))
         return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
     });
     
-    Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode)");
+    Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode) with distributed locking");
 }
 else
 {
     // Fall back to direct database Virtual Key service
     builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Http.Services.ApiVirtualKeyService>();
     
-    Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode)");
+    // Register in-memory distributed lock service (for development/single instance)
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.InMemoryDistributedLockService>();
+    
+    Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with in-memory locking");
 }
 
 // Configure RabbitMQ settings
