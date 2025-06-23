@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -218,6 +219,24 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogDebug("Updated task {TaskId} progress to {Progress}%", taskId, progressPercentage);
             return Task.CompletedTask;
+        }
+
+        /// <inheritdoc/>
+        public Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            var query = _tasks.Values
+                .Where(t => t.State == TaskState.Pending)
+                .OrderBy(t => t.CreatedAt);
+
+            if (!string.IsNullOrEmpty(taskType))
+            {
+                var filteredQuery = query.Where(t => t.TaskType == taskType);
+                var filteredResults = filteredQuery.Take(limit).ToList();
+                return Task.FromResult<IList<AsyncTaskStatus>>(filteredResults);
+            }
+
+            var results = query.Take(limit).ToList();
+            return Task.FromResult<IList<AsyncTaskStatus>>(results);
         }
     }
 }

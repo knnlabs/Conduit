@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,7 +14,8 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Background service that monitors video generation tasks and performs cleanup operations.
+    /// Background service that processes video generation tasks from the queue.
+    /// Implements a proper worker pattern for scalable async task processing.
     /// </summary>
     public class VideoGenerationBackgroundService : BackgroundService
     {
@@ -38,6 +42,7 @@ namespace ConduitLLM.Http.Services
             // Run multiple background tasks concurrently
             var tasks = new[]
             {
+                RunVideoGenerationWorkerAsync(stoppingToken),
                 RunTaskCleanupAsync(stoppingToken),
                 RunMetricsCollectionAsync(stoppingToken),
                 RunHealthMonitoringAsync(stoppingToken)
@@ -57,6 +62,148 @@ namespace ConduitLLM.Http.Services
             }
 
             _logger.LogInformation("Video generation background service stopped on instance {InstanceId}", _instanceId);
+        }
+
+        private async Task RunVideoGenerationWorkerAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Video generation worker started");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var asyncTaskService = scope.ServiceProvider.GetRequiredService<IAsyncTaskService>();
+                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+
+                    // Get pending video generation tasks
+                    var pendingTasks = await asyncTaskService.GetPendingTasksAsync("video_generation", limit: 10, cancellationToken);
+
+                    if (pendingTasks.Any())
+                    {
+                        _logger.LogDebug("Found {Count} pending video generation tasks", pendingTasks.Count);
+
+                        foreach (var task in pendingTasks)
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                                break;
+
+                            try
+                            {
+                                _logger.LogInformation("Processing video generation task {TaskId}", task.TaskId);
+
+                                // Update task status to processing
+                                await asyncTaskService.UpdateTaskStatusAsync(
+                                    task.TaskId, 
+                                    TaskState.Processing, 
+                                    cancellationToken: cancellationToken);
+
+                                // Reconstruct the video generation request from task metadata
+                                var videoRequest = await CreateVideoGenerationRequestFromTask(task);
+                                
+                                // Publish VideoGenerationRequested event for async processing
+                                if (publishEndpoint != null)
+                                {
+                                    await publishEndpoint.Publish(videoRequest, cancellationToken);
+                                    _logger.LogInformation("Published VideoGenerationRequested event for task {TaskId}", task.TaskId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("No publish endpoint available, marking task {TaskId} as failed", task.TaskId);
+                                    await asyncTaskService.UpdateTaskStatusAsync(
+                                        task.TaskId,
+                                        TaskState.Failed,
+                                        error: "Event bus not available",
+                                        cancellationToken: cancellationToken);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error processing video generation task {TaskId}", task.TaskId);
+                                
+                                // Mark task as failed
+                                try
+                                {
+                                    await asyncTaskService.UpdateTaskStatusAsync(
+                                        task.TaskId,
+                                        TaskState.Failed,
+                                        error: ex.Message,
+                                        cancellationToken: cancellationToken);
+                                }
+                                catch (Exception updateEx)
+                                {
+                                    _logger.LogError(updateEx, "Failed to update task status for {TaskId}", task.TaskId);
+                                }
+                            }
+                        }
+                    }
+
+                    // Wait before checking for more tasks
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in video generation worker loop");
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+            }
+
+            _logger.LogInformation("Video generation worker stopped");
+        }
+
+        private async Task<VideoGenerationRequested> CreateVideoGenerationRequestFromTask(AsyncTaskStatus task)
+        {
+            // Parse metadata to reconstruct the request
+            var metadata = task.Metadata as System.Text.Json.JsonElement? ?? 
+                          (task.Metadata != null ? System.Text.Json.JsonSerializer.SerializeToElement(task.Metadata) : default);
+
+            // Extract webhook configuration
+            string? webhookUrl = null;
+            Dictionary<string, string>? webhookHeaders = null;
+            
+            if (metadata.TryGetProperty("WebhookUrl", out var webhookUrlElement) && webhookUrlElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                webhookUrl = webhookUrlElement.GetString();
+            }
+
+            if (metadata.TryGetProperty("WebhookHeaders", out var webhookHeadersElement) && webhookHeadersElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                webhookHeaders = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(webhookHeadersElement.GetRawText());
+            }
+
+            // Extract video generation parameters
+            VideoGenerationParameters? parameters = null;
+            if (metadata.TryGetProperty("Request", out var requestData))
+            {
+                parameters = new VideoGenerationParameters
+                {
+                    Size = requestData.TryGetProperty("size", out var size) ? size.GetString() : null,
+                    Duration = requestData.TryGetProperty("duration", out var duration) && duration.TryGetInt32(out var dur) ? dur : null,
+                    Fps = requestData.TryGetProperty("fps", out var fps) && fps.TryGetInt32(out var fpsVal) ? fpsVal : null,
+                    Style = requestData.TryGetProperty("style", out var style) ? style.GetString() : null,
+                    ResponseFormat = requestData.TryGetProperty("response_format", out var format) ? format.GetString() : null
+                };
+            }
+
+            var request = new VideoGenerationRequested
+            {
+                RequestId = task.TaskId,
+                Model = metadata.TryGetProperty("Model", out var model) ? model.GetString() ?? "" : "",
+                Prompt = metadata.TryGetProperty("Prompt", out var prompt) ? prompt.GetString() ?? "" : "",
+                VirtualKeyId = metadata.TryGetProperty("VirtualKey", out var vk) ? vk.GetString() ?? "" : "",
+                IsAsync = true,
+                RequestedAt = task.CreatedAt,
+                CorrelationId = task.TaskId,
+                WebhookUrl = webhookUrl,
+                WebhookHeaders = webhookHeaders,
+                Parameters = parameters
+            };
+
+            return request;
         }
 
         private async Task RunTaskCleanupAsync(CancellationToken cancellationToken)

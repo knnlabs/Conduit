@@ -323,5 +323,33 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        /// <inheritdoc/>
+        public async Task<List<AsyncTask>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var query = context.AsyncTasks
+                    .AsNoTracking()
+                    .Where(t => t.State == 0 && !t.IsArchived); // 0 = Pending state
+
+                if (!string.IsNullOrEmpty(taskType))
+                {
+                    query = query.Where(t => t.Type == taskType);
+                }
+
+                return await query
+                    .OrderBy(t => t.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending tasks");
+                throw;
+            }
+        }
     }
 }

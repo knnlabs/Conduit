@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -204,6 +205,21 @@ namespace ConduitLLM.Core.Services
             };
             
             await _cache.SetStringAsync(key, json, options, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            // Note: This implementation is limited by Redis capabilities
+            // In production, you would want to maintain a sorted set of pending tasks
+            // or use a different storage mechanism that supports querying
+            
+            _logger.LogWarning("GetPendingTasksAsync called on Redis-based AsyncTaskService. " +
+                             "This implementation cannot efficiently query pending tasks. " +
+                             "Consider using HybridAsyncTaskService or database-backed implementation.");
+            
+            // Return empty list as we cannot efficiently iterate Redis keys
+            return new List<AsyncTaskStatus>();
         }
 
         private static string GetTaskKey(string taskId) => $"{TASK_KEY_PREFIX}{taskId}";

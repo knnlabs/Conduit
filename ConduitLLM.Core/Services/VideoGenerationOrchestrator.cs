@@ -74,6 +74,10 @@ namespace ConduitLLM.Core.Services
                 return;
             }
 
+            // NOTE: This method is now called by the background service worker
+            // The Task.Run anti-pattern has been removed - video generation now runs
+            // synchronously within the worker thread
+
             try
             {
                 _logger.LogInformation("Processing async video generation task {RequestId} for model {Model}", 
@@ -242,49 +246,44 @@ namespace ConduitLLM.Core.Services
                     _taskRegistry.RegisterTask(request.RequestId, taskCts);
                     _logger.LogDebug("Registered task {RequestId} for cancellation", request.RequestId);
                     
-                    // Start progress tracking with cancellation support
-                    _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
-
-                    // Start video generation with proper cancellation token propagation
-                    _ = Task.Run(async () =>
+                    try
                     {
-                        try
+                        // Start progress tracking in background (this is lightweight and can continue as fire-and-forget)
+                        _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
+
+                        _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
+                        
+                        // Invoke video generation with the cancellation token
+                        var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
+                        if (task != null)
                         {
-                            _logger.LogInformation("Starting async video generation for task {RequestId} with cancellation support", request.RequestId);
+                            response = await task;
                             
-                            // Invoke video generation with the cancellation token
-                            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
-                            if (task != null)
-                            {
-                                response = await task;
-                                
-                                // Process the response when it completes
-                                await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch);
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
-                            }
+                            // Process the response when it completes
+                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch);
                         }
-                        catch (OperationCanceledException)
+                        else
                         {
-                            _logger.LogInformation("Video generation for task {RequestId} was cancelled", request.RequestId);
-                            await HandleVideoGenerationCancellationAsync(request, stopwatch);
+                            throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Video generation failed for task {RequestId}", request.RequestId);
-                            await HandleVideoGenerationFailureAsync(request, ex.Message, stopwatch);
-                        }
-                        finally
-                        {
-                            // Unregister the task when complete
-                            _taskRegistry.UnregisterTask(request.RequestId);
-                        }
-                    }, taskCts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogInformation("Video generation for task {RequestId} was cancelled", request.RequestId);
+                        await HandleVideoGenerationCancellationAsync(request, stopwatch);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Video generation failed for task {RequestId}", request.RequestId);
+                        await HandleVideoGenerationFailureAsync(request, ex.Message, stopwatch);
+                    }
+                    finally
+                    {
+                        // Unregister the task when complete
+                        _taskRegistry.UnregisterTask(request.RequestId);
+                    }
                     
-                    // Return immediately - the video generation continues in the background
-                    _logger.LogInformation("Video generation task {RequestId} started successfully in background with cancellation support", request.RequestId);
+                    _logger.LogInformation("Video generation task {RequestId} completed processing", request.RequestId);
                     return;
                 }
                 else
