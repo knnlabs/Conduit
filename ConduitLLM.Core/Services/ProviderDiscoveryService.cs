@@ -164,6 +164,12 @@ namespace ConduitLLM.Core.Services
                 ImageGeneration = true,
                 SupportedImageSizes = new List<string> { "512x512", "768x768", "1024x1024" }
             },
+            ["stable-video-diffusion"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = new List<string> { "576x1024", "1024x576" },
+                MaxVideoDurationSeconds = 4
+            },
             
             // Mistral
             ["mistral"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
@@ -183,6 +189,22 @@ namespace ConduitLLM.Core.Services
                 FunctionCalling = false,
                 ToolUse = false,
                 JsonMode = false
+            },
+            
+            // Video Generation Models
+            ["runway-gen"] = modelId => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = modelId.Contains("gen3") 
+                    ? new List<string> { "1280x768", "768x1280", "1344x768", "768x1344" }
+                    : new List<string> { "1280x720", "720x1280" },
+                MaxVideoDurationSeconds = modelId.Contains("gen3") ? 10 : 4
+            },
+            ["pika"] = _ => new ConduitLLM.Core.Interfaces.ModelCapabilities
+            {
+                VideoGeneration = true,
+                SupportedVideoResolutions = new List<string> { "1024x576", "576x1024", "1088x640", "640x1088" },
+                MaxVideoDurationSeconds = 3
             }
         };
 

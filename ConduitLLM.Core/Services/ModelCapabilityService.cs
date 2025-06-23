@@ -43,6 +43,11 @@ namespace ConduitLLM.Core.Services
             "gpt-4o-realtime-preview", "ultravox-v0_2"
         };
 
+        private static readonly HashSet<string> VideoGenerationModels = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "video-01", "runway-gen3", "runway-gen2", "pika-1", "stable-video-diffusion"
+        };
+
         private static readonly Dictionary<string, string> TokenizerTypes = new(StringComparer.OrdinalIgnoreCase)
         {
             ["gpt-4"] = "cl100k_base",
@@ -81,6 +86,13 @@ namespace ConduitLLM.Core.Services
         public Task<bool> SupportsRealtimeAudioAsync(string model)
         {
             return Task.FromResult(RealtimeAudioModels.Contains(model));
+        }
+
+        /// <inheritdoc/>
+        public Task<bool> SupportsVideoGenerationAsync(string model)
+        {
+            return Task.FromResult(VideoGenerationModels.Contains(model) ||
+                                 VideoGenerationModels.Any(vm => model.Contains(vm, StringComparison.OrdinalIgnoreCase)));
         }
 
         /// <inheritdoc/>

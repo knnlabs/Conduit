@@ -38,6 +38,13 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> SupportsRealtimeAudioAsync(string model);
 
         /// <summary>
+        /// Determines if a model supports video generation.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports video generation, false otherwise.</returns>
+        Task<bool> SupportsVideoGenerationAsync(string model);
+
+        /// <summary>
         /// Gets the tokenizer type for a model.
         /// </summary>
         /// <param name="model">The model identifier.</param>

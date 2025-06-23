@@ -69,6 +69,12 @@ namespace ConduitLLM.Core.Services
             return capability?.SupportsRealtimeAudio ?? false;
         }
 
+        public async Task<bool> SupportsVideoGenerationAsync(string model)
+        {
+            var capability = await GetModelCapabilityAsync(model);
+            return capability?.SupportsVideoGeneration ?? false;
+        }
+
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
             var capability = await GetModelCapabilityAsync(model);
