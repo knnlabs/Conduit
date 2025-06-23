@@ -36,6 +36,16 @@ namespace ConduitLLM.Tests.TestHelpers.Builders
         /// Create a new AudioTranscriptionRequest builder
         /// </summary>
         public static AudioTranscriptionRequestBuilder AudioTranscriptionRequest() => new AudioTranscriptionRequestBuilder();
+
+        /// <summary>
+        /// Create a new AsyncTask builder
+        /// </summary>
+        public static AsyncTaskBuilder AsyncTask() => new AsyncTaskBuilder();
+
+        /// <summary>
+        /// Create a new AsyncTaskStatus builder
+        /// </summary>
+        public static AsyncTaskStatusBuilder AsyncTaskStatus() => new AsyncTaskStatusBuilder();
     }
 
     public class ChatCompletionRequestBuilder
