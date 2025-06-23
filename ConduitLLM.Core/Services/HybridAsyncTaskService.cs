@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -526,6 +527,37 @@ namespace ConduitLLM.Core.Services
             {
                 throw new InvalidOperationException("Failed to parse metadata as JSON", ex);
             }
+        }
+
+        /// <inheritdoc/>
+        public async Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            // Query database for pending tasks
+            var pendingTasks = await _repository.GetPendingTasksAsync(taskType, limit, cancellationToken);
+            var taskStatuses = new List<AsyncTaskStatus>();
+
+            foreach (var task in pendingTasks)
+            {
+                var taskStatus = ConvertToTaskStatus(task);
+                taskStatuses.Add(taskStatus);
+
+                // Update cache with pending tasks
+                try
+                {
+                    var cacheKey = GetTaskKey(task.Id);
+                    var json = JsonSerializer.Serialize(taskStatus);
+                    await _cache.SetStringAsync(cacheKey, json, new DistributedCacheEntryOptions
+                    {
+                        SlidingExpiration = TimeSpan.FromHours(24)
+                    }, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to cache pending task {TaskId}", task.Id);
+                }
+            }
+
+            return taskStatuses;
         }
 
         private static bool IsTaskCompleted(TaskState state)

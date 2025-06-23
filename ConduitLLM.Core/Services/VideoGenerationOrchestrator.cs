@@ -30,6 +30,7 @@ namespace ConduitLLM.Core.Services
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ICostCalculationService _costService;
         private readonly ICancellableTaskRegistry _taskRegistry;
+        private readonly IWebhookNotificationService _webhookService;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -42,6 +43,7 @@ namespace ConduitLLM.Core.Services
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
+            IWebhookNotificationService webhookService,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -53,6 +55,7 @@ namespace ConduitLLM.Core.Services
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
+            _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -70,6 +73,10 @@ namespace ConduitLLM.Core.Services
                 _logger.LogDebug("Skipping synchronous video generation request {RequestId}", request.RequestId);
                 return;
             }
+
+            // NOTE: This method is now called by the background service worker
+            // The Task.Run anti-pattern has been removed - video generation now runs
+            // synchronously within the worker thread
 
             try
             {
@@ -239,49 +246,44 @@ namespace ConduitLLM.Core.Services
                     _taskRegistry.RegisterTask(request.RequestId, taskCts);
                     _logger.LogDebug("Registered task {RequestId} for cancellation", request.RequestId);
                     
-                    // Start progress tracking with cancellation support
-                    _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
-
-                    // Start video generation with proper cancellation token propagation
-                    _ = Task.Run(async () =>
+                    try
                     {
-                        try
+                        // Start progress tracking in background (this is lightweight and can continue as fire-and-forget)
+                        _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
+
+                        _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
+                        
+                        // Invoke video generation with the cancellation token
+                        var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
+                        if (task != null)
                         {
-                            _logger.LogInformation("Starting async video generation for task {RequestId} with cancellation support", request.RequestId);
+                            response = await task;
                             
-                            // Invoke video generation with the cancellation token
-                            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
-                            if (task != null)
-                            {
-                                response = await task;
-                                
-                                // Process the response when it completes
-                                await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch);
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
-                            }
+                            // Process the response when it completes
+                            await ProcessVideoResponseAsync(request, response, modelInfo, virtualKeyInfo, stopwatch);
                         }
-                        catch (OperationCanceledException)
+                        else
                         {
-                            _logger.LogInformation("Video generation for task {RequestId} was cancelled", request.RequestId);
-                            await HandleVideoGenerationCancellationAsync(request, stopwatch);
+                            throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Video generation failed for task {RequestId}", request.RequestId);
-                            await HandleVideoGenerationFailureAsync(request, ex.Message, stopwatch);
-                        }
-                        finally
-                        {
-                            // Unregister the task when complete
-                            _taskRegistry.UnregisterTask(request.RequestId);
-                        }
-                    }, taskCts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogInformation("Video generation for task {RequestId} was cancelled", request.RequestId);
+                        await HandleVideoGenerationCancellationAsync(request, stopwatch);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Video generation failed for task {RequestId}", request.RequestId);
+                        await HandleVideoGenerationFailureAsync(request, ex.Message, stopwatch);
+                    }
+                    finally
+                    {
+                        // Unregister the task when complete
+                        _taskRegistry.UnregisterTask(request.RequestId);
+                    }
                     
-                    // Return immediately - the video generation continues in the background
-                    _logger.LogInformation("Video generation task {RequestId} started successfully in background with cancellation support", request.RequestId);
+                    _logger.LogInformation("Video generation task {RequestId} completed processing", request.RequestId);
                     return;
                 }
                 else
@@ -329,6 +331,24 @@ namespace ConduitLLM.Core.Services
                         Message = GetProgressMessage(progress),
                         CorrelationId = request.CorrelationId
                     });
+                    
+                    // Send webhook notification for progress if configured
+                    if (!string.IsNullOrEmpty(request.WebhookUrl))
+                    {
+                        var webhookPayload = new VideoProgressWebhookPayload
+                        {
+                            TaskId = request.RequestId,
+                            Status = "processing",
+                            ProgressPercentage = progress,
+                            Message = GetProgressMessage(progress),
+                            EstimatedSecondsRemaining = (int)((100 - progress) * 0.6) // Rough estimate
+                        };
+
+                        await _webhookService.SendTaskProgressWebhookAsync(
+                            request.WebhookUrl,
+                            webhookPayload,
+                            request.WebhookHeaders);
+                    }
                     
                     intervalIndex++;
                 }
@@ -536,6 +556,25 @@ namespace ConduitLLM.Core.Services
                     CorrelationId = request.CorrelationId
                 });
                 
+                // Send webhook notification if configured
+                if (!string.IsNullOrEmpty(request.WebhookUrl))
+                {
+                    var webhookPayload = new VideoCompletionWebhookPayload
+                    {
+                        TaskId = request.RequestId,
+                        Status = "completed",
+                        VideoUrl = videoUrl,
+                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
+                        Model = request.Model,
+                        Prompt = request.Prompt
+                    };
+
+                    await _webhookService.SendTaskCompletionWebhookAsync(
+                        request.WebhookUrl,
+                        webhookPayload,
+                        request.WebhookHeaders);
+                }
+                
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
             }
@@ -570,6 +609,24 @@ namespace ConduitLLM.Core.Services
                 FailedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
+
+            // Send webhook notification if configured
+            if (!string.IsNullOrEmpty(request.WebhookUrl))
+            {
+                var webhookPayload = new VideoCompletionWebhookPayload
+                {
+                    TaskId = request.RequestId,
+                    Status = "failed",
+                    Error = errorMessage,
+                    Model = request.Model,
+                    Prompt = request.Prompt
+                };
+
+                await _webhookService.SendTaskCompletionWebhookAsync(
+                    request.WebhookUrl,
+                    webhookPayload,
+                    request.WebhookHeaders);
+            }
         }
 
         /// <summary>
@@ -595,6 +652,24 @@ namespace ConduitLLM.Core.Services
                 CancelledAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
+
+            // Send webhook notification if configured
+            if (!string.IsNullOrEmpty(request.WebhookUrl))
+            {
+                var webhookPayload = new VideoCompletionWebhookPayload
+                {
+                    TaskId = request.RequestId,
+                    Status = "cancelled",
+                    Error = "Video generation was cancelled by user request",
+                    Model = request.Model,
+                    Prompt = request.Prompt
+                };
+
+                await _webhookService.SendTaskCompletionWebhookAsync(
+                    request.WebhookUrl,
+                    webhookPayload,
+                    request.WebhookHeaders);
+            }
         }
 
         private class ModelInfo

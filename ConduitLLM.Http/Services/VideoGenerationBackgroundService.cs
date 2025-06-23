@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,7 +15,8 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
-    /// Background service that monitors video generation tasks and performs cleanup operations.
+    /// Background service that processes video generation tasks from the queue.
+    /// Implements a proper worker pattern for scalable async task processing.
     /// </summary>
     public class VideoGenerationBackgroundService : BackgroundService
     {
@@ -38,9 +43,11 @@ namespace ConduitLLM.Http.Services
             // Run multiple background tasks concurrently
             var tasks = new[]
             {
+                RunVideoGenerationWorkerAsync(stoppingToken),
                 RunTaskCleanupAsync(stoppingToken),
                 RunMetricsCollectionAsync(stoppingToken),
-                RunHealthMonitoringAsync(stoppingToken)
+                RunHealthMonitoringAsync(stoppingToken),
+                RunExpiredLeaseRecoveryAsync(stoppingToken)
             };
 
             try
@@ -57,6 +64,170 @@ namespace ConduitLLM.Http.Services
             }
 
             _logger.LogInformation("Video generation background service stopped on instance {InstanceId}", _instanceId);
+        }
+
+        private async Task RunVideoGenerationWorkerAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Video generation worker started with instance ID {InstanceId}", _instanceId);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var asyncTaskRepository = scope.ServiceProvider.GetRequiredService<IAsyncTaskRepository>();
+                    var asyncTaskService = scope.ServiceProvider.GetRequiredService<IAsyncTaskService>();
+                    var distributedLockService = scope.ServiceProvider.GetService<IDistributedLockService>();
+                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
+
+                    // Attempt to lease the next pending task
+                    var leasedTask = await asyncTaskRepository.LeaseNextPendingTaskAsync(
+                        _instanceId,
+                        TimeSpan.FromMinutes(10), // 10-minute lease
+                        "video_generation",
+                        cancellationToken);
+
+                    if (leasedTask != null)
+                    {
+                        _logger.LogInformation("Worker {WorkerId} leased video generation task {TaskId}", 
+                            _instanceId, leasedTask.Id);
+
+                        try
+                        {
+                            // Convert database entity to AsyncTaskStatus
+                            var taskStatus = await asyncTaskService.GetTaskStatusAsync(leasedTask.Id);
+                            if (taskStatus == null)
+                            {
+                                _logger.LogWarning("Task status not found for leased task {TaskId}", leasedTask.Id);
+                                continue;
+                            }
+
+                            // Update task status to processing
+                            await asyncTaskService.UpdateTaskStatusAsync(
+                                leasedTask.Id, 
+                                TaskState.Processing, 
+                                cancellationToken: cancellationToken);
+
+                            // Reconstruct the video generation request from task metadata
+                            var videoRequest = await CreateVideoGenerationRequestFromTask(taskStatus);
+                            
+                            // Publish VideoGenerationRequested event for async processing
+                            if (publishEndpoint != null)
+                            {
+                                await publishEndpoint.Publish(videoRequest, cancellationToken);
+                                _logger.LogInformation("Published VideoGenerationRequested event for task {TaskId}", leasedTask.Id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("No publish endpoint available, marking task {TaskId} as failed", leasedTask.Id);
+                                await asyncTaskService.UpdateTaskStatusAsync(
+                                    leasedTask.Id,
+                                    TaskState.Failed,
+                                    error: "Event bus not available",
+                                    cancellationToken: cancellationToken);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error processing video generation task {TaskId}", leasedTask.Id);
+                            
+                            // Mark task as failed
+                            try
+                            {
+                                await asyncTaskService.UpdateTaskStatusAsync(
+                                    leasedTask.Id,
+                                    TaskState.Failed,
+                                    error: ex.Message,
+                                    cancellationToken: cancellationToken);
+                            }
+                            catch (Exception updateEx)
+                            {
+                                _logger.LogError(updateEx, "Failed to update task status for {TaskId}", leasedTask.Id);
+                            }
+                        }
+                        finally
+                        {
+                            // Release the lease if the task is completed or failed
+                            var finalStatus = await asyncTaskService.GetTaskStatusAsync(leasedTask.Id);
+                            if (finalStatus != null && 
+                                (finalStatus.State == TaskState.Completed || 
+                                 finalStatus.State == TaskState.Failed ||
+                                 finalStatus.State == TaskState.Cancelled))
+                            {
+                                await asyncTaskRepository.ReleaseLeaseAsync(leasedTask.Id, _instanceId, cancellationToken);
+                                _logger.LogDebug("Released lease for completed task {TaskId}", leasedTask.Id);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // No tasks available, wait a bit longer
+                        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in video generation worker loop");
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+            }
+
+            _logger.LogInformation("Video generation worker stopped");
+        }
+
+        private async Task<VideoGenerationRequested> CreateVideoGenerationRequestFromTask(AsyncTaskStatus task)
+        {
+            // Parse metadata to reconstruct the request
+            var metadata = task.Metadata as System.Text.Json.JsonElement? ?? 
+                          (task.Metadata != null ? System.Text.Json.JsonSerializer.SerializeToElement(task.Metadata) : default);
+
+            // Extract webhook configuration
+            string? webhookUrl = null;
+            Dictionary<string, string>? webhookHeaders = null;
+            
+            if (metadata.TryGetProperty("WebhookUrl", out var webhookUrlElement) && webhookUrlElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                webhookUrl = webhookUrlElement.GetString();
+            }
+
+            if (metadata.TryGetProperty("WebhookHeaders", out var webhookHeadersElement) && webhookHeadersElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                webhookHeaders = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(webhookHeadersElement.GetRawText());
+            }
+
+            // Extract video generation parameters
+            VideoGenerationParameters? parameters = null;
+            if (metadata.TryGetProperty("Request", out var requestData))
+            {
+                parameters = new VideoGenerationParameters
+                {
+                    Size = requestData.TryGetProperty("size", out var size) ? size.GetString() : null,
+                    Duration = requestData.TryGetProperty("duration", out var duration) && duration.TryGetInt32(out var dur) ? dur : null,
+                    Fps = requestData.TryGetProperty("fps", out var fps) && fps.TryGetInt32(out var fpsVal) ? fpsVal : null,
+                    Style = requestData.TryGetProperty("style", out var style) ? style.GetString() : null,
+                    ResponseFormat = requestData.TryGetProperty("response_format", out var format) ? format.GetString() : null
+                };
+            }
+
+            var request = new VideoGenerationRequested
+            {
+                RequestId = task.TaskId,
+                Model = metadata.TryGetProperty("Model", out var model) ? model.GetString() ?? "" : "",
+                Prompt = metadata.TryGetProperty("Prompt", out var prompt) ? prompt.GetString() ?? "" : "",
+                VirtualKeyId = metadata.TryGetProperty("VirtualKey", out var vk) ? vk.GetString() ?? "" : "",
+                IsAsync = true,
+                RequestedAt = task.CreatedAt,
+                CorrelationId = task.TaskId,
+                WebhookUrl = webhookUrl,
+                WebhookHeaders = webhookHeaders,
+                Parameters = parameters
+            };
+
+            return request;
         }
 
         private async Task RunTaskCleanupAsync(CancellationToken cancellationToken)
@@ -241,6 +412,72 @@ namespace ConduitLLM.Http.Services
             {
                 _logger.LogWarning(ex, "Error calculating aggregate metrics");
             }
+        }
+
+        private async Task RunExpiredLeaseRecoveryAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Expired lease recovery task started");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    // Wait for recovery interval (2 minutes)
+                    await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
+
+                    using var scope = _serviceProvider.CreateScope();
+                    var asyncTaskRepository = scope.ServiceProvider.GetRequiredService<IAsyncTaskRepository>();
+                    var asyncTaskService = scope.ServiceProvider.GetRequiredService<IAsyncTaskService>();
+
+                    _logger.LogDebug("Checking for expired task leases");
+
+                    // Get tasks with expired leases
+                    var expiredTasks = await asyncTaskRepository.GetExpiredLeaseTasksAsync(100, cancellationToken);
+
+                    if (expiredTasks.Any())
+                    {
+                        _logger.LogInformation("Found {Count} tasks with expired leases", expiredTasks.Count);
+
+                        foreach (var task in expiredTasks)
+                        {
+                            try
+                            {
+                                // Reset the task back to pending state
+                                task.State = 0; // Pending
+                                task.LeasedBy = null;
+                                task.LeaseExpiryTime = null;
+                                task.UpdatedAt = DateTime.UtcNow;
+
+                                await asyncTaskRepository.UpdateAsync(task, cancellationToken);
+
+                                // Also update task status in cache
+                                await asyncTaskService.UpdateTaskStatusAsync(
+                                    task.Id, 
+                                    TaskState.Pending,
+                                    error: "Task lease expired and was reset",
+                                    cancellationToken: cancellationToken);
+
+                                _logger.LogInformation("Reset expired task {TaskId} back to pending state", task.Id);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error resetting expired task {TaskId}", task.Id);
+                            }
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during expired lease recovery");
+                    await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+                }
+            }
+
+            _logger.LogInformation("Expired lease recovery task stopped");
         }
     }
 }

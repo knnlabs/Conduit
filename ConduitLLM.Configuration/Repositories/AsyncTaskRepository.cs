@@ -323,5 +323,260 @@ namespace ConduitLLM.Configuration.Repositories
                 throw;
             }
         }
+
+        /// <inheritdoc/>
+        public async Task<List<AsyncTask>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var now = DateTime.UtcNow;
+                var query = context.AsyncTasks
+                    .AsNoTracking()
+                    .Where(t => t.State == 0 && !t.IsArchived && 
+                               (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now));
+
+                if (!string.IsNullOrEmpty(taskType))
+                {
+                    query = query.Where(t => t.Type == taskType);
+                }
+
+                return await query
+                    .OrderBy(t => t.CreatedAt)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting pending tasks");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<AsyncTask?> LeaseNextPendingTaskAsync(string workerId, TimeSpan leaseDuration, string? taskType = null, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(workerId))
+            {
+                throw new ArgumentNullException(nameof(workerId));
+            }
+
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+                
+                var now = DateTime.UtcNow;
+                var query = context.AsyncTasks
+                    .Where(t => t.State == 0 && !t.IsArchived && 
+                               (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now));
+
+                if (!string.IsNullOrEmpty(taskType))
+                {
+                    query = query.Where(t => t.Type == taskType);
+                }
+
+                // Use row-level locking to prevent concurrent access
+                var task = await query
+                    .OrderBy(t => t.CreatedAt)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (task != null)
+                {
+                    task.LeasedBy = workerId;
+                    task.LeaseExpiryTime = now.Add(leaseDuration);
+                    task.UpdatedAt = now;
+                    task.Version++;
+
+                    await context.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+
+                    _logger.LogInformation("Worker {WorkerId} leased task {TaskId} until {ExpiryTime}",
+                        workerId, task.Id, task.LeaseExpiryTime);
+                }
+
+                return task;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error leasing next pending task for worker {WorkerId}", workerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ReleaseLeaseAsync(string taskId, string workerId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(taskId))
+            {
+                throw new ArgumentNullException(nameof(taskId));
+            }
+
+            if (string.IsNullOrWhiteSpace(workerId))
+            {
+                throw new ArgumentNullException(nameof(workerId));
+            }
+
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var task = await context.AsyncTasks
+                    .FirstOrDefaultAsync(t => t.Id == taskId && t.LeasedBy == workerId, cancellationToken);
+
+                if (task == null)
+                {
+                    _logger.LogWarning("Task {TaskId} not found or not leased by worker {WorkerId}", taskId, workerId);
+                    return false;
+                }
+
+                task.LeasedBy = null;
+                task.LeaseExpiryTime = null;
+                task.UpdatedAt = DateTime.UtcNow;
+                task.Version++;
+
+                var affected = await context.SaveChangesAsync(cancellationToken);
+                
+                if (affected > 0)
+                {
+                    _logger.LogInformation("Released lease on task {TaskId} by worker {WorkerId}", taskId, workerId);
+                }
+
+                return affected > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error releasing lease on task {TaskId} by worker {WorkerId}", taskId, workerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ExtendLeaseAsync(string taskId, string workerId, TimeSpan extension, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(taskId))
+            {
+                throw new ArgumentNullException(nameof(taskId));
+            }
+
+            if (string.IsNullOrWhiteSpace(workerId))
+            {
+                throw new ArgumentNullException(nameof(workerId));
+            }
+
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var now = DateTime.UtcNow;
+                var task = await context.AsyncTasks
+                    .FirstOrDefaultAsync(t => t.Id == taskId && t.LeasedBy == workerId && 
+                                             t.LeaseExpiryTime != null && t.LeaseExpiryTime > now, 
+                                             cancellationToken);
+
+                if (task == null)
+                {
+                    _logger.LogWarning("Task {TaskId} not found, not leased by worker {WorkerId}, or lease expired", 
+                        taskId, workerId);
+                    return false;
+                }
+
+                task.LeaseExpiryTime = now.Add(extension);
+                task.UpdatedAt = now;
+                task.Version++;
+
+                var affected = await context.SaveChangesAsync(cancellationToken);
+                
+                if (affected > 0)
+                {
+                    _logger.LogInformation("Extended lease on task {TaskId} by worker {WorkerId} until {ExpiryTime}", 
+                        taskId, workerId, task.LeaseExpiryTime);
+                }
+
+                return affected > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extending lease on task {TaskId} by worker {WorkerId}", taskId, workerId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<AsyncTask>> GetExpiredLeaseTasksAsync(int limit = 100, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                var now = DateTime.UtcNow;
+                return await context.AsyncTasks
+                    .AsNoTracking()
+                    .Where(t => t.LeasedBy != null && 
+                               t.LeaseExpiryTime != null && 
+                               t.LeaseExpiryTime < now &&
+                               t.State == 1) // Processing state
+                    .OrderBy(t => t.LeaseExpiryTime)
+                    .Take(limit)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting expired lease tasks");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> UpdateWithVersionCheckAsync(AsyncTask task, int expectedVersion, CancellationToken cancellationToken = default)
+        {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+
+            try
+            {
+                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                
+                // Check version before updating
+                var currentVersion = await context.AsyncTasks
+                    .Where(t => t.Id == task.Id)
+                    .Select(t => t.Version)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (currentVersion != expectedVersion)
+                {
+                    _logger.LogWarning("Version mismatch for task {TaskId}. Expected {ExpectedVersion}, found {CurrentVersion}",
+                        task.Id, expectedVersion, currentVersion);
+                    return false;
+                }
+
+                task.UpdatedAt = DateTime.UtcNow;
+                task.Version = expectedVersion + 1;
+                
+                context.AsyncTasks.Update(task);
+                var affected = await context.SaveChangesAsync(cancellationToken);
+
+                if (affected > 0)
+                {
+                    _logger.LogInformation("Updated task {TaskId} with version check (version {OldVersion} -> {NewVersion})",
+                        task.Id, expectedVersion, task.Version);
+                }
+
+                return affected > 0;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Concurrency conflict updating task {TaskId} with version check", task.Id);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating task {TaskId} with version check", task.Id);
+                throw;
+            }
+        }
     }
 }

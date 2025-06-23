@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -280,6 +281,45 @@ namespace ConduitLLM.Core.Services
             await db.StringSetAsync(key, json, TimeSpan.FromHours(24));
 
             _logger.LogDebug("Updated task {TaskId} progress to {Progress}%", taskId, progressPercentage);
+        }
+
+        /// <inheritdoc/>
+        public async Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default)
+        {
+            var db = _redis.GetDatabase();
+            var indexKey = GetTaskIndexKey();
+            var taskIds = await db.SetMembersAsync(indexKey);
+            var pendingTasks = new List<AsyncTaskStatus>();
+
+            foreach (var taskId in taskIds)
+            {
+                try
+                {
+                    var key = GetTaskKey(taskId!);
+                    var json = await db.StringGetAsync(key);
+                    
+                    if (!json.IsNullOrEmpty)
+                    {
+                        var status = JsonSerializer.Deserialize<AsyncTaskStatus>(json!, _jsonOptions);
+                        if (status != null && status.State == TaskState.Pending)
+                        {
+                            if (string.IsNullOrEmpty(taskType) || status.TaskType == taskType)
+                            {
+                                pendingTasks.Add(status);
+                                if (pendingTasks.Count >= limit)
+                                    break;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving task {TaskId}", taskId);
+                }
+            }
+
+            // Sort by created date
+            return pendingTasks.OrderBy(t => t.CreatedAt).ToList();
         }
 
         private string GetTaskKey(string taskId) => $"{_keyPrefix}{taskId}";
