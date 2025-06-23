@@ -619,5 +619,107 @@ namespace ConduitLLM.Tests.Services
             // No events should be published
             _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        [Fact]
+        public async Task CreateTaskAsync_WithExplicitVirtualKeyId_CreatesTaskWithCorrectId()
+        {
+            // Arrange
+            var taskType = "image-generation";
+            var virtualKeyId = 456;
+            var metadata = new { prompt = "A beautiful landscape", model = "dall-e-3" };
+            var cancellationToken = CancellationToken.None;
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), cancellationToken))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => t);
+
+            // Act
+            var taskId = await _service.CreateTaskAsync(taskType, virtualKeyId, metadata, cancellationToken);
+
+            // Assert
+            Assert.NotNull(taskId);
+            Assert.StartsWith("task_", taskId);
+
+            // Verify database creation with correct virtualKeyId
+            _mockRepository.Verify(r => r.CreateAsync(
+                It.Is<AsyncTask>(t => 
+                    t.Type == taskType &&
+                    t.State == (int)TaskState.Pending &&
+                    t.VirtualKeyId == virtualKeyId),
+                cancellationToken), Times.Once);
+
+            // Verify cache update
+            _mockCache.Verify(c => c.SetStringAsync(
+                It.Is<string>(k => k.StartsWith("async:task:")),
+                It.IsAny<string>(),
+                It.IsAny<DistributedCacheEntryOptions>(),
+                cancellationToken), Times.Once);
+
+            // Verify event published with correct virtualKeyId
+            _mockPublishEndpoint.Verify(p => p.Publish(
+                It.Is<AsyncTaskCreated>(e => 
+                    e.TaskId == taskId &&
+                    e.TaskType == taskType &&
+                    e.VirtualKeyId == virtualKeyId),
+                cancellationToken), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateTaskAsync_WithExplicitVirtualKeyId_DoesNotRequireVirtualKeyIdInMetadata()
+        {
+            // Arrange
+            var taskType = "video-generation";
+            var virtualKeyId = 789;
+            var metadata = new { prompt = "A video of waves", duration = 10 }; // No virtualKeyId in metadata
+            var cancellationToken = CancellationToken.None;
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), cancellationToken))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => t);
+
+            // Act - Should not throw despite missing virtualKeyId in metadata
+            var taskId = await _service.CreateTaskAsync(taskType, virtualKeyId, metadata, cancellationToken);
+
+            // Assert
+            Assert.NotNull(taskId);
+
+            // Verify task was created with the explicit virtualKeyId
+            _mockRepository.Verify(r => r.CreateAsync(
+                It.Is<AsyncTask>(t => t.VirtualKeyId == virtualKeyId),
+                cancellationToken), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateTaskAsync_BothOverloads_ProduceSameResult()
+        {
+            // Arrange
+            var taskType = "test-generation";
+            var virtualKeyId = 999;
+            var baseMetadata = new { data = "test data" };
+            var metadataWithKeyId = new Dictionary<string, object>
+            {
+                { "virtualKeyId", virtualKeyId },
+                { "data", "test data" }
+            };
+
+            var taskIds = new List<string>();
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => 
+                {
+                    taskIds.Add(t.Id);
+                    return t;
+                });
+
+            // Act - Create tasks using both overloads
+            var taskId1 = await _service.CreateTaskAsync(taskType, metadataWithKeyId, CancellationToken.None);
+            var taskId2 = await _service.CreateTaskAsync(taskType, virtualKeyId, baseMetadata, CancellationToken.None);
+
+            // Assert - Both should create tasks with the same virtualKeyId
+            _mockRepository.Verify(r => r.CreateAsync(
+                It.Is<AsyncTask>(t => t.VirtualKeyId == virtualKeyId),
+                It.IsAny<CancellationToken>()), Times.Exactly(2));
+        }
     }
 }

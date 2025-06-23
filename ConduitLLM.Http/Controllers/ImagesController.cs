@@ -300,13 +300,12 @@ namespace ConduitLLM.Http.Controllers
                 // Create task ID
                 var taskId = Guid.NewGuid().ToString();
                 
-                // Create async task
-                var createdTaskId = await _taskService.CreateTaskAsync("image_generation", new
+                // Create async task using new overload with explicit virtualKeyId
+                var createdTaskId = await _taskService.CreateTaskAsync("image_generation", virtualKey.Id, new
                 {
                     taskId = taskId,
                     request = request,
-                    model = modelName,
-                    virtualKeyId = virtualKey.Id
+                    model = modelName
                 });
 
                 // Create and enqueue the generation request

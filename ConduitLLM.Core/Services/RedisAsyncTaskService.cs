@@ -63,6 +63,23 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public async Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default)
+        {
+            // For Redis implementation, we store virtualKeyId in metadata
+            object enrichedMetadata;
+            if (metadata is System.Collections.Generic.Dictionary<string, object> dict)
+            {
+                enrichedMetadata = new System.Collections.Generic.Dictionary<string, object>(dict) { ["virtualKeyId"] = virtualKeyId };
+            }
+            else
+            {
+                enrichedMetadata = new { virtualKeyId = virtualKeyId, originalMetadata = metadata };
+            }
+
+            return await CreateTaskAsync(taskType, enrichedMetadata, cancellationToken);
+        }
+
+        /// <inheritdoc/>
         public async Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
         {
             var db = _redis.GetDatabase();

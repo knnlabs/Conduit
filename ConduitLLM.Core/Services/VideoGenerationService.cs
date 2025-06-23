@@ -278,12 +278,11 @@ namespace ConduitLLM.Core.Services
             {
                 Request = request,
                 VirtualKey = virtualKey,
-                VirtualKeyId = virtualKeyInfo.Id.ToString(),
                 Model = request.Model
             };
 
-            // Create async task
-            var taskId = await _taskService.CreateTaskAsync("video_generation", taskMetadata, cancellationToken);
+            // Create async task using new overload with explicit virtualKeyId
+            var taskId = await _taskService.CreateTaskAsync("video_generation", virtualKeyInfo.Id, taskMetadata, cancellationToken);
 
             // Publish VideoGenerationRequested event for async processing
             await PublishEventAsync(

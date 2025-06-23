@@ -20,6 +20,16 @@ namespace ConduitLLM.Core.Interfaces
         Task<string> CreateTaskAsync(string taskType, object metadata, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Creates a new async task with explicit virtual key ID and returns a task ID for tracking.
+        /// </summary>
+        /// <param name="taskType">The type of task (e.g., "image_generation", "video_generation")</param>
+        /// <param name="virtualKeyId">The virtual key ID associated with this task</param>
+        /// <param name="metadata">Additional metadata about the task</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A unique task ID for tracking the task</returns>
+        Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets the current status of a task.
         /// </summary>
         /// <param name="taskId">The ID of the task to check</param>

@@ -48,6 +48,23 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default)
+        {
+            // For in-memory implementation, we store virtualKeyId in metadata
+            object enrichedMetadata;
+            if (metadata is System.Collections.Generic.Dictionary<string, object> dict)
+            {
+                enrichedMetadata = new System.Collections.Generic.Dictionary<string, object>(dict) { ["virtualKeyId"] = virtualKeyId };
+            }
+            else
+            {
+                enrichedMetadata = new { virtualKeyId = virtualKeyId, originalMetadata = metadata };
+            }
+
+            return CreateTaskAsync(taskType, enrichedMetadata, cancellationToken);
+        }
+
+        /// <inheritdoc/>
         public Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
         {
             if (_tasks.TryGetValue(taskId, out var status))

@@ -114,6 +114,60 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public async Task<string> CreateTaskAsync(string taskType, int virtualKeyId, object metadata, CancellationToken cancellationToken = default)
+        {
+            var taskId = GenerateTaskId();
+            var now = DateTime.UtcNow;
+
+            // Create database entity
+            var asyncTask = new AsyncTask
+            {
+                Id = taskId,
+                Type = taskType,
+                State = (int)TaskState.Pending,
+                CreatedAt = now,
+                UpdatedAt = now,
+                VirtualKeyId = virtualKeyId,
+                Metadata = JsonSerializer.Serialize(metadata),
+                Progress = 0
+            };
+
+            // Save to database first
+            await _repository.CreateAsync(asyncTask, cancellationToken);
+
+            // Create task status for cache
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                TaskType = taskType,
+                State = TaskState.Pending,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Metadata = metadata,
+                Progress = 0
+            };
+
+            // Cache the task status
+            await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+            
+            // Publish event if event bus is available
+            if (_publishEndpoint != null)
+            {
+                await _publishEndpoint.Publish(new AsyncTaskCreated
+                {
+                    TaskId = taskId,
+                    TaskType = taskType,
+                    VirtualKeyId = virtualKeyId
+                }, cancellationToken);
+            }
+            
+            _logger.LogInformation("Created hybrid async task {TaskId} of type {TaskType} for VirtualKeyId {VirtualKeyId}", 
+                taskId, taskType, virtualKeyId);
+            
+            return taskId;
+        }
+
+        /// <inheritdoc/>
         public async Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default)
         {
             // Try cache first
