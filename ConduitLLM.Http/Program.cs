@@ -152,6 +152,9 @@ builder.Services.AddVideoGenerationHttpClients();
 // Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
 builder.Services.AddConfigurationAdapters();
 
+// Register operation timeout provider for operation-aware timeout policies
+builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
+
 // Add dependencies needed for the Conduit service
 // Use DatabaseAwareLLMClientFactory to get provider credentials from database
 builder.Services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
@@ -695,6 +698,9 @@ app.UseCoreApiSecurity();
 
 // Enable rate limiting (now that Virtual Keys are authenticated)
 app.UseRateLimiter();
+
+// Add timeout diagnostics middleware
+app.UseMiddleware<ConduitLLM.Core.Middleware.TimeoutDiagnosticsMiddleware>();
 
 // Enable WebSockets for real-time communication
 app.UseWebSockets(new WebSocketOptions

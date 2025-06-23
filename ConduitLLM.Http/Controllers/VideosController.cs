@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -22,8 +23,8 @@ namespace ConduitLLM.Http.Controllers
     {
         private readonly IVideoGenerationService _videoService;
         private readonly IAsyncTaskService _taskService;
+        private readonly IOperationTimeoutProvider _timeoutProvider;
         private readonly ILogger<VideosController> _logger;
-        private const int SyncTimeoutSeconds = 120; // 2 minutes timeout for sync requests
 
         /// <summary>
         /// Initializes a new instance of the <see cref="VideosController"/> class.
@@ -31,10 +32,12 @@ namespace ConduitLLM.Http.Controllers
         public VideosController(
             IVideoGenerationService videoService,
             IAsyncTaskService taskService,
+            IOperationTimeoutProvider timeoutProvider,
             ILogger<VideosController> logger)
         {
             _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+            _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -94,9 +97,13 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
+                // Get timeout from operation-aware provider for video generation sync
+                var syncTimeout = _timeoutProvider.GetTimeout(OperationTypes.VideoGeneration);
+                _logger.LogInformation("Using timeout of {TimeoutSeconds} seconds for sync video generation", syncTimeout.TotalSeconds);
+
                 // Create timeout for sync requests
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(SyncTimeoutSeconds));
+                cts.CancelAfter(syncTimeout);
 
                 try
                 {
@@ -119,7 +126,7 @@ namespace ConduitLLM.Http.Controllers
                         Type = "https://conduitllm.com/errors/video-timeout",
                         Extensions =
                         {
-                            ["timeout_seconds"] = SyncTimeoutSeconds,
+                            ["timeout_seconds"] = (int)syncTimeout.TotalSeconds,
                             ["async_endpoint"] = "/v1/videos/generations/async",
                             ["deprecation_notice"] = "This sync endpoint will be removed in a future version"
                         }

@@ -232,6 +232,9 @@ if (builder.Configuration.GetSection("Caching")?.GetValue<string>("CacheType")?.
 builder.Services.AddScoped<ConduitLLM.WebUI.Services.ProviderModelsService>();
 
 // Register Conduit API clients with resilience policies
+// Register operation timeout provider for operation-aware timeout policies
+builder.Services.AddSingleton<ConduitLLM.Core.Configuration.IOperationTimeoutProvider, ConduitLLM.Core.Configuration.OperationTimeoutProvider>();
+
 builder.Services.AddHttpClient("ConduitAPI", client => client.BaseAddress = new Uri(GetApiBaseUrl()))
     .AddAdminApiResiliencePolicies();
 

@@ -454,10 +454,21 @@ namespace ConduitLLM.Providers
                 {
                     Logger.LogInformation("MiniMax video generation task created: {TaskId}", response.TaskId);
                     
-                    // Poll for completion with exponential backoff
-                    const int maxPollingAttempts = 120; // 10 minutes max
+                    // Get polling timeout configuration from environment or use default
+                    var pollingTimeoutMinutes = 10; // Default 10 minutes
+                    var envTimeout = Environment.GetEnvironmentVariable("CONDUITLLM__TIMEOUTS__VIDEO_POLLING__SECONDS");
+                    if (!string.IsNullOrEmpty(envTimeout) && int.TryParse(envTimeout, out var timeoutSeconds))
+                    {
+                        pollingTimeoutMinutes = timeoutSeconds / 60;
+                    }
+                    
                     const int basePollingIntervalMs = 2000; // Start with 2 seconds
                     const int maxPollingIntervalMs = 30000; // Max 30 seconds
+                    var maxPollingAttempts = (pollingTimeoutMinutes * 60 * 1000) / basePollingIntervalMs;
+                    
+                    Logger.LogInformation("Configured video polling timeout: {TimeoutMinutes} minutes, max attempts: {MaxAttempts}", 
+                        pollingTimeoutMinutes, maxPollingAttempts);
+                    
                     var pollingIntervalMs = basePollingIntervalMs;
                     var consecutiveErrors = 0;
                     const int maxConsecutiveErrors = 3;

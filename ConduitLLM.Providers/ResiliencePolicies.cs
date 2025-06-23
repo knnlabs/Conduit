@@ -1,6 +1,8 @@
 using System;
 using System.Net.Http;
 
+using ConduitLLM.Core.Configuration;
+
 using Microsoft.Extensions.Logging;
 
 using Polly;
@@ -87,6 +89,56 @@ public static class ResiliencePolicies
                 return Task.CompletedTask;
             })
             .WithPolicyKey("LLMProviderTimeoutPolicy"); // Name for identification
+    }
+
+    /// <summary>
+    /// Creates an operation-aware timeout policy for HTTP requests to LLM provider APIs.
+    /// Uses the IOperationTimeoutProvider to determine appropriate timeout for the operation type.
+    /// </summary>
+    /// <param name="operationType">The type of operation being performed</param>
+    /// <param name="timeoutProvider">The timeout provider for operation-specific timeouts</param>
+    /// <param name="logger">Optional logger for logging timeout events</param>
+    /// <returns>A configured Polly timeout policy for HTTP requests</returns>
+    public static IAsyncPolicy<HttpResponseMessage> GetOperationTimeoutPolicy(
+        string operationType,
+        IOperationTimeoutProvider timeoutProvider,
+        ILogger? logger = null)
+    {
+        if (timeoutProvider == null)
+        {
+            throw new ArgumentNullException(nameof(timeoutProvider));
+        }
+
+        // Check if timeout should be applied for this operation
+        if (!timeoutProvider.ShouldApplyTimeout(operationType))
+        {
+            logger?.LogInformation("No timeout policy applied for operation type: {OperationType}", operationType);
+            return Policy.NoOpAsync<HttpResponseMessage>();
+        }
+
+        var timeout = timeoutProvider.GetTimeout(operationType);
+        
+        logger?.LogInformation(
+            "Applying timeout policy for operation '{OperationType}': {TimeoutSeconds} seconds", 
+            operationType, 
+            timeout.TotalSeconds);
+
+        // Pessimistic strategy ensures the timeout is enforced strictly
+        return Policy.TimeoutAsync<HttpResponseMessage>(
+            timeout,
+            TimeoutStrategy.Pessimistic,
+            onTimeoutAsync: (context, timespan, task, exception) =>
+            {
+                // Log the timeout event if a logger is provided
+                logger?.LogWarning(
+                    "HTTP request timed out after {TimeoutMs}ms. Operation: {OperationType}, Context: {OperationKey}",
+                    timespan.TotalMilliseconds,
+                    operationType,
+                    context.OperationKey);
+
+                return Task.CompletedTask;
+            })
+            .WithPolicyKey($"LLMProviderTimeoutPolicy-{operationType}"); // Name for identification
     }
 
     /// <summary>

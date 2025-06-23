@@ -1,5 +1,6 @@
 using System;
 
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.WebUI.Services.Resilience;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -28,12 +29,15 @@ namespace ConduitLLM.WebUI.Extensions
                 .AddPolicyHandler((services, request) =>
                 {
                     var logger = services.GetRequiredService<ILogger<IHttpClientBuilder>>();
+                    var timeoutProvider = services.GetService<IOperationTimeoutProvider>();
 
-                    // Check if this is a video generation endpoint - these should NOT have timeouts
+                    // Determine operation type from request URI
                     var requestUri = request.RequestUri?.ToString() ?? "";
                     var requestPath = request.RequestUri?.AbsolutePath ?? "";
                     
-                    // Check both the full URI and the path for video generation endpoints
+                    string operationType = HttpClientBuilderExtensionsHelpers.DetermineOperationType(requestPath);
+                    
+                    // Check if this is a video generation endpoint - these should NOT have timeouts
                     if (requestUri.Contains("/videos/generations", StringComparison.OrdinalIgnoreCase) ||
                         requestPath.Contains("/videos/generations", StringComparison.OrdinalIgnoreCase) ||
                         requestUri.Contains("videos/generations", StringComparison.OrdinalIgnoreCase))
@@ -44,6 +48,15 @@ namespace ConduitLLM.WebUI.Extensions
                         return AdminApiResiliencePolicies.GetRetryPolicy(logger, retryCount: 3);
                     }
 
+                    // Get timeout from operation-aware provider if available
+                    int timeoutSeconds = options.TimeoutSeconds;
+                    if (timeoutProvider != null && !string.IsNullOrEmpty(operationType))
+                    {
+                        var operationTimeout = timeoutProvider.GetTimeoutOrDefault(operationType, TimeSpan.FromSeconds(options.TimeoutSeconds));
+                        timeoutSeconds = (int)operationTimeout.TotalSeconds;
+                        logger.LogInformation("Using operation-aware timeout for {OperationType}: {TimeoutSeconds}s", operationType, timeoutSeconds);
+                    }
+
                     // Use different policies based on HTTP method
                     if (request.Method == HttpMethod.Get)
                     {
@@ -52,7 +65,7 @@ namespace ConduitLLM.WebUI.Extensions
                             logger,
                             retryCount: options.RetryCount,
                             circuitBreakerThreshold: options.CircuitBreakerThreshold,
-                            timeoutSeconds: options.TimeoutSeconds);
+                            timeoutSeconds: timeoutSeconds);
                     }
                     else if (request.Method == HttpMethod.Delete)
                     {
@@ -61,7 +74,7 @@ namespace ConduitLLM.WebUI.Extensions
                             logger,
                             retryCount: Math.Min(options.RetryCount, 2),
                             circuitBreakerThreshold: options.CircuitBreakerThreshold,
-                            timeoutSeconds: options.TimeoutSeconds);
+                            timeoutSeconds: timeoutSeconds);
                     }
                     else
                     {
@@ -70,7 +83,7 @@ namespace ConduitLLM.WebUI.Extensions
                             logger,
                             retryCount: 1,
                             circuitBreakerThreshold: options.CircuitBreakerThreshold,
-                            timeoutSeconds: options.TimeoutSeconds);
+                            timeoutSeconds: timeoutSeconds);
                     }
                 });
         }
@@ -147,5 +160,39 @@ namespace ConduitLLM.WebUI.Extensions
         /// Duration in seconds to keep the circuit breaker open.
         /// </summary>
         public int CircuitBreakerDurationSeconds { get; set; } = 30;
+    }
+    
+    /// <summary>
+    /// Extension methods for HttpClientBuilderExtensions internal use.
+    /// </summary>
+    internal static class HttpClientBuilderExtensionsHelpers
+    {
+        /// <summary>
+        /// Determines the operation type from the request path.
+        /// </summary>
+        /// <param name="requestPath">The request URI path.</param>
+        /// <returns>The operation type string.</returns>
+        public static string DetermineOperationType(string requestPath)
+        {
+            if (string.IsNullOrEmpty(requestPath))
+                return OperationTypes.Completion;
+
+            var path = requestPath.ToLowerInvariant();
+
+            if (path.Contains("/chat/completions"))
+                return OperationTypes.Chat;
+            else if (path.Contains("/images/generations"))
+                return OperationTypes.ImageGeneration;
+            else if (path.Contains("/videos/generations"))
+                return OperationTypes.VideoGeneration;
+            else if (path.Contains("/health") || path.Contains("/healthz"))
+                return OperationTypes.HealthCheck;
+            else if (path.Contains("/models"))
+                return OperationTypes.ModelDiscovery;
+            else if (path.Contains("/completions"))
+                return OperationTypes.Completion;
+            else
+                return OperationTypes.Completion; // Default
+        }
     }
 }
