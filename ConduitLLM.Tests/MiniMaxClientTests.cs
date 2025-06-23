@@ -109,7 +109,7 @@ namespace ConduitLLM.Tests
                 });
 
             // Act
-            var response = await _client.CreateVideoAsync(request);
+            var response = await _client.CreateVideoAsync(request, _credentials.ApiKey);
 
             // Assert
             Assert.NotNull(response);
@@ -179,7 +179,7 @@ namespace ConduitLLM.Tests
 
             // Act & Assert
             await Assert.ThrowsAsync<LLMCommunicationException>(
-                () => _client.CreateVideoAsync(request));
+                () => _client.CreateVideoAsync(request, _credentials.ApiKey));
         }
 
         [Fact]
@@ -253,7 +253,7 @@ namespace ConduitLLM.Tests
                 });
 
             // Act
-            var response = await _client.CreateVideoAsync(request);
+            var response = await _client.CreateVideoAsync(request, _credentials.ApiKey);
 
             // Assert
             Assert.NotNull(response);
@@ -296,7 +296,7 @@ namespace ConduitLLM.Tests
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<LLMCommunicationException>(
-                () => _client.CreateVideoAsync(request));
+                () => _client.CreateVideoAsync(request, _credentials.ApiKey));
             Assert.Contains("Content policy violation", ex.Message);
         }
 
@@ -376,7 +376,7 @@ namespace ConduitLLM.Tests
                 });
 
             // Act
-            var response = await client.CreateVideoAsync(request);
+            var response = await client.CreateVideoAsync(request, credentials.ApiKey);
 
             // Assert
             Assert.NotNull(response);
