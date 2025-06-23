@@ -1,4 +1,7 @@
 using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -85,41 +88,82 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                // For now, throw NotImplementedException as providers need to implement video generation
-                // This will be replaced with actual provider calls in future phases
-                throw new NotImplementedException("Video generation provider integration not yet implemented");
+                // Check if the client supports video generation using reflection
+                // This avoids circular dependencies while allowing providers to implement video generation
+                VideoGenerationResponse response;
+                
+                var clientType = client.GetType();
+                var createVideoMethod = clientType.GetMethod("CreateVideoAsync", 
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+                
+                if (createVideoMethod != null)
+                {
+                    // The client is already configured with the correct API key
+                    var task = createVideoMethod.Invoke(client, new object?[] { request, null, cancellationToken }) as Task<VideoGenerationResponse>;
+                    if (task != null)
+                    {
+                        response = await task;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException($"Provider for model {request.Model} does not support video generation");
+                }
+                
+                // Store video in media storage
+                if (response.Data != null)
+                {
+                    foreach (var video in response.Data)
+                    {
+                        if (!string.IsNullOrEmpty(video.B64Json))
+                        {
+                            // Convert base64 to stream
+                            var videoBytes = Convert.FromBase64String(video.B64Json);
+                            using var videoStream = new MemoryStream(videoBytes);
+                            
+                            // Create video metadata for storage
+                            var videoMediaMetadata = new VideoMediaMetadata
+                            {
+                                MediaType = MediaType.Video,
+                                ContentType = video.Metadata?.MimeType ?? "video/mp4",
+                                FileSizeBytes = videoBytes.Length,
+                                FileName = $"video_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.mp4",
+                                Width = video.Metadata?.Width ?? 1280,
+                                Height = video.Metadata?.Height ?? 720,
+                                Duration = video.Metadata?.Duration ?? request.Duration ?? 6,
+                                FrameRate = video.Metadata?.Fps ?? 30,
+                                Codec = video.Metadata?.Codec ?? "h264",
+                                Bitrate = video.Metadata?.Bitrate,
+                                GeneratedByModel = request.Model,
+                                GenerationPrompt = request.Prompt,
+                                Resolution = request.Size ?? "1280x720"
+                            };
+                            
+                            var storageResult = await _mediaStorage.StoreVideoAsync(videoStream, videoMediaMetadata);
+                            video.Url = storageResult.Url;
+                            video.B64Json = null; // Clear base64 data after storing
+                        }
+                    }
+                }
 
-                // Future implementation:
-                // var response = await client.GenerateVideoAsync(request, cancellationToken);
-                // 
-                // // Store video in media storage
-                // if (response.Data != null)
-                // {
-                //     foreach (var video in response.Data)
-                //     {
-                //         if (!string.IsNullOrEmpty(video.B64Json))
-                //         {
-                //             var url = await _mediaStorage.StoreVideoAsync(video.B64Json, request.Model);
-                //             video.Url = url;
-                //             video.B64Json = null; // Clear base64 data after storing
-                //         }
-                //     }
-                // }
-                //
-                // // Update spend
-                // var cost = await EstimateCostAsync(request, cancellationToken);
-                // await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
-                //
-                // // Publish VideoGenerationCompleted event
-                // await PublishEventAsync(new VideoGenerationCompleted
-                // {
-                //     RequestId = requestId,
-                //     VideoUrl = response.Data?.FirstOrDefault()?.Url,
-                //     CompletedAt = DateTime.UtcNow,
-                //     CorrelationId = correlationId
-                // });
-                //
-                // return response;
+                // Update spend
+                var cost = await EstimateCostAsync(request, cancellationToken);
+                await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
+
+                // Publish VideoGenerationCompleted event
+                await PublishEventAsync(new VideoGenerationCompleted
+                {
+                    RequestId = requestId,
+                    VideoUrl = response.Data?.FirstOrDefault()?.Url,
+                    CompletedAt = DateTime.UtcNow,
+                    CorrelationId = requestId
+                }, "video generation completed", new { Model = request.Model });
+
+                return response;
             }
             catch (Exception ex)
             {
@@ -282,18 +326,18 @@ namespace ConduitLLM.Core.Services
             VideoGenerationRequest request,
             CancellationToken cancellationToken = default)
         {
-            // TODO: Implement actual cost calculation based on model, duration, resolution
-            // For now, return a placeholder cost
-            var baseCost = 0.10m; // Base cost per video
-            var durationMultiplier = request.Duration ?? 5; // Default 5 seconds
-            var resolutionMultiplier = request.Size switch
+            // Create usage object for cost calculation
+            var usage = new Usage
             {
-                "1920x1080" => 2.0m,
-                "1280x720" => 1.5m,
-                _ => 1.0m
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                VideoDurationSeconds = request.Duration ?? 6, // Default 6 seconds
+                VideoResolution = request.Size ?? "1280x720"
             };
 
-            return await Task.FromResult(baseCost * durationMultiplier * resolutionMultiplier);
+            // Use the cost calculation service
+            return await _costService.CalculateCostAsync(request.Model, usage, cancellationToken);
         }
     }
 }
