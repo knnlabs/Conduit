@@ -245,6 +245,7 @@ public partial class Program
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();
 
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();

@@ -36,6 +36,10 @@ public static class ServiceCollectionExtensions
         // Add memory cache if not already registered
         services.AddMemoryCache();
 
+        // Add authentication with a custom scheme
+        services.AddAuthentication("MasterKey")
+            .AddScheme<MasterKeyAuthenticationSchemeOptions, MasterKeyAuthenticationHandler>("MasterKey", null);
+
         // Register authorization policy for master key
         services.AddSingleton<IAuthorizationHandler, MasterKeyAuthorizationHandler>();
         services.AddAuthorization(options =>

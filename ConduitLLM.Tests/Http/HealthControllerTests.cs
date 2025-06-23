@@ -55,6 +55,9 @@ namespace ConduitLLM.Tests.Http
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health");
 
@@ -84,6 +87,9 @@ namespace ConduitLLM.Tests.Http
                             tags: new[] { "db", "ready" });
                 });
             }).CreateClient();
+
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await client.GetAsync("/health/ready");
@@ -123,6 +129,9 @@ namespace ConduitLLM.Tests.Http
                             tags: new[] { "cache", "ready" });
                 });
             }).CreateClient();
+
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await client.GetAsync("/health/ready");
@@ -190,6 +199,9 @@ namespace ConduitLLM.Tests.Http
                 });
             }).CreateClient();
 
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await client.GetAsync("/health");
 
@@ -225,6 +237,9 @@ namespace ConduitLLM.Tests.Http
                             new FailingHealthCheck(new Exception("Test exception during health check")));
                 });
             }).CreateClient();
+
+            // Add authentication header
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await client.GetAsync("/health");

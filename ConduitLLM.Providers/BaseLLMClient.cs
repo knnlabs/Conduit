@@ -116,7 +116,22 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
-            // Default to Bearer authentication - override in derived classes if needed
+            // Configure authentication
+            ConfigureAuthentication(client, apiKey);
+            
+            // Configure timeout
+            client.Timeout = TimeSpan.FromMinutes(5);
+        }
+        
+        /// <summary>
+        /// Configures authentication for the HttpClient.
+        /// Override in derived classes to use provider-specific authentication methods.
+        /// </summary>
+        /// <param name="client">The HttpClient to configure.</param>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        protected virtual void ConfigureAuthentication(HttpClient client, string apiKey)
+        {
+            // Default Bearer token authentication - can be overridden by providers
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         }
 

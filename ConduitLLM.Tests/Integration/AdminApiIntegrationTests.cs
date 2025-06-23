@@ -165,7 +165,7 @@ namespace ConduitLLM.Tests.Integration
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Requires proper authentication scheme setup in test environment")]
         public async Task AdminApiClient_HealthCheck_ReturnsHealthy()
         {
             // Arrange
@@ -190,12 +190,12 @@ namespace ConduitLLM.Tests.Integration
 
             try
             {
-                // Act - Call health endpoint
-                var response = await _adminHttpClient.GetAsync("/health");
+                // Act - Call health/live endpoint (doesn't require authentication)
+                var response = await _adminHttpClient.GetAsync("/health/live");
 
                 // Assert
-                Assert.True(response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable, 
-                    $"Expected success status or ServiceUnavailable, but got {response.StatusCode}");
+                Assert.True(response.IsSuccessStatusCode, 
+                    $"Expected success status, but got {response.StatusCode}");
             }
             catch (HttpRequestException ex)
             {

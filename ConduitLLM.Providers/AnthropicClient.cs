@@ -149,6 +149,26 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Configures authentication for the HttpClient.
+        /// Anthropic uses custom x-api-key header instead of Bearer tokens.
+        /// </summary>
+        /// <param name="client">The HttpClient to configure.</param>
+        /// <param name="apiKey">The API key to use for authentication.</param>
+        protected override void ConfigureAuthentication(HttpClient client, string apiKey)
+        {
+            // Anthropic uses custom headers instead of Bearer tokens
+            // Ensure no Authorization header exists
+            client.DefaultRequestHeaders.Authorization = null;
+            client.DefaultRequestHeaders.Remove("Authorization");
+            
+            // Add Anthropic-specific headers
+            client.DefaultRequestHeaders.Add(Constants.Headers.ApiKeyHeader, apiKey);
+            client.DefaultRequestHeaders.Add(Constants.Headers.VersionHeader, Constants.Headers.AnthropicVersion);
+            
+            // Do not call base.ConfigureAuthentication() to avoid Bearer tokens
+        }
+        
+        /// <summary>
         /// Configures the HttpClient with necessary headers and settings for Anthropic API requests.
         /// </summary>
         /// <param name="client">The HttpClient to configure.</param>
@@ -174,16 +194,9 @@ namespace ConduitLLM.Providers
         /// </remarks>
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
+            // Call base to set standard headers (Accept, User-Agent, etc.)
+            // This will also call ConfigureAuthentication which we've overridden
             base.ConfigureHttpClient(client, apiKey);
-
-            // Set Anthropic-specific headers
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add(Constants.Headers.VersionHeader, Constants.Headers.AnthropicVersion);
-            client.DefaultRequestHeaders.Add(Constants.Headers.ApiKeyHeader, apiKey);
-
-            // Remove the Authorization header set by the base class
-            client.DefaultRequestHeaders.Authorization = null;
 
             // Set the base address
             string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? Constants.Urls.DefaultApiBase : Credentials.ApiBase;
