@@ -33,6 +33,29 @@ export {
 } from './models/images';
 
 export type {
+  VideoGenerationRequest,
+  VideoGenerationResponse,
+  AsyncVideoGenerationRequest,
+  AsyncVideoGenerationResponse,
+  VideoData,
+  VideoUsage,
+  VideoMetadata,
+  VideoTaskStatus,
+  VideoTaskPollingOptions,
+  VideoModelCapabilities,
+} from './models/videos';
+
+export {
+  VideoModels,
+  VideoResolutions,
+  VideoResponseFormats,
+  VideoDefaults,
+  getVideoModelCapabilities,
+  validateVideoGenerationRequest,
+  validateAsyncVideoGenerationRequest,
+} from './models/videos';
+
+export type {
   Usage,
   ResponseFormat,
   FunctionDefinition,

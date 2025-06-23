@@ -9,9 +9,9 @@ import type {
   ImageVariationResponse,
   AsyncImageGenerationRequest,
   AsyncImageGenerationResponse,
-  TaskPollingOptions,
-  DEFAULT_POLLING_OPTIONS
+  TaskPollingOptions
 } from '../models/images';
+import { DEFAULT_POLLING_OPTIONS } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
 
 export class ImagesService {
