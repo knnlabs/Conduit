@@ -168,6 +168,12 @@ builder.Services.AddRepositories();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 
+// Register Model Capability Service
+builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
+
+// Register Video Generation Service
+builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
+
 // Register enhanced model discovery providers
 // Configure HttpClients for each discovery provider
 builder.Services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>
@@ -315,6 +321,12 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationCompletedHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ImageGenerationFailedHandler>();
     
+    // Add video generation consumers
+    x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationProgressHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationCompletedHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationFailedHandler>();
+    
     // Add Admin API event consumers for cache invalidation
     x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
@@ -448,6 +460,9 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     
     // Add background service for processing image generation tasks
     builder.Services.AddHostedService<ImageGenerationBackgroundService>();
+    
+    // Add background service for video generation monitoring and cleanup
+    builder.Services.AddHostedService<VideoGenerationBackgroundService>();
     
     Console.WriteLine("[Conduit] Image generation queue configured with Redis (distributed mode)");
 }
