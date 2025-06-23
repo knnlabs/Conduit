@@ -30,7 +30,9 @@ services:
       retries: 5
       
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    build: 
+      context: ./docker/rabbitmq
+      dockerfile: Dockerfile
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: conduit

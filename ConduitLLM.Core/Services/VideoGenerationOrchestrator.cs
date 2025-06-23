@@ -73,8 +73,8 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Processing async video generation task {RequestId} for model {Model}", 
                     request.RequestId, request.Model);
                 
-                // Update task status to running
-                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Running, cancellationToken: context.CancellationToken);
+                // Update task status to processing
+                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Processing, cancellationToken: context.CancellationToken);
                 
                 // Publish VideoGenerationStarted event
                 await _publishEndpoint.Publish(new VideoGenerationStarted
@@ -110,9 +110,8 @@ namespace ConduitLLM.Core.Services
                     throw new NotSupportedException($"Model {request.Model} does not support video generation");
                 }
                 
-                // TODO: In future phases, implement actual provider-specific video generation
-                // For now, we'll simulate the process
-                await SimulateVideoGenerationAsync(request, modelInfo, virtualKeyInfo, stopwatch);
+                // Perform actual video generation
+                await GenerateVideoAsync(request, modelInfo, virtualKeyInfo, stopwatch, context.CancellationToken);
             }
             catch (Exception ex)
             {
@@ -166,70 +165,206 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Simulates video generation for demonstration purposes.
-        /// This will be replaced with actual provider integration in future phases.
+        /// Performs actual video generation using the appropriate provider.
         /// </summary>
-        private async Task SimulateVideoGenerationAsync(
+        private async Task GenerateVideoAsync(
             VideoGenerationRequested request,
             ModelInfo modelInfo,
             ConduitLLM.Configuration.Entities.VirtualKey virtualKeyInfo,
-            Stopwatch stopwatch)
+            Stopwatch stopwatch,
+            CancellationToken cancellationToken)
         {
-            // Simulate progress updates
-            for (int progress = 10; progress <= 90; progress += 20)
+            try
             {
-                // Check if cancelled
+                // Get the task metadata to reconstruct the request
                 var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
-                if (taskStatus?.State == TaskState.Cancelled)
+                if (taskStatus == null)
                 {
-                    _logger.LogInformation("Video generation cancelled for request {RequestId}", request.RequestId);
-                    return;
+                    throw new InvalidOperationException($"Task {request.RequestId} not found");
+                }
+
+                // Reconstruct the video generation request from metadata
+                var metadata = taskStatus.Metadata as dynamic;
+                var videoRequest = new VideoGenerationRequest
+                {
+                    Model = request.Model,
+                    Prompt = request.Prompt,
+                    Duration = request.Parameters?.Duration,
+                    Size = request.Parameters?.Size,
+                    Fps = request.Parameters?.Fps,
+                    N = 1
+                };
+
+                // Get the appropriate client for the model
+                var client = _clientFactory.GetClient(request.Model);
+                if (client == null)
+                {
+                    throw new NotSupportedException($"No provider available for model {request.Model}");
+                }
+
+                // Check if the client supports video generation using reflection
+                VideoGenerationResponse response;
+                var clientType = client.GetType();
+                
+                // Handle decorators by getting inner client
+                object clientToCheck = client;
+                if (clientType.FullName?.Contains("Decorator") == true || clientType.FullName?.Contains("PerformanceTracking") == true)
+                {
+                    var innerClientField = clientType.GetField("_innerClient", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (innerClientField != null)
+                    {
+                        var innerClient = innerClientField.GetValue(client);
+                        if (innerClient != null)
+                        {
+                            clientToCheck = innerClient;
+                            clientType = innerClient.GetType();
+                        }
+                    }
                 }
                 
-                await Task.Delay(1000); // Simulate processing time
+                // Find CreateVideoAsync method
+                var createVideoMethod = clientType.GetMethods()
+                    .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
                 
-                await _publishEndpoint.Publish(new VideoGenerationProgress
+                if (createVideoMethod != null)
+                {
+                    // Start progress tracking
+                    _ = Task.Run(async () => await TrackProgressAsync(request, cancellationToken), cancellationToken);
+
+                    // Invoke video generation
+                    var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, cancellationToken }) as Task<VideoGenerationResponse>;
+                    if (task != null)
+                    {
+                        response = await task;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException($"Provider for model {request.Model} does not support video generation");
+                }
+
+                // Store video in media storage if base64 data is provided
+                var videoUrl = response.Data?.FirstOrDefault()?.Url;
+                if (response.Data != null)
+                {
+                    foreach (var video in response.Data)
+                    {
+                        if (!string.IsNullOrEmpty(video.B64Json))
+                        {
+                            var videoBytes = Convert.FromBase64String(video.B64Json);
+                            using var videoStream = new System.IO.MemoryStream(videoBytes);
+                            
+                            var videoMediaMetadata = new VideoMediaMetadata
+                            {
+                                MediaType = MediaType.Video,
+                                ContentType = video.Metadata?.MimeType ?? "video/mp4",
+                                FileSizeBytes = videoBytes.Length,
+                                FileName = $"video_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.mp4",
+                                Width = video.Metadata?.Width ?? 1280,
+                                Height = video.Metadata?.Height ?? 720,
+                                Duration = video.Metadata?.Duration ?? videoRequest.Duration ?? 6,
+                                FrameRate = video.Metadata?.Fps ?? 30,
+                                Codec = video.Metadata?.Codec ?? "h264",
+                                Bitrate = video.Metadata?.Bitrate,
+                                GeneratedByModel = request.Model,
+                                GenerationPrompt = request.Prompt,
+                                Resolution = videoRequest.Size ?? "1280x720"
+                            };
+                            
+                            var storageResult = await _storageService.StoreVideoAsync(videoStream, videoMediaMetadata);
+                            video.Url = storageResult.Url;
+                            video.B64Json = null; // Clear base64 data after storing
+                            videoUrl = storageResult.Url;
+                        }
+                    }
+                }
+
+                // Calculate cost
+                var cost = await CalculateVideoCostAsync(request, modelInfo);
+                
+                // Update spend tracking
+                await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
+                
+                // Update task status to completed
+                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Completed, result: new
+                {
+                    videoUrl = videoUrl,
+                    response = response
+                }, cancellationToken: cancellationToken);
+                
+                // Publish completion event
+                await _publishEndpoint.Publish(new VideoGenerationCompleted
                 {
                     RequestId = request.RequestId,
-                    ProgressPercentage = progress,
-                    Status = GetProgressStatus(progress),
-                    Message = GetProgressMessage(progress),
+                    VideoUrl = videoUrl ?? string.Empty,
+                    PreviewUrl = string.Empty, // TODO: Generate preview
+                    Duration = response.Data?.FirstOrDefault()?.Metadata?.Duration ?? videoRequest.Duration ?? 5,
+                    Resolution = videoRequest.Size ?? "1280x720",
+                    FileSize = response.Data?.FirstOrDefault()?.Metadata?.FileSizeBytes ?? 0,
+                    GenerationDuration = stopwatch.Elapsed,
+                    Cost = cost,
+                    Provider = modelInfo.Provider,
+                    Model = request.Model,
+                    CompletedAt = DateTime.UtcNow,
                     CorrelationId = request.CorrelationId
                 });
+                
+                _logger.LogInformation("Video generation completed for request {RequestId} in {Duration}ms", 
+                    request.RequestId, stopwatch.ElapsedMilliseconds);
             }
-            
-            // Simulate successful completion
-            var videoUrl = $"https://storage.conduitllm.com/videos/simulated_{request.RequestId}.mp4";
-            var previewUrl = $"https://storage.conduitllm.com/previews/simulated_{request.RequestId}.jpg";
-            
-            // Calculate simulated cost
-            var cost = await CalculateVideoCostAsync(request, modelInfo);
-            
-            // Update spend tracking
-            await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
-            
-            // Update task status to completed
-            await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Completed, result: videoUrl);
-            
-            // Publish completion event
-            await _publishEndpoint.Publish(new VideoGenerationCompleted
+            catch (OperationCanceledException)
             {
-                RequestId = request.RequestId,
-                VideoUrl = videoUrl,
-                PreviewUrl = previewUrl,
-                Duration = request.Parameters?.Duration ?? 5,
-                Resolution = request.Parameters?.Size ?? "1280x720",
-                FileSize = 10_485_760, // 10MB simulated
-                GenerationDuration = stopwatch.Elapsed,
-                Cost = cost,
-                Provider = modelInfo.Provider,
-                Model = request.Model,
-                CompletedAt = DateTime.UtcNow,
-                CorrelationId = request.CorrelationId
-            });
-            
-            _logger.LogInformation("Video generation completed for request {RequestId} in {Duration}ms", 
-                request.RequestId, stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation("Video generation cancelled for request {RequestId}", request.RequestId);
+                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Cancelled, error: "Operation cancelled", cancellationToken: CancellationToken.None);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Tracks progress during video generation.
+        /// </summary>
+        private async Task TrackProgressAsync(VideoGenerationRequested request, CancellationToken cancellationToken)
+        {
+            var progressIntervals = new[] { 10, 30, 50, 70, 90 };
+            var intervalIndex = 0;
+            var startTime = DateTime.UtcNow;
+
+            while (!cancellationToken.IsCancellationRequested && intervalIndex < progressIntervals.Length)
+            {
+                // Check if task is still running
+                var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
+                if (taskStatus == null || taskStatus.State != TaskState.Processing)
+                {
+                    break;
+                }
+
+                // Calculate estimated progress based on time elapsed
+                var elapsed = DateTime.UtcNow - startTime;
+                if (elapsed.TotalSeconds > intervalIndex * 12) // ~1 minute per 10% progress
+                {
+                    var progress = progressIntervals[intervalIndex];
+                    
+                    await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Processing, progress: progress, cancellationToken: cancellationToken);
+                    
+                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                    {
+                        RequestId = request.RequestId,
+                        ProgressPercentage = progress,
+                        Status = GetProgressStatus(progress),
+                        Message = GetProgressMessage(progress),
+                        CorrelationId = request.CorrelationId
+                    });
+                    
+                    intervalIndex++;
+                }
+
+                await Task.Delay(5000, cancellationToken); // Check every 5 seconds
+            }
         }
 
         /// <summary>

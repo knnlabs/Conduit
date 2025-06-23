@@ -25,7 +25,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="taskId">The ID of the task to check</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>The current task status</returns>
-        Task<AsyncTaskStatus> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default);
+        Task<AsyncTaskStatus?> GetTaskStatusAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates the status of a task.
@@ -35,7 +35,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="result">Optional result data</param>
         /// <param name="error">Optional error message</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        Task UpdateTaskStatusAsync(string taskId, TaskState status, object? result = null, string? error = null, CancellationToken cancellationToken = default);
+        Task UpdateTaskStatusAsync(string taskId, TaskState status, int? progress = null, object? result = null, string? error = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Polls a task until it completes, fails, or times out.
@@ -57,6 +57,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="taskId">The ID of the task to cancel</param>
         /// <param name="cancellationToken">Cancellation token</param>
         Task CancelTaskAsync(string taskId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Deletes a task and its associated data.
+        /// </summary>
+        /// <param name="taskId">The ID of the task to delete</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        Task DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Cleans up old completed or failed tasks.
@@ -120,7 +127,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Progress percentage (0-100) if available.
         /// </summary>
-        public int? ProgressPercentage { get; set; }
+        public int Progress { get; set; }
 
         /// <summary>
         /// Progress message if available.
@@ -141,7 +148,7 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Task is currently being processed.
         /// </summary>
-        Running,
+        Processing,
 
         /// <summary>
         /// Task completed successfully.

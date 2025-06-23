@@ -196,6 +196,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
             existingMapping.SupportsTextToSpeech = mapping.SupportsTextToSpeech;
             existingMapping.SupportsRealtimeAudio = mapping.SupportsRealtimeAudio;
             existingMapping.SupportsImageGeneration = mapping.SupportsImageGeneration;
+            existingMapping.SupportsVideoGeneration = mapping.SupportsVideoGeneration;
             existingMapping.TokenizerType = mapping.TokenizerType;
             existingMapping.SupportedVoices = mapping.SupportedVoices;
             existingMapping.SupportedLanguages = mapping.SupportedLanguages;
@@ -366,6 +367,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                             SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
                             SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                             SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                            SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
                             TokenizerType = mappingDto.TokenizerType,
                             SupportedVoices = mappingDto.SupportedVoices,
                             SupportedLanguages = mappingDto.SupportedLanguages,
@@ -425,6 +427,7 @@ _logger.LogWarning("Invalid provider ID: {ProviderId}", mappingDto.ProviderId.Re
                     SupportsTextToSpeech = mappingDto.SupportsTextToSpeech,
                     SupportsRealtimeAudio = mappingDto.SupportsRealtimeAudio,
                     SupportsImageGeneration = mappingDto.SupportsImageGeneration,
+                    SupportsVideoGeneration = mappingDto.SupportsVideoGeneration,
                     TokenizerType = mappingDto.TokenizerType,
                     SupportedVoices = mappingDto.SupportedVoices,
                     SupportedLanguages = mappingDto.SupportedLanguages,

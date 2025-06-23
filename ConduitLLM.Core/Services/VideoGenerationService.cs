@@ -23,6 +23,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICostCalculationService _costService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaStorageService _mediaStorage;
+        private readonly IAsyncTaskService _taskService;
         private readonly ILogger<VideoGenerationService> _logger;
 
         public VideoGenerationService(
@@ -31,6 +32,7 @@ namespace ConduitLLM.Core.Services
             ICostCalculationService costService,
             IVirtualKeyService virtualKeyService,
             IMediaStorageService mediaStorage,
+            IAsyncTaskService taskService,
             ILogger<VideoGenerationService> logger,
             IPublishEndpoint? publishEndpoint = null)
             : base(publishEndpoint, logger)
@@ -40,6 +42,7 @@ namespace ConduitLLM.Core.Services
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _mediaStorage = mediaStorage ?? throw new ArgumentNullException(nameof(mediaStorage));
+            _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -93,13 +96,64 @@ namespace ConduitLLM.Core.Services
                 VideoGenerationResponse response;
                 
                 var clientType = client.GetType();
+                _logger.LogInformation("Client type for model {Model}: {ClientType}", request.Model, clientType.FullName);
+                
+                // Check if this is a decorator and try to get the inner client
+                object clientToCheck = client;
+                if (clientType.FullName?.Contains("Decorator") == true || clientType.FullName?.Contains("PerformanceTracking") == true)
+                {
+                    // Try to get the inner client via reflection
+                    var innerClientField = clientType.GetField("_innerClient", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (innerClientField != null)
+                    {
+                        var innerClient = innerClientField.GetValue(client);
+                        if (innerClient != null)
+                        {
+                            clientToCheck = innerClient;
+                            clientType = innerClient.GetType();
+                            _logger.LogInformation("Unwrapped decorator to inner client type: {InnerClientType}", clientType.FullName);
+                        }
+                    }
+                }
+                
+                // Try to find the method with both nullable and non-nullable string parameter
                 var createVideoMethod = clientType.GetMethod("CreateVideoAsync", 
-                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) })
+                    ?? clientType.GetMethod("CreateVideoAsync", 
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance,
+                        null,
+                        new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) },
+                        null);
+                
+                // If not found, try finding any method with the name and check parameters manually
+                if (createVideoMethod == null)
+                {
+                    var methods = clientType.GetMethods()
+                        .Where(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3)
+                        .ToArray();
+                    
+                    _logger.LogInformation("Found {Count} CreateVideoAsync methods with 3 parameters", methods.Length);
+                    foreach (var method in methods)
+                    {
+                        var parameters = method.GetParameters();
+                        _logger.LogInformation("Method: {Method}, Parameters: {P1} {P2} {P3}", 
+                            method.Name,
+                            parameters[0].ParameterType.Name,
+                            parameters[1].ParameterType.Name,
+                            parameters[2].ParameterType.Name);
+                    }
+                    
+                    if (methods.Length > 0)
+                    {
+                        createVideoMethod = methods[0];
+                    }
+                }
                 
                 if (createVideoMethod != null)
                 {
                     // The client is already configured with the correct API key
-                    var task = createVideoMethod.Invoke(client, new object?[] { request, null, cancellationToken }) as Task<VideoGenerationResponse>;
+                    var task = createVideoMethod.Invoke(clientToCheck, new object?[] { request, null, cancellationToken }) as Task<VideoGenerationResponse>;
                     if (task != null)
                     {
                         response = await task;
@@ -111,6 +165,19 @@ namespace ConduitLLM.Core.Services
                 }
                 else
                 {
+                    _logger.LogError("CreateVideoAsync method not found on client type {ClientType} for model {Model}", 
+                        clientType.FullName, request.Model);
+                    
+                    // Log all public methods to help debug
+                    var allMethods = clientType.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                        .Where(m => m.Name.Contains("Video"))
+                        .Select(m => m.Name)
+                        .Distinct()
+                        .ToList();
+                    
+                    _logger.LogError("Available video-related methods on {ClientType}: {Methods}", 
+                        clientType.FullName, string.Join(", ", allMethods));
+                    
                     throw new NotSupportedException($"Provider for model {request.Model} does not support video generation");
                 }
                 
@@ -199,8 +266,24 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Invalid video generation request");
             }
 
-            // Generate task ID
-            var taskId = Guid.NewGuid().ToString();
+            // Validate virtual key
+            var virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, request.Model);
+            if (virtualKeyInfo == null || !virtualKeyInfo.IsEnabled)
+            {
+                throw new UnauthorizedAccessException("Invalid or disabled virtual key");
+            }
+
+            // Create task metadata
+            var taskMetadata = new
+            {
+                Request = request,
+                VirtualKey = virtualKey,
+                VirtualKeyId = virtualKeyInfo.Id.ToString(),
+                Model = request.Model
+            };
+
+            // Create async task
+            var taskId = await _taskService.CreateTaskAsync("video_generation", taskMetadata, cancellationToken);
 
             // Publish VideoGenerationRequested event for async processing
             await PublishEventAsync(
@@ -209,7 +292,7 @@ namespace ConduitLLM.Core.Services
                     RequestId = taskId,
                     Model = request.Model,
                     Prompt = request.Prompt,
-                    VirtualKeyId = virtualKey,
+                    VirtualKeyId = virtualKeyInfo.Id.ToString(),
                     IsAsync = true,
                     RequestedAt = DateTime.UtcNow,
                     CorrelationId = taskId

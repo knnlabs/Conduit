@@ -88,4 +88,18 @@ public static class ResiliencePolicies
             })
             .WithPolicyKey("LLMProviderTimeoutPolicy"); // Name for identification
     }
+
+    /// <summary>
+    /// Creates a no-timeout policy for long-running operations like video generation.
+    /// This policy effectively disables timeout for operations that can take many minutes.
+    /// </summary>
+    /// <param name="logger">Optional logger for logging</param>
+    /// <returns>A pass-through policy that doesn't enforce any timeout</returns>
+    public static IAsyncPolicy<HttpResponseMessage> GetNoTimeoutPolicy(ILogger? logger = null)
+    {
+        logger?.LogInformation("Using no-timeout policy for long-running operation");
+        
+        // Return a no-op policy that doesn't enforce any timeout
+        return Policy.NoOpAsync<HttpResponseMessage>();
+    }
 }

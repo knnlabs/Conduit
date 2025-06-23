@@ -31,6 +31,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
+using Microsoft.Extensions.Caching.Distributed;
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 using StackExchange.Redis; // Added for Redis-based task service
@@ -141,6 +142,12 @@ builder.Services.AddCoreApiSecurity(builder.Configuration);
 // Add all the service registrations BEFORE calling builder.Build()
 // Register HttpClientFactory - REQUIRED for LLMClientFactory
 builder.Services.AddHttpClient();
+
+// Add standard LLM provider HTTP clients with timeout/retry policies
+builder.Services.AddLLMProviderHttpClients();
+
+// Add video generation HTTP clients without timeout for long-running operations
+builder.Services.AddVideoGenerationHttpClients();
 
 // Register Configuration adapters early - required for DatabaseAwareLLMClientFactory
 builder.Services.AddConfigurationAdapters();
@@ -410,9 +417,9 @@ if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
     // Use Redis for distributed task management
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
     {
-        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
-        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisAsyncTaskService>>();
-        return new ConduitLLM.Core.Services.RedisAsyncTaskService(redis, logger);
+        var cache = sp.GetRequiredService<IDistributedCache>();
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.AsyncTaskService>>();
+        return new ConduitLLM.Core.Services.AsyncTaskService(cache, logger);
     });
 }
 else

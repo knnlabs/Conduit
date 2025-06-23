@@ -17,7 +17,7 @@ namespace ConduitLLM.Http.Controllers
     [ApiController]
     [Route("v1/videos")]
     [Authorize]
-    [EnableRateLimiting("standard")]
+    [EnableRateLimiting("VirtualKeyPolicy")]
     public class VideosController : ControllerBase
     {
         private readonly IVideoGenerationService _videoService;
@@ -44,6 +44,11 @@ namespace ConduitLLM.Http.Controllers
         /// <param name="request">The video generation request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The generated video response or timeout error.</returns>
+        /// <remarks>
+        /// DEPRECATED: This endpoint is deprecated and will be removed in a future version.
+        /// Video generation is a long-running operation that typically takes 3-5+ minutes.
+        /// Please use the async endpoint at POST /v1/videos/generations/async instead.
+        /// </remarks>
         /// <response code="200">Video generated successfully.</response>
         /// <response code="400">Invalid request parameters.</response>
         /// <response code="401">Authentication failed.</response>
@@ -52,6 +57,7 @@ namespace ConduitLLM.Http.Controllers
         /// <response code="429">Rate limit exceeded.</response>
         /// <response code="500">Internal server error.</response>
         [HttpPost("generations")]
+        [Obsolete("This synchronous endpoint is deprecated due to long video generation times. Use POST /v1/videos/generations/async instead.")]
         [ProducesResponseType(typeof(VideoGenerationResponse), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 400)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
@@ -65,14 +71,20 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
+                // Log deprecation warning
+                _logger.LogWarning(
+                    "Synchronous video generation endpoint is deprecated and will be removed. " +
+                    "Please use POST /v1/videos/generations/async instead. " +
+                    "Video generation typically takes 3-5+ minutes and will likely timeout.");
+
                 // Validate request
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
                 }
 
-                // Get virtual key from claims
-                var virtualKey = User.FindFirst("VirtualKey")?.Value;
+                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"] as string;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -100,13 +112,16 @@ namespace ConduitLLM.Http.Controllers
                     // Timeout occurred
                     return StatusCode(408, new ProblemDetails
                     {
-                        Title = "Request Timeout",
-                        Detail = "Video generation exceeded timeout limit. Please use the async endpoint for longer videos.",
+                        Title = "Request Timeout - Use Async Endpoint",
+                        Detail = "Video generation is a long-running operation that typically takes 3-5+ minutes. " +
+                                "The synchronous endpoint is deprecated and will timeout. " +
+                                "Please use the async endpoint: POST /v1/videos/generations/async",
                         Type = "https://conduitllm.com/errors/video-timeout",
                         Extensions =
                         {
                             ["timeout_seconds"] = SyncTimeoutSeconds,
-                            ["async_endpoint"] = "/v1/videos/generations/async"
+                            ["async_endpoint"] = "/v1/videos/generations/async",
+                            ["deprecation_notice"] = "This sync endpoint will be removed in a future version"
                         }
                     });
                 }
@@ -180,8 +195,8 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(ModelState);
                 }
 
-                // Get virtual key from claims
-                var virtualKey = User.FindFirst("VirtualKey")?.Value;
+                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"] as string;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -210,7 +225,7 @@ namespace ConduitLLM.Http.Controllers
                     Status = "pending",
                     CreatedAt = DateTimeOffset.UtcNow,
                     EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60), // Default estimate
-                    CheckStatusUrl = $"/v1/videos/generations/{taskId}/status"
+                    CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
                 };
 
                 return Accepted(taskResponse);
@@ -263,7 +278,7 @@ namespace ConduitLLM.Http.Controllers
         /// <response code="401">Authentication failed.</response>
         /// <response code="404">Task not found.</response>
         /// <response code="500">Internal server error.</response>
-        [HttpGet("generations/{taskId}/status")]
+        [HttpGet("generations/tasks/{taskId}")]
         [ProducesResponseType(typeof(VideoGenerationTaskStatus), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
         [ProducesResponseType(typeof(ProblemDetails), 404)]
@@ -274,8 +289,8 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
-                // Get virtual key from claims
-                var virtualKey = User.FindFirst("VirtualKey")?.Value;
+                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"] as string;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails
@@ -300,7 +315,7 @@ namespace ConduitLLM.Http.Controllers
                 {
                     TaskId = taskId,
                     Status = taskStatus.State.ToString().ToLowerInvariant(),
-                    Progress = taskStatus.ProgressPercentage,
+                    Progress = taskStatus.Progress,
                     CreatedAt = taskStatus.CreatedAt,
                     UpdatedAt = taskStatus.UpdatedAt,
                     CompletedAt = taskStatus.CompletedAt,
@@ -361,8 +376,8 @@ namespace ConduitLLM.Http.Controllers
         {
             try
             {
-                // Get virtual key from claims
-                var virtualKey = User.FindFirst("VirtualKey")?.Value;
+                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"] as string;
                 if (string.IsNullOrEmpty(virtualKey))
                 {
                     return Unauthorized(new ProblemDetails

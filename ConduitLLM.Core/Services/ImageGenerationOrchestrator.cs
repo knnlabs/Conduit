@@ -62,7 +62,7 @@ namespace ConduitLLM.Core.Services
                     request.TaskId, request.Request.Prompt);
                 
                 // Update task status to processing
-                await _taskService.UpdateTaskStatusAsync(request.TaskId, TaskState.Running);
+                await _taskService.UpdateTaskStatusAsync(request.TaskId, TaskState.Processing);
                 
                 // Publish progress event
                 await _publishEndpoint.Publish(new ImageGenerationProgress
@@ -246,7 +246,8 @@ namespace ConduitLLM.Core.Services
                 await _taskService.UpdateTaskStatusAsync(
                     request.TaskId, 
                     TaskState.Completed,
-                    new
+                    progress: 100,
+                    result: new
                     {
                         images = processedImages,
                         duration = stopwatch.Elapsed.TotalSeconds,

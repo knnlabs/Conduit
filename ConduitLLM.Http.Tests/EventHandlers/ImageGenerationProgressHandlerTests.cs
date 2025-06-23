@@ -55,7 +55,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = @event.TaskId,
-                State = TaskState.Running,
+                State = TaskState.Processing,
                 Result = new Dictionary<string, object>()
             };
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(@event.TaskId, default)).ReturnsAsync(taskStatus);
@@ -91,7 +91,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             var taskStatus = new AsyncTaskStatus
             {
                 TaskId = @event.TaskId,
-                State = TaskState.Running,
+                State = TaskState.Processing,
                 Result = resultDict
             };
             _mockTaskService.Setup(x => x.GetTaskStatusAsync(@event.TaskId, default)).ReturnsAsync(taskStatus);
@@ -102,7 +102,8 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             // Assert
             _mockTaskService.Verify(x => x.UpdateTaskStatusAsync(
                 @event.TaskId,
-                TaskState.Running,
+                TaskState.Processing,
+                It.IsAny<int?>(),
                 It.Is<IDictionary<string, object>>(d => d.ContainsKey("progress")),
                 null,
                 default),

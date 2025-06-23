@@ -57,9 +57,10 @@ namespace ConduitLLM.Http.EventHandlers
                 await _asyncTaskService.UpdateTaskStatusAsync(
                     message.RequestId, 
                     TaskState.Completed, 
-                    result,
-                    null,
-                    context.CancellationToken);
+                    progress: 100,
+                    result: result,
+                    error: null,
+                    cancellationToken: context.CancellationToken);
                 
                 // Clear progress cache for this task
                 var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";

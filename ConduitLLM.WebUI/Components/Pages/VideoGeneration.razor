@@ -715,11 +715,11 @@
             };
 
             // Try sync generation first for short videos
-            if (duration <= 3)
+            if (duration <= 10)
             {
                 try
                 {
-                    var response = await ConduitApiClient.CreateVideoAsync(request, apiKey);
+                    var response = await ConduitApiClient.CreateVideoAsync(request, string.IsNullOrWhiteSpace(apiKey) ? null : apiKey);
                     
                     if (response?.Data != null && response.Data.Any())
                     {
@@ -767,7 +767,7 @@
     {
         try
         {
-            var taskResponse = await ConduitApiClient.CreateVideoAsyncTask(request, apiKey);
+            var taskResponse = await ConduitApiClient.CreateVideoAsyncTask(request, string.IsNullOrWhiteSpace(apiKey) ? null : apiKey);
             
             if (taskResponse != null && !string.IsNullOrEmpty(taskResponse.TaskId))
             {

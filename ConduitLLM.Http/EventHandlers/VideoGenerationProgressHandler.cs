@@ -59,7 +59,7 @@ namespace ConduitLLM.Http.EventHandlers
                 if (taskStatus != null)
                 {
                     // Update progress percentage and message
-                    taskStatus.ProgressPercentage = message.ProgressPercentage;
+                    taskStatus.Progress = message.ProgressPercentage;
                     taskStatus.ProgressMessage = message.Message ?? message.Status;
                     
                     // Update metadata with detailed progress info
@@ -74,10 +74,11 @@ namespace ConduitLLM.Http.EventHandlers
                     
                     await _asyncTaskService.UpdateTaskStatusAsync(
                         message.RequestId, 
-                        TaskState.Running, 
-                        taskStatus.Result,
-                        null,
-                        context.CancellationToken);
+                        TaskState.Processing, 
+                        progress: message.ProgressPercentage,
+                        result: taskStatus.Result,
+                        error: null,
+                        cancellationToken: context.CancellationToken);
                 }
                 
                 // Log significant progress milestones

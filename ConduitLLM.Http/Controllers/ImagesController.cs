@@ -393,7 +393,7 @@ namespace ConduitLLM.Http.Controllers
                     status = task.State.ToString().ToLowerInvariant(),
                     created = task.CreatedAt,
                     updated = task.UpdatedAt,
-                    progress = task.ProgressPercentage,
+                    progress = task.Progress,
                     result = task.State == TaskState.Completed ? task.Result : null,
                     error = task.State == TaskState.Failed ? task.Error : null
                 };

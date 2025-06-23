@@ -37,22 +37,33 @@ namespace ConduitLLM.Http.EventHandlers
 
             try
             {
-                // Update task status to failed
-                var errorDetails = new
+                // Check if task exists (only async tasks will have task records)
+                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
+                if (taskStatus != null)
                 {
-                    Error = message.Error,
-                    ErrorCode = message.ErrorCode,
-                    Provider = message.Provider,
-                    IsRetryable = message.IsRetryable,
-                    FailedAt = message.FailedAt
-                };
+                    // This is an async task, update its status
+                    var errorDetails = new
+                    {
+                        Error = message.Error,
+                        ErrorCode = message.ErrorCode,
+                        Provider = message.Provider,
+                        IsRetryable = message.IsRetryable,
+                        FailedAt = message.FailedAt
+                    };
 
-                await _asyncTaskService.UpdateTaskStatusAsync(
-                    message.RequestId, 
-                    TaskState.Failed,
-                    errorDetails,
-                    message.Error,
-                    context.CancellationToken);
+                    await _asyncTaskService.UpdateTaskStatusAsync(
+                        message.RequestId, 
+                        TaskState.Failed,
+                        progress: null,
+                        errorDetails,
+                        message.Error,
+                        context.CancellationToken);
+                }
+                else
+                {
+                    // This is a sync task failure, just log it
+                    _logger.LogInformation("Sync video generation failed (no task record) for request {RequestId}", message.RequestId);
+                }
                 
                 // Clear progress cache for this task
                 var progressCacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";

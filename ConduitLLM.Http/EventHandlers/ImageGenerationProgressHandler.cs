@@ -58,7 +58,7 @@ namespace ConduitLLM.Http.EventHandlers
                 if (taskStatus != null && taskStatus.Result is IDictionary<string, object> resultDict)
                 {
                     resultDict["progress"] = progressData;
-                    await _taskService.UpdateTaskStatusAsync(message.TaskId, taskStatus.State, resultDict);
+                    await _taskService.UpdateTaskStatusAsync(message.TaskId, taskStatus.State, progress: null, result: resultDict);
                 }
                 
                 // Track generation metrics

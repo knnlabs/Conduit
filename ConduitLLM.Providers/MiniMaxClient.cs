@@ -602,21 +602,25 @@ namespace ConduitLLM.Providers
                         }
                         
                         // Check if completed
-                        if (statusResult.Status == "Finished" && !string.IsNullOrEmpty(statusResult.Video?.Url))
+                        if (statusResult.Status == "Success" && !string.IsNullOrEmpty(statusResult.FileId))
                         {
-                            Logger.LogInformation("MiniMax video generation completed: {Url}", statusResult.Video.Url);
+                            Logger.LogInformation("MiniMax video generation completed: FileId={FileId}", statusResult.FileId);
+                            
+                            // For MiniMax, we need to fetch the video file using the file_id
+                            // The video URL is constructed from the file_id
+                            var videoUrl = $"https://api.minimax.io/v1/files/retrieve?file_id={statusResult.FileId}";
                             
                             // Convert to standard response format
                             var videoData = new List<VideoData>
                             {
                                 new VideoData
                                 {
-                                    Url = statusResult.Video.Url,
+                                    Url = videoUrl,
                                     Metadata = new VideoMetadata
                                     {
-                                        Width = ParseResolutionWidth(request.Size),
-                                        Height = ParseResolutionHeight(request.Size),
-                                        Duration = statusResult.Video.Duration ?? request.Duration ?? 6,
+                                        Width = statusResult.VideoWidth,
+                                        Height = statusResult.VideoHeight,
+                                        Duration = request.Duration ?? 6,
                                         Fps = request.Fps ?? 30,
                                         Format = "mp4",
                                         MimeType = "video/mp4"
@@ -759,12 +763,12 @@ namespace ConduitLLM.Providers
         {
             return size switch
             {
-                "1920x1080" => "1920x1080",
-                "1280x720" => "1280x720",
-                "720x480" => "720x480",
-                "720x1280" => "720x1280",
-                "1080x1920" => "1080x1920",
-                _ => "1280x720" // Default to HD
+                "1920x1080" => "1080P",
+                "1280x720" => "768P",  // MiniMax uses 768P for HD
+                "720x480" => "768P",   // Map SD to 768P
+                "720x1280" => "768P",  // Portrait HD
+                "1080x1920" => "1080P", // Portrait Full HD
+                _ => "768P" // Default to 768P (HD)
             };
         }
 
@@ -1388,8 +1392,20 @@ namespace ConduitLLM.Providers
 
         private class MiniMaxVideoStatusResponse
         {
+            [System.Text.Json.Serialization.JsonPropertyName("task_id")]
+            public string? TaskId { get; set; }
+            
             [System.Text.Json.Serialization.JsonPropertyName("status")]
             public string? Status { get; set; }
+            
+            [System.Text.Json.Serialization.JsonPropertyName("file_id")]
+            public string? FileId { get; set; }
+            
+            [System.Text.Json.Serialization.JsonPropertyName("video_width")]
+            public int VideoWidth { get; set; }
+            
+            [System.Text.Json.Serialization.JsonPropertyName("video_height")]
+            public int VideoHeight { get; set; }
 
             [System.Text.Json.Serialization.JsonPropertyName("video")]
             public MiniMaxVideoData? Video { get; set; }
