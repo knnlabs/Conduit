@@ -216,6 +216,14 @@ else
                                         <small class="text-muted d-block">Generate images from text prompts</small>
                                     </label>
                                 </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="supportsVideoGeneration" 
+                                           @bind="dtoMapping.SupportsVideoGeneration">
+                                    <label class="form-check-label" for="supportsVideoGeneration">
+                                        <i class="fa fa-video-camera me-1 text-danger"></i>Video Generation
+                                        <small class="text-muted d-block">Generate videos from text prompts</small>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -629,6 +637,7 @@ else
                     // Map capability fields from DTO to entity
                     SupportsImageGeneration = dtoMapping.SupportsImageGeneration,
                     SupportsVision = dtoMapping.SupportsVision,
+                    SupportsVideoGeneration = dtoMapping.SupportsVideoGeneration,
                     SupportsAudioTranscription = dtoMapping.SupportsAudioTranscription,
                     SupportsTextToSpeech = dtoMapping.SupportsTextToSpeech,
                     SupportsRealtimeAudio = dtoMapping.SupportsRealtimeAudio,
@@ -658,6 +667,7 @@ else
                     // Map capability fields from DTO to entity
                     SupportsImageGeneration = dtoMapping.SupportsImageGeneration,
                     SupportsVision = dtoMapping.SupportsVision,
+                    SupportsVideoGeneration = dtoMapping.SupportsVideoGeneration,
                     SupportsAudioTranscription = dtoMapping.SupportsAudioTranscription,
                     SupportsTextToSpeech = dtoMapping.SupportsTextToSpeech,
                     SupportsRealtimeAudio = dtoMapping.SupportsRealtimeAudio,
@@ -749,14 +759,15 @@ else
                     // Map capabilities to DTO fields
                     dtoMapping.SupportsImageGeneration = caps.ImageGeneration;
                     dtoMapping.SupportsVision = caps.Vision;
+                    dtoMapping.SupportsVideoGeneration = caps.VideoGeneration;
                     // Note: Audio capabilities would need to be inferred or mapped differently
                     // as the discovery model doesn't have direct audio transcription/TTS fields
                     
                     discoveryStatus = $"Successfully discovered capabilities for {discoveredModel.DisplayName ?? dtoMapping.ProviderModelId}";
                     discoverySuccessful = true;
                     
-                    _logger.LogInformation("Discovered capabilities: ImageGen={ImageGen}, Vision={Vision}", 
-                        caps.ImageGeneration, caps.Vision);
+                    _logger.LogInformation("Discovered capabilities: ImageGen={ImageGen}, Vision={Vision}, VideoGen={VideoGen}", 
+                        caps.ImageGeneration, caps.Vision, caps.VideoGeneration);
                 }
             else
             {

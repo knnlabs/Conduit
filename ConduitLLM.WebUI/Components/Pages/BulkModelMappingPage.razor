@@ -185,6 +185,12 @@
                                                                 <i class="fa fa-image me-1"></i>Image Gen
                                                             </span>
                                                         }
+                                                        @if (modelInfo.DiscoveredCapabilities.Capabilities.VideoGeneration)
+                                                        {
+                                                            <span class="badge bg-danger bg-opacity-10 text-danger">
+                                                                <i class="fa fa-video-camera me-1"></i>Video Gen
+                                                            </span>
+                                                        }
                                                         @if (modelInfo.DiscoveredCapabilities.Capabilities.Embeddings)
                                                         {
                                                             <span class="badge bg-secondary bg-opacity-10 text-secondary">
@@ -268,6 +274,17 @@
                             </label>
                         </div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="supportsVideoGeneration" @bind="supportsVideoGeneration" />
+                            <label class="form-check-label" for="supportsVideoGeneration">
+                                <i class="fa fa-video-camera me-1 text-danger"></i>Video Generation
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
                     <div class="col-md-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="supportsAudioTranscription" @bind="supportsAudioTranscription" />
@@ -459,6 +476,7 @@
         // Selected capabilities (can be manually overridden)
         public bool SupportsVision { get; set; }
         public bool SupportsImageGeneration { get; set; }
+        public bool SupportsVideoGeneration { get; set; }
         public bool SupportsAudioTranscription { get; set; }
         public bool SupportsTextToSpeech { get; set; }
     }
@@ -468,6 +486,7 @@
     private bool replaceExisting = false;
     private bool supportsVision = false;
     private bool supportsImageGeneration = false;
+    private bool supportsVideoGeneration = false;
     private bool supportsAudioTranscription = false;
     private bool supportsTextToSpeech = false;
 
@@ -667,6 +686,8 @@
                             modelInfo.SupportsVision : supportsVision,
                         SupportsImageGeneration = modelInfo?.HasDiscoveredCapabilities == true ? 
                             modelInfo.SupportsImageGeneration : supportsImageGeneration,
+                        SupportsVideoGeneration = modelInfo?.HasDiscoveredCapabilities == true ? 
+                            modelInfo.SupportsVideoGeneration : supportsVideoGeneration,
                         SupportsAudioTranscription = modelInfo?.HasDiscoveredCapabilities == true ? 
                             modelInfo.SupportsAudioTranscription : supportsAudioTranscription,
                         SupportsTextToSpeech = modelInfo?.HasDiscoveredCapabilities == true ? 
@@ -713,6 +734,7 @@
         replaceExisting = false;
         supportsVision = false;
         supportsImageGeneration = false;
+        supportsVideoGeneration = false;
         supportsAudioTranscription = false;
         supportsTextToSpeech = false;
     }
@@ -746,6 +768,7 @@
                         {
                             modelInfo.SupportsVision = discovered.Capabilities.Vision;
                             modelInfo.SupportsImageGeneration = discovered.Capabilities.ImageGeneration;
+                            modelInfo.SupportsVideoGeneration = discovered.Capabilities.VideoGeneration;
                             // Note: Audio capabilities need to be inferred as they're not in the discovery model
                         }
                     }
@@ -772,6 +795,7 @@
                             {
                                 modelInfo.SupportsVision = discovered.Capabilities.Vision;
                                 modelInfo.SupportsImageGeneration = discovered.Capabilities.ImageGeneration;
+                                modelInfo.SupportsVideoGeneration = discovered.Capabilities.VideoGeneration;
                             }
                         }
                     }
