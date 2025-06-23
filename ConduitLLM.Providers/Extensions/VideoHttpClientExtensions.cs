@@ -19,25 +19,13 @@ namespace ConduitLLM.Providers.Extensions
         /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddVideoGenerationHttpClients(this IServiceCollection services)
         {
-            // Register MiniMaxClient for video generation without timeout
-            services.AddHttpClient("minimaxLLMClient", client =>
-            {
-                // Set a very long timeout at the HttpClient level (1 hour)
-                client.Timeout = TimeSpan.FromHours(1);
-            })
-            .AddPolicyHandler((provider, _) =>
-            {
-                var logger = provider.GetService<ILogger<MiniMaxClient>>();
-                // Use retry policy but NO timeout policy
-                return ResiliencePolicies.GetRetryPolicy(
-                    maxRetries: 3,
-                    initialDelay: TimeSpan.FromSeconds(1),
-                    maxDelay: TimeSpan.FromSeconds(30),
-                    logger: logger);
-            });
-
-            // Add other video providers here as needed
-            // Example: services.AddHttpClient("replicateLLMClient", ...)
+            // Note: MiniMaxClient creates its own HttpClient for video generation
+            // to ensure no timeout policies are applied. This avoids conflicts with
+            // the standard HTTP client registration that includes timeout policies.
+            
+            // When other providers add video support, they should follow the same pattern:
+            // Create a new HttpClient instance in their video methods rather than using
+            // the factory, to ensure complete control over timeout settings.
 
             return services;
         }

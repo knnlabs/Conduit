@@ -393,7 +393,7 @@ namespace ConduitLLM.Providers
 
             return await ExecuteApiRequestAsync(async () =>
             {
-                using var httpClient = CreateHttpClient(apiKey);
+                using var httpClient = CreateVideoHttpClient(apiKey);
                 
                 var miniMaxRequest = new MiniMaxVideoGenerationRequest
                 {
@@ -744,6 +744,34 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
+
+        /// <summary>
+        /// Creates a configured HttpClient specifically for video generation requests.
+        /// This client has no timeout policy to support long-running video generation.
+        /// </summary>
+        /// <param name="apiKey">Optional API key to override the one in credentials.</param>
+        /// <returns>A configured HttpClient instance for video generation.</returns>
+        protected virtual HttpClient CreateVideoHttpClient(string? apiKey = null)
+        {
+            // For video generation, ALWAYS create a new HttpClient without any policies
+            // This ensures no timeout policies are applied
+            var client = new HttpClient();
+            
+            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
+            if (string.IsNullOrWhiteSpace(effectiveApiKey))
+            {
+                throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
+            }
+
+            ConfigureHttpClient(client, effectiveApiKey);
+            
+            // Set a very long timeout for video generation (1 hour)
+            client.Timeout = TimeSpan.FromHours(1);
+            
+            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies");
+            
+            return client;
         }
 
         private static string MapSizeToAspectRatio(string? size)
