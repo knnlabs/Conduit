@@ -679,6 +679,211 @@ public class ConduitApiClient : IConduitApiClient
             return new Dictionary<string, ModelDiscoveryInfo>();
         }
     }
+
+    /// <inheritdoc />
+    public async Task<VideoGenerationResponse?> CreateVideoAsync(
+        VideoGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/videos/generations");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Add request body
+            var jsonContent = JsonSerializer.Serialize(request, _jsonOptions);
+            requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<VideoGenerationResponse>(responseContent, _jsonOptions);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Video generation request failed with status {StatusCode}: {Error}", 
+                    response.StatusCode, errorContent);
+                
+                // Try to parse error response
+                string errorMessage = $"Video generation failed with status {response.StatusCode}";
+                try
+                {
+                    var errorResponse = JsonSerializer.Deserialize<JsonElement>(errorContent, _jsonOptions);
+                    if (errorResponse.TryGetProperty("error", out var error))
+                    {
+                        if (error.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                        {
+                            errorMessage = message.GetString() ?? errorMessage;
+                        }
+                    }
+                    else if (errorResponse.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
+                    {
+                        errorMessage = detail.GetString() ?? errorMessage;
+                    }
+                }
+                catch
+                {
+                    // If we can't parse the error, use the raw content
+                    errorMessage = $"Video generation failed: {errorContent}";
+                }
+                
+                throw new HttpRequestException(errorMessage, null, response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating video");
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<VideoGenerationTaskResponse?> CreateVideoAsyncTask(
+        VideoGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/videos/generations/async");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Add request body
+            var jsonContent = JsonSerializer.Serialize(request, _jsonOptions);
+            requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<VideoGenerationTaskResponse>(responseContent, _jsonOptions);
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Async video generation request failed with status {StatusCode}: {Error}", 
+                    response.StatusCode, errorContent);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting async video generation");
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<VideoGenerationTaskStatus?> GetVideoGenerationStatusAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"/v1/videos/generations/{taskId}/status");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                return JsonSerializer.Deserialize<VideoGenerationTaskStatus>(responseContent, _jsonOptions);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("Video generation task {TaskId} not found", taskId);
+                return null;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Get video status request failed with status {StatusCode}: {Error}", 
+                    response.StatusCode, errorContent);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting video generation status for task {TaskId}", taskId);
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> CancelVideoGenerationAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Prepare the request
+            var requestMessage = new HttpRequestMessage(HttpMethod.Delete, $"/v1/videos/generations/{taskId}");
+            requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            // Use provided virtual key or get WebUI key
+            var apiKey = virtualKey ?? await GetWebUIVirtualKeyAsync();
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            }
+
+            // Send request
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+            {
+                _logger.LogInformation("Successfully cancelled video generation task {TaskId}", taskId);
+                return true;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("Failed to cancel video generation task {TaskId} with status {StatusCode}: {Error}", 
+                    taskId, response.StatusCode, errorContent);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling video generation task {TaskId}", taskId);
+            return false;
+        }
+    }
 }
 
 /// <summary>

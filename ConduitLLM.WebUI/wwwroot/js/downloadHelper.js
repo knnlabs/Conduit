@@ -123,3 +123,68 @@ window.uploadFile = function(accept, dotNetReference, methodName) {
     // Trigger the file dialog
     input.click();
 };
+
+/**
+ * Helper function to download an image from a data URL or remote URL
+ * @param {string} imageSource - The image source (data URL or remote URL)
+ * @param {string} fileName - The filename to save as
+ */
+window.downloadImage = function(imageSource, fileName) {
+    if (imageSource.startsWith('data:')) {
+        // Handle data URL
+        const a = document.createElement('a');
+        a.href = imageSource;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+        }, 100);
+    } else {
+        // Handle remote URL
+        window.downloadFromUrl(imageSource, fileName);
+    }
+};
+
+/**
+ * Helper function to download a video from a data URL or remote URL
+ * @param {string} videoSource - The video source (data URL or remote URL)
+ * @param {string} fileName - The filename to save as
+ */
+window.downloadVideo = function(videoSource, fileName) {
+    if (videoSource.startsWith('data:')) {
+        // Handle data URL
+        const a = document.createElement('a');
+        a.href = videoSource;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+        }, 100);
+    } else {
+        // Handle remote URL - for videos we might need to handle CORS
+        fetch(videoSource)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            })
+            .catch(error => {
+                console.error('Error downloading video:', error);
+                // Fallback to simple download
+                window.downloadFromUrl(videoSource, fileName);
+            });
+    }
+};

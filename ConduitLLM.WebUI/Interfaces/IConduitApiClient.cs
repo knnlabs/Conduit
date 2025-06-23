@@ -116,4 +116,52 @@ public interface IConduitApiClient
         List<string> modelIds,
         string? virtualKey = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a video generation request to the API.
+    /// </summary>
+    /// <param name="request">The video generation request.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The video generation response.</returns>
+    Task<VideoGenerationResponse?> CreateVideoAsync(
+        VideoGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates an asynchronous video generation request to the API.
+    /// </summary>
+    /// <param name="request">The video generation request.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The video generation task response.</returns>
+    Task<VideoGenerationTaskResponse?> CreateVideoAsyncTask(
+        VideoGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the status of a video generation task.
+    /// </summary>
+    /// <param name="taskId">The task ID returned from the async generation endpoint.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>Current status of the video generation task.</returns>
+    Task<VideoGenerationTaskStatus?> GetVideoGenerationStatusAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cancels a video generation task.
+    /// </summary>
+    /// <param name="taskId">The task ID to cancel.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>True if the task was successfully cancelled, false otherwise.</returns>
+    Task<bool> CancelVideoGenerationAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
 }
