@@ -244,12 +244,13 @@ builder.Services.AddHttpClient<IConduitApiClient, ConduitApiClient>(client =>
 {
     options.RetryCount = 3;
     options.CircuitBreakerThreshold = 5;
-    options.TimeoutSeconds = 60; // Increased timeout for image generation
+    options.TimeoutSeconds = 60; // Default timeout for most operations (video excluded)
 })
 .ConfigureHttpClient(client =>
 {
-    // Set a default timeout on the HttpClient itself as a safety net
-    client.Timeout = TimeSpan.FromSeconds(120); // Even longer timeout for the HTTP client
+    // Set a very long timeout at the HttpClient level for video generation
+    // The Polly policies will control timeouts for non-video endpoints
+    client.Timeout = TimeSpan.FromHours(1);
 });
 
 // Register Admin API client and compatibility services
