@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Hubs;
 using MassTransit;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +19,7 @@ namespace ConduitLLM.Http.EventHandlers
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
+        private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationCompletedHandler> _logger;
         private const string ProgressCacheKeyPrefix = "video_generation_progress_";
         private const string CompletedTasksCacheKey = "completed_video_tasks";
@@ -24,10 +27,12 @@ namespace ConduitLLM.Http.EventHandlers
         public VideoGenerationCompletedHandler(
             IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
+            IHubContext<VideoGenerationHub> hubContext,
             ILogger<VideoGenerationCompletedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -91,6 +96,23 @@ namespace ConduitLLM.Http.EventHandlers
                 
                 // Track provider-specific metrics
                 LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
+                
+                // Send completion notification via SignalR
+                await _hubContext.Clients.Group($"task-{message.RequestId}").SendAsync("TaskCompleted", new
+                {
+                    taskId = message.RequestId,
+                    status = "completed",
+                    videoUrl = message.VideoUrl,
+                    previewUrl = message.PreviewUrl,
+                    duration = message.Duration,
+                    resolution = message.Resolution,
+                    fileSize = message.FileSize,
+                    cost = message.Cost,
+                    provider = message.Provider,
+                    model = message.Model,
+                    completedAt = message.CompletedAt,
+                    generationDuration = message.GenerationDuration.TotalSeconds
+                });
                 
                 _logger.LogInformation("Video generation completed for request {RequestId}", message.RequestId);
             }

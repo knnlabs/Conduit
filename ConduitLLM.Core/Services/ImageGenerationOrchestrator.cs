@@ -147,6 +147,28 @@ namespace ConduitLLM.Core.Services
                         using var imageStream = new System.IO.MemoryStream(imageBytes);
                         var storageResult = await _storageService.StoreAsync(imageStream, mediaMetadata);
                         finalUrl = storageResult.Url;
+                        
+                        // Publish MediaGenerationCompleted event for lifecycle tracking
+                        await _publishEndpoint.Publish(new MediaGenerationCompleted
+                        {
+                            MediaType = MediaType.Image,
+                            VirtualKeyId = request.VirtualKeyId,
+                            MediaUrl = storageResult.Url,
+                            StorageKey = storageResult.StorageKey,
+                            FileSizeBytes = imageBytes.Length,
+                            ContentType = mediaMetadata.ContentType,
+                            GeneratedByModel = modelInfo.ModelId,
+                            GenerationPrompt = request.Request.Prompt,
+                            GeneratedAt = DateTime.UtcNow,
+                            Metadata = new Dictionary<string, object>
+                            {
+                                ["provider"] = modelInfo.Provider,
+                                ["model"] = modelInfo.ModelId,
+                                ["index"] = i,
+                                ["format"] = "b64_json"
+                            },
+                            CorrelationId = request.CorrelationId
+                        });
                     }
                     else if (!string.IsNullOrEmpty(imageData.Url) && 
                             (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
@@ -208,6 +230,27 @@ namespace ConduitLLM.Core.Services
                                 
                                 _logger.LogInformation("Downloaded and stored image from {OriginalUrl} to {StorageUrl}", 
                                     imageData.Url, finalUrl);
+                                
+                                // Publish MediaGenerationCompleted event for lifecycle tracking
+                                await _publishEndpoint.Publish(new MediaGenerationCompleted
+                                {
+                                    MediaType = MediaType.Image,
+                                    VirtualKeyId = request.VirtualKeyId,
+                                    MediaUrl = storageResult.Url,
+                                    StorageKey = storageResult.StorageKey,
+                                    FileSizeBytes = imageBytes.Length,
+                                    ContentType = mediaMetadata.ContentType,
+                                    GeneratedByModel = modelInfo.ModelId,
+                                    GenerationPrompt = request.Request.Prompt,
+                                    GeneratedAt = DateTime.UtcNow,
+                                    Metadata = new Dictionary<string, object>
+                                    {
+                                        ["provider"] = modelInfo.Provider,
+                                        ["model"] = modelInfo.ModelId,
+                                        ["index"] = i
+                                    },
+                                    CorrelationId = request.CorrelationId
+                                });
                             }
                             else
                             {
