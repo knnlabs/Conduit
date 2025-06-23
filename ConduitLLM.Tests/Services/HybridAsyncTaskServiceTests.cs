@@ -721,5 +721,235 @@ namespace ConduitLLM.Tests.Services
                 It.Is<AsyncTask>(t => t.VirtualKeyId == virtualKeyId),
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
+
+        [Fact]
+        public async Task CreateTaskAsync_WithCacheFailure_StillCreatesTaskSuccessfully()
+        {
+            // Arrange
+            var taskType = "test-task";
+            var virtualKeyId = 123;
+            var metadata = new { test = "data" };
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => t);
+
+            _mockCache
+                .Setup(c => c.SetStringAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Cache is unavailable"));
+
+            // Act - Should not throw despite cache failure
+            var taskId = await _service.CreateTaskAsync(taskType, virtualKeyId, metadata);
+
+            // Assert
+            Assert.NotNull(taskId);
+            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()), Times.Once);
+            
+            // Verify warning was logged
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to cache task")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateTaskAsync_WithEventPublishFailure_StillCreatesTaskSuccessfully()
+        {
+            // Arrange
+            var taskType = "test-task";
+            var virtualKeyId = 456;
+            var metadata = new { test = "data" };
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => t);
+
+            _mockPublishEndpoint
+                .Setup(p => p.Publish(It.IsAny<AsyncTaskCreated>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Event bus is down"));
+
+            // Act - Should not throw despite event publish failure
+            var taskId = await _service.CreateTaskAsync(taskType, virtualKeyId, metadata);
+
+            // Assert
+            Assert.NotNull(taskId);
+            _mockRepository.Verify(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()), Times.Once);
+            
+            // Verify warning was logged
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to publish AsyncTaskCreated event")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetTaskStatusAsync_WithCacheReadFailure_FallsBackToDatabase()
+        {
+            // Arrange
+            var taskId = "fallback-task";
+            var dbTask = new AsyncTaskBuilder()
+                .WithId(taskId)
+                .AsProcessing(50)
+                .Build();
+
+            _mockCache
+                .Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Cache read error"));
+
+            _mockRepository
+                .Setup(r => r.GetByIdAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dbTask);
+
+            // Act
+            var result = await _service.GetTaskStatusAsync(taskId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(TaskState.Processing, result.State);
+            Assert.Equal(50, result.Progress);
+
+            // Verify database was queried
+            _mockRepository.Verify(r => r.GetByIdAsync(taskId, It.IsAny<CancellationToken>()), Times.Once);
+            
+            // Verify warning was logged
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Cache read failed")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetTaskStatusAsync_WithCorruptCacheData_FallsBackToDatabase()
+        {
+            // Arrange
+            var taskId = "corrupt-cache-task";
+            var corruptJson = "{ invalid json";
+            var dbTask = new AsyncTaskBuilder()
+                .WithId(taskId)
+                .AsCompleted()
+                .Build();
+
+            _mockCache
+                .Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Encoding.UTF8.GetBytes(corruptJson));
+
+            _mockRepository
+                .Setup(r => r.GetByIdAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dbTask);
+
+            // Act
+            var result = await _service.GetTaskStatusAsync(taskId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(TaskState.Completed, result.State);
+
+            // Verify consistency issue was logged
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("cache-database consistency issue detected")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task CacheTaskStatusAsync_WithRetryableFailure_RetriesSuccessfully()
+        {
+            // Arrange
+            var taskType = "retry-test";
+            var virtualKeyId = 789;
+            var metadata = new { test = "data" };
+            var attempts = 0;
+
+            _mockRepository
+                .Setup(r => r.CreateAsync(It.IsAny<AsyncTask>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AsyncTask t, CancellationToken ct) => t);
+
+            _mockCache
+                .Setup(c => c.SetStringAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+                .Returns((string key, string value, DistributedCacheEntryOptions options, CancellationToken ct) =>
+                {
+                    attempts++;
+                    if (attempts < 3)
+                    {
+                        throw new Exception($"Transient cache error attempt {attempts}");
+                    }
+                    return Task.CompletedTask;
+                });
+
+            // Act
+            var taskId = await _service.CreateTaskAsync(taskType, virtualKeyId, metadata);
+
+            // Assert
+            Assert.NotNull(taskId);
+            Assert.Equal(3, attempts); // Should succeed on third attempt
+            
+            // Verify retry warnings were logged
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Cache operation failed for task") && v.ToString()!.Contains("attempt")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Exactly(2)); // 2 failures before success
+        }
+
+        [Fact]
+        public async Task GetTaskStatusAsync_WithCacheRecovery_RepopulatesCache()
+        {
+            // Arrange
+            var taskId = "recovery-task";
+            var dbTask = new AsyncTaskBuilder()
+                .WithId(taskId)
+                .AsProcessing(75)
+                .Build();
+
+            _mockCache
+                .Setup(c => c.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((byte[])null!); // Cache miss
+
+            _mockRepository
+                .Setup(r => r.GetByIdAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dbTask);
+
+            var cacheSetCalled = false;
+            _mockCache
+                .Setup(c => c.SetStringAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+                .Callback(() => cacheSetCalled = true)
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.GetTaskStatusAsync(taskId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(cacheSetCalled, "Cache should be repopulated after database read");
+            
+            // Verify debug log for re-caching
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Re-cached task") && v.ToString()!.Contains("after database read")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
     }
 }

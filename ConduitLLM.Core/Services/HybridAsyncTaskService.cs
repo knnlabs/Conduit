@@ -79,8 +79,9 @@ namespace ConduitLLM.Core.Services
                 Progress = 0
             };
 
-            // Save to database first
+            // Save to database first - this is the critical operation
             await _repository.CreateAsync(asyncTask, cancellationToken);
+            _logger.LogInformation("Created async task {TaskId} in database", taskId);
 
             // Create task status for cache
             var taskStatus = new AsyncTaskStatus
@@ -94,18 +95,36 @@ namespace ConduitLLM.Core.Services
                 Progress = 0
             };
 
-            // Cache the task status
-            await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+            // Best-effort cache update with resilience
+            try
+            {
+                await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+                _logger.LogDebug("Cached task {TaskId} status", taskId);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail - cache will self-heal on next read
+                _logger.LogWarning(ex, "Failed to cache task {TaskId}, will self-heal on next read", taskId);
+            }
             
-            // Publish event if event bus is available
+            // Best-effort event publishing
             if (_publishEndpoint != null)
             {
-                await _publishEndpoint.Publish(new AsyncTaskCreated
+                try
                 {
-                    TaskId = taskId,
-                    TaskType = taskType,
-                    VirtualKeyId = virtualKeyId
-                }, cancellationToken);
+                    await _publishEndpoint.Publish(new AsyncTaskCreated
+                    {
+                        TaskId = taskId,
+                        TaskType = taskType,
+                        VirtualKeyId = virtualKeyId
+                    }, cancellationToken);
+                    _logger.LogDebug("Published AsyncTaskCreated event for task {TaskId}", taskId);
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail - events are not critical for task creation
+                    _logger.LogWarning(ex, "Failed to publish AsyncTaskCreated event for task {TaskId}", taskId);
+                }
             }
             
             _logger.LogInformation("Created hybrid async task {TaskId} of type {TaskType}", taskId, taskType);
@@ -132,8 +151,9 @@ namespace ConduitLLM.Core.Services
                 Progress = 0
             };
 
-            // Save to database first
+            // Save to database first - this is the critical operation
             await _repository.CreateAsync(asyncTask, cancellationToken);
+            _logger.LogInformation("Created async task {TaskId} in database", taskId);
 
             // Create task status for cache
             var taskStatus = new AsyncTaskStatus
@@ -147,18 +167,36 @@ namespace ConduitLLM.Core.Services
                 Progress = 0
             };
 
-            // Cache the task status
-            await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+            // Best-effort cache update with resilience
+            try
+            {
+                await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+                _logger.LogDebug("Cached task {TaskId} status", taskId);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail - cache will self-heal on next read
+                _logger.LogWarning(ex, "Failed to cache task {TaskId}, will self-heal on next read", taskId);
+            }
             
-            // Publish event if event bus is available
+            // Best-effort event publishing
             if (_publishEndpoint != null)
             {
-                await _publishEndpoint.Publish(new AsyncTaskCreated
+                try
                 {
-                    TaskId = taskId,
-                    TaskType = taskType,
-                    VirtualKeyId = virtualKeyId
-                }, cancellationToken);
+                    await _publishEndpoint.Publish(new AsyncTaskCreated
+                    {
+                        TaskId = taskId,
+                        TaskType = taskType,
+                        VirtualKeyId = virtualKeyId
+                    }, cancellationToken);
+                    _logger.LogDebug("Published AsyncTaskCreated event for task {TaskId}", taskId);
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail - events are not critical for task creation
+                    _logger.LogWarning(ex, "Failed to publish AsyncTaskCreated event for task {TaskId}", taskId);
+                }
             }
             
             _logger.LogInformation("Created hybrid async task {TaskId} of type {TaskType} for VirtualKeyId {VirtualKeyId}", 
@@ -172,15 +210,36 @@ namespace ConduitLLM.Core.Services
         {
             // Try cache first
             var key = GetTaskKey(taskId);
-            var json = await _cache.GetStringAsync(key, cancellationToken);
+            string? json = null;
+            bool cacheHit = false;
             
-            if (!string.IsNullOrEmpty(json))
+            try
+            {
+                json = await _cache.GetStringAsync(key, cancellationToken);
+                cacheHit = !string.IsNullOrEmpty(json);
+            }
+            catch (Exception ex)
+            {
+                // Cache failure - log and continue with database fallback
+                _logger.LogWarning(ex, "Cache read failed for task {TaskId}, falling back to database", taskId);
+            }
+            
+            if (cacheHit && !string.IsNullOrEmpty(json))
             {
                 _logger.LogDebug("Task {TaskId} found in cache", taskId);
-                return JsonSerializer.Deserialize<AsyncTaskStatus>(json);
+                try
+                {
+                    return JsonSerializer.Deserialize<AsyncTaskStatus>(json);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to deserialize cached task {TaskId}, falling back to database", taskId);
+                    // Continue to database fallback
+                }
             }
 
             // Fallback to database
+            _logger.LogDebug("Cache miss for task {TaskId}, reading from database", taskId);
             var dbTask = await _repository.GetByIdAsync(taskId, cancellationToken);
             if (dbTask == null)
             {
@@ -188,13 +247,25 @@ namespace ConduitLLM.Core.Services
                 return null;
             }
 
+            // Log consistency monitoring
+            if (cacheHit)
+            {
+                _logger.LogInformation("Task {TaskId} cache-database consistency issue detected - cache had invalid data", taskId);
+            }
+
             // Convert database entity to task status
             var taskStatus = ConvertToTaskStatus(dbTask);
 
-            // Re-cache the task if it's still active
-            if (!IsTaskCompleted(taskStatus.State))
+            // Re-cache the task with resilience
+            try
             {
-                await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken);
+                await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken, IsTaskCompleted(taskStatus.State));
+                _logger.LogDebug("Re-cached task {TaskId} after database read", taskId);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the read operation
+                _logger.LogWarning(ex, "Failed to re-cache task {TaskId} after database read", taskId);
             }
 
             return taskStatus;
@@ -364,6 +435,27 @@ namespace ConduitLLM.Core.Services
                 SlidingExpiration = TimeSpan.FromHours(isCompleted ? CACHE_EXPIRY_HOURS : 24)
             };
             
+            // Retry logic with exponential backoff for cache operations
+            var retryCount = 3;
+            var delay = TimeSpan.FromMilliseconds(100);
+            
+            for (int i = 0; i < retryCount; i++)
+            {
+                try
+                {
+                    await _cache.SetStringAsync(key, json, options, cancellationToken);
+                    return; // Success
+                }
+                catch (Exception ex) when (i < retryCount - 1)
+                {
+                    _logger.LogWarning(ex, "Cache operation failed for task {TaskId}, attempt {Attempt} of {MaxAttempts}", 
+                        taskId, i + 1, retryCount);
+                    await Task.Delay(delay, cancellationToken);
+                    delay = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * 2); // Exponential backoff
+                }
+            }
+            
+            // If we get here, all retries failed - let it throw
             await _cache.SetStringAsync(key, json, options, cancellationToken);
         }
 
