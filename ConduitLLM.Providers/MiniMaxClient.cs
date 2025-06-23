@@ -754,8 +754,8 @@ namespace ConduitLLM.Providers
         /// <returns>A configured HttpClient instance for video generation.</returns>
         protected virtual HttpClient CreateVideoHttpClient(string? apiKey = null)
         {
-            // For video generation, ALWAYS create a new HttpClient without any policies
-            // This ensures no timeout policies are applied
+            // For video generation, ALWAYS create a new HttpClient without using the factory
+            // This ensures no timeout policies are applied by HttpClientFactory
             var client = new HttpClient();
             
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
@@ -764,12 +764,16 @@ namespace ConduitLLM.Providers
                 throw new ConfigurationException($"API key is missing for provider '{ProviderName}'");
             }
 
-            ConfigureHttpClient(client, effectiveApiKey);
+            // Configure headers manually to avoid any base class behavior
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", effectiveApiKey);
             
             // Set a very long timeout for video generation (1 hour)
             client.Timeout = TimeSpan.FromHours(1);
             
-            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies");
+            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies (bypassing factory)");
             
             return client;
         }
