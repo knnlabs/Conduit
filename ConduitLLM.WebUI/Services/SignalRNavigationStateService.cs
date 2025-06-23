@@ -161,9 +161,9 @@ namespace ConduitLLM.WebUI.Services
             });
         }
 
-        private async Task OnConnectionClosed(Exception? exception)
+        private Task OnConnectionClosed(Exception? exception)
         {
-            if (_disposed) return;
+            if (_disposed) return Task.CompletedTask;
 
             if (exception != null)
             {
@@ -189,6 +189,8 @@ namespace ConduitLLM.WebUI.Services
                     TimeSpan.FromSeconds(Math.Pow(2, _reconnectAttempts)), // Exponential backoff
                     Timeout.InfiniteTimeSpan);
             }
+            
+            return Task.CompletedTask;
         }
 
         private Task OnReconnecting(Exception? exception)

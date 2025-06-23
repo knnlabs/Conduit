@@ -158,7 +158,7 @@ namespace ConduitLLM.Core.Services
                 await PublishEventAsync(new VideoGenerationCompleted
                 {
                     RequestId = requestId,
-                    VideoUrl = response.Data?.FirstOrDefault()?.Url,
+                    VideoUrl = response.Data?.FirstOrDefault()?.Url ?? string.Empty,
                     CompletedAt = DateTime.UtcNow,
                     CorrelationId = requestId
                 }, "video generation completed", new { Model = request.Model });
@@ -244,7 +244,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<VideoGenerationResponse> GetVideoGenerationStatusAsync(
+        public Task<VideoGenerationResponse> GetVideoGenerationStatusAsync(
             string taskId,
             string virtualKey,
             CancellationToken cancellationToken = default)
@@ -253,7 +253,8 @@ namespace ConduitLLM.Core.Services
 
             // TODO: Implement task status tracking
             // This would query a task status store or cache
-            throw new NotImplementedException("Video generation status tracking not yet implemented");
+            return Task.FromException<VideoGenerationResponse>(
+                new NotImplementedException("Video generation status tracking not yet implemented"));
         }
 
         /// <inheritdoc/>

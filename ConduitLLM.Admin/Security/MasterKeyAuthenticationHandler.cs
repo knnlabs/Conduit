@@ -13,20 +13,30 @@ namespace ConduitLLM.Admin.Security
     {
         private readonly string? _masterKey;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MasterKeyAuthenticationHandler"/> class.
+        /// </summary>
+        /// <param name="options">The monitor for authentication scheme options</param>
+        /// <param name="logger">The logger factory</param>
+        /// <param name="encoder">The URL encoder</param>
+        /// <param name="configuration">The application configuration</param>
         public MasterKeyAuthenticationHandler(
             IOptionsMonitor<MasterKeyAuthenticationSchemeOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
-            ISystemClock clock,
             IConfiguration configuration)
-            : base(options, logger, encoder, clock)
+            : base(options, logger, encoder)
         {
             // Get master key from environment variable first, then fallback to configuration
             _masterKey = Environment.GetEnvironmentVariable("CONDUIT_MASTER_KEY") 
                 ?? configuration["AdminApi:MasterKey"];
         }
 
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+        /// <summary>
+        /// Handles the authentication by validating the master key from request headers.
+        /// </summary>
+        /// <returns>The result of the authentication attempt</returns>
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             // Allow health check endpoints without authentication
             if (Context.Request.Path.StartsWithSegments("/health/live") || 
@@ -43,7 +53,7 @@ namespace ConduitLLM.Admin.Security
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
-                return AuthenticateResult.Success(ticket);
+                return Task.FromResult(AuthenticateResult.Success(ticket));
             }
 
             // Check for master key in headers
@@ -60,18 +70,18 @@ namespace ConduitLLM.Admin.Security
 
             if (string.IsNullOrEmpty(providedKey))
             {
-                return AuthenticateResult.Fail("Missing master key");
+                return Task.FromResult(AuthenticateResult.Fail("Missing master key"));
             }
 
             if (string.IsNullOrEmpty(_masterKey))
             {
                 Logger.LogError("Master key is not configured. Set CONDUIT_MASTER_KEY environment variable.");
-                return AuthenticateResult.Fail("Master key not configured");
+                return Task.FromResult(AuthenticateResult.Fail("Master key not configured"));
             }
 
             if (providedKey != _masterKey)
             {
-                return AuthenticateResult.Fail("Invalid master key");
+                return Task.FromResult(AuthenticateResult.Fail("Invalid master key"));
             }
 
             // Create authenticated user
@@ -86,7 +96,7 @@ namespace ConduitLLM.Admin.Security
             var authPrincipal = new ClaimsPrincipal(authIdentity);
             var authTicket = new AuthenticationTicket(authPrincipal, Scheme.Name);
 
-            return AuthenticateResult.Success(authTicket);
+            return Task.FromResult(AuthenticateResult.Success(authTicket));
         }
     }
 
