@@ -184,6 +184,13 @@ builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
 // Register Video Generation Service
 builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
 
+// Register Webhook Notification Service
+builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+});
+
 // Register enhanced model discovery providers
 // Configure HttpClients for each discovery provider
 builder.Services.AddHttpClient<ConduitLLM.Core.Services.OpenRouterDiscoveryProvider>(client =>

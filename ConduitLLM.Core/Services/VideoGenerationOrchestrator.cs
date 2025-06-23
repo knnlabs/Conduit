@@ -30,6 +30,7 @@ namespace ConduitLLM.Core.Services
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ICostCalculationService _costService;
         private readonly ICancellableTaskRegistry _taskRegistry;
+        private readonly IWebhookNotificationService _webhookService;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -42,6 +43,7 @@ namespace ConduitLLM.Core.Services
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
+            IWebhookNotificationService webhookService,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -53,6 +55,7 @@ namespace ConduitLLM.Core.Services
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
+            _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -330,6 +333,24 @@ namespace ConduitLLM.Core.Services
                         CorrelationId = request.CorrelationId
                     });
                     
+                    // Send webhook notification for progress if configured
+                    if (!string.IsNullOrEmpty(request.WebhookUrl))
+                    {
+                        var webhookPayload = new VideoProgressWebhookPayload
+                        {
+                            TaskId = request.RequestId,
+                            Status = "processing",
+                            ProgressPercentage = progress,
+                            Message = GetProgressMessage(progress),
+                            EstimatedSecondsRemaining = (int)((100 - progress) * 0.6) // Rough estimate
+                        };
+
+                        await _webhookService.SendTaskProgressWebhookAsync(
+                            request.WebhookUrl,
+                            webhookPayload,
+                            request.WebhookHeaders);
+                    }
+                    
                     intervalIndex++;
                 }
 
@@ -536,6 +557,25 @@ namespace ConduitLLM.Core.Services
                     CorrelationId = request.CorrelationId
                 });
                 
+                // Send webhook notification if configured
+                if (!string.IsNullOrEmpty(request.WebhookUrl))
+                {
+                    var webhookPayload = new VideoCompletionWebhookPayload
+                    {
+                        TaskId = request.RequestId,
+                        Status = "completed",
+                        VideoUrl = videoUrl,
+                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
+                        Model = request.Model,
+                        Prompt = request.Prompt
+                    };
+
+                    await _webhookService.SendTaskCompletionWebhookAsync(
+                        request.WebhookUrl,
+                        webhookPayload,
+                        request.WebhookHeaders);
+                }
+                
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
             }
@@ -570,6 +610,24 @@ namespace ConduitLLM.Core.Services
                 FailedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
+
+            // Send webhook notification if configured
+            if (!string.IsNullOrEmpty(request.WebhookUrl))
+            {
+                var webhookPayload = new VideoCompletionWebhookPayload
+                {
+                    TaskId = request.RequestId,
+                    Status = "failed",
+                    Error = errorMessage,
+                    Model = request.Model,
+                    Prompt = request.Prompt
+                };
+
+                await _webhookService.SendTaskCompletionWebhookAsync(
+                    request.WebhookUrl,
+                    webhookPayload,
+                    request.WebhookHeaders);
+            }
         }
 
         /// <summary>
@@ -595,6 +653,24 @@ namespace ConduitLLM.Core.Services
                 CancelledAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
+
+            // Send webhook notification if configured
+            if (!string.IsNullOrEmpty(request.WebhookUrl))
+            {
+                var webhookPayload = new VideoCompletionWebhookPayload
+                {
+                    TaskId = request.RequestId,
+                    Status = "cancelled",
+                    Error = "Video generation was cancelled by user request",
+                    Model = request.Model,
+                    Prompt = request.Prompt
+                };
+
+                await _webhookService.SendTaskCompletionWebhookAsync(
+                    request.WebhookUrl,
+                    webhookPayload,
+                    request.WebhookHeaders);
+            }
         }
 
         private class ModelInfo

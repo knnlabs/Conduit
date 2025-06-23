@@ -818,6 +818,16 @@ namespace ConduitLLM.Core.Events
         public VideoGenerationParameters? Parameters { get; init; }
 
         /// <summary>
+        /// Optional webhook URL to receive notifications when video generation completes
+        /// </summary>
+        public string? WebhookUrl { get; init; }
+
+        /// <summary>
+        /// Optional headers to include in the webhook request
+        /// </summary>
+        public Dictionary<string, string>? WebhookHeaders { get; init; }
+
+        /// <summary>
         /// Partition key for ordered processing per virtual key
         /// </summary>
         public string PartitionKey => VirtualKeyId;

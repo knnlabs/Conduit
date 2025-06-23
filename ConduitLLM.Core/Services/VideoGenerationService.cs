@@ -294,7 +294,17 @@ namespace ConduitLLM.Core.Services
                     VirtualKeyId = virtualKeyInfo.Id.ToString(),
                     IsAsync = true,
                     RequestedAt = DateTime.UtcNow,
-                    CorrelationId = taskId
+                    CorrelationId = taskId,
+                    WebhookUrl = request.WebhookUrl,
+                    WebhookHeaders = request.WebhookHeaders,
+                    Parameters = new VideoGenerationParameters
+                    {
+                        Size = request.Size,
+                        Duration = request.Duration,
+                        Fps = request.Fps,
+                        Style = request.Style,
+                        ResponseFormat = request.ResponseFormat
+                    }
                 },
                 "async video generation request",
                 new { Model = request.Model, TaskId = taskId });

@@ -69,6 +69,18 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("n")]
         public int N { get; set; } = 1;
+
+        /// <summary>
+        /// Optional webhook URL to receive notifications when video generation completes.
+        /// </summary>
+        [JsonPropertyName("webhook_url")]
+        public string? WebhookUrl { get; set; }
+
+        /// <summary>
+        /// Optional headers to include in the webhook request.
+        /// </summary>
+        [JsonPropertyName("webhook_headers")]
+        public Dictionary<string, string>? WebhookHeaders { get; set; }
     }
 
     /// <summary>
