@@ -436,3 +436,138 @@ public static class ImageDefaults
     /// </summary>
     public const ImageStyle Style = ImageStyle.Vivid;
 }
+
+/// <summary>
+/// Represents an async image generation request.
+/// </summary>
+public class AsyncImageGenerationRequest : ImageGenerationRequest
+{
+    /// <summary>
+    /// Gets or sets the webhook URL to receive the result when generation is complete.
+    /// </summary>
+    public string? WebhookUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional metadata to include with the webhook callback.
+    /// </summary>
+    public Dictionary<string, object>? WebhookMetadata { get; set; }
+
+    /// <summary>
+    /// Gets or sets the timeout for the generation task in seconds.
+    /// </summary>
+    [Range(1, 3600)]
+    public int? TimeoutSeconds { get; set; }
+}
+
+/// <summary>
+/// Represents the response from an async image generation request.
+/// </summary>
+public class AsyncImageGenerationResponse
+{
+    /// <summary>
+    /// Gets or sets the unique task identifier.
+    /// </summary>
+    public string TaskId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the current status of the task.
+    /// </summary>
+    public ImageTaskStatus Status { get; set; }
+
+    /// <summary>
+    /// Gets or sets the progress percentage (0-100).
+    /// </summary>
+    public int Progress { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional progress message.
+    /// </summary>
+    public string? Message { get; set; }
+
+    /// <summary>
+    /// Gets or sets the estimated time to completion in seconds.
+    /// </summary>
+    public int? EstimatedTimeToCompletion { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the task was created.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the task was last updated.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the generation result, available when status is Completed.
+    /// </summary>
+    public ImageGenerationResponse? Result { get; set; }
+
+    /// <summary>
+    /// Gets or sets error information if the task failed.
+    /// </summary>
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// Represents the status of an async image generation task.
+/// </summary>
+public enum ImageTaskStatus
+{
+    /// <summary>
+    /// Task is waiting to be processed.
+    /// </summary>
+    Pending,
+
+    /// <summary>
+    /// Task is currently being processed.
+    /// </summary>
+    Running,
+
+    /// <summary>
+    /// Task completed successfully.
+    /// </summary>
+    Completed,
+
+    /// <summary>
+    /// Task failed with an error.
+    /// </summary>
+    Failed,
+
+    /// <summary>
+    /// Task was cancelled.
+    /// </summary>
+    Cancelled,
+
+    /// <summary>
+    /// Task timed out.
+    /// </summary>
+    TimedOut
+}
+
+/// <summary>
+/// Represents options for polling task status.
+/// </summary>
+public class TaskPollingOptions
+{
+    /// <summary>
+    /// Gets or sets the polling interval in milliseconds.
+    /// </summary>
+    public int IntervalMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Gets or sets the maximum polling timeout in milliseconds.
+    /// </summary>
+    public int TimeoutMs { get; set; } = 300000; // 5 minutes
+
+    /// <summary>
+    /// Gets or sets whether to use exponential backoff for polling intervals.
+    /// </summary>
+    public bool UseExponentialBackoff { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the maximum interval between polls in milliseconds when using exponential backoff.
+    /// </summary>
+    public int MaxIntervalMs { get; set; } = 10000; // 10 seconds
+}

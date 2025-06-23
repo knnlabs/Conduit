@@ -15,6 +15,7 @@ public class ImagesService
     private readonly BaseClient _client;
     private readonly ILogger<ImagesService>? _logger;
     private const string GenerationsEndpoint = "/v1/images/generations";
+    private const string AsyncGenerationsEndpoint = "/v1/images/generations/async";
     private const string EditsEndpoint = "/v1/images/edits";
     private const string VariationsEndpoint = "/v1/images/variations";
 
@@ -218,6 +219,183 @@ public class ImagesService
         return ImageModelCapabilities.GetCapabilities(model);
     }
 
+    /// <summary>
+    /// Generates images asynchronously from a text prompt.
+    /// </summary>
+    /// <param name="request">The async image generation request.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The async task information.</returns>
+    /// <exception cref="ValidationException">Thrown when the request is invalid.</exception>
+    /// <exception cref="ConduitCoreException">Thrown when the API request fails.</exception>
+    public async Task<AsyncImageGenerationResponse> GenerateAsync(
+        AsyncImageGenerationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            ValidateAsyncGenerationRequest(request);
+            
+            _logger?.LogDebug("Starting async generation of {Count} image(s) with model {Model} for prompt: {Prompt}", 
+                request.N ?? 1, request.Model ?? ImageModels.DallE3, request.Prompt);
+
+            // Convert to API request format
+            var apiRequest = ConvertToAsyncApiRequest(request);
+
+            var response = await _client.PostForServiceAsync<AsyncImageGenerationResponse>(
+                AsyncGenerationsEndpoint,
+                apiRequest,
+                cancellationToken);
+
+            _logger?.LogDebug("Async image generation task created with ID: {TaskId}", response.TaskId);
+            return response;
+        }
+        catch (Exception ex) when (!(ex is ConduitCoreException))
+        {
+            ErrorHandler.HandleException(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets the status of an async image generation task.
+    /// </summary>
+    /// <param name="taskId">The task identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The current task status and result if completed.</returns>
+    /// <exception cref="ValidationException">Thrown when the task ID is invalid.</exception>
+    /// <exception cref="ConduitCoreException">Thrown when the API request fails.</exception>
+    public async Task<AsyncImageGenerationResponse> GetTaskStatusAsync(
+        string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(taskId))
+                throw new ValidationException("Task ID is required", "taskId");
+
+            var endpoint = $"{AsyncGenerationsEndpoint}/{Uri.EscapeDataString(taskId)}/status";
+            
+            var response = await _client.GetForServiceAsync<AsyncImageGenerationResponse>(
+                endpoint,
+                cancellationToken);
+
+            _logger?.LogDebug("Retrieved status for task {TaskId}: {Status} ({Progress}%)", 
+                taskId, response.Status, response.Progress);
+            
+            return response;
+        }
+        catch (Exception ex) when (!(ex is ConduitCoreException))
+        {
+            ErrorHandler.HandleException(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Cancels a pending or running async image generation task.
+    /// </summary>
+    /// <param name="taskId">The task identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="ValidationException">Thrown when the task ID is invalid.</exception>
+    /// <exception cref="ConduitCoreException">Thrown when the API request fails.</exception>
+    public async Task CancelTaskAsync(
+        string taskId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(taskId))
+                throw new ValidationException("Task ID is required", "taskId");
+
+            var endpoint = $"{AsyncGenerationsEndpoint}/{Uri.EscapeDataString(taskId)}";
+            
+            await _client.HttpClientForServices.DeleteAsync(endpoint, cancellationToken);
+            
+            _logger?.LogDebug("Cancelled task {TaskId}", taskId);
+        }
+        catch (Exception ex) when (!(ex is ConduitCoreException))
+        {
+            ErrorHandler.HandleException(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Polls an async image generation task until completion or timeout.
+    /// </summary>
+    /// <param name="taskId">The task identifier.</param>
+    /// <param name="options">Polling options.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The final task result when completed.</returns>
+    /// <exception cref="ValidationException">Thrown when parameters are invalid.</exception>
+    /// <exception cref="TimeoutException">Thrown when polling times out.</exception>
+    /// <exception cref="ConduitCoreException">Thrown when the API request fails or task fails.</exception>
+    public async Task<ImageGenerationResponse> PollTaskUntilCompletionAsync(
+        string taskId,
+        TaskPollingOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        options ??= new TaskPollingOptions();
+        
+        if (string.IsNullOrWhiteSpace(taskId))
+            throw new ValidationException("Task ID is required", "taskId");
+
+        var startTime = DateTime.UtcNow;
+        var currentInterval = options.IntervalMs;
+        
+        _logger?.LogDebug("Starting to poll task {TaskId} with interval {IntervalMs}ms, timeout {TimeoutMs}ms", 
+            taskId, options.IntervalMs, options.TimeoutMs);
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Check timeout
+            if ((DateTime.UtcNow - startTime).TotalMilliseconds > options.TimeoutMs)
+            {
+                throw new TimeoutException($"Task polling timed out after {options.TimeoutMs}ms");
+            }
+
+            var status = await GetTaskStatusAsync(taskId, cancellationToken);
+
+            switch (status.Status)
+            {
+                case ImageTaskStatus.Completed:
+                    if (status.Result == null)
+                        throw new ConduitCoreException("Task completed but no result was provided", null, null, null, null);
+                    
+                    _logger?.LogDebug("Task {TaskId} completed successfully", taskId);
+                    return status.Result;
+
+                case ImageTaskStatus.Failed:
+                    throw new ConduitCoreException($"Task failed: {status.Error ?? "Unknown error"}", null, null, null, null);
+
+                case ImageTaskStatus.Cancelled:
+                    throw new ConduitCoreException("Task was cancelled", null, null, null, null);
+
+                case ImageTaskStatus.TimedOut:
+                    throw new ConduitCoreException("Task timed out", null, null, null, null);
+
+                case ImageTaskStatus.Pending:
+                case ImageTaskStatus.Running:
+                    // Continue polling
+                    break;
+
+                default:
+                    throw new ConduitCoreException($"Unknown task status: {status.Status}", null, null, null, null);
+            }
+
+            // Wait before next poll
+            await Task.Delay(currentInterval, cancellationToken);
+
+            // Apply exponential backoff if enabled
+            if (options.UseExponentialBackoff)
+            {
+                currentInterval = Math.Min(currentInterval * 2, options.MaxIntervalMs);
+            }
+        }
+    }
+
     private static void ValidateGenerationRequest(ImageGenerationRequest request)
     {
         if (request == null)
@@ -345,5 +523,54 @@ public class ImagesService
 
         if (!string.IsNullOrEmpty(request.User))
             content.Add(new StringContent(request.User), "user");
+    }
+
+    private static void ValidateAsyncGenerationRequest(AsyncImageGenerationRequest request)
+    {
+        // First validate the base image generation request
+        ValidateGenerationRequest(request);
+
+        // Additional validation for async-specific fields
+        if (request.TimeoutSeconds.HasValue && (request.TimeoutSeconds <= 0 || request.TimeoutSeconds > 3600))
+            throw new ValidationException("Timeout must be between 1 and 3600 seconds", "timeoutSeconds");
+
+        if (!string.IsNullOrEmpty(request.WebhookUrl))
+        {
+            if (!Uri.TryCreate(request.WebhookUrl, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                throw new ValidationException("WebhookUrl must be a valid HTTP or HTTPS URL", "webhookUrl");
+            }
+        }
+    }
+
+    private static object ConvertToAsyncApiRequest(AsyncImageGenerationRequest request)
+    {
+        var baseRequest = ConvertToApiRequest(request);
+        
+        // Convert to dictionary to add async-specific fields
+        var asyncRequest = new Dictionary<string, object>();
+        
+        // Add all base properties
+        foreach (var property in baseRequest.GetType().GetProperties())
+        {
+            var value = property.GetValue(baseRequest);
+            if (value != null)
+            {
+                asyncRequest[property.Name] = value;
+            }
+        }
+
+        // Add async-specific properties
+        if (!string.IsNullOrEmpty(request.WebhookUrl))
+            asyncRequest["webhook_url"] = request.WebhookUrl;
+
+        if (request.WebhookMetadata != null && request.WebhookMetadata.Any())
+            asyncRequest["webhook_metadata"] = request.WebhookMetadata;
+
+        if (request.TimeoutSeconds.HasValue)
+            asyncRequest["timeout_seconds"] = request.TimeoutSeconds.Value;
+
+        return asyncRequest;
     }
 }

@@ -6,7 +6,11 @@ import type {
   ImageEditRequest,
   ImageEditResponse,
   ImageVariationRequest,
-  ImageVariationResponse
+  ImageVariationResponse,
+  AsyncImageGenerationRequest,
+  AsyncImageGenerationResponse,
+  TaskPollingOptions,
+  DEFAULT_POLLING_OPTIONS
 } from '../models/images';
 import { validateImageGenerationRequest } from '../utils/validation';
 
@@ -121,5 +125,152 @@ export class ImagesService {
       },
       options
     );
+  }
+
+  /**
+   * Creates an image asynchronously given a text prompt.
+   * @param request The async image generation request
+   * @param options Optional request options
+   * @returns Promise resolving to async task information
+   */
+  async generateAsync(
+    request: AsyncImageGenerationRequest,
+    options?: RequestOptions
+  ): Promise<AsyncImageGenerationResponse> {
+    validateImageGenerationRequest(request);
+
+    // Validate async-specific fields
+    if (request.timeout_seconds !== undefined && 
+        (request.timeout_seconds < 1 || request.timeout_seconds > 3600)) {
+      throw new Error('Timeout must be between 1 and 3600 seconds');
+    }
+
+    if (request.webhook_url) {
+      try {
+        const url = new URL(request.webhook_url);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          throw new Error('WebhookUrl must be a valid HTTP or HTTPS URL');
+        }
+      } catch {
+        throw new Error('WebhookUrl must be a valid HTTP or HTTPS URL');
+      }
+    }
+
+    return this.client['request']<AsyncImageGenerationResponse>(
+      {
+        method: 'POST',
+        url: '/v1/images/generations/async',
+        data: request,
+      },
+      options
+    );
+  }
+
+  /**
+   * Gets the status of an async image generation task.
+   * @param taskId The task identifier
+   * @param options Optional request options
+   * @returns Promise resolving to the current task status
+   */
+  async getTaskStatus(
+    taskId: string,
+    options?: RequestOptions
+  ): Promise<AsyncImageGenerationResponse> {
+    if (!taskId?.trim()) {
+      throw new Error('Task ID is required');
+    }
+
+    return this.client['request']<AsyncImageGenerationResponse>(
+      {
+        method: 'GET',
+        url: `/v1/images/generations/${encodeURIComponent(taskId)}/status`,
+      },
+      options
+    );
+  }
+
+  /**
+   * Cancels a pending or running async image generation task.
+   * @param taskId The task identifier
+   * @param options Optional request options
+   */
+  async cancelTask(
+    taskId: string,
+    options?: RequestOptions
+  ): Promise<void> {
+    if (!taskId?.trim()) {
+      throw new Error('Task ID is required');
+    }
+
+    await this.client['request']<void>(
+      {
+        method: 'DELETE',
+        url: `/v1/images/generations/${encodeURIComponent(taskId)}`,
+      },
+      options
+    );
+  }
+
+  /**
+   * Polls an async image generation task until completion or timeout.
+   * @param taskId The task identifier
+   * @param pollingOptions Polling configuration options
+   * @param requestOptions Optional request options
+   * @returns Promise resolving to the final generation result
+   */
+  async pollTaskUntilCompletion(
+    taskId: string,
+    pollingOptions?: TaskPollingOptions,
+    requestOptions?: RequestOptions
+  ): Promise<ImageGenerationResponse> {
+    if (!taskId?.trim()) {
+      throw new Error('Task ID is required');
+    }
+
+    const options = { ...DEFAULT_POLLING_OPTIONS, ...pollingOptions };
+    const startTime = Date.now();
+    let currentInterval = options.intervalMs;
+
+    while (true) {
+      // Check timeout
+      if (Date.now() - startTime > options.timeoutMs) {
+        throw new Error(`Task polling timed out after ${options.timeoutMs}ms`);
+      }
+
+      const status = await this.getTaskStatus(taskId, requestOptions);
+
+      switch (status.status) {
+        case 'completed':
+          if (!status.result) {
+            throw new Error('Task completed but no result was provided');
+          }
+          return status.result;
+
+        case 'failed':
+          throw new Error(`Task failed: ${status.error ?? 'Unknown error'}`);
+
+        case 'cancelled':
+          throw new Error('Task was cancelled');
+
+        case 'timedout':
+          throw new Error('Task timed out');
+
+        case 'pending':
+        case 'running':
+          // Continue polling
+          break;
+
+        default:
+          throw new Error(`Unknown task status: ${status.status}`);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, currentInterval));
+
+      // Apply exponential backoff if enabled
+      if (options.useExponentialBackoff) {
+        currentInterval = Math.min(currentInterval * 2, options.maxIntervalMs);
+      }
+    }
   }
 }

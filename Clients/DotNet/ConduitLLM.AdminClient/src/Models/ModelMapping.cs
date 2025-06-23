@@ -78,6 +78,16 @@ public class ModelProviderMappingDto
     public bool SupportsRealtimeAudio { get; set; }
 
     /// <summary>
+    /// Gets or sets whether this model supports function calling.
+    /// </summary>
+    public bool SupportsFunctionCalling { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports streaming responses.
+    /// </summary>
+    public bool SupportsStreaming { get; set; }
+
+    /// <summary>
     /// Gets or sets optional model capabilities (e.g., vision, function-calling).
     /// </summary>
     public string? Capabilities { get; set; }
@@ -88,6 +98,11 @@ public class ModelProviderMappingDto
     public int? MaxContextLength { get; set; }
 
     /// <summary>
+    /// Gets or sets the maximum output tokens for this model.
+    /// </summary>
+    public int? MaxOutputTokens { get; set; }
+
+    /// <summary>
     /// Gets or sets supported languages for transcription/TTS (comma-separated).
     /// </summary>
     public string? SupportedLanguages { get; set; }
@@ -96,6 +111,16 @@ public class ModelProviderMappingDto
     /// Gets or sets supported voices for TTS (comma-separated).
     /// </summary>
     public string? SupportedVoices { get; set; }
+
+    /// <summary>
+    /// Gets or sets supported input formats (comma-separated).
+    /// </summary>
+    public string? SupportedFormats { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tokenizer type used by this model.
+    /// </summary>
+    public string? TokenizerType { get; set; }
 
     /// <summary>
     /// Gets or sets whether this mapping is the default for its capability type.
@@ -201,6 +226,31 @@ public class CreateModelProviderMappingDto
     /// Gets or sets the capability type this mapping is default for (e.g., 'chat', 'image-generation').
     /// </summary>
     public string? DefaultCapabilityType { get; set; }
+
+    /// <summary>
+    /// Gets or sets supported input formats (comma-separated).
+    /// </summary>
+    public string? SupportedFormats { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tokenizer type used by this model.
+    /// </summary>
+    public string? TokenizerType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum output tokens for this model.
+    /// </summary>
+    public int? MaxOutputTokens { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports function calling.
+    /// </summary>
+    public bool? SupportsFunctionCalling { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports streaming responses.
+    /// </summary>
+    public bool? SupportsStreaming { get; set; }
 }
 
 /// <summary>
@@ -288,6 +338,31 @@ public class UpdateModelProviderMappingDto
     /// Gets or sets the capability type this mapping is default for (e.g., 'chat', 'image-generation').
     /// </summary>
     public string? DefaultCapabilityType { get; set; }
+
+    /// <summary>
+    /// Gets or sets supported input formats (comma-separated).
+    /// </summary>
+    public string? SupportedFormats { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tokenizer type used by this model.
+    /// </summary>
+    public string? TokenizerType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum output tokens for this model.
+    /// </summary>
+    public int? MaxOutputTokens { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports function calling.
+    /// </summary>
+    public bool? SupportsFunctionCalling { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model supports streaming responses.
+    /// </summary>
+    public bool? SupportsStreaming { get; set; }
 }
 
 /// <summary>
@@ -354,6 +429,16 @@ public class ModelMappingFilters : FilterOptions
     /// Gets or sets the default capability type filter.
     /// </summary>
     public string? DefaultCapabilityType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the function calling support filter.
+    /// </summary>
+    public bool? SupportsFunctionCalling { get; set; }
+
+    /// <summary>
+    /// Gets or sets the streaming support filter.
+    /// </summary>
+    public bool? SupportsStreaming { get; set; }
 }
 
 /// <summary>
@@ -580,3 +665,45 @@ public class EstimatedPerformance
     /// </summary>
     public double CostEfficiency { get; set; }
 }
+
+/// <summary>
+/// Represents a discovered model from a provider.
+/// </summary>
+public class DiscoveredModel
+{
+    /// <summary>
+    /// Gets or sets the model ID.
+    /// </summary>
+    public string ModelId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the provider-specific model ID.
+    /// </summary>
+    public string ProviderModelId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the model display name.
+    /// </summary>
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the model description.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets the discovered capabilities.
+    /// </summary>
+    public ModelCapabilities? Capabilities { get; set; }
+
+    /// <summary>
+    /// Gets or sets the confidence score for this discovery (0-1).
+    /// </summary>
+    public double Confidence { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this model is recommended for mapping.
+    /// </summary>
+    public bool IsRecommended { get; set; }
+}
+

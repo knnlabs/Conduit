@@ -509,6 +509,119 @@ public class ModelMappingService : BaseApiClient
 
     #endregion
 
+    #region Discovery Operations
+
+    /// <summary>
+    /// Discovers available models for a specific provider.
+    /// </summary>
+    /// <param name="providerName">The provider name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of discovered models for the provider.</returns>
+    /// <exception cref="ValidationException">Thrown when the provider name is invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<IEnumerable<DiscoveredModel>> DiscoverProviderModelsAsync(
+        string providerName,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(providerName))
+                throw new ValidationException("Provider name is required");
+
+            var endpoint = $"{BaseEndpoint}/discover/provider/{Uri.EscapeDataString(providerName)}";
+            var cacheKey = GetCacheKey("discover-provider", providerName);
+
+            return await WithCacheAsync(
+                cacheKey,
+                () => GetAsync<IEnumerable<DiscoveredModel>>(endpoint, cancellationToken: cancellationToken),
+                ShortCacheTimeout,
+                cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{BaseEndpoint}/discover/provider/{providerName}", "GET");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Discovers capabilities for a specific model from a provider.
+    /// </summary>
+    /// <param name="providerName">The provider name.</param>
+    /// <param name="modelId">The model ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The discovered model with capabilities.</returns>
+    /// <exception cref="ValidationException">Thrown when the parameters are invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<DiscoveredModel> DiscoverModelCapabilitiesAsync(
+        string providerName,
+        string modelId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(providerName))
+                throw new ValidationException("Provider name is required");
+
+            if (string.IsNullOrWhiteSpace(modelId))
+                throw new ValidationException("Model ID is required");
+
+            var endpoint = $"{BaseEndpoint}/discover/model/{Uri.EscapeDataString(providerName)}/{Uri.EscapeDataString(modelId)}";
+            var cacheKey = GetCacheKey("discover-model", providerName, modelId);
+
+            return await WithCacheAsync(
+                cacheKey,
+                () => GetAsync<DiscoveredModel>(endpoint, cancellationToken: cancellationToken),
+                DefaultCacheTimeout,
+                cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{BaseEndpoint}/discover/model/{providerName}/{modelId}", "GET");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Tests a specific capability for a model alias.
+    /// </summary>
+    /// <param name="modelAlias">The model alias to test.</param>
+    /// <param name="capability">The capability to test (e.g., 'vision', 'function-calling').</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The capability test result.</returns>
+    /// <exception cref="ValidationException">Thrown when the parameters are invalid.</exception>
+    /// <exception cref="ConduitAdminException">Thrown when the API request fails.</exception>
+    public async Task<CapabilityTestResult> TestCapabilityAsync(
+        string modelAlias,
+        string capability,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(modelAlias))
+                throw new ValidationException("Model alias is required");
+
+            if (string.IsNullOrWhiteSpace(capability))
+                throw new ValidationException("Capability is required");
+
+            var endpoint = $"{BaseEndpoint}/discover/capability/{Uri.EscapeDataString(modelAlias)}/{Uri.EscapeDataString(capability)}";
+            var cacheKey = GetCacheKey("test-capability", modelAlias, capability);
+
+            return await WithCacheAsync(
+                cacheKey,
+                () => GetAsync<CapabilityTestResult>(endpoint, cancellationToken: cancellationToken),
+                ShortCacheTimeout,
+                cancellationToken);
+        }
+        catch (Exception ex) when (!(ex is ConduitAdminException))
+        {
+            ErrorHandler.HandleException(ex, $"{BaseEndpoint}/discover/capability/{modelAlias}/{capability}", "GET");
+            throw;
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static void ValidateCreateRequest(CreateModelProviderMappingDto request)
@@ -580,7 +693,9 @@ public class ModelMappingService : BaseApiClient
             supportsTextToSpeech = filters.SupportsTextToSpeech,
             supportsRealtimeAudio = filters.SupportsRealtimeAudio,
             isDefault = filters.IsDefault,
-            defaultCapabilityType = filters.DefaultCapabilityType
+            defaultCapabilityType = filters.DefaultCapabilityType,
+            supportsFunctionCalling = filters.SupportsFunctionCalling,
+            supportsStreaming = filters.SupportsStreaming
         };
     }
 

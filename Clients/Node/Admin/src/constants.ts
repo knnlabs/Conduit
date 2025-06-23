@@ -39,6 +39,14 @@ export const ENDPOINTS = {
     BY_ID: (id: number) => `/modelprovidermapping/${id}`,
     BY_MODEL: (modelId: string) => `/modelprovidermapping/by-model/${modelId}`,
     PROVIDERS: '/modelprovidermapping/providers',
+    BULK: '/modelprovidermapping/bulk',
+    DISCOVER_PROVIDER: (providerName: string) => `/modelprovidermapping/discover/provider/${providerName}`,
+    DISCOVER_MODEL: (providerName: string, modelId: string) => `/modelprovidermapping/discover/model/${providerName}/${modelId}`,
+    TEST_CAPABILITY: (modelAlias: string, capability: string) => `/modelprovidermapping/discover/capability/${modelAlias}/${capability}`,
+    IMPORT: '/modelprovidermapping/import',
+    EXPORT: '/modelprovidermapping/export',
+    SUGGEST: '/modelprovidermapping/suggest',
+    ROUTING: (modelId: string) => `/modelprovidermapping/routing/${modelId}`,
   },
 
   // IP Filters
