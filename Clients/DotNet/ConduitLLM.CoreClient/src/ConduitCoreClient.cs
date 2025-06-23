@@ -7,7 +7,7 @@ namespace ConduitLLM.CoreClient;
 
 /// <summary>
 /// Main client for accessing the Conduit Core API.
-/// Provides OpenAI-compatible endpoints for chat completions, image generation, and model management.
+/// Provides OpenAI-compatible endpoints for chat completions, image generation, video generation, and model management.
 /// </summary>
 public class ConduitCoreClient : BaseClient
 {
@@ -20,6 +20,11 @@ public class ConduitCoreClient : BaseClient
     /// Gets the images service for generating, editing, and creating variations of images.
     /// </summary>
     public ImagesService Images { get; }
+
+    /// <summary>
+    /// Gets the videos service for generating videos from text prompts.
+    /// </summary>
+    public VideosService Videos { get; }
 
     /// <summary>
     /// Gets the models service for listing and retrieving model information.
@@ -45,6 +50,7 @@ public class ConduitCoreClient : BaseClient
         // Create child loggers for services
         ILogger<ChatService>? chatLogger = null;
         ILogger<ImagesService>? imagesLogger = null;
+        ILogger<VideosService>? videosLogger = null;
         ILogger<ModelsService>? modelsLogger = null;
         
         if (logger != null)
@@ -52,11 +58,13 @@ public class ConduitCoreClient : BaseClient
             var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(new LoggerProvider(logger)));
             chatLogger = loggerFactory.CreateLogger<ChatService>();
             imagesLogger = loggerFactory.CreateLogger<ImagesService>();
+            videosLogger = loggerFactory.CreateLogger<VideosService>();
             modelsLogger = loggerFactory.CreateLogger<ModelsService>();
         }
 
         Chat = new ChatService(this, chatLogger);
         Images = new ImagesService(this, imagesLogger);
+        Videos = new VideosService(this, videosLogger);
         Models = new ModelsService(this, modelsLogger);
     }
 
@@ -266,5 +274,50 @@ public static class ConduitCoreClientExtensions
     {
         var allModels = await client.Models.ListAsync(cancellationToken);
         return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "image"));
+    }
+
+    /// <summary>
+    /// Generates a single video from a text prompt.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="prompt">The text prompt for video generation.</param>
+    /// <param name="model">Optional model to use (defaults to MiniMax video).</param>
+    /// <param name="duration">Optional video duration in seconds.</param>
+    /// <param name="size">Optional video resolution.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The URL of the generated video.</returns>
+    public static async Task<string?> GenerateVideoAsync(
+        this ConduitCoreClient client,
+        string prompt,
+        string? model = null,
+        int? duration = null,
+        string? size = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new ConduitLLM.CoreClient.Models.VideoGenerationRequest
+        {
+            Prompt = prompt,
+            Model = model ?? ConduitLLM.CoreClient.Models.VideoModels.Default,
+            Duration = duration,
+            Size = size,
+            N = 1
+        };
+
+        var response = await client.Videos.GenerateAsync(request, cancellationToken);
+        return response.Data.FirstOrDefault()?.Url;
+    }
+
+    /// <summary>
+    /// Gets all models that support video generation.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of models that support video generation.</returns>
+    public static async Task<IEnumerable<ConduitLLM.CoreClient.Models.Model>> GetVideoModelsAsync(
+        this ConduitCoreClient client,
+        CancellationToken cancellationToken = default)
+    {
+        var allModels = await client.Models.ListAsync(cancellationToken);
+        return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "video"));
     }
 }

@@ -12,7 +12,7 @@ import {
   DiscoveredModel,
   CapabilityTestResult,
 } from '../models/modelMapping';
-import { ValidationError, NotImplementedError } from '../utils/errors';
+import { ValidationError } from '../utils/errors';
 import { z } from 'zod';
 
 const createMappingSchema = z.object({
@@ -176,19 +176,13 @@ export class ModelMappingService extends BaseApiClient {
     formData.append('file', file, `mappings.${format}`);
     formData.append('format', format);
 
-    const response = await this.httpClient.post(
-      `${this.baseUrl}${ENDPOINTS.MODEL_MAPPINGS.IMPORT}`,
-      formData,
-      {
-        headers: {
-          ...this.authHeaders,
-          // Don't set Content-Type, let browser set it with boundary
-        },
-      }
+    const response = await this.post<BulkMappingResponse>(
+      ENDPOINTS.MODEL_MAPPINGS.IMPORT,
+      formData
     );
 
     await this.invalidateCache();
-    return response.data;
+    return response;
   }
 
   async exportMappings(format: 'csv' | 'json'): Promise<Blob> {
@@ -196,16 +190,15 @@ export class ModelMappingService extends BaseApiClient {
       throw new ValidationError(`Unsupported format: ${format}. Supported formats: csv, json`);
     }
 
-    const response = await this.httpClient.get(
-      `${this.baseUrl}${ENDPOINTS.MODEL_MAPPINGS.EXPORT}`,
+    const response = await this.get<Blob>(
+      ENDPOINTS.MODEL_MAPPINGS.EXPORT,
+      { format },
       {
-        params: { format },
         responseType: 'blob',
-        headers: this.authHeaders,
       }
     );
 
-    return response.data;
+    return response;
   }
 
   // Discovery Operations

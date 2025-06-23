@@ -50,12 +50,13 @@ export interface ConduitConfig {
 }
 
 export interface RequestConfig {
-  method: string;
-  url: string;
+  method?: string;
+  url?: string;
   data?: unknown;
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   timeout?: number;
+  responseType?: 'json' | 'text' | 'blob' | 'arraybuffer' | 'document' | 'stream';
 }
 
 export interface ApiClientConfig {
