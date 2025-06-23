@@ -105,6 +105,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<AudioUsageLog> AudioUsageLogs { get; }
 
         /// <summary>
+        /// Database set for async tasks
+        /// </summary>
+        DbSet<AsyncTask> AsyncTasks { get; }
+
+        /// <summary>
         /// Flag indicating if this is a test environment
         /// </summary>
         bool IsTestEnvironment { get; set; }

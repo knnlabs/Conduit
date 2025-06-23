@@ -340,6 +340,9 @@ builder.Services.AddMassTransit(x =>
     // Add Admin API event consumers for cache invalidation
     x.AddConsumer<ConduitLLM.Http.Consumers.GlobalSettingCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.Consumers.IpFilterCacheInvalidationHandler>();
+    
+    // Add async task cache invalidation handler
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.AsyncTaskCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.Consumers.ModelCostCacheInvalidationHandler>();
     
     // Add navigation state event consumers for real-time updates
@@ -417,12 +420,17 @@ builder.Services.AddScoped<ModelListService>();
 var useRedisForTasks = builder.Configuration.GetValue<bool>("ConduitLLM:Tasks:UseRedis", false);
 if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
 {
-    // Use Redis for distributed task management
-    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
+    // Use hybrid database+cache task management for distributed deployments
+    builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAsyncTaskService>(sp =>
     {
+        var repository = sp.GetRequiredService<ConduitLLM.Configuration.Repositories.IAsyncTaskRepository>();
         var cache = sp.GetRequiredService<IDistributedCache>();
-        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.AsyncTaskService>>();
-        return new ConduitLLM.Core.Services.AsyncTaskService(cache, logger);
+        var publishEndpoint = sp.GetService<MassTransit.IPublishEndpoint>(); // Optional
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
+        
+        return publishEndpoint != null
+            ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, publishEndpoint, logger)
+            : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
     });
 }
 else

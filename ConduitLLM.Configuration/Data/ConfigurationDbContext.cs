@@ -135,6 +135,11 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<AudioUsageLog> AudioUsageLogs { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for async tasks
+        /// </summary>
+        public virtual DbSet<AsyncTask> AsyncTasks { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -299,6 +304,31 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.Timestamp);
                 entity.HasIndex(e => new { e.Provider, e.OperationType });
                 entity.HasIndex(e => e.SessionId);
+            });
+
+            // Configure AsyncTask entity
+            modelBuilder.Entity<AsyncTask>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.State);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => e.IsArchived);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
+                
+                // Composite index for archival queries
+                entity.HasIndex(e => new { e.IsArchived, e.CompletedAt, e.State })
+                      .HasDatabaseName("IX_AsyncTasks_Archival");
+                
+                // Index for cleanup queries
+                entity.HasIndex(e => new { e.IsArchived, e.ArchivedAt })
+                      .HasDatabaseName("IX_AsyncTasks_Cleanup");
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.ApplyConfigurationEntityConfigurations(IsTestEnvironment);

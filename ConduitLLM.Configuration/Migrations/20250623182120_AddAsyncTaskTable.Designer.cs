@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    partial class ConfigurationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250623182120_AddAsyncTaskTable")]
+    partial class AddAsyncTaskTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -54,8 +57,10 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<string>("Result")
                         .HasColumnType("text");
 
-                    b.Property<int>("State")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -80,13 +85,7 @@ namespace ConduitLLM.Configuration.Migrations
 
                     b.HasIndex("VirtualKeyId");
 
-                    b.HasIndex("IsArchived", "ArchivedAt")
-                        .HasDatabaseName("IX_AsyncTasks_Cleanup");
-
                     b.HasIndex("VirtualKeyId", "CreatedAt");
-
-                    b.HasIndex("IsArchived", "CompletedAt", "State")
-                        .HasDatabaseName("IX_AsyncTasks_Archival");
 
                     b.ToTable("AsyncTasks");
                 });
