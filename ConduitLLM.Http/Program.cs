@@ -184,6 +184,16 @@ builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
 // Register Video Generation Service
 builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
 
+// Configure Video Generation Retry Settings
+builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
+{
+    options.MaxRetries = builder.Configuration.GetValue<int>("VideoGeneration:MaxRetries", 3);
+    options.BaseDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:BaseDelaySeconds", 30);
+    options.MaxDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:MaxDelaySeconds", 3600);
+    options.EnableRetries = builder.Configuration.GetValue<bool>("VideoGeneration:EnableRetries", true);
+    options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
+});
+
 // Register Webhook Notification Service
 builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(client =>
 {

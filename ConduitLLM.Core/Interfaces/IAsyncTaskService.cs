@@ -152,6 +152,26 @@ namespace ConduitLLM.Core.Interfaces
         /// Progress message if available.
         /// </summary>
         public string? ProgressMessage { get; set; }
+
+        /// <summary>
+        /// Number of retry attempts made for this task.
+        /// </summary>
+        public int RetryCount { get; set; }
+
+        /// <summary>
+        /// Maximum number of retry attempts allowed for this task.
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+
+        /// <summary>
+        /// Whether the task is retryable if it fails.
+        /// </summary>
+        public bool IsRetryable { get; set; } = true;
+
+        /// <summary>
+        /// When the task should be retried next (null if not scheduled for retry).
+        /// </summary>
+        public DateTime? NextRetryAt { get; set; }
     }
 
     /// <summary>

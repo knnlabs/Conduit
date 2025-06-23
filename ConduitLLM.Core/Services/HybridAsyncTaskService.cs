@@ -305,6 +305,29 @@ namespace ConduitLLM.Core.Services
             if (!string.IsNullOrEmpty(error))
             {
                 dbTask.Error = error;
+                
+                // If task is being set to pending for retry after a failure
+                if (status == TaskState.Pending && dbTask.RetryCount < dbTask.MaxRetries)
+                {
+                    dbTask.RetryCount++;
+                    dbTask.ProgressMessage = $"Retry {dbTask.RetryCount}/{dbTask.MaxRetries} scheduled";
+                    
+                    // Calculate next retry time if not already set
+                    if (dbTask.NextRetryAt == null || dbTask.NextRetryAt <= DateTime.UtcNow)
+                    {
+                        // Use exponential backoff: 30s * 2^retryCount
+                        var baseDelay = 30; // seconds
+                        var delaySeconds = baseDelay * Math.Pow(2, dbTask.RetryCount - 1);
+                        var maxDelay = 3600; // 1 hour max
+                        delaySeconds = Math.Min(delaySeconds, maxDelay);
+                        
+                        // Add jitter
+                        var jitter = new Random().NextDouble() * 0.4 - 0.2; // -0.2 to +0.2
+                        delaySeconds = delaySeconds * (1 + jitter);
+                        
+                        dbTask.NextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
+                    }
+                }
             }
             
             if (IsTaskCompleted(status))
@@ -474,7 +497,11 @@ namespace ConduitLLM.Core.Services
                 Error = dbTask.Error,
                 Metadata = string.IsNullOrEmpty(dbTask.Metadata) ? null : JsonSerializer.Deserialize<object>(dbTask.Metadata),
                 Progress = dbTask.Progress,
-                ProgressMessage = dbTask.ProgressMessage
+                ProgressMessage = dbTask.ProgressMessage,
+                RetryCount = dbTask.RetryCount,
+                MaxRetries = dbTask.MaxRetries,
+                IsRetryable = dbTask.IsRetryable,
+                NextRetryAt = dbTask.NextRetryAt
             };
         }
 

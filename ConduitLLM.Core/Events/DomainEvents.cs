@@ -987,9 +987,24 @@ namespace ConduitLLM.Core.Events
         public bool IsRetryable { get; init; } = true;
 
         /// <summary>
+        /// Number of retry attempts made
+        /// </summary>
+        public int RetryCount { get; init; } = 0;
+
+        /// <summary>
+        /// Maximum number of retries allowed
+        /// </summary>
+        public int MaxRetries { get; init; } = 3;
+
+        /// <summary>
         /// When the failure occurred
         /// </summary>
         public DateTime FailedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the task should be retried (if applicable)
+        /// </summary>
+        public DateTime? NextRetryAt { get; init; }
     }
 
     /// <summary>

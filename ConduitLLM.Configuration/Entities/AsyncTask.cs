@@ -120,6 +120,26 @@ namespace ConduitLLM.Configuration.Entities
         public int Version { get; set; } = 0;
 
         /// <summary>
+        /// Gets or sets the number of retry attempts made for this task.
+        /// </summary>
+        public int RetryCount { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets the maximum number of retry attempts allowed for this task.
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+
+        /// <summary>
+        /// Gets or sets whether the task is retryable if it fails.
+        /// </summary>
+        public bool IsRetryable { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets when the task should be retried next (null if not scheduled for retry).
+        /// </summary>
+        public DateTime? NextRetryAt { get; set; }
+
+        /// <summary>
         /// Navigation property to the associated virtual key.
         /// </summary>
         [ForeignKey(nameof(VirtualKeyId))]

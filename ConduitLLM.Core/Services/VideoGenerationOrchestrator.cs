@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Core.Services
 {
@@ -31,6 +33,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICostCalculationService _costService;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly IWebhookNotificationService _webhookService;
+        private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -44,6 +47,7 @@ namespace ConduitLLM.Core.Services
             ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
             IWebhookNotificationService webhookService,
+            IOptions<VideoGenerationRetryConfiguration> retryConfiguration,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -56,6 +60,7 @@ namespace ConduitLLM.Core.Services
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
+            _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -127,16 +132,46 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogError(ex, "Video generation failed for request {RequestId}", request.RequestId);
                 
-                // Update task status to failed
-                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Failed, error: ex.Message);
+                // Get current task status to check retry count
+                var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
+                var retryCount = taskStatus?.RetryCount ?? 0;
+                var maxRetries = _retryConfiguration.EnableRetries ? 
+                    (taskStatus?.MaxRetries ?? _retryConfiguration.MaxRetries) : 0;
+                var isRetryable = _retryConfiguration.EnableRetries && 
+                    IsRetryableError(ex) && retryCount < maxRetries;
                 
-                // Publish failure event
+                // Calculate next retry time with exponential backoff
+                DateTime? nextRetryAt = null;
+                if (isRetryable)
+                {
+                    var delaySeconds = _retryConfiguration.CalculateRetryDelay(retryCount);
+                    nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
+                    
+                    // Update task status to pending for retry
+                    await _taskService.UpdateTaskStatusAsync(
+                        request.RequestId, 
+                        TaskState.Pending, 
+                        error: $"Retry {retryCount + 1}/{maxRetries} scheduled: {ex.Message}");
+                }
+                else
+                {
+                    // Update task status to failed (no more retries)
+                    await _taskService.UpdateTaskStatusAsync(
+                        request.RequestId, 
+                        TaskState.Failed, 
+                        error: ex.Message);
+                }
+                
+                // Publish failure event with retry information
                 await _publishEndpoint.Publish(new VideoGenerationFailed
                 {
                     RequestId = request.RequestId,
                     Error = ex.Message,
                     ErrorCode = ex.GetType().Name,
-                    IsRetryable = IsRetryableError(ex),
+                    IsRetryable = isRetryable,
+                    RetryCount = retryCount,
+                    MaxRetries = maxRetries,
+                    NextRetryAt = nextRetryAt,
                     FailedAt = DateTime.UtcNow,
                     CorrelationId = request.CorrelationId
                 });
@@ -449,13 +484,32 @@ namespace ConduitLLM.Core.Services
 
         private bool IsRetryableError(Exception ex)
         {
-            return ex switch
+            // Check the exception type
+            var isRetryableType = ex switch
             {
                 TimeoutException => true,
                 HttpRequestException => true,
                 TaskCanceledException => true,
+                System.IO.IOException => true,
+                System.Net.Sockets.SocketException => true,
                 _ => false
             };
+
+            // Check for specific error messages that indicate transient failures
+            if (!isRetryableType && ex.Message != null)
+            {
+                var lowerMessage = ex.Message.ToLowerInvariant();
+                isRetryableType = lowerMessage.Contains("timeout") ||
+                                  lowerMessage.Contains("timed out") ||
+                                  lowerMessage.Contains("connection") ||
+                                  lowerMessage.Contains("network") ||
+                                  lowerMessage.Contains("temporarily unavailable") ||
+                                  lowerMessage.Contains("service unavailable") ||
+                                  lowerMessage.Contains("too many requests") ||
+                                  lowerMessage.Contains("rate limit");
+            }
+
+            return isRetryableType;
         }
 
         /// <summary>
@@ -595,17 +649,48 @@ namespace ConduitLLM.Core.Services
         {
             _logger.LogError("Video generation failed for task {RequestId}: {Error}", request.RequestId, errorMessage);
             
-            // Update task status to failed
-            await _taskService.UpdateTaskStatusAsync(
-                request.RequestId, 
-                TaskState.Failed, 
-                error: errorMessage);
+            // Get current task status to check retry count
+            var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
+            var retryCount = taskStatus?.RetryCount ?? 0;
+            var maxRetries = _retryConfiguration.EnableRetries ? 
+                (taskStatus?.MaxRetries ?? _retryConfiguration.MaxRetries) : 0;
+            var isRetryable = _retryConfiguration.EnableRetries && 
+                IsRetryableError(new Exception(errorMessage)) && retryCount < maxRetries;
             
-            // Publish VideoGenerationFailed event
+            // Calculate next retry time with exponential backoff
+            DateTime? nextRetryAt = null;
+            if (isRetryable)
+            {
+                var delaySeconds = _retryConfiguration.CalculateRetryDelay(retryCount);
+                nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
+                
+                // Update task status to pending for retry
+                await _taskService.UpdateTaskStatusAsync(
+                    request.RequestId, 
+                    TaskState.Pending, 
+                    error: $"Retry {retryCount + 1}/{maxRetries} scheduled: {errorMessage}");
+                
+                _logger.LogInformation("Scheduling retry {RetryCount}/{MaxRetries} for task {RequestId} at {NextRetryAt}", 
+                    retryCount + 1, maxRetries, request.RequestId, nextRetryAt);
+            }
+            else
+            {
+                // Update task status to failed (no more retries)
+                await _taskService.UpdateTaskStatusAsync(
+                    request.RequestId, 
+                    TaskState.Failed, 
+                    error: errorMessage);
+            }
+            
+            // Publish VideoGenerationFailed event with retry information
             await _publishEndpoint.Publish(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
                 Error = errorMessage,
+                IsRetryable = isRetryable,
+                RetryCount = retryCount,
+                MaxRetries = maxRetries,
+                NextRetryAt = nextRetryAt,
                 FailedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
@@ -616,7 +701,7 @@ namespace ConduitLLM.Core.Services
                 var webhookPayload = new VideoCompletionWebhookPayload
                 {
                     TaskId = request.RequestId,
-                    Status = "failed",
+                    Status = isRetryable ? "retrying" : "failed",
                     Error = errorMessage,
                     Model = request.Model,
                     Prompt = request.Prompt
