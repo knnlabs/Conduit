@@ -31,4 +31,18 @@ public class Usage
     [JsonPropertyName("image_count")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? ImageCount { get; set; }
+
+    /// <summary>
+    /// Duration of video generated in seconds (used for video generation requests).
+    /// </summary>
+    [JsonPropertyName("video_duration_seconds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? VideoDurationSeconds { get; set; }
+
+    /// <summary>
+    /// Resolution of video generated (e.g., "1920x1080").
+    /// </summary>
+    [JsonPropertyName("video_resolution")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? VideoResolution { get; set; }
 }

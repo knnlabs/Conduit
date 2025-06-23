@@ -74,7 +74,7 @@ namespace ConduitLLM.Core.Services
                     request.RequestId, request.Model);
                 
                 // Update task status to running
-                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Running);
+                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Running, cancellationToken: context.CancellationToken);
                 
                 // Publish VideoGenerationStarted event
                 await _publishEndpoint.Publish(new VideoGenerationStarted
@@ -119,7 +119,7 @@ namespace ConduitLLM.Core.Services
                 _logger.LogError(ex, "Video generation failed for request {RequestId}", request.RequestId);
                 
                 // Update task status to failed
-                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Failed, ex.Message);
+                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Failed, error: ex.Message);
                 
                 // Publish failure event
                 await _publishEndpoint.Publish(new VideoGenerationFailed
@@ -150,7 +150,7 @@ namespace ConduitLLM.Core.Services
                 await _taskService.UpdateTaskStatusAsync(
                     cancellation.RequestId, 
                     TaskState.Cancelled, 
-                    cancellation.Reason ?? "User requested cancellation");
+                    error: cancellation.Reason ?? "User requested cancellation");
                 
                 // TODO: Implement actual cancellation logic with providers
                 // For now, just mark as cancelled
@@ -209,7 +209,7 @@ namespace ConduitLLM.Core.Services
             await _virtualKeyService.UpdateSpendAsync(virtualKeyInfo.Id, cost);
             
             // Update task status to completed
-            await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Completed, videoUrl);
+            await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Completed, result: videoUrl);
             
             // Publish completion event
             await _publishEndpoint.Publish(new VideoGenerationCompleted
@@ -273,13 +273,18 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         private async Task<decimal> CalculateVideoCostAsync(VideoGenerationRequested request, ModelInfo modelInfo)
         {
-            // TODO: Implement actual cost calculation based on provider pricing
-            // For now, use a simple calculation
-            var baseCost = 0.10m; // Base cost per video
-            var durationMultiplier = (request.Parameters?.Duration ?? 5) / 5.0m; // $0.10 per 5 seconds
-            var resolutionMultiplier = GetResolutionMultiplier(request.Parameters?.Size);
-            
-            return baseCost * durationMultiplier * resolutionMultiplier;
+            // Create usage object for video generation
+            var usage = new Usage
+            {
+                PromptTokens = 0,
+                CompletionTokens = 0,
+                TotalTokens = 0,
+                VideoDurationSeconds = request.Parameters?.Duration ?? 5,
+                VideoResolution = request.Parameters?.Size ?? "1280x720"
+            };
+
+            // Use the cost calculation service
+            return await _costService.CalculateCostAsync(modelInfo.ModelId, usage);
         }
 
         private decimal GetResolutionMultiplier(string? resolution)

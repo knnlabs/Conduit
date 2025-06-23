@@ -16,6 +16,8 @@ namespace ConduitLLM.Core.Services
     public class InMemoryMediaStorageService : IMediaStorageService
     {
         private readonly ConcurrentDictionary<string, StoredMedia> _storage = new();
+        private readonly ConcurrentDictionary<string, MultipartUploadSession> _multipartSessions = new();
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<int, byte[]>> _multipartParts = new();
         private readonly ILogger<InMemoryMediaStorageService> _logger;
         private readonly string _baseUrl;
 
@@ -23,6 +25,7 @@ namespace ConduitLLM.Core.Services
         {
             public byte[] Data { get; set; } = Array.Empty<byte>();
             public MediaInfo Info { get; set; } = new();
+            public VideoMediaMetadata? VideoMetadata { get; set; }
         }
 
         public InMemoryMediaStorageService(
@@ -194,6 +197,270 @@ namespace ConduitLLM.Core.Services
         public int GetItemCount()
         {
             return _storage.Count;
+        }
+
+        /// <inheritdoc/>
+        public async Task<MediaStorageResult> StoreVideoAsync(
+            Stream content, 
+            VideoMediaMetadata metadata,
+            Action<long>? progressCallback = null)
+        {
+            try
+            {
+                // Read content with progress reporting
+                using var memoryStream = new MemoryStream();
+                var buffer = new byte[81920]; // 80KB buffer
+                int bytesRead;
+                long totalBytesRead = 0;
+                
+                while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await memoryStream.WriteAsync(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                    progressCallback?.Invoke(totalBytesRead);
+                }
+                
+                var data = memoryStream.ToArray();
+
+                // Generate storage key
+                var contentHash = ComputeHash(data);
+                var extension = GetExtensionFromContentType(metadata.ContentType);
+                var storageKey = GenerateStorageKey(contentHash, MediaType.Video, extension);
+
+                // Store in memory
+                var mediaInfo = new MediaInfo
+                {
+                    StorageKey = storageKey,
+                    ContentType = metadata.ContentType,
+                    SizeBytes = data.Length,
+                    FileName = metadata.FileName,
+                    MediaType = MediaType.Video,
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = metadata.ExpiresAt,
+                    CustomMetadata = new Dictionary<string, string>(metadata.CustomMetadata ?? new())
+                    {
+                        ["duration"] = metadata.Duration.ToString(),
+                        ["resolution"] = metadata.Resolution,
+                        ["width"] = metadata.Width.ToString(),
+                        ["height"] = metadata.Height.ToString(),
+                        ["framerate"] = metadata.FrameRate.ToString()
+                    }
+                };
+
+                _storage[storageKey] = new StoredMedia
+                {
+                    Data = data,
+                    Info = mediaInfo,
+                    VideoMetadata = metadata
+                };
+
+                _logger.LogInformation("Stored video in memory with key {StorageKey}", storageKey);
+
+                var url = await GenerateUrlAsync(storageKey);
+                
+                return new MediaStorageResult
+                {
+                    StorageKey = storageKey,
+                    Url = url,
+                    SizeBytes = data.Length,
+                    ContentHash = contentHash,
+                    CreatedAt = mediaInfo.CreatedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to store video in memory");
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public Task<MultipartUploadSession> InitiateMultipartUploadAsync(VideoMediaMetadata metadata)
+        {
+            var sessionId = Guid.NewGuid().ToString();
+            var storageKey = GenerateStorageKey(
+                sessionId, 
+                MediaType.Video, 
+                GetExtensionFromContentType(metadata.ContentType));
+
+            var session = new MultipartUploadSession
+            {
+                SessionId = sessionId,
+                StorageKey = storageKey,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(1), // 1 hour for in-memory
+                MinimumPartSize = 1024 * 1024, // 1MB for in-memory
+                MaxParts = 1000
+            };
+
+            _multipartSessions[sessionId] = session;
+            _multipartParts[sessionId] = new ConcurrentDictionary<int, byte[]>();
+
+            _logger.LogInformation("Initiated in-memory multipart upload session {SessionId}", sessionId);
+
+            return Task.FromResult(session);
+        }
+
+        /// <inheritdoc/>
+        public async Task<PartUploadResult> UploadPartAsync(string sessionId, int partNumber, Stream content)
+        {
+            if (!_multipartSessions.ContainsKey(sessionId))
+            {
+                throw new InvalidOperationException($"Upload session {sessionId} not found");
+            }
+
+            if (!_multipartParts.TryGetValue(sessionId, out var parts))
+            {
+                throw new InvalidOperationException($"Parts storage for session {sessionId} not found");
+            }
+
+            using var memoryStream = new MemoryStream();
+            await content.CopyToAsync(memoryStream);
+            var data = memoryStream.ToArray();
+
+            parts[partNumber] = data;
+
+            _logger.LogDebug("Uploaded part {PartNumber} for in-memory session {SessionId}", partNumber, sessionId);
+
+            return new PartUploadResult
+            {
+                PartNumber = partNumber,
+                ETag = ComputeHash(data),
+                SizeBytes = data.Length
+            };
+        }
+
+        /// <inheritdoc/>
+        public Task<MediaStorageResult> CompleteMultipartUploadAsync(string sessionId, List<PartUploadResult> parts)
+        {
+            if (!_multipartSessions.TryRemove(sessionId, out var session))
+            {
+                throw new InvalidOperationException($"Upload session {sessionId} not found");
+            }
+
+            if (!_multipartParts.TryRemove(sessionId, out var partData))
+            {
+                throw new InvalidOperationException($"Parts data for session {sessionId} not found");
+            }
+
+            // Combine all parts
+            var sortedParts = parts.OrderBy(p => p.PartNumber).ToList();
+            using var finalStream = new MemoryStream();
+            
+            foreach (var part in sortedParts)
+            {
+                if (partData.TryGetValue(part.PartNumber, out var data))
+                {
+                    finalStream.Write(data, 0, data.Length);
+                }
+            }
+
+            var finalData = finalStream.ToArray();
+            var contentHash = ComputeHash(finalData);
+
+            // Store the complete video
+            var mediaInfo = new MediaInfo
+            {
+                StorageKey = session.StorageKey,
+                ContentType = "video/mp4", // Default for now
+                SizeBytes = finalData.Length,
+                MediaType = MediaType.Video,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _storage[session.StorageKey] = new StoredMedia
+            {
+                Data = finalData,
+                Info = mediaInfo
+            };
+
+            _logger.LogInformation("Completed in-memory multipart upload for key {StorageKey}", session.StorageKey);
+
+            var url = GenerateUrlAsync(session.StorageKey).Result;
+
+            return Task.FromResult(new MediaStorageResult
+            {
+                StorageKey = session.StorageKey,
+                Url = url,
+                SizeBytes = finalData.Length,
+                ContentHash = contentHash,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        /// <inheritdoc/>
+        public Task AbortMultipartUploadAsync(string sessionId)
+        {
+            _multipartSessions.TryRemove(sessionId, out _);
+            _multipartParts.TryRemove(sessionId, out _);
+            
+            _logger.LogInformation("Aborted in-memory multipart upload session {SessionId}", sessionId);
+            
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc/>
+        public Task<RangedStream?> GetVideoStreamAsync(string storageKey, long? rangeStart = null, long? rangeEnd = null)
+        {
+            if (!_storage.TryGetValue(storageKey, out var stored))
+            {
+                _logger.LogWarning("Video with key {StorageKey} not found in memory", storageKey);
+                return Task.FromResult<RangedStream?>(null);
+            }
+
+            var totalSize = stored.Data.Length;
+            var start = rangeStart ?? 0;
+            var end = rangeEnd ?? totalSize - 1;
+
+            // Ensure range is valid
+            start = Math.Max(0, Math.Min(start, totalSize - 1));
+            end = Math.Max(start, Math.Min(end, totalSize - 1));
+
+            var length = end - start + 1;
+            var rangedData = new byte[length];
+            Array.Copy(stored.Data, start, rangedData, 0, length);
+
+            var rangedStream = new RangedStream
+            {
+                Stream = new MemoryStream(rangedData),
+                RangeStart = start,
+                RangeEnd = end,
+                TotalSize = totalSize,
+                ContentType = stored.Info.ContentType
+            };
+
+            return Task.FromResult<RangedStream?>(rangedStream);
+        }
+
+        /// <inheritdoc/>
+        public Task<PresignedUploadUrl> GeneratePresignedUploadUrlAsync(VideoMediaMetadata metadata, TimeSpan expiration)
+        {
+            // For in-memory storage, we'll generate a temporary upload token
+            var uploadToken = Guid.NewGuid().ToString();
+            var storageKey = GenerateStorageKey(
+                uploadToken, 
+                MediaType.Video, 
+                GetExtensionFromContentType(metadata.ContentType));
+
+            // In a real implementation, you might store this token temporarily
+            // For now, we'll just return a URL that would be handled by a separate endpoint
+
+            var presignedUrl = new PresignedUploadUrl
+            {
+                Url = $"{_baseUrl}/v1/media/upload/{uploadToken}",
+                HttpMethod = "PUT",
+                RequiredHeaders = new Dictionary<string, string>
+                {
+                    ["Content-Type"] = metadata.ContentType
+                },
+                ExpiresAt = DateTime.UtcNow.Add(expiration),
+                StorageKey = storageKey,
+                MaxFileSizeBytes = 100 * 1024 * 1024 // 100MB max for in-memory
+            };
+
+            _logger.LogInformation("Generated presigned upload URL for in-memory storage with token {Token}", uploadToken);
+
+            return Task.FromResult(presignedUrl);
         }
     }
 }
