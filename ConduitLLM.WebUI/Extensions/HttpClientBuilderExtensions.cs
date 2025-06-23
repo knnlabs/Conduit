@@ -30,11 +30,17 @@ namespace ConduitLLM.WebUI.Extensions
                     var logger = services.GetRequiredService<ILogger<IHttpClientBuilder>>();
 
                     // Check if this is a video generation endpoint - these should NOT have timeouts
+                    var requestUri = request.RequestUri?.ToString() ?? "";
                     var requestPath = request.RequestUri?.AbsolutePath ?? "";
-                    if (requestPath.Contains("/videos/generations", StringComparison.OrdinalIgnoreCase))
+                    
+                    // Check both the full URI and the path for video generation endpoints
+                    if (requestUri.Contains("/videos/generations", StringComparison.OrdinalIgnoreCase) ||
+                        requestPath.Contains("/videos/generations", StringComparison.OrdinalIgnoreCase) ||
+                        requestUri.Contains("videos/generations", StringComparison.OrdinalIgnoreCase))
                     {
                         // Video generation can take 3-5+ minutes, so only apply retry policy
-                        logger.LogDebug("Skipping timeout policy for video generation endpoint: {Path}", requestPath);
+                        logger.LogWarning("Skipping timeout policy for video generation endpoint: URI={Uri}, Path={Path}", 
+                            requestUri, requestPath);
                         return AdminApiResiliencePolicies.GetRetryPolicy(logger, retryCount: 3);
                     }
 

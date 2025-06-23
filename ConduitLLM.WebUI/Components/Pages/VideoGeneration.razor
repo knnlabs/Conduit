@@ -714,39 +714,9 @@
                 ResponseFormat = "url"
             };
 
-            // Try sync generation first for short videos
-            if (duration <= 10)
-            {
-                try
-                {
-                    var response = await ConduitApiClient.CreateVideoAsync(request, string.IsNullOrWhiteSpace(apiKey) ? null : apiKey);
-                    
-                    if (response?.Data != null && response.Data.Any())
-                    {
-                        generatedVideos.AddRange(response.Data);
-                        
-                        // Add to recent prompts
-                        await AddToPromptHistory(videoPrompt);
-                        
-                        ToastService.ShowSuccess($"Successfully generated {response.Data.Count} video(s)");
-                    }
-                    else
-                    {
-                        ToastService.ShowError("Failed to generate video. Please try again.");
-                    }
-                }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
-                {
-                    // Timeout - fallback to async
-                    _logger.LogInformation("Sync video generation timed out, switching to async");
-                    await StartAsyncVideoGeneration(request);
-                }
-            }
-            else
-            {
-                // Use async for longer videos
-                await StartAsyncVideoGeneration(request);
-            }
+            // Always use async for video generation
+            // Video generation with providers like MiniMax takes 3-5+ minutes even for short videos
+            await StartAsyncVideoGeneration(request);
         }
         catch (Exception ex)
         {
