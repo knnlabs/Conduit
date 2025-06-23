@@ -24,6 +24,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IVideoGenerationService _videoService;
         private readonly IAsyncTaskService _taskService;
         private readonly IOperationTimeoutProvider _timeoutProvider;
+        private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<VideosController> _logger;
 
         /// <summary>
@@ -33,11 +34,13 @@ namespace ConduitLLM.Http.Controllers
             IVideoGenerationService videoService,
             IAsyncTaskService taskService,
             IOperationTimeoutProvider timeoutProvider,
+            ICancellableTaskRegistry taskRegistry,
             ILogger<VideosController> logger)
         {
             _videoService = videoService ?? throw new ArgumentNullException(nameof(videoService));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
+            _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -213,10 +216,13 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
+                // Create a linked cancellation token that can be controlled independently
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                
                 var response = await _videoService.GenerateVideoWithTaskAsync(
                     request,
                     virtualKey,
-                    cancellationToken);
+                    cts.Token);
 
                 // Extract task ID from the response
                 var taskId = response.Data?.FirstOrDefault()?.Url?.Replace("pending:", "");
@@ -224,6 +230,10 @@ namespace ConduitLLM.Http.Controllers
                 {
                     throw new InvalidOperationException("Failed to create video generation task");
                 }
+                
+                // Register the task for cancellation
+                _taskRegistry.RegisterTask(taskId, cts);
+                _logger.LogDebug("Registered task {TaskId} for cancellation", taskId);
 
                 // Create task response
                 var taskResponse = new VideoGenerationTaskResponse
@@ -415,13 +425,23 @@ namespace ConduitLLM.Http.Controllers
                     });
                 }
 
+                // Try to cancel via the registry first
+                var registryCancelled = _taskRegistry.TryCancel(taskId);
+                if (registryCancelled)
+                {
+                    _logger.LogInformation("Cancelled task {TaskId} via registry", taskId);
+                }
+                
+                // Also notify the video service
                 var cancelled = await _videoService.CancelVideoGenerationAsync(
                     taskId,
                     virtualKey,
                     cancellationToken);
 
-                if (cancelled)
+                if (cancelled || registryCancelled)
                 {
+                    // Update task status to cancelled
+                    await _taskService.CancelTaskAsync(taskId, cancellationToken);
                     return NoContent();
                 }
                 else

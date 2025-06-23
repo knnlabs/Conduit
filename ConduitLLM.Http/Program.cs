@@ -417,6 +417,9 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddScoped<ModelListService>();
 
 // Register async task service
+// Register cancellable task registry
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.ICancellableTaskRegistry, ConduitLLM.Core.Services.CancellableTaskRegistry>();
+
 var useRedisForTasks = builder.Configuration.GetValue<bool>("ConduitLLM:Tasks:UseRedis", false);
 if (useRedisForTasks && !string.IsNullOrEmpty(redisConnectionString))
 {

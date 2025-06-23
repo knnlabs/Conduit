@@ -29,6 +29,7 @@ namespace ConduitLLM.Core.Services
         private readonly IProviderDiscoveryService _discoveryService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ICostCalculationService _costService;
+        private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -40,6 +41,7 @@ namespace ConduitLLM.Core.Services
             IProviderDiscoveryService discoveryService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
+            ICancellableTaskRegistry taskRegistry,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -50,6 +52,7 @@ namespace ConduitLLM.Core.Services
             _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
+            _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -229,19 +232,25 @@ namespace ConduitLLM.Core.Services
                 
                 if (createVideoMethod != null)
                 {
-                    // Start progress tracking
-                    _ = Task.Run(async () => await TrackProgressAsync(request, cancellationToken), cancellationToken);
+                    // Create a cancellation token source for this specific task
+                    var taskCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    
+                    // Register the task for cancellation
+                    _taskRegistry.RegisterTask(request.RequestId, taskCts);
+                    _logger.LogDebug("Registered task {RequestId} for cancellation", request.RequestId);
+                    
+                    // Start progress tracking with cancellation support
+                    _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
 
-                    // Start video generation in a fire-and-forget manner to avoid any timeouts
-                    // The actual generation will run independently and update the task status when complete
+                    // Start video generation with proper cancellation token propagation
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            _logger.LogInformation("Starting fire-and-forget video generation for task {RequestId}", request.RequestId);
+                            _logger.LogInformation("Starting async video generation for task {RequestId} with cancellation support", request.RequestId);
                             
-                            // Invoke video generation without timeout constraints
-                            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, CancellationToken.None }) as Task<VideoGenerationResponse>;
+                            // Invoke video generation with the cancellation token
+                            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
                             if (task != null)
                             {
                                 response = await task;
@@ -254,15 +263,25 @@ namespace ConduitLLM.Core.Services
                                 throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
                             }
                         }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogInformation("Video generation for task {RequestId} was cancelled", request.RequestId);
+                            await HandleVideoGenerationCancellationAsync(request, stopwatch);
+                        }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Fire-and-forget video generation failed for task {RequestId}", request.RequestId);
+                            _logger.LogError(ex, "Video generation failed for task {RequestId}", request.RequestId);
                             await HandleVideoGenerationFailureAsync(request, ex.Message, stopwatch);
                         }
-                    });
+                        finally
+                        {
+                            // Unregister the task when complete
+                            _taskRegistry.UnregisterTask(request.RequestId);
+                        }
+                    }, taskCts.Token);
                     
                     // Return immediately - the video generation continues in the background
-                    _logger.LogInformation("Video generation task {RequestId} started successfully in background", request.RequestId);
+                    _logger.LogInformation("Video generation task {RequestId} started successfully in background with cancellation support", request.RequestId);
                     return;
                 }
                 else
@@ -549,6 +568,31 @@ namespace ConduitLLM.Core.Services
                 RequestId = request.RequestId,
                 Error = errorMessage,
                 FailedAt = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            });
+        }
+
+        /// <summary>
+        /// Handle video generation cancellation.
+        /// </summary>
+        private async Task HandleVideoGenerationCancellationAsync(
+            VideoGenerationRequested request,
+            Stopwatch stopwatch)
+        {
+            _logger.LogInformation("Video generation cancelled for task {RequestId} after {ElapsedMs}ms", 
+                request.RequestId, stopwatch.ElapsedMilliseconds);
+            
+            // Update task status to cancelled
+            await _taskService.UpdateTaskStatusAsync(
+                request.RequestId, 
+                TaskState.Cancelled, 
+                error: "Video generation was cancelled by user request");
+            
+            // Publish VideoGenerationCancelled event
+            await _publishEndpoint.Publish(new VideoGenerationCancelled
+            {
+                RequestId = request.RequestId,
+                CancelledAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
         }
