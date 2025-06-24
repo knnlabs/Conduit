@@ -56,8 +56,9 @@ public static class ServiceCollectionExtensions
             var cache = serviceProvider.GetService<IVirtualKeyCache>(); // Optional - null if not registered
             var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional - null if MassTransit not configured
             var logger = serviceProvider.GetRequiredService<ILogger<AdminVirtualKeyService>>();
+            var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>(); // Optional - null if not configured
             
-            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
+            return new AdminVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger, mediaLifecycleService);
         });
         // Register AdminModelProviderMappingService with optional event publishing dependency
         services.AddScoped<IAdminModelProviderMappingService>(serviceProvider =>
@@ -120,6 +121,22 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminAudioProviderService, AdminAudioProviderService>();
         services.AddScoped<IAdminAudioCostService, AdminAudioCostService>();
         services.AddScoped<IAdminAudioUsageService, AdminAudioUsageService>();
+
+        // Register media management service (requires IMediaLifecycleService to be registered)
+        services.AddScoped<IAdminMediaService>(serviceProvider =>
+        {
+            var mediaRepository = serviceProvider.GetRequiredService<IMediaRecordRepository>();
+            var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>();
+            var logger = serviceProvider.GetRequiredService<ILogger<AdminMediaService>>();
+            
+            // Only register if media lifecycle service is available
+            if (mediaLifecycleService == null)
+            {
+                throw new InvalidOperationException("IMediaLifecycleService must be registered to use AdminMediaService");
+            }
+            
+            return new AdminMediaService(mediaRepository, mediaLifecycleService, logger);
+        });
 
         // Register database-aware LLM client factory (must be registered before discovery service)
         services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
@@ -190,6 +207,25 @@ public static class ServiceCollectionExtensions
 
         // Register discovery service
         services.AddScoped<IProviderDiscoveryService, ConduitLLM.Core.Services.ProviderDiscoveryService>();
+
+        // Register Media Lifecycle Service (optional - for virtual key cleanup)
+        // Only register if we have a media storage service configured
+        var storageProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
+        if (!string.IsNullOrEmpty(storageProvider))
+        {
+            services.Configure<ConduitLLM.Core.Services.MediaManagementOptions>(
+                configuration.GetSection("ConduitLLM:MediaManagement"));
+            
+            // Register media storage service based on configuration
+            if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
+            {
+                services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(
+                    configuration.GetSection(ConduitLLM.Core.Options.S3StorageOptions.SectionName));
+                services.AddSingleton<IMediaStorageService, ConduitLLM.Core.Services.S3MediaStorageService>();
+            }
+            
+            services.AddScoped<IMediaLifecycleService, ConduitLLM.Core.Services.MediaLifecycleService>();
+        }
 
         // Register provider health monitoring background service
         services.Configure<ProviderHealthOptions>(configuration.GetSection(ProviderHealthOptions.SectionName));

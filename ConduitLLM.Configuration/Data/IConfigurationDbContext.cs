@@ -50,6 +50,11 @@ namespace ConduitLLM.Configuration.Data
         DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; }
 
         /// <summary>
+        /// Database set for media records
+        /// </summary>
+        DbSet<MediaRecord> MediaRecords { get; }
+
+        /// <summary>
         /// Database set for provider credentials
         /// </summary>
         DbSet<ProviderCredential> ProviderCredentials { get; }

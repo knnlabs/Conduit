@@ -29,6 +29,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IVirtualKeyRepository _virtualKeyRepository;
         private readonly IVirtualKeySpendHistoryRepository _spendHistoryRepository;
         private readonly IVirtualKeyCache? _cache; // Optional cache for invalidation
+        private readonly IMediaLifecycleService? _mediaLifecycleService; // Optional media lifecycle service
         private readonly ILogger<AdminVirtualKeyService> _logger;
         private const int KeyLengthBytes = 32; // Generate a 256-bit key
 
@@ -40,17 +41,20 @@ namespace ConduitLLM.Admin.Services
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
         /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
         /// <param name="logger">The logger</param>
+        /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
             IVirtualKeyCache? cache,
             IPublishEndpoint? publishEndpoint,
-            ILogger<AdminVirtualKeyService> logger)
+            ILogger<AdminVirtualKeyService> logger,
+            IMediaLifecycleService? mediaLifecycleService = null)
             : base(publishEndpoint, logger)
         {
             _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             _spendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
             _cache = cache; // Optional - can be null if Redis not configured
+            _mediaLifecycleService = mediaLifecycleService; // Optional - can be null if media lifecycle management not configured
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Log event publishing configuration status
@@ -297,10 +301,27 @@ namespace ConduitLLM.Admin.Services
                 return false;
             }
 
-            // TODO: Media Cleanup - When deleting a virtual key, we need to also delete all associated
-            // media files (images/videos) from storage. Currently, these files become orphaned.
-            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
-            // IMPORTANT: This is a production concern - orphaned media will grow storage costs!
+            // Cleanup associated media files if media lifecycle service is available
+            if (_mediaLifecycleService != null)
+            {
+                try
+                {
+                    var deletedMediaCount = await _mediaLifecycleService.DeleteMediaForVirtualKeyAsync(id);
+                    if (deletedMediaCount > 0)
+                    {
+                        _logger.LogInformation("Deleted {Count} media files for virtual key {KeyId}", deletedMediaCount, id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't fail the virtual key deletion
+                    _logger.LogError(ex, "Failed to delete media files for virtual key {KeyId}, but continuing with key deletion", id);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Media lifecycle service not available, media files for virtual key {KeyId} will become orphaned", id);
+            }
             
             var result = await _virtualKeyRepository.DeleteAsync(id);
 

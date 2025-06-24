@@ -31,6 +31,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IAsyncTaskService _taskService;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IVirtualKeyService _virtualKeyService;
+        private readonly IMediaLifecycleService _mediaLifecycleService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -41,7 +42,8 @@ namespace ConduitLLM.Http.Controllers
             IImageGenerationQueue imageQueue,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
-            IVirtualKeyService virtualKeyService)
+            IVirtualKeyService virtualKeyService,
+            IMediaLifecycleService mediaLifecycleService)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
@@ -52,6 +54,7 @@ namespace ConduitLLM.Http.Controllers
             _taskService = taskService;
             _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
+            _mediaLifecycleService = mediaLifecycleService;
         }
 
         /// <summary>
@@ -206,10 +209,43 @@ namespace ConduitLLM.Http.Controllers
 
                             var storageResult = await _storageService.StoreAsync(imageStream, metadata);
 
-                            // TODO: Media Ownership Tracking - We need to record this media in a database table
-                            // to track which virtual key owns it. Currently we only store CreatedBy in metadata.
-                            // Without DB tracking, we can't clean up media when virtual keys are deleted.
-                            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+                            // Track media ownership for lifecycle management
+                            try
+                            {
+                                // Get virtual key ID from HttpContext
+                                var virtualKeyIdClaim = HttpContext.User.FindFirst("VirtualKeyId")?.Value;
+                                if (!string.IsNullOrEmpty(virtualKeyIdClaim) && int.TryParse(virtualKeyIdClaim, out var virtualKeyId))
+                                {
+                                    var mediaMetadata = new Core.Interfaces.MediaLifecycleMetadata
+                                    {
+                                        ContentType = contentType,
+                                        SizeBytes = storageResult.SizeBytes,
+                                        Provider = mapping?.ProviderName ?? "unknown",
+                                        Model = request.Model ?? "unknown",
+                                        Prompt = request.Prompt,
+                                        StorageUrl = storageResult.Url,
+                                        PublicUrl = storageResult.Url
+                                    };
+
+                                    await _mediaLifecycleService.TrackMediaAsync(
+                                        virtualKeyId,
+                                        storageResult.StorageKey,
+                                        "image",
+                                        mediaMetadata);
+                                    
+                                    _logger.LogInformation("Tracked media {StorageKey} for virtual key {VirtualKeyId}", 
+                                        storageResult.StorageKey, virtualKeyId);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Could not determine virtual key ID for media tracking");
+                                }
+                            }
+                            catch (Exception trackEx)
+                            {
+                                // Don't fail the request if tracking fails
+                                _logger.LogError(trackEx, "Failed to track media ownership, but continuing with response");
+                            }
                             
                             // Update response with our proxied URL
                             imageData.Url = storageResult.Url;

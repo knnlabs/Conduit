@@ -65,15 +65,10 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<ConduitLLM.Configuration.Entities.ModelProviderMapping> ModelProviderMappings { get; set; } = null!;
 
-        // TODO: Media Ownership Tracking - Add MediaRecords table to track generated media
-        // This table should include:
-        // - StorageKey (unique identifier)
-        // - VirtualKeyId (foreign key with cascade delete)
-        // - MediaType (image/video)
-        // - Provider, Model, Prompt
-        // - SizeBytes, ContentHash
-        // - CreatedAt, ExpiresAt, LastAccessedAt
-        // See: docs/TODO-Media-Lifecycle-Management.md for schema design
+        /// <summary>
+        /// Database set for media records
+        /// </summary>
+        public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
 
         /// <summary>
         /// Database set for provider credentials
@@ -324,6 +319,22 @@ namespace ConduitLLM.Configuration
                 // Index for cleanup queries
                 entity.HasIndex(e => new { e.IsArchived, e.ArchivedAt })
                       .HasDatabaseName("IX_AsyncTasks_Cleanup");
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure MediaRecord entity
+            modelBuilder.Entity<MediaRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.StorageKey).IsUnique();
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.ExpiresAt);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
                 
                 entity.HasOne(e => e.VirtualKey)
                       .WithMany()

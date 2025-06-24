@@ -567,6 +567,15 @@ else
     });
 }
 
+// Register Media Lifecycle Management Services
+builder.Services.Configure<ConduitLLM.Core.Services.MediaManagementOptions>(
+    builder.Configuration.GetSection("ConduitLLM:MediaManagement"));
+
+builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IMediaLifecycleService, ConduitLLM.Core.Services.MediaLifecycleService>();
+
+// Add media maintenance background service
+builder.Services.AddHostedService<ConduitLLM.Http.Services.MediaMaintenanceBackgroundService>();
+
 // Add CORS support for WebUI requests
 builder.Services.AddCors(options =>
 {
