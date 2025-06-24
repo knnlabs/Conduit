@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Hubs;
 using MassTransit;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -16,16 +18,19 @@ namespace ConduitLLM.Http.EventHandlers
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
+        private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationProgressHandler> _logger;
         private const string ProgressCacheKeyPrefix = "video_generation_progress_";
 
         public VideoGenerationProgressHandler(
             IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
+            IHubContext<VideoGenerationHub> hubContext,
             ILogger<VideoGenerationProgressHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -84,8 +89,17 @@ namespace ConduitLLM.Http.EventHandlers
                 // Log significant progress milestones
                 LogProgressMilestone(message);
                 
-                // Future: Send real-time updates to WebUI via SignalR
-                // await _hubContext.Clients.Group($"task_{message.RequestId}").SendAsync("VideoGenerationProgress", progressData);
+                // Send real-time updates to WebUI via SignalR
+                await _hubContext.Clients.Group($"task-{message.RequestId}").SendAsync("ProgressUpdate", new
+                {
+                    taskId = message.RequestId,
+                    status = message.Status,
+                    progress = message.ProgressPercentage,
+                    message = message.Message,
+                    framesCompleted = message.FramesCompleted,
+                    totalFrames = message.TotalFrames,
+                    timestamp = DateTime.UtcNow
+                });
             }
             catch (Exception ex)
             {

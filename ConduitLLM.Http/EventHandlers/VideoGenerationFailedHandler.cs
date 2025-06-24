@@ -2,7 +2,9 @@ using System;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Hubs;
 using MassTransit;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -15,16 +17,19 @@ namespace ConduitLLM.Http.EventHandlers
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
+        private readonly IHubContext<VideoGenerationHub> _hubContext;
         private readonly ILogger<VideoGenerationFailedHandler> _logger;
         private const string ProgressCacheKeyPrefix = "video_generation_progress_";
 
         public VideoGenerationFailedHandler(
             IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
+            IHubContext<VideoGenerationHub> hubContext,
             ILogger<VideoGenerationFailedHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -72,11 +77,31 @@ namespace ConduitLLM.Http.EventHandlers
                 // Log failure metrics for monitoring
                 LogFailureMetrics(message);
                 
+                // Send failure notification via SignalR
+                await _hubContext.Clients.Group($"task-{message.RequestId}").SendAsync("TaskFailed", new
+                {
+                    taskId = message.RequestId,
+                    status = "failed",
+                    error = message.Error,
+                    errorCode = message.ErrorCode,
+                    isRetryable = message.IsRetryable,
+                    retryCount = message.RetryCount,
+                    maxRetries = message.MaxRetries,
+                    nextRetryAt = message.NextRetryAt,
+                    failedAt = message.FailedAt
+                });
+                
                 // Determine if automatic retry should be attempted
                 if (message.IsRetryable)
                 {
-                    _logger.LogInformation("Video generation failure is retryable for request {RequestId}", message.RequestId);
-                    // Future: Could publish a VideoGenerationRetryRequested event here
+                    _logger.LogInformation("Video generation failure is retryable for request {RequestId} (Retry {RetryCount}/{MaxRetries})", 
+                        message.RequestId, message.RetryCount, message.MaxRetries);
+                    
+                    if (message.NextRetryAt.HasValue)
+                    {
+                        _logger.LogInformation("Video generation will be retried at {NextRetryAt} for request {RequestId}", 
+                            message.NextRetryAt.Value, message.RequestId);
+                    }
                 }
                 else
                 {

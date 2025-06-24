@@ -28,12 +28,12 @@ namespace ConduitLLM.Http.Controllers
     public class AudioController : ControllerBase
     {
         private readonly IAudioRouter _audioRouter;
-        private readonly Configuration.Services.IVirtualKeyService _virtualKeyService;
+        private readonly ConduitLLM.Configuration.Services.IVirtualKeyService _virtualKeyService;
         private readonly ILogger<AudioController> _logger;
 
         public AudioController(
             IAudioRouter audioRouter,
-            Configuration.Services.IVirtualKeyService virtualKeyService,
+            ConduitLLM.Configuration.Services.IVirtualKeyService virtualKeyService,
             ILogger<AudioController> logger)
         {
             _audioRouter = audioRouter ?? throw new ArgumentNullException(nameof(audioRouter));

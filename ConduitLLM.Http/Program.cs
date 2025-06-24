@@ -15,6 +15,7 @@ using ConduitLLM.Core.Routing; // Added for DefaultLLMClientFactory
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Authentication; // Added for VirtualKeyAuthenticationHandler
+using ConduitLLM.Http.Configuration; // Added for MassTransitPartitioningConfiguration
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
 using ConduitLLM.Http.Middleware; // Added for Security middleware extensions
@@ -184,6 +185,16 @@ builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
 // Register Video Generation Service
 builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
 
+// Configure Video Generation Retry Settings
+builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
+{
+    options.MaxRetries = builder.Configuration.GetValue<int>("VideoGeneration:MaxRetries", 3);
+    options.BaseDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:BaseDelaySeconds", 30);
+    options.MaxDelaySeconds = builder.Configuration.GetValue<int>("VideoGeneration:MaxDelaySeconds", 3600);
+    options.EnableRetries = builder.Configuration.GetValue<bool>("VideoGeneration:EnableRetries", true);
+    options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
+});
+
 // Register Webhook Notification Service
 builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(client =>
 {
@@ -346,6 +357,7 @@ builder.Services.AddMassTransit(x =>
     
     // Add video generation consumers
     x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
+    x.AddConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationProgressHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationCompletedHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationFailedHandler>();
@@ -384,7 +396,12 @@ builder.Services.AddMassTransit(x =>
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
             
-            // Configure endpoints with automatic topology
+            // Configure partitioned endpoints for ordered processing
+            cfg.ConfigureVideoGenerationEndpoints(context);
+            cfg.ConfigureImageGenerationEndpoints(context);
+            cfg.ConfigureSpendUpdateEndpoints(context);
+            
+            // Configure remaining endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
         });
         
@@ -399,6 +416,8 @@ builder.Services.AddMassTransit(x =>
         Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
         Console.WriteLine("  - IP filter changes (security policy updates)");
         Console.WriteLine("  - Model cost changes (pricing updates)");
+        Console.WriteLine("  - Video generation tasks (partitioned processing per virtual key)");
+        Console.WriteLine("  - Image generation tasks (partitioned processing per virtual key)");
     }
     else
     {
@@ -413,7 +432,10 @@ builder.Services.AddMassTransit(x =>
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
             
-            // Configure endpoints
+            // Configure endpoints for in-memory transport
+            cfg.ConfigureInMemoryEndpoints(context);
+            
+            // Configure remaining endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
         });
         
@@ -736,9 +758,12 @@ app.UseWebSockets(new WebSocketOptions
 app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
-// Map SignalR hub for real-time navigation state updates
+// Map SignalR hubs for real-time updates
 app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
 Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
+
+app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation");
+Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/video-generation");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

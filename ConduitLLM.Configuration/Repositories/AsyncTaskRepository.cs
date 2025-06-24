@@ -370,7 +370,8 @@ namespace ConduitLLM.Configuration.Repositories
                 var now = DateTime.UtcNow;
                 var query = context.AsyncTasks
                     .Where(t => t.State == 0 && !t.IsArchived && 
-                               (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now));
+                               (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now) &&
+                               (t.NextRetryAt == null || t.NextRetryAt <= now));
 
                 if (!string.IsNullOrEmpty(taskType))
                 {

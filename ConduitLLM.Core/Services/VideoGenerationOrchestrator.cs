@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Configuration;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Core.Services
 {
@@ -31,6 +33,7 @@ namespace ConduitLLM.Core.Services
         private readonly ICostCalculationService _costService;
         private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly IWebhookNotificationService _webhookService;
+        private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly ILogger<VideoGenerationOrchestrator> _logger;
 
         public VideoGenerationOrchestrator(
@@ -44,6 +47,7 @@ namespace ConduitLLM.Core.Services
             ICostCalculationService costService,
             ICancellableTaskRegistry taskRegistry,
             IWebhookNotificationService webhookService,
+            IOptions<VideoGenerationRetryConfiguration> retryConfiguration,
             ILogger<VideoGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -56,6 +60,7 @@ namespace ConduitLLM.Core.Services
             _costService = costService ?? throw new ArgumentNullException(nameof(costService));
             _taskRegistry = taskRegistry ?? throw new ArgumentNullException(nameof(taskRegistry));
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
+            _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -127,16 +132,46 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogError(ex, "Video generation failed for request {RequestId}", request.RequestId);
                 
-                // Update task status to failed
-                await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Failed, error: ex.Message);
+                // Get current task status to check retry count
+                var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
+                var retryCount = taskStatus?.RetryCount ?? 0;
+                var maxRetries = _retryConfiguration.EnableRetries ? 
+                    (taskStatus?.MaxRetries ?? _retryConfiguration.MaxRetries) : 0;
+                var isRetryable = _retryConfiguration.EnableRetries && 
+                    IsRetryableError(ex) && retryCount < maxRetries;
                 
-                // Publish failure event
+                // Calculate next retry time with exponential backoff
+                DateTime? nextRetryAt = null;
+                if (isRetryable)
+                {
+                    var delaySeconds = _retryConfiguration.CalculateRetryDelay(retryCount);
+                    nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
+                    
+                    // Update task status to pending for retry
+                    await _taskService.UpdateTaskStatusAsync(
+                        request.RequestId, 
+                        TaskState.Pending, 
+                        error: $"Retry {retryCount + 1}/{maxRetries} scheduled: {ex.Message}");
+                }
+                else
+                {
+                    // Update task status to failed (no more retries)
+                    await _taskService.UpdateTaskStatusAsync(
+                        request.RequestId, 
+                        TaskState.Failed, 
+                        error: ex.Message);
+                }
+                
+                // Publish failure event with retry information
                 await _publishEndpoint.Publish(new VideoGenerationFailed
                 {
                     RequestId = request.RequestId,
                     Error = ex.Message,
                     ErrorCode = ex.GetType().Name,
-                    IsRetryable = IsRetryableError(ex),
+                    IsRetryable = isRetryable,
+                    RetryCount = retryCount,
+                    MaxRetries = maxRetries,
+                    NextRetryAt = nextRetryAt,
                     FailedAt = DateTime.UtcNow,
                     CorrelationId = request.CorrelationId
                 });
@@ -248,8 +283,8 @@ namespace ConduitLLM.Core.Services
                     
                     try
                     {
-                        // Start progress tracking in background (this is lightweight and can continue as fire-and-forget)
-                        _ = Task.Run(async () => await TrackProgressAsync(request, taskCts.Token), taskCts.Token);
+                        // Start progress tracking via event-driven architecture
+                        await StartProgressTrackingAsync(request);
 
                         _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
                         
@@ -298,63 +333,24 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Tracks progress during video generation.
+        /// Starts progress tracking for a video generation task using event-driven architecture.
         /// </summary>
-        private async Task TrackProgressAsync(VideoGenerationRequested request, CancellationToken cancellationToken)
+        private async Task StartProgressTrackingAsync(VideoGenerationRequested request)
         {
-            var progressIntervals = new[] { 10, 30, 50, 70, 90 };
-            var intervalIndex = 0;
-            var startTime = DateTime.UtcNow;
-
-            while (!cancellationToken.IsCancellationRequested && intervalIndex < progressIntervals.Length)
+            // Publish initial progress check request
+            var progressCheck = new VideoProgressCheckRequested
             {
-                // Check if task is still running
-                var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
-                if (taskStatus == null || taskStatus.State != TaskState.Processing)
-                {
-                    break;
-                }
-
-                // Calculate estimated progress based on time elapsed
-                var elapsed = DateTime.UtcNow - startTime;
-                if (elapsed.TotalSeconds > intervalIndex * 12) // ~1 minute per 10% progress
-                {
-                    var progress = progressIntervals[intervalIndex];
-                    
-                    await _taskService.UpdateTaskStatusAsync(request.RequestId, TaskState.Processing, progress: progress, cancellationToken: cancellationToken);
-                    
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
-                    {
-                        RequestId = request.RequestId,
-                        ProgressPercentage = progress,
-                        Status = GetProgressStatus(progress),
-                        Message = GetProgressMessage(progress),
-                        CorrelationId = request.CorrelationId
-                    });
-                    
-                    // Send webhook notification for progress if configured
-                    if (!string.IsNullOrEmpty(request.WebhookUrl))
-                    {
-                        var webhookPayload = new VideoProgressWebhookPayload
-                        {
-                            TaskId = request.RequestId,
-                            Status = "processing",
-                            ProgressPercentage = progress,
-                            Message = GetProgressMessage(progress),
-                            EstimatedSecondsRemaining = (int)((100 - progress) * 0.6) // Rough estimate
-                        };
-
-                        await _webhookService.SendTaskProgressWebhookAsync(
-                            request.WebhookUrl,
-                            webhookPayload,
-                            request.WebhookHeaders);
-                    }
-                    
-                    intervalIndex++;
-                }
-
-                await Task.Delay(5000, cancellationToken); // Check every 5 seconds
-            }
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                ScheduledAt = DateTime.UtcNow.AddSeconds(5), // First check in 5 seconds
+                IntervalIndex = 0,
+                TotalIntervals = 5, // 10%, 30%, 50%, 70%, 90%
+                StartTime = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            };
+            
+            await _publishEndpoint.Publish(progressCheck);
+            _logger.LogDebug("Initiated progress tracking for video generation {RequestId}", request.RequestId);
         }
 
         /// <summary>
@@ -423,39 +419,34 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private string GetProgressStatus(int percentage)
-        {
-            return percentage switch
-            {
-                <= 20 => "initializing",
-                <= 40 => "processing_frames",
-                <= 60 => "rendering",
-                <= 80 => "encoding",
-                _ => "finalizing"
-            };
-        }
-
-        private string GetProgressMessage(int percentage)
-        {
-            return percentage switch
-            {
-                <= 20 => "Initializing video generation pipeline",
-                <= 40 => "Processing frames based on prompt",
-                <= 60 => "Rendering video content",
-                <= 80 => "Encoding video to final format",
-                _ => "Finalizing and preparing for delivery"
-            };
-        }
-
         private bool IsRetryableError(Exception ex)
         {
-            return ex switch
+            // Check the exception type
+            var isRetryableType = ex switch
             {
                 TimeoutException => true,
                 HttpRequestException => true,
                 TaskCanceledException => true,
+                System.IO.IOException => true,
+                System.Net.Sockets.SocketException => true,
                 _ => false
             };
+
+            // Check for specific error messages that indicate transient failures
+            if (!isRetryableType && ex.Message != null)
+            {
+                var lowerMessage = ex.Message.ToLowerInvariant();
+                isRetryableType = lowerMessage.Contains("timeout") ||
+                                  lowerMessage.Contains("timed out") ||
+                                  lowerMessage.Contains("connection") ||
+                                  lowerMessage.Contains("network") ||
+                                  lowerMessage.Contains("temporarily unavailable") ||
+                                  lowerMessage.Contains("service unavailable") ||
+                                  lowerMessage.Contains("too many requests") ||
+                                  lowerMessage.Contains("rate limit");
+            }
+
+            return isRetryableType;
         }
 
         /// <summary>
@@ -521,6 +512,29 @@ namespace ConduitLLM.Core.Services
                             video.Url = storageResult.Url;
                             video.B64Json = null; // Clear base64 data after storing
                             videoUrl = storageResult.Url;
+                            
+                            // Publish MediaGenerationCompleted event for lifecycle tracking
+                            await _publishEndpoint.Publish(new MediaGenerationCompleted
+                            {
+                                MediaType = MediaType.Video,
+                                VirtualKeyId = virtualKeyInfo.Id,
+                                MediaUrl = storageResult.Url,
+                                StorageKey = storageResult.StorageKey,
+                                FileSizeBytes = videoMediaMetadata.FileSizeBytes,
+                                ContentType = videoMediaMetadata.ContentType,
+                                GeneratedByModel = request.Model,
+                                GenerationPrompt = request.Prompt,
+                                GeneratedAt = DateTime.UtcNow,
+                                Metadata = new Dictionary<string, object>
+                                {
+                                    ["width"] = videoMediaMetadata.Width,
+                                    ["height"] = videoMediaMetadata.Height,
+                                    ["duration"] = videoMediaMetadata.Duration,
+                                    ["frameRate"] = videoMediaMetadata.FrameRate,
+                                    ["resolution"] = videoMediaMetadata.Resolution
+                                },
+                                CorrelationId = request.CorrelationId
+                            });
                         }
                     }
                 }
@@ -575,6 +589,15 @@ namespace ConduitLLM.Core.Services
                         request.WebhookHeaders);
                 }
                 
+                // Cancel progress tracking since task is complete
+                await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+                {
+                    RequestId = request.RequestId,
+                    VirtualKeyId = request.VirtualKeyId,
+                    Reason = "Video generation completed successfully",
+                    CorrelationId = request.CorrelationId
+                });
+                
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
             }
@@ -595,18 +618,58 @@ namespace ConduitLLM.Core.Services
         {
             _logger.LogError("Video generation failed for task {RequestId}: {Error}", request.RequestId, errorMessage);
             
-            // Update task status to failed
-            await _taskService.UpdateTaskStatusAsync(
-                request.RequestId, 
-                TaskState.Failed, 
-                error: errorMessage);
+            // Get current task status to check retry count
+            var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
+            var retryCount = taskStatus?.RetryCount ?? 0;
+            var maxRetries = _retryConfiguration.EnableRetries ? 
+                (taskStatus?.MaxRetries ?? _retryConfiguration.MaxRetries) : 0;
+            var isRetryable = _retryConfiguration.EnableRetries && 
+                IsRetryableError(new Exception(errorMessage)) && retryCount < maxRetries;
             
-            // Publish VideoGenerationFailed event
+            // Calculate next retry time with exponential backoff
+            DateTime? nextRetryAt = null;
+            if (isRetryable)
+            {
+                var delaySeconds = _retryConfiguration.CalculateRetryDelay(retryCount);
+                nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
+                
+                // Update task status to pending for retry
+                await _taskService.UpdateTaskStatusAsync(
+                    request.RequestId, 
+                    TaskState.Pending, 
+                    error: $"Retry {retryCount + 1}/{maxRetries} scheduled: {errorMessage}");
+                
+                _logger.LogInformation("Scheduling retry {RetryCount}/{MaxRetries} for task {RequestId} at {NextRetryAt}", 
+                    retryCount + 1, maxRetries, request.RequestId, nextRetryAt);
+            }
+            else
+            {
+                // Update task status to failed (no more retries)
+                await _taskService.UpdateTaskStatusAsync(
+                    request.RequestId, 
+                    TaskState.Failed, 
+                    error: errorMessage);
+            }
+            
+            // Publish VideoGenerationFailed event with retry information
             await _publishEndpoint.Publish(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
                 Error = errorMessage,
+                IsRetryable = isRetryable,
+                RetryCount = retryCount,
+                MaxRetries = maxRetries,
+                NextRetryAt = nextRetryAt,
                 FailedAt = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            });
+            
+            // Cancel progress tracking since task has failed
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = $"Video generation failed: {errorMessage}",
                 CorrelationId = request.CorrelationId
             });
 
@@ -616,7 +679,7 @@ namespace ConduitLLM.Core.Services
                 var webhookPayload = new VideoCompletionWebhookPayload
                 {
                     TaskId = request.RequestId,
-                    Status = "failed",
+                    Status = isRetryable ? "retrying" : "failed",
                     Error = errorMessage,
                     Model = request.Model,
                     Prompt = request.Prompt
@@ -650,6 +713,15 @@ namespace ConduitLLM.Core.Services
             {
                 RequestId = request.RequestId,
                 CancelledAt = DateTime.UtcNow,
+                CorrelationId = request.CorrelationId
+            });
+            
+            // Cancel progress tracking since task is cancelled
+            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            {
+                RequestId = request.RequestId,
+                VirtualKeyId = request.VirtualKeyId,
+                Reason = "Video generation cancelled by user",
                 CorrelationId = request.CorrelationId
             });
 

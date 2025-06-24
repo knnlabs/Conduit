@@ -47,7 +47,8 @@ namespace ConduitLLM.Http.Services
                 RunTaskCleanupAsync(stoppingToken),
                 RunMetricsCollectionAsync(stoppingToken),
                 RunHealthMonitoringAsync(stoppingToken),
-                RunExpiredLeaseRecoveryAsync(stoppingToken)
+                RunExpiredLeaseRecoveryAsync(stoppingToken),
+                RunRetrySchedulerAsync(stoppingToken)
             };
 
             try
@@ -80,7 +81,7 @@ namespace ConduitLLM.Http.Services
                     var distributedLockService = scope.ServiceProvider.GetService<IDistributedLockService>();
                     var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
 
-                    // Attempt to lease the next pending task
+                    // Attempt to lease the next pending task (including retryable tasks)
                     var leasedTask = await asyncTaskRepository.LeaseNextPendingTaskAsync(
                         _instanceId,
                         TimeSpan.FromMinutes(10), // 10-minute lease
@@ -89,8 +90,18 @@ namespace ConduitLLM.Http.Services
 
                     if (leasedTask != null)
                     {
-                        _logger.LogInformation("Worker {WorkerId} leased video generation task {TaskId}", 
-                            _instanceId, leasedTask.Id);
+                        // Check if this is a retry task and if it's ready to be retried
+                        if (leasedTask.NextRetryAt.HasValue && leasedTask.NextRetryAt.Value > DateTime.UtcNow)
+                        {
+                            // Task is not ready for retry yet, release the lease
+                            await asyncTaskRepository.ReleaseLeaseAsync(leasedTask.Id, _instanceId, cancellationToken);
+                            _logger.LogDebug("Task {TaskId} scheduled for retry at {NextRetryAt}, skipping", 
+                                leasedTask.Id, leasedTask.NextRetryAt);
+                            continue;
+                        }
+
+                        _logger.LogInformation("Worker {WorkerId} leased video generation task {TaskId} (Retry: {RetryCount}/{MaxRetries})", 
+                            _instanceId, leasedTask.Id, leasedTask.RetryCount, leasedTask.MaxRetries);
 
                         try
                         {
@@ -100,6 +111,18 @@ namespace ConduitLLM.Http.Services
                             {
                                 _logger.LogWarning("Task status not found for leased task {TaskId}", leasedTask.Id);
                                 continue;
+                            }
+
+                            // Increment retry count if this is a retry
+                            if (leasedTask.RetryCount > 0)
+                            {
+                                leasedTask.RetryCount++;
+                                leasedTask.NextRetryAt = null; // Clear next retry time
+                                leasedTask.UpdatedAt = DateTime.UtcNow;
+                                await asyncTaskRepository.UpdateAsync(leasedTask, cancellationToken);
+                                
+                                _logger.LogInformation("Processing retry attempt {RetryCount}/{MaxRetries} for task {TaskId}", 
+                                    leasedTask.RetryCount, leasedTask.MaxRetries, leasedTask.Id);
                             }
 
                             // Update task status to processing
@@ -478,6 +501,53 @@ namespace ConduitLLM.Http.Services
             }
 
             _logger.LogInformation("Expired lease recovery task stopped");
+        }
+
+        private async Task RunRetrySchedulerAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Retry scheduler task started");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    // Wait for retry check interval (30 seconds)
+                    await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+
+                    using var scope = _serviceProvider.CreateScope();
+                    var asyncTaskRepository = scope.ServiceProvider.GetRequiredService<IAsyncTaskRepository>();
+
+                    _logger.LogDebug("Checking for tasks ready to retry");
+
+                    // Get pending tasks that have a NextRetryAt time in the past
+                    var pendingTasks = await asyncTaskRepository.GetPendingTasksAsync("video_generation", 100, cancellationToken);
+                    var tasksToRetry = pendingTasks
+                        .Where(t => t.NextRetryAt.HasValue && t.NextRetryAt.Value <= DateTime.UtcNow)
+                        .ToList();
+
+                    if (tasksToRetry.Any())
+                    {
+                        _logger.LogInformation("Found {Count} tasks ready for retry", tasksToRetry.Count);
+
+                        foreach (var task in tasksToRetry)
+                        {
+                            _logger.LogInformation("Task {TaskId} is ready for retry (attempt {RetryCount}/{MaxRetries})", 
+                                task.Id, task.RetryCount + 1, task.MaxRetries);
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during retry scheduler task");
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                }
+            }
+
+            _logger.LogInformation("Retry scheduler task stopped");
         }
     }
 }

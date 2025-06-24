@@ -371,6 +371,114 @@ namespace ConduitLLM.Http.Controllers
         }
 
         /// <summary>
+        /// Manually retries a failed video generation task.
+        /// </summary>
+        /// <param name="taskId">The task ID to retry.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Updated task status.</returns>
+        /// <response code="200">Task queued for retry.</response>
+        /// <response code="400">Task cannot be retried (not failed or exceeded max retries).</response>
+        /// <response code="401">Authentication failed.</response>
+        /// <response code="404">Task not found.</response>
+        /// <response code="500">Internal server error.</response>
+        [HttpPost("generations/tasks/{taskId}/retry")]
+        [ProducesResponseType(typeof(VideoGenerationTaskStatus), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        [ProducesResponseType(typeof(ProblemDetails), 404)]
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        public async Task<IActionResult> RetryTask(
+            [FromRoute][Required] string taskId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Get virtual key from HttpContext.Items (set by VirtualKeyAuthenticationMiddleware)
+                var virtualKey = HttpContext.Items["VirtualKey"] as string;
+                if (string.IsNullOrEmpty(virtualKey))
+                {
+                    return Unauthorized(new ProblemDetails
+                    {
+                        Title = "Unauthorized",
+                        Detail = "Virtual key not found in request context"
+                    });
+                }
+
+                // Get current task status
+                var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+                if (taskStatus == null)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Task Not Found",
+                        Detail = $"No task found with ID: {taskId}"
+                    });
+                }
+
+                // Validate task can be retried
+                if (taskStatus.State != TaskState.Failed)
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "Invalid Task State",
+                        Detail = $"Only failed tasks can be retried. Current state: {taskStatus.State}"
+                    });
+                }
+
+                if (!taskStatus.IsRetryable)
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "Task Not Retryable",
+                        Detail = "This task has been marked as non-retryable"
+                    });
+                }
+
+                if (taskStatus.RetryCount >= taskStatus.MaxRetries)
+                {
+                    return BadRequest(new ProblemDetails
+                    {
+                        Title = "Max Retries Exceeded",
+                        Detail = $"Task has already been retried {taskStatus.RetryCount} times (max: {taskStatus.MaxRetries})"
+                    });
+                }
+
+                // Reset task for retry
+                await _taskService.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Pending,
+                    error: $"Manual retry requested (attempt {taskStatus.RetryCount + 1}/{taskStatus.MaxRetries})",
+                    cancellationToken: cancellationToken);
+
+                _logger.LogInformation("Manual retry requested for task {TaskId} by virtual key {VirtualKey}", 
+                    taskId, virtualKey);
+
+                // Return updated status
+                var updatedStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+                var response = new VideoGenerationTaskStatus
+                {
+                    TaskId = taskId,
+                    Status = updatedStatus?.State.ToString().ToLowerInvariant() ?? "pending",
+                    Progress = updatedStatus?.Progress ?? 0,
+                    CreatedAt = updatedStatus?.CreatedAt ?? DateTimeOffset.UtcNow,
+                    UpdatedAt = updatedStatus?.UpdatedAt ?? DateTimeOffset.UtcNow,
+                    Error = $"Retry {updatedStatus?.RetryCount ?? 0}/{updatedStatus?.MaxRetries ?? 3} scheduled"
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrying task {TaskId}", taskId);
+                return StatusCode(500, new ProblemDetails
+                {
+                    Title = "Internal Server Error",
+                    Detail = "An error occurred while retrying the task"
+                });
+            }
+        }
+
+        /// <summary>
         /// Cancels a video generation task.
         /// </summary>
         /// <param name="taskId">The task ID to cancel.</param>

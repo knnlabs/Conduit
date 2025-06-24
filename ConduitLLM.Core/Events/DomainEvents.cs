@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Events
 {
@@ -987,9 +988,24 @@ namespace ConduitLLM.Core.Events
         public bool IsRetryable { get; init; } = true;
 
         /// <summary>
+        /// Number of retry attempts made
+        /// </summary>
+        public int RetryCount { get; init; } = 0;
+
+        /// <summary>
+        /// Maximum number of retries allowed
+        /// </summary>
+        public int MaxRetries { get; init; } = 3;
+
+        /// <summary>
         /// When the failure occurred
         /// </summary>
         public DateTime FailedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the task should be retried (if applicable)
+        /// </summary>
+        public DateTime? NextRetryAt { get; init; }
     }
 
     /// <summary>
@@ -1057,5 +1073,76 @@ namespace ConduitLLM.Core.Events
         /// Additional provider-specific options
         /// </summary>
         public Dictionary<string, object>? ProviderOptions { get; init; }
+    }
+
+    // ===============================
+    // Media Lifecycle Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Raised when any media (image or video) is successfully generated and stored to CDN.
+    /// Enables tracking of media lifecycle for future cleanup and cost management.
+    /// </summary>
+    public record MediaGenerationCompleted : DomainEvent
+    {
+        /// <summary>
+        /// Type of media generated (Image or Video)
+        /// </summary>
+        public MediaType MediaType { get; init; }
+
+        /// <summary>
+        /// Virtual Key ID that owns this media
+        /// </summary>
+        public int VirtualKeyId { get; init; }
+
+        /// <summary>
+        /// Public URL where the media is stored
+        /// </summary>
+        public string MediaUrl { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Storage key/path for the media file
+        /// </summary>
+        public string StorageKey { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Size of the media file in bytes
+        /// </summary>
+        public long FileSizeBytes { get; init; }
+
+        /// <summary>
+        /// MIME type of the media file
+        /// </summary>
+        public string ContentType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Model used to generate this media
+        /// </summary>
+        public string GeneratedByModel { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Prompt used to generate this media
+        /// </summary>
+        public string GenerationPrompt { get; init; } = string.Empty;
+
+        /// <summary>
+        /// When the media was generated
+        /// </summary>
+        public DateTime GeneratedAt { get; init; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// When the media should expire (if applicable)
+        /// </summary>
+        public DateTime? ExpiresAt { get; init; }
+
+        /// <summary>
+        /// Additional metadata specific to the media type
+        /// </summary>
+        public Dictionary<string, object> Metadata { get; init; } = new();
+
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => VirtualKeyId.ToString();
     }
 }

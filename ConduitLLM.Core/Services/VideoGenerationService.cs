@@ -213,6 +213,29 @@ namespace ConduitLLM.Core.Services
                             var storageResult = await _mediaStorage.StoreVideoAsync(videoStream, videoMediaMetadata);
                             video.Url = storageResult.Url;
                             video.B64Json = null; // Clear base64 data after storing
+                            
+                            // Publish MediaGenerationCompleted event for lifecycle tracking
+                            await PublishEventAsync(new MediaGenerationCompleted
+                            {
+                                MediaType = MediaType.Video,
+                                VirtualKeyId = virtualKeyInfo.Id,
+                                MediaUrl = storageResult.Url,
+                                StorageKey = storageResult.StorageKey,
+                                FileSizeBytes = videoMediaMetadata.FileSizeBytes,
+                                ContentType = videoMediaMetadata.ContentType,
+                                GeneratedByModel = request.Model,
+                                GenerationPrompt = request.Prompt,
+                                GeneratedAt = DateTime.UtcNow,
+                                Metadata = new Dictionary<string, object>
+                                {
+                                    ["width"] = videoMediaMetadata.Width,
+                                    ["height"] = videoMediaMetadata.Height,
+                                    ["duration"] = videoMediaMetadata.Duration,
+                                    ["frameRate"] = videoMediaMetadata.FrameRate,
+                                    ["resolution"] = videoMediaMetadata.Resolution
+                                },
+                                CorrelationId = requestId
+                            }, "media generation completed", new { MediaType = "Video", Model = request.Model });
                         }
                     }
                 }

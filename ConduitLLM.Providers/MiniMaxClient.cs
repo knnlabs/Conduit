@@ -644,28 +644,31 @@ namespace ConduitLLM.Providers
                             {
                                 try
                                 {
-                                    Logger.LogInformation("Downloading video for base64 conversion: {Url}", statusResult.Video.Url);
-                                    using var videoResponse = await httpClient.GetAsync(statusResult.Video.Url, cancellationToken);
+                                    Logger.LogInformation("Downloading video for base64 conversion: {Url}", statusResult.Video?.Url);
+                                    using var videoResponse = await httpClient.GetAsync(statusResult.Video?.Url ?? string.Empty, cancellationToken);
                                     if (videoResponse.IsSuccessStatusCode)
                                     {
                                         var videoBytes = await videoResponse.Content.ReadAsByteArrayAsync(cancellationToken);
                                         videoData[0].B64Json = Convert.ToBase64String(videoBytes);
                                         videoData[0].Url = null;
-                                        videoData[0].Metadata!.FileSizeBytes = videoBytes.Length;
+                                        if (videoData[0].Metadata != null)
+                                        {
+                                            videoData[0].Metadata.FileSizeBytes = videoBytes.Length;
+                                        }
                                     }
                                     else
                                     {
                                         Logger.LogWarning("Failed to download video from {Url}: {Status}", 
-                                            statusResult.Video.Url, videoResponse.StatusCode);
+                                            statusResult.Video?.Url, videoResponse.StatusCode);
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    Logger.LogError(ex, "Error downloading video from {Url}", statusResult.Video.Url);
+                                    Logger.LogError(ex, "Error downloading video from {Url}", statusResult.Video?.Url);
                                 }
                             }
                             
-                            var videoDuration = statusResult.Video.Duration ?? request.Duration ?? 6;
+                            var videoDuration = statusResult.Video?.Duration ?? request.Duration ?? 6;
                             var estimatedCost = EstimateVideoGenerationCost((int)videoDuration, request.Size ?? "1280x720");
                             
                             return new VideoGenerationResponse
