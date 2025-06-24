@@ -37,7 +37,6 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Gets or sets the JSON-serialized payload/request data.
         /// </summary>
-        [Column(TypeName = "text")]
         public string? Payload { get; set; }
 
         /// <summary>
@@ -54,13 +53,11 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Gets or sets the JSON-serialized result data.
         /// </summary>
-        [Column(TypeName = "text")]
         public string? Result { get; set; }
 
         /// <summary>
         /// Gets or sets the error message if the task failed.
         /// </summary>
-        [Column(TypeName = "text")]
         public string? Error { get; set; }
 
         /// <summary>
@@ -89,7 +86,6 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Gets or sets the JSON-serialized metadata.
         /// </summary>
-        [Column(TypeName = "text")]
         public string? Metadata { get; set; }
 
         /// <summary>

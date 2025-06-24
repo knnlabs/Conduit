@@ -19,18 +19,44 @@ namespace ConduitLLM.Configuration.Migrations
                 defaultValue: 0);
 
             // Convert string values to integers
-            migrationBuilder.Sql(@"
-                UPDATE AsyncTasks 
-                SET StateInt = CASE State
-                    WHEN 'Pending' THEN 0
-                    WHEN 'Processing' THEN 1
-                    WHEN 'Completed' THEN 2
-                    WHEN 'Failed' THEN 3
-                    WHEN 'Cancelled' THEN 4
-                    WHEN 'TimedOut' THEN 5
-                    ELSE 0
-                END
-            ");
+            // Check if table exists before updating (for PostgreSQL)
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                migrationBuilder.Sql(@"
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AsyncTasks') THEN
+                            UPDATE ""AsyncTasks"" 
+                            SET ""StateInt"" = CASE ""State""
+                                WHEN 'Pending' THEN 0
+                                WHEN 'Processing' THEN 1
+                                WHEN 'Completed' THEN 2
+                                WHEN 'Failed' THEN 3
+                                WHEN 'Cancelled' THEN 4
+                                WHEN 'TimedOut' THEN 5
+                                ELSE 0
+                            END;
+                        END IF;
+                    END $$;
+                ");
+            }
+            else
+            {
+                // SQLite version - check if table exists before updating
+                migrationBuilder.Sql(@"
+                    UPDATE AsyncTasks 
+                    SET StateInt = CASE State
+                        WHEN 'Pending' THEN 0
+                        WHEN 'Processing' THEN 1
+                        WHEN 'Completed' THEN 2
+                        WHEN 'Failed' THEN 3
+                        WHEN 'Cancelled' THEN 4
+                        WHEN 'TimedOut' THEN 5
+                        ELSE 0
+                    END
+                    WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='AsyncTasks');
+                ");
+            }
 
             // Drop old column
             migrationBuilder.DropColumn(
@@ -57,18 +83,44 @@ namespace ConduitLLM.Configuration.Migrations
                 defaultValue: "Pending");
 
             // Convert integer values back to strings
-            migrationBuilder.Sql(@"
-                UPDATE AsyncTasks 
-                SET StateString = CASE State
-                    WHEN 0 THEN 'Pending'
-                    WHEN 1 THEN 'Processing'
-                    WHEN 2 THEN 'Completed'
-                    WHEN 3 THEN 'Failed'
-                    WHEN 4 THEN 'Cancelled'
-                    WHEN 5 THEN 'TimedOut'
-                    ELSE 'Pending'
-                END
-            ");
+            // Check if table exists before updating (for PostgreSQL)
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                migrationBuilder.Sql(@"
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AsyncTasks') THEN
+                            UPDATE ""AsyncTasks"" 
+                            SET ""StateString"" = CASE ""State""
+                                WHEN 0 THEN 'Pending'
+                                WHEN 1 THEN 'Processing'
+                                WHEN 2 THEN 'Completed'
+                                WHEN 3 THEN 'Failed'
+                                WHEN 4 THEN 'Cancelled'
+                                WHEN 5 THEN 'TimedOut'
+                                ELSE 'Pending'
+                            END;
+                        END IF;
+                    END $$;
+                ");
+            }
+            else
+            {
+                // SQLite version - check if table exists before updating
+                migrationBuilder.Sql(@"
+                    UPDATE AsyncTasks 
+                    SET StateString = CASE State
+                        WHEN 0 THEN 'Pending'
+                        WHEN 1 THEN 'Processing'
+                        WHEN 2 THEN 'Completed'
+                        WHEN 3 THEN 'Failed'
+                        WHEN 4 THEN 'Cancelled'
+                        WHEN 5 THEN 'TimedOut'
+                        ELSE 'Pending'
+                    END
+                    WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='AsyncTasks');
+                ");
+            }
 
             // Drop old column
             migrationBuilder.DropColumn(

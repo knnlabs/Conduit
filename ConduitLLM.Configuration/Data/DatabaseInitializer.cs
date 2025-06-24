@@ -174,6 +174,8 @@ namespace ConduitLLM.Configuration.Data
             {
                 // Check if this is a new database by looking for the migrations history table
                 bool isNewDatabase = false;
+                bool hasAnyTables = false;
+                
                 try
                 {
                     var sql = _dbProvider == "postgres"
@@ -188,21 +190,24 @@ namespace ConduitLLM.Configuration.Data
                     isNewDatabase = _dbProvider == "postgres"
                         ? !(bool)(result ?? false)
                         : Convert.ToInt32(result ?? 0) == 0;
+                        
+                    // Also check if we have any application tables
+                    hasAnyTables = await TableExistsAsync(context, "VirtualKeys") || 
+                                   await TableExistsAsync(context, "GlobalSettings") ||
+                                   await TableExistsAsync(context, "AsyncTasks");
                 }
                 catch
                 {
                     // If we can't check, assume it's a new database
                     isNewDatabase = true;
+                    hasAnyTables = false;
                 }
 
                 if (isNewDatabase)
                 {
                     _logger.LogInformation("No migration history found. Initializing database...");
 
-                    // Check if any tables already exist
-                    var hasExistingTables = await TableExistsAsync(context, "GlobalSettings");
-
-                    if (hasExistingTables)
+                    if (hasAnyTables)
                     {
                         _logger.LogWarning("Database has existing tables but no migration history. This might be from a previous run or manual creation.");
 
@@ -221,17 +226,19 @@ namespace ConduitLLM.Configuration.Data
                     }
                     else
                     {
-                        // Fresh database - use EnsureCreated for cross-database compatibility
-                        // This avoids issues with database-specific migration SQL
-                        _logger.LogInformation("Creating database schema using EnsureCreated for cross-database compatibility...");
+                        // Fresh database - use EnsureCreated for provider-agnostic schema creation
+                        _logger.LogInformation("Creating database schema for fresh database...");
 
                         try
                         {
+                            // Use EnsureCreated for fresh databases - it's provider-agnostic
+                            // and creates the schema based on the current model
                             await context.Database.EnsureCreatedAsync();
-                            _logger.LogInformation("Database schema created successfully");
+                            _logger.LogInformation("Database schema created successfully using EnsureCreated");
 
-                            // Create migration history table and mark all migrations as applied
-                            // This ensures future migrations can be applied correctly
+                            // Mark all migrations as applied to ensure future migrations work correctly
+                            // This is important so that when we add new migrations later, 
+                            // EF Core knows the current state
                             await CreateMigrationHistoryTableAsync(context);
                             await MarkAllMigrationsAsAppliedAsync(context);
                             _logger.LogInformation("Migration history initialized for future updates");
@@ -239,7 +246,20 @@ namespace ConduitLLM.Configuration.Data
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Failed to create database schema");
-                            throw;
+                            
+                            // If even EnsureCreated fails, try migrations as last resort
+                            // This handles edge cases where the model might have issues
+                            try
+                            {
+                                _logger.LogWarning("Attempting to use migrations as fallback...");
+                                await context.Database.MigrateAsync();
+                                _logger.LogInformation("Database schema created using migrations fallback");
+                            }
+                            catch (Exception innerEx)
+                            {
+                                _logger.LogError(innerEx, "Failed to create database schema with migrations fallback");
+                                throw new AggregateException("Failed to initialize database with both EnsureCreated and Migrations", ex, innerEx);
+                            }
                         }
                     }
                 }
