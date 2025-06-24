@@ -1,4 +1,6 @@
+using System;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -10,15 +12,19 @@ namespace ConduitLLM.Http.Consumers
     /// </summary>
     public class ModelCostCacheInvalidationHandler : IConsumer<ModelCostChanged>
     {
+        private readonly IModelCostCache? _modelCostCache;
         private readonly ILogger<ModelCostCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelCostCacheInvalidationHandler
         /// </summary>
+        /// <param name="modelCostCache">Optional model cost cache</param>
         /// <param name="logger">Logger for diagnostics</param>
         public ModelCostCacheInvalidationHandler(
+            IModelCostCache? modelCostCache,
             ILogger<ModelCostCacheInvalidationHandler> logger)
         {
+            _modelCostCache = modelCostCache;
             _logger = logger;
         }
 
@@ -54,10 +60,21 @@ namespace ConduitLLM.Http.Consumers
                     @event.ModelIdPattern);
             }
 
-            // TODO: Implement cache invalidation when IModelCostCache is available
-            // Future implementation will invalidate model cost and provider model caches
-
-            await Task.CompletedTask;
+            // Invalidate cache if available
+            if (_modelCostCache != null)
+            {
+                try
+                {
+                    // Since the ModelCostChanged event structure is not fully defined yet,
+                    // we'll do a conservative approach and clear all model costs
+                    await _modelCostCache.ClearAllModelCostsAsync();
+                    _logger.LogInformation("Model cost cache cleared due to cost change event");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invalidating model cost cache");
+                }
+            }
         }
     }
 }

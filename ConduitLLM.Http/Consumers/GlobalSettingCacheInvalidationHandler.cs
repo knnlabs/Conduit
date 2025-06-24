@@ -1,4 +1,6 @@
+using System;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -10,15 +12,19 @@ namespace ConduitLLM.Http.Consumers
     /// </summary>
     public class GlobalSettingCacheInvalidationHandler : IConsumer<GlobalSettingChanged>
     {
+        private readonly IGlobalSettingCache? _globalSettingCache;
         private readonly ILogger<GlobalSettingCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the GlobalSettingCacheInvalidationHandler
         /// </summary>
+        /// <param name="globalSettingCache">Optional global setting cache</param>
         /// <param name="logger">Logger for diagnostics</param>
         public GlobalSettingCacheInvalidationHandler(
+            IGlobalSettingCache? globalSettingCache,
             ILogger<GlobalSettingCacheInvalidationHandler> logger)
         {
+            _globalSettingCache = globalSettingCache;
             _logger = logger;
         }
 
@@ -52,10 +58,44 @@ namespace ConduitLLM.Http.Consumers
                     string.Join(", ", @event.ChangedProperties));
             }
 
-            // TODO: Implement cache invalidation when IGlobalSettingCache is available
-            // Future implementation will invalidate specific settings and authentication keys
-
-            await Task.CompletedTask;
+            // Invalidate cache if available
+            if (_globalSettingCache != null)
+            {
+                try
+                {
+                    // Handle different change types
+                    switch (@event.ChangeType)
+                    {
+                        case "Created":
+                        case "Updated":
+                            await _globalSettingCache.InvalidateSettingAsync(@event.SettingKey);
+                            _logger.LogDebug("Global setting cache invalidated for key: {SettingKey}", @event.SettingKey);
+                            break;
+                            
+                        case "Deleted":
+                            await _globalSettingCache.InvalidateSettingAsync(@event.SettingKey);
+                            _logger.LogDebug("Global setting cache invalidated for deleted key: {SettingKey}", @event.SettingKey);
+                            break;
+                            
+                        case "BulkUpdate":
+                            // For bulk updates, clear all settings to ensure consistency
+                            await _globalSettingCache.ClearAllSettingsAsync();
+                            _logger.LogWarning("All global setting cache entries cleared due to bulk update");
+                            break;
+                    }
+                    
+                    // If it's an auth-related setting, invalidate all auth settings
+                    if (@event.SettingKey.StartsWith("Auth", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _globalSettingCache.InvalidateAuthenticationSettingsAsync();
+                        _logger.LogWarning("All authentication-related cache entries invalidated due to auth setting change");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invalidating global setting cache for key: {SettingKey}", @event.SettingKey);
+                }
+            }
         }
     }
 }

@@ -302,6 +302,12 @@ if (!string.IsNullOrEmpty(redisConnectionString))
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
     
+    // Register additional Redis cache services
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCredentialCache, RedisProviderCredentialCache>();
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IGlobalSettingCache, RedisGlobalSettingCache>();
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
+    
     // Register Redis distributed lock service
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.RedisDistributedLockService>();
     
@@ -317,7 +323,8 @@ if (!string.IsNullOrEmpty(redisConnectionString))
         return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, cache, publishEndpoint, logger);
     });
     
-    Console.WriteLine("[Conduit] Using Redis-cached Virtual Key validation (high-performance mode) with distributed locking");
+    Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with distributed locking");
+    Console.WriteLine("[Conduit] Enabled caches: VirtualKey, ProviderCredential, GlobalSetting, ModelCost, IpFilter");
 }
 else
 {
