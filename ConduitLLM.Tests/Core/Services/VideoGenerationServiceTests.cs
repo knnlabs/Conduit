@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
+using MassTransit;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -20,6 +22,8 @@ namespace ConduitLLM.Tests.Core.Services
         private readonly Mock<IVirtualKeyService> _virtualKeyServiceMock;
         private readonly Mock<IMediaStorageService> _mediaStorageMock;
         private readonly Mock<IAsyncTaskService> _taskServiceMock;
+        private readonly Mock<ICancellableTaskRegistry> _taskRegistryMock;
+        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
         private readonly Mock<ILogger<VideoGenerationService>> _loggerMock;
         private readonly VideoGenerationService _service;
 
@@ -31,6 +35,8 @@ namespace ConduitLLM.Tests.Core.Services
             _virtualKeyServiceMock = new Mock<IVirtualKeyService>();
             _mediaStorageMock = new Mock<IMediaStorageService>();
             _taskServiceMock = new Mock<IAsyncTaskService>();
+            _taskRegistryMock = new Mock<ICancellableTaskRegistry>();
+            _publishEndpointMock = new Mock<IPublishEndpoint>();
             _loggerMock = new Mock<ILogger<VideoGenerationService>>();
 
             _service = new VideoGenerationService(
@@ -40,7 +46,9 @@ namespace ConduitLLM.Tests.Core.Services
                 _virtualKeyServiceMock.Object,
                 _mediaStorageMock.Object,
                 _taskServiceMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _publishEndpointMock.Object,
+                _taskRegistryMock.Object);
         }
 
         [Fact]
@@ -281,6 +289,154 @@ namespace ConduitLLM.Tests.Core.Services
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _service.GetVideoGenerationStatusAsync(taskId, virtualKey));
             Assert.Contains("has no result", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelVideoGenerationAsync_WithTaskInRegistry_CancelsAndUpdatesStatus()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKey = "test-key";
+
+            _taskRegistryMock.Setup(x => x.TryCancel(taskId))
+                .Returns(true);
+
+            _taskServiceMock.Setup(x => x.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Cancelled,
+                    It.IsAny<int?>(),
+                    It.IsAny<object?>(),
+                    "User requested cancellation",
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.CancelVideoGenerationAsync(taskId, virtualKey);
+
+            // Assert
+            Assert.True(result);
+            _taskRegistryMock.Verify(x => x.TryCancel(taskId), Times.Once);
+            _taskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                taskId,
+                TaskState.Cancelled,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                "User requested cancellation",
+                It.IsAny<CancellationToken>()), Times.Once);
+            _publishEndpointMock.Verify(x => x.Publish(
+                It.Is<VideoGenerationCancelled>(evt => 
+                    evt.RequestId == taskId &&
+                    evt.Reason == "User requested cancellation"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelVideoGenerationAsync_TaskNotInRegistry_StillUpdatesStatus()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKey = "test-key";
+
+            _taskRegistryMock.Setup(x => x.TryCancel(taskId))
+                .Returns(false);
+
+            _taskServiceMock.Setup(x => x.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Cancelled,
+                    It.IsAny<int?>(),
+                    It.IsAny<object?>(),
+                    "User requested cancellation",
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.CancelVideoGenerationAsync(taskId, virtualKey);
+
+            // Assert
+            Assert.True(result);
+            _taskRegistryMock.Verify(x => x.TryCancel(taskId), Times.Once);
+            _taskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                taskId,
+                TaskState.Cancelled,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                "User requested cancellation",
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelVideoGenerationAsync_NoRegistry_OnlyUpdatesStatus()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKey = "test-key";
+
+            // Create service without task registry
+            var service = new VideoGenerationService(
+                _clientFactoryMock.Object,
+                _capabilityServiceMock.Object,
+                _costServiceMock.Object,
+                _virtualKeyServiceMock.Object,
+                _mediaStorageMock.Object,
+                _taskServiceMock.Object,
+                _loggerMock.Object,
+                _publishEndpointMock.Object,
+                null); // No task registry
+
+            _taskServiceMock.Setup(x => x.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Cancelled,
+                    It.IsAny<int?>(),
+                    It.IsAny<object?>(),
+                    "User requested cancellation",
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await service.CancelVideoGenerationAsync(taskId, virtualKey);
+
+            // Assert
+            Assert.True(result);
+            _taskRegistryMock.Verify(x => x.TryCancel(It.IsAny<string>()), Times.Never);
+            _taskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                taskId,
+                TaskState.Cancelled,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                "User requested cancellation",
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CancelVideoGenerationAsync_UpdateStatusFails_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKey = "test-key";
+
+            _taskRegistryMock.Setup(x => x.TryCancel(taskId))
+                .Returns(false);
+
+            _taskServiceMock.Setup(x => x.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Cancelled,
+                    It.IsAny<int?>(),
+                    It.IsAny<object?>(),
+                    "User requested cancellation",
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Update failed"));
+
+            // Act
+            var result = await _service.CancelVideoGenerationAsync(taskId, virtualKey);
+
+            // Assert
+            Assert.False(result);
+            _taskRegistryMock.Verify(x => x.TryCancel(taskId), Times.Once);
+            _publishEndpointMock.Verify(x => x.Publish(
+                It.Is<VideoGenerationCancelled>(evt => 
+                    evt.RequestId == taskId &&
+                    evt.Reason == "User requested cancellation"),
+                It.IsAny<CancellationToken>()), Times.Once); // Event is still published
         }
     }
 }

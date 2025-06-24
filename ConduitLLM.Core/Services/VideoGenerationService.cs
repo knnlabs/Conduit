@@ -24,6 +24,7 @@ namespace ConduitLLM.Core.Services
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaStorageService _mediaStorage;
         private readonly IAsyncTaskService _taskService;
+        private readonly ICancellableTaskRegistry? _taskRegistry;
         private readonly ILogger<VideoGenerationService> _logger;
 
         public VideoGenerationService(
@@ -34,7 +35,8 @@ namespace ConduitLLM.Core.Services
             IMediaStorageService mediaStorage,
             IAsyncTaskService taskService,
             ILogger<VideoGenerationService> logger,
-            IPublishEndpoint? publishEndpoint = null)
+            IPublishEndpoint? publishEndpoint = null,
+            ICancellableTaskRegistry? taskRegistry = null)
             : base(publishEndpoint, logger)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -44,6 +46,7 @@ namespace ConduitLLM.Core.Services
             _mediaStorage = mediaStorage ?? throw new ArgumentNullException(nameof(mediaStorage));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _taskRegistry = taskRegistry;
         }
 
         /// <inheritdoc/>
@@ -507,19 +510,52 @@ namespace ConduitLLM.Core.Services
         {
             _logger.LogInformation("Cancelling video generation task {TaskId}", taskId);
 
-            // Publish VideoGenerationCancelled event
+            var cancelled = false;
+
+            // Try to cancel via the task registry if available
+            if (_taskRegistry != null)
+            {
+                cancelled = _taskRegistry.TryCancel(taskId);
+                if (cancelled)
+                {
+                    _logger.LogInformation("Successfully requested cancellation for task {TaskId} via registry", taskId);
+                }
+                else
+                {
+                    _logger.LogWarning("Task {TaskId} not found in cancellable task registry", taskId);
+                }
+            }
+
+            // Update the task status to cancelled
+            try
+            {
+                await _taskService.UpdateTaskStatusAsync(
+                    taskId,
+                    TaskState.Cancelled,
+                    error: "User requested cancellation",
+                    cancellationToken: cancellationToken);
+                
+                cancelled = true;
+                _logger.LogInformation("Updated task {TaskId} status to cancelled", taskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update task {TaskId} status to cancelled", taskId);
+            }
+
+            // Publish VideoGenerationCancelled event for distributed systems
             await PublishEventAsync(
                 new VideoGenerationCancelled
                 {
                     RequestId = taskId,
                     CancelledAt = DateTime.UtcNow,
-                    CorrelationId = taskId
+                    CorrelationId = taskId,
+                    Reason = "User requested cancellation"
                 },
                 "video generation cancellation",
                 new { TaskId = taskId });
 
-            // TODO: Implement actual cancellation logic
-            return await Task.FromResult(true);
+            return cancelled;
         }
 
         /// <inheritdoc/>

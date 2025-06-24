@@ -272,17 +272,32 @@ namespace ConduitLLM.Core.Services
             
             try
             {
+                // Try to cancel the running task via the registry
+                var cancelledViaRegistry = false;
+                if (_taskRegistry.TryCancel(cancellation.RequestId))
+                {
+                    cancelledViaRegistry = true;
+                    _logger.LogInformation("Successfully cancelled running task {RequestId} via registry", 
+                        cancellation.RequestId);
+                }
+                else
+                {
+                    _logger.LogDebug("Task {RequestId} not found in registry, it may have already completed", 
+                        cancellation.RequestId);
+                }
+                
                 // Update task status to cancelled
                 await _taskService.UpdateTaskStatusAsync(
                     cancellation.RequestId, 
                     TaskState.Cancelled, 
                     error: cancellation.Reason ?? "User requested cancellation");
                 
-                // TODO: Implement actual cancellation logic with providers
-                // For now, just mark as cancelled
+                // If we cancelled via registry, the task's cancellation token was triggered
+                // and the running operation should stop. The provider implementation
+                // needs to respect the cancellation token for this to work properly.
                 
-                _logger.LogInformation("Successfully cancelled video generation task {RequestId}", 
-                    cancellation.RequestId);
+                _logger.LogInformation("Successfully updated video generation task {RequestId} status to cancelled (registry cancellation: {CancelledViaRegistry})", 
+                    cancellation.RequestId, cancelledViaRegistry);
             }
             catch (Exception ex)
             {
