@@ -13,6 +13,7 @@
 @inject IToastService ToastService
 @inject ILogger<VideoGeneration> _logger
 @using ConduitLLM.WebUI.Services
+@implements IDisposable
 
 <PageTitle>Video Generation - ConduitLLM</PageTitle>
 
@@ -502,6 +503,8 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAvailableModels();
+        // Load persisted active tasks
+        await LoadPersistedTasks();
         // Start periodic status check for active tasks
         statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
     }
@@ -674,6 +677,9 @@
                 
                 activeTasks.Add(task);
                 
+                // Persist active tasks
+                await SavePersistedTasks();
+                
                 // Add to recent prompts
                 if (recentPromptsComponent != null)
                 {
@@ -727,10 +733,16 @@
             
             // Remove completed/failed tasks after 30 seconds
             var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
-            activeTasks.RemoveAll(t => 
+            var removedCount = activeTasks.RemoveAll(t => 
                 (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
                 && t.CompletedAt.HasValue 
                 && t.CompletedAt.Value < cutoffTime);
+            
+            // Persist if any tasks were updated or removed
+            if (removedCount > 0 || activeTasks.Any(t => t.Status == "completed" || t.Status == "failed"))
+            {
+                await SavePersistedTasks();
+            }
             
             await InvokeAsync(StateHasChanged);
         }
@@ -754,6 +766,7 @@
             {
                 task.Status = "cancelled";
                 task.CompletedAt = DateTimeOffset.UtcNow;
+                await SavePersistedTasks();
                 ToastService.ShowInfo($"Video generation task {taskId} cancelled");
             }
             else
@@ -876,6 +889,47 @@
         return $"{len:F2} {sizes[order]}";
     }
 
+    private async Task LoadPersistedTasks()
+    {
+        try
+        {
+            var json = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "conduit-video-tasks");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var tasks = JsonSerializer.Deserialize<List<VideoGenerationTask>>(json);
+                if (tasks != null)
+                {
+                    // Only load tasks that are still potentially active (not older than 1 hour)
+                    var oneHourAgo = DateTimeOffset.UtcNow.AddHours(-1);
+                    activeTasks = tasks.Where(t => 
+                        t.CreatedAt > oneHourAgo && 
+                        (t.Status == "pending" || t.Status == "running" || 
+                         (t.CompletedAt.HasValue && t.CompletedAt.Value > DateTimeOffset.UtcNow.AddSeconds(-30))))
+                        .ToList();
+                    
+                    _logger.LogInformation("Loaded {Count} persisted video generation tasks", activeTasks.Count);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading persisted video tasks");
+        }
+    }
+    
+    private async Task SavePersistedTasks()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(activeTasks);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "conduit-video-tasks", json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving persisted video tasks");
+        }
+    }
+    
     public void Dispose()
     {
         statusCheckTimer?.Dispose();

@@ -601,14 +601,15 @@ namespace ConduitLLM.Core.Services
 
                 // Reconstruct the video generation request from metadata
                 var metadata = taskStatus.Metadata as dynamic;
+                var originalRequest = metadata?.Request;
                 var videoRequest = new VideoGenerationRequest
                 {
                     Model = request.Model,
                     Prompt = request.Prompt,
-                    Duration = metadata?.duration ?? 6,
-                    Size = metadata?.size ?? "1280x720",
-                    Fps = metadata?.fps ?? 30,
-                    ResponseFormat = metadata?.response_format ?? "url"
+                    Duration = originalRequest?.Duration ?? 6,
+                    Size = originalRequest?.Size ?? "1280x720",
+                    Fps = originalRequest?.Fps ?? 30,
+                    ResponseFormat = originalRequest?.ResponseFormat ?? "url"
                 };
 
                 // Store video in media storage if base64 data is provided

@@ -779,7 +779,11 @@ public class ConduitApiClient : IConduitApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                return JsonSerializer.Deserialize<VideoGenerationTaskResponse>(responseContent, _jsonOptions);
+                _logger.LogInformation("Video generation async response: {Response}", responseContent);
+                var result = JsonSerializer.Deserialize<VideoGenerationTaskResponse>(responseContent, _jsonOptions);
+                _logger.LogInformation("Deserialized task response: TaskId={TaskId}, Status={Status}", 
+                    result?.TaskId ?? "null", result?.Status ?? "null");
+                return result;
             }
             else
             {
@@ -805,7 +809,7 @@ public class ConduitApiClient : IConduitApiClient
         try
         {
             // Prepare the request
-            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"/v1/videos/generations/{taskId}/status");
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"/v1/videos/generations/tasks/{taskId}");
             requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             // Use provided virtual key or get WebUI key
