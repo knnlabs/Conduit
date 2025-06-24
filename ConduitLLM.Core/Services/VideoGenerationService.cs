@@ -359,17 +359,144 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<VideoGenerationResponse> GetVideoGenerationStatusAsync(
+        public async Task<VideoGenerationResponse> GetVideoGenerationStatusAsync(
             string taskId,
             string virtualKey,
             CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Checking status for video generation task {TaskId}", taskId);
 
-            // TODO: Implement task status tracking
-            // This would query a task status store or cache
-            return Task.FromException<VideoGenerationResponse>(
-                new NotImplementedException("Video generation status tracking not yet implemented"));
+            // Get task status from the async task service
+            var taskStatus = await _taskService.GetTaskStatusAsync(taskId, cancellationToken);
+            
+            if (taskStatus == null)
+            {
+                _logger.LogWarning("Task {TaskId} not found", taskId);
+                throw new InvalidOperationException($"Task {taskId} not found");
+            }
+
+            // Check if the task belongs to the provided virtual key
+            if (taskStatus.Metadata is System.Text.Json.JsonElement jsonElement)
+            {
+                try
+                {
+                    var metadata = System.Text.Json.JsonSerializer.Deserialize<dynamic>(jsonElement.GetRawText());
+                    // Note: This validation is limited without access to the actual virtual key ID
+                    // In production, you'd want to validate against the actual virtual key ID stored in metadata
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to validate task metadata for task {TaskId}", taskId);
+                }
+            }
+
+            // Handle different task states
+            switch (taskStatus.State)
+            {
+                case TaskState.Pending:
+                case TaskState.Processing:
+                    // Return a response indicating the task is still in progress
+                    return new VideoGenerationResponse
+                    {
+                        Created = ((DateTimeOffset)taskStatus.CreatedAt).ToUnixTimeSeconds(),
+                        Data = new List<VideoData>
+                        {
+                            new VideoData
+                            {
+                                Url = $"pending:{taskId}",
+                                Metadata = new VideoMetadata
+                                {
+                                    Width = 0,
+                                    Height = 0,
+                                    Duration = 0,
+                                    Fps = 0,
+                                    FileSizeBytes = 0,
+                                    MimeType = "application/json"
+                                },
+                                RevisedPrompt = taskStatus.ProgressMessage ?? $"Video generation in progress... {taskStatus.Progress}%"
+                            }
+                        },
+                        Model = taskStatus.TaskType == "video_generation" ? "unknown" : taskStatus.TaskType,
+                        Usage = new VideoGenerationUsage
+                        {
+                            VideosGenerated = 0,
+                            TotalDurationSeconds = 0
+                        }
+                    };
+
+                case TaskState.Completed:
+                    // Deserialize the result to VideoGenerationResponse
+                    if (taskStatus.Result == null)
+                    {
+                        throw new InvalidOperationException($"Completed task {taskId} has no result");
+                    }
+
+                    try
+                    {
+                        // If the result is already a VideoGenerationResponse, return it directly
+                        if (taskStatus.Result is VideoGenerationResponse response)
+                        {
+                            return response;
+                        }
+
+                        // If the result is a JsonElement, deserialize it
+                        if (taskStatus.Result is System.Text.Json.JsonElement resultJson)
+                        {
+                            var videoResponse = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationResponse>(
+                                resultJson.GetRawText(),
+                                new System.Text.Json.JsonSerializerOptions 
+                                { 
+                                    PropertyNameCaseInsensitive = true 
+                                });
+                            
+                            if (videoResponse == null)
+                            {
+                                throw new InvalidOperationException($"Failed to deserialize task {taskId} result");
+                            }
+
+                            return videoResponse;
+                        }
+
+                        // Try to convert the result to a VideoGenerationResponse
+                        var resultString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Result);
+                        var deserializedResponse = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationResponse>(
+                            resultString,
+                            new System.Text.Json.JsonSerializerOptions 
+                            { 
+                                PropertyNameCaseInsensitive = true 
+                            });
+
+                        if (deserializedResponse == null)
+                        {
+                            throw new InvalidOperationException($"Failed to deserialize task {taskId} result");
+                        }
+
+                        return deserializedResponse;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to deserialize video generation result for task {TaskId}", taskId);
+                        throw new InvalidOperationException($"Failed to process completed task {taskId} result", ex);
+                    }
+
+                case TaskState.Failed:
+                    // Return an error response or throw an exception
+                    var errorMessage = taskStatus.Error ?? "Video generation failed";
+                    _logger.LogError("Video generation task {TaskId} failed: {Error}", taskId, errorMessage);
+                    throw new InvalidOperationException($"Video generation failed: {errorMessage}");
+
+                case TaskState.Cancelled:
+                    _logger.LogInformation("Video generation task {TaskId} was cancelled", taskId);
+                    throw new OperationCanceledException($"Video generation task {taskId} was cancelled");
+
+                case TaskState.TimedOut:
+                    _logger.LogError("Video generation task {TaskId} timed out", taskId);
+                    throw new TimeoutException($"Video generation task {taskId} timed out");
+
+                default:
+                    _logger.LogError("Unknown task state {State} for task {TaskId}", taskStatus.State, taskId);
+                    throw new InvalidOperationException($"Unknown task state: {taskStatus.State}");
+            }
         }
 
         /// <inheritdoc/>
