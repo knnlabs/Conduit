@@ -307,6 +307,7 @@ namespace ConduitLLM.Core.Events
         public bool SupportsImageGeneration { get; init; }
         public bool SupportsVision { get; init; }
         public bool SupportsEmbeddings { get; init; }
+        public bool SupportsVideoGeneration { get; init; }
         public bool SupportsAudioTranscription { get; init; }
         public bool SupportsTextToSpeech { get; init; }
         public bool SupportsRealtimeAudio { get; init; }

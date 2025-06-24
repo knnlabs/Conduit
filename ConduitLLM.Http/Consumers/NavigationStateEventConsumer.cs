@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.Services;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ConduitLLM.Http.Consumers
@@ -140,14 +141,28 @@ namespace ConduitLLM.Http.Consumers
             
             try
             {
+                // Calculate capability-specific counts from the model capabilities
+                var embeddingCount = @event.ModelCapabilities.Values.Count(c => c.SupportsEmbeddings);
+                var visionCount = @event.ModelCapabilities.Values.Count(c => c.SupportsVision);
+                var imageGenCount = @event.ModelCapabilities.Values.Count(c => c.SupportsImageGeneration);
+                var videoGenCount = @event.ModelCapabilities.Values.Count(c => c.SupportsVideoGeneration);
+
                 await _notificationService.NotifyModelCapabilitiesDiscoveredAsync(
                     @event.ProviderName,
-                    @event.ModelCapabilities.Count);
+                    @event.ModelCapabilities.Count,
+                    embeddingCount,
+                    visionCount,
+                    imageGenCount,
+                    videoGenCount);
                 
                 _logger.LogInformation(
-                    "Pushed real-time update for model capabilities discovered: {ProviderName} ({ModelCount} models)",
+                    "Pushed real-time update for model capabilities discovered: {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)",
                     @event.ProviderName,
-                    @event.ModelCapabilities.Count);
+                    @event.ModelCapabilities.Count,
+                    embeddingCount,
+                    visionCount,
+                    imageGenCount,
+                    videoGenCount);
             }
             catch (Exception ex)
             {

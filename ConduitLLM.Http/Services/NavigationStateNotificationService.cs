@@ -24,7 +24,7 @@ namespace ConduitLLM.Http.Services
         /// <summary>
         /// Notifies all connected clients of model capabilities discovery
         /// </summary>
-        Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount);
+        Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0);
         
         /// <summary>
         /// Notifies specific model subscribers of availability change
@@ -111,7 +111,7 @@ namespace ConduitLLM.Http.Services
         }
 
         /// <inheritdoc />
-        public async Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount)
+        public async Task NotifyModelCapabilitiesDiscoveredAsync(string providerName, int modelCount, int embeddingCount = 0, int visionCount = 0, int imageGenCount = 0, int videoGenCount = 0)
         {
             try
             {
@@ -122,13 +122,18 @@ namespace ConduitLLM.Http.Services
                     {
                         providerName,
                         modelCount,
+                        embeddingCount,
+                        visionCount,
+                        imageGenCount,
+                        videoGenCount,
                         timestamp = DateTime.UtcNow
                     }
                 };
 
                 await _hubContext.Clients.Group("navigation-updates").SendAsync("NavigationStateUpdate", notification);
                 
-                _logger.LogDebug("Sent model capabilities discovered notification for {ProviderName} ({ModelCount} models)", providerName, modelCount);
+                _logger.LogDebug("Sent model capabilities discovered notification for {ProviderName} ({ModelCount} models, {EmbeddingCount} embeddings, {VisionCount} vision, {ImageGenCount} image gen, {VideoGenCount} video gen)", 
+                    providerName, modelCount, embeddingCount, visionCount, imageGenCount, videoGenCount);
             }
             catch (Exception ex)
             {

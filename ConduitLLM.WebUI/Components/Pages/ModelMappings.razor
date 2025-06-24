@@ -51,6 +51,10 @@
                 <i class="fa fa-video-camera me-2 text-danger"></i>
                 <span class="small">@GetVideoGenerationCount() Video Gen</span>
             </div>
+            <div class="stat-item mt-2">
+                <i class="fa fa-vector-square me-2 text-dark"></i>
+                <span class="small">@GetEmbeddingCount() Embeddings</span>
+            </div>
         </Statistics>
     </PageHeader>
 
@@ -421,6 +425,8 @@
             capabilities.Add("TTS", "Convert text to speech");
         if (mapping.SupportsRealtimeAudio)
             capabilities.Add("Realtime", "Real-time audio processing");
+        if (mapping.SupportsEmbeddings)
+            capabilities.Add("Embeddings", "Generate text embeddings for semantic search");
 
         return capabilities;
     }
@@ -493,6 +499,14 @@
     private int GetVideoGenerationCount()
     {
         return modelMappings?.Count(m => m.IsEnabled && m.SupportsVideoGeneration) ?? 0;
+    }
+
+    /// <summary>
+    /// Gets the count of models with embedding capability.
+    /// </summary>
+    private int GetEmbeddingCount()
+    {
+        return modelMappings?.Count(m => m.IsEnabled && m.SupportsEmbeddings) ?? 0;
     }
 
     /// <summary>
