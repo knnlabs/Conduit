@@ -159,6 +159,13 @@ namespace ConduitLLM.Tests.TestHelpers.Builders
             return this;
         }
 
+        public AsyncTaskBuilder WithArchivedAt(DateTime archivedAt)
+        {
+            _task.ArchivedAt = archivedAt;
+            _task.IsArchived = true;
+            return this;
+        }
+
         public AsyncTask Build() => _task;
     }
 

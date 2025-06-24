@@ -57,9 +57,7 @@ namespace ConduitLLM.Tests.Repositories
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(task.Id, result.Id);
-            Assert.Equal(task.Type, result.Type);
-            Assert.Equal(task.VirtualKeyId, result.VirtualKeyId);
+            Assert.Equal(task.Id, result);
 
             // Verify it was actually saved
             await using var verifyContext = new ConfigurationDbContext(_options);
@@ -110,7 +108,7 @@ namespace ConduitLLM.Tests.Repositories
             // Arrange
             var task = new AsyncTaskBuilder()
                 .WithId("update-test")
-                .WithState(Core.Models.TaskState.Pending)
+                .WithState(ConduitLLM.Core.Interfaces.TaskState.Pending)
                 .Build();
 
             await using (var context = new ConfigurationDbContext(_options))
@@ -120,7 +118,7 @@ namespace ConduitLLM.Tests.Repositories
             }
 
             // Modify the task
-            task.State = (int)Core.Models.TaskState.Processing;
+            task.State = (int)ConduitLLM.Core.Interfaces.TaskState.Processing;
             task.Progress = 50;
             task.ProgressMessage = "Processing...";
             task.UpdatedAt = DateTime.UtcNow;
@@ -135,7 +133,7 @@ namespace ConduitLLM.Tests.Repositories
             await using var verifyContext = new ConfigurationDbContext(_options);
             var updatedTask = await verifyContext.AsyncTasks.FindAsync(task.Id);
             Assert.NotNull(updatedTask);
-            Assert.Equal((int)Core.Models.TaskState.Processing, updatedTask.State);
+            Assert.Equal((int)ConduitLLM.Core.Interfaces.TaskState.Processing, updatedTask.State);
             Assert.Equal(50, updatedTask.Progress);
             Assert.Equal("Processing...", updatedTask.ProgressMessage);
         }

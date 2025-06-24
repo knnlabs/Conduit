@@ -376,7 +376,7 @@ namespace ConduitLLM.Tests
                 });
 
             // Act
-            var response = await client.CreateVideoAsync(request, credentials.ApiKey);
+            var response = await client.CreateVideoAsync(request, _credentials.ApiKey);
 
             // Assert
             Assert.NotNull(response);

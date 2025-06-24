@@ -126,7 +126,7 @@ namespace ConduitLLM.Tests.Services
 
             _mockStorageService
                 .Setup(s => s.DeleteAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(true);
 
             _mockMediaRepository
                 .Setup(r => r.DeleteAsync(It.IsAny<Guid>()))
@@ -187,7 +187,7 @@ namespace ConduitLLM.Tests.Services
 
             _mockStorageService
                 .Setup(s => s.DeleteAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(true);
 
             _mockMediaRepository
                 .Setup(r => r.DeleteAsync(It.IsAny<Guid>()))
@@ -217,7 +217,7 @@ namespace ConduitLLM.Tests.Services
 
             _mockStorageService
                 .Setup(s => s.DeleteAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(true);
 
             _mockMediaRepository
                 .Setup(r => r.DeleteAsync(It.IsAny<Guid>()))
@@ -259,7 +259,7 @@ namespace ConduitLLM.Tests.Services
 
             _mockStorageService
                 .Setup(s => s.DeleteAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(true);
 
             _mockMediaRepository
                 .Setup(r => r.DeleteAsync(It.IsAny<Guid>()))

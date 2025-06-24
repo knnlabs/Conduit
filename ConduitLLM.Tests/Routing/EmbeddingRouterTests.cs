@@ -76,7 +76,7 @@ namespace ConduitLLM.Tests.Routing
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, null, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
-            _mockClientFactory.Setup(x => x.CreateClient("text-embedding-3-small"))
+            _mockClientFactory.Setup(x => x.GetClient("text-embedding-3-small"))
                              .Returns(mockClient.Object);
 
             // Act
@@ -135,7 +135,7 @@ namespace ConduitLLM.Tests.Routing
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, null, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
-            _mockClientFactory.Setup(x => x.CreateClient("text-embedding-3-small"))
+            _mockClientFactory.Setup(x => x.GetClient("text-embedding-3-small"))
                              .Returns(mockClient.Object);
 
             // Act
@@ -163,7 +163,7 @@ namespace ConduitLLM.Tests.Routing
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, null, It.IsAny<CancellationToken>()))
                      .ThrowsAsync(new LLMCommunicationException("Provider unavailable"));
 
-            _mockClientFactory.Setup(x => x.CreateClient("text-embedding-3-small"))
+            _mockClientFactory.Setup(x => x.GetClient("text-embedding-3-small"))
                              .Returns(mockClient.Object);
 
             // Act & Assert
@@ -184,7 +184,7 @@ namespace ConduitLLM.Tests.Routing
                 EncodingFormat = "float"
             };
 
-            _mockClientFactory.Setup(x => x.CreateClient("non-existent-model"))
+            _mockClientFactory.Setup(x => x.GetClient("non-existent-model"))
                              .Throws(new ModelUnavailableException("Model not found"));
 
             // Act & Assert
@@ -212,14 +212,19 @@ namespace ConduitLLM.Tests.Routing
                 Object = "list",
                 Data = new List<EmbeddingData>(),
                 Model = "text-embedding-3-small",
-                Usage = new Usage()
+                Usage = new Usage
+                {
+                    PromptTokens = 0,
+                    CompletionTokens = 0,
+                    TotalTokens = 0
+                }
             };
 
             var mockClient = new Mock<ILLMClient>();
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, customApiKey, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
-            _mockClientFactory.Setup(x => x.CreateClient("text-embedding-3-small"))
+            _mockClientFactory.Setup(x => x.GetClient("text-embedding-3-small"))
                              .Returns(mockClient.Object);
 
             // Act
@@ -248,7 +253,7 @@ namespace ConduitLLM.Tests.Routing
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, null, It.IsAny<CancellationToken>()))
                      .ThrowsAsync(new OperationCanceledException());
 
-            _mockClientFactory.Setup(x => x.CreateClient("text-embedding-3-small"))
+            _mockClientFactory.Setup(x => x.GetClient("text-embedding-3-small"))
                              .Returns(mockClient.Object);
 
             // Act & Assert
@@ -275,14 +280,19 @@ namespace ConduitLLM.Tests.Routing
                 Object = "list",
                 Data = new List<EmbeddingData>(),
                 Model = modelName,
-                Usage = new Usage()
+                Usage = new Usage
+                {
+                    PromptTokens = 0,
+                    CompletionTokens = 0,
+                    TotalTokens = 0
+                }
             };
 
             var mockClient = new Mock<ILLMClient>();
             mockClient.Setup(x => x.CreateEmbeddingAsync(request, null, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(expectedResponse);
 
-            _mockClientFactory.Setup(x => x.CreateClient(modelName))
+            _mockClientFactory.Setup(x => x.GetClient(modelName))
                              .Returns(mockClient.Object);
 
             // Act

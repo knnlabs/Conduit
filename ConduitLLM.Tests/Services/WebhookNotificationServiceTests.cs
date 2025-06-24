@@ -54,8 +54,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -66,10 +66,10 @@ namespace ConduitLLM.Tests.Services
             _mockHttpMessageHandler.Protected().Verify(
                 "SendAsync",
                 Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req =>
+                Moq.Protected.ItExpr.Is<HttpRequestMessage>(req =>
                     req.Method == HttpMethod.Post &&
                     req.RequestUri!.ToString() == webhookUrl),
-                ItExpr.IsAny<CancellationToken>());
+                Moq.Protected.ItExpr.IsAny<CancellationToken>());
         }
 
         [Fact]
@@ -93,8 +93,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
                 .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
 
@@ -123,8 +123,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.InternalServerError,
@@ -161,8 +161,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .ThrowsAsync(new TaskCanceledException());
 
             // Act
@@ -197,8 +197,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
 
             // Act
@@ -228,8 +228,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .Callback<HttpRequestMessage, CancellationToken>(async (req, _) =>
                 {
                     capturedContent = await req.Content!.ReadAsStringAsync();
@@ -264,8 +264,8 @@ namespace ConduitLLM.Tests.Services
                 .Protected()
                 .Setup<Task<HttpResponseMessage>>(
                     "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
+                    Moq.Protected.ItExpr.IsAny<HttpRequestMessage>(),
+                    Moq.Protected.ItExpr.IsAny<CancellationToken>())
                 .ThrowsAsync(new HttpRequestException("Network error"));
 
             // Act
