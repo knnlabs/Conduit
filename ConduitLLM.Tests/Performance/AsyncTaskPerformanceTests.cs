@@ -344,7 +344,7 @@ namespace ConduitLLM.Tests.Performance
 
             // Act: Get tasks for cleanup and delete them
             var sw = Stopwatch.StartNew();
-            var tasksToDelete = await _repository.GetTasksForCleanupAsync(TimeSpan.FromDays(30));
+            var tasksToDelete = await _repository.GetTasksForCleanupAsync(TimeSpan.FromDays(30), limit: taskCount);
             var deletedCount = await _repository.BulkDeleteAsync(tasksToDelete.Select(t => t.Id));
             sw.Stop();
 
