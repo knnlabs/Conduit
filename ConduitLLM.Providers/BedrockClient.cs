@@ -9,8 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Amazon.BedrockRuntime;
-using Amazon.BedrockRuntime.Model;
+// Removed AWS SDK dependencies - using direct HTTP calls with AWS Signature V4
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Exceptions;
@@ -29,8 +28,8 @@ namespace ConduitLLM.Providers
     /// </summary>
     public class BedrockClient : BaseLLMClient
     {
-        private const string DefaultBedrockApiBase = "https://api.bedrock.amazonaws.com";
         private readonly string _region;
+        private readonly string _service = "bedrock-runtime";
         
         // JSON serialization options for Bedrock API
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -78,9 +77,9 @@ namespace ConduitLLM.Providers
                 throw new ConfigurationException("AWS Access Key is required for Bedrock API");
             }
 
-            // Note: In a real implementation, we would check for AWS Secret Key
-            // For now, we'll assume it's available via environment variables
-            // We only check for ApiKey which maps to AWS Access Key ID
+            // Note: AWS Secret Key should be provided in Credentials.ApiSecret
+            // For streaming operations, both ApiKey (AWS Access Key) and ApiSecret (AWS Secret Key) are required
+            // These can also come from environment variables or AWS credential chain
 
             return credentials;
         }
@@ -96,8 +95,8 @@ namespace ConduitLLM.Providers
             // Instead, we'll handle AWS Signature V4 auth per request
             client.DefaultRequestHeaders.Authorization = null;
 
-            string apiBase = string.IsNullOrWhiteSpace(Credentials.ApiBase) ? DefaultBedrockApiBase : Credentials.ApiBase;
-            client.BaseAddress = new Uri(apiBase);
+            // Set base address using the region
+            client.BaseAddress = new Uri($"https://bedrock-runtime.{_region}.amazonaws.com/");
         }
 
         /// <inheritdoc />
@@ -182,21 +181,19 @@ namespace ConduitLLM.Providers
 
             string modelId = request.Model ?? ProviderModelId;
             using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"model/{modelId}/invoke";
 
-            // In a real implementation, we'd use AWS SDK, but for demonstration we'll use HTTP
-            string apiUrl = $"/model/{modelId}/invoke";
-
-            // Use our common HTTP client helper to send the request
-            // Note: In production, we would add AWS Signature V4 auth to these requests
-            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockClaudeChatRequest, BedrockClaudeChatResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                claudeRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(claudeRequest), apiKey),
-                DefaultJsonOptions,
-                Logger,
-                cancellationToken);
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, claudeRequest, cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
+            
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockClaudeChatResponse>(responseContent, JsonOptions);
 
             if (bedrockResponse == null || bedrockResponse.Content == null || !bedrockResponse.Content.Any())
             {
@@ -248,23 +245,19 @@ namespace ConduitLLM.Providers
 
             string modelId = request.Model ?? ProviderModelId;
             using var client = CreateHttpClient(Credentials.ApiKey);
+            string apiUrl = $"model/{modelId}/invoke";
+
+            // Send request with AWS Signature V4 authentication
+            var response = await SendBedrockRequestAsync(client, HttpMethod.Post, apiUrl, llamaRequest, cancellationToken);
             
-            string apiUrl = $"/model/{modelId}/invoke";
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new LLMCommunicationException($"Bedrock API error: {response.StatusCode} - {errorContent}");
+            }
             
-            var bedrockResponse = await Core.Utilities.HttpClientHelper.SendJsonRequestAsync<BedrockLlamaChatRequest, BedrockLlamaChatResponse>(
-                client,
-                HttpMethod.Post,
-                apiUrl,
-                llamaRequest,
-                CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(llamaRequest), apiKey),
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                },
-                Logger,
-                cancellationToken
-            );
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var bedrockResponse = JsonSerializer.Deserialize<BedrockLlamaChatResponse>(responseContent, JsonOptions);
 
             // Map to standard format
             return new ChatCompletionResponse
@@ -281,18 +274,18 @@ namespace ConduitLLM.Providers
                         Message = new ConduitLLM.Core.Models.Message
                         {
                             Role = "assistant",
-                            Content = bedrockResponse.Generation ?? string.Empty
+                            Content = bedrockResponse?.Generation ?? string.Empty
                         },
-                        FinishReason = MapLlamaStopReason(bedrockResponse.StopReason),
+                        FinishReason = MapLlamaStopReason(bedrockResponse?.StopReason),
                         Logprobs = null
                     }
                 },
                 Usage = new Usage
                 {
-                    PromptTokens = bedrockResponse.PromptTokenCount ?? 0,
-                    CompletionTokens = bedrockResponse.GenerationTokenCount ?? 0,
-                    TotalTokens = (bedrockResponse.PromptTokenCount ?? 0) + 
-                                  (bedrockResponse.GenerationTokenCount ?? 0)
+                    PromptTokens = bedrockResponse?.PromptTokenCount ?? 0,
+                    CompletionTokens = bedrockResponse?.GenerationTokenCount ?? 0,
+                    TotalTokens = (bedrockResponse?.PromptTokenCount ?? 0) + 
+                                  (bedrockResponse?.GenerationTokenCount ?? 0)
                 },
                 SystemFingerprint = null
             };
@@ -563,25 +556,6 @@ namespace ConduitLLM.Providers
             {
                 var modelId = request.Model ?? ProviderModelId;
 
-                // For proper implementation, we would use AWS SDK with InvokeModelWithResponseStreamAsync
-                // This is a placeholder for the implementation
-                // In a real implementation, we would:
-
-                var config = new AmazonBedrockRuntimeConfig
-                {
-                    RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(_region)
-                };
-
-                // Use AWS credentials from configuration
-                // In a real implementation, we would use AWS credentials properly
-                // For this example, we'll just use the ApiKey 
-                // In a real implementation, ApiSecret would be provided or retrieved from 
-                // AWS credential chain (environment variables, profile, etc.)
-                using var client = new AmazonBedrockRuntimeClient(
-                    Credentials.ApiKey,
-                    "dummy-secret-key", // This is a placeholder for illustration
-                    config);
-
                 // Create a request appropriate for the model type
                 // Example for Claude
                 var bedrockRequest = new BedrockClaudeChatRequest
@@ -618,39 +592,40 @@ namespace ConduitLLM.Providers
                     });
                 }
 
-                var requestBody = JsonSerializer.Serialize(bedrockRequest, DefaultJsonOptions);
-                var invokeRequest = new InvokeModelWithResponseStreamRequest
-                {
-                    ModelId = modelId,
-                    Body = new System.IO.MemoryStream(Encoding.UTF8.GetBytes(requestBody)),
-                    ContentType = "application/json",
-                    Accept = "application/json"
-                };
-
-                // For now, use the HTTP client approach like other methods
-                // TODO: Implement proper AWS event stream processing when AWS SDK integration is complete
                 using var httpClient = CreateHttpClient(Credentials.ApiKey);
-                string apiUrl = $"/model/{modelId}/invoke-with-response-stream";
+                string apiUrl = $"model/{modelId}/invoke-with-response-stream";
 
-                var streamingResponse = await Core.Utilities.HttpClientHelper.SendStreamingRequestAsync<BedrockClaudeChatRequest>(
-                    httpClient,
-                    HttpMethod.Post,
-                    apiUrl,
-                    bedrockRequest,
-                    CreateAWSAuthHeaders(apiUrl, JsonSerializer.Serialize(bedrockRequest, JsonOptions), Credentials.ApiKey),
-                    JsonOptions,
-                    Logger,
-                    cancellationToken);
+                // Create HTTP request with streaming enabled
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+                var json = JsonSerializer.Serialize(bedrockRequest, JsonOptions);
+                httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                httpRequest.Headers.Add("User-Agent", "ConduitLLM");
+                
+                // Sign the request with AWS Signature V4
+                AwsSignatureV4.SignRequest(httpRequest, Credentials.ApiKey!, Credentials.ApiSecret ?? "dummy-secret-key", _region, _service);
+                
+                // Send with response streaming
+                var response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    throw new LLMCommunicationException($"Bedrock streaming API error: {response.StatusCode} - {errorContent}");
+                }
 
-                // Process streaming response
+                // Process AWS event stream
                 var responseId = Guid.NewGuid().ToString();
                 var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                
+                using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                
+                // Parse the AWS event stream
+                await foreach (var chunk in ParseAwsEventStream(stream, modelId, responseId, timestamp, cancellationToken))
+                {
+                    chunks.Add(chunk);
+                }
 
-                // This is a simplified streaming implementation
-                // In a real AWS integration, you would process the actual event stream format
-                Logger.LogWarning("Bedrock streaming is using simplified implementation. Full AWS event stream integration pending.");
-
-                // Add final completion chunk if no chunks were processed
+                // Add final completion chunk if needed
                 if (!chunks.Any() || chunks.LastOrDefault()?.Choices?.FirstOrDefault()?.FinishReason == null)
                 {
                     chunks.Add(new ChatCompletionChunk
@@ -812,21 +787,41 @@ namespace ConduitLLM.Providers
         /// In a real implementation, this would create AWS Signature V4 headers.
         /// For simplicity, this implementation returns placeholder headers.
         /// </remarks>
+        private async Task<HttpResponseMessage> SendBedrockRequestAsync(
+            HttpClient client,
+            HttpMethod method,
+            string path,
+            object? requestBody,
+            CancellationToken cancellationToken)
+        {
+            string effectiveApiKey = Credentials.ApiKey!;
+            string effectiveSecretKey = Credentials.ApiSecret ?? "dummy-secret-key"; // Fallback for backward compatibility
+
+            var request = new HttpRequestMessage(method, path);
+            
+            if (requestBody != null)
+            {
+                var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+            
+            // Add required headers before signing
+            request.Headers.Add("User-Agent", "ConduitLLM");
+            
+            // Sign the request with AWS Signature V4
+            AwsSignatureV4.SignRequest(request, effectiveApiKey, effectiveSecretKey, _region, _service);
+            
+            return await client.SendAsync(request, cancellationToken);
+        }
+        
         private Dictionary<string, string> CreateAWSAuthHeaders(string path, string body, string? apiKey = null)
         {
-            string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
-
-            // In a real implementation, this would create AWS Signature V4 headers
-            // For simplicity, this returns placeholder headers
-            var headers = new Dictionary<string, string>
+            // This method is now deprecated in favor of SendBedrockRequestAsync
+            // Keeping it temporarily for backward compatibility
+            return new Dictionary<string, string>
             {
-                ["User-Agent"] = "ConduitLLM",
-                ["X-Amz-Date"] = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"),
-                ["Authorization"] = $"AWS4-HMAC-SHA256 Credential={effectiveApiKey}"
-                // In a real implementation, this would include a proper signature
+                ["User-Agent"] = "ConduitLLM"
             };
-
-            return headers;
         }
 
         /// <summary>
@@ -1491,6 +1486,294 @@ namespace ConduitLLM.Providers
             return chunks;
         }
 
+        /// <summary>
+        /// Parses AWS event stream format into ChatCompletionChunk objects.
+        /// </summary>
+        private async IAsyncEnumerable<ChatCompletionChunk> ParseAwsEventStream(
+            Stream stream,
+            string modelId,
+            string responseId,
+            long timestamp,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var reader = new StreamReader(stream);
+            var buffer = new StringBuilder();
+            
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync();
+                if (line == null) break;
+                
+                // AWS event stream format uses blank lines to separate events
+                if (string.IsNullOrEmpty(line))
+                {
+                    if (buffer.Length > 0)
+                    {
+                        var eventData = buffer.ToString();
+                        buffer.Clear();
+                        
+                        // Parse the event
+                        var chunk = ParseEventData(eventData, modelId, responseId, timestamp);
+                        if (chunk != null)
+                        {
+                            yield return chunk;
+                        }
+                    }
+                }
+                else
+                {
+                    buffer.AppendLine(line);
+                }
+            }
+            
+            // Process any remaining data
+            if (buffer.Length > 0)
+            {
+                var chunk = ParseEventData(buffer.ToString(), modelId, responseId, timestamp);
+                if (chunk != null)
+                {
+                    yield return chunk;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Parses a single event from the AWS event stream.
+        /// </summary>
+        private ChatCompletionChunk? ParseEventData(string eventData, string modelId, string responseId, long timestamp)
+        {
+            try
+            {
+                // AWS event stream format:
+                // :event-type: chunk
+                // :content-type: application/json
+                // :message-type: event
+                // {json payload}
+                
+                var lines = eventData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                string? eventType = null;
+                string? jsonPayload = null;
+                
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith(":event-type:"))
+                    {
+                        eventType = line.Substring(":event-type:".Length).Trim();
+                    }
+                    else if (line.StartsWith("{") || line.StartsWith("["))
+                    {
+                        // This is likely the JSON payload
+                        jsonPayload = line;
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(jsonPayload))
+                {
+                    return null;
+                }
+                
+                // Parse based on model type
+                if (modelId.Contains("claude", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ParseClaudeEventChunk(jsonPayload, responseId, timestamp, modelId);
+                }
+                else if (modelId.Contains("llama", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ParseLlamaEventChunk(jsonPayload, responseId, timestamp, modelId);
+                }
+                else if (modelId.Contains("cohere", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ParseCohereEventChunk(jsonPayload, responseId, timestamp, modelId);
+                }
+                else
+                {
+                    // Generic parsing
+                    return ParseGenericEventChunk(jsonPayload, responseId, timestamp, modelId);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to parse event data: {EventData}", eventData);
+                return null;
+            }
+        }
+        
+        private ChatCompletionChunk? ParseClaudeEventChunk(string json, string responseId, long timestamp, string modelId)
+        {
+            try
+            {
+                var chunk = JsonSerializer.Deserialize<BedrockClaudeStreamingResponse>(json, JsonOptions);
+                if (chunk == null) return null;
+                
+                if (chunk.Type == "content_block_delta" && chunk.Delta?.Text != null)
+                {
+                    return new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = chunk.Index ?? 0,
+                                Delta = new DeltaContent { Content = chunk.Delta.Text }
+                            }
+                        }
+                    };
+                }
+                else if (chunk.Type == "message_stop" || !string.IsNullOrEmpty(chunk.StopReason))
+                {
+                    return new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent(),
+                                FinishReason = MapClaudeStopReason(chunk.StopReason)
+                            }
+                        }
+                    };
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to parse Claude chunk: {Json}", json);
+                return null;
+            }
+        }
+        
+        private ChatCompletionChunk? ParseLlamaEventChunk(string json, string responseId, long timestamp, string modelId)
+        {
+            try
+            {
+                var chunk = JsonSerializer.Deserialize<BedrockLlamaStreamingResponse>(json, JsonOptions);
+                if (chunk == null) return null;
+                
+                if (!string.IsNullOrEmpty(chunk.Generation))
+                {
+                    return new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent { Content = chunk.Generation },
+                                FinishReason = string.IsNullOrEmpty(chunk.StopReason) ? null : MapLlamaStopReason(chunk.StopReason)
+                            }
+                        }
+                    };
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to parse Llama chunk: {Json}", json);
+                return null;
+            }
+        }
+        
+        private ChatCompletionChunk? ParseCohereEventChunk(string json, string responseId, long timestamp, string modelId)
+        {
+            try
+            {
+                var chunk = JsonSerializer.Deserialize<BedrockCohereStreamingResponse>(json, JsonOptions);
+                if (chunk == null) return null;
+                
+                if (chunk.EventType == "text-generation" && !string.IsNullOrEmpty(chunk.Text))
+                {
+                    return new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent { Content = chunk.Text },
+                                FinishReason = chunk.IsFinished == true ? MapCohereStopReason(chunk.FinishReason) : null
+                            }
+                        }
+                    };
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to parse Cohere chunk: {Json}", json);
+                return null;
+            }
+        }
+        
+        private ChatCompletionChunk? ParseGenericEventChunk(string json, string responseId, long timestamp, string modelId)
+        {
+            try
+            {
+                var element = JsonSerializer.Deserialize<JsonElement>(json, JsonOptions);
+                string? content = null;
+                string? finishReason = null;
+                
+                // Try common property names
+                if (element.TryGetProperty("text", out var textProp))
+                    content = textProp.GetString();
+                else if (element.TryGetProperty("content", out var contentProp))
+                    content = contentProp.GetString();
+                else if (element.TryGetProperty("generation", out var genProp))
+                    content = genProp.GetString();
+                
+                if (element.TryGetProperty("finish_reason", out var finishProp))
+                    finishReason = finishProp.GetString();
+                else if (element.TryGetProperty("stop_reason", out var stopProp))
+                    finishReason = stopProp.GetString();
+                
+                if (!string.IsNullOrEmpty(content) || !string.IsNullOrEmpty(finishReason))
+                {
+                    return new ChatCompletionChunk
+                    {
+                        Id = responseId,
+                        Object = "chat.completion.chunk",
+                        Created = timestamp,
+                        Model = modelId,
+                        Choices = new List<StreamingChoice>
+                        {
+                            new StreamingChoice
+                            {
+                                Index = 0,
+                                Delta = new DeltaContent { Content = content },
+                                FinishReason = finishReason
+                            }
+                        }
+                    };
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to parse generic chunk: {Json}", json);
+                return null;
+            }
+        }
+        
         /// <summary>
         /// Maps Claude stop reasons to standardized finish reasons.
         /// </summary>
