@@ -37,6 +37,11 @@ public class ConduitCoreClient : BaseClient
     public TasksService Tasks { get; }
 
     /// <summary>
+    /// Gets the audio service for speech-to-text, text-to-speech, and audio translation operations.
+    /// </summary>
+    public AudioService Audio { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -58,6 +63,7 @@ public class ConduitCoreClient : BaseClient
         ILogger<VideosService>? videosLogger = null;
         ILogger<ModelsService>? modelsLogger = null;
         ILogger<TasksService>? tasksLogger = null;
+        ILogger<AudioService>? audioLogger = null;
         
         if (logger != null)
         {
@@ -67,6 +73,7 @@ public class ConduitCoreClient : BaseClient
             videosLogger = loggerFactory.CreateLogger<VideosService>();
             modelsLogger = loggerFactory.CreateLogger<ModelsService>();
             tasksLogger = loggerFactory.CreateLogger<TasksService>();
+            audioLogger = loggerFactory.CreateLogger<AudioService>();
         }
 
         Chat = new ChatService(this, chatLogger);
@@ -74,6 +81,7 @@ public class ConduitCoreClient : BaseClient
         Videos = new VideosService(this, videosLogger);
         Models = new ModelsService(this, modelsLogger);
         Tasks = new TasksService(this, tasksLogger);
+        Audio = new AudioService(this, audioLogger);
     }
 
     /// <summary>
@@ -327,5 +335,57 @@ public static class ConduitCoreClientExtensions
     {
         var allModels = await client.Models.ListAsync(cancellationToken);
         return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "video"));
+    }
+
+    /// <summary>
+    /// Transcribes an audio file to text.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="audioFile">The audio file to transcribe.</param>
+    /// <param name="model">Optional model to use (defaults to Whisper1).</param>
+    /// <param name="language">Optional language code.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The transcribed text.</returns>
+    public static async Task<string> TranscribeAudioAsync(
+        this ConduitCoreClient client,
+        ConduitLLM.CoreClient.Models.AudioFile audioFile,
+        ConduitLLM.CoreClient.Models.TranscriptionModel model = ConduitLLM.CoreClient.Models.TranscriptionModel.Whisper1,
+        string? language = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await client.Audio.QuickTranscribeAsync(audioFile, model, language, cancellationToken);
+    }
+
+    /// <summary>
+    /// Generates speech from text.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="text">The text to convert to speech.</param>
+    /// <param name="voice">Optional voice to use (defaults to Alloy).</param>
+    /// <param name="model">Optional model to use (defaults to Tts1).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The generated audio data.</returns>
+    public static async Task<byte[]> GenerateSpeechAsync(
+        this ConduitCoreClient client,
+        string text,
+        ConduitLLM.CoreClient.Models.Voice voice = ConduitLLM.CoreClient.Models.Voice.Alloy,
+        ConduitLLM.CoreClient.Models.TextToSpeechModel model = ConduitLLM.CoreClient.Models.TextToSpeechModel.Tts1,
+        CancellationToken cancellationToken = default)
+    {
+        return await client.Audio.QuickSpeakAsync(text, voice, model, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets all models that support audio transcription.
+    /// </summary>
+    /// <param name="client">The Conduit Core client.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of models that support audio transcription.</returns>
+    public static async Task<IEnumerable<ConduitLLM.CoreClient.Models.Model>> GetAudioModelsAsync(
+        this ConduitCoreClient client,
+        CancellationToken cancellationToken = default)
+    {
+        var allModels = await client.Models.ListAsync(cancellationToken);
+        return allModels.Data.Where(m => ConduitLLM.CoreClient.Services.ModelsService.SupportsCapability(m.Id, "audio"));
     }
 }

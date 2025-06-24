@@ -59,6 +59,40 @@ export {
 } from './models/videos';
 
 export type {
+  AudioFile,
+  VoiceSettings,
+  AudioTranscriptionRequest,
+  AudioTranscriptionResponse,
+  TranscriptionSegment,
+  TranscriptionWord,
+  AudioTranslationRequest,
+  AudioTranslationResponse,
+  TextToSpeechRequest,
+  TextToSpeechResponse,
+  HybridAudioRequest,
+  HybridAudioResponse,
+  RealtimeConnectionRequest,
+  RealtimeSessionConfig,
+  RealtimeMessage,
+  RealtimeSession,
+  AudioMetadata,
+  AudioProcessingOptions,
+  AudioError,
+  AudioValidation,
+} from './models/audio';
+
+export type {
+  AudioFormat,
+  TranscriptionFormat,
+  TimestampGranularity,
+  TextToSpeechModel,
+  Voice,
+  TranscriptionModel,
+} from './models/audio';
+
+export { AudioService, AudioUtils } from './services/AudioService';
+
+export type {
   Usage,
   ResponseFormat,
   FunctionDefinition,

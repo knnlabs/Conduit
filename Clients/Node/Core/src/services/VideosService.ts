@@ -1,18 +1,20 @@
-import { BaseClient } from '../client/BaseClient';
-import {
+import type { BaseClient } from '../client/BaseClient';
+import type {
   VideoGenerationRequest,
   VideoGenerationResponse,
   AsyncVideoGenerationRequest,
   AsyncVideoGenerationResponse,
-  VideoTaskStatus,
   VideoTaskPollingOptions,
+  VideoModelCapabilities
+} from '../models/videos';
+import {
+  VideoTaskStatus,
   VideoDefaults,
   VideoModels,
   VideoResponseFormats,
   validateVideoGenerationRequest,
   validateAsyncVideoGenerationRequest,
-  getVideoModelCapabilities,
-  VideoModelCapabilities
+  getVideoModelCapabilities
 } from '../models/videos';
 import { ConduitError } from '../utils/errors';
 

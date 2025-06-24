@@ -5,11 +5,13 @@ import { ModelsService } from '../services/ModelsService';
 import { ImagesService } from '../services/ImagesService';
 import { VideosService } from '../services/VideosService';
 import { TasksService } from '../services/TasksService';
+import { AudioService } from '../services/AudioService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
     completions: ChatService;
   };
+  public readonly audio: AudioService;
   public readonly images: ImagesService;
   public readonly videos: VideosService;
   public readonly models: ModelsService;
@@ -22,6 +24,7 @@ export class ConduitCoreClient extends BaseClient {
       completions: new ChatService(this),
     };
 
+    this.audio = new AudioService(this);
     this.images = new ImagesService(this);
     this.videos = new VideosService(this);
     this.models = new ModelsService(this);
