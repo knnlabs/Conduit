@@ -17,6 +17,11 @@ public class ProviderCredentials
     public string? ApiKey { get; set; }
 
     /// <summary>
+    /// Gets or sets the API secret for providers that require it (e.g., AWS Secret Access Key).
+    /// </summary>
+    public string? ApiSecret { get; set; }
+
+    /// <summary>
     /// Gets or sets the base URL for the provider's API endpoint.
     /// If null, a default endpoint might be used by the specific provider client.
     /// </summary>

@@ -34,6 +34,7 @@ namespace ConduitLLM.Configuration.Mapping
                 SupportsTextToSpeech = entity.SupportsTextToSpeech,
                 SupportsRealtimeAudio = entity.SupportsRealtimeAudio,
                 SupportsImageGeneration = entity.SupportsImageGeneration,
+                SupportsEmbeddings = entity.SupportsEmbeddings,
                 TokenizerType = entity.TokenizerType,
                 SupportedVoices = entity.SupportedVoices,
                 SupportedLanguages = entity.SupportedLanguages,
@@ -67,6 +68,7 @@ namespace ConduitLLM.Configuration.Mapping
             entity.SupportsTextToSpeech = dto.SupportsTextToSpeech;
             entity.SupportsRealtimeAudio = dto.SupportsRealtimeAudio;
             entity.SupportsImageGeneration = dto.SupportsImageGeneration;
+            entity.SupportsEmbeddings = dto.SupportsEmbeddings;
             entity.TokenizerType = dto.TokenizerType;
             entity.SupportedVoices = dto.SupportedVoices;
             entity.SupportedLanguages = dto.SupportedLanguages;

@@ -47,7 +47,29 @@ internal record CohereChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // Default is false
     public bool Stream { get; init; } = false;
 
-    // TODO: Add other parameters like frequency_penalty, presence_penalty, seed, connectors, documents, tools if needed
+    [JsonPropertyName("frequency_penalty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? FrequencyPenalty { get; init; } // Between 0.0 and 1.0
+
+    [JsonPropertyName("presence_penalty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? PresencePenalty { get; init; } // Between 0.0 and 1.0
+
+    [JsonPropertyName("seed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? Seed { get; init; } // For deterministic generation
+
+    [JsonPropertyName("connectors")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereConnector>? Connectors { get; init; } // For RAG support
+
+    [JsonPropertyName("documents")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereDocument>? Documents { get; init; } // For RAG support
+
+    [JsonPropertyName("tools")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereTool>? Tools { get; init; } // For function calling
 }
 
 internal record CohereMessage
@@ -58,7 +80,9 @@ internal record CohereMessage
     [JsonPropertyName("message")]
     public required string Message { get; init; }
 
-    // TODO: Add tool_calls if implementing tools
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereToolCall>? ToolCalls { get; init; } // For tool calling support
 }
 
 // Response for non-streaming chat
@@ -79,7 +103,17 @@ internal record CohereChatResponse
     [JsonPropertyName("meta")]
     public CohereApiMeta? Meta { get; init; }
 
-    // TODO: Add tool_calls, documents, citations if needed
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereToolCall>? ToolCalls { get; init; } // Tool calls in the response
+
+    [JsonPropertyName("documents")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereDocument>? Documents { get; init; } // Documents used for RAG
+
+    [JsonPropertyName("citations")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IEnumerable<CohereCitation>? Citations { get; init; } // Citations for attribution
 }
 
 internal record CohereApiMeta
@@ -129,6 +163,68 @@ internal record CohereErrorResponse
     public string? Message { get; init; }
 
     // Other potential fields: block_type, block_reason etc.
+}
+
+// --- Tool and RAG Support Models ---
+
+internal record CohereTool
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public object? Parameters { get; init; } // JSON schema for the tool parameters
+}
+
+internal record CohereToolCall
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public object? Parameters { get; init; } // The tool call parameters
+}
+
+internal record CohereConnector
+{
+    [JsonPropertyName("id")]
+    public required string Id { get; init; }
+
+    [JsonPropertyName("options")]
+    public object? Options { get; init; } // Connector-specific options
+}
+
+internal record CohereDocument
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    [JsonPropertyName("text")]
+    public required string Text { get; init; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; init; }
+}
+
+internal record CohereCitation
+{
+    [JsonPropertyName("start")]
+    public int Start { get; init; } // Start position in the generated text
+
+    [JsonPropertyName("end")]
+    public int End { get; init; } // End position in the generated text
+
+    [JsonPropertyName("text")]
+    public string? Text { get; init; } // The cited text
+
+    [JsonPropertyName("document_ids")]
+    public IEnumerable<string>? DocumentIds { get; init; } // IDs of source documents
 }
 
 

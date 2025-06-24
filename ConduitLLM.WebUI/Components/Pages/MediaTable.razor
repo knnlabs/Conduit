@@ -1,0 +1,797 @@
+@page "/media"
+@using ConduitLLM.WebUI.Services
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.Configuration.Entities
+@using ConduitLLM.Core.Interfaces
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@attribute [Authorize]
+@inject IAdminApiClient AdminApiClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject ILogger<MediaTable> Logger
+@inject IToastService ToastService
+@rendermode InteractiveServer
+
+<PageTitle>Media Assets - ConduitLLM</PageTitle>
+
+<div class="container container-xxl">
+    <!-- Header Section -->
+    <PageHeader Title="Media Assets Management" 
+                Description="View and manage generated images and videos stored in CDN/S3"
+                Icon="fa-photo-video">
+        <Statistics>
+            @if (overallStats != null)
+            {
+                <div class="stat-item">
+                    <i class="fa fa-files-o me-2"></i>
+                    <span class="small">@overallStats.TotalFiles Files</span>
+                </div>
+                <div class="stat-item mt-2">
+                    <i class="fa fa-hdd-o me-2"></i>
+                    <span class="small">@FormatBytes(overallStats.TotalSizeBytes)</span>
+                </div>
+                @if (overallStats.OrphanedFiles > 0)
+                {
+                    <div class="stat-item mt-2 text-warning">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        <span class="small">@overallStats.OrphanedFiles Orphaned</span>
+                    </div>
+                }
+            }
+        </Statistics>
+    </PageHeader>
+
+    <!-- Overall Statistics Card -->
+    <div class="card modern-card mb-4">
+        <div class="card-header modern-card-header">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-chart-pie me-2 text-primary"></i>Storage Overview
+            </h5>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (isLoadingStats)
+            {
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (overallStats != null)
+            {
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">By Provider</h6>
+                        @foreach (var provider in overallStats.ByProvider.OrderByDescending(p => p.Value))
+                        {
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>@provider.Key</span>
+                                <span class="text-muted">@FormatBytes(provider.Value)</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">By Type</h6>
+                        @foreach (var type in overallStats.ByMediaType.OrderByDescending(t => t.Value))
+                        {
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>
+                                    <i class="fa @(GetMediaTypeIcon(type.Key)) me-2"></i>@type.Key
+                                </span>
+                                <span class="text-muted">@FormatBytes(type.Value)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card modern-card mb-4">
+        <div class="card-body modern-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Virtual Key</label>
+                    <select class="form-select" @bind="selectedVirtualKeyId">
+                        <option value="">All Virtual Keys</option>
+                        @if (virtualKeys != null)
+                        {
+                            @foreach (var key in virtualKeys)
+                            {
+                                <option value="@key.Id">@key.KeyName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Media Type</label>
+                    <select class="form-select" @bind="selectedMediaType">
+                        <option value="">All Types</option>
+                        <option value="image">Images</option>
+                        <option value="video">Videos</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Provider</label>
+                    <select class="form-select" @bind="selectedProvider">
+                        <option value="">All Providers</option>
+                        @foreach (var provider in availableProviders)
+                        {
+                            <option value="@provider">@provider</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="ApplyFilters">
+                        <i class="fa fa-filter me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Table -->
+    <div class="card modern-card">
+        <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa fa-images me-2 text-primary"></i>Media Assets
+            </h5>
+            <div>
+                @if (selectedMediaRecords.Any())
+                {
+                    <button class="btn btn-sm btn-danger me-2" @onclick="DeleteSelectedMedia" disabled="@isDeleting">
+                        <i class="fa fa-trash me-2"></i>Delete Selected (@selectedMediaRecords.Count)
+                    </button>
+                }
+                <button class="btn btn-sm btn-warning" @onclick="ShowCleanupDialog">
+                    <i class="fa fa-broom me-2"></i>Cleanup Tools
+                </button>
+            </div>
+        </div>
+        <div class="card-body modern-card-body">
+            @if (isLoadingMedia)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading media assets...</p>
+                </div>
+            }
+            else if (filteredMediaRecords == null || !filteredMediaRecords.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fa fa-folder-open fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No media assets found</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" class="form-check-input" @bind="selectAll" @bind:after="ToggleSelectAll">
+                                </th>
+                                <th style="width: 80px;">Preview</th>
+                                <th>Type</th>
+                                <th>Provider</th>
+                                <th>Model</th>
+                                <th>Size</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var media in filteredMediaRecords)
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input" 
+                                               checked="@selectedMediaRecords.Contains(media.Id)"
+                                               @onchange="@(() => ToggleMediaSelection(media.Id))">
+                                    </td>
+                                    <td>
+                                        @if (media.MediaType == "image" && !string.IsNullOrEmpty(media.PublicUrl))
+                                        {
+                                            <img src="@media.PublicUrl" alt="@media.Prompt" class="img-thumbnail" 
+                                                 style="max-width: 60px; max-height: 60px; cursor: pointer;"
+                                                 @onclick="@(() => ShowMediaPreview(media))">
+                                        }
+                                        else if (media.MediaType == "video")
+                                        {
+                                            <div class="text-center" style="width: 60px; height: 60px; cursor: pointer;"
+                                                 @onclick="@(() => ShowMediaPreview(media))">
+                                                <i class="fa fa-video fa-2x text-primary"></i>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-center text-muted" style="width: 60px; height: 60px;">
+                                                <i class="fa fa-file fa-2x"></i>
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@(media.MediaType == "image" ? "info" : "warning")">
+                                            <i class="fa @(GetMediaTypeIcon(media.MediaType)) me-1"></i>
+                                            @media.MediaType
+                                        </span>
+                                    </td>
+                                    <td>@media.Provider</td>
+                                    <td><small>@media.Model</small></td>
+                                    <td>@FormatBytes(media.SizeBytes ?? 0)</td>
+                                    <td>
+                                        <small>@media.CreatedAt.ToString("MMM dd, HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            @if (!string.IsNullOrEmpty(media.PublicUrl))
+                                            {
+                                                <button class="btn btn-outline-primary" title="Copy URL"
+                                                        @onclick="@(() => CopyToClipboard(media.PublicUrl))">
+                                                    <i class="fa fa-link"></i>
+                                                </button>
+                                                <a href="@media.PublicUrl" target="_blank" class="btn btn-outline-primary" title="Open in new tab">
+                                                    <i class="fa fa-external-link-alt"></i>
+                                                </a>
+                                            }
+                                            <button class="btn btn-outline-danger" title="Delete"
+                                                    @onclick="@(() => DeleteMedia(media.Id))"
+                                                    disabled="@isDeleting">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                @if (totalPages > 1)
+                {
+                    <nav aria-label="Media pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(() => ChangePage(currentPage - 1))" disabled="@(currentPage == 1)">
+                                    Previous
+                                </button>
+                            </li>
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                var pageNum = i;
+                                <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                    <button class="page-link" @onclick="@(() => ChangePage(pageNum))">
+                                        @pageNum
+                                    </button>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(() => ChangePage(currentPage + 1))" disabled="@(currentPage == totalPages)">
+                                    Next
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Media Preview Modal -->
+@if (previewMedia != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fa @(GetMediaTypeIcon(previewMedia.MediaType)) me-2"></i>
+                        Media Preview
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="ClosePreview"></button>
+                </div>
+                <div class="modal-body">
+                    @if (previewMedia.MediaType == "image" && !string.IsNullOrEmpty(previewMedia.PublicUrl))
+                    {
+                        <img src="@previewMedia.PublicUrl" alt="@previewMedia.Prompt" class="img-fluid">
+                    }
+                    else if (previewMedia.MediaType == "video" && !string.IsNullOrEmpty(previewMedia.PublicUrl))
+                    {
+                        <video controls class="w-100">
+                            <source src="@previewMedia.PublicUrl" type="@previewMedia.ContentType">
+                            Your browser does not support the video tag.
+                        </video>
+                    }
+                    
+                    <div class="mt-3">
+                        <h6>Details</h6>
+                        <dl class="row">
+                            <dt class="col-sm-3">Prompt:</dt>
+                            <dd class="col-sm-9">@(previewMedia.Prompt ?? "N/A")</dd>
+                            
+                            <dt class="col-sm-3">Provider:</dt>
+                            <dd class="col-sm-9">@previewMedia.Provider</dd>
+                            
+                            <dt class="col-sm-3">Model:</dt>
+                            <dd class="col-sm-9">@previewMedia.Model</dd>
+                            
+                            <dt class="col-sm-3">Size:</dt>
+                            <dd class="col-sm-9">@FormatBytes(previewMedia.SizeBytes ?? 0)</dd>
+                            
+                            <dt class="col-sm-3">Created:</dt>
+                            <dd class="col-sm-9">@previewMedia.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                            
+                            @if (previewMedia.ExpiresAt.HasValue)
+                            {
+                                <dt class="col-sm-3">Expires:</dt>
+                                <dd class="col-sm-9">@previewMedia.ExpiresAt.Value.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    @if (!string.IsNullOrEmpty(previewMedia.PublicUrl))
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="@(() => CopyToClipboard(previewMedia.PublicUrl))">
+                            <i class="fa fa-copy me-2"></i>Copy URL
+                        </button>
+                        <a href="@previewMedia.PublicUrl" target="_blank" class="btn btn-secondary">
+                            <i class="fa fa-external-link-alt me-2"></i>Open in New Tab
+                        </a>
+                    }
+                    <button type="button" class="btn btn-secondary" @onclick="ClosePreview">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Cleanup Tools Modal -->
+@if (showCleanupDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fa fa-broom me-2"></i>Cleanup Tools
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="@(() => showCleanupDialog = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-warning" @onclick="CleanupExpiredMedia" disabled="@isCleaningUp">
+                            <i class="fa fa-clock me-2"></i>
+                            Cleanup Expired Media
+                            <small class="d-block text-start mt-1">Remove media files that have passed their expiration date</small>
+                        </button>
+                        
+                        <button class="btn btn-warning" @onclick="CleanupOrphanedMedia" disabled="@isCleaningUp">
+                            <i class="fa fa-unlink me-2"></i>
+                            Cleanup Orphaned Media
+                            <small class="d-block text-start mt-1">Remove media files with no associated virtual key</small>
+                        </button>
+                        
+                        <div>
+                            <label class="form-label">Prune Old Media</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" @bind="daysToKeep" min="1" placeholder="Days to keep">
+                                <button class="btn btn-danger" @onclick="PruneOldMedia" disabled="@(isCleaningUp || daysToKeep <= 0)">
+                                    <i class="fa fa-cut me-2"></i>Prune
+                                </button>
+                            </div>
+                            <small class="text-muted">Remove media older than specified days</small>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(cleanupMessage))
+                    {
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fa fa-info-circle me-2"></i>@cleanupMessage
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => showCleanupDialog = false)">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MediaRecord>? mediaRecords;
+    private List<MediaRecord>? filteredMediaRecords;
+    private List<VirtualKeyDto>? virtualKeys;
+    private OverallMediaStorageStats? overallStats;
+    private HashSet<Guid> selectedMediaRecords = new();
+    private HashSet<string> availableProviders = new();
+    
+    private bool isLoadingMedia = true;
+    private bool isLoadingStats = true;
+    private bool isDeleting = false;
+    private bool isCleaningUp = false;
+    private bool selectAll = false;
+    private bool showCleanupDialog = false;
+    
+    private string? selectedVirtualKeyId = "";
+    private string selectedMediaType = "";
+    private string selectedProvider = "";
+    private string? cleanupMessage;
+    
+    private MediaRecord? previewMedia;
+    private int daysToKeep = 30;
+    
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVirtualKeys();
+        await LoadOverallStats();
+        await LoadMediaForAllKeys();
+    }
+
+    private async Task LoadVirtualKeys()
+    {
+        try
+        {
+            virtualKeys = (await AdminApiClient.GetAllVirtualKeysAsync())?.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading virtual keys");
+            ToastService.ShowError("Failed to load virtual keys");
+        }
+    }
+
+    private async Task LoadOverallStats()
+    {
+        try
+        {
+            isLoadingStats = true;
+            overallStats = await AdminApiClient.GetOverallMediaStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading overall statistics");
+            ToastService.ShowError("Failed to load storage statistics");
+        }
+        finally
+        {
+            isLoadingStats = false;
+        }
+    }
+
+    private async Task LoadMediaForAllKeys()
+    {
+        try
+        {
+            isLoadingMedia = true;
+            mediaRecords = new List<MediaRecord>();
+            
+            if (virtualKeys != null)
+            {
+                foreach (var key in virtualKeys)
+                {
+                    var keyMedia = await AdminApiClient.GetMediaByVirtualKeyAsync(key.Id);
+                    if (keyMedia != null)
+                    {
+                        mediaRecords.AddRange(keyMedia);
+                    }
+                }
+            }
+            
+            // Extract unique providers
+            availableProviders = mediaRecords
+                .Where(m => !string.IsNullOrEmpty(m.Provider))
+                .Select(m => m.Provider!)
+                .Distinct()
+                .ToHashSet();
+            
+            ApplyFiltersInternal();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading media records");
+            ToastService.ShowError("Failed to load media records");
+        }
+        finally
+        {
+            isLoadingMedia = false;
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        ApplyFiltersInternal();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyFiltersInternal()
+    {
+        if (mediaRecords == null)
+        {
+            filteredMediaRecords = null;
+            return;
+        }
+
+        var filtered = mediaRecords.AsEnumerable();
+
+        // Apply virtual key filter
+        if (!string.IsNullOrEmpty(selectedVirtualKeyId) && int.TryParse(selectedVirtualKeyId, out var keyId))
+        {
+            filtered = filtered.Where(m => m.VirtualKeyId == keyId);
+        }
+
+        // Apply media type filter
+        if (!string.IsNullOrEmpty(selectedMediaType))
+        {
+            filtered = filtered.Where(m => m.MediaType == selectedMediaType);
+        }
+
+        // Apply provider filter
+        if (!string.IsNullOrEmpty(selectedProvider))
+        {
+            filtered = filtered.Where(m => m.Provider == selectedProvider);
+        }
+
+        // Order by creation date descending
+        filtered = filtered.OrderByDescending(m => m.CreatedAt);
+
+        // Calculate pagination
+        var allFiltered = filtered.ToList();
+        totalPages = (int)Math.Ceiling(allFiltered.Count / (double)pageSize);
+        currentPage = Math.Min(currentPage, Math.Max(1, totalPages));
+
+        // Apply pagination
+        filteredMediaRecords = allFiltered
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            ApplyFiltersInternal();
+        }
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (selectAll && filteredMediaRecords != null)
+        {
+            foreach (var media in filteredMediaRecords)
+            {
+                selectedMediaRecords.Add(media.Id);
+            }
+        }
+        else
+        {
+            selectedMediaRecords.Clear();
+        }
+    }
+
+    private void ToggleMediaSelection(Guid mediaId)
+    {
+        if (selectedMediaRecords.Contains(mediaId))
+        {
+            selectedMediaRecords.Remove(mediaId);
+        }
+        else
+        {
+            selectedMediaRecords.Add(mediaId);
+        }
+    }
+
+    private async Task DeleteMedia(Guid mediaId)
+    {
+        try
+        {
+            isDeleting = true;
+            var result = await AdminApiClient.DeleteMediaAsync(mediaId);
+            
+            if (result)
+            {
+                ToastService.ShowSuccess("Media deleted successfully");
+                await LoadOverallStats();
+                await LoadMediaForAllKeys();
+            }
+            else
+            {
+                ToastService.ShowError("Failed to delete media");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting media {MediaId}", mediaId);
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private async Task DeleteSelectedMedia()
+    {
+        if (!selectedMediaRecords.Any())
+            return;
+
+        try
+        {
+            isDeleting = true;
+            var count = 0;
+            
+            foreach (var mediaId in selectedMediaRecords.ToList())
+            {
+                var result = await AdminApiClient.DeleteMediaAsync(mediaId);
+                if (result)
+                {
+                    count++;
+                }
+            }
+            
+            ToastService.ShowSuccess($"Deleted {count} media files");
+            selectedMediaRecords.Clear();
+            selectAll = false;
+            
+            await LoadOverallStats();
+            await LoadMediaForAllKeys();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting selected media");
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private void ShowCleanupDialog()
+    {
+        showCleanupDialog = true;
+        cleanupMessage = null;
+    }
+
+    private async Task CleanupExpiredMedia()
+    {
+        try
+        {
+            isCleaningUp = true;
+            cleanupMessage = "Cleaning up expired media...";
+            
+            var count = await AdminApiClient.CleanupExpiredMediaAsync();
+            cleanupMessage = $"Successfully cleaned up {count} expired media files";
+            
+            await LoadOverallStats();
+            await LoadMediaForAllKeys();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cleaning up expired media");
+            cleanupMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCleaningUp = false;
+        }
+    }
+
+    private async Task CleanupOrphanedMedia()
+    {
+        try
+        {
+            isCleaningUp = true;
+            cleanupMessage = "Cleaning up orphaned media...";
+            
+            var count = await AdminApiClient.CleanupOrphanedMediaAsync();
+            cleanupMessage = $"Successfully cleaned up {count} orphaned media files";
+            
+            await LoadOverallStats();
+            await LoadMediaForAllKeys();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error cleaning up orphaned media");
+            cleanupMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCleaningUp = false;
+        }
+    }
+
+    private async Task PruneOldMedia()
+    {
+        if (daysToKeep <= 0)
+            return;
+
+        try
+        {
+            isCleaningUp = true;
+            cleanupMessage = $"Pruning media older than {daysToKeep} days...";
+            
+            var count = await AdminApiClient.PruneOldMediaAsync(daysToKeep);
+            cleanupMessage = $"Successfully pruned {count} old media files";
+            
+            await LoadOverallStats();
+            await LoadMediaForAllKeys();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error pruning old media");
+            cleanupMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCleaningUp = false;
+        }
+    }
+
+    private void ShowMediaPreview(MediaRecord media)
+    {
+        previewMedia = media;
+    }
+
+    private void ClosePreview()
+    {
+        previewMedia = null;
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ToastService.ShowSuccess("URL copied to clipboard");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error copying to clipboard");
+            ToastService.ShowError("Failed to copy URL");
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size = size / 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private string GetMediaTypeIcon(string mediaType)
+    {
+        return mediaType switch
+        {
+            "image" => "fa-image",
+            "video" => "fa-video",
+            _ => "fa-file"
+        };
+    }
+}

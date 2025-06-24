@@ -1176,9 +1176,8 @@ namespace ConduitLLM.Core.Routing
                     // Check if the deployment supports embeddings
                     if (_modelDeployments.TryGetValue(m, out var deployment))
                     {
-                        // For now, assume all models support embeddings unless explicitly disabled
-                        // TODO: Add SupportsEmbeddings property to ModelDeployment when available
-                        return true;
+                        // Use the SupportsEmbeddings property to determine capability
+                        return deployment.SupportsEmbeddings;
                     }
                     
                     // If no deployment info, check if the model name suggests embedding capability

@@ -105,5 +105,10 @@ namespace ConduitLLM.Configuration.Entities
         /// Deployment name for displaying in UI
         /// </summary>
         public string DeploymentName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether this deployment supports embedding operations
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
     }
 }

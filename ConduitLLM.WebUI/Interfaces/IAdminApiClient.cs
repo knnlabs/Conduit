@@ -779,6 +779,75 @@ namespace ConduitLLM.WebUI.Interfaces
 
         #endregion
 
+        #region Media Management
+
+        /// <summary>
+        /// Gets overall storage statistics across all virtual keys.
+        /// </summary>
+        /// <returns>Overall storage statistics.</returns>
+        Task<ConduitLLM.Core.Interfaces.OverallMediaStorageStats?> GetOverallMediaStatsAsync();
+
+        /// <summary>
+        /// Gets storage statistics for a specific virtual key.
+        /// </summary>
+        /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <returns>Storage statistics for the virtual key.</returns>
+        Task<ConduitLLM.Core.Interfaces.MediaStorageStats?> GetMediaStatsByVirtualKeyAsync(int virtualKeyId);
+
+        /// <summary>
+        /// Gets storage statistics grouped by provider.
+        /// </summary>
+        /// <returns>Dictionary of provider names to storage size.</returns>
+        Task<Dictionary<string, long>?> GetMediaStatsByProviderAsync();
+
+        /// <summary>
+        /// Gets storage statistics grouped by media type.
+        /// </summary>
+        /// <returns>Dictionary of media types to storage size.</returns>
+        Task<Dictionary<string, long>?> GetMediaStatsByMediaTypeAsync();
+
+        /// <summary>
+        /// Gets media records for a specific virtual key.
+        /// </summary>
+        /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <returns>List of media records.</returns>
+        Task<List<ConduitLLM.Configuration.Entities.MediaRecord>?> GetMediaByVirtualKeyAsync(int virtualKeyId);
+
+        /// <summary>
+        /// Searches for media records by storage key pattern.
+        /// </summary>
+        /// <param name="pattern">The pattern to search for in storage keys.</param>
+        /// <returns>List of matching media records.</returns>
+        Task<List<ConduitLLM.Configuration.Entities.MediaRecord>?> SearchMediaAsync(string pattern);
+
+        /// <summary>
+        /// Deletes a specific media record and its associated file.
+        /// </summary>
+        /// <param name="mediaId">The ID of the media record to delete.</param>
+        /// <returns>True if successful, false otherwise.</returns>
+        Task<bool> DeleteMediaAsync(Guid mediaId);
+
+        /// <summary>
+        /// Manually triggers cleanup of expired media files.
+        /// </summary>
+        /// <returns>Number of files cleaned up.</returns>
+        Task<int> CleanupExpiredMediaAsync();
+
+        /// <summary>
+        /// Manually triggers cleanup of orphaned media files.
+        /// </summary>
+        /// <returns>Number of files cleaned up.</returns>
+        Task<int> CleanupOrphanedMediaAsync();
+
+        /// <summary>
+        /// Manually triggers pruning of old media files.
+        /// </summary>
+        /// <param name="daysToKeep">Number of days to keep media files.</param>
+        /// <returns>Number of files pruned.</returns>
+        Task<int> PruneOldMediaAsync(int daysToKeep);
+
+        #endregion
+
         #region HTTP Configuration
 
         /// <summary>

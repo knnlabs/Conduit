@@ -14,18 +14,22 @@ namespace ConduitLLM.Http.EventHandlers
         IConsumer<ProviderCredentialDeleted>
     {
         private readonly IProviderDiscoveryService? _providerDiscoveryService;
+        private readonly IProviderCredentialCache? _providerCredentialCache;
         private readonly ILogger<ProviderCredentialEventHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ProviderCredentialEventHandler
         /// </summary>
         /// <param name="providerDiscoveryService">Optional provider discovery service</param>
+        /// <param name="providerCredentialCache">Optional provider credential cache</param>
         /// <param name="logger">Logger instance</param>
         public ProviderCredentialEventHandler(
             IProviderDiscoveryService? providerDiscoveryService,
+            IProviderCredentialCache? providerCredentialCache,
             ILogger<ProviderCredentialEventHandler> logger)
         {
             _providerDiscoveryService = providerDiscoveryService;
+            _providerCredentialCache = providerCredentialCache;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -44,8 +48,12 @@ namespace ConduitLLM.Http.EventHandlers
                     "Provider credential updated: {ProviderName} (ID: {ProviderId}), enabled: {IsEnabled}, changed properties: {ChangedProperties}",
                     @event.ProviderName, @event.ProviderId, @event.IsEnabled, string.Join(", ", @event.ChangedProperties));
 
-                // TODO: Invalidate provider credential cache when implemented
-                // await _providerCredentialCache.InvalidateProviderAsync(@event.ProviderId);
+                // Invalidate provider credential cache if available
+                if (_providerCredentialCache != null)
+                {
+                    await _providerCredentialCache.InvalidateProviderAsync(@event.ProviderId);
+                    _logger.LogDebug("Provider credential cache invalidated for provider {ProviderId}", @event.ProviderId);
+                }
 
                 // If provider discovery service is available, refresh capabilities
                 if (_providerDiscoveryService != null && @event.IsEnabled)
@@ -88,7 +96,7 @@ namespace ConduitLLM.Http.EventHandlers
         /// Cleans up cached data for the deleted provider
         /// </summary>
         /// <param name="context">Message context containing the event</param>
-        public Task Consume(ConsumeContext<ProviderCredentialDeleted> context)
+        public async Task Consume(ConsumeContext<ProviderCredentialDeleted> context)
         {
             var @event = context.Message;
             
@@ -98,14 +106,16 @@ namespace ConduitLLM.Http.EventHandlers
                     "Provider credential deleted: {ProviderName} (ID: {ProviderId})",
                     @event.ProviderName, @event.ProviderId);
 
-                // TODO: Clean up provider-related caches when implemented
-                // await _providerCredentialCache.InvalidateProviderAsync(@event.ProviderId);
-                // await _modelCapabilityCache.ClearProviderCapabilitiesAsync(@event.ProviderId);
+                // Clean up provider-related caches if available
+                if (_providerCredentialCache != null)
+                {
+                    await _providerCredentialCache.InvalidateProviderAsync(@event.ProviderId);
+                    _logger.LogDebug("Provider credential cache invalidated for deleted provider {ProviderId}", @event.ProviderId);
+                }
 
                 _logger.LogDebug("Cache cleanup completed for deleted provider {ProviderName} (ID: {ProviderId})", 
                     @event.ProviderName, @event.ProviderId);
                     
-                return Task.CompletedTask;
             }
             catch (Exception ex)
             {

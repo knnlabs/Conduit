@@ -55,7 +55,8 @@ namespace ConduitLLM.Http.Adapters
                     DeploymentName = m.DeploymentName,
                     IsEnabled = true, // Default
                     MaxContextTokens = null, // Default
-                    SupportsImageGeneration = m.SupportsImageGeneration
+                    SupportsImageGeneration = m.SupportsImageGeneration,
+                    SupportsEmbeddings = m.SupportsEmbeddings
                 }).ToList();
             }
 
@@ -72,7 +73,8 @@ namespace ConduitLLM.Http.Adapters
                     DeploymentName = mapping.DeploymentName,
                     IsEnabled = true, // Default
                     MaxContextTokens = null, // Default
-                    SupportsImageGeneration = mapping.SupportsImageGeneration
+                    SupportsImageGeneration = mapping.SupportsImageGeneration,
+                    SupportsEmbeddings = mapping.SupportsEmbeddings
                 };
             }
         }

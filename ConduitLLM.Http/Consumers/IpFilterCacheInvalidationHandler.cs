@@ -1,4 +1,6 @@
+using System;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -10,15 +12,19 @@ namespace ConduitLLM.Http.Consumers
     /// </summary>
     public class IpFilterCacheInvalidationHandler : IConsumer<IpFilterChanged>
     {
+        private readonly IIpFilterCache? _ipFilterCache;
         private readonly ILogger<IpFilterCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the IpFilterCacheInvalidationHandler
         /// </summary>
+        /// <param name="ipFilterCache">Optional IP filter cache</param>
         /// <param name="logger">Logger for diagnostics</param>
         public IpFilterCacheInvalidationHandler(
+            IIpFilterCache? ipFilterCache,
             ILogger<IpFilterCacheInvalidationHandler> logger)
         {
+            _ipFilterCache = ipFilterCache;
             _logger = logger;
         }
 
@@ -61,10 +67,21 @@ namespace ConduitLLM.Http.Consumers
                     string.Join(", ", @event.ChangedProperties));
             }
 
-            // TODO: Implement cache invalidation when IIpFilterCache is available
-            // Future implementation will invalidate key-specific or global filter caches
-
-            await Task.CompletedTask;
+            // Invalidate cache if available
+            if (_ipFilterCache != null)
+            {
+                try
+                {
+                    // Since the IpFilterChanged event structure is not fully defined yet,
+                    // we'll do a conservative approach and clear all filters
+                    await _ipFilterCache.ClearAllFiltersAsync();
+                    _logger.LogInformation("IP filter cache cleared due to filter change event");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error invalidating IP filter cache");
+                }
+            }
         }
     }
 }

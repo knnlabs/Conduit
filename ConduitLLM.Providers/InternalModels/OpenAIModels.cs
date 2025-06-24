@@ -49,7 +49,33 @@ namespace ConduitLLM.Providers.InternalModels.OpenAIModels
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? Seed { get; init; }
 
-        // TODO: Add other optional parameters like top_p, n, stop, presence_penalty, frequency_penalty, logit_bias, user
+        [JsonPropertyName("top_p")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? TopP { get; init; } // Nucleus sampling, between 0 and 1
+
+        [JsonPropertyName("n")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? N { get; init; } // Number of completions to generate
+
+        [JsonPropertyName("stop")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public object? Stop { get; init; } // Can be string or array of strings
+
+        [JsonPropertyName("presence_penalty")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? PresencePenalty { get; init; } // Between -2.0 and 2.0
+
+        [JsonPropertyName("frequency_penalty")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? FrequencyPenalty { get; init; } // Between -2.0 and 2.0
+
+        [JsonPropertyName("logit_bias")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, float>? LogitBias { get; init; } // Map of token IDs to bias values
+
+        [JsonPropertyName("user")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? User { get; init; } // Unique identifier for the end-user
     }
 
     internal record OpenAIMessage

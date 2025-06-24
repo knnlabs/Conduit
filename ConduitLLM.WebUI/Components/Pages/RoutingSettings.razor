@@ -354,6 +354,11 @@ else
                             <input class="form-check-input" type="checkbox" id="isEnabled" @bind="_editingDeployment.IsEnabled" />
                             <label class="form-check-label" for="isEnabled">Enabled</label>
                         </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="supportsEmbeddings" @bind="_editingDeployment.SupportsEmbeddings" />
+                            <label class="form-check-label" for="supportsEmbeddings">Supports Embeddings</label>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -644,7 +649,9 @@ else
                 Id = Guid.NewGuid(),
                 IsEnabled = true,
                 HealthCheckEnabled = true,
-                Weight = 1
+                Weight = 1,
+                Priority = 1,
+                SupportsEmbeddings = false // Default to false, can be changed in UI
             };
             
             // Make sure the dialog content is prepared before showing
@@ -673,7 +680,14 @@ else
                 ProviderName = deployment.ProviderName,
                 Weight = deployment.Weight,
                 HealthCheckEnabled = deployment.HealthCheckEnabled,
-                IsEnabled = deployment.IsEnabled
+                IsEnabled = deployment.IsEnabled,
+                Priority = deployment.Priority,
+                RPM = deployment.RPM,
+                TPM = deployment.TPM,
+                InputTokenCostPer1K = deployment.InputTokenCostPer1K,
+                OutputTokenCostPer1K = deployment.OutputTokenCostPer1K,
+                SupportsEmbeddings = deployment.SupportsEmbeddings,
+                DeploymentName = deployment.DeploymentName
             };
             
             // Make sure the dialog content is prepared before showing
