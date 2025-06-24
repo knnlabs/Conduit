@@ -1,0 +1,576 @@
+@* Embedding-specific Monitoring and Alerting Dashboard *@
+@inject IAdminApiClient AdminApiClient
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<div class="modern-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fa fa-tachometer-alt me-2 text-info"></i>
+            Embedding Monitoring Dashboard
+        </h5>
+        <div class="d-flex gap-2">
+            <button class="modern-btn modern-btn-outline-primary modern-btn-sm" @onclick="RefreshMetrics">
+                <i class="fa fa-refresh me-1"></i>Refresh
+            </button>
+            <button class="modern-btn modern-btn-outline-success modern-btn-sm" @onclick="ConfigureAlerts">
+                <i class="fa fa-bell me-1"></i>Configure Alerts
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading metrics...</span>
+                </div>
+                <span class="ms-2">Loading monitoring data...</span>
+            </div>
+        }
+        else
+        {
+            <!-- Alerts Panel -->
+            @if (activeAlerts.Any())
+            {
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <EmbeddingAlertPanel Alerts="@activeAlerts" 
+                                           OnAlertClick="@HandleAlertClick" 
+                                           OnAlertDismiss="@HandleAlertDismiss" />
+                    </div>
+                </div>
+            }
+
+            <!-- Real-time Metrics Row -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="metric-card p-3 border rounded @GetStatusClass(metrics.SystemHealth)">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fa fa-heartbeat fa-2x @GetStatusIconClass(metrics.SystemHealth)"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">System Health</h6>
+                                <div class="fw-bold">@metrics.SystemHealth</div>
+                                <small class="text-muted">Overall status</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card p-3 border rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fa fa-chart-line fa-2x text-primary"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Requests/Min</h6>
+                                <div class="fw-bold text-primary">@metrics.RequestsPerMinute</div>
+                                <small class="text-muted @GetTrendClass(metrics.RequestTrend)">
+                                    @GetTrendIcon(metrics.RequestTrend) @metrics.RequestTrend.ToString("+0.0%;-0.0%;0%")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card p-3 border rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fa fa-clock fa-2x text-info"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Avg Latency</h6>
+                                <div class="fw-bold text-info">@metrics.AverageLatency ms</div>
+                                <small class="text-muted @GetTrendClass(-metrics.LatencyTrend)">
+                                    @GetTrendIcon(-metrics.LatencyTrend) @(-metrics.LatencyTrend).ToString("+0.0%;-0.0%;0%")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card p-3 border rounded">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fa fa-exclamation-triangle fa-2x @(metrics.ErrorRate < 0.05 ? "text-success" : metrics.ErrorRate < 0.1 ? "text-warning" : "text-danger")"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">Error Rate</h6>
+                                <div class="fw-bold @(metrics.ErrorRate < 0.05 ? "text-success" : metrics.ErrorRate < 0.1 ? "text-warning" : "text-danger")">
+                                    @metrics.ErrorRate.ToString("P1")
+                                </div>
+                                <small class="text-muted @GetTrendClass(-metrics.ErrorTrend)">
+                                    @GetTrendIcon(-metrics.ErrorTrend) @(-metrics.ErrorTrend).ToString("+0.0%;-0.0%;0%")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Provider Status Grid -->
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fa fa-server me-2"></i>Provider Status
+                </h6>
+                <div class="row g-3">
+                    @foreach (var provider in providerStatus)
+                    {
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card border @(provider.IsHealthy ? "border-success" : "border-danger") h-100">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="@GetProviderIcon(provider.Name) me-2 text-primary"></i>
+                                            <h6 class="mb-0">@provider.Name</h6>
+                                        </div>
+                                        <span class="badge @(provider.IsHealthy ? "bg-success" : "bg-danger")">
+                                            @(provider.IsHealthy ? "Healthy" : "Issues")
+                                        </span>
+                                    </div>
+                                    <div class="row g-2 small">
+                                        <div class="col-6">
+                                            <div class="text-muted">Latency</div>
+                                            <div class="fw-bold">@provider.Latency ms</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-muted">Success Rate</div>
+                                            <div class="fw-bold">@provider.SuccessRate.ToString("P1")</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="progress" style="height: 4px;">
+                                            <div class="progress-bar @(provider.SuccessRate > 0.95 ? "bg-success" : provider.SuccessRate > 0.9 ? "bg-warning" : "bg-danger")" 
+                                                 style="width: @(provider.SuccessRate * 100)%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Events -->
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fa fa-history me-2"></i>Recent Events
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Details</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in recentEvents.Take(10))
+                            {
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">@evt.Timestamp.ToString("HH:mm:ss")</small>
+                                    </td>
+                                    <td>@evt.EventType</td>
+                                    <td>@evt.Details</td>
+                                    <td>
+                                        <span class="badge @GetEventStatusClass(evt.Status)">@evt.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Performance Thresholds -->
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Performance Thresholds</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Current</th>
+                                    <th>Threshold</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Response Time</td>
+                                    <td>@metrics.AverageLatency ms</td>
+                                    <td>&lt; 500ms</td>
+                                    <td>
+                                        <i class="fa @(metrics.AverageLatency < 500 ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Error Rate</td>
+                                    <td>@metrics.ErrorRate.ToString("P1")</td>
+                                    <td>&lt; 5%</td>
+                                    <td>
+                                        <i class="fa @(metrics.ErrorRate < 0.05 ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Success Rate</td>
+                                    <td>@((1 - metrics.ErrorRate).ToString("P1"))</td>
+                                    <td>&gt; 95%</td>
+                                    <td>
+                                        <i class="fa @((1 - metrics.ErrorRate) > 0.95 ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Alert Configuration</h6>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>High latency alerts</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="alertConfig.HighLatencyEnabled">
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Error rate alerts</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="alertConfig.ErrorRateEnabled">
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Provider health alerts</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="alertConfig.ProviderHealthEnabled">
+                            </div>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Quota usage alerts</span>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" @bind="alertConfig.QuotaUsageEnabled">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private EmbeddingMetrics metrics = new();
+    private List<ConduitLLM.WebUI.Models.EmbeddingAlert> activeAlerts = new();
+    private List<ProviderStatus> providerStatus = new();
+    private List<MonitoringEvent> recentEvents = new();
+    private AlertConfiguration alertConfig = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMonitoringData();
+    }
+
+    private async Task LoadMonitoringData()
+    {
+        isLoading = true;
+        try
+        {
+            // TODO: Load real monitoring data from services
+            // For now, generate mock data
+            metrics = GenerateMockMetrics();
+            activeAlerts = GenerateMockAlerts();
+            providerStatus = GenerateMockProviderStatus();
+            recentEvents = GenerateMockEvents();
+            alertConfig = LoadAlertConfiguration();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load monitoring data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshMetrics()
+    {
+        await LoadMonitoringData();
+        ToastService.ShowSuccess("Monitoring data refreshed");
+    }
+
+    private async Task ConfigureAlerts()
+    {
+        ToastService.ShowInfo("Alert configuration feature coming soon");
+    }
+
+    private async Task HandleAlertClick(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
+    {
+        ToastService.ShowInfo($"Viewing details for: {alert.Title}");
+        // TODO: Show detailed alert modal or navigate to detailed view
+    }
+
+    private async Task HandleAlertDismiss(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
+    {
+        // TODO: Mark alert as dismissed in backend
+        ToastService.ShowSuccess($"Alert dismissed: {alert.Title}");
+    }
+
+    // Mock data generation methods
+    private EmbeddingMetrics GenerateMockMetrics()
+    {
+        var random = new Random();
+        return new EmbeddingMetrics
+        {
+            SystemHealth = random.NextDouble() > 0.1 ? "Healthy" : "Warning",
+            RequestsPerMinute = random.Next(10, 100),
+            AverageLatency = random.Next(80, 300),
+            ErrorRate = random.NextDouble() * 0.1, // 0-10%
+            RequestTrend = (random.NextDouble() - 0.5) * 0.4, // -20% to +20%
+            LatencyTrend = (random.NextDouble() - 0.5) * 0.3, // -15% to +15%
+            ErrorTrend = (random.NextDouble() - 0.5) * 0.2 // -10% to +10%
+        };
+    }
+
+    private List<ConduitLLM.WebUI.Models.EmbeddingAlert> GenerateMockAlerts()
+    {
+        var alerts = new List<ConduitLLM.WebUI.Models.EmbeddingAlert>();
+        var random = new Random();
+        
+        if (random.NextDouble() < 0.3) // 30% chance of high latency alert
+        {
+            alerts.Add(new ConduitLLM.WebUI.Models.EmbeddingAlert
+            {
+                Id = Guid.NewGuid().ToString(),
+                ModelName = "text-embedding-3-small",
+                Title = "High Latency Detected",
+                Message = "OpenAI embedding requests are experiencing elevated response times",
+                Severity = ConduitLLM.WebUI.Models.AlertSeverity.Warning,
+                Type = ConduitLLM.WebUI.Models.AlertType.HighLatency,
+                TriggeredAt = DateTime.UtcNow.AddMinutes(-random.Next(1, 30)),
+                CurrentValue = 750,
+                ThresholdValue = 500,
+                RecommendedAction = "Consider switching to a faster model or increasing timeout thresholds"
+            });
+        }
+
+        if (random.NextDouble() < 0.2) // 20% chance of error rate alert
+        {
+            alerts.Add(new ConduitLLM.WebUI.Models.EmbeddingAlert
+            {
+                Id = Guid.NewGuid().ToString(),
+                ModelName = "embed-english-v3.0",
+                Title = "Increased Error Rate",
+                Message = "Error rate for Cohere embedding service has exceeded threshold",
+                Severity = ConduitLLM.WebUI.Models.AlertSeverity.Error,
+                Type = ConduitLLM.WebUI.Models.AlertType.HighErrorRate,
+                TriggeredAt = DateTime.UtcNow.AddMinutes(-random.Next(5, 60)),
+                CurrentValue = 8.5,
+                ThresholdValue = 5.0,
+                RecommendedAction = "Check provider status and consider using fallback models"
+            });
+        }
+
+        if (random.NextDouble() < 0.15) // 15% chance of cache hit rate alert
+        {
+            alerts.Add(new ConduitLLM.WebUI.Models.EmbeddingAlert
+            {
+                Id = Guid.NewGuid().ToString(),
+                ModelName = "all-models",
+                Title = "Low Cache Hit Rate",
+                Message = "Embedding cache hit rate has dropped below optimal threshold",
+                Severity = ConduitLLM.WebUI.Models.AlertSeverity.Warning,
+                Type = ConduitLLM.WebUI.Models.AlertType.LowCacheHitRate,
+                TriggeredAt = DateTime.UtcNow.AddMinutes(-random.Next(10, 120)),
+                CurrentValue = 25.3,
+                ThresholdValue = 40.0,
+                RecommendedAction = "Review cache TTL settings and consider increasing cache size"
+            });
+        }
+
+        return alerts;
+    }
+
+    private List<ProviderStatus> GenerateMockProviderStatus()
+    {
+        var random = new Random();
+        return new List<ProviderStatus>
+        {
+            new() { Name = "OpenAI", IsHealthy = random.NextDouble() > 0.1, Latency = random.Next(80, 200), SuccessRate = 0.95 + random.NextDouble() * 0.05 },
+            new() { Name = "Cohere", IsHealthy = random.NextDouble() > 0.1, Latency = random.Next(100, 250), SuccessRate = 0.93 + random.NextDouble() * 0.07 },
+            new() { Name = "HuggingFace", IsHealthy = random.NextDouble() > 0.15, Latency = random.Next(200, 400), SuccessRate = 0.90 + random.NextDouble() * 0.10 }
+        };
+    }
+
+    private List<MonitoringEvent> GenerateMockEvents()
+    {
+        var events = new List<MonitoringEvent>();
+        var random = new Random();
+        var eventTypes = new[] { "Request", "Error", "Timeout", "Success", "Retry" };
+        var statuses = new[] { "Success", "Warning", "Error" };
+
+        for (int i = 0; i < 20; i++)
+        {
+            events.Add(new MonitoringEvent
+            {
+                Timestamp = DateTime.UtcNow.AddMinutes(-i * 2),
+                EventType = eventTypes[random.Next(eventTypes.Length)],
+                Details = $"Provider: {providerStatus[random.Next(providerStatus.Count)].Name}",
+                Status = statuses[random.Next(statuses.Length)]
+            });
+        }
+
+        return events;
+    }
+
+    private AlertConfiguration LoadAlertConfiguration()
+    {
+        return new AlertConfiguration
+        {
+            HighLatencyEnabled = true,
+            ErrorRateEnabled = true,
+            ProviderHealthEnabled = true,
+            QuotaUsageEnabled = false
+        };
+    }
+
+    // Helper methods for styling
+    private string GetStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "healthy" => "border-success bg-success bg-opacity-10",
+            "warning" => "border-warning bg-warning bg-opacity-10",
+            "critical" => "border-danger bg-danger bg-opacity-10",
+            _ => "border-secondary"
+        };
+    }
+
+    private string GetStatusIconClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "healthy" => "text-success",
+            "warning" => "text-warning",
+            "critical" => "text-danger",
+            _ => "text-secondary"
+        };
+    }
+
+    private string GetTrendClass(double trend)
+    {
+        return trend > 0 ? "text-success" : trend < 0 ? "text-danger" : "text-muted";
+    }
+
+    private string GetTrendIcon(double trend)
+    {
+        return trend > 0 ? "↑" : trend < 0 ? "↓" : "→";
+    }
+
+    private string GetAlertClass(AlertSeverity severity)
+    {
+        return severity switch
+        {
+            AlertSeverity.Critical => "border-danger bg-danger bg-opacity-10",
+            AlertSeverity.Warning => "border-warning bg-warning bg-opacity-10",
+            AlertSeverity.Info => "border-info bg-info bg-opacity-10",
+            _ => ""
+        };
+    }
+
+    private string GetAlertIcon(AlertSeverity severity)
+    {
+        return severity switch
+        {
+            AlertSeverity.Critical => "fa fa-exclamation-circle text-danger",
+            AlertSeverity.Warning => "fa fa-exclamation-triangle text-warning",
+            AlertSeverity.Info => "fa fa-info-circle text-info",
+            _ => "fa fa-bell"
+        };
+    }
+
+    private string GetProviderIcon(string providerName)
+    {
+        return providerName.ToLower() switch
+        {
+            "openai" => "fa fa-brain",
+            "cohere" => "fa fa-network-wired",
+            "huggingface" => "fa fa-smile",
+            _ => "fa fa-server"
+        };
+    }
+
+    private string GetEventStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "success" => "bg-success",
+            "warning" => "bg-warning",
+            "error" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+@* Data Models *@
+@code {
+    public class EmbeddingMetrics
+    {
+        public string SystemHealth { get; set; } = string.Empty;
+        public int RequestsPerMinute { get; set; }
+        public int AverageLatency { get; set; }
+        public double ErrorRate { get; set; }
+        public double RequestTrend { get; set; }
+        public double LatencyTrend { get; set; }
+        public double ErrorTrend { get; set; }
+    }
+
+    public class MonitoringAlert
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public AlertSeverity Severity { get; set; }
+        public DateTime Timestamp { get; set; }
+        public bool IsAcknowledged { get; set; }
+    }
+
+    public enum AlertSeverity
+    {
+        Info,
+        Warning,
+        Critical
+    }
+
+    public class ProviderStatus
+    {
+        public string Name { get; set; } = string.Empty;
+        public bool IsHealthy { get; set; }
+        public int Latency { get; set; }
+        public double SuccessRate { get; set; }
+    }
+
+    public class MonitoringEvent
+    {
+        public DateTime Timestamp { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+    }
+
+    public class AlertConfiguration
+    {
+        public bool HighLatencyEnabled { get; set; }
+        public bool ErrorRateEnabled { get; set; }
+        public bool ProviderHealthEnabled { get; set; }
+        public bool QuotaUsageEnabled { get; set; }
+    }
+}

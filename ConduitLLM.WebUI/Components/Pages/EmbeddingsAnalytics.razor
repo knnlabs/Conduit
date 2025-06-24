@@ -1,0 +1,432 @@
+@page "/embeddings/analytics"
+@attribute [Authorize(Policy = "MasterKeyPolicy")]
+@using ConduitLLM.Configuration.DTOs
+@using ConduitLLM.Configuration.DTOs.VirtualKey
+@using ConduitLLM.WebUI.Models
+@inject IAdminApiClient AdminApiClient
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Embeddings Analytics - Conduit</PageTitle>
+
+<PageHeader Title="Embeddings Analytics" 
+            Description="Comprehensive analytics for embedding usage, costs, and performance metrics"
+            Icon="fa-chart-bar">
+    <Statistics>
+        <div class="stat-item">
+            <i class="fa fa-calendar me-2 text-primary"></i>
+            <span class="small">@selectedPeriod Period</span>
+        </div>
+        <div class="stat-item mt-2">
+            <i class="fa fa-filter me-2 text-info"></i>
+            <span class="small">@(selectedVirtualKey == "all" ? "All Keys" : selectedVirtualKey)</span>
+        </div>
+    </Statistics>
+</PageHeader>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="modern-card">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Time Period</label>
+                        <select class="modern-form-control" @bind="selectedPeriod" @bind:after="OnFiltersChanged">
+                            <option value="Last 24 Hours">Last 24 Hours</option>
+                            <option value="Last 7 Days">Last 7 Days</option>
+                            <option value="Last 30 Days">Last 30 Days</option>
+                            <option value="Last 3 Months">Last 3 Months</option>
+                            <option value="Custom Range">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Virtual Key</label>
+                        <select class="modern-form-control" @bind="selectedVirtualKey" @bind:after="OnFiltersChanged">
+                            <option value="all">All Virtual Keys</option>
+                            @if (virtualKeys != null)
+                            {
+                                @foreach (var key in virtualKeys)
+                                {
+                                    <option value="@key.Name">@key.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Provider</label>
+                        <select class="modern-form-control" @bind="selectedProvider" @bind:after="OnFiltersChanged">
+                            <option value="all">All Providers</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="cohere">Cohere</option>
+                            <option value="huggingface">HuggingFace</option>
+                            <option value="bedrock">Bedrock</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="modern-btn modern-btn-outline-primary w-100" @onclick="RefreshAnalytics">
+                            <i class="fa fa-refresh me-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading analytics...</span>
+        </div>
+        <div class="mt-2">Loading embedding analytics...</div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- Key Metrics Row -->
+        <div class="col-12">
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <StatCard 
+                        Label="Total Requests"
+                        Value="@analytics.TotalRequests.ToString("N0")"
+                        SubText="@selectedPeriod"
+                        IconClass="fa fa-vector-square"
+                        Color="StatCard.StatCardColor.Primary"
+                        ShowTrend="true"
+                        TrendValue="@((decimal)analytics.RequestsTrend)" />
+                </div>
+                <div class="col-md-3">
+                    <StatCard 
+                        Label="Total Cost"
+                        Value="@analytics.TotalCost.ToString("F2")"
+                        SubText="@selectedPeriod"
+                        IconClass="fa fa-dollar-sign"
+                        Color="StatCard.StatCardColor.Success"
+                        IsCurrency="true"
+                        ShowTrend="true"
+                        TrendValue="@((decimal)analytics.CostTrend)" />
+                </div>
+                <div class="col-md-3">
+                    <StatCard 
+                        Label="Avg Latency"
+                        Value="@($"{analytics.AverageLatency:F0}ms")"
+                        SubText="Response Time"
+                        IconClass="fa fa-tachometer-alt"
+                        Color="StatCard.StatCardColor.Info"
+                        ShowTrend="true"
+                        TrendValue="@((decimal)analytics.LatencyTrend)" />
+                </div>
+                <div class="col-md-3">
+                    <StatCard 
+                        Label="Success Rate"
+                        Value="@($"{analytics.SuccessRate:F1}%")"
+                        SubText="Request Success"
+                        IconClass="fa fa-check-circle"
+                        Color="@(analytics.SuccessRate >= 99 ? StatCard.StatCardColor.Success : analytics.SuccessRate >= 95 ? StatCard.StatCardColor.Warning : StatCard.StatCardColor.Danger)"
+                        ShowTrend="true"
+                        TrendValue="@((decimal)analytics.SuccessRateTrend)" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="col-12 col-lg-8">
+            <div class="modern-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-chart-line me-2"></i>
+                        Usage Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="usageChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="modern-card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-pie-chart me-2"></i>
+                        Model Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="modelDistributionChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Models and Virtual Keys -->
+        <div class="col-12 col-lg-6">
+            <div class="modern-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-trophy me-2"></i>
+                        Top Models by Usage
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (analytics.TopModels != null && analytics.TopModels.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var model in analytics.TopModels.Take(5))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-vector-square me-3 text-primary"></i>
+                                        <div>
+                                            <h6 class="mb-1">@model.ModelName</h6>
+                                            <small class="text-muted">@model.Provider</small>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold">@model.RequestCount.ToString("N0")</div>
+                                        <small class="text-muted">requests</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa fa-chart-bar fa-2x mb-3"></i>
+                            <div>No usage data available</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="modern-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-key me-2"></i>
+                        Top Virtual Keys by Cost
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (analytics.TopVirtualKeys != null && analytics.TopVirtualKeys.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var key in analytics.TopVirtualKeys.Take(5))
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-key me-3 text-success"></i>
+                                        <div>
+                                            <h6 class="mb-1">@key.KeyName</h6>
+                                            <small class="text-muted">@key.RequestCount requests</small>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-success">$@key.TotalCost.ToString("F2")</div>
+                                        <small class="text-muted">total cost</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa fa-chart-bar fa-2x mb-3"></i>
+                            <div>No cost data available</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="col-12">
+            <div class="modern-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fa fa-tachometer-alt me-2"></i>
+                        Performance Metrics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-3">Latency Distribution</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>&lt; 100ms</span>
+                                    <span class="fw-bold text-success">@analytics.LatencyDistribution.Under100ms%</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>100-200ms</span>
+                                    <span class="fw-bold text-warning">@analytics.LatencyDistribution.Between100And200ms%</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>200-500ms</span>
+                                    <span class="fw-bold text-warning">@analytics.LatencyDistribution.Between200And500ms%</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>&gt; 500ms</span>
+                                    <span class="fw-bold text-danger">@analytics.LatencyDistribution.Over500ms%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-3">Error Breakdown</h6>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Rate Limits</span>
+                                    <span class="fw-bold text-danger">@analytics.ErrorBreakdown.RateLimitErrors</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Timeouts</span>
+                                    <span class="fw-bold text-danger">@analytics.ErrorBreakdown.TimeoutErrors</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Auth Errors</span>
+                                    <span class="fw-bold text-danger">@analytics.ErrorBreakdown.AuthErrors</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Other</span>
+                                    <span class="fw-bold text-danger">@analytics.ErrorBreakdown.OtherErrors</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private string selectedPeriod = "Last 7 Days";
+    private string selectedVirtualKey = "all";
+    private string selectedProvider = "all";
+    private List<VirtualKeyDto>? virtualKeys;
+    private EmbeddingAnalytics analytics = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadInitialData();
+            await LoadAnalytics();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load embeddings analytics: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadInitialData()
+    {
+        virtualKeys = (await AdminApiClient.GetAllVirtualKeysAsync()).ToList();
+    }
+
+    private async Task LoadAnalytics()
+    {
+        // TODO: Replace with real analytics service call
+        // For now, using mock data
+        analytics = GenerateMockAnalytics();
+        
+        // Initialize charts after data is loaded
+        await InitializeCharts();
+    }
+
+    private async Task OnFiltersChanged()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            await LoadAnalytics();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to update analytics: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshAnalytics()
+    {
+        await OnFiltersChanged();
+        ToastService.ShowSuccess("Analytics refreshed successfully");
+    }
+
+    private async Task InitializeCharts()
+    {
+        // Initialize charts using Chart.js or similar library
+        // This would be implemented with JavaScript interop
+        await Task.Delay(100); // Placeholder
+    }
+
+    private EmbeddingAnalytics GenerateMockAnalytics()
+    {
+        var random = new Random();
+        
+        return new EmbeddingAnalytics
+        {
+            TotalRequests = random.Next(1000, 10000),
+            TotalCost = (decimal)(random.NextDouble() * 100 + 10),
+            AverageLatency = random.Next(80, 250),
+            SuccessRate = 95 + random.NextDouble() * 5,
+            RequestsTrend = random.NextDouble() * 40 - 20, // -20% to +20%
+            CostTrend = random.NextDouble() * 30 - 15, // -15% to +15%
+            LatencyTrend = random.NextDouble() * 20 - 10, // -10% to +10%
+            SuccessRateTrend = random.NextDouble() * 4 - 2, // -2% to +2%
+            
+            TopModels = new List<Models.ModelUsage>
+            {
+                new() { ModelName = "text-embedding-3-small", Provider = "OpenAI", RequestCount = random.Next(500, 2000) },
+                new() { ModelName = "text-embedding-3-large", Provider = "OpenAI", RequestCount = random.Next(300, 1500) },
+                new() { ModelName = "embed-english-v3.0", Provider = "Cohere", RequestCount = random.Next(200, 1000) },
+                new() { ModelName = "all-MiniLM-L6-v2", Provider = "HuggingFace", RequestCount = random.Next(100, 800) },
+                new() { ModelName = "text-embedding-ada-002", Provider = "OpenAI", RequestCount = random.Next(50, 600) }
+            },
+            
+            TopVirtualKeys = new List<Models.VirtualKeyUsage>
+            {
+                new() { KeyName = "Production", RequestCount = random.Next(1000, 3000), TotalCost = (decimal)(random.NextDouble() * 50 + 20) },
+                new() { KeyName = "Development", RequestCount = random.Next(500, 2000), TotalCost = (decimal)(random.NextDouble() * 25 + 10) },
+                new() { KeyName = "Testing", RequestCount = random.Next(200, 1000), TotalCost = (decimal)(random.NextDouble() * 15 + 5) },
+                new() { KeyName = "Analytics", RequestCount = random.Next(100, 800), TotalCost = (decimal)(random.NextDouble() * 10 + 3) }
+            },
+            
+            LatencyDistribution = new LatencyDistribution
+            {
+                Under100ms = random.Next(30, 50),
+                Between100And200ms = random.Next(25, 40),
+                Between200And500ms = random.Next(10, 25),
+                Over500ms = random.Next(1, 10)
+            },
+            
+            ErrorBreakdown = new ErrorBreakdown
+            {
+                RateLimitErrors = random.Next(0, 20),
+                TimeoutErrors = random.Next(0, 15),
+                AuthErrors = random.Next(0, 5),
+                OtherErrors = random.Next(0, 10)
+            }
+        };
+    }
+}
+

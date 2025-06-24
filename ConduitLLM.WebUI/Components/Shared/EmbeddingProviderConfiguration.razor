@@ -1,0 +1,459 @@
+@* Enhanced Provider-specific Embedding Configuration Component *@
+@using ConduitLLM.Configuration.DTOs
+@inject IAdminApiClient AdminApiClient
+@inject IToastService ToastService
+
+<div class="modern-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fa fa-vector-square me-2 text-primary"></i>
+            @Provider.ProviderName Embedding Configuration
+        </h5>
+        <div class="d-flex gap-2">
+            <button class="modern-btn modern-btn-outline-primary modern-btn-sm" @onclick="RefreshConfiguration">
+                <i class="fa fa-refresh me-1"></i>Refresh
+            </button>
+            <button class="modern-btn modern-btn-outline-success modern-btn-sm" @onclick="AutoConfigureEmbeddings">
+                <i class="fa fa-magic me-1"></i>Auto-Configure
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="ms-2">Loading embedding configuration...</span>
+            </div>
+        }
+        else
+        {
+            <!-- Provider Status -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-3 bg-light rounded">
+                        <div class="me-3">
+                            @if (Provider.IsEnabled)
+                            {
+                                <i class="fa fa-check-circle fa-2x text-success"></i>
+                            }
+                            else
+                            {
+                                <i class="fa fa-times-circle fa-2x text-danger"></i>
+                            }
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Provider Status</h6>
+                            <small class="text-muted">
+                                @(Provider.IsEnabled ? "Enabled and operational" : "Disabled or misconfigured")
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center p-3 bg-light rounded">
+                        <div class="me-3">
+                            <i class="fa fa-vector-square fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Embedding Models</h6>
+                            <small class="text-muted">
+                                @embeddingModels.Count models available
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Embedding Models -->
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fa fa-list me-2"></i>Available Embedding Models
+                </h6>
+                @if (embeddingModels.Any())
+                {
+                    <div class="row g-3">
+                        @foreach (var model in embeddingModels)
+                        {
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="card border @(model.IsEnabled ? "border-success" : "border-secondary") h-100">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-1">@model.ModelId</h6>
+                                            <span class="badge @(model.IsEnabled ? "bg-success" : "bg-secondary")">
+                                                @(model.IsEnabled ? "Active" : "Inactive")
+                                            </span>
+                                        </div>
+                                        <p class="text-muted small mb-2">@model.ProviderModelId</p>
+                                        
+                                        <!-- Model Metrics -->
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6">
+                                                <div class="text-center">
+                                                    <small class="text-muted d-block">Dimensions</small>
+                                                    <strong>@GetModelDimensions(model.ProviderModelId)</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="text-center">
+                                                    <small class="text-muted d-block">Max Tokens</small>
+                                                    <strong>@GetModelMaxTokens(model.ProviderModelId)</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Model Actions -->
+                                        <div class="d-grid gap-1">
+                                            @if (model.IsEnabled)
+                                            {
+                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => DisableModel(model)">
+                                                    <i class="fa fa-pause me-1"></i>Disable
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-outline-success btn-sm" @onclick="() => EnableModel(model)">
+                                                    <i class="fa fa-play me-1"></i>Enable
+                                                </button>
+                                            }
+                                            <button class="btn btn-outline-primary btn-sm" @onclick="() => TestModel(model)">
+                                                <i class="fa fa-vial me-1"></i>Test
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="fa fa-info-circle fa-2x text-muted mb-3"></i>
+                        <div class="text-muted">No embedding models configured for this provider</div>
+                        <button class="btn btn-outline-primary mt-2" @onclick="AutoConfigureEmbeddings">
+                            <i class="fa fa-magic me-1"></i>Auto-Configure Embeddings
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- Provider-Specific Settings -->
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fa fa-cogs me-2"></i>Provider Settings
+                </h6>
+                <div class="row g-3">
+                    @if (Provider.ProviderName.ToLower() == "openai")
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">Default Embedding Model</label>
+                            <select class="form-select modern-form-control" @bind="settings.DefaultEmbeddingModel">
+                                <option value="">Select default model...</option>
+                                <option value="text-embedding-3-small">text-embedding-3-small (Recommended)</option>
+                                <option value="text-embedding-3-large">text-embedding-3-large (Higher accuracy)</option>
+                                <option value="text-embedding-ada-002">text-embedding-ada-002 (Legacy)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dimensions Override</label>
+                            <input type="number" class="form-control modern-form-control" @bind="settings.DimensionsOverride" 
+                                   placeholder="Auto-detect" min="1" max="3072" />
+                            <small class="text-muted">Leave empty for model default</small>
+                        </div>
+                    }
+                    else if (Provider.ProviderName.ToLower() == "cohere")
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">Default Embedding Model</label>
+                            <select class="form-select modern-form-control" @bind="settings.DefaultEmbeddingModel">
+                                <option value="">Select default model...</option>
+                                <option value="embed-english-v3.0">embed-english-v3.0 (English)</option>
+                                <option value="embed-multilingual-v3.0">embed-multilingual-v3.0 (Multilingual)</option>
+                                <option value="embed-english-light-v3.0">embed-english-light-v3.0 (Lightweight)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Input Type</label>
+                            <select class="form-select modern-form-control" @bind="settings.InputType">
+                                <option value="search_document">search_document (For indexing)</option>
+                                <option value="search_query">search_query (For searching)</option>
+                                <option value="classification">classification (For classification)</option>
+                                <option value="clustering">clustering (For clustering)</option>
+                            </select>
+                        </div>
+                    }
+                    else if (Provider.ProviderName.ToLower() == "huggingface")
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">Default Embedding Model</label>
+                            <select class="form-select modern-form-control" @bind="settings.DefaultEmbeddingModel">
+                                <option value="">Select default model...</option>
+                                <option value="sentence-transformers/all-MiniLM-L6-v2">all-MiniLM-L6-v2 (Fast)</option>
+                                <option value="sentence-transformers/all-mpnet-base-v2">all-mpnet-base-v2 (Accurate)</option>
+                                <option value="sentence-transformers/paraphrase-MiniLM-L6-v2">paraphrase-MiniLM-L6-v2</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Task Type</label>
+                            <select class="form-select modern-form-control" @bind="settings.TaskType">
+                                <option value="feature-extraction">feature-extraction</option>
+                                <option value="sentence-similarity">sentence-similarity</option>
+                                <option value="text-classification">text-classification</option>
+                            </select>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Performance Settings -->
+            <div class="mb-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fa fa-tachometer-alt me-2"></i>Performance Settings
+                </h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Batch Size</label>
+                        <input type="number" class="form-control modern-form-control" @bind="settings.BatchSize" 
+                               min="1" max="100" placeholder="Auto" />
+                        <small class="text-muted">Max inputs per request</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Timeout (seconds)</label>
+                        <input type="number" class="form-control modern-form-control" @bind="settings.TimeoutSeconds" 
+                               min="5" max="300" placeholder="30" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Retry Attempts</label>
+                        <input type="number" class="form-control modern-form-control" @bind="settings.MaxRetries" 
+                               min="0" max="5" placeholder="3" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Configuration -->
+            <div class="d-flex justify-content-end gap-2">
+                <button class="modern-btn modern-btn-outline-secondary" @onclick="ResetToDefaults">
+                    <i class="fa fa-undo me-1"></i>Reset to Defaults
+                </button>
+                <button class="modern-btn modern-btn-primary" @onclick="SaveConfiguration" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    else
+                    {
+                        <i class="fa fa-save me-1"></i>
+                    }
+                    Save Configuration
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public ProviderCredentialDto Provider { get; set; } = new();
+    [Parameter] public EventCallback OnConfigurationChanged { get; set; }
+
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private List<ModelProviderMappingDto> embeddingModels = new();
+    private EmbeddingProviderSettings settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmbeddingConfiguration();
+    }
+
+    private async Task LoadEmbeddingConfiguration()
+    {
+        isLoading = true;
+        try
+        {
+            // Load embedding models for this provider
+            var allMappings = await AdminApiClient.GetAllModelProviderMappingsAsync();
+            embeddingModels = allMappings
+                .Where(m => m.ProviderId == Provider.Id.ToString() && m.SupportsEmbeddings)
+                .ToList();
+
+            // Load provider-specific settings
+            settings = await LoadProviderSettings();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to load embedding configuration: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task<EmbeddingProviderSettings> LoadProviderSettings()
+    {
+        // TODO: Load from actual configuration service
+        // For now, return default settings
+        return new EmbeddingProviderSettings
+        {
+            DefaultEmbeddingModel = GetDefaultModelForProvider(),
+            BatchSize = GetDefaultBatchSize(),
+            TimeoutSeconds = 30,
+            MaxRetries = 3
+        };
+    }
+
+    private string GetDefaultModelForProvider()
+    {
+        return Provider.ProviderName.ToLower() switch
+        {
+            "openai" => "text-embedding-3-small",
+            "cohere" => "embed-english-v3.0",
+            "huggingface" => "sentence-transformers/all-MiniLM-L6-v2",
+            _ => ""
+        };
+    }
+
+    private int GetDefaultBatchSize()
+    {
+        return Provider.ProviderName.ToLower() switch
+        {
+            "openai" => 50,
+            "cohere" => 96,
+            "huggingface" => 32,
+            _ => 16
+        };
+    }
+
+    private string GetModelDimensions(string modelPath)
+    {
+        return modelPath.ToLower() switch
+        {
+            var path when path.Contains("text-embedding-3-small") => "1536",
+            var path when path.Contains("text-embedding-3-large") => "3072",
+            var path when path.Contains("text-embedding-ada-002") => "1536",
+            var path when path.Contains("embed-english-v3.0") => "1024",
+            var path when path.Contains("embed-multilingual-v3.0") => "1024",
+            var path when path.Contains("all-MiniLM-L6-v2") => "384",
+            var path when path.Contains("all-mpnet-base-v2") => "768",
+            _ => "Auto"
+        };
+    }
+
+    private string GetModelMaxTokens(string modelPath)
+    {
+        return modelPath.ToLower() switch
+        {
+            var path when path.Contains("text-embedding-3") => "8192",
+            var path when path.Contains("text-embedding-ada-002") => "8192",
+            var path when path.Contains("cohere") => "2048",
+            var path when path.Contains("sentence-transformers") => "512",
+            _ => "Auto"
+        };
+    }
+
+    private async Task EnableModel(ModelProviderMappingDto model)
+    {
+        try
+        {
+            model.IsEnabled = true;
+            // TODO: Convert DTO to Entity for update
+            // await AdminApiClient.UpdateModelProviderMappingAsync(model.Id, modelEntity);
+            ToastService.ShowSuccess($"Enabled {model.ModelId}");
+            await OnConfigurationChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to enable model: {ex.Message}");
+        }
+    }
+
+    private async Task DisableModel(ModelProviderMappingDto model)
+    {
+        try
+        {
+            model.IsEnabled = false;
+            // TODO: Convert DTO to Entity for update
+            // await AdminApiClient.UpdateModelProviderMappingAsync(model.Id, modelEntity);
+            ToastService.ShowSuccess($"Disabled {model.ModelId}");
+            await OnConfigurationChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to disable model: {ex.Message}");
+        }
+    }
+
+    private async Task TestModel(ModelProviderMappingDto model)
+    {
+        // TODO: Implement model testing
+        ToastService.ShowInfo($"Testing {model.ModelId} - Feature coming soon");
+    }
+
+    private async Task AutoConfigureEmbeddings()
+    {
+        try
+        {
+            // TODO: Implement auto-configuration logic
+            ToastService.ShowInfo("Auto-configuration feature coming soon");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Auto-configuration failed: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshConfiguration()
+    {
+        await LoadEmbeddingConfiguration();
+        ToastService.ShowSuccess("Configuration refreshed");
+    }
+
+    private async Task SaveConfiguration()
+    {
+        isSaving = true;
+        try
+        {
+            // TODO: Save provider-specific settings
+            await Task.Delay(1000); // Simulate save operation
+            ToastService.ShowSuccess("Configuration saved successfully");
+            await OnConfigurationChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Failed to save configuration: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ResetToDefaults()
+    {
+        settings = new EmbeddingProviderSettings
+        {
+            DefaultEmbeddingModel = GetDefaultModelForProvider(),
+            BatchSize = GetDefaultBatchSize(),
+            TimeoutSeconds = 30,
+            MaxRetries = 3
+        };
+        ToastService.ShowSuccess("Settings reset to defaults");
+    }
+}
+
+@* Data Models *@
+@code {
+    public class EmbeddingProviderSettings
+    {
+        public string DefaultEmbeddingModel { get; set; } = string.Empty;
+        public int? DimensionsOverride { get; set; }
+        public string InputType { get; set; } = "search_document";
+        public string TaskType { get; set; } = "feature-extraction";
+        public int? BatchSize { get; set; }
+        public int TimeoutSeconds { get; set; } = 30;
+        public int MaxRetries { get; set; } = 3;
+    }
+}

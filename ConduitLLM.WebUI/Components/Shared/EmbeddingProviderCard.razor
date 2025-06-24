@@ -1,0 +1,185 @@
+@* Embedding Provider Capability Card Component *@
+@using ConduitLLM.WebUI.Models
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<div class="card border-0 shadow-sm h-100 provider-card @(Provider.IsHealthy ? "border-start border-success border-3" : "border-start border-danger border-3")">
+    <div class="card-body p-3">
+        <!-- Provider Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center">
+                <div class="provider-icon me-3">
+                    <i class="@GetProviderIcon(Provider.ProviderName) fa-lg text-primary"></i>
+                </div>
+                <div>
+                    <h6 class="mb-1 fw-bold">@Provider.ProviderName</h6>
+                    <small class="text-muted">@Provider.ModelCount embedding models</small>
+                </div>
+            </div>
+            <div class="status-indicator">
+                @if (Provider.IsHealthy)
+                {
+                    <span class="badge bg-success rounded-pill">
+                        <i class="fa fa-check me-1"></i>Healthy
+                    </span>
+                }
+                else
+                {
+                    <span class="badge bg-danger rounded-pill">
+                        <i class="fa fa-exclamation-triangle me-1"></i>Issues
+                    </span>
+                }
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="metric-item text-center p-2 bg-light rounded">
+                    <div class="metric-value text-primary fw-bold">@Provider.AvgLatency.ToString("F0")ms</div>
+                    <div class="metric-label small text-muted">Avg Latency</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="metric-item text-center p-2 bg-light rounded">
+                    <div class="metric-value text-success fw-bold">@Provider.SuccessRate.ToString("F1")%</div>
+                    <div class="metric-label small text-muted">Success Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Information -->
+        <div class="cost-info d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Cost per 1K tokens:</span>
+            <span class="fw-bold text-warning">$@Provider.CostPer1K.ToString("F4")</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-grid gap-2">
+            <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewProviderDetails(Provider.Id)">
+                <i class="fa fa-eye me-2"></i>View Details
+            </button>
+        </div>
+
+        <!-- Performance Indicator -->
+        <div class="performance-bar mt-3">
+            <small class="text-muted d-block mb-1">Performance Score</small>
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar @GetPerformanceBarClass()" 
+                     role="progressbar" 
+                     style="width: @GetPerformanceScore()%"
+                     aria-valuenow="@GetPerformanceScore()" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+            </div>
+            <small class="text-muted">@GetPerformanceScore().ToString("F0")%</small>
+        </div>
+    </div>
+</div>
+
+<style>
+    .provider-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .provider-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bs-primary-bg-subtle);
+        border-radius: 8px;
+    }
+    
+    .metric-item {
+        border: 1px solid var(--bs-border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .metric-item:hover {
+        background-color: var(--bs-primary-bg-subtle) !important;
+        border-color: var(--bs-primary-border-subtle);
+    }
+    
+    .metric-value {
+        font-size: 1.1rem;
+        line-height: 1.2;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        line-height: 1;
+    }
+    
+    .progress {
+        border-radius: 10px;
+        background-color: var(--bs-gray-200);
+    }
+    
+    .progress-bar {
+        border-radius: 10px;
+        transition: width 0.6s ease;
+    }
+</style>
+
+@code {
+    [Parameter] public EmbeddingProviderCapability Provider { get; set; } = new();
+
+    private string GetProviderIcon(string providerName)
+    {
+        return providerName.ToLower() switch
+        {
+            "openai" => "fa fa-brain",
+            "anthropic" => "fa fa-robot",
+            "cohere" => "fa fa-network-wired",
+            "huggingface" => "fa fa-smile",
+            "bedrock" => "fa fa-aws",
+            "azure" => "fa fa-cloud",
+            "google" => "fa fa-google",
+            _ => "fa fa-server"
+        };
+    }
+
+    private double GetPerformanceScore()
+    {
+        // Calculate performance score based on latency and success rate
+        var latencyScore = Math.Max(0, (300 - Provider.AvgLatency) / 300 * 50); // 50% weight for latency
+        var successScore = Provider.SuccessRate / 100 * 50; // 50% weight for success rate
+        return Math.Min(100, latencyScore + successScore);
+    }
+
+    private string GetPerformanceBarClass()
+    {
+        var score = GetPerformanceScore();
+        return score switch
+        {
+            >= 90 => "bg-success",
+            >= 70 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private async Task ViewProviderDetails(int providerId)
+    {
+        // TODO: Navigate to provider details page or show modal
+        // For now, redirect to model mappings with filter
+        try
+        {
+            var js = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./js/navigation.js");
+            await js.InvokeVoidAsync("navigateToProviderDetails", new object[] { providerId });
+        }
+        catch
+        {
+            // Fallback: Navigate directly using NavigationManager
+            NavigationManager.NavigateTo($"/providers/{providerId}/details");
+        }
+    }
+}
+
