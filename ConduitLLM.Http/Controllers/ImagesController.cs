@@ -27,7 +27,6 @@ namespace ConduitLLM.Http.Controllers
         private readonly ILogger<ImagesController> _logger;
         private readonly IProviderDiscoveryService _discoveryService;
         private readonly IModelProviderMappingService _modelMappingService;
-        private readonly IImageGenerationQueue _imageQueue;
         private readonly IAsyncTaskService _taskService;
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IVirtualKeyService _virtualKeyService;
@@ -39,7 +38,6 @@ namespace ConduitLLM.Http.Controllers
             ILogger<ImagesController> logger,
             IProviderDiscoveryService discoveryService,
             IModelProviderMappingService modelMappingService,
-            IImageGenerationQueue imageQueue,
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
             IVirtualKeyService virtualKeyService,
@@ -50,7 +48,6 @@ namespace ConduitLLM.Http.Controllers
             _logger = logger;
             _discoveryService = discoveryService;
             _modelMappingService = modelMappingService;
-            _imageQueue = imageQueue;
             _taskService = taskService;
             _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
@@ -333,21 +330,13 @@ namespace ConduitLLM.Http.Controllers
                     return Unauthorized(new { error = new { message = "Virtual key not found", type = "authentication_error" } });
                 }
 
-                // Create task ID
-                var taskId = Guid.NewGuid().ToString();
-                
-                // Create async task using new overload with explicit virtualKeyId
-                var createdTaskId = await _taskService.CreateTaskAsync("image_generation", virtualKey.Id, new
-                {
-                    taskId = taskId,
-                    request = request,
-                    model = modelName
-                });
+                // Create correlation ID
+                var correlationId = Guid.NewGuid().ToString();
 
-                // Create and enqueue the generation request
+                // Create the generation request event first so we can store it as metadata
                 var generationRequest = new ImageGenerationRequested
                 {
-                    TaskId = taskId,
+                    TaskId = "", // Will be filled in after task creation
                     VirtualKeyId = virtualKey.Id,
                     VirtualKeyHash = virtualKeyHash,
                     Request = new ConduitLLM.Core.Events.ImageGenerationRequest
@@ -364,11 +353,31 @@ namespace ConduitLLM.Http.Controllers
                     UserId = HttpContext.User.FindFirst("sub")?.Value ?? "anonymous",
                     Priority = 0, // Normal priority
                     RequestedAt = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid().ToString()
+                    CorrelationId = correlationId
                 };
 
-                // Enqueue for processing
-                await _imageQueue.EnqueueAsync(generationRequest);
+                // Create metadata for the task including the serialized request
+                var metadata = new
+                {
+                    virtualKeyId = virtualKey.Id,
+                    model = modelName,
+                    prompt = request.Prompt,
+                    correlationId = correlationId,
+                    payload = System.Text.Json.JsonSerializer.Serialize(generationRequest)
+                };
+
+                // Create the task using the correct method signature
+                var taskId = await _taskService.CreateTaskAsync(
+                    taskType: "image_generation",
+                    virtualKeyId: virtualKey.Id,
+                    metadata: metadata);
+
+                // Update the request with the actual task ID
+                generationRequest = generationRequest with { TaskId = taskId };
+
+                // The background service will pick up the task and publish to MassTransit
+                _logger.LogInformation("Created async image generation task {TaskId} for model {Model}", 
+                    taskId, modelName);
 
                 // Return accepted response with task information
                 var response = new
@@ -443,7 +452,7 @@ namespace ConduitLLM.Http.Controllers
         }
 
         /// <summary>
-        /// Cancels an async image generation task if it hasn't started processing yet.
+        /// Cancels an async image generation task.
         /// </summary>
         /// <param name="taskId">The task ID to cancel.</param>
         /// <returns>Cancellation result.</returns>
@@ -476,15 +485,36 @@ namespace ConduitLLM.Http.Controllers
                 }
 
                 // Check if task can be cancelled
-                if (task.State == TaskState.Completed || task.State == TaskState.Failed)
+                if (task.State == TaskState.Completed || task.State == TaskState.Failed || task.State == TaskState.Cancelled)
                 {
                     return BadRequest(new { error = new { message = "Task has already completed", type = "invalid_request_error" } });
                 }
 
-                // Cancel the task
-                await _taskService.UpdateTaskStatusAsync(taskId, TaskState.Failed, error: "Cancelled by user");
+                // Get virtual key ID from metadata
+                var virtualKeyId = 0;
+                if (task.Metadata != null)
+                {
+                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
+                    var metadataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(metadataJson);
+                    if (metadataDict != null && metadataDict.TryGetValue("virtualKeyId", out var keyIdObj))
+                    {
+                        virtualKeyId = Convert.ToInt32(keyIdObj.ToString());
+                    }
+                }
 
-                return Ok(new { message = "Task cancelled successfully", taskId = taskId });
+                // Publish cancellation event
+                await _publishEndpoint.Publish(new ImageGenerationCancelled
+                {
+                    TaskId = taskId,
+                    VirtualKeyId = virtualKeyId,
+                    Reason = "Cancelled by user request",
+                    CancelledAt = DateTime.UtcNow,
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
+
+                _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
+
+                return Ok(new { message = "Task cancellation requested", taskId = taskId });
             }
             catch (Exception ex)
             {

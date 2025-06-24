@@ -17,7 +17,7 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Orchestrates image generation tasks by consuming events and managing the generation lifecycle.
     /// </summary>
-    public class ImageGenerationOrchestrator : IConsumer<ImageGenerationRequested>
+    public class ImageGenerationOrchestrator : IConsumer<ImageGenerationRequested>, IConsumer<ImageGenerationCancelled>
     {
         private readonly ILLMClientFactory _clientFactory;
         private readonly IAsyncTaskService _taskService;
@@ -27,6 +27,7 @@ namespace ConduitLLM.Core.Services
         private readonly IProviderDiscoveryService _discoveryService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ICancellableTaskRegistry _taskRegistry;
         private readonly ILogger<ImageGenerationOrchestrator> _logger;
 
         public ImageGenerationOrchestrator(
@@ -38,6 +39,7 @@ namespace ConduitLLM.Core.Services
             IProviderDiscoveryService discoveryService,
             IVirtualKeyService virtualKeyService,
             IHttpClientFactory httpClientFactory,
+            ICancellableTaskRegistry taskRegistry,
             ILogger<ImageGenerationOrchestrator> logger)
         {
             _clientFactory = clientFactory;
@@ -48,6 +50,7 @@ namespace ConduitLLM.Core.Services
             _discoveryService = discoveryService;
             _virtualKeyService = virtualKeyService;
             _httpClientFactory = httpClientFactory;
+            _taskRegistry = taskRegistry;
             _logger = logger;
         }
 
@@ -56,13 +59,19 @@ namespace ConduitLLM.Core.Services
             var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             
+            // Create a linked cancellation token source for this task
+            using var taskCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+            
+            // Register the task for cancellation support
+            _taskRegistry.RegisterTask(request.TaskId, taskCts);
+            
             try
             {
                 _logger.LogInformation("Processing image generation task {TaskId} for prompt: {Prompt}", 
                     request.TaskId, request.Request.Prompt);
                 
                 // Update task status to processing
-                await _taskService.UpdateTaskStatusAsync(request.TaskId, TaskState.Processing);
+                await _taskService.UpdateTaskStatusAsync(request.TaskId, TaskState.Processing, cancellationToken: taskCts.Token);
                 
                 // Publish progress event
                 await _publishEndpoint.Publish(new ImageGenerationProgress
@@ -100,8 +109,8 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Generating {Count} images with {Provider} using model {Model}", 
                     request.Request.N, modelInfo.Provider, modelInfo.ModelId);
                 
-                // Generate images
-                var response = await client.CreateImageAsync(generationRequest);
+                // Generate images with cancellation support
+                var response = await client.CreateImageAsync(generationRequest, cancellationToken: taskCts.Token);
                 
                 // Process and store images
                 var processedImages = new List<ConduitLLM.Core.Events.ImageData>();
@@ -327,6 +336,20 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Completed image generation task {TaskId} in {Duration}s with {Count} images",
                     request.TaskId, stopwatch.Elapsed.TotalSeconds, processedImages.Count);
             }
+            catch (OperationCanceledException) when (taskCts.Token.IsCancellationRequested)
+            {
+                _logger.LogInformation("Image generation task {TaskId} was cancelled", request.TaskId);
+                
+                stopwatch.Stop();
+                
+                // Update task status to cancelled
+                await _taskService.UpdateTaskStatusAsync(
+                    request.TaskId,
+                    TaskState.Cancelled,
+                    error: "Task was cancelled by user request");
+                
+                // Don't re-throw - cancellation is a normal completion path
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing image generation task {TaskId}", request.TaskId);
@@ -354,6 +377,11 @@ namespace ConduitLLM.Core.Services
                 
                 // Re-throw to let MassTransit handle retry logic
                 throw;
+            }
+            finally
+            {
+                // Always unregister the task from the cancellation registry
+                _taskRegistry.UnregisterTask(request.TaskId);
             }
         }
 
@@ -424,6 +452,43 @@ namespace ConduitLLM.Core.Services
                 _ when ex.Message.Contains("temporary", StringComparison.OrdinalIgnoreCase) => true,
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// Handles image generation cancellation requests
+        /// </summary>
+        public async Task Consume(ConsumeContext<ImageGenerationCancelled> context)
+        {
+            var request = context.Message;
+            
+            try
+            {
+                _logger.LogInformation("Processing image generation cancellation for task {TaskId}", request.TaskId);
+                
+                // Try to cancel via the registry
+                var cancelled = _taskRegistry.TryCancel(request.TaskId);
+                
+                if (cancelled)
+                {
+                    _logger.LogInformation("Successfully cancelled image generation task {TaskId}", request.TaskId);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not cancel image generation task {TaskId} - task may have already completed", 
+                        request.TaskId);
+                }
+                
+                // Update task status to cancelled
+                await _taskService.UpdateTaskStatusAsync(
+                    request.TaskId,
+                    TaskState.Cancelled,
+                    error: request.Reason ?? "Cancelled by user request");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing image generation cancellation for task {TaskId}", request.TaskId);
+                // Don't re-throw - cancellation is best effort
+            }
         }
 
         private class ModelInfo

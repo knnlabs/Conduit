@@ -498,30 +498,18 @@ builder.Services.AddSingleton<ConduitLLM.Providers.Translators.ElevenLabsRealtim
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioRouter, ConduitLLM.Core.Routing.SimpleAudioRouter>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, ConduitLLM.Core.Services.AudioCapabilityDetector>();
 
-// Register Image Generation Queue (using Redis for multi-instance support)
-if (!string.IsNullOrEmpty(redisConnectionString))
-{
-    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IImageGenerationQueue>(sp =>
-    {
-        var redis = ConnectionMultiplexer.Connect(redisConnectionString);
-        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisImageGenerationQueue>>();
-        return new ConduitLLM.Core.Services.RedisImageGenerationQueue(redis, logger);
-    });
-    
-    // Add background service for processing image generation tasks
-    builder.Services.AddHostedService<ImageGenerationBackgroundService>();
-    
-    // Add background service for video generation monitoring and cleanup
-    builder.Services.AddHostedService<VideoGenerationBackgroundService>();
-    
-    Console.WriteLine("[Conduit] Image generation queue configured with Redis (distributed mode)");
-}
-else
-{
-    // For development without Redis, we'll use a simple in-memory queue
-    // Note: This won't support multiple instances
-    Console.WriteLine("[Conduit] WARNING: Redis not configured. Image generation queue will not support multiple instances.");
-}
+// Register Image Generation Retry Configuration
+builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationRetryConfiguration>(
+    builder.Configuration.GetSection("ConduitLLM:ImageGenerationRetry"));
+
+// Add database-based background service for image generation
+builder.Services.AddHostedService<ImageGenerationDatabaseBackgroundService>();
+
+// Add background service for video generation monitoring and cleanup
+builder.Services.AddHostedService<VideoGenerationBackgroundService>();
+
+Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
+Console.WriteLine("[Conduit] Image generation supports multi-instance deployment with lease-based task processing");
 
 // Register Media Storage Service
 var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";

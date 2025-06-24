@@ -702,6 +702,37 @@ namespace ConduitLLM.Core.Events
     }
 
     /// <summary>
+    /// Raised when an image generation is cancelled
+    /// </summary>
+    public record ImageGenerationCancelled : DomainEvent
+    {
+        /// <summary>
+        /// Task identifier
+        /// </summary>
+        public string TaskId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Virtual Key ID for tracking
+        /// </summary>
+        public int VirtualKeyId { get; init; }
+        
+        /// <summary>
+        /// Reason for cancellation
+        /// </summary>
+        public string? Reason { get; init; }
+        
+        /// <summary>
+        /// When the cancellation occurred
+        /// </summary>
+        public DateTime CancelledAt { get; init; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Partition key for ordered processing per virtual key
+        /// </summary>
+        public string PartitionKey => VirtualKeyId.ToString();
+    }
+
+    /// <summary>
     /// Image data structure for generation results
     /// </summary>
     public record ImageData
