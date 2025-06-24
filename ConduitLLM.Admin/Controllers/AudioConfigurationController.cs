@@ -356,7 +356,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="endDate">End date (optional)</param>
         /// <response code="200">Returns usage data for the key</response>
         [HttpGet("usage/by-key/{virtualKey}")]
-        [ProducesResponseType(typeof(Interfaces.AudioKeyUsageDto), 200)]
+        [ProducesResponseType(typeof(AudioKeyUsageDto), 200)]
         public async Task<IActionResult> GetUsageByKey(
             string virtualKey,
             [FromQuery] DateTime? startDate = null,
@@ -374,7 +374,7 @@ namespace ConduitLLM.Admin.Controllers
         /// <param name="endDate">End date (optional)</param>
         /// <response code="200">Returns usage data for the provider</response>
         [HttpGet("usage/by-provider/{provider}")]
-        [ProducesResponseType(typeof(Interfaces.AudioProviderUsageDto), 200)]
+        [ProducesResponseType(typeof(AudioProviderUsageDto), 200)]
         public async Task<IActionResult> GetUsageByProvider(
             string provider,
             [FromQuery] DateTime? startDate = null,
