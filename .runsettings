@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura,opencover,json</Format>
+          <ExcludeByFile>**/Migrations/*.cs,**/bin/**/*,**/obj/**/*,**/*Test*.cs,**/*Tests.cs,**/Program.cs,**/Startup.cs</ExcludeByFile>
+          <ExcludeByAttribute>System.Diagnostics.DebuggerNonUserCodeAttribute,System.Diagnostics.DebuggerHiddenAttribute,System.ComponentModel.EditorBrowsableAttribute,System.CodeDom.Compiler.GeneratedCodeAttribute,System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <IncludeDirectory>**/ConduitLLM.*</IncludeDirectory>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

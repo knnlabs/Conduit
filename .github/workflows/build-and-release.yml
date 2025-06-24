@@ -131,6 +131,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Restore local tools
+      run: dotnet tool restore
+
     - name: Build
       run: dotnet build --no-restore --configuration Release
 
@@ -140,12 +143,46 @@ jobs:
           --logger "trx;LogFileName=test-results.trx" \
           --logger "console;verbosity=detailed" \
           --collect:"XPlat Code Coverage" \
-          --results-directory ./TestResults
+          --results-directory ./TestResults \
+          --settings .runsettings
+
+    - name: Process Coverage Results
+      if: always()
+      run: |
+        # Find all coverage files
+        find ./TestResults -name "coverage.cobertura.xml" -type f > coverage_files.txt
+        
+        if [ -s coverage_files.txt ]; then
+          echo "Found coverage files:"
+          cat coverage_files.txt
+          
+          # Generate combined coverage report
+          dotnet tool run reportgenerator \
+            -reports:"./TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"./CoverageReport" \
+            -reporttypes:"Html;HtmlSummary;Badges;TextSummary;Cobertura;JsonSummary" \
+            -assemblyfilters:"+ConduitLLM.*;-*.Tests*;-*Test*" \
+            -classfilters:"-*.Migrations*;-*.Program;-*.Startup" \
+            -filefilters:"-**/Migrations/**;-**/Program.cs;-**/Startup.cs" \
+            -verbosity:Info \
+            -title:"Conduit LLM Coverage Report" \
+            -tag:"${{ github.run_number }}"
+            
+          # Parse coverage percentage from summary
+          if [ -f "./CoverageReport/Summary.json" ]; then
+            COVERAGE_PERCENT=$(jq -r '.summary.linecoverage' ./CoverageReport/Summary.json 2>/dev/null || echo "0")
+            echo "COVERAGE_PERCENT=$COVERAGE_PERCENT" >> $GITHUB_ENV
+            echo "Coverage percentage: $COVERAGE_PERCENT%"
+          fi
+        else
+          echo "No coverage files found!"
+          echo "COVERAGE_PERCENT=0" >> $GITHUB_ENV
+        fi
 
     - name: Generate Test Report
       if: always()
       run: |
-        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## 📊 Test Results & Coverage Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
         # Count test results from TRX files
@@ -170,13 +207,70 @@ jobs:
             fi
           done
           
+          echo "### 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "- **Total Tests**: $TOTAL" >> $GITHUB_STEP_SUMMARY
           echo "- **Passed**: ✅ $PASSED" >> $GITHUB_STEP_SUMMARY
           echo "- **Failed**: ❌ $FAILED" >> $GITHUB_STEP_SUMMARY
           echo "- **Skipped**: ⏭️ $SKIPPED" >> $GITHUB_STEP_SUMMARY
         else
+          echo "### 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "No test results found." >> $GITHUB_STEP_SUMMARY
         fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📈 Code Coverage" >> $GITHUB_STEP_SUMMARY
+        
+        # Add coverage information
+        if [ -f "./CoverageReport/Summary.json" ]; then
+          COVERAGE_PERCENT=${COVERAGE_PERCENT:-0}
+          
+          # Coverage badge emoji based on percentage
+          if (( $(echo "$COVERAGE_PERCENT >= 80" | bc -l) )); then
+            COVERAGE_EMOJI="🟢"
+          elif (( $(echo "$COVERAGE_PERCENT >= 60" | bc -l) )); then
+            COVERAGE_EMOJI="🟡"
+          else
+            COVERAGE_EMOJI="🔴"
+          fi
+          
+          echo "- **Overall Coverage**: $COVERAGE_EMOJI $COVERAGE_PERCENT%" >> $GITHUB_STEP_SUMMARY
+          
+          # Parse detailed coverage from JSON
+          if command -v jq >/dev/null 2>&1 && [ -f "./CoverageReport/Summary.json" ]; then
+            LINE_COVERAGE=$(jq -r '.summary.linecoverage' ./CoverageReport/Summary.json 2>/dev/null || echo "N/A")
+            BRANCH_COVERAGE=$(jq -r '.summary.branchcoverage' ./CoverageReport/Summary.json 2>/dev/null || echo "N/A")
+            METHOD_COVERAGE=$(jq -r '.summary.methodcoverage' ./CoverageReport/Summary.json 2>/dev/null || echo "N/A")
+            
+            echo "- **Line Coverage**: $LINE_COVERAGE%" >> $GITHUB_STEP_SUMMARY
+            echo "- **Branch Coverage**: $BRANCH_COVERAGE%" >> $GITHUB_STEP_SUMMARY
+            echo "- **Method Coverage**: $METHOD_COVERAGE%" >> $GITHUB_STEP_SUMMARY
+            
+            # Coverage by namespace/assembly
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Coverage by Project" >> $GITHUB_STEP_SUMMARY
+            jq -r '.coverage[] | select(.name | contains("ConduitLLM")) | "- **\(.name)**: \(.linecoverage)%"' ./CoverageReport/Summary.json 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "- Coverage details unavailable" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "- **Coverage**: ❌ No coverage data generated" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Add link to detailed coverage report
+        if [ -f "./CoverageReport/index.html" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📋 **Detailed coverage report available in build artifacts**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Enforce Coverage Thresholds
+      if: github.event_name == 'pull_request'
+      run: ./scripts/check-coverage-thresholds.sh
+
+    - name: Upload Coverage Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./CoverageReport/
+        retention-days: 30
 
     - name: Upload Test Results
       if: always()
