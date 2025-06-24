@@ -16,6 +16,7 @@ using ConduitLLM.Tests.TestHelpers.Builders;
 using MassTransit;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,19 +34,23 @@ namespace ConduitLLM.Tests.Integration
         private IDistributedCache _cache = null!;
         private ITestHarness _testHarness = null!;
         private ConfigurationDbContext _dbContext = null!;
+        private SqliteConnection _connection = null!;
 
         public async Task InitializeAsync()
         {
             var services = new ServiceCollection();
 
-            // Setup in-memory database
+            // Setup SQLite in-memory database (supports FK constraints unlike EF in-memory provider)
+            _connection = new SqliteConnection("Data Source=:memory:");
+            await _connection.OpenAsync();
+            
             var dbOptions = new DbContextOptionsBuilder<ConfigurationDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .UseSqlite(_connection)
                 .Options;
 
             services.AddSingleton(dbOptions);
             services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()));
+                options.UseSqlite(_connection));
 
             // Add repositories
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
@@ -106,6 +111,7 @@ namespace ConduitLLM.Tests.Integration
         {
             await _testHarness.Stop();
             _dbContext?.Dispose();
+            _connection?.Dispose();
             
             if (_serviceProvider != null)
             {
@@ -357,6 +363,11 @@ namespace ConduitLLM.Tests.Integration
             var metadata = new Dictionary<string, object> { { "virtualKeyId", virtualKeyId } };
             var task1 = await _asyncTaskService.CreateTaskAsync("delete-cascade-1", metadata);
             var task2 = await _asyncTaskService.CreateTaskAsync("delete-cascade-2", metadata);
+
+            // Verify tasks were created with correct VirtualKeyId
+            var tasksBeforeDelete = await _repository.GetByVirtualKeyAsync(virtualKeyId);
+            Assert.NotNull(tasksBeforeDelete);
+            Assert.Equal(2, tasksBeforeDelete.Count());
 
             // Act: Delete the virtual key
             var virtualKey = await _dbContext.VirtualKeys.FindAsync(virtualKeyId);

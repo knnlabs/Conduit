@@ -11,6 +11,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestHelpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ namespace ConduitLLM.Tests.Performance
         private IAsyncTaskService _asyncTaskService = null!;
         private IAsyncTaskRepository _repository = null!;
         private ConfigurationDbContext _dbContext = null!;
+        private SqliteConnection _connection = null!;
 
         public AsyncTaskPerformanceTests(ITestOutputHelper output)
         {
@@ -40,9 +42,12 @@ namespace ConduitLLM.Tests.Performance
             var services = new ServiceCollection();
 
             // Use SQLite in-memory for more realistic performance testing
-            var connectionString = "DataSource=:memory:";
+            // Keep connection open to maintain database throughout test lifecycle
+            _connection = new SqliteConnection("DataSource=:memory:");
+            await _connection.OpenAsync();
+            
             services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                options.UseSqlite(connectionString));
+                options.UseSqlite(_connection));
 
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
             services.AddDistributedMemoryCache();
@@ -61,7 +66,6 @@ namespace ConduitLLM.Tests.Performance
             // Initialize database
             var contextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
             _dbContext = await contextFactory.CreateDbContextAsync();
-            await _dbContext.Database.OpenConnectionAsync();
             await _dbContext.Database.EnsureCreatedAsync();
 
             // Seed virtual keys for testing
@@ -83,8 +87,8 @@ namespace ConduitLLM.Tests.Performance
 
         public async Task DisposeAsync()
         {
-            await _dbContext.Database.CloseConnectionAsync();
             _dbContext?.Dispose();
+            _connection?.Dispose();
             _serviceProvider?.Dispose();
         }
 
