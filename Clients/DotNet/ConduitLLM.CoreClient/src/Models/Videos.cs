@@ -202,6 +202,30 @@ namespace ConduitLLM.CoreClient.Models
         public string? Format { get; set; }
 
         /// <summary>
+        /// Gets or sets the video codec used for encoding.
+        /// </summary>
+        [JsonPropertyName("codec")]
+        public string? Codec { get; set; }
+
+        /// <summary>
+        /// Gets or sets the audio codec used for encoding.
+        /// </summary>
+        [JsonPropertyName("audio_codec")]
+        public string? AudioCodec { get; set; }
+
+        /// <summary>
+        /// Gets or sets the bitrate of the video.
+        /// </summary>
+        [JsonPropertyName("bitrate")]
+        public int? Bitrate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the MIME type of the video file.
+        /// </summary>
+        [JsonPropertyName("mime_type")]
+        public string? MimeType { get; set; }
+
+        /// <summary>
         /// Gets or sets the seed used for generation, if any.
         /// </summary>
         [JsonPropertyName("seed")]
@@ -224,6 +248,12 @@ namespace ConduitLLM.CoreClient.Models
         /// </summary>
         [JsonPropertyName("webhook_metadata")]
         public Dictionary<string, object>? WebhookMetadata { get; set; }
+
+        /// <summary>
+        /// Gets or sets additional headers to include with the webhook callback.
+        /// </summary>
+        [JsonPropertyName("webhook_headers")]
+        public Dictionary<string, string>? WebhookHeaders { get; set; }
 
         /// <summary>
         /// Gets or sets the timeout for the generation task in seconds.
@@ -442,5 +472,101 @@ namespace ConduitLLM.CoreClient.Models
         /// Default response format.
         /// </summary>
         public const string ResponseFormat = VideoResponseFormats.Url;
+    }
+
+    /// <summary>
+    /// Base class for webhook payloads sent by Conduit.
+    /// </summary>
+    public abstract class WebhookPayloadBase
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier for this webhook event.
+        /// </summary>
+        [JsonPropertyName("event_id")]
+        public string EventId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the type of webhook event.
+        /// </summary>
+        [JsonPropertyName("event_type")]
+        public string EventType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the timestamp when the event occurred.
+        /// </summary>
+        [JsonPropertyName("timestamp")]
+        public DateTime Timestamp { get; set; }
+
+        /// <summary>
+        /// Gets or sets the task ID associated with this event.
+        /// </summary>
+        [JsonPropertyName("task_id")]
+        public string TaskId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets optional metadata provided in the original request.
+        /// </summary>
+        [JsonPropertyName("metadata")]
+        public Dictionary<string, object>? Metadata { get; set; }
+    }
+
+    /// <summary>
+    /// Webhook payload sent when video generation is completed.
+    /// </summary>
+    public class VideoCompletionWebhookPayload : WebhookPayloadBase
+    {
+        /// <summary>
+        /// Gets or sets the final status of the video generation task.
+        /// </summary>
+        [JsonPropertyName("status")]
+        public VideoTaskStatus Status { get; set; }
+
+        /// <summary>
+        /// Gets or sets the generated video result, if successful.
+        /// </summary>
+        [JsonPropertyName("result")]
+        public VideoGenerationResponse? Result { get; set; }
+
+        /// <summary>
+        /// Gets or sets error information if the task failed.
+        /// </summary>
+        [JsonPropertyName("error")]
+        public string? Error { get; set; }
+
+        /// <summary>
+        /// Gets or sets the total processing time in seconds.
+        /// </summary>
+        [JsonPropertyName("processing_time_seconds")]
+        public double? ProcessingTimeSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// Webhook payload sent to provide progress updates during video generation.
+    /// </summary>
+    public class VideoProgressWebhookPayload : WebhookPayloadBase
+    {
+        /// <summary>
+        /// Gets or sets the current status of the video generation task.
+        /// </summary>
+        [JsonPropertyName("status")]
+        public VideoTaskStatus Status { get; set; }
+
+        /// <summary>
+        /// Gets or sets the progress percentage (0-100).
+        /// </summary>
+        [JsonPropertyName("progress")]
+        public int Progress { get; set; }
+
+        /// <summary>
+        /// Gets or sets an optional progress message.
+        /// </summary>
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
+
+        /// <summary>
+        /// Gets or sets the estimated time to completion in seconds.
+        /// </summary>
+        [JsonPropertyName("estimated_time_to_completion")]
+        public int? EstimatedTimeToCompletion { get; set; }
     }
 }
