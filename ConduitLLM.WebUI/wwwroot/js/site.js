@@ -67,3 +67,21 @@ window.downloadImage = function (imageUrl, fileName) {
         })
         .catch(err => console.error('Failed to download image: ', err));
 };
+
+// Helper for downloading videos
+window.downloadVideo = function (videoUrl, fileName) {
+    fetch(videoUrl)
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName || 'video.mp4';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(err => console.error('Failed to download video: ', err));
+};
