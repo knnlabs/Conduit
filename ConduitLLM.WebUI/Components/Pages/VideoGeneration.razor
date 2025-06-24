@@ -13,7 +13,6 @@
 @inject IToastService ToastService
 @inject ILogger<VideoGeneration> _logger
 @using ConduitLLM.WebUI.Services
-@rendermode InteractiveServer
 
 <PageTitle>Video Generation - ConduitLLM</PageTitle>
 
@@ -226,7 +225,9 @@
                         <button type="button" 
                                 class="btn btn-primary btn-lg" 
                                 @onclick="GenerateVideo" 
-                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(videoPrompt) || !availableModels.Any())">
+                                disabled="@(isGenerating || string.IsNullOrWhiteSpace(videoPrompt) || !availableModels.Any())"
+                                @onclick:preventDefault="false"
+                                @onclick:stopPropagation="false">
                             @if (isGenerating)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -572,6 +573,9 @@
             // Check for models with video generation capability
             foreach (var dto in mappingDtos ?? Enumerable.Empty<ModelProviderMappingDto>())
             {
+                _logger.LogInformation("Model {Model}: IsEnabled={Enabled}, SupportsVideoGeneration={SupportsVideo}", 
+                    dto.ModelId, dto.IsEnabled, dto.SupportsVideoGeneration);
+                    
                 if (dto.IsEnabled && dto.SupportsVideoGeneration)
                 {
                     _logger.LogInformation("Found video generation model: {Model}", dto.ModelId);
@@ -686,6 +690,9 @@
 
     private async Task GenerateVideo()
     {
+        _logger.LogInformation("GenerateVideo called. videoPrompt='{Prompt}', selectedModel='{Model}', availableModels.Count={Count}", 
+            videoPrompt, selectedModel, availableModels.Count);
+            
         if (string.IsNullOrWhiteSpace(videoPrompt))
         {
             ToastService.ShowWarning("Please enter a video description");
@@ -699,6 +706,7 @@
         }
 
         isGenerating = true;
+        StateHasChanged(); // Ensure UI updates immediately
         try
         {
             var request = new VideoGenerationRequest
@@ -717,6 +725,10 @@
             // Always use async for video generation
             // Video generation with providers like MiniMax takes 3-5+ minutes even for short videos
             await StartAsyncVideoGeneration(request);
+            
+            // For async generation, we reset the generating flag after the task is created
+            isGenerating = false;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -726,10 +738,10 @@
             
             _logger.LogError(ex, "Error generating video");
             ToastService.ShowError($"Error: {ex.Message}");
-        }
-        finally
-        {
+            
+            // Only reset on error
             isGenerating = false;
+            StateHasChanged();
         }
     }
 

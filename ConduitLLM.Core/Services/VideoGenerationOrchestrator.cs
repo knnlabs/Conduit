@@ -108,8 +108,90 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException($"Model {request.Model} not found or not available");
                 }
                 
-                // Validate virtual key
-                var virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(request.VirtualKeyId, request.Model);
+                // Get task to retrieve the actual virtual key from metadata
+                _logger.LogInformation("Retrieving task {TaskId} to get virtual key from metadata", request.RequestId);
+                var task = await _taskService.GetTaskStatusAsync(request.RequestId);
+                if (task == null)
+                {
+                    _logger.LogError("Task {TaskId} not found", request.RequestId);
+                    throw new InvalidOperationException($"Task {request.RequestId} not found");
+                }
+                if (task.Metadata == null)
+                {
+                    _logger.LogError("Task {TaskId} has no metadata", request.RequestId);
+                    throw new InvalidOperationException($"Task {request.RequestId} has no metadata");
+                }
+                
+                // Extract the virtual key from task metadata
+                string virtualKey;
+                try
+                {
+                    // Serialize the metadata object to JSON string first, then deserialize to JsonElement
+                    var metadataJson = System.Text.Json.JsonSerializer.Serialize(task.Metadata);
+                    _logger.LogDebug("Task metadata JSON: {MetadataJson}", metadataJson);
+                    
+                    var metadata = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJson);
+                    
+                    // The InMemoryAsyncTaskService wraps the original metadata
+                    // Check if we have the wrapped format first
+                    if (metadata.TryGetProperty("originalMetadata", out var originalMetadataElement))
+                    {
+                        // This is the wrapped format from InMemoryAsyncTaskService
+                        _logger.LogDebug("Found originalMetadata wrapper, extracting inner metadata");
+                        var originalMetadata = originalMetadataElement;
+                        
+                        // Log what's inside originalMetadata
+                        if (originalMetadata.ValueKind == System.Text.Json.JsonValueKind.Object)
+                        {
+                            var innerProps = originalMetadata.EnumerateObject().Select(p => p.Name).ToList();
+                            _logger.LogDebug("Properties in originalMetadata: {Properties}", string.Join(", ", innerProps));
+                        }
+                        
+                        // Now look for VirtualKey in the original metadata
+                        if (originalMetadata.TryGetProperty("VirtualKey", out var vkElement))
+                        {
+                            virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                        }
+                        else if (originalMetadata.TryGetProperty("virtualKey", out var vkElementLower))
+                        {
+                            virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                        }
+                        else
+                        {
+                            // Log available properties for debugging
+                            var properties = originalMetadata.EnumerateObject().Select(p => p.Name).ToList();
+                            _logger.LogError("Virtual key not found in original metadata. Available properties: {Properties}", string.Join(", ", properties));
+                            throw new InvalidOperationException("Virtual key not found in task metadata");
+                        }
+                    }
+                    else
+                    {
+                        // Try direct property access (for database-stored tasks)
+                        if (metadata.TryGetProperty("VirtualKey", out var vkElement))
+                        {
+                            virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                        }
+                        else if (metadata.TryGetProperty("virtualKey", out var vkElementLower))
+                        {
+                            virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                        }
+                        else
+                        {
+                            // Log available properties for debugging
+                            var properties = metadata.EnumerateObject().Select(p => p.Name).ToList();
+                            _logger.LogError("Virtual key not found in metadata. Available properties: {Properties}", string.Join(", ", properties));
+                            throw new InvalidOperationException("Virtual key not found in task metadata");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to extract virtual key from task metadata. Metadata type: {MetadataType}", task.Metadata?.GetType().FullName ?? "null");
+                    throw new InvalidOperationException("Invalid task metadata format", ex);
+                }
+                
+                // Validate virtual key using the actual key from metadata
+                var virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, request.Model);
                 if (virtualKeyInfo == null || !virtualKeyInfo.IsEnabled)
                 {
                     throw new UnauthorizedAccessException("Invalid or disabled virtual key");
@@ -228,17 +310,65 @@ namespace ConduitLLM.Core.Services
                     throw new InvalidOperationException($"Task {request.RequestId} not found");
                 }
 
-                // Reconstruct the video generation request from metadata
-                var metadata = taskStatus.Metadata as dynamic;
-                var videoRequest = new VideoGenerationRequest
+                // Extract the virtual key and request from metadata
+                string virtualKey;
+                VideoGenerationRequest videoRequest;
+                try
                 {
-                    Model = request.Model,
-                    Prompt = request.Prompt,
-                    Duration = request.Parameters?.Duration,
-                    Size = request.Parameters?.Size,
-                    Fps = request.Parameters?.Fps,
-                    N = 1
-                };
+                    // Serialize the metadata object to JSON string first, then deserialize to JsonElement
+                    var metadataJsonString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Metadata);
+                    var metadataJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJsonString);
+                    
+                    // Handle wrapped format from InMemoryAsyncTaskService
+                    System.Text.Json.JsonElement workingMetadata;
+                    if (metadataJson.TryGetProperty("originalMetadata", out var originalMetadataElement))
+                    {
+                        workingMetadata = originalMetadataElement;
+                    }
+                    else
+                    {
+                        workingMetadata = metadataJson;
+                    }
+                    
+                    // Extract virtual key
+                    if (workingMetadata.TryGetProperty("VirtualKey", out var vkElement))
+                    {
+                        virtualKey = vkElement.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                    }
+                    else if (workingMetadata.TryGetProperty("virtualKey", out var vkElementLower))
+                    {
+                        virtualKey = vkElementLower.GetString() ?? throw new InvalidOperationException("Virtual key value is null");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Virtual key not found in task metadata");
+                    }
+                    
+                    // Reconstruct the video generation request from metadata
+                    if (workingMetadata.TryGetProperty("Request", out var requestElement))
+                    {
+                        videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(requestElement.GetRawText()) ??
+                            throw new InvalidOperationException("Failed to deserialize request from metadata");
+                    }
+                    else
+                    {
+                        // Fallback to constructing from event parameters
+                        videoRequest = new VideoGenerationRequest
+                        {
+                            Model = request.Model,
+                            Prompt = request.Prompt,
+                            Duration = request.Parameters?.Duration,
+                            Size = request.Parameters?.Size,
+                            Fps = request.Parameters?.Fps,
+                            N = 1
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to extract data from task metadata");
+                    throw new InvalidOperationException("Invalid task metadata format", ex);
+                }
 
                 // Get the appropriate client for the model
                 var client = _clientFactory.GetClient(request.Model);
@@ -288,7 +418,8 @@ namespace ConduitLLM.Core.Services
 
                         _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
                         
-                        // Invoke video generation with the cancellation token
+                        // Invoke video generation with the virtual key and cancellation token
+                        // The client is already configured with the correct API key from the factory
                         var task = createVideoMethod.Invoke(clientToCheck, new object?[] { videoRequest, null, taskCts.Token }) as Task<VideoGenerationResponse>;
                         if (task != null)
                         {
