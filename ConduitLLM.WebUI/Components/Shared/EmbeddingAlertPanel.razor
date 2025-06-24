@@ -1,0 +1,276 @@
+@* Real-time embedding alerts panel *@
+@using ConduitLLM.WebUI.Models
+@inject IToastService ToastService
+@implements IDisposable
+
+<div class="embedding-alerts-panel">
+    @if (alerts != null && alerts.Any())
+    {
+        <div class="alerts-header mb-3">
+            <h6 class="text-muted mb-2">
+                <i class="fa fa-exclamation-triangle me-2"></i>
+                Active Embedding Alerts (@alerts.Count)
+            </h6>
+        </div>
+
+        <div class="alerts-container">
+            @foreach (var alert in alerts.OrderByDescending(a => a.Severity).ThenByDescending(a => a.TriggeredAt))
+            {
+                <div class="alert-item @GetAlertClass(alert.Severity) mb-2" @onclick="() => ShowAlertDetails(alert)">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="alert-content flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="@GetAlertIcon(alert.Type) me-2"></i>
+                                <span class="alert-title fw-bold">@alert.Title</span>
+                                <span class="badge @GetSeverityBadgeClass(alert.Severity) ms-2">@alert.Severity</span>
+                            </div>
+                            
+                            <div class="alert-details">
+                                <small class="text-muted d-block">
+                                    Model: <strong>@alert.ModelName</strong>
+                                </small>
+                                <small class="text-muted d-block">
+                                    @alert.TriggeredAt.ToString("yyyy-MM-dd HH:mm:ss")
+                                </small>
+                                @if (alert.CurrentValue.HasValue && alert.ThresholdValue.HasValue)
+                                {
+                                    <small class="text-muted d-block">
+                                        Current: <strong>@FormatMetricValue(alert.Type, alert.CurrentValue.Value)</strong> | 
+                                        Threshold: @FormatMetricValue(alert.Type, alert.ThresholdValue.Value)
+                                    </small>
+                                }
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(alert.Message))
+                            {
+                                <div class="alert-message mt-1">
+                                    <small>@alert.Message</small>
+                                </div>
+                            }
+                        </div>
+                        
+                        <div class="alert-actions">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick:stopPropagation="true" @onclick="() => DismissAlert(alert)">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(alert.RecommendedAction))
+                    {
+                        <div class="recommended-action mt-2 pt-2 border-top">
+                            <small class="text-info">
+                                <i class="fa fa-lightbulb me-1"></i>
+                                <strong>Recommended:</strong> @alert.RecommendedAction
+                            </small>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            <small class="text-muted">Loading alerts...</small>
+        </div>
+    }
+    else
+    {
+        <div class="no-alerts text-center py-4">
+            <i class="fa fa-check-circle fa-2x text-success mb-2"></i>
+            <div class="text-muted">No active alerts</div>
+            <small class="text-muted">All embedding services are healthy</small>
+        </div>
+    }
+</div>
+
+<style>
+    .embedding-alerts-panel {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .alert-item {
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .alert-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert-item.critical {
+        background-color: #fff5f5;
+        border-color: #fed7d7;
+    }
+    
+    .alert-item.error {
+        background-color: #fffaf0;
+        border-color: #fbd38d;
+    }
+    
+    .alert-item.warning {
+        background-color: #fffff0;
+        border-color: #faf089;
+    }
+    
+    .alert-item.info {
+        background-color: #f0f9ff;
+        border-color: #bfdbfe;
+    }
+    
+    .alert-title {
+        font-size: 0.9rem;
+    }
+    
+    .alert-details {
+        margin-top: 4px;
+    }
+    
+    .alert-message {
+        font-size: 0.85rem;
+    }
+    
+    .recommended-action {
+        background-color: rgba(59, 130, 246, 0.05);
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 0.85rem;
+    }
+    
+    .alerts-container {
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    
+    .no-alerts {
+        color: #6b7280;
+    }
+</style>
+
+@code {
+    [Parameter] public List<EmbeddingAlert>? Alerts { get; set; }
+    [Parameter] public EventCallback<EmbeddingAlert> OnAlertClick { get; set; }
+    [Parameter] public EventCallback<EmbeddingAlert> OnAlertDismiss { get; set; }
+
+    private List<EmbeddingAlert>? alerts;
+    private bool isLoading = true;
+    private Timer? refreshTimer;
+
+    protected override void OnParametersSet()
+    {
+        alerts = Alerts;
+        isLoading = false;
+    }
+
+    protected override void OnInitialized()
+    {
+        // Refresh alerts every 30 seconds
+        refreshTimer = new Timer(async _ => await RefreshAlerts(), null, 
+            TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshAlerts()
+    {
+        try
+        {
+            // In a real implementation, this would call the monitoring service
+            // For now, we'll just trigger a state update
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user for background refresh
+            Console.WriteLine($"Failed to refresh alerts: {ex.Message}");
+        }
+    }
+
+    private string GetAlertClass(AlertSeverity severity)
+    {
+        return severity switch
+        {
+            AlertSeverity.Critical => "critical",
+            AlertSeverity.Error => "error",
+            AlertSeverity.Warning => "warning",
+            AlertSeverity.Info => "info",
+            _ => "info"
+        };
+    }
+
+    private string GetAlertIcon(AlertType type)
+    {
+        return type switch
+        {
+            AlertType.HighLatency => "fa fa-clock",
+            AlertType.HighErrorRate => "fa fa-exclamation-triangle",
+            AlertType.ModelUnavailable => "fa fa-times-circle",
+            AlertType.HighCost => "fa fa-dollar-sign",
+            AlertType.LowCacheHitRate => "fa fa-database",
+            AlertType.RateLimitExceeded => "fa fa-ban",
+            AlertType.UnusualTrafficPattern => "fa fa-chart-line",
+            _ => "fa fa-info-circle"
+        };
+    }
+
+    private string GetSeverityBadgeClass(AlertSeverity severity)
+    {
+        return severity switch
+        {
+            AlertSeverity.Critical => "bg-danger",
+            AlertSeverity.Error => "bg-warning",
+            AlertSeverity.Warning => "bg-warning text-dark",
+            AlertSeverity.Info => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatMetricValue(AlertType type, double value)
+    {
+        return type switch
+        {
+            AlertType.HighLatency => $"{value:F0}ms",
+            AlertType.HighErrorRate => $"{value:F1}%",
+            AlertType.HighCost => $"${value:F2}",
+            AlertType.LowCacheHitRate => $"{value:F1}%",
+            AlertType.RateLimitExceeded => $"{value:F0}/min",
+            _ => value.ToString("F2")
+        };
+    }
+
+    private async Task ShowAlertDetails(EmbeddingAlert alert)
+    {
+        if (OnAlertClick.HasDelegate)
+        {
+            await OnAlertClick.InvokeAsync(alert);
+        }
+    }
+
+    private async Task DismissAlert(EmbeddingAlert alert)
+    {
+        if (OnAlertDismiss.HasDelegate)
+        {
+            await OnAlertDismiss.InvokeAsync(alert);
+        }
+        
+        // Remove from local list
+        if (alerts != null)
+        {
+            alerts.Remove(alert);
+            StateHasChanged();
+        }
+        
+        ToastService.ShowSuccess($"Alert dismissed: {alert.Title}");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}
+

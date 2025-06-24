@@ -775,11 +775,12 @@ app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>
 });
 
 // Add embeddings endpoint
-app.MapPost("/v1/embeddings", (
+app.MapPost("/v1/embeddings", async (
     [FromBody] EmbeddingRequest? request,
-    [FromServices] ILogger<Program> logger) =>
+    [FromServices] ILLMRouter router,
+    [FromServices] ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
 {
-
     if (request == null)
     {
         return Results.BadRequest(new { error = "Invalid request body." });
@@ -787,20 +788,9 @@ app.MapPost("/v1/embeddings", (
 
     try
     {
-        // Currently embeddings are not fully implemented
-        logger.LogWarning("Embeddings endpoint called but CreateEmbeddingAsync not implemented.");
-        return Results.Json(
-            new
-            {
-                error = "Embeddings routing not yet implemented."
-            },
-            statusCode: 501,
-            options: jsonSerializerOptions
-        );
-
-        // Future implementation:
-        // var response = await router.CreateEmbeddingAsync(request, cancellationToken);
-        // return Results.Json(response, options: jsonSerializerOptions);
+        logger.LogInformation("Processing embeddings request for model: {Model}", request.Model);
+        var response = await router.CreateEmbeddingAsync(request, cancellationToken: cancellationToken);
+        return Results.Json(response, options: jsonSerializerOptions);
     }
     catch (Exception ex)
     {

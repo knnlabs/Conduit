@@ -82,6 +82,11 @@ namespace ConduitLLM.Configuration.DTOs
         public bool SupportsVideoGeneration { get; set; } = false;
 
         /// <summary>
+        /// Whether this model supports embedding generation capabilities
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
+
+        /// <summary>
         /// The tokenizer type used by this model
         /// </summary>
         public string? TokenizerType { get; set; }

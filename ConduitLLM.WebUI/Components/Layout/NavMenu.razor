@@ -61,6 +61,18 @@
             <NavigationLink Href="virtualkeys" Text="Virtual Keys" IconClass="fa fa-key" Match="NavLinkMatch.All" />
             <NavigationLink Href="virtualkeys/dashboard" Text="Keys Dashboard" IconClass="fa fa-chart-line" Match="NavLinkMatch.All" />
             <NavigationLink Href="cost-dashboard" Text="Cost Analytics" IconClass="fa fa-dollar-sign" />
+            <NavigationLink Href="embeddings/overview" 
+                           Text="Embeddings Overview" 
+                           IconClass="fa fa-vector-square"
+                           IsEnabled="@GetNavigationState("/embeddings/overview").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/embeddings/overview").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/embeddings/overview").ShowIndicator" />
+            <NavigationLink Href="embeddings/analytics" 
+                           Text="Embeddings Analytics" 
+                           IconClass="fa fa-chart-bar"
+                           IsEnabled="@GetNavigationState("/embeddings/analytics").IsEnabled"
+                           TooltipMessage="@GetNavigationState("/embeddings/analytics").TooltipMessage"
+                           ShowIndicator="@GetNavigationState("/embeddings/analytics").ShowIndicator" />
             <NavigationLink Href="request-logs" 
                            Text="Request Logs" 
                            IconClass="fa fa-history"

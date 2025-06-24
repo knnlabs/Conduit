@@ -160,7 +160,7 @@ namespace ConduitLLM.Core
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
-                SupportsEmbeddings = false,
+                SupportsEmbeddings = true,
                 SupportsImageGeneration = false,
                 SupportsAudio = false,
                 MaxContextLength = 4096
@@ -214,7 +214,7 @@ namespace ConduitLLM.Core
             {
                 SupportsChatCompletion = true,
                 SupportsStreaming = true,
-                SupportsEmbeddings = false,
+                SupportsEmbeddings = true,
                 SupportsImageGeneration = true,
                 SupportsAudio = false,
                 MaxContextLength = 4096

@@ -3,6 +3,7 @@ using System;
 using ConduitLLM.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ConduitLLM.Configuration.Migrations
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    partial class ConfigurationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250624014432_AddSupportsEmbeddingsToModelProviderMapping")]
+    partial class AddSupportsEmbeddingsToModelProviderMapping
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -468,81 +471,6 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasIndex("FilterType", "IpAddressOrCidr");
 
                     b.ToTable("IpFilters");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("AccessCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ContentHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LastAccessedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MediaType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Model")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Prompt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Provider")
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PublicUrl")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("SizeBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("StorageUrl")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("VirtualKeyId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("StorageKey")
-                        .IsUnique();
-
-                    b.HasIndex("VirtualKeyId");
-
-                    b.HasIndex("VirtualKeyId", "CreatedAt");
-
-                    b.ToTable("MediaRecords");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelCost", b =>
@@ -1146,17 +1074,6 @@ namespace ConduitLLM.Configuration.Migrations
                         .IsRequired();
 
                     b.Navigation("FallbackConfiguration");
-                });
-
-            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
-                {
-                    b.HasOne("ConduitLLM.Configuration.Entities.VirtualKey", "VirtualKey")
-                        .WithMany()
-                        .HasForeignKey("VirtualKeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("VirtualKey");
                 });
 
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.ModelDeploymentEntity", b =>
