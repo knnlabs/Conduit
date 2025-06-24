@@ -121,7 +121,7 @@ namespace ConduitLLM.CoreClient.Services
                 if (string.IsNullOrWhiteSpace(taskId))
                     throw new ValidationException("Task ID is required", "taskId");
 
-                var endpoint = $"{AsyncGenerationsEndpoint}/{Uri.EscapeDataString(taskId)}/status";
+                var endpoint = $"/v1/videos/generations/tasks/{Uri.EscapeDataString(taskId)}";
                 
                 var response = await _client.GetForServiceAsync<AsyncVideoGenerationResponse>(
                     endpoint,
@@ -155,7 +155,7 @@ namespace ConduitLLM.CoreClient.Services
                 if (string.IsNullOrWhiteSpace(taskId))
                     throw new ValidationException("Task ID is required", "taskId");
 
-                var endpoint = $"{AsyncGenerationsEndpoint}/{Uri.EscapeDataString(taskId)}";
+                var endpoint = $"/v1/videos/generations/{Uri.EscapeDataString(taskId)}";
                 
                 await _client.HttpClientForServices.DeleteAsync(endpoint, cancellationToken);
                 
@@ -334,6 +334,7 @@ namespace ConduitLLM.CoreClient.Services
                 n = request.N,
                 webhook_url = request.WebhookUrl,
                 webhook_metadata = request.WebhookMetadata,
+                webhook_headers = request.WebhookHeaders,
                 timeout_seconds = request.TimeoutSeconds
             };
 

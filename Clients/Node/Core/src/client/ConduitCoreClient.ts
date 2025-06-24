@@ -4,6 +4,7 @@ import { ChatService } from '../services/ChatService';
 import { ModelsService } from '../services/ModelsService';
 import { ImagesService } from '../services/ImagesService';
 import { VideosService } from '../services/VideosService';
+import { TasksService } from '../services/TasksService';
 
 export class ConduitCoreClient extends BaseClient {
   public readonly chat: {
@@ -12,6 +13,7 @@ export class ConduitCoreClient extends BaseClient {
   public readonly images: ImagesService;
   public readonly videos: VideosService;
   public readonly models: ModelsService;
+  public readonly tasks: TasksService;
 
   constructor(config: ClientConfig) {
     super(config);
@@ -23,6 +25,7 @@ export class ConduitCoreClient extends BaseClient {
     this.images = new ImagesService(this);
     this.videos = new VideosService(this);
     this.models = new ModelsService(this);
+    this.tasks = new TasksService(this);
   }
 
   static fromApiKey(apiKey: string, baseURL?: string): ConduitCoreClient {

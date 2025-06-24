@@ -43,6 +43,9 @@ export type {
   VideoTaskStatus,
   VideoTaskPollingOptions,
   VideoModelCapabilities,
+  WebhookPayloadBase,
+  VideoCompletionWebhookPayload,
+  VideoProgressWebhookPayload,
 } from './models/videos';
 
 export {
@@ -75,6 +78,17 @@ export {
   NetworkError,
   StreamError,
 } from './utils/errors';
+
+export type {
+  TaskStatusResponse,
+  TaskPollingOptions,
+  CleanupTasksResponse,
+} from './services/TasksService';
+
+export {
+  TaskDefaults,
+  TaskHelpers,
+} from './services/TasksService';
 
 export * from './utils/capabilities';
 

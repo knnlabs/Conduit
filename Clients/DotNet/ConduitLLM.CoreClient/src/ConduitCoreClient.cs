@@ -32,6 +32,11 @@ public class ConduitCoreClient : BaseClient
     public ModelsService Models { get; }
 
     /// <summary>
+    /// Gets the tasks service for general task management operations.
+    /// </summary>
+    public TasksService Tasks { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitCoreClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -52,6 +57,7 @@ public class ConduitCoreClient : BaseClient
         ILogger<ImagesService>? imagesLogger = null;
         ILogger<VideosService>? videosLogger = null;
         ILogger<ModelsService>? modelsLogger = null;
+        ILogger<TasksService>? tasksLogger = null;
         
         if (logger != null)
         {
@@ -60,12 +66,14 @@ public class ConduitCoreClient : BaseClient
             imagesLogger = loggerFactory.CreateLogger<ImagesService>();
             videosLogger = loggerFactory.CreateLogger<VideosService>();
             modelsLogger = loggerFactory.CreateLogger<ModelsService>();
+            tasksLogger = loggerFactory.CreateLogger<TasksService>();
         }
 
         Chat = new ChatService(this, chatLogger);
         Images = new ImagesService(this, imagesLogger);
         Videos = new VideosService(this, videosLogger);
         Models = new ModelsService(this, modelsLogger);
+        Tasks = new TasksService(this, tasksLogger);
     }
 
     /// <summary>

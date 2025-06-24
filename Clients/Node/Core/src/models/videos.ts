@@ -107,6 +107,18 @@ export interface VideoMetadata {
   /** The video format/codec */
   format?: string;
   
+  /** The video codec used for encoding */
+  codec?: string;
+  
+  /** The audio codec used for encoding */
+  audio_codec?: string;
+  
+  /** The bitrate of the video */
+  bitrate?: number;
+  
+  /** The MIME type of the video file */
+  mime_type?: string;
+  
   /** The seed used for generation, if any */
   seed?: number;
 }
@@ -120,6 +132,9 @@ export interface AsyncVideoGenerationRequest extends VideoGenerationRequest {
   
   /** Additional metadata to include with the webhook callback */
   webhook_metadata?: Record<string, any>;
+  
+  /** Additional headers to include with the webhook callback */
+  webhook_headers?: Record<string, string>;
   
   /** The timeout for the generation task in seconds */
   timeout_seconds?: number;
@@ -383,4 +398,58 @@ function isValidUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Base interface for webhook payloads sent by Conduit
+ */
+export interface WebhookPayloadBase {
+  /** The unique identifier for this webhook event */
+  event_id: string;
+  
+  /** The type of webhook event */
+  event_type: string;
+  
+  /** The timestamp when the event occurred */
+  timestamp: string;
+  
+  /** The task ID associated with this event */
+  task_id: string;
+  
+  /** Optional metadata provided in the original request */
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Webhook payload sent when video generation is completed
+ */
+export interface VideoCompletionWebhookPayload extends WebhookPayloadBase {
+  /** The final status of the video generation task */
+  status: VideoTaskStatus;
+  
+  /** The generated video result, if successful */
+  result?: VideoGenerationResponse;
+  
+  /** Error information if the task failed */
+  error?: string;
+  
+  /** The total processing time in seconds */
+  processing_time_seconds?: number;
+}
+
+/**
+ * Webhook payload sent to provide progress updates during video generation
+ */
+export interface VideoProgressWebhookPayload extends WebhookPayloadBase {
+  /** The current status of the video generation task */
+  status: VideoTaskStatus;
+  
+  /** The progress percentage (0-100) */
+  progress: number;
+  
+  /** An optional progress message */
+  message?: string;
+  
+  /** The estimated time to completion in seconds */
+  estimated_time_to_completion?: number;
 }

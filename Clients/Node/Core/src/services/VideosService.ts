@@ -103,7 +103,7 @@ export class VideosService {
         throw new Error('Task ID is required');
       }
 
-      const endpoint = `${VideosService.ASYNC_GENERATIONS_ENDPOINT}/${encodeURIComponent(taskId)}/status`;
+      const endpoint = `/v1/videos/generations/tasks/${encodeURIComponent(taskId)}`;
 
       const response = await this.client['request']<AsyncVideoGenerationResponse>(
         {
@@ -136,7 +136,7 @@ export class VideosService {
         throw new Error('Task ID is required');
       }
 
-      const endpoint = `${VideosService.ASYNC_GENERATIONS_ENDPOINT}/${encodeURIComponent(taskId)}`;
+      const endpoint = `/v1/videos/generations/${encodeURIComponent(taskId)}`;
 
       await this.client['request']<void>(
         {
@@ -279,6 +279,7 @@ export class VideosService {
       ...baseRequest,
       webhook_url: request.webhook_url,
       webhook_metadata: request.webhook_metadata,
+      webhook_headers: request.webhook_headers,
       timeout_seconds: request.timeout_seconds,
     };
   }
