@@ -15,7 +15,6 @@ using ConduitLLM.Core.Routing; // Added for DefaultLLMClientFactory
 using ConduitLLM.Core.Services;
 using ConduitLLM.Http.Adapters;
 using ConduitLLM.Http.Authentication; // Added for VirtualKeyAuthenticationHandler
-using ConduitLLM.Http.Configuration; // Added for MassTransitPartitioningConfiguration
 using ConduitLLM.Http.Controllers; // Added for RealtimeController
 using ConduitLLM.Http.Extensions; // Added for AudioServiceExtensions
 using ConduitLLM.Http.Middleware; // Added for Security middleware extensions
@@ -396,10 +395,8 @@ builder.Services.AddMassTransit(x =>
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
             
-            // Configure partitioned endpoints for ordered processing
-            cfg.ConfigureVideoGenerationEndpoints(context);
-            cfg.ConfigureImageGenerationEndpoints(context);
-            cfg.ConfigureSpendUpdateEndpoints(context);
+            // Configure endpoints with automatic topology
+            // Note: Partitioning is handled at the application level via PartitionKey property
             
             // Configure remaining endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
@@ -432,10 +429,7 @@ builder.Services.AddMassTransit(x =>
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
             
-            // Configure endpoints for in-memory transport
-            cfg.ConfigureInMemoryEndpoints(context);
-            
-            // Configure remaining endpoints with automatic topology
+            // Configure endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
         });
         
