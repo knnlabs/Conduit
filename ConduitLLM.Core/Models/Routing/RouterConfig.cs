@@ -146,6 +146,11 @@ namespace ConduitLLM.Core.Models.Routing
         /// Average latency in milliseconds
         /// </summary>
         public double AverageLatencyMs { get; set; } = 0;
+
+        /// <summary>
+        /// Whether this deployment supports embedding operations
+        /// </summary>
+        public bool SupportsEmbeddings { get; set; } = false;
     }
 
     /// <summary>
