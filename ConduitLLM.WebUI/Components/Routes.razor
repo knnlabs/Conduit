@@ -1,0 +1,36 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Authorization
+@using ConduitLLM.WebUI.Interfaces
+@using ConduitLLM.WebUI.Services
+@inject NavigationManager Navigation
+@inject IInsecureModeProvider InsecureModeProvider
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(ConduitLLM.WebUI.Components.Layout.MainLayout)">
+            <NotAuthorized>
+                @{
+                    // Skip login redirect in insecure mode - authorization is handled by the policy
+                    if (!InsecureModeProvider.IsInsecureMode)
+                    {
+                        var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+                        if (routeData.PageType != typeof(ConduitLLM.WebUI.Components.Pages.Login) && 
+                            routeData.PageType != typeof(ConduitLLM.WebUI.Components.Pages.AccessDenied))
+                        {
+                            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                        }
+                    }
+                    // In insecure mode, we won't hit this code path due to the policy, but if we do, don't redirect
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        @* <FocusOnNavigate RouteData="@routeData" Selector="h1" /> *@
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(ConduitLLM.WebUI.Components.Layout.MainLayout)">
+            <p role="alert">Sorry, there's nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
