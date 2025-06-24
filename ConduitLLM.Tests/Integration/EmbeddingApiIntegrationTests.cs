@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -8,10 +9,15 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Core.Models;
 using ConduitLLM.Tests.TestUtilities;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Configuration.Entities;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Hosting;
 
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -31,6 +37,7 @@ namespace ConduitLLM.Tests.Integration
         {
             _factory = factory;
             _output = output;
+            
             _client = _factory.CreateClient();
         }
 
@@ -39,6 +46,10 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var requestContent = new StringContent("null", Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
@@ -57,6 +68,10 @@ namespace ConduitLLM.Tests.Integration
         {
             // Arrange
             var requestContent = new StringContent("{}", Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
@@ -82,6 +97,10 @@ namespace ConduitLLM.Tests.Integration
             });
             
             var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
@@ -114,6 +133,10 @@ namespace ConduitLLM.Tests.Integration
             });
             
             var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
@@ -154,6 +177,10 @@ namespace ConduitLLM.Tests.Integration
                 
                 var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
 
+                // Add authentication header
+                _client.DefaultRequestHeaders.Clear();
+                _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
                 // Act
                 var response = await _client.PostAsync("/v1/embeddings", requestContent);
 
@@ -187,6 +214,10 @@ namespace ConduitLLM.Tests.Integration
             
             var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
 
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
+
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
 
@@ -214,6 +245,10 @@ namespace ConduitLLM.Tests.Integration
 
             var json = JsonSerializer.Serialize(embeddingRequest);
             var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);
@@ -244,6 +279,10 @@ namespace ConduitLLM.Tests.Integration
             });
             
             var requestContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Add authentication header
+            _client.DefaultRequestHeaders.Clear();
+            _client.DefaultRequestHeaders.Add("Authorization", "Bearer test-api-key");
 
             // Act
             var response = await _client.PostAsync("/v1/embeddings", requestContent);

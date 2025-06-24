@@ -106,7 +106,11 @@ namespace ConduitLLM.Tests.Integration
         {
             await _testHarness.Stop();
             _dbContext?.Dispose();
-            _serviceProvider?.Dispose();
+            
+            if (_serviceProvider != null)
+            {
+                await _serviceProvider.DisposeAsync();
+            }
         }
 
         [Fact]
@@ -403,7 +407,7 @@ namespace ConduitLLM.Tests.Integration
         // Helper method to get task status from cache
         private async Task<AsyncTaskStatus?> GetFromCache(string taskId)
         {
-            var cached = await _cache.GetAsync($"task:{taskId}");
+            var cached = await _cache.GetAsync($"async:task:{taskId}");
             if (cached == null) return null;
 
             var json = Encoding.UTF8.GetString(cached);

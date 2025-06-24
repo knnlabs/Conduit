@@ -46,17 +46,17 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         /// <param name="repository">The async task repository.</param>
         /// <param name="cache">The distributed cache service.</param>
-        /// <param name="publishEndpoint">The event publish endpoint.</param>
+        /// <param name="publishEndpoint">The event publish endpoint (optional, can be null).</param>
         /// <param name="logger">The logger instance.</param>
         public HybridAsyncTaskService(
             IAsyncTaskRepository repository,
             IDistributedCache cache,
-            IPublishEndpoint publishEndpoint,
+            IPublishEndpoint? publishEndpoint,
             ILogger<HybridAsyncTaskService> logger)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _publishEndpoint = publishEndpoint; // Allow null
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

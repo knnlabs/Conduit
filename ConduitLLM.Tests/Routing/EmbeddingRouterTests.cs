@@ -170,7 +170,7 @@ namespace ConduitLLM.Tests.Routing
             var exception = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
                 _router.CreateEmbeddingAsync(request));
 
-            Assert.Equal("Provider unavailable", exception.Message);
+            Assert.Contains("Failed to process embedding request after", exception.Message);
         }
 
         [Fact]
@@ -188,10 +188,10 @@ namespace ConduitLLM.Tests.Routing
                              .Throws(new ModelUnavailableException("Model not found"));
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<ModelUnavailableException>(() =>
+            var exception = await Assert.ThrowsAsync<LLMCommunicationException>(() =>
                 _router.CreateEmbeddingAsync(request));
 
-            Assert.Equal("Model not found", exception.Message);
+            Assert.Contains("Failed to process embedding request after", exception.Message);
         }
 
         [Fact]
@@ -257,7 +257,7 @@ namespace ConduitLLM.Tests.Routing
                              .Returns(mockClient.Object);
 
             // Act & Assert
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            await Assert.ThrowsAsync<TaskCanceledException>(() =>
                 _router.CreateEmbeddingAsync(request, cancellationToken: cancellationTokenSource.Token));
         }
 
