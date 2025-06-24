@@ -374,6 +374,16 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.Consumers.ProviderHealthChangedNotificationConsumer>();
     x.AddConsumer<ConduitLLM.Http.Consumers.ModelCapabilitiesDiscoveredNotificationConsumer>();
     
+    // Add settings refresh consumers for runtime configuration updates
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelMappingCacheInvalidationHandler>();
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialCacheInvalidationHandler>();
+    
+    // Add media lifecycle handler for tracking generated media
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.MediaLifecycleHandler>();
+    
+    // Add video generation started handler for real-time notifications
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationStartedHandler>();
+    
     if (useRabbitMq)
     {
         x.UsingRabbitMq((context, cfg) =>
@@ -607,6 +617,15 @@ builder.Services.AddSignalR(options =>
 
 // Register navigation state notification service
 builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
+
+// Register settings refresh service for runtime configuration updates
+builder.Services.AddSingleton<ISettingsRefreshService, SettingsRefreshService>();
+
+// Register media lifecycle repository
+builder.Services.AddScoped<IMediaLifecycleRepository, MediaLifecycleRepository>();
+
+// Register video generation notification service
+builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
 
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>

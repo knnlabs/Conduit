@@ -135,6 +135,11 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<AsyncTask> AsyncTasks { get; set; } = null!;
 
+        /// <summary>
+        /// Database set for media lifecycle records
+        /// </summary>
+        public virtual DbSet<MediaLifecycleRecord> MediaLifecycleRecords { get; set; } = null!;
+
         public bool IsTestEnvironment { get; set; } = false;
 
         /// <summary>
@@ -324,6 +329,14 @@ namespace ConduitLLM.Configuration
                       .WithMany()
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
+                
+                // Configure large text fields without specifying provider-specific types
+                // EF Core will map these to appropriate text types for each provider
+                // By not specifying MaxLength, EF Core treats these as unlimited length text
+                entity.Property(e => e.Payload);
+                entity.Property(e => e.Result);
+                entity.Property(e => e.Error);
+                entity.Property(e => e.Metadata);
             });
 
             // Configure MediaRecord entity
@@ -335,6 +348,23 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.ExpiresAt);
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
+                
+                entity.HasOne(e => e.VirtualKey)
+                      .WithMany()
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure MediaLifecycleRecord entity
+            modelBuilder.Entity<MediaLifecycleRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.StorageKey).IsUnique();
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasIndex(e => e.ExpiresAt);
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => new { e.VirtualKeyId, e.IsDeleted });
+                entity.HasIndex(e => new { e.ExpiresAt, e.IsDeleted });
                 
                 entity.HasOne(e => e.VirtualKey)
                       .WithMany()
