@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.EventHandlers;
+using ConduitLLM.Http.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
         private readonly Mock<IMemoryCache> _mockCache;
         private readonly Mock<IMediaStorageService> _mockStorageService;
         private readonly Mock<IPublishEndpoint> _mockPublishEndpoint;
+        private readonly Mock<IImageGenerationNotificationService> _mockNotificationService;
         private readonly Mock<ILogger<ImageGenerationFailedHandler>> _mockLogger;
 
         public ImageGenerationFailedHandlerTests()
@@ -23,6 +25,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
             _mockCache = new Mock<IMemoryCache>();
             _mockStorageService = new Mock<IMediaStorageService>();
             _mockPublishEndpoint = new Mock<IPublishEndpoint>();
+            _mockNotificationService = new Mock<IImageGenerationNotificationService>();
             _mockLogger = new Mock<ILogger<ImageGenerationFailedHandler>>();
         }
         
@@ -32,6 +35,7 @@ namespace ConduitLLM.Http.Tests.EventHandlers
                 _mockCache.Object,
                 _mockStorageService.Object,
                 _mockPublishEndpoint.Object,
+                _mockNotificationService.Object,
                 _mockLogger.Object);
         }
 

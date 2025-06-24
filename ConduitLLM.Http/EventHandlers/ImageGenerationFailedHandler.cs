@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Http.EventHandlers
         private readonly IMemoryCache _progressCache;
         private readonly IMediaStorageService _storageService;
         private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationFailedHandler> _logger;
         private const string ProgressCacheKeyPrefix = "image_generation_progress_";
         private const string FailureCountCacheKeyPrefix = "image_generation_failures_";
@@ -26,11 +28,13 @@ namespace ConduitLLM.Http.EventHandlers
             IMemoryCache progressCache,
             IMediaStorageService storageService,
             IPublishEndpoint publishEndpoint,
+            IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationFailedHandler> logger)
         {
             _progressCache = progressCache;
             _storageService = storageService;
             _publishEndpoint = publishEndpoint;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -82,14 +86,11 @@ namespace ConduitLLM.Http.EventHandlers
                 // Analyze error patterns for common issues
                 AnalyzeErrorPattern(message);
                 
-                // Future: Send failure notification to WebUI
-                // await _hubContext.Clients.Group($"task_{message.TaskId}").SendAsync("ImageGenerationFailed", new
-                // {
-                //     TaskId = message.TaskId,
-                //     Error = message.Error,
-                //     ErrorCode = message.ErrorCode,
-                //     IsRetryable = message.IsRetryable
-                // });
+                // Send failure notification to WebUI
+                await _notificationService.NotifyImageGenerationFailedAsync(
+                    message.TaskId,
+                    message.Error,
+                    message.IsRetryable);
                 
                 // Future: Send alert for critical failures
                 if (IsCriticalFailure(message))
