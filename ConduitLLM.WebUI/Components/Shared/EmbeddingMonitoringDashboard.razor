@@ -278,7 +278,7 @@
         await LoadMonitoringData();
     }
 
-    private async Task LoadMonitoringData()
+    private Task LoadMonitoringData()
     {
         isLoading = true;
         try
@@ -299,6 +299,7 @@
         {
             isLoading = false;
         }
+        return Task.CompletedTask;
     }
 
     private async Task RefreshMetrics()
@@ -307,21 +308,24 @@
         ToastService.ShowSuccess("Monitoring data refreshed");
     }
 
-    private async Task ConfigureAlerts()
+    private Task ConfigureAlerts()
     {
         ToastService.ShowInfo("Alert configuration feature coming soon");
+        return Task.CompletedTask;
     }
 
-    private async Task HandleAlertClick(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
+    private Task HandleAlertClick(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
     {
         ToastService.ShowInfo($"Viewing details for: {alert.Title}");
         // TODO: Show detailed alert modal or navigate to detailed view
+        return Task.CompletedTask;
     }
 
-    private async Task HandleAlertDismiss(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
+    private Task HandleAlertDismiss(ConduitLLM.WebUI.Models.EmbeddingAlert alert)
     {
         // TODO: Mark alert as dismissed in backend
         ToastService.ShowSuccess($"Alert dismissed: {alert.Title}");
+        return Task.CompletedTask;
     }
 
     // Mock data generation methods

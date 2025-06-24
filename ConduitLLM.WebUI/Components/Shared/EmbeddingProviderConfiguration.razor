@@ -292,17 +292,18 @@
         }
     }
 
-    private async Task<EmbeddingProviderSettings> LoadProviderSettings()
+    private Task<EmbeddingProviderSettings> LoadProviderSettings()
     {
         // TODO: Load from actual configuration service
         // For now, return default settings
-        return new EmbeddingProviderSettings
+        var settings = new EmbeddingProviderSettings
         {
             DefaultEmbeddingModel = GetDefaultModelForProvider(),
             BatchSize = GetDefaultBatchSize(),
             TimeoutSeconds = 30,
             MaxRetries = 3
         };
+        return Task.FromResult(settings);
     }
 
     private string GetDefaultModelForProvider()
@@ -386,13 +387,14 @@
         }
     }
 
-    private async Task TestModel(ModelProviderMappingDto model)
+    private Task TestModel(ModelProviderMappingDto model)
     {
         // TODO: Implement model testing
         ToastService.ShowInfo($"Testing {model.ModelId} - Feature coming soon");
+        return Task.CompletedTask;
     }
 
-    private async Task AutoConfigureEmbeddings()
+    private Task AutoConfigureEmbeddings()
     {
         try
         {
@@ -403,6 +405,7 @@
         {
             ToastService.ShowError($"Auto-configuration failed: {ex.Message}");
         }
+        return Task.CompletedTask;
     }
 
     private async Task RefreshConfiguration()

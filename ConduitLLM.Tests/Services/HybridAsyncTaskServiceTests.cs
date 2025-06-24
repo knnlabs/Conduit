@@ -498,7 +498,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact(Skip = "Requires IExtendedAsyncTaskService implementation")]
-        public async Task CleanupOldTasksAsync_ArchivesAndDeletesOldTasks()
+        public Task CleanupOldTasksAsync_ArchivesAndDeletesOldTasks()
         {
             // Arrange
             var archiveAfter = TimeSpan.FromDays(7);
@@ -535,10 +535,12 @@ namespace ConduitLLM.Tests.Services
             _mockRepository.Verify(r => r.BulkDeleteAsync(
                 It.Is<IEnumerable<string>>(ids => ids.Count() == 2),
                 It.IsAny<CancellationToken>()), Times.Once);
+            
+            return Task.CompletedTask;
         }
 
         [Fact(Skip = "Requires IExtendedAsyncTaskService implementation")]
-        public async Task GetTasksByVirtualKeyAsync_WithActiveOnly_ReturnsActiveTasksFromRepository()
+        public Task GetTasksByVirtualKeyAsync_WithActiveOnly_ReturnsActiveTasksFromRepository()
         {
             // Arrange
             var virtualKeyId = 123;
@@ -559,10 +561,12 @@ namespace ConduitLLM.Tests.Services
             // Assert.NotNull(result);
             // Assert.Equal(2, result.Count);
             // Assert.All(result, s => Assert.False(s.IsArchived));
+            
+            return Task.CompletedTask;
         }
 
         [Fact(Skip = "Requires IExtendedAsyncTaskService implementation")]
-        public async Task GetTasksByVirtualKeyAsync_WithIncludeArchived_ReturnsAllTasksFromRepository()
+        public Task GetTasksByVirtualKeyAsync_WithIncludeArchived_ReturnsAllTasksFromRepository()
         {
             // Arrange
             var virtualKeyId = 456;
@@ -583,6 +587,8 @@ namespace ConduitLLM.Tests.Services
             // Assert.NotNull(result);
             // Assert.Equal(2, result.Count);
             // Assert.Contains(result, s => s.IsArchived == true);
+            
+            return Task.CompletedTask;
         }
 
         [Fact]

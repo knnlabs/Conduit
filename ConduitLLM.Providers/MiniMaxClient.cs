@@ -653,7 +653,7 @@ namespace ConduitLLM.Providers
                                         videoData[0].Url = null;
                                         if (videoData[0].Metadata != null)
                                         {
-                                            videoData[0].Metadata.FileSizeBytes = videoBytes.Length;
+                                            videoData[0].Metadata!.FileSizeBytes = videoBytes.Length;
                                         }
                                     }
                                     else

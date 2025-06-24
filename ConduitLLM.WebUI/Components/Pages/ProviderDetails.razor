@@ -360,7 +360,7 @@ else
         }
     }
 
-    private async Task LoadProviderAnalytics()
+    private Task LoadProviderAnalytics()
     {
         // TODO: Load real analytics data
         var random = new Random();
@@ -371,9 +371,10 @@ else
             AverageLatency = random.Next(50, 300),
             TotalCost = (decimal)(random.NextDouble() * 50 + 5)
         };
+        return Task.CompletedTask;
     }
 
-    private async Task LoadProviderHealth()
+    private Task LoadProviderHealth()
     {
         // TODO: Load real health data
         var random = new Random();
@@ -384,6 +385,7 @@ else
             LastChecked = DateTime.UtcNow.AddMinutes(-random.Next(1, 30)),
             ResponseTime = random.Next(50, 500)
         };
+        return Task.CompletedTask;
     }
 
     private async Task RefreshProvider()
@@ -465,15 +467,17 @@ else
         };
     }
 
-    private async Task EditMapping(int mappingId)
+    private Task EditMapping(int mappingId)
     {
         NavigationManager.NavigateTo($"/model-mappings?edit={mappingId}");
+        return Task.CompletedTask;
     }
 
-    private async Task DeleteMapping(int mappingId)
+    private Task DeleteMapping(int mappingId)
     {
         // TODO: Implement delete confirmation and logic
         ToastService.ShowInfo("Delete functionality coming soon");
+        return Task.CompletedTask;
     }
 }
 
