@@ -12,6 +12,7 @@ export * from './models/ipFilter';
 export * from './models/modelCost';
 export * from './models/analytics';
 export * from './models/system';
+export * from './models/audioConfiguration';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -42,6 +43,7 @@ export { ModelCostService } from './services/ModelCostService';
 export { AnalyticsService } from './services/AnalyticsService';
 export { SystemService } from './services/SystemService';
 export { DiscoveryService } from './services/DiscoveryService';
+export { AudioConfigurationService } from './services/AudioConfigurationService';
 
 // Utilities
 export * from './utils/errors';

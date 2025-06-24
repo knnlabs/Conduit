@@ -33,6 +33,43 @@ public class PaginatedResponse<T>
 }
 
 /// <summary>
+/// Represents a paged response from the API.
+/// </summary>
+/// <typeparam name="T">The type of items in the response.</typeparam>
+public class PagedResponse<T>
+{
+    /// <summary>
+    /// Gets or sets the data items in the current page.
+    /// </summary>
+    public List<T> Data { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the total number of items across all pages.
+    /// </summary>
+    public int TotalCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current page number (1-based).
+    /// </summary>
+    public int Page { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of items per page.
+    /// </summary>
+    public int PageSize { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether there is a next page.
+    /// </summary>
+    public bool HasNextPage { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether there is a previous page.
+    /// </summary>
+    public bool HasPreviousPage { get; set; }
+}
+
+/// <summary>
 /// Represents an error response from the API.
 /// </summary>
 public class ErrorResponse

@@ -6,6 +6,15 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface PagedResponse<T> {
+  data: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
   message?: string;

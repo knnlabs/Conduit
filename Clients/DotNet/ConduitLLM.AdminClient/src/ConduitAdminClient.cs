@@ -70,6 +70,11 @@ public class ConduitAdminClient : IDisposable
     public ProviderModelsService ProviderModels { get; }
 
     /// <summary>
+    /// Gets the audio configuration service for managing audio providers, costs, and usage analytics.
+    /// </summary>
+    public AudioConfigurationService AudioConfiguration { get; }
+
+    /// <summary>
     /// Initializes a new instance of the ConduitAdminClient class.
     /// </summary>
     /// <param name="configuration">The client configuration.</param>
@@ -156,6 +161,12 @@ public class ConduitAdminClient : IDisposable
             _httpClient, 
             _configuration, 
             loggerFactory?.CreateLogger<ProviderModelsService>(), 
+            _cache);
+
+        AudioConfiguration = new AudioConfigurationService(
+            _httpClient, 
+            _configuration, 
+            loggerFactory?.CreateLogger<AudioConfigurationService>(), 
             _cache);
     }
 
@@ -328,6 +339,7 @@ public class ConduitAdminClient : IDisposable
             ModelCosts?.Dispose();
             System?.Dispose();
             ProviderModels?.Dispose();
+            AudioConfiguration?.Dispose();
             _httpClient?.Dispose();
             _disposed = true;
         }
