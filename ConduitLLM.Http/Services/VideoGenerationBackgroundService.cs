@@ -202,7 +202,7 @@ namespace ConduitLLM.Http.Services
             _logger.LogInformation("Video generation worker stopped");
         }
 
-        private async Task<VideoGenerationRequested> CreateVideoGenerationRequestFromTask(AsyncTaskStatus task)
+        private Task<VideoGenerationRequested> CreateVideoGenerationRequestFromTask(AsyncTaskStatus task)
         {
             // Parse metadata to reconstruct the request
             var metadata = task.Metadata as System.Text.Json.JsonElement? ?? 
@@ -250,7 +250,7 @@ namespace ConduitLLM.Http.Services
                 Parameters = parameters
             };
 
-            return request;
+            return Task.FromResult(request);
         }
 
         private async Task RunTaskCleanupAsync(CancellationToken cancellationToken)
