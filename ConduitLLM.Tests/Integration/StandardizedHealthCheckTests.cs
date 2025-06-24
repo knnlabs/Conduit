@@ -86,8 +86,16 @@ namespace ConduitLLM.Tests.Integration
             // Arrange
             var client = _factory.WithWebHostBuilder(builder =>
             {
+                builder.UseEnvironment("Development"); // Use Development to enable health checks
                 builder.ConfigureTestServices(services =>
                 {
+                    // Clear any existing health check registrations
+                    var healthCheckServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(HealthCheckService));
+                    if (healthCheckServiceDescriptor != null)
+                    {
+                        services.Remove(healthCheckServiceDescriptor);
+                    }
+                    
                     // Override health checks with test implementations
                     services.AddHealthChecks()
                         .AddCheck("test_db", new TestHealthCheck(HealthStatus.Healthy, "Database is healthy"), tags: new[] { "ready" })

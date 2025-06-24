@@ -184,9 +184,16 @@ namespace ConduitLLM.Tests.Http
             // Arrange
             var client = _factory.WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment("Test");
+                builder.UseEnvironment("Development"); // Use Development to enable health checks
                 builder.ConfigureTestServices(services =>
                 {
+                    // Clear any existing health check registrations
+                    var healthCheckServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(HealthCheckService));
+                    if (healthCheckServiceDescriptor != null)
+                    {
+                        services.Remove(healthCheckServiceDescriptor);
+                    }
+                    
                     services.AddHealthChecks()
                         .AddCheck("providers",
                             new TestHealthCheck(HealthStatus.Healthy, "All providers are online",
