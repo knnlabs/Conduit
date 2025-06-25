@@ -419,17 +419,18 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task DiscoverModelsAsync_WithCancellation_PropagatesCancellation()
+        public async Task DiscoverModelsAsync_WithCancellation_ReturnsFallbackModels()
         {
             // Arrange
             var provider = new OpenRouterDiscoveryProvider(_httpClient, _mockLogger.Object, _apiKey);
             using var cts = new CancellationTokenSource();
             SetupHttpCancellation();
-            cts.Cancel();
 
-            // Act & Assert
-            await Assert.ThrowsAsync<OperationCanceledException>(() => 
-                provider.DiscoverModelsAsync(cts.Token));
+            // Act - Discovery services are fault-tolerant and return fallback models on cancellation
+            var result = await provider.DiscoverModelsAsync(cts.Token);
+
+            // Assert - OpenRouter returns empty list on cancellation, not fallback models
+            Assert.Empty(result);
         }
 
         [Fact]
