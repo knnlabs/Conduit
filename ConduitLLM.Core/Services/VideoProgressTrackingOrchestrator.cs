@@ -207,14 +207,23 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                await _webhookService.SendTaskProgressWebhookAsync(
-                    webhookUrl,
-                    webhookPayload,
-                    headers);
+                // Publish webhook delivery event for scalable processing
+                await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                {
+                    TaskId = requestId,
+                    TaskType = "video",
+                    WebhookUrl = webhookUrl,
+                    EventType = WebhookEventType.TaskProgress,
+                    PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                    Headers = headers,
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
+                
+                _logger.LogDebug("Published webhook delivery event for video progress: {RequestId} at {Progress}%", requestId, progress);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to send progress webhook for {RequestId}", requestId);
+                _logger.LogWarning(ex, "Failed to publish progress webhook event for {RequestId}", requestId);
                 // Don't fail the progress check due to webhook failures
             }
         }

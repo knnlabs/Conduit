@@ -566,6 +566,16 @@ namespace ConduitLLM.Core.Events
         public DateTime RequestedAt { get; init; } = DateTime.UtcNow;
         
         /// <summary>
+        /// Optional webhook URL for status notifications
+        /// </summary>
+        public string? WebhookUrl { get; init; }
+        
+        /// <summary>
+        /// Optional custom headers for webhook requests
+        /// </summary>
+        public Dictionary<string, string>? WebhookHeaders { get; init; }
+        
+        /// <summary>
         /// Partition key for ordered processing per virtual key
         /// </summary>
         public string PartitionKey => VirtualKeyId.ToString();
@@ -1176,5 +1186,94 @@ namespace ConduitLLM.Core.Events
         /// Partition key for ordered processing per virtual key
         /// </summary>
         public string PartitionKey => VirtualKeyId.ToString();
+    }
+
+    // ===============================
+    // Webhook Delivery Domain Events
+    // ===============================
+
+    /// <summary>
+    /// Event types for webhook notifications
+    /// </summary>
+    public enum WebhookEventType
+    {
+        /// <summary>
+        /// Task has started processing
+        /// </summary>
+        TaskStarted,
+        
+        /// <summary>
+        /// Task progress update
+        /// </summary>
+        TaskProgress,
+        
+        /// <summary>
+        /// Task completed successfully
+        /// </summary>
+        TaskCompleted,
+        
+        /// <summary>
+        /// Task failed with error
+        /// </summary>
+        TaskFailed,
+        
+        /// <summary>
+        /// Task was cancelled
+        /// </summary>
+        TaskCancelled
+    }
+
+    /// <summary>
+    /// Raised when a webhook needs to be delivered
+    /// Enables scalable webhook delivery with deduplication and retry logic
+    /// </summary>
+    public record WebhookDeliveryRequested : DomainEvent
+    {
+        /// <summary>
+        /// Unique task identifier (e.g., video/image generation request ID)
+        /// </summary>
+        public string TaskId { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of task (e.g., "video", "image")
+        /// </summary>
+        public string TaskType { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Webhook URL to deliver the payload to
+        /// </summary>
+        public string WebhookUrl { get; init; } = string.Empty;
+        
+        /// <summary>
+        /// Type of webhook event
+        /// </summary>
+        public WebhookEventType EventType { get; init; }
+        
+        /// <summary>
+        /// Webhook payload as JSON string (pre-serialized for size control)
+        /// Limited to 1MB to prevent memory issues
+        /// </summary>
+        public string PayloadJson { get; init; } = "{}";
+        
+        /// <summary>
+        /// Optional custom headers to include in the webhook request
+        /// </summary>
+        public Dictionary<string, string>? Headers { get; init; }
+        
+        /// <summary>
+        /// Current retry count (used for retry logic)
+        /// </summary>
+        public int RetryCount { get; init; } = 0;
+        
+        /// <summary>
+        /// When to retry next (if retry is needed)
+        /// </summary>
+        public DateTime? NextRetryAt { get; init; }
+        
+        /// <summary>
+        /// Partition key for ordered processing per task
+        /// Ensures single webhook delivery per task at a time
+        /// </summary>
+        public string PartitionKey => TaskId;
     }
 }

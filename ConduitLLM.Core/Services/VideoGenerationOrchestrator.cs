@@ -806,10 +806,19 @@ namespace ConduitLLM.Core.Services
                         Prompt = request.Prompt
                     };
 
-                    await _webhookService.SendTaskCompletionWebhookAsync(
-                        request.WebhookUrl,
-                        webhookPayload,
-                        request.WebhookHeaders);
+                    // Publish webhook delivery event for scalable processing
+                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                    {
+                        TaskId = request.RequestId,
+                        TaskType = "video",
+                        WebhookUrl = request.WebhookUrl,
+                        EventType = WebhookEventType.TaskCompleted,
+                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                        Headers = request.WebhookHeaders,
+                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                    });
+                    
+                    _logger.LogDebug("Published webhook delivery event for completed video task {RequestId}", request.RequestId);
                 }
                 
                 // Cancel progress tracking since task is complete
@@ -910,10 +919,19 @@ namespace ConduitLLM.Core.Services
                     Prompt = request.Prompt
                 };
 
-                await _webhookService.SendTaskCompletionWebhookAsync(
-                    request.WebhookUrl,
-                    webhookPayload,
-                    request.WebhookHeaders);
+                // Publish webhook delivery event for scalable processing
+                await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                {
+                    TaskId = request.RequestId,
+                    TaskType = "video",
+                    WebhookUrl = request.WebhookUrl,
+                    EventType = WebhookEventType.TaskFailed,
+                    PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                    Headers = request.WebhookHeaders,
+                    CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                });
+                
+                _logger.LogDebug("Published webhook delivery event for failed video task {RequestId}", request.RequestId);
             }
         }
 
@@ -963,10 +981,19 @@ namespace ConduitLLM.Core.Services
                     Prompt = request.Prompt
                 };
 
-                await _webhookService.SendTaskCompletionWebhookAsync(
-                    request.WebhookUrl,
-                    webhookPayload,
-                    request.WebhookHeaders);
+                // Publish webhook delivery event for scalable processing
+                await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                {
+                    TaskId = request.RequestId,
+                    TaskType = "video",
+                    WebhookUrl = request.WebhookUrl,
+                    EventType = WebhookEventType.TaskCancelled,
+                    PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                    Headers = request.WebhookHeaders,
+                    CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                });
+                
+                _logger.LogDebug("Published webhook delivery event for cancelled video task {RequestId}", request.RequestId);
             }
         }
 

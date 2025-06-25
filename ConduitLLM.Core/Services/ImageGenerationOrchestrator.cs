@@ -165,6 +165,8 @@ namespace ConduitLLM.Core.Services
                     request.CorrelationId, 
                     totalImages, 
                     () => progressCounter,
+                    request.WebhookUrl,
+                    request.WebhookHeaders,
                     taskCts.Token);
                 
                 // Wait for all images to complete
@@ -228,6 +230,43 @@ namespace ConduitLLM.Core.Services
                     CorrelationId = request.CorrelationId
                 });
                 
+                // Send webhook notification if configured
+                if (!string.IsNullOrEmpty(request.WebhookUrl))
+                {
+                    var imageUrls = processedImages
+                        .Where(img => !string.IsNullOrEmpty(img.Url))
+                        .Select(img => img.Url!)
+                        .ToList();
+                    
+                    var webhookPayload = new ImageCompletionWebhookPayload
+                    {
+                        TaskId = request.TaskId,
+                        Status = "completed",
+                        ImageUrls = imageUrls,
+                        ImagesGenerated = processedImages.Count,
+                        ImagesRequested = request.Request.N,
+                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
+                        Model = request.Request.Model,
+                        Prompt = request.Request.Prompt,
+                        Size = request.Request.Size,
+                        ResponseFormat = request.Request.ResponseFormat ?? "url"
+                    };
+                    
+                    // Publish webhook delivery event for scalable processing
+                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                    {
+                        TaskId = request.TaskId,
+                        TaskType = "image",
+                        WebhookUrl = request.WebhookUrl,
+                        EventType = WebhookEventType.TaskCompleted,
+                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                        Headers = request.WebhookHeaders,
+                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                    });
+                    
+                    _logger.LogDebug("Published webhook delivery event for completed image task {TaskId}", request.TaskId);
+                }
+                
                 // Update spend
                 if (cost > 0)
                 {
@@ -254,6 +293,38 @@ namespace ConduitLLM.Core.Services
                     request.TaskId,
                     TaskState.Cancelled,
                     error: "Task was cancelled by user request");
+                
+                // Send webhook notification if configured
+                if (!string.IsNullOrEmpty(request.WebhookUrl))
+                {
+                    var webhookPayload = new ImageCompletionWebhookPayload
+                    {
+                        TaskId = request.TaskId,
+                        Status = "cancelled",
+                        Error = "Task was cancelled by user request",
+                        ImagesGenerated = 0,
+                        ImagesRequested = request.Request.N,
+                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
+                        Model = request.Request.Model,
+                        Prompt = request.Request.Prompt,
+                        Size = request.Request.Size,
+                        ResponseFormat = request.Request.ResponseFormat ?? "url"
+                    };
+                    
+                    // Publish webhook delivery event for scalable processing
+                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                    {
+                        TaskId = request.TaskId,
+                        TaskType = "image",
+                        WebhookUrl = request.WebhookUrl,
+                        EventType = WebhookEventType.TaskCancelled,
+                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                        Headers = request.WebhookHeaders,
+                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                    });
+                    
+                    _logger.LogDebug("Published webhook delivery event for cancelled image task {TaskId}", request.TaskId);
+                }
                 
                 // Don't re-throw - cancellation is a normal completion path
             }
@@ -303,6 +374,38 @@ namespace ConduitLLM.Core.Services
                     AttemptCount = 1, // Would need to track this properly
                     CorrelationId = request.CorrelationId
                 });
+                
+                // Send webhook notification if configured
+                if (!string.IsNullOrEmpty(request.WebhookUrl))
+                {
+                    var webhookPayload = new ImageCompletionWebhookPayload
+                    {
+                        TaskId = request.TaskId,
+                        Status = "failed",
+                        Error = ex.Message,
+                        ImagesGenerated = 0,
+                        ImagesRequested = request.Request.N,
+                        GenerationDurationSeconds = stopwatch.Elapsed.TotalSeconds,
+                        Model = request.Request.Model,
+                        Prompt = request.Request.Prompt,
+                        Size = request.Request.Size,
+                        ResponseFormat = request.Request.ResponseFormat ?? "url"
+                    };
+                    
+                    // Publish webhook delivery event for scalable processing
+                    await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                    {
+                        TaskId = request.TaskId,
+                        TaskType = "image",
+                        WebhookUrl = request.WebhookUrl,
+                        EventType = WebhookEventType.TaskFailed,
+                        PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                        Headers = request.WebhookHeaders,
+                        CorrelationId = request.CorrelationId ?? Guid.NewGuid().ToString()
+                    });
+                    
+                    _logger.LogDebug("Published webhook delivery event for failed image task {TaskId}", request.TaskId);
+                }
                 
                 // Re-throw to let MassTransit handle retry logic
                 throw;
@@ -628,6 +731,8 @@ namespace ConduitLLM.Core.Services
             string correlationId,
             int totalImages,
             Func<int> getCompletedCount,
+            string? webhookUrl,
+            Dictionary<string, string>? webhookHeaders,
             CancellationToken cancellationToken)
         {
             var lastReportedCount = 0;
@@ -648,8 +753,33 @@ namespace ConduitLLM.Core.Services
                         ImagesCompleted = currentCount,
                         TotalImages = totalImages,
                         Message = $"Processed {currentCount} of {totalImages} images",
-                        CorrelationId = correlationId
+                        CorrelationId = correlationId ?? string.Empty
                     });
+                    
+                    // Send webhook notification if configured
+                    if (!string.IsNullOrEmpty(webhookUrl))
+                    {
+                        var webhookPayload = new ImageProgressWebhookPayload
+                        {
+                            TaskId = taskId,
+                            Status = "processing",
+                            ImagesCompleted = currentCount,
+                            TotalImages = totalImages,
+                            Message = $"Processed {currentCount} of {totalImages} images"
+                        };
+                        
+                        // Publish webhook delivery event for scalable processing
+                        await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                        {
+                            TaskId = taskId,
+                            TaskType = "image",
+                            WebhookUrl = webhookUrl,
+                            EventType = WebhookEventType.TaskProgress,
+                            PayloadJson = ConduitLLM.Core.Helpers.WebhookPayloadHelper.SerializePayload(webhookPayload),
+                            Headers = webhookHeaders,
+                            CorrelationId = correlationId ?? Guid.NewGuid().ToString()
+                        });
+                    }
                 }
                 
                 if (currentCount >= totalImages)

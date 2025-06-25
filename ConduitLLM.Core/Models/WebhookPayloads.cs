@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
@@ -97,5 +98,101 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("estimated_seconds_remaining")]
         public int? EstimatedSecondsRemaining { get; set; }
+    }
+    
+    /// <summary>
+    /// Webhook payload for image generation completion, failure, or cancellation.
+    /// </summary>
+    public class ImageCompletionWebhookPayload : WebhookPayloadBase
+    {
+        /// <inheritdoc/>
+        public override string WebhookType => "image_generation_completed";
+        
+        /// <summary>
+        /// List of generated image URLs (for successful completion).
+        /// </summary>
+        [JsonPropertyName("image_urls")]
+        public List<string>? ImageUrls { get; set; }
+        
+        /// <summary>
+        /// Number of images successfully generated.
+        /// </summary>
+        [JsonPropertyName("images_generated")]
+        public int ImagesGenerated { get; set; }
+        
+        /// <summary>
+        /// Total images requested.
+        /// </summary>
+        [JsonPropertyName("images_requested")]
+        public int ImagesRequested { get; set; }
+        
+        /// <summary>
+        /// Time taken to generate images in seconds.
+        /// </summary>
+        [JsonPropertyName("generation_duration_seconds")]
+        public double? GenerationDurationSeconds { get; set; }
+        
+        /// <summary>
+        /// Model used for generation.
+        /// </summary>
+        [JsonPropertyName("model")]
+        public string? Model { get; set; }
+        
+        /// <summary>
+        /// Prompt used for generation.
+        /// </summary>
+        [JsonPropertyName("prompt")]
+        public string? Prompt { get; set; }
+        
+        /// <summary>
+        /// Image size (e.g., "1024x1024", "512x512").
+        /// </summary>
+        [JsonPropertyName("size")]
+        public string? Size { get; set; }
+        
+        /// <summary>
+        /// Response format ("url" or "b64_json").
+        /// </summary>
+        [JsonPropertyName("response_format")]
+        public string? ResponseFormat { get; set; }
+        
+        /// <summary>
+        /// Error message if the generation failed.
+        /// </summary>
+        [JsonPropertyName("error")]
+        public string? Error { get; set; }
+    }
+    
+    /// <summary>
+    /// Webhook payload for image generation progress updates.
+    /// </summary>
+    public class ImageProgressWebhookPayload : WebhookPayloadBase
+    {
+        /// <inheritdoc/>
+        public override string WebhookType => "image_generation_progress";
+        
+        /// <summary>
+        /// Number of images completed.
+        /// </summary>
+        [JsonPropertyName("images_completed")]
+        public int ImagesCompleted { get; set; }
+        
+        /// <summary>
+        /// Total images being generated.
+        /// </summary>
+        [JsonPropertyName("total_images")]
+        public int TotalImages { get; set; }
+        
+        /// <summary>
+        /// Progress percentage (0-100).
+        /// </summary>
+        [JsonPropertyName("progress_percentage")]
+        public int ProgressPercentage => TotalImages > 0 ? (ImagesCompleted * 100) / TotalImages : 0;
+        
+        /// <summary>
+        /// Human-readable progress message.
+        /// </summary>
+        [JsonPropertyName("message")]
+        public string? Message { get; set; }
     }
 }

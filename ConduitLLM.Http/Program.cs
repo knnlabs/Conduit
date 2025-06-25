@@ -201,11 +201,27 @@ builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryCon
     options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
 });
 
-// Register Webhook Notification Service
+// Register Webhook Notification Service with optimized timeout for high throughput
 builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
+    client.Timeout = TimeSpan.FromSeconds(10); // Reduced from 30s for better scalability
     client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+});
+
+// Register Webhook Circuit Breaker for preventing repeated failures
+builder.Services.AddMemoryCache(); // Ensure memory cache is available
+builder.Services.AddSingleton<ConduitLLM.Core.Services.IWebhookCircuitBreaker>(sp =>
+{
+    var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+    var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.WebhookCircuitBreaker>>();
+    
+    // Configure circuit breaker: open after 5 failures, stay open for 5 minutes
+    return new ConduitLLM.Core.Services.WebhookCircuitBreaker(
+        cache, 
+        logger, 
+        failureThreshold: 5,
+        openDuration: TimeSpan.FromMinutes(5),
+        counterResetDuration: TimeSpan.FromMinutes(15));
 });
 
 // Register enhanced model discovery providers
@@ -301,10 +317,15 @@ builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
 // Register Virtual Key service with optional Redis caching
 if (!string.IsNullOrEmpty(redisConnectionString))
 {
+    // Register Redis connection factory for proper connection pooling
+    builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+    
     // Use Redis-cached Virtual Key service for high-performance validation
     builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     {
-        return ConnectionMultiplexer.Connect(redisConnectionString);
+        var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
+        var connectionTask = factory.GetConnectionAsync(redisConnectionString);
+        return connectionTask.GetAwaiter().GetResult();
     });
     
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
@@ -342,6 +363,39 @@ else
     builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.InMemoryDistributedLockService>();
     
     Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with in-memory locking");
+}
+
+// Register Webhook Delivery Tracker for deduplication and statistics
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    // Register the Redis tracker as the inner implementation
+    builder.Services.AddSingleton<ConduitLLM.Core.Services.RedisWebhookDeliveryTracker>();
+    
+    // Add memory caching
+    builder.Services.AddMemoryCache();
+    
+    // Register the cached wrapper as the main interface
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryTracker>(sp =>
+    {
+        var redisTracker = sp.GetRequiredService<ConduitLLM.Core.Services.RedisWebhookDeliveryTracker>();
+        var memoryCache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+        var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.CachedWebhookDeliveryTracker>>();
+        
+        return new ConduitLLM.Core.Services.CachedWebhookDeliveryTracker(redisTracker, memoryCache, logger);
+    });
+    
+    Console.WriteLine("[Conduit] Webhook delivery tracking configured with Redis backend and in-memory cache");
+}
+else
+{
+    // If no Redis, log warning and use a no-op implementation
+    builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IWebhookDeliveryTracker>(sp =>
+    {
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("No Redis connection configured. Webhook delivery tracking and deduplication will not be available.");
+        // Return a simple no-op implementation
+        return new ConduitLLM.Http.Services.NoOpWebhookDeliveryTracker();
+    });
 }
 
 // Configure RabbitMQ settings
@@ -398,6 +452,9 @@ builder.Services.AddMassTransit(x =>
     // Add video generation started handler for real-time notifications
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VideoGenerationStartedHandler>();
     
+    // Add webhook delivery consumer for scalable webhook processing
+    x.AddConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>();
+    
     if (useRabbitMq)
     {
         x.UsingRabbitMq((context, cfg) =>
@@ -418,6 +475,33 @@ builder.Services.AddMassTransit(x =>
             
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure webhook delivery endpoint optimized for 1000+ webhooks/minute
+            cfg.ReceiveEndpoint("webhook-delivery", e =>
+            {
+                // Configure for high throughput with RabbitMQ 4.1.1
+                e.PrefetchCount = 200; // Increased from 100 - fetch more messages at once
+                e.ConcurrentMessageLimit = 100; // Increased from 50 - more concurrent processing
+                
+                // Use quorum queue for better reliability in RabbitMQ 4.1.1
+                e.SetQuorumQueue();
+                e.SetQueueArgument("x-delivery-limit", 10); // Max redelivery attempts
+                
+                // Configure retry with shorter intervals for webhook scenarios
+                e.UseMessageRetry(r => r.Exponential(3, 
+                    TimeSpan.FromSeconds(1), // Reduced from 2s - faster initial retry
+                    TimeSpan.FromSeconds(30), // Reduced from 60s - max backoff
+                    TimeSpan.FromSeconds(2)));
+                
+                // Prevents duplicate sends during retries
+                e.UseInMemoryOutbox();
+                
+                e.ConfigureConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>(context, c =>
+                {
+                    // Configure consumer-specific concurrency
+                    c.UseConcurrentMessageLimit(100);
+                });
+            });
             
             // Configure endpoints with automatic topology
             // Note: Partitioning is handled at the application level via PartitionKey property
@@ -452,6 +536,25 @@ builder.Services.AddMassTransit(x =>
             
             // Configure delayed redelivery for failed messages
             cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
+            
+            // Configure webhook delivery endpoint with high throughput settings
+            cfg.ReceiveEndpoint("webhook-delivery", e =>
+            {
+                // Configure retry with shorter intervals for webhook scenarios
+                e.UseMessageRetry(r => r.Exponential(3, 
+                    TimeSpan.FromSeconds(1), // Faster initial retry
+                    TimeSpan.FromSeconds(30), // Max backoff
+                    TimeSpan.FromSeconds(2)));
+                
+                // Prevents duplicate sends during retries
+                e.UseInMemoryOutbox();
+                
+                e.ConfigureConsumer<ConduitLLM.Http.Consumers.WebhookDeliveryConsumer>(context, c =>
+                {
+                    // Configure consumer concurrency for in-memory
+                    c.UseConcurrentMessageLimit(50); // Lower for single instance
+                });
+            });
             
             // Configure endpoints with automatic topology
             cfg.ConfigureEndpoints(context);
