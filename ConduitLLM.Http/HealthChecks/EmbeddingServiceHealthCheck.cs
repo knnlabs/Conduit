@@ -7,7 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using EmbeddingAlertSeverity = ConduitLLM.Core.Interfaces.AlertSeverity;
+using EmbeddingAlertSeverity = ConduitLLM.Core.Models.AlertSeverity;
 
 namespace ConduitLLM.Http.HealthChecks
 {
