@@ -36,7 +36,7 @@
     
     <!-- Action buttons -->
     <div class="mb-3">
-        <button class="btn btn-primary shadow-sm" @onclick="RefreshDataAsync">
+        <button class="btn btn-primary modern-btn modern-btn-primary" @onclick="RefreshDataAsync">
             <i class="fa fa-sync-alt me-1"></i>Refresh
         </button>
     </div>
@@ -53,24 +53,24 @@
     else
     {
         <!-- Date Range Filter -->
-        <div class="card mb-4">
-            <div class="card-body">
+        <div class="card modern-card mb-4">
+            <div class="card-body modern-card-body">
                 <div class="row align-items-end">
                     <div class="col-md-3">
-                        <label class="form-label">Start Date</label>
-                        <input type="date" class="form-control" @bind="_startDate" />
+                        <label class="form-label modern-form-label">Start Date</label>
+                        <input type="date" class="form-control modern-form-control" @bind="_startDate" />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">End Date</label>
-                        <input type="date" class="form-control" @bind="_endDate" />
+                        <label class="form-label modern-form-label">End Date</label>
+                        <input type="date" class="form-control modern-form-control" @bind="_endDate" />
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">Virtual Key</label>
-                        <input type="text" class="form-control" @bind="_filterVirtualKey" placeholder="All keys" />
+                        <label class="form-label modern-form-label">Virtual Key</label>
+                        <input type="text" class="form-control modern-form-control" @bind="_filterVirtualKey" placeholder="All keys" />
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">Provider</label>
-                        <select class="form-select" @bind="_filterProvider">
+                        <label class="form-label modern-form-label">Provider</label>
+                        <select class="form-select modern-form-control" @bind="_filterProvider">
                             <option value="">All providers</option>
                             @foreach (var provider in _availableProviders)
                             {
@@ -79,7 +79,7 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <button class="btn btn-primary w-100" @onclick="ApplyFiltersAsync">
+                        <button class="btn btn-primary modern-btn modern-btn-primary w-100" @onclick="ApplyFiltersAsync">
                             <i class="fa fa-filter me-2"></i>Apply Filters
                         </button>
                     </div>
@@ -90,32 +90,32 @@
         <!-- Summary Cards -->
         <div class="row mb-4">
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
+                <div class="card modern-card text-center">
+                    <div class="card-body modern-card-body">
                         <h5 class="card-title">Total Requests</h5>
                         <h2 class="text-primary">@(_usageSummary?.TotalOperations.ToString("N0") ?? "0")</h2>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
+                <div class="card modern-card text-center">
+                    <div class="card-body modern-card-body">
                         <h5 class="card-title">Transcription Minutes</h5>
                         <h2 class="text-info">@((_usageSummary?.TotalDurationSeconds / 60)?.ToString("N1") ?? "0.0")</h2>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
+                <div class="card modern-card text-center">
+                    <div class="card-body modern-card-body">
                         <h5 class="card-title">TTS Characters</h5>
                         <h2 class="text-success">@(_usageSummary?.TotalCharacters.ToString("N0") ?? "0")</h2>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
+                <div class="card modern-card text-center">
+                    <div class="card-body modern-card-body">
                         <h5 class="card-title">Total Cost</h5>
                         <h2 class="text-warning">$@(_usageSummary?.TotalCost.ToString("N2") ?? "0.00")</h2>
                     </div>
@@ -126,21 +126,21 @@
         <!-- Charts Row -->
         <div class="row mb-4">
             <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <h5 class="mb-0">Usage by Provider</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         <canvas id="providerChart" style="height: 300px;"></canvas>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <h5 class="mb-0">Usage by Operation Type</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body modern-card-body">
                         <canvas id="operationChart" style="height: 300px;"></canvas>
                     </div>
                 </div>
@@ -148,24 +148,24 @@
         </div>
 
         <!-- Daily Usage Trend -->
-        <div class="card mb-4">
-            <div class="card-header">
+        <div class="card modern-card mb-4">
+            <div class="card-header modern-card-header">
                 <h5 class="mb-0">Daily Usage Trend</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body modern-card-body">
                 <canvas id="trendChart" style="height: 250px;"></canvas>
             </div>
         </div>
 
         <!-- Provider Breakdown Table -->
-        <div class="card mb-4">
-            <div class="card-header">
+        <div class="card modern-card mb-4">
+            <div class="card-header modern-card-header">
                 <h5 class="mb-0">Provider Performance Breakdown</h5>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+            <div class="card-body modern-card-body">
+                <div class="table-responsive modern-table-container">
+                    <table class="table modern-table table-hover">
+                        <thead class="modern-table-header">
                             <tr>
                                 <th>Provider</th>
                                 <th>Requests</th>
@@ -196,19 +196,19 @@
         </div>
 
         <!-- Recent Usage Logs -->
-        <div class="card">
-            <div class="card-header">
+        <div class="card modern-card">
+            <div class="card-header modern-card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Recent Audio Usage Logs</h5>
-                    <button class="btn btn-sm btn-outline-primary" @onclick="DownloadLogsAsync">
+                    <button class="btn btn-sm btn-outline-primary modern-btn modern-btn-outline" @onclick="DownloadLogsAsync">
                         <i class="fa fa-download me-2"></i>Export CSV
                     </button>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
+            <div class="card-body modern-card-body">
+                <div class="table-responsive modern-table-container">
+                    <table class="table modern-table table-striped">
+                        <thead class="modern-table-header">
                             <tr>
                                 <th>Timestamp</th>
                                 <th>Virtual Key</th>

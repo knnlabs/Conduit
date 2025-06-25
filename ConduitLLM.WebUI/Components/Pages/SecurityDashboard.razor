@@ -28,8 +28,8 @@
     <!-- Security Status Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
                     <h5 class="card-title text-muted">IP Filtering</h5>
                     <p class="card-text h3">
                         @if (dashboardData?.IpFilteringEnabled == true)
@@ -49,8 +49,8 @@
         </div>
         
         <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
                     <h5 class="card-title text-muted">Active Filters</h5>
                     <p class="card-text h3">
                         @((dashboardData?.Whitelist?.Count ?? 0) + (dashboardData?.Blacklist?.Count ?? 0) + (whitelistFilters?.Count ?? 0) + (blacklistFilters?.Count ?? 0))
@@ -63,8 +63,8 @@
         </div>
         
         <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
                     <h5 class="card-title text-muted">Banned IPs</h5>
                     <p class="card-text h3">
                         @(dashboardData?.BannedIps?.Count ?? 0)
@@ -77,8 +77,8 @@
         </div>
         
         <div class="col-md-3">
-            <div class="card">
-                <div class="card-body">
+            <div class="card modern-card">
+                <div class="card-body modern-card-body">
                     <h5 class="card-title text-muted">Failed Attempts</h5>
                     <p class="card-text h3">
                         @(dashboardData?.RecentFailedAttempts?.Count ?? 0)
@@ -94,11 +94,11 @@
     <!-- Security Configuration -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">Security Configuration</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <dl class="row">
                         <dt class="col-sm-6">IP Filtering Enabled:</dt>
                         <dd class="col-sm-6">
@@ -150,11 +150,11 @@
         </div>
         
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">Current Request Info</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <dl class="row">
                         <dt class="col-sm-6">Your IP Address:</dt>
                         <dd class="col-sm-6">@currentIpAddress</dd>
@@ -192,14 +192,14 @@
     <!-- Active IP Filters -->
     <div class="row mb-4">
         <div class="col">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Active IP Filters</h5>
-                    <button class="btn btn-sm btn-primary" @onclick="RefreshData">
+                    <button class="btn btn-sm btn-primary modern-btn modern-btn-primary" @onclick="RefreshData">
                         <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     <ul class="nav nav-tabs mb-3" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#whitelist" type="button">
@@ -217,9 +217,9 @@
                         <div class="tab-pane fade show active" id="whitelist">
                             @if (whitelistFilters?.Any() == true)
                             {
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
+                                <div class="table-responsive modern-table-container">
+                                    <table class="table modern-table table-sm">
+                                        <thead class="modern-table-header">
                                             <tr>
                                                 <th>Name</th>
                                                 <th>IP/CIDR</th>
@@ -259,9 +259,9 @@
                         <div class="tab-pane fade" id="blacklist">
                             @if (blacklistFilters?.Any() == true)
                             {
-                                <div class="table-responsive">
-                                    <table class="table table-sm">
-                                        <thead>
+                                <div class="table-responsive modern-table-container">
+                                    <table class="table modern-table table-sm">
+                                        <thead class="modern-table-header">
                                             <tr>
                                                 <th>Name</th>
                                                 <th>IP/CIDR</th>
@@ -306,16 +306,16 @@
     <!-- Failed Login Attempts and Banned IPs -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">Recent Failed Login Attempts</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     @if (dashboardData?.RecentFailedAttempts?.Any() == true)
                     {
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                        <div class="table-responsive modern-table-container">
+                            <table class="table modern-table table-sm">
+                                <thead class="modern-table-header">
                                     <tr>
                                         <th>IP Address</th>
                                         <th>Attempts</th>
@@ -348,16 +348,16 @@
         </div>
         
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card modern-card">
+                <div class="card-header modern-card-header">
                     <h5 class="mb-0">Currently Banned IPs</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body modern-card-body">
                     @if (dashboardData?.BannedIps?.Any() == true)
                     {
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                        <div class="table-responsive modern-table-container">
+                            <table class="table modern-table table-sm">
+                                <thead class="modern-table-header">
                                     <tr>
                                         <th>IP Address</th>
                                         <th>Classification</th>
@@ -373,7 +373,7 @@
                                                 @SecurityService.ClassifyIpAddress(bannedIp.Key)
                                             </td>
                                             <td>
-                                                <button class="btn btn-sm btn-warning" @onclick="() => UnbanIp(bannedIp.Key)">
+                                                <button class="btn btn-sm btn-warning modern-btn modern-btn-warning" @onclick="() => UnbanIp(bannedIp.Key)">
                                                     <i class="bi bi-unlock"></i> Unban
                                                 </button>
                                             </td>
