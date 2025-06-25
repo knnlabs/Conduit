@@ -484,12 +484,13 @@
         statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
     }
     
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             StateHasChanged();
         }
+        return Task.CompletedTask;
     }
 
     private async Task LoadAvailableModels()

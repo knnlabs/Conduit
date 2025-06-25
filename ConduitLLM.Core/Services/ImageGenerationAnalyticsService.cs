@@ -72,7 +72,7 @@ namespace ConduitLLM.Core.Services
             return report;
         }
 
-        public async Task<ProviderComparisonReport> GetProviderComparisonAsync(
+        public Task<ProviderComparisonReport> GetProviderComparisonAsync(
             int timeWindowHours = 24,
             CancellationToken cancellationToken = default)
         {
@@ -84,10 +84,10 @@ namespace ConduitLLM.Core.Services
                 TimeWindowHours = timeWindowHours
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<CostOptimizationReport> GetCostOptimizationRecommendationsAsync(
+        public Task<CostOptimizationReport> GetCostOptimizationRecommendationsAsync(
             int timeWindowDays = 7,
             CancellationToken cancellationToken = default)
         {
@@ -102,10 +102,10 @@ namespace ConduitLLM.Core.Services
                 Opportunities = new List<CostOptimizationOpportunity>()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<UsageTrendReport> GetUsageTrendsAsync(
+        public Task<UsageTrendReport> GetUsageTrendsAsync(
             TimeGranularity granularity,
             int periods = 30,
             CancellationToken cancellationToken = default)
@@ -119,10 +119,10 @@ namespace ConduitLLM.Core.Services
                 TrendData = new List<UsageTrendPoint>()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<ErrorAnalysisReport> GetErrorAnalysisAsync(
+        public Task<ErrorAnalysisReport> GetErrorAnalysisAsync(
             int timeWindowHours = 24,
             CancellationToken cancellationToken = default)
         {
@@ -136,10 +136,10 @@ namespace ConduitLLM.Core.Services
                 ErrorPatterns = new Dictionary<string, ErrorPattern>()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<CapacityPlanningReport> GetCapacityPlanningInsightsAsync(
+        public Task<CapacityPlanningReport> GetCapacityPlanningInsightsAsync(
             int forecastDays = 30,
             CancellationToken cancellationToken = default)
         {
@@ -158,10 +158,10 @@ namespace ConduitLLM.Core.Services
                 Forecast = new CapacityForecast()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<VirtualKeyUsageReport> GetVirtualKeyUsageAnalyticsAsync(
+        public Task<VirtualKeyUsageReport> GetVirtualKeyUsageAnalyticsAsync(
             int? virtualKeyId = null,
             int timeWindowDays = 30,
             CancellationToken cancellationToken = default)
@@ -175,10 +175,10 @@ namespace ConduitLLM.Core.Services
                 KeyUsages = new List<VirtualKeyUsage>()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
 
-        public async Task<AnomalyDetectionReport> DetectPerformanceAnomaliesAsync(
+        public Task<AnomalyDetectionReport> DetectPerformanceAnomaliesAsync(
             int timeWindowHours = 24,
             CancellationToken cancellationToken = default)
         {
@@ -190,7 +190,7 @@ namespace ConduitLLM.Core.Services
                 Anomalies = new List<PerformanceAnomaly>()
             };
 
-            return report;
+            return Task.FromResult(report);
         }
     }
 }

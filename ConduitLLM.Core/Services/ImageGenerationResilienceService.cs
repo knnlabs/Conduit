@@ -389,7 +389,7 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private async Task<bool> ProbeProviderHealthAsync(string providerName)
+        private Task<bool> ProbeProviderHealthAsync(string providerName)
         {
             try
             {
@@ -398,12 +398,12 @@ namespace ConduitLLM.Core.Services
                 // Perform a lightweight health check
                 // This would typically make a simple API call to verify the provider is responsive
                 
-                return true; // Simplified for this implementation
+                return Task.FromResult(true); // Simplified for this implementation
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Health probe failed for provider {Provider}", providerName);
-                return false;
+                return Task.FromResult(false);
             }
         }
 

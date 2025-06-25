@@ -236,7 +236,7 @@ namespace ConduitLLM.Core.Services
                         KeyId = request.VirtualKeyId,
                         Amount = cost,
                         RequestId = request.TaskId,
-                        CorrelationId = request.CorrelationId?.ToString()
+                        CorrelationId = request.CorrelationId?.ToString() ?? string.Empty
                     });
                 }
                 
@@ -477,7 +477,7 @@ namespace ConduitLLM.Core.Services
                             ["index"] = index,
                             ["format"] = "b64_json"
                         },
-                        CorrelationId = request.CorrelationId?.ToString()
+                        CorrelationId = request.CorrelationId?.ToString() ?? string.Empty
                     });
                 }
                 else if (!string.IsNullOrEmpty(imageData.Url) && 

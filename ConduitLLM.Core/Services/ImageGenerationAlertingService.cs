@@ -781,7 +781,7 @@ namespace ConduitLLM.Core.Services
             response.EnsureSuccessStatusCode();
         }
 
-        private async Task CheckResolvedAlertsAsync(ImageGenerationMetricsSnapshot metrics)
+        private Task CheckResolvedAlertsAsync(ImageGenerationMetricsSnapshot metrics)
         {
             var resolvedAlerts = new List<string>();
             
@@ -806,6 +806,8 @@ namespace ConduitLLM.Core.Services
             {
                 _activeAlerts.TryRemove(alertId, out _);
             }
+            
+            return Task.CompletedTask;
         }
 
         private ImageGenerationMetricsSnapshot CreateTestMetrics(ImageGenerationMetricType metricType)
