@@ -615,17 +615,58 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Reconstruct the video generation request from metadata
-                var metadata = taskStatus.Metadata as dynamic;
-                var originalRequest = metadata?.Request;
-                var videoRequest = new VideoGenerationRequest
+                VideoGenerationRequest videoRequest;
+                try
                 {
-                    Model = request.Model,
-                    Prompt = request.Prompt,
-                    Duration = originalRequest?.Duration ?? 6,
-                    Size = originalRequest?.Size ?? "1280x720",
-                    Fps = originalRequest?.Fps ?? 30,
-                    ResponseFormat = originalRequest?.ResponseFormat ?? "url"
-                };
+                    // Serialize the metadata object to JSON string first, then deserialize to JsonElement
+                    var metadataJsonString = System.Text.Json.JsonSerializer.Serialize(taskStatus.Metadata);
+                    var metadataJson = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(metadataJsonString);
+                    
+                    // Handle wrapped format from InMemoryAsyncTaskService
+                    System.Text.Json.JsonElement workingMetadata;
+                    if (metadataJson.TryGetProperty("originalMetadata", out var originalMetadataElement))
+                    {
+                        workingMetadata = originalMetadataElement;
+                    }
+                    else
+                    {
+                        workingMetadata = metadataJson;
+                    }
+                    
+                    // Extract the Request from metadata
+                    if (workingMetadata.TryGetProperty("Request", out var requestElement))
+                    {
+                        videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(requestElement.GetRawText()) ??
+                            throw new InvalidOperationException("Failed to deserialize request from metadata");
+                    }
+                    else
+                    {
+                        // Fallback to constructing from event parameters
+                        videoRequest = new VideoGenerationRequest
+                        {
+                            Model = request.Model,
+                            Prompt = request.Prompt,
+                            Duration = request.Parameters?.Duration,
+                            Size = request.Parameters?.Size,
+                            Fps = request.Parameters?.Fps,
+                            ResponseFormat = "url"
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to extract request from task metadata, using fallback");
+                    // Fallback to constructing from event parameters
+                    videoRequest = new VideoGenerationRequest
+                    {
+                        Model = request.Model,
+                        Prompt = request.Prompt,
+                        Duration = request.Parameters?.Duration ?? 6,
+                        Size = request.Parameters?.Size ?? "1280x720",
+                        Fps = request.Parameters?.Fps ?? 30,
+                        ResponseFormat = "url"
+                    };
+                }
 
                 // Store video in media storage if base64 data is provided
                 var videoUrl = response.Data?.FirstOrDefault()?.Url;
