@@ -429,9 +429,9 @@ namespace ConduitLLM.Http.Controllers
                 var response = new
                 {
                     taskId = taskId,
-                    status = "queued",
-                    statusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
-                    created = DateTime.UtcNow
+                    status = "queued", 
+                    checkStatusUrl = Url.Action(nameof(GetGenerationStatus), null, new { taskId }, Request.Scheme),
+                    createdAt = DateTime.UtcNow
                 };
 
                 return Accepted(response);
@@ -481,8 +481,8 @@ namespace ConduitLLM.Http.Controllers
                 {
                     taskId = task.TaskId,
                     status = task.State.ToString().ToLowerInvariant(),
-                    created = task.CreatedAt,
-                    updated = task.UpdatedAt,
+                    createdAt = task.CreatedAt,
+                    updatedAt = task.UpdatedAt,
                     progress = task.Progress,
                     result = task.State == TaskState.Completed ? task.Result : null,
                     error = task.State == TaskState.Failed ? task.Error : null
