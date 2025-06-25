@@ -38,11 +38,11 @@ else
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-12 col-md-6 col-lg-4">
-                <div class="card">
-                    <div class="card-header bg-primary text-white py-3">
+                <div class="card modern-card">
+                    <div class="card-header modern-card-header">
                         <h5 class="mb-0">ConduitLLM Admin Login</h5>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body modern-card-body">
                         <form method="post" action="/account/login">
                             @* Add hidden field for returnUrl *@
                             <input type="hidden" name="returnUrl" value="@returnUrl" />
@@ -53,29 +53,29 @@ else
                                 <input type="hidden" name="@requestTokenFormFieldName" value="@requestToken" />
                             }
 
-                            <div class="form-group mb-4">
-                                <label for="masterKey">Master Key</label>
+                            <div class="modern-form-group mb-4">
+                                <label for="masterKey" class="modern-form-label">Master Key</label>
                                 <div class="input-group">
                                     <input type="password" 
                                            id="masterKey" 
                                            name="masterKey" 
-                                           class="form-control" 
+                                           class="form-control modern-form-control" 
                                            required 
                                            autocomplete="off" 
                                            @bind="masterKey" />
-                                    <span class="input-group-text">
+                                    <span class="input-group-text modern-input-group-text">
                                         <i class="fa fa-key"></i>
                                     </span>
                                 </div>
                             </div>
 
-                            <div class="form-check mb-4">
-                                <input type="checkbox" id="rememberMe" name="rememberMe" class="form-check-input" @bind="rememberMe" />
-                                <label for="rememberMe" class="form-check-label">Remember me</label>
+                            <div class="form-check modern-form-check mb-4">
+                                <input type="checkbox" id="rememberMe" name="rememberMe" class="form-check-input modern-form-check-input" @bind="rememberMe" />
+                                <label for="rememberMe" class="form-check-label modern-form-check-label">Remember me</label>
                             </div>
                             
                             <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary modern-btn modern-btn-primary">
                                     <i class="fa fa-sign-in-alt me-2"></i>
                                     Login
                                 </button>
