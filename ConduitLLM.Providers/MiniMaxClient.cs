@@ -26,6 +26,7 @@ namespace ConduitLLM.Providers
     {
         private const string DefaultBaseUrl = "https://api.minimax.io";
         private readonly string _baseUrl;
+        private Func<string, string, int, Task>? _progressCallback;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MiniMaxClient"/> class.
@@ -44,6 +45,15 @@ namespace ConduitLLM.Providers
             : base(credentials, modelId, logger, httpClientFactory, "minimax", defaultModels)
         {
             _baseUrl = string.IsNullOrWhiteSpace(credentials.ApiBase) ? DefaultBaseUrl : credentials.ApiBase.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Sets a callback for video generation progress updates.
+        /// </summary>
+        /// <param name="progressCallback">Callback that receives taskId, status, and progress percentage.</param>
+        public void SetVideoProgressCallback(Func<string, string, int, Task>? progressCallback)
+        {
+            _progressCallback = progressCallback;
         }
 
         /// <inheritdoc/>
@@ -688,9 +698,34 @@ namespace ConduitLLM.Providers
                         {
                             throw new LLMCommunicationException($"MiniMax video generation failed: {statusResult.BaseResp?.StatusMsg ?? "Unknown error"}");
                         }
-                        else if (statusResult.Status == "Processing" || statusResult.Status == "Pending")
+                        else if (statusResult.Status == "Processing" || statusResult.Status == "Pending" || 
+                                 statusResult.Status == "Preparing" || statusResult.Status == "Queueing")
                         {
                             Logger.LogDebug("MiniMax video generation still in progress: {Status}", statusResult.Status);
+                            
+                            // Report progress via callback if available
+                            if (_progressCallback != null)
+                            {
+                                // Map status to progress percentage
+                                var progressPercentage = statusResult.Status switch
+                                {
+                                    "Preparing" => 10,
+                                    "Queueing" => 20,
+                                    "Pending" => 30,
+                                    "Processing" => CalculateProcessingProgress(attempt, maxPollingAttempts),
+                                    _ => 0
+                                };
+                                
+                                try
+                                {
+                                    await _progressCallback(response.TaskId, statusResult.Status, progressPercentage);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogWarning(ex, "Error calling progress callback for task {TaskId}", response.TaskId);
+                                }
+                            }
+                            
                             // Continue polling
                         }
                         else
@@ -706,6 +741,33 @@ namespace ConduitLLM.Providers
                 // Should not reach here for video generation as it's always async
                 throw new LLMCommunicationException("MiniMax video generation did not return a task ID");
             }, "CreateVideo", cancellationToken);
+        }
+
+        /// <summary>
+        /// Calculates progress percentage for processing status based on polling attempts.
+        /// </summary>
+        private static int CalculateProcessingProgress(int currentAttempt, int maxAttempts)
+        {
+            // Processing starts at 30% and goes up to 90%
+            const int minProgress = 30;
+            const int maxProgress = 90;
+            const int startSlowdownAttempt = 10; // Start slowing down after 10 attempts
+            
+            if (currentAttempt < startSlowdownAttempt)
+            {
+                // Linear progress for first attempts
+                var linearProgress = (double)currentAttempt / startSlowdownAttempt;
+                return minProgress + (int)((maxProgress - minProgress) * linearProgress * 0.7); // Use 70% of range
+            }
+            else
+            {
+                // Logarithmic progress for later attempts
+                var remainingAttempts = currentAttempt - startSlowdownAttempt;
+                var remainingMaxAttempts = Math.Max(1, maxAttempts - startSlowdownAttempt);
+                var logProgress = Math.Log(remainingAttempts + 1) / Math.Log(remainingMaxAttempts + 1);
+                var baseProgress = minProgress + (int)((maxProgress - minProgress) * 0.7);
+                return baseProgress + (int)((maxProgress - baseProgress) * logProgress);
+            }
         }
 
         /// <summary>

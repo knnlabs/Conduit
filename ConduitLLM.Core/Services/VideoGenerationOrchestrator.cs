@@ -429,7 +429,42 @@ namespace ConduitLLM.Core.Services
                     try
                     {
                         // Start progress tracking via event-driven architecture
-                        await StartProgressTrackingAsync(request);
+                        // NOTE: Disabled time-based tracking in favor of real progress from MiniMax
+                        // await StartProgressTrackingAsync(request);
+
+                        // Set up progress callback if the client is MiniMax
+                        if (clientType.Name == "MiniMaxClient")
+                        {
+                            // Use reflection to set the progress callback
+                            var setCallbackMethod = clientType.GetMethod("SetVideoProgressCallback");
+                            if (setCallbackMethod != null)
+                            {
+                                Func<string, string, int, Task> progressCallback = async (taskId, status, progressPercentage) =>
+                                {
+                                    _logger.LogInformation("Video generation progress for {TaskId}: {Status} at {Progress}%", 
+                                        taskId, status, progressPercentage);
+                                    
+                                    // Update task progress
+                                    await _taskService.UpdateTaskStatusAsync(
+                                        request.RequestId,
+                                        TaskState.Processing,
+                                        progress: progressPercentage);
+                                    
+                                    // Publish progress event
+                                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                                    {
+                                        RequestId = request.RequestId,
+                                        ProgressPercentage = progressPercentage,
+                                        Status = status,
+                                        Message = $"Video generation {status.ToLowerInvariant()}",
+                                        CorrelationId = request.CorrelationId
+                                    });
+                                };
+                                
+                                setCallbackMethod.Invoke(clientToCheck, new object[] { progressCallback });
+                                _logger.LogDebug("Set video progress callback for MiniMax client");
+                            }
+                        }
 
                         _logger.LogInformation("Processing video generation for task {RequestId} with cancellation support", request.RequestId);
                         
@@ -778,13 +813,14 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 // Cancel progress tracking since task is complete
-                await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-                {
-                    RequestId = request.RequestId,
-                    VirtualKeyId = request.VirtualKeyId,
-                    Reason = "Video generation completed successfully",
-                    CorrelationId = request.CorrelationId
-                });
+                // NOTE: Not needed when using real progress from MiniMax
+                // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+                // {
+                //     RequestId = request.RequestId,
+                //     VirtualKeyId = request.VirtualKeyId,
+                //     Reason = "Video generation completed successfully",
+                //     CorrelationId = request.CorrelationId
+                // });
                 
                 _logger.LogInformation("Successfully completed video generation task {RequestId} in {Duration}ms",
                     request.RequestId, stopwatch.ElapsedMilliseconds);
@@ -853,13 +889,14 @@ namespace ConduitLLM.Core.Services
             });
             
             // Cancel progress tracking since task has failed
-            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-            {
-                RequestId = request.RequestId,
-                VirtualKeyId = request.VirtualKeyId,
-                Reason = $"Video generation failed: {errorMessage}",
-                CorrelationId = request.CorrelationId
-            });
+            // NOTE: Not needed when using real progress from MiniMax
+            // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            // {
+            //     RequestId = request.RequestId,
+            //     VirtualKeyId = request.VirtualKeyId,
+            //     Reason = $"Video generation failed: {errorMessage}",
+            //     CorrelationId = request.CorrelationId
+            // });
 
             // Send webhook notification if configured
             if (!string.IsNullOrEmpty(request.WebhookUrl))
@@ -905,13 +942,14 @@ namespace ConduitLLM.Core.Services
             });
             
             // Cancel progress tracking since task is cancelled
-            await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-            {
-                RequestId = request.RequestId,
-                VirtualKeyId = request.VirtualKeyId,
-                Reason = "Video generation cancelled by user",
-                CorrelationId = request.CorrelationId
-            });
+            // NOTE: Not needed when using real progress from MiniMax
+            // await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
+            // {
+            //     RequestId = request.RequestId,
+            //     VirtualKeyId = request.VirtualKeyId,
+            //     Reason = "Video generation cancelled by user",
+            //     CorrelationId = request.CorrelationId
+            // });
 
             // Send webhook notification if configured
             if (!string.IsNullOrEmpty(request.WebhookUrl))
