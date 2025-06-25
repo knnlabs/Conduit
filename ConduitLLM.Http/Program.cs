@@ -632,10 +632,31 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllers();
 
 // Add SignalR for real-time navigation state updates
-builder.Services.AddSignalR(options =>
+var signalRBuilder = builder.Services.AddSignalR(options =>
 {
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+    options.StreamBufferCapacity = 10;
 });
+
+// Configure SignalR Redis backplane for horizontal scaling
+// Use dedicated Redis connection string if available, otherwise fall back to main Redis connection
+var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
+if (!string.IsNullOrEmpty(signalRRedisConnectionString))
+{
+    signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
+    {
+        options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
+        options.Configuration.DefaultDatabase = 2; // Separate database for SignalR
+    });
+    Console.WriteLine("[Conduit] SignalR configured with Redis backplane for horizontal scaling");
+}
+else
+{
+    Console.WriteLine("[Conduit] SignalR configured without Redis backplane (single-instance mode)");
+}
 
 // Register navigation state notification service
 builder.Services.AddSingleton<INavigationStateNotificationService, NavigationStateNotificationService>();
