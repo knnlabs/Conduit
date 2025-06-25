@@ -61,10 +61,16 @@ namespace ConduitLLM.Configuration.Repositories
                 queryable = queryable.Where(l => l.OperationType.ToLower() == query.OperationType.ToLower());
 
             if (query.StartDate.HasValue)
-                queryable = queryable.Where(l => l.Timestamp >= query.StartDate.Value);
+            {
+                var utcStartDate = query.StartDate.Value.Kind == DateTimeKind.Utc ? query.StartDate.Value : DateTime.SpecifyKind(query.StartDate.Value, DateTimeKind.Utc);
+                queryable = queryable.Where(l => l.Timestamp >= utcStartDate);
+            }
 
             if (query.EndDate.HasValue)
-                queryable = queryable.Where(l => l.Timestamp <= query.EndDate.Value);
+            {
+                var utcEndDate = query.EndDate.Value.Kind == DateTimeKind.Utc ? query.EndDate.Value : DateTime.SpecifyKind(query.EndDate.Value, DateTimeKind.Utc);
+                queryable = queryable.Where(l => l.Timestamp <= utcEndDate);
+            }
 
             if (query.OnlyErrors)
                 queryable = queryable.Where(l => l.StatusCode == null || l.StatusCode >= 400);
@@ -122,15 +128,15 @@ namespace ConduitLLM.Configuration.Repositories
             };
 
             // Get operation breakdown
-            summary.OperationBreakdown = await GetOperationBreakdownAsync(startDate, endDate, virtualKey);
+            summary.OperationBreakdown = await GetOperationBreakdownAsync(utcStartDate, utcEndDate, virtualKey);
 
             // Get provider breakdown
-            summary.ProviderBreakdown = await GetProviderBreakdownAsync(startDate, endDate, virtualKey);
+            summary.ProviderBreakdown = await GetProviderBreakdownAsync(utcStartDate, utcEndDate, virtualKey);
 
             // Get virtual key breakdown (if not filtering by a specific key)
             if (string.IsNullOrEmpty(virtualKey))
             {
-                summary.VirtualKeyBreakdown = await GetVirtualKeyBreakdownAsync(startDate, endDate, provider);
+                summary.VirtualKeyBreakdown = await GetVirtualKeyBreakdownAsync(utcStartDate, utcEndDate, provider);
             }
 
             return summary;
@@ -142,10 +148,16 @@ namespace ConduitLLM.Configuration.Repositories
             var query = _context.AudioUsageLogs.Where(l => l.VirtualKey == virtualKey);
 
             if (startDate.HasValue)
-                query = query.Where(l => l.Timestamp >= startDate.Value);
+            {
+                var utcStartDate = startDate.Value.Kind == DateTimeKind.Utc ? startDate.Value : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+                query = query.Where(l => l.Timestamp >= utcStartDate);
+            }
 
             if (endDate.HasValue)
-                query = query.Where(l => l.Timestamp <= endDate.Value);
+            {
+                var utcEndDate = endDate.Value.Kind == DateTimeKind.Utc ? endDate.Value : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+                query = query.Where(l => l.Timestamp <= utcEndDate);
+            }
 
             return await query.OrderByDescending(l => l.Timestamp).ToListAsync();
         }
@@ -156,10 +168,16 @@ namespace ConduitLLM.Configuration.Repositories
             var query = _context.AudioUsageLogs.Where(l => l.Provider.ToLower() == provider.ToLower());
 
             if (startDate.HasValue)
-                query = query.Where(l => l.Timestamp >= startDate.Value);
+            {
+                var utcStartDate = startDate.Value.Kind == DateTimeKind.Utc ? startDate.Value : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+                query = query.Where(l => l.Timestamp >= utcStartDate);
+            }
 
             if (endDate.HasValue)
-                query = query.Where(l => l.Timestamp <= endDate.Value);
+            {
+                var utcEndDate = endDate.Value.Kind == DateTimeKind.Utc ? endDate.Value : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+                query = query.Where(l => l.Timestamp <= utcEndDate);
+            }
 
             return await query.OrderByDescending(l => l.Timestamp).ToListAsync();
         }
@@ -253,8 +271,12 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<List<VirtualKeyBreakdown>> GetVirtualKeyBreakdownAsync(DateTime startDate, DateTime endDate, string? provider = null)
         {
+            // Ensure dates are in UTC for PostgreSQL
+            var utcStartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            
             var query = _context.AudioUsageLogs
-                .Where(l => l.Timestamp >= startDate && l.Timestamp <= endDate);
+                .Where(l => l.Timestamp >= utcStartDate && l.Timestamp <= utcEndDate);
 
             if (!string.IsNullOrEmpty(provider))
                 query = query.Where(l => l.Provider.ToLower() == provider.ToLower());
@@ -292,8 +314,11 @@ namespace ConduitLLM.Configuration.Repositories
         /// <inheritdoc/>
         public async Task<int> DeleteOldLogsAsync(DateTime cutoffDate)
         {
+            // Ensure date is in UTC for PostgreSQL
+            var utcCutoffDate = cutoffDate.Kind == DateTimeKind.Utc ? cutoffDate : DateTime.SpecifyKind(cutoffDate, DateTimeKind.Utc);
+            
             var logsToDelete = await _context.AudioUsageLogs
-                .Where(l => l.Timestamp < cutoffDate)
+                .Where(l => l.Timestamp < utcCutoffDate)
                 .ToListAsync();
 
             _context.AudioUsageLogs.RemoveRange(logsToDelete);

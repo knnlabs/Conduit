@@ -36,6 +36,11 @@ public class CapabilityStatusInfo
     public int RealtimeAudioModels { get; set; }
 
     /// <summary>
+    /// Number of models configured for video generation.
+    /// </summary>
+    public int VideoGenerationModels { get; set; }
+
+    /// <summary>
     /// Detailed information about each configured model.
     /// </summary>
     public ICollection<ModelCapabilityInfo> ConfiguredModels { get; set; } = new List<ModelCapabilityInfo>();
@@ -55,7 +60,7 @@ public class CapabilityStatusInfo
     /// </summary>
     public string Summary => HasError 
         ? $"Error: {ErrorMessage}" 
-        : $"Total Models: {TotalConfiguredModels}, Image Gen: {ImageGenerationModels}, Vision: {VisionModels}, Audio: {AudioTranscriptionModels + TextToSpeechModels + RealtimeAudioModels}";
+        : $"Total Models: {TotalConfiguredModels}, Image Gen: {ImageGenerationModels}, Video Gen: {VideoGenerationModels}, Vision: {VisionModels}, Audio: {AudioTranscriptionModels + TextToSpeechModels + RealtimeAudioModels}";
 }
 
 /// <summary>
@@ -99,6 +104,11 @@ public class ModelCapabilityInfo
     public bool SupportsRealtimeAudio { get; set; }
 
     /// <summary>
+    /// Whether the model supports video generation.
+    /// </summary>
+    public bool SupportsVideoGeneration { get; set; }
+
+    /// <summary>
     /// Gets a list of supported capabilities as strings.
     /// </summary>
     public IEnumerable<string> SupportedCapabilities
@@ -107,6 +117,7 @@ public class ModelCapabilityInfo
         {
             var capabilities = new List<string>();
             if (SupportsImageGeneration) capabilities.Add("Image Generation");
+            if (SupportsVideoGeneration) capabilities.Add("Video Generation");
             if (SupportsVision) capabilities.Add("Vision");
             if (SupportsAudioTranscription) capabilities.Add("Audio Transcription");
             if (SupportsTextToSpeech) capabilities.Add("Text-to-Speech");

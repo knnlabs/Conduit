@@ -1,0 +1,29 @@
+{
+  "name": "conduitllm-webui",
+  "version": "1.0.0",
+  "description": "ConduitLLM WebUI CSS tooling and build setup",
+  "private": true,
+  "scripts": {
+    "css:lint": "stylelint \"**/*.css\" --cache --cache-location .stylelintcache",
+    "css:lint:fix": "stylelint \"**/*.css\" --fix --cache --cache-location .stylelintcache",
+    "css:watch": "stylelint \"**/*.css\" --watch",
+    "css:build": "echo 'CSS build process - placeholder for future PostCSS/optimization'",
+    "css:minify": "echo 'CSS minification - placeholder for production builds'",
+    "dev": "npm run css:lint",
+    "precommit": "npm run css:lint"
+  },
+  "devDependencies": {
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-config-recess-order": "^4.4.0",
+    "stylelint-order": "^6.0.4"
+  },
+  "keywords": [
+    "css",
+    "design-system",
+    "bem",
+    "conduitllm"
+  ],
+  "author": "ConduitLLM Team",
+  "license": "Private"
+}

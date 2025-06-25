@@ -1,18 +1,18 @@
 /* Toast Container */
 .toast-container {
     position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 10000;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: var(--z-index-toast);
     pointer-events: none;
-    max-width: 420px;
+    max-width: var(--toast-width);
     width: 100%;
 }
 
 @media (max-width: 576px) {
     .toast-container {
-        left: 1rem;
-        right: 1rem;
+        left: var(--space-4);
+        right: var(--space-4);
         max-width: none;
     }
 }
@@ -20,20 +20,20 @@
 /* Toast Notification */
 .toast-notification {
     position: relative;
-    margin-bottom: 0.75rem;
-    padding: 1rem;
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-bottom: var(--space-3);
+    padding: var(--space-4);
+    background: var(--color-bg-primary);
+    border-radius: var(--toast-border-radius);
+    box-shadow: var(--toast-shadow);
     pointer-events: auto;
     animation: toast-slide-in 0.3s ease-out;
-    transition: all 0.3s ease;
+    transition: var(--transition-all);
     overflow: hidden;
 }
 
 .toast-notification:hover {
     transform: translateX(-5px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-2xl);
 }
 
 .toast-notification.toast-dismissing {
@@ -46,7 +46,7 @@
 .toast-content {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: var(--space-3);
 }
 
 .toast-icon {
