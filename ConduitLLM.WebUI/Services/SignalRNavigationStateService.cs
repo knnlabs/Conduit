@@ -347,7 +347,8 @@ namespace ConduitLLM.WebUI.Services
                     CheckRequestLogsPrerequisitesAsync(),
                     CheckAudioUsagePrerequisitesAsync(),
                     CheckAudioProvidersPrerequisitesAsync(),
-                    CheckImageGenerationPrerequisitesAsync()
+                    CheckImageGenerationPrerequisitesAsync(),
+                    CheckVideoGenerationPrerequisitesAsync()
                 };
 
                 await Task.WhenAll(tasks);
@@ -634,6 +635,125 @@ namespace ConduitLLM.WebUI.Services
                 };
                 
                 UpdateState("/image-generation", fallbackState);
+            }
+        }
+
+        private async Task CheckVideoGenerationPrerequisitesAsync()
+        {
+            try
+            {
+                // Primary: Check database-configured models via Admin API
+                var mappings = await _adminApiClient.GetAllModelProviderMappingsAsync();
+                var hasConfiguredVideoModels = mappings?.Any(m => 
+                    m.IsEnabled && 
+                    m.SupportsVideoGeneration) ?? false;
+
+                if (hasConfiguredVideoModels)
+                {
+                    var newState = new NavigationItemState
+                    {
+                        IsEnabled = true,
+                        TooltipMessage = null,
+                        RequiredConfigurationUrl = null,
+                        ShowIndicator = false
+                    };
+                    UpdateState("/video-generation", newState);
+                    return;
+                }
+
+                // Fallback: Check if any mapped models support video generation via Discovery API (using bulk API)
+                var hasDiscoveredVideoModels = false;
+                if (mappings?.Any() == true)
+                {
+                    try
+                    {
+                        var enabledMappings = mappings.Where(m => m.IsEnabled).ToList();
+                        if (enabledMappings.Any())
+                        {
+                            // Use bulk API to test all models at once
+                            var capabilityTests = enabledMappings
+                                .Select(m => (m.ModelId, "VideoGeneration"))
+                                .ToList();
+                            
+                            var bulkResults = await _conduitApiClient.TestBulkModelCapabilitiesAsync(capabilityTests);
+                            
+                            // Check if any model supports video generation
+                            foreach (var mapping in enabledMappings)
+                            {
+                                var key = $"{mapping.ModelId}:VideoGeneration";
+                                if (bulkResults.TryGetValue(key, out var supportsVideoGen) && supportsVideoGen)
+                                {
+                                    hasDiscoveredVideoModels = true;
+                                    _logger.LogInformation("Discovered video generation capability for model: {Model}", mapping.ModelId);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception discEx)
+                    {
+                        _logger.LogDebug(discEx, "Could not test bulk video generation capabilities, falling back to individual tests");
+                        
+                        // Fallback to individual API calls if bulk fails
+                        foreach (var mapping in mappings.Where(m => m.IsEnabled))
+                        {
+                            try
+                            {
+                                var supportsVideoGen = await _conduitApiClient.TestModelCapabilityAsync(
+                                    mapping.ModelId, "VideoGeneration");
+                                if (supportsVideoGen)
+                                {
+                                    hasDiscoveredVideoModels = true;
+                                    _logger.LogInformation("Discovered video generation capability for model: {Model}", mapping.ModelId);
+                                    break;
+                                }
+                            }
+                            catch (Exception individualEx)
+                            {
+                                _logger.LogDebug(individualEx, "Could not test video generation capability for model: {Model}", mapping.ModelId);
+                            }
+                        }
+                    }
+                }
+
+                // Generate detailed feedback based on discovery results
+                string tooltipMessage;
+                if (hasDiscoveredVideoModels)
+                {
+                    tooltipMessage = "Video generation available (discovered via capability testing - consider updating model configuration)";
+                }
+                else if (mappings?.Any(m => m.IsEnabled) == true)
+                {
+                    tooltipMessage = $"No video generation models found among {mappings.Count(m => m.IsEnabled)} configured models. Add MiniMax or other video models.";
+                }
+                else
+                {
+                    tooltipMessage = "No models configured. Add and configure LLM providers with video generation capabilities.";
+                }
+
+                var finalState = new NavigationItemState
+                {
+                    IsEnabled = hasDiscoveredVideoModels,
+                    TooltipMessage = tooltipMessage,
+                    RequiredConfigurationUrl = hasDiscoveredVideoModels ? null : "/model-mappings",
+                    ShowIndicator = !hasDiscoveredVideoModels
+                };
+
+                UpdateState("/video-generation", finalState);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking video generation prerequisites");
+                
+                // Set a safe default state when API is not available
+                var fallbackState = new NavigationItemState
+                {
+                    IsEnabled = false,
+                    TooltipMessage = "Unable to verify video generation models - check API connection",
+                    ShowIndicator = true
+                };
+                
+                UpdateState("/video-generation", fallbackState);
             }
         }
 
