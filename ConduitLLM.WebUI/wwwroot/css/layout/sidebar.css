@@ -1,0 +1,146 @@
+/* Sidebar and Navigation Layout */
+/* Extracted from MainLayout.razor.css and app.css for better organization */
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+.sidebar {
+  background-image: var(--gradient-sidebar);
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.top-row {
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-secondary);
+  justify-content: flex-end;
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+}
+
+.top-row a,
+.top-row .btn-link {
+  white-space: nowrap;
+  margin-left: var(--space-6);
+  text-decoration: none;
+}
+
+.top-row a:hover,
+.top-row .btn-link:hover {
+  text-decoration: underline;
+}
+
+.top-row a:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-scrollable {
+  display: block !important;
+  height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+}
+
+/* Mobile responsive layout */
+@media (max-width: 640.98px) {
+  .page {
+    flex-direction: column !important;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+  
+  .nav-scrollable {
+    height: auto;
+  }
+  
+  .top-row {
+    justify-content: space-between;
+  }
+  
+  .top-row a,
+  .top-row .btn-link {
+    margin-left: 0;
+  }
+}
+
+/* Desktop layout adjustments */
+@media (min-width: 641px) {
+  .page {
+    flex-direction: row;
+  }
+  
+  .sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+  }
+  
+  .top-row {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-index-sticky);
+  }
+  
+  .top-row.auth a:first-child {
+    flex: 1;
+    text-align: right;
+    width: 0;
+  }
+  
+  .top-row,
+  article {
+    padding-left: var(--space-8) !important;
+    padding-right: var(--space-6) !important;
+  }
+}
+
+/* Navigation styles */
+.navbar-toggler {
+  appearance: none;
+  cursor: pointer;
+  width: 3.5rem;
+  height: 2.5rem;
+  color: white;
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler:checked {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.navbar-brand {
+  font-size: var(--text-lg);
+}
+
+/* Fix for main content spacing */
+.main-content-inner > .container:first-child,
+.main-content-inner > div:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.main-content-inner > .deprecation-warning:first-child {
+  margin-top: 0 !important;
+}
+
+.main-content-inner > *:first-child {
+  margin-top: 0 !important;
+}

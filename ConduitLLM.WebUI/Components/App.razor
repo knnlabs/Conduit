@@ -14,32 +14,9 @@
     <link rel="stylesheet" href="app.css?v=@FileVersionService.GetFileVersion("app.css")" />
     <link rel="stylesheet" href="css/design-system.css?v=@FileVersionService.GetFileVersion("css/design-system.css")" />
     <link rel="stylesheet" href="css/toast.css?v=@FileVersionService.GetFileVersion("css/toast.css")" />
+    <link rel="stylesheet" href="css/modal.css?v=@FileVersionService.GetFileVersion("css/modal.css")" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" />
-    <style>
-        /* Modal backdrop styles */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1040;
-        }
-        
-        /* Additional modal styles for proper positioning */
-        .modal.show {
-            background-color: transparent;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* When modal is open, prevent scrolling of the main content */
-        body.modal-open {
-            overflow: hidden;
-        }
-    </style>
     <link rel="icon" type="image/png" href="favicon.svg" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>

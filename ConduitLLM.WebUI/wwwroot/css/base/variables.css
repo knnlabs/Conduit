@@ -1,0 +1,5 @@
+/* Design Tokens and CSS Custom Properties */
+/* This file is now a symbolic link to design-system.css to maintain the new structure */
+/* while preserving backward compatibility */
+
+@import '../design-system.css';

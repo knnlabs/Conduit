@@ -1395,7 +1395,7 @@ main {
 
 .form-check.form-switch .form-check-input {
     margin-left: -2.5rem;
-    width: 3rem; /* Standard Bootstrap switch width */
+    width: 2rem !important; /* Force standard Bootstrap switch width */
 }
 
 /* Ensure proper spacing in configuration cards */
