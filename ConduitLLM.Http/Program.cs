@@ -105,6 +105,18 @@ builder.Services.AddMemoryCache();
 var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
 // Pass "CoreAPI" to get Core API-specific connection pool settings
 var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
+
+// Log the connection pool settings for verification
+if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
+{
+    Console.WriteLine($"[Conduit] Core API database connection pool configured:");
+    var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
+    if (match.Success)
+    {
+        Console.WriteLine($"[Conduit]   Min Pool Size: {match.Groups[1].Value}");
+        Console.WriteLine($"[Conduit]   Max Pool Size: {match.Groups[2].Value}");
+    }
+}
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>

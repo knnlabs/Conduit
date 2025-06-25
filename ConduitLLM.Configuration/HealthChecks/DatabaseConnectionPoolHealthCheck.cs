@@ -72,52 +72,47 @@ namespace ConduitLLM.Configuration.HealthChecks
                 // Close connection to return it to the pool
                 await connection.CloseAsync();
                 
-                // Analyze pool health
+                // Analyze pool health based on connection acquisition time
                 var data = new Dictionary<string, object>
                 {
-                    ["activeConnections"] = poolStats.Active,
-                    ["idleConnections"] = poolStats.Idle,
                     ["maxPoolSize"] = poolStats.MaxPoolSize,
                     ["minPoolSize"] = poolStats.MinPoolSize,
-                    ["usagePercent"] = poolStats.UsagePercent,
                     ["connectionAcquisitionTimeMs"] = stopwatch.ElapsedMilliseconds,
                     ["database"] = connection.Database,
                     ["dataSource"] = connection.DataSource
                 };
 
-                // Check connection acquisition time
-                if (stopwatch.ElapsedMilliseconds > CONNECTION_ACQUISITION_TIMEOUT_MS)
+                // Health determination based on connection acquisition time:
+                // - <50ms: Healthy (pool has available connections)
+                // - 50-200ms: Degraded (pool under pressure)
+                // - >200ms: Unhealthy (pool likely exhausted)
+                // - Timeout/Exception: Unhealthy (pool exhausted or database down)
+                
+                if (stopwatch.ElapsedMilliseconds > 200)
                 {
-                    data["warning"] = $"Connection acquisition time ({stopwatch.ElapsedMilliseconds}ms) exceeded threshold ({CONNECTION_ACQUISITION_TIMEOUT_MS}ms)";
-                    
-                    _logger.LogWarning("Slow connection acquisition detected: {ElapsedMilliseconds}ms", 
+                    _logger.LogError("Critical connection acquisition time: {ElapsedMilliseconds}ms (pool likely exhausted)", 
                         stopwatch.ElapsedMilliseconds);
-                }
-
-                // Determine health status based on pool usage
-                if (poolStats.UsagePercent >= CRITICAL_THRESHOLD_PERCENT)
-                {
-                    _logger.LogError("Critical connection pool usage: {UsagePercent}% ({Active}/{MaxPoolSize})",
-                        poolStats.UsagePercent, poolStats.Active, poolStats.MaxPoolSize);
                     
                     return HealthCheckResult.Unhealthy(
-                        $"Connection pool critical: {poolStats.UsagePercent:F1}% usage", 
+                        $"Connection pool exhausted: {stopwatch.ElapsedMilliseconds}ms acquisition time", 
                         null, 
                         data);
                 }
-                else if (poolStats.UsagePercent >= WARNING_THRESHOLD_PERCENT)
+                else if (stopwatch.ElapsedMilliseconds > CONNECTION_ACQUISITION_TIMEOUT_MS)
                 {
-                    _logger.LogWarning("High connection pool usage: {UsagePercent}% ({Active}/{MaxPoolSize})",
-                        poolStats.UsagePercent, poolStats.Active, poolStats.MaxPoolSize);
+                    data["warning"] = $"Connection acquisition time ({stopwatch.ElapsedMilliseconds}ms) indicates pool pressure";
+                    
+                    _logger.LogWarning("Slow connection acquisition detected: {ElapsedMilliseconds}ms", 
+                        stopwatch.ElapsedMilliseconds);
                     
                     return HealthCheckResult.Degraded(
-                        $"Connection pool usage high: {poolStats.UsagePercent:F1}%", 
+                        $"Connection pool under pressure: {stopwatch.ElapsedMilliseconds}ms acquisition time", 
                         null, 
                         data);
                 }
                 
                 return HealthCheckResult.Healthy(
-                    $"Connection pool healthy: {poolStats.Active}/{poolStats.MaxPoolSize} connections in use",
+                    $"Connection pool healthy: {stopwatch.ElapsedMilliseconds}ms acquisition time",
                     data);
             }
             catch (Exception ex)
@@ -133,51 +128,26 @@ namespace ConduitLLM.Configuration.HealthChecks
             var maxPoolSize = GetMaxPoolSizeFromConnectionString(connection.ConnectionString);
             var minPoolSize = GetMinPoolSizeFromConnectionString(connection.ConnectionString);
             
-            // Query PostgreSQL for current connection statistics
-            // This gives us actual database-level connection counts
-            try
-            {
-                using var command = connection.CreateCommand();
-                command.CommandText = @"
-                    SELECT 
-                        COUNT(*) FILTER (WHERE state = 'active') as active_count,
-                        COUNT(*) FILTER (WHERE state = 'idle') as idle_count,
-                        COUNT(*) as total_count
-                    FROM pg_stat_activity
-                    WHERE datname = current_database()
-                      AND pid != pg_backend_pid()";
-                
-                using var reader = command.ExecuteReader();
-                if (reader.Read())
-                {
-                    var activeCount = reader.GetInt64(0);
-                    var idleCount = reader.GetInt64(1);
-                    var totalCount = reader.GetInt64(2);
-                    
-                    return new ConnectionPoolStats
-                    {
-                        Active = (int)activeCount,
-                        Idle = (int)idleCount,
-                        MaxPoolSize = maxPoolSize,
-                        MinPoolSize = minPoolSize,
-                        UsagePercent = maxPoolSize > 0 ? 
-                            ((double)totalCount / maxPoolSize) * 100 : 0
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to query connection statistics from pg_stat_activity");
-            }
+            // Note: We don't query pg_stat_activity here because:
+            // 1. It's expensive to run frequently (every 10-60s per instance)
+            // 2. With many instances, it creates significant database load
+            // 3. Connection acquisition timing is a better health indicator
+            //
+            // Instead, we rely on:
+            // - Connection acquisition time (already measured in CheckHealthAsync)
+            // - The ability to open a connection (if we can't, pool is exhausted)
+            // - Simple query execution success
+            //
+            // For actual connection monitoring, use PostgreSQL metrics directly
+            // or dedicated monitoring tools, not health checks.
             
-            // Fallback if statistics are not available
             return new ConnectionPoolStats
             {
-                Active = 0,
-                Idle = 0,
+                Active = -1,  // Unknown without expensive queries
+                Idle = -1,    // Unknown without expensive queries
                 MaxPoolSize = maxPoolSize,
                 MinPoolSize = minPoolSize,
-                UsagePercent = 0
+                UsagePercent = -1  // Will be calculated based on acquisition time
             };
         }
         

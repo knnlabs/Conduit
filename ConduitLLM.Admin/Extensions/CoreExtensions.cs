@@ -29,6 +29,18 @@ namespace ConduitLLM.Admin.Extensions
             var connectionStringManager = new ConnectionStringManager();
             // Pass "AdminAPI" to get Admin API-specific connection pool settings
             var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("AdminAPI", msg => Console.WriteLine(msg));
+            
+            // Log the connection pool settings for verification
+            if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
+            {
+                Console.WriteLine($"[ConduitLLM.Admin] Admin API database connection pool configured:");
+                var match = System.Text.RegularExpressions.Regex.Match(dbConnectionString, @"MinPoolSize=(\d+);MaxPoolSize=(\d+)");
+                if (match.Success)
+                {
+                    Console.WriteLine($"[ConduitLLM.Admin]   Min Pool Size: {match.Groups[1].Value}");
+                    Console.WriteLine($"[ConduitLLM.Admin]   Max Pool Size: {match.Groups[2].Value}");
+                }
+            }
 
             if (dbProvider == "sqlite")
             {

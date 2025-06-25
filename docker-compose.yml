@@ -88,10 +88,10 @@ services:
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      interval: 60s
+      timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
   admin:
     build:
@@ -125,10 +125,10 @@ services:
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      interval: 60s
+      timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
   webui:
     build:
@@ -185,10 +185,10 @@ services:
     restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 10s
-      timeout: 5s
+      interval: 60s
+      timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 60s
 
 volumes:
   pgdata:
