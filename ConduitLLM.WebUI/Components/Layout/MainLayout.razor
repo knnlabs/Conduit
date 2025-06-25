@@ -78,9 +78,9 @@
                                         <i class="fa fa-user-shield text-success"></i>
                                         <span class="app-bar-user-text">Admin</span>
                                     </div>
-                                    <a href="/logout" class="app-bar-user-action" title="Sign Out">
+                                    <button class="app-bar-user-action" title="Sign Out" @onclick="LogoutAsync" style="background: none; border: none; color: inherit; cursor: pointer;">
                                         <i class="fa fa-sign-out-alt"></i>
-                                    </a>
+                                    </button>
                                 </div>
                             </Authorized>
                         </AuthorizeView>
@@ -582,6 +582,20 @@
             {
                 Console.WriteLine($"JS Interop error: {ex.Message}");
             }
+        }
+    }
+
+    private void LogoutAsync()
+    {
+        try
+        {
+            // Force a full page navigation to logout, bypassing Blazor router
+            NavigationManager.NavigateTo("/logout", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            // Fallback: try to show an error toast if available
+            ToastService.ShowError("Error during logout: " + ex.Message);
         }
     }
 }

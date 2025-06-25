@@ -10,6 +10,7 @@ using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.WebUI.Services;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -79,7 +80,7 @@ namespace ConduitLLM.WebUI.Controllers
                         new Claim("MasterKeyAuthenticated", "true")
                     };
 
-                    var claimsIdentity = new ClaimsIdentity(claims, "ConduitAuth");
+                    var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                     var authProperties = new AuthenticationProperties
                     {
                         IsPersistent = request.RememberMe,
@@ -87,7 +88,7 @@ namespace ConduitLLM.WebUI.Controllers
                         RedirectUri = request.ReturnUrl ?? "/"
                     };
 
-                    await HttpContext.SignInAsync("ConduitAuth", new ClaimsPrincipal(claimsIdentity), authProperties);
+                    await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
 
                     return Ok(new { success = true, redirectUrl = request.ReturnUrl ?? "/" });
                 }
@@ -115,7 +116,7 @@ namespace ConduitLLM.WebUI.Controllers
         {
             try
             {
-                await HttpContext.SignOutAsync("ConduitAuth");
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return Ok(new { success = true });
             }
             catch (Exception ex)
