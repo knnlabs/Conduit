@@ -290,7 +290,16 @@ namespace ConduitLLM.Admin.Services
                 // Add authorization header if API key is available
                 if (!string.IsNullOrEmpty(actualCredential.ApiKey))
                 {
-                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {actualCredential.ApiKey}");
+                    // Use provider-specific authentication headers
+                    if (actualCredential.ProviderName?.ToLowerInvariant() == "anthropic")
+                    {
+                        client.DefaultRequestHeaders.Add("x-api-key", actualCredential.ApiKey);
+                        client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+                    }
+                    else
+                    {
+                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {actualCredential.ApiKey}");
+                    }
                 }
 
                 // Special handling for providers that don't support GET requests
@@ -388,6 +397,23 @@ namespace ConduitLLM.Admin.Services
                         case "ollama":
                             // Ollama is a local service and doesn't require authentication
                             _logger.LogInformation("Skipping authentication check for Ollama (local service)");
+                            break;
+
+                        case "anthropic":
+                            _logger.LogInformation("Performing Anthropic authentication check via messages endpoint");
+                            
+                            var anthropicAuthSuccessful = await VerifyAnthropicAuthenticationAsync(client, actualCredential);
+                            responseTime = DateTime.UtcNow - startTime; // Update response time after actual check
+                            
+                            if (!anthropicAuthSuccessful)
+                            {
+                                result.Success = false;
+                                result.Message = "Authentication failed";
+                                result.ErrorDetails = "Invalid API key - Anthropic requires a valid x-api-key header for making requests";
+                                return result;
+                            }
+                            
+                            _logger.LogInformation("Anthropic authentication check passed");
                             break;
                             
                         case "minimax":
@@ -877,6 +903,79 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error verifying MiniMax authentication");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Verifies Anthropic authentication by making a test request to the messages endpoint
+        /// </summary>
+        /// <param name="client">The HTTP client with auth headers already set</param>
+        /// <param name="credential">The provider credential</param>
+        /// <returns>True if authentication is valid, false otherwise</returns>
+        private async Task<bool> VerifyAnthropicAuthenticationAsync(HttpClient client, ProviderCredential credential)
+        {
+            try
+            {
+                // Anthropic doesn't have a models endpoint, so we'll make a minimal messages request
+                // that will fail immediately if auth is invalid
+                var baseUrl = !string.IsNullOrWhiteSpace(credential.BaseUrl)
+                    ? credential.BaseUrl
+                    : "https://api.anthropic.com";
+
+                var testRequest = new
+                {
+                    model = "claude-3-haiku-20240307", // Use the cheapest model
+                    messages = new[]
+                    {
+                        new { role = "user", content = "Hi" }
+                    },
+                    max_tokens = 1, // Minimal tokens to reduce cost
+                    // Add an invalid parameter to make the request fail after auth check
+                    temperature = 2.0 // Invalid temperature (max is 1.0)
+                };
+
+                var json = JsonSerializer.Serialize(testRequest);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var messagesUrl = $"{baseUrl.TrimEnd('/')}/v1/messages";
+                var response = await client.PostAsync(messagesUrl, content);
+
+                _logger.LogInformation("Anthropic auth check returned status {StatusCode}", (int)response.StatusCode);
+
+                // Check for authentication-specific errors
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Anthropic authentication failed: {Response}", responseContent);
+                    return false;
+                }
+
+                // If we get a BadRequest (likely due to invalid temperature), auth is valid
+                if (response.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    // Check if it's a parameter validation error (which means auth passed)
+                    if (responseContent.Contains("temperature") || responseContent.Contains("invalid_request_error"))
+                    {
+                        _logger.LogInformation("Anthropic authentication successful (request failed on validation as expected)");
+                        return true;
+                    }
+                }
+
+                // Any other 2xx response also indicates valid auth
+                if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 300)
+                {
+                    return true;
+                }
+
+                // For any other status, log and consider auth invalid
+                _logger.LogWarning("Unexpected response from Anthropic: {StatusCode}", response.StatusCode);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error verifying Anthropic authentication");
                 return false;
             }
         }
