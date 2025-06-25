@@ -148,7 +148,7 @@
                         <i class="fa fa-trash me-2"></i>Delete Selected (@selectedMediaRecords.Count)
                     </button>
                 }
-                <button class="btn btn-sm btn-warning" @onclick="ShowCleanupDialog">
+                <button class="btn btn-sm btn-warning modern-btn" @onclick="ShowCleanupDialog">
                     <i class="fa fa-broom me-2"></i>Cleanup Tools
                 </button>
             </div>
@@ -360,49 +360,110 @@
 @if (showCleanupDialog)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modern-card">
+                <div class="modal-header modern-card-header">
                     <h5 class="modal-title">
-                        <i class="fa fa-broom me-2"></i>Cleanup Tools
+                        <i class="fa fa-broom me-2 text-warning"></i>Cleanup Tools
                     </h5>
                     <button type="button" class="btn-close" @onclick="@(() => showCleanupDialog = false)"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="d-grid gap-3">
-                        <button class="btn btn-warning" @onclick="CleanupExpiredMedia" disabled="@isCleaningUp">
-                            <i class="fa fa-clock me-2"></i>
-                            Cleanup Expired Media
-                            <small class="d-block text-start mt-1">Remove media files that have passed their expiration date</small>
-                        </button>
-                        
-                        <button class="btn btn-warning" @onclick="CleanupOrphanedMedia" disabled="@isCleaningUp">
-                            <i class="fa fa-unlink me-2"></i>
-                            Cleanup Orphaned Media
-                            <small class="d-block text-start mt-1">Remove media files with no associated virtual key</small>
-                        </button>
-                        
-                        <div>
-                            <label class="form-label">Prune Old Media</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" @bind="daysToKeep" min="1" placeholder="Days to keep">
-                                <button class="btn btn-danger" @onclick="PruneOldMedia" disabled="@(isCleaningUp || daysToKeep <= 0)">
-                                    <i class="fa fa-cut me-2"></i>Prune
-                                </button>
+                <div class="modal-body modern-card-body">
+                    <div class="row g-4">
+                        <!-- Cleanup Expired Media Card -->
+                        <div class="col-md-6">
+                            <div class="card modern-info-card h-100" style="cursor: pointer;" @onclick="CleanupExpiredMedia">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <div class="rounded-circle bg-warning bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                            <i class="fa fa-clock fa-2x text-warning"></i>
+                                        </div>
+                                    </div>
+                                    <h6 class="card-title fw-semibold mb-2">Cleanup Expired Media</h6>
+                                    <p class="card-text text-muted small mb-3">Remove media files that have passed their expiration date</p>
+                                    <button class="btn btn-warning modern-btn" disabled="@isCleaningUp">
+                                        @if (isCleaningUp)
+                                        {
+                                            <i class="fa fa-spinner fa-spin me-2"></i>
+                                        }
+                                        Execute Cleanup
+                                    </button>
+                                </div>
                             </div>
-                            <small class="text-muted">Remove media older than specified days</small>
+                        </div>
+
+                        <!-- Cleanup Orphaned Media Card -->
+                        <div class="col-md-6">
+                            <div class="card modern-info-card h-100" style="cursor: pointer;" @onclick="CleanupOrphanedMedia">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <div class="rounded-circle bg-info bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                            <i class="fa fa-unlink fa-2x text-info"></i>
+                                        </div>
+                                    </div>
+                                    <h6 class="card-title fw-semibold mb-2">Cleanup Orphaned Media</h6>
+                                    <p class="card-text text-muted small mb-3">Remove media files with no associated virtual key</p>
+                                    <button class="btn btn-info modern-btn" disabled="@isCleaningUp">
+                                        @if (isCleaningUp)
+                                        {
+                                            <i class="fa fa-spinner fa-spin me-2"></i>
+                                        }
+                                        Execute Cleanup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prune Old Media Card -->
+                        <div class="col-12">
+                            <div class="card modern-info-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <div class="rounded-circle bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                                <i class="fa fa-cut text-danger"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <h6 class="card-title fw-semibold mb-1">Prune Old Media</h6>
+                                            <p class="card-text text-muted small mb-0">Remove media files older than specified days</p>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control modern-input" @bind="daysToKeep" min="1" placeholder="Days" style="width: 80px;">
+                                                <button class="btn btn-danger modern-btn" @onclick="PruneOldMedia" disabled="@(isCleaningUp || daysToKeep <= 0)">
+                                                    @if (isCleaningUp)
+                                                    {
+                                                        <i class="fa fa-spinner fa-spin me-1"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fa fa-cut me-1"></i>
+                                                    }
+                                                    Prune
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     @if (!string.IsNullOrEmpty(cleanupMessage))
                     {
-                        <div class="alert alert-info mt-3 mb-0">
-                            <i class="fa fa-info-circle me-2"></i>@cleanupMessage
+                        <div class="alert modern-alert modern-alert-info mt-4 mb-0">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-info-circle me-3 text-info"></i>
+                                <div>@cleanupMessage</div>
+                            </div>
                         </div>
                     }
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="@(() => showCleanupDialog = false)">Close</button>
+                <div class="modal-footer modern-card-footer">
+                    <button type="button" class="btn btn-secondary modern-btn" @onclick="@(() => showCleanupDialog = false)">
+                        <i class="fa fa-times me-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
