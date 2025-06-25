@@ -631,6 +631,17 @@ builder.Services.AddAuthorization(options =>
 // Add Controller support
 builder.Services.AddControllers();
 
+// Register VirtualKeyHubFilter for SignalR authentication
+builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeyHubFilter>();
+
+// Register rate limit cache service for SignalR
+builder.Services.AddSingleton<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>(provider => 
+    provider.GetRequiredService<ConduitLLM.Http.Services.VirtualKeyRateLimitCache>());
+
+// Register SignalR rate limit filter
+builder.Services.AddSingleton<ConduitLLM.Http.Authentication.VirtualKeySignalRRateLimitFilter>();
+
 // Add SignalR for real-time navigation state updates
 var signalRBuilder = builder.Services.AddSignalR(options =>
 {
@@ -815,14 +826,18 @@ app.MapControllers();
 Console.WriteLine("[Conduit API] Controllers registered");
 
 // Map SignalR hubs for real-time updates
+// NavigationStateHub is for internal admin use only - no virtual key authentication required
 app.MapHub<ConduitLLM.Http.Hubs.NavigationStateHub>("/hubs/navigation-state");
 Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/navigation-state");
 
-app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation");
-Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/video-generation");
+// Customer-facing hubs require virtual key authentication
+app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/video-generation (requires authentication)");
 
-app.MapHub<ConduitLLM.Http.Hubs.ImageGenerationHub>("/hubs/image-generation");
-Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/image-generation");
+app.MapHub<ConduitLLM.Http.Hubs.ImageGenerationHub>("/hubs/image-generation")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/image-generation (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
