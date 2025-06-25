@@ -28,7 +28,7 @@
   --space-8: 2rem;
   
   /* Critical typography */
-  --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --text-base: 1rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
@@ -64,7 +64,7 @@
 /* ===== CRITICAL BASE STYLES ===== */
 
 html {
-  font-family: var(--font-sans);
+  font-family: var(--font-family-sans);
   line-height: var(--leading-normal);
   font-size: var(--text-base);
   color: var(--color-text-primary);

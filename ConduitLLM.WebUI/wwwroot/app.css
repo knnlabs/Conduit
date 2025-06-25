@@ -35,7 +35,7 @@
 /* ===== BASE HTML STYLES WITH DESIGN TOKENS ===== */
 
 html {
-  font-family: var(--font-sans);
+  font-family: var(--font-family-sans);
   line-height: var(--leading-normal);
   font-size: var(--text-base);
   color: var(--color-text-primary);
