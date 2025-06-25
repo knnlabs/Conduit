@@ -5,6 +5,7 @@ using Moq;
 using Xunit;
 using Xunit.Abstractions;
 using ConduitLLM.WebUI.Services;
+using Microsoft.Extensions.Configuration;
 using ConduitLLM.WebUI.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 
@@ -29,7 +30,7 @@ public class ModelCapabilityIntegrationTests
         // Arrange - Create mocked services
         var mockAdminApiClient = new Mock<IAdminApiClient>();
         var mockConduitApiClient = new Mock<IConduitApiClient>();
-        var mockLogger = new Mock<ILogger<NavigationStateService>>();
+        var mockLogger = new Mock<ILogger<SignalRNavigationStateService>>();
 
         // Setup mock data - enabled model with image generation capability
         var testMappings = new List<ModelProviderMappingDto>
@@ -51,9 +52,11 @@ public class ModelCapabilityIntegrationTests
         try
         {
             // Act
-            var navigationService = new NavigationStateService(
+            var mockConfiguration = new Mock<IConfiguration>();
+            var navigationService = new SignalRNavigationStateService(
                 mockAdminApiClient.Object, 
                 mockConduitApiClient.Object, 
+                mockConfiguration.Object,
                 mockLogger.Object);
 
             _output.WriteLine("Testing navigation state service capability detection...");
@@ -95,7 +98,7 @@ public class ModelCapabilityIntegrationTests
         // Arrange - Mock services with no image generation models
         var mockAdminApiClient = new Mock<IAdminApiClient>();
         var mockConduitApiClient = new Mock<IConduitApiClient>();
-        var mockLogger = new Mock<ILogger<NavigationStateService>>();
+        var mockLogger = new Mock<ILogger<SignalRNavigationStateService>>();
 
         // Setup mock data - models without image generation capability
         var testMappings = new List<ModelProviderMappingDto>
@@ -115,9 +118,11 @@ public class ModelCapabilityIntegrationTests
             .ReturnsAsync(testMappings);
 
         // Act
-        var navigationService = new NavigationStateService(
+        var mockConfiguration = new Mock<IConfiguration>();
+        var navigationService = new SignalRNavigationStateService(
             mockAdminApiClient.Object, 
             mockConduitApiClient.Object, 
+            mockConfiguration.Object,
             mockLogger.Object);
 
         await navigationService.RefreshStatesAsync();
@@ -140,7 +145,7 @@ public class ModelCapabilityIntegrationTests
         // Arrange - Mock services for capability status testing
         var mockAdminApiClient = new Mock<IAdminApiClient>();
         var mockConduitApiClient = new Mock<IConduitApiClient>();
-        var mockLogger = new Mock<ILogger<NavigationStateService>>();
+        var mockLogger = new Mock<ILogger<SignalRNavigationStateService>>();
 
         // Setup mock data with various capability models
         var testMappings = new List<ModelProviderMappingDto>
@@ -176,9 +181,11 @@ public class ModelCapabilityIntegrationTests
             .ReturnsAsync(testMappings);
 
         // Act
-        var navigationService = new NavigationStateService(
+        var mockConfiguration = new Mock<IConfiguration>();
+        var navigationService = new SignalRNavigationStateService(
             mockAdminApiClient.Object, 
             mockConduitApiClient.Object, 
+            mockConfiguration.Object,
             mockLogger.Object);
 
         _output.WriteLine("Testing capability status information...");
@@ -216,7 +223,7 @@ public class ModelCapabilityIntegrationTests
         // Arrange - Mock the Conduit API client
         var mockAdminApiClient = new Mock<IAdminApiClient>();
         var mockConduitApiClient = new Mock<IConduitApiClient>();
-        var mockLogger = new Mock<ILogger<NavigationStateService>>();
+        var mockLogger = new Mock<ILogger<SignalRNavigationStateService>>();
 
         // Setup Discovery API mock responses - must specify all parameters due to optional parameters
         mockConduitApiClient

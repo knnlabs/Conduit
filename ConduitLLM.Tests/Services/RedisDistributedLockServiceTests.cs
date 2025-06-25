@@ -584,7 +584,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public void RedisDistributedLock_Properties_ReturnCorrectValues()
+        public async Task RedisDistributedLock_Properties_ReturnCorrectValues()
         {
             // Arrange
             var key = "test-lock";
@@ -599,7 +599,7 @@ namespace ConduitLLM.Tests.Services
                 .ReturnsAsync(true);
 
             // Act
-            var lockHandle = _service.AcquireLockAsync(key, expiry).Result;
+            var lockHandle = await _service.AcquireLockAsync(key, expiry);
 
             // Assert
             Assert.NotNull(lockHandle);

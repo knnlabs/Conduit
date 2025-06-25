@@ -85,7 +85,7 @@ namespace ConduitLLM.Tests.Services
             using (result)
             {
                 var retrievedData = new byte[fileData.Length];
-                await result.ContentStream.ReadAsync(retrievedData, 0, retrievedData.Length);
+                await result.ContentStream.ReadExactlyAsync(retrievedData, 0, retrievedData.Length);
                 Assert.Equal(fileData, retrievedData);
             }
 
@@ -187,7 +187,7 @@ namespace ConduitLLM.Tests.Services
             using (result)
             {
                 var retrievedData = new byte[fileData.Length];
-                await result.ContentStream.ReadAsync(retrievedData, 0, retrievedData.Length);
+                await result.ContentStream.ReadExactlyAsync(retrievedData, 0, retrievedData.Length);
                 Assert.Equal(fileData, retrievedData);
             }
         }

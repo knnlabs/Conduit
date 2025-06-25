@@ -47,12 +47,12 @@ namespace ConduitLLM.Tests.Services
             // Assert
             Assert.NotNull(result);
             Assert.NotNull(result.StorageKey);
-            Assert.True(result.StorageKey.StartsWith("image/"));
-            Assert.True(result.StorageKey.EndsWith(".jpg"));
+            Assert.StartsWith("image/", result.StorageKey);
+            Assert.EndsWith(".jpg", result.StorageKey);
             Assert.Equal(imageData.Length, result.SizeBytes);
             Assert.NotNull(result.ContentHash);
             Assert.NotNull(result.Url);
-            Assert.True(result.Url.StartsWith(_testBaseUrl));
+            Assert.StartsWith(_testBaseUrl, result.Url);
         }
 
         [Fact]
@@ -74,8 +74,8 @@ namespace ConduitLLM.Tests.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.True(result.StorageKey.StartsWith("video/"));
-            Assert.True(result.StorageKey.EndsWith(".mp4"));
+            Assert.StartsWith("video/", result.StorageKey);
+            Assert.EndsWith(".mp4", result.StorageKey);
         }
 
         [Fact]
@@ -125,7 +125,7 @@ namespace ConduitLLM.Tests.Services
             using (retrievedStream)
             {
                 var retrievedData = new byte[originalData.Length];
-                await retrievedStream.ReadAsync(retrievedData, 0, retrievedData.Length);
+                await retrievedStream.ReadExactlyAsync(retrievedData, 0, retrievedData.Length);
                 Assert.Equal(originalData, retrievedData);
             }
         }
@@ -298,7 +298,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public void GetTotalSizeBytes_WithMultipleFiles_ReturnsCorrectTotal()
+        public async Task GetTotalSizeBytes_WithMultipleFiles_ReturnsCorrectTotal()
         {
             // Arrange
             var data1 = new byte[100];
@@ -313,13 +313,13 @@ namespace ConduitLLM.Tests.Services
 
             // Act
             using (var stream1 = new MemoryStream(data1))
-                _service.StoreAsync(stream1, metadata).Wait();
+                await _service.StoreAsync(stream1, metadata);
             
             using (var stream2 = new MemoryStream(data2))
-                _service.StoreAsync(stream2, metadata).Wait();
+                await _service.StoreAsync(stream2, metadata);
             
             using (var stream3 = new MemoryStream(data3))
-                _service.StoreAsync(stream3, metadata).Wait();
+                await _service.StoreAsync(stream3, metadata);
 
             var totalSize = _service.GetTotalSizeBytes();
 
@@ -328,7 +328,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public void GetItemCount_WithMultipleFiles_ReturnsCorrectCount()
+        public async Task GetItemCount_WithMultipleFiles_ReturnsCorrectCount()
         {
             // Arrange
             var metadata = new MediaMetadata
@@ -342,7 +342,7 @@ namespace ConduitLLM.Tests.Services
             {
                 var data = Encoding.UTF8.GetBytes($"unique-data-{i}");
                 using var stream = new MemoryStream(data);
-                _service.StoreAsync(stream, metadata).Wait();
+                await _service.StoreAsync(stream, metadata);
             }
 
             var itemCount = _service.GetItemCount();
@@ -407,7 +407,7 @@ namespace ConduitLLM.Tests.Services
             Assert.NotNull(session);
             Assert.NotNull(session.SessionId);
             Assert.NotNull(session.StorageKey);
-            Assert.True(session.StorageKey.StartsWith("video/"));
+            Assert.StartsWith("video/", session.StorageKey);
             Assert.Equal(1024 * 1024, session.MinimumPartSize); // 1MB for in-memory
             Assert.Equal(1000, session.MaxParts);
             Assert.True(session.ExpiresAt > DateTime.UtcNow);
@@ -492,7 +492,7 @@ namespace ConduitLLM.Tests.Services
             using (stream)
             {
                 var combinedData = new byte[result.SizeBytes];
-                await stream.ReadAsync(combinedData, 0, combinedData.Length);
+                await stream.ReadExactlyAsync(combinedData, 0, combinedData.Length);
                 var expectedData = Encoding.UTF8.GetBytes("part-1-part-2-part-3");
                 Assert.Equal(expectedData, combinedData);
             }
@@ -549,7 +549,7 @@ namespace ConduitLLM.Tests.Services
             using (rangedStream.Stream)
             {
                 var rangedData = new byte[4]; // bytes 2-5 = 4 bytes
-                await rangedStream.Stream.ReadAsync(rangedData, 0, rangedData.Length);
+                await rangedStream.Stream.ReadExactlyAsync(rangedData, 0, rangedData.Length);
                 var expectedData = Encoding.UTF8.GetBytes("2345");
                 Assert.Equal(expectedData, rangedData);
             }
@@ -581,7 +581,7 @@ namespace ConduitLLM.Tests.Services
             using (rangedStream.Stream)
             {
                 var fullData = new byte[videoData.Length];
-                await rangedStream.Stream.ReadAsync(fullData, 0, fullData.Length);
+                await rangedStream.Stream.ReadExactlyAsync(fullData, 0, fullData.Length);
                 Assert.Equal(videoData, fullData);
             }
         }
@@ -605,11 +605,11 @@ namespace ConduitLLM.Tests.Services
             // Assert
             Assert.NotNull(presignedUrl);
             Assert.NotNull(presignedUrl.Url);
-            Assert.True(presignedUrl.Url.StartsWith($"{_testBaseUrl}/v1/media/upload/"));
+            Assert.StartsWith($"{_testBaseUrl}/v1/media/upload/", presignedUrl.Url);
             Assert.Equal("PUT", presignedUrl.HttpMethod);
             Assert.Equal("video/mp4", presignedUrl.RequiredHeaders["Content-Type"]);
             Assert.NotNull(presignedUrl.StorageKey);
-            Assert.True(presignedUrl.StorageKey.StartsWith("video/"));
+            Assert.StartsWith("video/", presignedUrl.StorageKey);
             Assert.Equal(100 * 1024 * 1024, presignedUrl.MaxFileSizeBytes); // 100MB
             Assert.True(presignedUrl.ExpiresAt > DateTime.UtcNow);
         }
@@ -678,7 +678,7 @@ namespace ConduitLLM.Tests.Services
                 using (retrievedStream)
                 {
                     var retrievedData = new byte[data.Length];
-                    await retrievedStream.ReadAsync(retrievedData, 0, retrievedData.Length);
+                    await retrievedStream.ReadExactlyAsync(retrievedData, 0, retrievedData.Length);
                     Assert.Equal(data, retrievedData);
                 }
             }

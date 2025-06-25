@@ -85,11 +85,12 @@ namespace ConduitLLM.Tests.Performance
             _repository = _serviceProvider.GetRequiredService<IAsyncTaskRepository>();
         }
 
-        public async Task DisposeAsync()
+        public Task DisposeAsync()
         {
             _dbContext?.Dispose();
             _connection?.Dispose();
             _serviceProvider?.Dispose();
+            return Task.CompletedTask;
         }
 
         [Fact]
