@@ -1,0 +1,342 @@
+/**
+ * Critical CSS for Conduit Application
+ * 
+ * This file contains the essential CSS required for above-the-fold content
+ * rendering. It should be inlined in the <head> for optimal performance.
+ * 
+ * Target size: <8KB
+ * Content: Essential design tokens, layout, header, and initial page structure
+ */
+
+/* ===== ESSENTIAL DESIGN TOKENS ===== */
+
+:root {
+  /* Core colors */
+  --color-primary: #667eea;
+  --color-text-primary: #111827;
+  --color-text-secondary: #374151;
+  --color-text-inverse: #ffffff;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-border-light: #f3f4f6;
+  
+  /* Essential spacing */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  
+  /* Critical typography */
+  --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-bold: 700;
+  --leading-normal: 1.5;
+  --leading-tight: 1.25;
+  
+  /* Essential layout */
+  --nav-height: 3.5rem;
+  --sidebar-width: 250px;
+  
+  /* Core borders and shadows */
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Critical transitions */
+  --transition-all: all 150ms ease-in-out;
+  
+  /* Z-indexes */
+  --z-index-sticky: 1020;
+  --z-index-overlay: 1040;
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #5a6fd8 100%);
+  --gradient-sidebar: linear-gradient(180deg, #4d5bc1 0%, #7c3aed 70%);
+}
+
+/* ===== CRITICAL BASE STYLES ===== */
+
+html {
+  font-family: var(--font-sans);
+  line-height: var(--leading-normal);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ===== CRITICAL LAYOUT ===== */
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--gradient-sidebar);
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-index-sticky);
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition-all);
+}
+
+.main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  background-color: var(--color-bg-secondary);
+  min-width: 0;
+  transition: var(--transition-all);
+}
+
+/* ===== CRITICAL HEADER ===== */
+
+.header,
+.top-row {
+  position: sticky;
+  top: 0;
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--gradient-primary);
+  z-index: var(--z-index-sticky);
+  box-shadow: var(--shadow-sm);
+  padding: 0 var(--space-4);
+  color: var(--color-text-inverse);
+}
+
+.header a,
+.top-row a,
+.top-row .btn-link {
+  color: var(--color-text-inverse);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: var(--transition-all);
+}
+
+.header a:hover,
+.top-row a:hover,
+.top-row .btn-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+/* ===== CRITICAL CONTENT ===== */
+
+.content,
+.main-content {
+  flex: 1;
+  padding: var(--space-6) var(--space-8);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.content > :first-child,
+.main-content > :first-child {
+  margin-top: 0 !important;
+}
+
+.container {
+  width: 100%;
+  padding-right: var(--space-4);
+  padding-left: var(--space-4);
+  margin-right: auto;
+  margin-left: auto;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* ===== CRITICAL NAVIGATION ===== */
+
+.nav-scrollable {
+  display: block !important;
+  height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+/* ===== CRITICAL BUTTONS ===== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-all);
+  text-decoration: none;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+}
+
+.btn:hover {
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+.btn:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ===== CRITICAL CARDS ===== */
+
+.card {
+  background-color: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+  transition: var(--transition-all);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.card-body {
+  padding: var(--space-4);
+}
+
+/* ===== CRITICAL RESPONSIVE ===== */
+
+@media (max-width: 640px) {
+  .page {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: var(--z-index-overlay);
+  }
+  
+  .sidebar--open {
+    transform: translateX(0);
+  }
+  
+  .main {
+    margin-left: 0;
+  }
+  
+  .content,
+  .main-content {
+    padding: var(--space-4) var(--space-3);
+  }
+  
+  .nav-scrollable {
+    height: auto;
+  }
+}
+
+/* ===== CRITICAL FORM ELEMENTS ===== */
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  transition: var(--transition-all);
+}
+
+.form-control:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ===== CRITICAL UTILITIES ===== */
+
+.d-flex { display: flex; }
+.d-block { display: block; }
+.d-none { display: none; }
+
+.justify-content-between { justify-content: space-between; }
+.justify-content-center { justify-content: center; }
+.align-items-center { align-items: center; }
+
+.text-center { text-align: center; }
+.text-primary { color: var(--color-primary); }
+
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.p-0 { padding: 0; }
+
+/* ===== LOADING STATE ===== */
+
+.loading-spinner {
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+
+/* Prevent layout shifts */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure proper focus management */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Critical animation performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
