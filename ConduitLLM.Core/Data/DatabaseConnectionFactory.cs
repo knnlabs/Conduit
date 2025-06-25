@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
 
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 using Npgsql;
@@ -64,14 +63,13 @@ namespace ConduitLLM.Core.Data
         /// <inheritdoc/>
         public DbConnection CreateConnection()
         {
-            DbConnection connection = _providerName.ToLowerInvariant() switch
+            if (_providerName.ToLowerInvariant() != DatabaseConstants.POSTGRES_PROVIDER)
             {
-                var p when p == DatabaseConstants.POSTGRES_PROVIDER => new NpgsqlConnection(_connectionString),
-                var p when p == DatabaseConstants.SQLITE_PROVIDER => new SqliteConnection(_connectionString),
-                _ => throw new InvalidOperationException($"Unsupported database provider: {_providerName}")
-            };
+                throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {_providerName}");
+            }
 
-            _logger.LogDebug("Created connection for provider: {Provider}", _providerName);
+            var connection = new NpgsqlConnection(_connectionString);
+            _logger.LogDebug("Created PostgreSQL connection");
             return connection;
         }
 

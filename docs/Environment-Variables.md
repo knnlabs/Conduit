@@ -129,19 +129,17 @@ When `CONDUIT_REDIS_CONNECTION_STRING` is provided, Data Protection keys are per
 
 ## Database
 
-These variables are used by the Admin API service for database configuration:
+These variables are used by all services for database configuration:
 
 | Variable | Description | Example Value |
 |----------|-------------|--------------|
-| `DB_PROVIDER` | Database provider: `sqlite` or `postgres` | `sqlite` |
-| `CONDUIT_SQLITE_PATH` | SQLite database file path | `/data/conduit.db` |
-| `CONDUIT_POSTGRES_CONNECTION_STRING` | PostgreSQL connection string | `Host=localhost;Port=5432;Database=conduitllm;Username=postgres;Password=secret` |
+| `DATABASE_URL` | PostgreSQL connection URL (required) | `postgresql://postgres:password@localhost:5432/conduitllm` |
 
-- `DB_PROVIDER` determines which database backend is used. Supported values: `sqlite` or `postgres` (all lowercase).
-- For SQLite, set `CONDUIT_SQLITE_PATH`.
-- For PostgreSQL, set `CONDUIT_POSTGRES_CONNECTION_STRING`.
+- PostgreSQL is the only supported database provider.
+- The connection string must be in URL format starting with `postgresql://` or `postgres://`.
+- Connection retry logic with exponential backoff is implemented to handle temporary connection issues.
 
-> **Note**: With the microservices architecture, only the Admin API service needs direct database access. The WebUI and LLM API services communicate with the Admin API instead of accessing the database directly.
+> **Note**: With the microservices architecture, both Core API and Admin API services need database access. The WebUI service communicates with the Admin API instead of accessing the database directly.
 
 ## WebUI Configuration
 
@@ -173,11 +171,8 @@ To enable AutoLogin in development environments:
 # Using the provided script
 ./enable-autologin.sh
 
-# Or manually with SQLite
-sqlite3 /data/conduit.db "INSERT OR REPLACE INTO GlobalSettings (Key, Value, CreatedAt, UpdatedAt) VALUES ('AutoLogin', 'true', datetime('now'), datetime('now'))"
-
 # Or manually with PostgreSQL
-psql $CONDUIT_POSTGRES_CONNECTION_STRING -c "INSERT INTO \"GlobalSettings\" (\"Key\", \"Value\", \"CreatedAt\", \"UpdatedAt\") VALUES ('AutoLogin', 'true', NOW(), NOW()) ON CONFLICT(\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\", \"UpdatedAt\" = NOW()"
+psql $DATABASE_URL -c "INSERT INTO \"GlobalSettings\" (\"Key\", \"Value\", \"CreatedAt\", \"UpdatedAt\") VALUES ('AutoLogin', 'true', NOW(), NOW()) ON CONFLICT(\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\", \"UpdatedAt\" = NOW()"
 ```
 
 **Note**: AutoLogin should only be used in development or single-user environments. It bypasses the login screen entirely when enabled.
@@ -258,12 +253,8 @@ services:
       - CONDUIT_CACHE_ABSOLUTE_EXPIRATION_MINUTES=120
       - CONDUIT_CACHE_SLIDING_EXPIRATION_MINUTES=30
       - CONDUIT_CACHE_USE_DEFAULT_EXPIRATION=true
-      # Database settings (SQLite example)
-      - DB_PROVIDER=sqlite
-      - CONDUIT_SQLITE_PATH=/data/conduit.db
-      # Database settings (PostgreSQL example)
-      # - DB_PROVIDER=postgres
-      # - CONDUIT_POSTGRES_CONNECTION_STRING=Host=postgres:5432;Database=conduitllm;Username=postgres;Password=secret
+      # Database settings (PostgreSQL required)
+      - DATABASE_URL=postgresql://postgres:secret@postgres:5432/conduitllm
     ports:
       - "5001:5001"
     volumes:
@@ -352,8 +343,7 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:5001
 ENV CONDUIT_MASTER_KEY=""
 ENV CONDUIT_ENABLE_HTTPS_REDIRECTION=false
-ENV DB_PROVIDER=sqlite
-ENV CONDUIT_SQLITE_PATH=/data/conduit.db
+ENV DATABASE_URL=""
 
 EXPOSE 5001
 VOLUME /data

@@ -191,21 +191,18 @@ volumes:
 
 > **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
 
-## Database Configuration (Postgres & SQLite)
+## Database Configuration (PostgreSQL Only)
 
-Conduit now supports robust, container-friendly database configuration via environment variables ONLY (no appsettings.json required).
+Conduit requires PostgreSQL as its database. Configure it via the `DATABASE_URL` environment variable.
 
-- **Postgres:**
+- **PostgreSQL (Required):**
   - Set `DATABASE_URL` in the format:
     - `postgresql://user:password@host:port/database`
-  - Example:
+  - Examples:
     - `DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb`
-- **SQLite:**
-  - Set `CONDUIT_SQLITE_PATH` to the file path (default: `ConduitConfig.db`)
-  - Example:
-    - `CONDUIT_SQLITE_PATH=/data/ConduitConfig.db`
+    - `DATABASE_URL=postgres://conduit:conduitpass@localhost:5432/conduitdb`
 
-No other database-related environment variables are needed. The application will auto-detect which provider to use.
+The application will fail to start if PostgreSQL is not available. Connection retry logic with exponential backoff is implemented to handle temporary connection issues.
 
 For more details, see the per-service README files.
 

@@ -11,12 +11,10 @@ namespace ConduitLLM.Core.Data.Constants
     {
         // Environment variables
         public const string DATABASE_URL_ENV = "DATABASE_URL";
-        public const string SQLITE_PATH_ENV = "CONDUIT_SQLITE_PATH";
         public const string ENSURE_CREATED_ENV = "CONDUIT_DATABASE_ENSURE_CREATED";
 
         // Provider names
         public const string POSTGRES_PROVIDER = "postgres";
-        public const string SQLITE_PROVIDER = "sqlite";
 
         // URL prefixes
         public const string POSTGRES_URL_PREFIX = "postgres://";
@@ -24,7 +22,6 @@ namespace ConduitLLM.Core.Data.Constants
 
         // Default values
         public const string DEFAULT_POSTGRES_PORT = "5432";
-        public const string DEFAULT_SQLITE_DATABASE = "ConduitConfig.db";
 
         // Connection timeouts
         public const int DEFAULT_CONNECTION_TIMEOUT_SECONDS = 30;

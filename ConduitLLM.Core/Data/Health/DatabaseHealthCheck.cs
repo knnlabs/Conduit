@@ -43,13 +43,7 @@ namespace ConduitLLM.Core.Data.Health
 
                 // Perform a simple query to verify the connection works
                 using var command = connection.CreateCommand();
-                command.CommandText = _connectionFactory.ProviderName.ToLowerInvariant() switch
-                {
-                    var p when p == DatabaseConstants.POSTGRES_PROVIDER => "SELECT 1",
-                    var p when p == DatabaseConstants.SQLITE_PROVIDER => "SELECT 1",
-                    _ => throw new NotSupportedException($"Unsupported provider for health check: {_connectionFactory.ProviderName}")
-                };
-
+                command.CommandText = "SELECT 1";
                 await command.ExecuteScalarAsync(cancellationToken);
 
                 return HealthCheckResult.Healthy($"Database connection is healthy. Provider: {_connectionFactory.ProviderName}");

@@ -62,17 +62,13 @@ public class AdminDatabaseBackupService : IAdminDatabaseBackupService
             // Get database provider
             var providerName = _dbContext.GetDatabase().ProviderName;
 
-            if (providerName?.Contains("Sqlite") == true)
-            {
-                return await CreateSqliteBackupAsync();
-            }
-            else if (providerName?.Contains("Npgsql") == true)
+            if (providerName?.Contains("Npgsql") == true)
             {
                 return await CreatePostgresBackupAsync();
             }
             else
             {
-                var errorMessage = $"Unsupported database provider: {providerName}";
+                var errorMessage = $"Only PostgreSQL is supported. Invalid provider: {providerName}";
                 _logger.LogError("{ErrorMessage}", errorMessage.Replace(Environment.NewLine, ""));
                 return new BackupResult
                 {
@@ -225,82 +221,6 @@ _logger.LogError("Backup file not found: {BackupId}", backupId.Replace(Environme
         {
 _logger.LogError(ex, "Error downloading database backup: {BackupId}", backupId.Replace(Environment.NewLine, ""));
             return Task.FromResult<(Stream FileStream, string ContentType, string FileName)?>(null);
-        }
-    }
-
-    private async Task<BackupResult> CreateSqliteBackupAsync()
-    {
-        try
-        {
-            // Get the database connection string
-            var connectionString = _dbContext.GetDatabase().GetConnectionString();
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                return new BackupResult
-                {
-                    Success = false,
-                    ErrorMessage = "Database connection string is empty"
-                };
-            }
-
-            // Extract the database file path from the connection string
-            string dbFilePath;
-            if (connectionString.Contains("Data Source="))
-            {
-                dbFilePath = connectionString.Split(new[] { "Data Source=" }, StringSplitOptions.None)[1]
-                    .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)[0];
-            }
-            else
-            {
-                return new BackupResult
-                {
-                    Success = false,
-                    ErrorMessage = "Could not extract database file path from connection string"
-                };
-            }
-
-            // Create backup file name with timestamp
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-            var backupFileName = $"conduit_sqlite_backup_{timestamp}.zip";
-            var backupFilePath = Path.Combine(_backupDirectory, backupFileName);
-
-            // Create a zip file with the database
-            using (var archive = ZipFile.Open(backupFilePath, ZipArchiveMode.Create))
-            {
-                var dbFileName = Path.GetFileName(dbFilePath);
-                var entry = archive.CreateEntry(dbFileName);
-
-                using var dbFileStream = new FileStream(dbFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var entryStream = entry.Open();
-
-                await dbFileStream.CopyToAsync(entryStream);
-            }
-
-            var fileInfo = new FileInfo(backupFilePath);
-
-            var backupInfo = new BackupInfo
-            {
-                Id = Path.GetFileNameWithoutExtension(backupFilePath),
-                FileName = backupFileName,
-                CreatedAt = fileInfo.LastWriteTime,
-                SizeBytes = fileInfo.Length,
-                SizeFormatted = FormatFileSize(fileInfo.Length)
-            };
-
-            return new BackupResult
-            {
-                Success = true,
-                BackupInfo = backupInfo
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating SQLite database backup");
-            return new BackupResult
-            {
-                Success = false,
-                ErrorMessage = $"An error occurred while creating SQLite backup: {ex.Message}"
-            };
         }
     }
 

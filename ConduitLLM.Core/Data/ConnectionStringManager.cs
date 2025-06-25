@@ -1,10 +1,14 @@
 using System;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 using ConduitLLM.Core.Data.Constants;
 using ConduitLLM.Core.Data.Interfaces;
 
 using Microsoft.Extensions.Logging;
+
+using Npgsql;
 
 namespace ConduitLLM.Core.Data
 {
@@ -45,56 +49,95 @@ namespace ConduitLLM.Core.Data
 
             // Check for PostgreSQL DATABASE_URL
             var databaseUrl = Environment.GetEnvironmentVariable(DatabaseConstants.DATABASE_URL_ENV);
-            if (!string.IsNullOrEmpty(databaseUrl) &&
-                (databaseUrl.StartsWith(DatabaseConstants.POSTGRES_URL_PREFIX, StringComparison.OrdinalIgnoreCase) ||
-                 databaseUrl.StartsWith(DatabaseConstants.POSTGRESQL_URL_PREFIX, StringComparison.OrdinalIgnoreCase)))
+            if (string.IsNullOrEmpty(databaseUrl))
             {
-                try
-                {
-                    var connStr = ParsePostgresUrl(databaseUrl, serviceType);
-                    ValidateConnectionString(DatabaseConstants.POSTGRES_PROVIDER, connStr);
-                    logAction($"[DB] Using provider: {DatabaseConstants.POSTGRES_PROVIDER}, connection: {SanitizeConnectionString(connStr)}");
-                    return (DatabaseConstants.POSTGRES_PROVIDER, connStr);
-                }
-                catch (Exception ex)
-                {
-                    logAction($"[DB] Error parsing PostgreSQL URL: {ex.Message}. Falling back to SQLite.");
-                }
+                var errorMsg = "DATABASE_URL environment variable is not set. PostgreSQL is required for Conduit.";
+                logAction($"[DB] Error: {errorMsg}");
+                throw new InvalidOperationException(errorMsg);
             }
 
-            // If DATABASE_URL exists but doesn't match expected prefix, log and continue to SQLite fallback
-            if (!string.IsNullOrEmpty(databaseUrl))
+            if (!databaseUrl.StartsWith(DatabaseConstants.POSTGRES_URL_PREFIX, StringComparison.OrdinalIgnoreCase) &&
+                !databaseUrl.StartsWith(DatabaseConstants.POSTGRESQL_URL_PREFIX, StringComparison.OrdinalIgnoreCase))
             {
-                logAction("[DB] Invalid DATABASE_URL prefix. Falling back to SQLite.");
+                var errorMsg = $"Invalid DATABASE_URL prefix. Must start with '{DatabaseConstants.POSTGRES_URL_PREFIX}' or '{DatabaseConstants.POSTGRESQL_URL_PREFIX}'.";
+                logAction($"[DB] Error: {errorMsg}");
+                throw new InvalidOperationException(errorMsg);
             }
 
-            // Check for custom SQLite path
-            var sqlitePath = Environment.GetEnvironmentVariable(DatabaseConstants.SQLITE_PATH_ENV);
-            if (!string.IsNullOrEmpty(sqlitePath))
+            try
             {
-                try
-                {
-                    var sqliteConnStr = $"Data Source={sqlitePath}";
-                    ValidateConnectionString(DatabaseConstants.SQLITE_PROVIDER, sqliteConnStr);
-                    logAction($"[DB] Using provider: {DatabaseConstants.SQLITE_PROVIDER}, connection: {SanitizeConnectionString(sqliteConnStr)}");
-                    return (DatabaseConstants.SQLITE_PROVIDER, sqliteConnStr);
-                }
-                catch (Exception ex)
-                {
-                    logAction($"[DB] Error with custom SQLite path: {ex.Message}. Using default SQLite database.");
-                }
+                var connStr = ParsePostgresUrl(databaseUrl, serviceType);
+                ValidateConnectionString(DatabaseConstants.POSTGRES_PROVIDER, connStr);
+                logAction($"[DB] Using provider: {DatabaseConstants.POSTGRES_PROVIDER}, connection: {SanitizeConnectionString(connStr)}");
+                return (DatabaseConstants.POSTGRES_PROVIDER, connStr);
             }
-
-            // Default fallback to local SQLite database
-            var defaultConnStr = $"Data Source={DatabaseConstants.DEFAULT_SQLITE_DATABASE}";
-            logAction($"[DB] Using provider: {DatabaseConstants.SQLITE_PROVIDER}, connection: {SanitizeConnectionString(defaultConnStr)} (default)");
-            return (DatabaseConstants.SQLITE_PROVIDER, defaultConnStr);
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to parse PostgreSQL URL: {ex.Message}";
+                logAction($"[DB] Error: {errorMsg}");
+                throw new InvalidOperationException(errorMsg, ex);
+            }
         }
 
         /// <inheritdoc/>
         public string ParsePostgresUrl(string postgresUrl)
         {
             return ParsePostgresUrl(postgresUrl, null);
+        }
+
+        /// <summary>
+        /// Validates PostgreSQL connectivity with exponential backoff retry logic.
+        /// </summary>
+        /// <param name="connectionString">The PostgreSQL connection string to validate.</param>
+        /// <param name="maxRetries">Maximum number of retry attempts (default: 5).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>True if connection is successful, false otherwise.</returns>
+        public async Task<bool> ValidatePostgreSQLConnectivityAsync(
+            string connectionString, 
+            int maxRetries = 5, 
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                _logger?.LogError("Connection string is null or empty");
+                return false;
+            }
+
+            for (int attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
+                {
+                    using var connection = new NpgsqlConnection(connectionString);
+                    await connection.OpenAsync(cancellationToken);
+                    
+                    // Test the connection with a simple query
+                    using var command = new NpgsqlCommand("SELECT 1", connection);
+                    await command.ExecuteScalarAsync(cancellationToken);
+                    
+                    _logger?.LogInformation("PostgreSQL connection validated successfully");
+                    return true;
+                }
+                catch (Exception ex) when (attempt < maxRetries - 1)
+                {
+                    // Calculate exponential backoff: 1s, 2s, 4s, 8s, 16s
+                    var delayMs = (int)Math.Pow(2, attempt) * 1000;
+                    
+                    _logger?.LogWarning(
+                        "PostgreSQL connection attempt {Attempt}/{MaxRetries} failed. Retrying in {DelayMs}ms. Error: {Message}",
+                        attempt + 1, maxRetries, delayMs, ex.Message);
+                    
+                    await Task.Delay(delayMs, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, 
+                        "PostgreSQL connection failed after {MaxRetries} attempts", 
+                        maxRetries);
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -199,21 +242,14 @@ namespace ConduitLLM.Core.Data
                 throw new ArgumentNullException(nameof(connectionStringValue), "Connection string cannot be null or empty");
             }
 
-            switch (providerName.ToLower())
+            if (!providerName.Equals(DatabaseConstants.POSTGRES_PROVIDER, StringComparison.OrdinalIgnoreCase))
             {
-                case var _ when providerName.Equals(DatabaseConstants.POSTGRES_PROVIDER, StringComparison.OrdinalIgnoreCase):
-                    ValidatePostgresConnectionString(connectionStringValue);
-                    break;
-
-                case var _ when providerName.Equals(DatabaseConstants.SQLITE_PROVIDER, StringComparison.OrdinalIgnoreCase):
-                    ValidateSqliteConnectionString(connectionStringValue);
-                    break;
-
-                default:
-                    throw new ArgumentException(
-                        string.Format(DatabaseConstants.ERR_INVALID_PROVIDER, providerName),
-                        nameof(providerName));
+                throw new ArgumentException(
+                    $"Only PostgreSQL is supported. Invalid provider: {providerName}",
+                    nameof(providerName));
             }
+
+            ValidatePostgresConnectionString(connectionStringValue);
         }
 
         /// <inheritdoc/>
@@ -248,33 +284,5 @@ namespace ConduitLLM.Core.Data
             }
         }
 
-        private void ValidateSqliteConnectionString(string connectionString)
-        {
-            // Check for Data Source parameter in SQLite connection string
-            if (string.IsNullOrEmpty(connectionString) || !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
-            {
-                // lgtm [cs/cleartext-storage-of-sensitive-information]
-                _logger?.LogError("SQLite connection string missing Data Source: {SanitizedConnStr}",
-                    SanitizeConnectionString(connectionString));
-                throw new InvalidOperationException(
-                    string.Format(DatabaseConstants.ERR_MISSING_REQUIRED_FIELDS, "SQLite"));
-            }
-
-            // Extract the database path
-            var match = Regex.Match(connectionString, @"Data Source=([^;]+)", RegexOptions.IgnoreCase);
-            if (match.Success)
-            {
-                var path = match.Groups[1].Value;
-                if (string.IsNullOrWhiteSpace(path))
-                {
-                    throw new InvalidOperationException("SQLite database path is empty or whitespace");
-                }
-            }
-            else
-            {
-                // If we didn't match the regex, it's an invalid connection string
-                throw new InvalidOperationException("SQLite connection string format is invalid");
-            }
-        }
     }
 }

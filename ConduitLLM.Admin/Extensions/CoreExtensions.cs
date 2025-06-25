@@ -42,36 +42,22 @@ namespace ConduitLLM.Admin.Extensions
                 }
             }
 
-            if (dbProvider == "sqlite")
+            // Only PostgreSQL is supported
+            if (dbProvider != "postgres")
             {
-                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+                throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
+            }
+
+            services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+            {
+                options.UseNpgsql(dbConnectionString);
+                // Suppress PendingModelChangesWarning in production
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                if (environment == "Production")
                 {
-                    options.UseSqlite(dbConnectionString);
-                    // Suppress PendingModelChangesWarning in production
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                    if (environment == "Production")
-                    {
-                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                    }
-                });
-            }
-            else if (dbProvider == "postgres")
-            {
-                services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-                {
-                    options.UseNpgsql(dbConnectionString);
-                    // Suppress PendingModelChangesWarning in production
-                    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-                    if (environment == "Production")
-                    {
-                        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                    }
-                });
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
-            }
+                    options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+                }
+            });
 
             // Add context management services
             services.AddConduitContextManagement(configuration);

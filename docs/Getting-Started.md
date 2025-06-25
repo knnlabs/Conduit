@@ -7,7 +7,7 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
 ## Prerequisites
 
 - .NET 9.0 SDK or later (for local development)
-- SQLite or PostgreSQL for database storage
+- PostgreSQL for database storage
 - Docker (recommended for deployment)
 - API keys for any LLM providers you plan to use (OpenAI, Anthropic, Cohere, Gemini, Fireworks, OpenRouter)
 
@@ -25,23 +25,11 @@ ConduitLLM is a comprehensive LLM management and routing system that allows you 
    mkdir -p ./data
    ```
 
-3. Run the container (SQLite example):
+3. Run the container with PostgreSQL:
    ```bash
    docker run -d \
      -p 5000:5000 \
-     -v $(pwd)/data:/data \
-     -e DB_PROVIDER=sqlite \
-     -e CONDUIT_SQLITE_PATH=/data/conduit.db \
-     -e CONDUIT_MASTER_KEY=your_secure_master_key \
-     ghcr.io/knnlabs/conduit:latest
-   ```
-
-   For PostgreSQL, use:
-   ```bash
-   docker run -d \
-     -p 5000:5000 \
-     -e DB_PROVIDER=postgres \
-     -e CONDUIT_POSTGRES_CONNECTION_STRING=Host=yourhost;Port=5432;Database=conduitllm;Username=youruser;Password=yourpassword \
+     -e DATABASE_URL=postgresql://youruser:yourpassword@yourhost:5432/conduitllm \
      -e CONDUIT_MASTER_KEY=your_secure_master_key \
      ghcr.io/knnlabs/conduit:latest
    ```

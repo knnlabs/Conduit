@@ -37,9 +37,8 @@ namespace ConduitLLM.Configuration.Data
             using var context = _dbContextFactory.CreateDbContext();
             _dbProvider = context.Database.ProviderName?.ToLowerInvariant() switch
             {
-                var p when p?.Contains("sqlite") == true => "sqlite",
                 var p when p?.Contains("npgsql") == true => "postgres",
-                _ => throw new InvalidOperationException($"Unsupported database provider: {context.Database.ProviderName}")
+                _ => throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {context.Database.ProviderName}")
             };
 
             _logger.LogInformation("Database provider detected: {Provider}", _dbProvider);

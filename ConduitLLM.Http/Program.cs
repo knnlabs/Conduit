@@ -117,34 +117,22 @@ if (dbProvider == "postgres" && dbConnectionString.Contains("MaxPoolSize"))
         Console.WriteLine($"[Conduit]   Max Pool Size: {match.Groups[2].Value}");
     }
 }
-if (dbProvider == "sqlite")
+
+// Only PostgreSQL is supported
+if (dbProvider != "postgres")
 {
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+    throw new InvalidOperationException($"Only PostgreSQL is supported. Invalid provider: {dbProvider}");
+}
+
+builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
+{
+    options.UseNpgsql(dbConnectionString);
+    // Suppress PendingModelChangesWarning in production
+    if (builder.Environment.IsProduction())
     {
-        options.UseSqlite(dbConnectionString);
-        // Suppress PendingModelChangesWarning in production
-        if (builder.Environment.IsProduction())
-        {
-            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        }
-    });
-}
-else if (dbProvider == "postgres")
-{
-    builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
-    {
-        options.UseNpgsql(dbConnectionString);
-        // Suppress PendingModelChangesWarning in production
-        if (builder.Environment.IsProduction())
-        {
-            options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-        }
-    });
-}
-else
-{
-    throw new InvalidOperationException($"Unsupported database provider: {dbProvider}. Supported values are 'sqlite' and 'postgres'.");
-}
+        options.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
+});
 
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();

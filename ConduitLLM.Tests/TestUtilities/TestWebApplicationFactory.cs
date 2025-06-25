@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -27,7 +26,7 @@ namespace ConduitLLM.Tests.TestUtilities
         where TProgram : class
     {
         protected Dictionary<string, string?> AdditionalConfiguration { get; set; }
-        private static string _sharedDbPath = Path.Combine(Path.GetTempPath(), $"conduit_test_{Guid.NewGuid():N}.db");
+        private static readonly string _testDbName = $"conduit_test_{Guid.NewGuid():N}";
         private static bool _databaseSeeded = false;
         private static readonly object _seedLock = new object();
 
@@ -54,11 +53,16 @@ namespace ConduitLLM.Tests.TestUtilities
 
         public TestWebApplicationFactory()
         {
+            // Get test PostgreSQL connection from environment or use local instance
+            var testDbUrl = Environment.GetEnvironmentVariable("TEST_DATABASE_URL") 
+                ?? $"postgresql://conduit:conduitpass@localhost:5432/{_testDbName}";
+            
+            Environment.SetEnvironmentVariable("DATABASE_URL", testDbUrl);
+            
             AdditionalConfiguration = new Dictionary<string, string?>
             {
-                // Use shared SQLite file for tests to avoid concurrency issues
-                { "ConnectionStrings:DefaultConnection", $"Data Source={_sharedDbPath}" },
-                { "ConnectionStrings:ConfigurationDb", $"Data Source={_sharedDbPath}" }
+                // Use PostgreSQL for tests
+                { "DATABASE_URL", testDbUrl }
             };
         }
 
@@ -225,9 +229,9 @@ namespace ConduitLLM.Tests.TestUtilities
                     services.Remove(descriptor);
                 }
                 
-                // Add our shared SQLite database configuration
+                // Add our test PostgreSQL database configuration
                 services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                    options.UseSqlite($"Data Source={_sharedDbPath}"));
+                    options.UseNpgsql(AdditionalConfiguration["DATABASE_URL"]));
             });
             
             base.ConfigureWebHost(builder);
@@ -237,13 +241,10 @@ namespace ConduitLLM.Tests.TestUtilities
         {
             if (disposing)
             {
-                // Clean up temporary database file if it exists
+                // Clean up test database if needed
                 try
                 {
-                    if (File.Exists(_sharedDbPath))
-                    {
-                        File.Delete(_sharedDbPath);
-                    }
+                    // TODO: Drop test PostgreSQL database if created
                 }
                 catch
                 {

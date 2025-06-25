@@ -148,24 +148,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 var connectionString = _dbContext.GetDatabase().GetConnectionString();
                 info.ConnectionString = MaskConnectionString(connectionString);
 
-                if (info.Provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
-                {
-                    var version = await _dbContext.GetDatabase().ExecuteSqlRawAsync("SELECT @@VERSION");
-                    info.Version = version.ToString();
-                }
-                else if (info.Provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
-                {
-                    info.Version = "SQLite";
-                    info.Location = ExtractDatabasePathFromConnectionString(connectionString);
-
-                    // Get database file size if it's SQLite
-                    if (!string.IsNullOrEmpty(info.Location) && File.Exists(info.Location))
-                    {
-                        var fileInfo = new FileInfo(info.Location);
-                        info.Size = FormatFileSize(fileInfo.Length);
-                    }
-                }
-                else if (info.Provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+                if (info.Provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
                 {
                     info.Version = "-1"; // We'll get this with raw SQL below
                     info.Location = ExtractHostFromConnectionString(connectionString);
@@ -386,23 +369,6 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         return string.Join("; ", maskedParts);
     }
 
-    private string ExtractDatabasePathFromConnectionString(string? connectionString)
-    {
-        if (string.IsNullOrEmpty(connectionString))
-            return "Unknown";
-
-        var parts = connectionString.Split(';');
-        foreach (var part in parts)
-        {
-            var trimmedPart = part.Trim();
-            if (trimmedPart.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-            {
-                return trimmedPart.Split('=')[1].Trim();
-            }
-        }
-
-        return "Unknown";
-    }
 
     private string ExtractHostFromConnectionString(string? connectionString)
     {
