@@ -41,7 +41,8 @@ namespace ConduitLLM.Tests
             {
                 BaseAddress = new Uri("https://api.minimax.chat")
             };
-            _httpClientFactoryMock.Setup(f => f.CreateClient("minimax")).Returns(httpClient);
+            _httpClientFactoryMock.Setup(f => f.CreateClient("minimaxLLMClient")).Returns(httpClient);
+            _httpClientFactoryMock.Setup(f => f.CreateClient("minimaxVideoClient")).Returns(httpClient);
             _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
             _client = new MiniMaxClient(_credentials, "video-01", _loggerMock.Object, _httpClientFactoryMock.Object);
@@ -343,6 +344,8 @@ namespace ConduitLLM.Tests
                 BaseAddress = new Uri("https://api.minimax.chat")
             };
             var httpClientFactoryMock = new Mock<IHttpClientFactory>();
+            httpClientFactoryMock.Setup(f => f.CreateClient("minimaxLLMClient")).Returns(httpClient);
+            httpClientFactoryMock.Setup(f => f.CreateClient("minimaxVideoClient")).Returns(httpClient);
             httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
             
             var client = new MiniMaxClient(_credentials, "video-01", _loggerMock.Object, httpClientFactoryMock.Object);

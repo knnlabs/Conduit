@@ -115,6 +115,46 @@ namespace ConduitLLM.Tests.TestUtilities
                 await context.SaveChangesAsync();
             }
             
+            // Add test model mapping for video-01 if it doesn't exist
+            var existingMapping = await context.ModelProviderMappings
+                .FirstOrDefaultAsync(mm => mm.ModelAlias == "video-01");
+                
+            if (existingMapping == null)
+            {
+                // First, we need to create or get a provider credential for minimax
+                var existingCredential = await context.ProviderCredentials
+                    .FirstOrDefaultAsync(pc => pc.ProviderName == "minimax");
+                    
+                if (existingCredential == null)
+                {
+                    existingCredential = new ConduitLLM.Configuration.Entities.ProviderCredential
+                    {
+                        Id = 1,
+                        ProviderName = "minimax",
+                        ApiKey = "test-minimax-key",
+                        IsEnabled = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    context.ProviderCredentials.Add(existingCredential);
+                    await context.SaveChangesAsync();
+                }
+                
+                var testModelMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                {
+                    Id = 1,
+                    ModelAlias = "video-01",
+                    ProviderModelName = "video-01",  // Entity uses ProviderModelName
+                    ProviderCredentialId = existingCredential.Id,
+                    IsEnabled = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                
+                context.ModelProviderMappings.Add(testModelMapping);
+                await context.SaveChangesAsync();
+            }
+            
             _databaseSeeded = true;
         }
 

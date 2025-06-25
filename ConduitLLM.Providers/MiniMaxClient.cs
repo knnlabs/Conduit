@@ -768,9 +768,19 @@ namespace ConduitLLM.Providers
         /// <returns>A configured HttpClient instance for video generation.</returns>
         protected virtual HttpClient CreateVideoHttpClient(string? apiKey = null)
         {
-            // For video generation, ALWAYS create a new HttpClient without using the factory
-            // This ensures no timeout policies are applied by HttpClientFactory
-            var client = new HttpClient();
+            HttpClient client;
+            
+            // Use the factory if available (for testing), otherwise create new client
+            if (HttpClientFactory != null)
+            {
+                client = HttpClientFactory.CreateClient($"{ProviderName}VideoClient");
+            }
+            else
+            {
+                // For video generation, create a new HttpClient without using the factory
+                // This ensures no timeout policies are applied by HttpClientFactory in production
+                client = new HttpClient();
+            }
             
             string effectiveApiKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : Credentials.ApiKey!;
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -787,7 +797,7 @@ namespace ConduitLLM.Providers
             // Set a very long timeout for video generation (1 hour)
             client.Timeout = TimeSpan.FromHours(1);
             
-            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies (bypassing factory)");
+            Logger.LogInformation("Created video HTTP client with 1-hour timeout and no Polly policies (bypassing factory: {BypassFactory})", HttpClientFactory == null);
             
             return client;
         }
