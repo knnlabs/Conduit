@@ -31,6 +31,7 @@ namespace ConduitLLM.Http.Controllers
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
+        private readonly IImageGenerationMetricsService _metricsService;
 
         public ImagesController(
             ILLMClientFactory clientFactory,
@@ -41,7 +42,8 @@ namespace ConduitLLM.Http.Controllers
             IAsyncTaskService taskService,
             IPublishEndpoint publishEndpoint,
             IVirtualKeyService virtualKeyService,
-            IMediaLifecycleService mediaLifecycleService)
+            IMediaLifecycleService mediaLifecycleService,
+            IImageGenerationMetricsService metricsService)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
@@ -52,6 +54,7 @@ namespace ConduitLLM.Http.Controllers
             _publishEndpoint = publishEndpoint;
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
+            _metricsService = metricsService;
         }
 
         /// <summary>
@@ -70,7 +73,50 @@ namespace ConduitLLM.Http.Controllers
                     return BadRequest(new { error = new { message = "Prompt is required", type = "invalid_request_error" } });
                 }
 
-                var modelName = request.Model ?? "dall-e-3";
+                var modelName = request.Model;
+                
+                // If no model specified, use smart provider selection
+                if (string.IsNullOrEmpty(modelName))
+                {
+                    _logger.LogInformation("No model specified, using smart provider selection");
+                    
+                    // Get all image generation capable providers
+                    var allMappings = await _modelMappingService.GetAllMappingsAsync();
+                    var imageProviders = allMappings.Where(m => m.SupportsImageGeneration).ToList();
+                    if (imageProviders.Any())
+                    {
+                        var availableProviders = imageProviders
+                            .Select(m => (m.ProviderName, m.ProviderModelId))
+                            .ToList();
+                        
+                        // Select optimal provider based on current metrics
+                        var optimal = await _metricsService.SelectOptimalProviderAsync(
+                            availableProviders,
+                            request.N,
+                            maxWaitTimeSeconds: null);
+                        
+                        if (optimal.HasValue)
+                        {
+                            var selectedMapping = imageProviders.FirstOrDefault(m => 
+                                m.ProviderName == optimal.Value.Provider && 
+                                m.ProviderModelId == optimal.Value.Model);
+                            
+                            if (selectedMapping != null)
+                            {
+                                modelName = selectedMapping.ModelAlias;
+                                _logger.LogInformation("Smart selection chose {Provider}/{Model} (alias: {Alias})", 
+                                    optimal.Value.Provider, optimal.Value.Model, modelName);
+                            }
+                        }
+                    }
+                    
+                    // Fallback to default if smart selection fails
+                    if (string.IsNullOrEmpty(modelName))
+                    {
+                        modelName = "dall-e-3";
+                        _logger.LogInformation("Smart selection failed, falling back to default model: {Model}", modelName);
+                    }
+                }
                 
                 // First check model mappings for image generation capability
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);

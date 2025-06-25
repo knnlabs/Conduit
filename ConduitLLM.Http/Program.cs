@@ -163,6 +163,9 @@ builder.Services.AddScoped<ConduitRegistry>();
 // Add performance metrics service
 builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IPerformanceMetricsService, ConduitLLM.Core.Services.PerformanceMetricsService>();
 
+// Add image generation metrics service
+builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IImageGenerationMetricsService, ConduitLLM.Core.Services.ImageGenerationMetricsService>();
+
 // Add required services for the router components
 builder.Services.AddScoped<ConduitLLM.Core.Routing.Strategies.IModelSelectionStrategy, ConduitLLM.Core.Routing.Strategies.SimpleModelSelectionStrategy>();
 builder.Services.AddScoped<ILLMRouter, ConduitLLM.Core.Routing.DefaultLLMRouter>();
@@ -183,6 +186,10 @@ builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
 
 // Register Video Generation Service
 builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();
+
+// Configure Image Generation Performance Settings
+builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationPerformanceConfiguration>(
+    builder.Configuration.GetSection("ImageGeneration:Performance"));
 
 // Configure Video Generation Retry Settings
 builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryConfiguration>(options =>
@@ -525,8 +532,12 @@ builder.Services.AddHostedService<ImageGenerationDatabaseBackgroundService>();
 // Add background service for video generation monitoring and cleanup
 builder.Services.AddHostedService<VideoGenerationBackgroundService>();
 
+// Add background service for image generation metrics cleanup
+builder.Services.AddHostedService<ImageGenerationMetricsCleanupService>();
+
 Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
 Console.WriteLine("[Conduit] Image generation supports multi-instance deployment with lease-based task processing");
+Console.WriteLine("[Conduit] Image generation performance tracking and optimization enabled");
 
 // Register Media Storage Service
 var storageProvider = builder.Configuration.GetValue<string>("ConduitLLM:Storage:Provider") ?? "InMemory";
