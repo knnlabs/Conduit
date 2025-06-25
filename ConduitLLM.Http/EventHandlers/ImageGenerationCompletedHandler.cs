@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -16,15 +17,18 @@ namespace ConduitLLM.Http.EventHandlers
     public class ImageGenerationCompletedHandler : IConsumer<ImageGenerationCompleted>
     {
         private readonly IMemoryCache _progressCache;
+        private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationCompletedHandler> _logger;
         private const string ProgressCacheKeyPrefix = "image_generation_progress_";
         private const string CompletedTasksCacheKey = "completed_image_tasks";
 
         public ImageGenerationCompletedHandler(
             IMemoryCache progressCache,
+            IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationCompletedHandler> logger)
         {
             _progressCache = progressCache;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -71,14 +75,12 @@ namespace ConduitLLM.Http.EventHandlers
                 // - Metadata extraction
                 // - CDN cache warming
                 
-                // Future: Send completion notification to WebUI
-                // await _hubContext.Clients.Group($"task_{message.TaskId}").SendAsync("ImageGenerationCompleted", new
-                // {
-                //     TaskId = message.TaskId,
-                //     Images = message.Images.Select(img => new { img.Url, img.Metadata }),
-                //     Duration = message.Duration.TotalSeconds,
-                //     Cost = message.Cost
-                // });
+                // Send completion notification to WebUI
+                await _notificationService.NotifyImageGenerationCompletedAsync(
+                    message.TaskId,
+                    message.Images.Select(img => img.Url ?? string.Empty).ToArray(),
+                    message.Duration,
+                    message.Cost);
                 
                 // Future: Send webhook notification if configured
                 // await _webhookService.SendImageGenerationCompletedWebhook(message);

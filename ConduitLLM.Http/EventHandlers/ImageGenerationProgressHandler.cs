@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Http.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -15,16 +16,19 @@ namespace ConduitLLM.Http.EventHandlers
     {
         private readonly IMemoryCache _progressCache;
         private readonly IAsyncTaskService _taskService;
+        private readonly IImageGenerationNotificationService _notificationService;
         private readonly ILogger<ImageGenerationProgressHandler> _logger;
         private const string ProgressCacheKeyPrefix = "image_generation_progress_";
 
         public ImageGenerationProgressHandler(
             IMemoryCache progressCache,
             IAsyncTaskService taskService,
+            IImageGenerationNotificationService notificationService,
             ILogger<ImageGenerationProgressHandler> logger)
         {
             _progressCache = progressCache;
             _taskService = taskService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -73,8 +77,14 @@ namespace ConduitLLM.Http.EventHandlers
                         message.ImagesCompleted + 1, message.TotalImages, message.TaskId);
                 }
                 
-                // Future: Send real-time updates to WebUI
-                // await _hubContext.Clients.Group($"task_{message.TaskId}").SendAsync("ImageGenerationProgress", progressData);
+                // Send real-time updates to WebUI
+                await _notificationService.NotifyImageGenerationProgressAsync(
+                    message.TaskId,
+                    message.ProgressPercentage,
+                    message.Status,
+                    message.ImagesCompleted,
+                    message.TotalImages,
+                    message.Message);
                 
             }
             catch (Exception ex)

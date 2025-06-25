@@ -645,6 +645,9 @@ builder.Services.AddScoped<IMediaLifecycleRepository, MediaLifecycleRepository>(
 // Register video generation notification service
 builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerationNotificationService>();
 
+// Register image generation notification service
+builder.Services.AddSingleton<IImageGenerationNotificationService, ImageGenerationNotificationService>();
+
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
 {
@@ -792,6 +795,9 @@ Console.WriteLine("[Conduit API] SignalR NavigationStateHub registered at /hubs/
 
 app.MapHub<ConduitLLM.Http.Hubs.VideoGenerationHub>("/hubs/video-generation");
 Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/video-generation");
+
+app.MapHub<ConduitLLM.Http.Hubs.ImageGenerationHub>("/hubs/image-generation");
+Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/image-generation");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

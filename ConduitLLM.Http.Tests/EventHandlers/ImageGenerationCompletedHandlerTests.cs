@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Http.EventHandlers;
+using ConduitLLM.Http.Services;
 using MassTransit;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -15,14 +16,16 @@ namespace ConduitLLM.Http.Tests.EventHandlers
     public class ImageGenerationCompletedHandlerTests
     {
         private readonly Mock<IMemoryCache> _mockCache;
+        private readonly Mock<IImageGenerationNotificationService> _mockNotificationService;
         private readonly Mock<ILogger<ImageGenerationCompletedHandler>> _mockLogger;
         private readonly ImageGenerationCompletedHandler _handler;
 
         public ImageGenerationCompletedHandlerTests()
         {
             _mockCache = new Mock<IMemoryCache>();
+            _mockNotificationService = new Mock<IImageGenerationNotificationService>();
             _mockLogger = new Mock<ILogger<ImageGenerationCompletedHandler>>();
-            _handler = new ImageGenerationCompletedHandler(_mockCache.Object, _mockLogger.Object);
+            _handler = new ImageGenerationCompletedHandler(_mockCache.Object, _mockNotificationService.Object, _mockLogger.Object);
         }
 
         [Fact]

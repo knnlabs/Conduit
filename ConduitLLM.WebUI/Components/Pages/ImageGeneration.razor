@@ -14,6 +14,7 @@
 @inject ILogger<ImageGeneration> _logger
 @using ConduitLLM.WebUI.Services
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>Image Generation - ConduitLLM</PageTitle>
 
@@ -241,6 +242,65 @@
                 </div>
             </div>
 
+            <!-- Active Generation Tasks -->
+            @if (activeTasks.Any())
+            {
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fa fa-tasks me-2"></i>Active Generation Tasks
+                            </h5>
+                            <span class="badge bg-primary">@activeTasks.Count tasks</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var task in activeTasks)
+                        {
+                            <div class="task-item border rounded p-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 text-truncate" title="@task.Prompt">@task.Prompt</h6>
+                                        <small class="text-muted">
+                                            <i class="fa fa-clock me-1"></i>Started: @task.CreatedAt.ToString("h:mm:ss tt")
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-@GetStatusBadgeClass(task.Status)">@task.Status</span>
+                                </div>
+                                
+                                @if (task.Progress.HasValue)
+                                {
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" 
+                                             style="width: @(task.Progress)%"
+                                             aria-valuenow="@task.Progress" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                }
+                                
+                                @if (!string.IsNullOrEmpty(task.Error))
+                                {
+                                    <div class="alert alert-danger small mb-0 mt-2">
+                                        <i class="fa fa-exclamation-circle me-1"></i>@task.Error
+                                    </div>
+                                }
+                                
+                                @if (task.Status == "pending" || task.Status == "running")
+                                {
+                                    <button class="btn btn-sm btn-outline-danger mt-2" 
+                                            @onclick="() => CancelTask(task.TaskId)">
+                                        <i class="fa fa-times me-1"></i>Cancel
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             <!-- Generated Images Display -->
             @if (generatedImages.Any())
             {
@@ -372,6 +432,8 @@
     private List<ImageModel> availableModels = new();
     private List<ImageData> generatedImages = new();
     private RecentPrompts? recentPromptsComponent;
+    private List<ImageGenerationTask> activeTasks = new();
+    private System.Threading.Timer? statusCheckTimer;
     
     private string imagePrompt = "";
     private string selectedModel = "";
@@ -400,10 +462,26 @@
         public string Base64Data { get; set; } = "";
     }
 
+    private class ImageGenerationTask
+    {
+        public string TaskId { get; set; } = "";
+        public string Status { get; set; } = "";
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public DateTimeOffset? CompletedAt { get; set; }
+        public string Prompt { get; set; } = "";
+        public int? Progress { get; set; }
+        public string? Error { get; set; }
+        public DateTimeOffset? EstimatedCompletionTime { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAvailableModels();
-        // LoadRecentPrompts moved to OnAfterRenderAsync to avoid JS interop during SSR
+        // Load persisted active tasks
+        await LoadPersistedTasks();
+        // Start periodic status check for active tasks
+        statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -522,6 +600,7 @@
         }
 
         isGenerating = true;
+        StateHasChanged(); // Ensure UI updates immediately
         try
         {
             var request = new ImageGenerationRequest
@@ -532,7 +611,7 @@
                 Size = selectedSize,
                 Quality = quality,
                 Style = style,
-                ResponseFormat = "b64_json"
+                ResponseFormat = "url" // Changed to URL for async generation
             };
 
             // Add image-to-image parameters if source image is provided
@@ -548,27 +627,12 @@
                 }
             }
 
-            var response = await ConduitApiClient.CreateImageAsync(request, apiKey);
+            // Always use async for image generation to avoid UI blocking
+            await StartAsyncImageGeneration(request);
             
-            if (response?.Data != null && response.Data.Any())
-            {
-                generatedImages.AddRange(response.Data);
-                
-                // Add to recent prompts (only if we have a meaningful prompt)
-                if (!string.IsNullOrWhiteSpace(imagePrompt) && recentPromptsComponent != null)
-                {
-                    await recentPromptsComponent.AddPromptToHistory(imagePrompt);
-                }
-                
-                var operationText = sourceImage != null ? $"{operationType} operation" : "generation";
-                ToastService.ShowSuccess($"Successfully completed {operationText} - {response.Data.Count} image(s) created");
-            }
-            else
-            {
-                // Response was null or had no data
-                ToastService.ShowError("Failed to generate image. Please check your API configuration and try again.");
-                _logger.LogWarning("Image generation returned null or empty response");
-            }
+            // For async generation, we reset the generating flag after the task is created
+            isGenerating = false;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -578,10 +642,10 @@
             
             _logger.LogError(ex, "Error generating image");
             ToastService.ShowError($"Error: {ex.Message}");
-        }
-        finally
-        {
+            
+            // Only reset on error
             isGenerating = false;
+            StateHasChanged();
         }
     }
 
@@ -701,6 +765,183 @@
     {
         sourceImage = null;
         StateHasChanged();
+    }
+
+    private async Task StartAsyncImageGeneration(ImageGenerationRequest request)
+    {
+        try
+        {
+            var taskResponse = await ConduitApiClient.CreateImageAsyncTask(request, string.IsNullOrWhiteSpace(apiKey) ? null : apiKey);
+            
+            if (taskResponse != null && !string.IsNullOrEmpty(taskResponse.TaskId))
+            {
+                var task = new ImageGenerationTask
+                {
+                    TaskId = taskResponse.TaskId,
+                    Status = taskResponse.Status,
+                    CreatedAt = taskResponse.CreatedAt,
+                    Prompt = imagePrompt,
+                    EstimatedCompletionTime = taskResponse.EstimatedCompletionTime
+                };
+                
+                activeTasks.Add(task);
+                
+                // Persist active tasks
+                await SavePersistedTasks();
+                
+                // Add to recent prompts
+                if (!string.IsNullOrWhiteSpace(imagePrompt) && recentPromptsComponent != null)
+                {
+                    await recentPromptsComponent.AddPromptToHistory(imagePrompt);
+                }
+                
+                ToastService.ShowInfo($"Image generation started. Task ID: {taskResponse.TaskId}");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to start image generation task");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error starting async image generation");
+            throw;
+        }
+    }
+
+    private async Task CheckTaskStatuses()
+    {
+        if (!activeTasks.Any(t => t.Status == "pending" || t.Status == "running"))
+            return;
+
+        try
+        {
+            foreach (var task in activeTasks.Where(t => t.Status == "pending" || t.Status == "running").ToList())
+            {
+                var status = await ConduitApiClient.GetImageGenerationStatusAsync(task.TaskId, apiKey);
+                
+                if (status != null)
+                {
+                    task.Status = status.Status;
+                    task.Progress = status.Progress;
+                    task.UpdatedAt = status.UpdatedAt;
+                    task.CompletedAt = status.CompletedAt;
+                    task.Error = status.Error;
+                    
+                    if (status.Status == "completed" && status.ImageResponse?.Data != null)
+                    {
+                        generatedImages.AddRange(status.ImageResponse.Data);
+                        ToastService.ShowSuccess($"Image generation completed for task {task.TaskId}");
+                    }
+                    else if (status.Status == "failed")
+                    {
+                        ToastService.ShowError($"Image generation failed: {status.Error ?? "Unknown error"}");
+                    }
+                }
+            }
+            
+            // Remove completed/failed tasks after 30 seconds
+            var cutoffTime = DateTimeOffset.UtcNow.AddSeconds(-30);
+            var removedCount = activeTasks.RemoveAll(t => 
+                (t.Status == "completed" || t.Status == "failed" || t.Status == "cancelled") 
+                && t.CompletedAt.HasValue 
+                && t.CompletedAt.Value < cutoffTime);
+            
+            // Persist if any tasks were updated or removed
+            if (removedCount > 0 || activeTasks.Any(t => t.Status == "completed" || t.Status == "failed"))
+            {
+                await SavePersistedTasks();
+            }
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking task statuses");
+        }
+    }
+
+    private async Task CancelTask(string taskId)
+    {
+        try
+        {
+            var success = await ConduitApiClient.CancelImageGenerationAsync(taskId, apiKey);
+            if (success)
+            {
+                var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+                if (task != null)
+                {
+                    task.Status = "cancelled";
+                    task.CompletedAt = DateTimeOffset.UtcNow;
+                }
+                
+                await SavePersistedTasks();
+                ToastService.ShowInfo("Image generation task cancelled");
+            }
+            else
+            {
+                ToastService.ShowWarning("Failed to cancel image generation task");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling task {TaskId}", taskId);
+            ToastService.ShowError($"Error cancelling task: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPersistedTasks()
+    {
+        try
+        {
+            // Load from localStorage
+            var tasksJson = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "conduit-image-tasks");
+            if (!string.IsNullOrEmpty(tasksJson))
+            {
+                var tasks = JsonSerializer.Deserialize<List<ImageGenerationTask>>(tasksJson);
+                if (tasks != null)
+                {
+                    // Only load tasks that are not too old (e.g., created within last hour)
+                    var cutoffTime = DateTimeOffset.UtcNow.AddHours(-1);
+                    activeTasks = tasks.Where(t => t.CreatedAt > cutoffTime).ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading persisted tasks");
+        }
+    }
+
+    private async Task SavePersistedTasks()
+    {
+        try
+        {
+            var tasksJson = JsonSerializer.Serialize(activeTasks);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "conduit-image-tasks", tasksJson);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving persisted tasks");
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "pending" => "warning",
+            "running" => "primary",
+            "completed" => "success",
+            "failed" => "danger",
+            "cancelled" => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        statusCheckTimer?.Dispose();
     }
 
     private class ImageModel

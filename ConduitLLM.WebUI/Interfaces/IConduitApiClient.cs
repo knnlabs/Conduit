@@ -66,6 +66,42 @@ public interface IConduitApiClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates an asynchronous image generation task.
+    /// </summary>
+    /// <param name="request">The image generation request.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The task response containing the task ID.</returns>
+    Task<ImageGenerationTaskResponse?> CreateImageAsyncTask(
+        ImageGenerationRequest request,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the status of an image generation task.
+    /// </summary>
+    /// <param name="taskId">The task ID returned from the async generation endpoint.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>Current status of the image generation task.</returns>
+    Task<ImageGenerationTaskStatus?> GetImageGenerationStatusAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cancels an image generation task.
+    /// </summary>
+    /// <param name="taskId">The task ID to cancel.</param>
+    /// <param name="virtualKey">The virtual key to use for authentication.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>True if the task was successfully cancelled, false otherwise.</returns>
+    Task<bool> CancelImageGenerationAsync(
+        string taskId,
+        string? virtualKey = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tests if a model supports a specific capability.
     /// </summary>
     /// <param name="modelName">The name of the model to test.</param>
