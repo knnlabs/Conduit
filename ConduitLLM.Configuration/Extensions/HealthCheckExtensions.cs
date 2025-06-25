@@ -43,6 +43,12 @@ namespace ConduitLLM.Configuration.Extensions
                     failureStatus: HealthStatus.Unhealthy,
                     tags: new[] { "db", "sql", "ready" },
                     args: new object[] { connectionString });
+                
+                // Add database connection pool health check
+                healthChecksBuilder.AddCheck<DatabaseConnectionPoolHealthCheck>(
+                    "database_pool",
+                    failureStatus: HealthStatus.Degraded,
+                    tags: new[] { "db", "pool", "performance", "ready" });
             }
 
             // Add Redis health check if connection string is provided

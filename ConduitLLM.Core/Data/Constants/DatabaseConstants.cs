@@ -36,6 +36,22 @@ namespace ConduitLLM.Core.Data.Constants
         public const int MAX_POOL_SIZE = 100;
         public const int CONNECTION_LIFETIME_SECONDS = 300;
         public const bool POOLING_ENABLED = true;
+        
+        // Service-specific pool settings for scaling
+        // Core API - High traffic
+        public const int CORE_API_MIN_POOL_SIZE = 10;
+        public const int CORE_API_MAX_POOL_SIZE = 150;
+        
+        // Admin API - Medium traffic
+        public const int ADMIN_API_MIN_POOL_SIZE = 5;
+        public const int ADMIN_API_MAX_POOL_SIZE = 75;
+        
+        // WebUI - Low traffic (uses Admin API, but keeping for consistency)
+        public const int WEBUI_MIN_POOL_SIZE = 2;
+        public const int WEBUI_MAX_POOL_SIZE = 20;
+        
+        // Connection idle lifetime (new in Npgsql 6+)
+        public const int CONNECTION_IDLE_LIFETIME_SECONDS = 60;
 
         // Error messages
         public const string ERR_INVALID_PROVIDER = "Unsupported database provider: {0}";

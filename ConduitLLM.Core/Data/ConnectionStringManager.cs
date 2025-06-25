@@ -28,6 +28,17 @@ namespace ConduitLLM.Core.Data
         /// <inheritdoc/>
         public (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(Action<string>? logger = null)
         {
+            return GetProviderAndConnectionString(null, logger);
+        }
+
+        /// <summary>
+        /// Gets the database provider name and connection string based on environment configuration.
+        /// </summary>
+        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebUI")</param>
+        /// <param name="logger">Optional logger action for database connection operations.</param>
+        /// <returns>A tuple containing the provider name and connection string.</returns>
+        public (string ProviderName, string ConnectionStringValue) GetProviderAndConnectionString(string? serviceType, Action<string>? logger = null)
+        {
             // Use either the provided logger action or our internal logger if available
             // lgtm [cs/cleartext-storage-of-sensitive-information]
             Action<string> logAction = logger ?? (message => _logger?.LogInformation(message));
@@ -40,7 +51,7 @@ namespace ConduitLLM.Core.Data
             {
                 try
                 {
-                    var connStr = ParsePostgresUrl(databaseUrl);
+                    var connStr = ParsePostgresUrl(databaseUrl, serviceType);
                     ValidateConnectionString(DatabaseConstants.POSTGRES_PROVIDER, connStr);
                     logAction($"[DB] Using provider: {DatabaseConstants.POSTGRES_PROVIDER}, connection: {SanitizeConnectionString(connStr)}");
                     return (DatabaseConstants.POSTGRES_PROVIDER, connStr);
@@ -83,6 +94,19 @@ namespace ConduitLLM.Core.Data
         /// <inheritdoc/>
         public string ParsePostgresUrl(string postgresUrl)
         {
+            return ParsePostgresUrl(postgresUrl, null);
+        }
+
+        /// <summary>
+        /// Parses a PostgreSQL URL into a standard .NET connection string format.
+        /// </summary>
+        /// <param name="postgresUrl">The PostgreSQL URL to parse (e.g., postgres://user:pass@host:port/database).</param>
+        /// <param name="serviceType">Optional service type to apply service-specific connection pool settings (e.g., "CoreAPI", "AdminAPI", "WebUI")</param>
+        /// <returns>A properly formatted PostgreSQL connection string.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when postgresUrl is null or empty.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when the URL format is invalid.</exception>
+        public string ParsePostgresUrl(string postgresUrl, string? serviceType)
+        {
             if (string.IsNullOrEmpty(postgresUrl))
             {
                 throw new ArgumentNullException(nameof(postgresUrl), "PostgreSQL URL cannot be null or empty");
@@ -118,9 +142,33 @@ namespace ConduitLLM.Core.Data
                 !queryString.Contains("Pooling=") &&
                 !queryString.Contains("pooling="))
             {
-                poolingParams = $";Pooling=true;MinPoolSize={DatabaseConstants.MIN_POOL_SIZE};" +
-                               $"MaxPoolSize={DatabaseConstants.MAX_POOL_SIZE};" +
-                               $"ConnectionLifetime={DatabaseConstants.CONNECTION_LIFETIME_SECONDS}";
+                // Determine pool sizes based on service type
+                int minPoolSize, maxPoolSize;
+                switch (serviceType?.ToUpperInvariant())
+                {
+                    case "COREAPI":
+                        minPoolSize = DatabaseConstants.CORE_API_MIN_POOL_SIZE;
+                        maxPoolSize = DatabaseConstants.CORE_API_MAX_POOL_SIZE;
+                        break;
+                    case "ADMINAPI":
+                        minPoolSize = DatabaseConstants.ADMIN_API_MIN_POOL_SIZE;
+                        maxPoolSize = DatabaseConstants.ADMIN_API_MAX_POOL_SIZE;
+                        break;
+                    case "WEBUI":
+                        minPoolSize = DatabaseConstants.WEBUI_MIN_POOL_SIZE;
+                        maxPoolSize = DatabaseConstants.WEBUI_MAX_POOL_SIZE;
+                        break;
+                    default:
+                        minPoolSize = DatabaseConstants.MIN_POOL_SIZE;
+                        maxPoolSize = DatabaseConstants.MAX_POOL_SIZE;
+                        break;
+                }
+
+                poolingParams = $";Pooling=true;MinPoolSize={minPoolSize};" +
+                               $"MaxPoolSize={maxPoolSize};" +
+                               $"ConnectionLifetime={DatabaseConstants.CONNECTION_LIFETIME_SECONDS};" +
+                               $"ConnectionIdleLifetime={DatabaseConstants.CONNECTION_IDLE_LIFETIME_SECONDS};" +
+                               $"IncludeErrorDetail=true";
             }
 
             // Build the connection string

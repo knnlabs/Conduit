@@ -173,6 +173,13 @@ public partial class Program
         // Add standardized health checks
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         builder.Services.AddConduitHealthChecks(connectionString, redisConnectionString, false, rabbitMqConfig);
+        
+        // Add connection pool warmer for better startup performance
+        builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
+            return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
+        });
 
         var app = builder.Build();
 

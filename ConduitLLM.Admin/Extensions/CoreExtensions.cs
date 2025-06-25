@@ -27,7 +27,8 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register DbContext Factory (using connection string from environment variables)
             var connectionStringManager = new ConnectionStringManager();
-            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
+            // Pass "AdminAPI" to get Admin API-specific connection pool settings
+            var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("AdminAPI", msg => Console.WriteLine(msg));
 
             if (dbProvider == "sqlite")
             {

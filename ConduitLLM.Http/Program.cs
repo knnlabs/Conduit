@@ -103,7 +103,8 @@ builder.Services.AddMemoryCache();
 
 // 2. Register DbContext Factory (using connection string from environment variables)
 var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
-var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString();
+// Pass "CoreAPI" to get Core API-specific connection pool settings
+var (dbProvider, dbConnectionString) = connectionStringManager.GetProviderAndConnectionString("CoreAPI", msg => Console.WriteLine(msg));
 if (dbProvider == "sqlite")
 {
     builder.Services.AddDbContextFactory<ConduitLLM.Configuration.ConfigurationDbContext>(options =>
@@ -831,6 +832,13 @@ if (builder.Environment.EnvironmentName != "Test")
 
 // Add database initialization services
 builder.Services.AddScoped<ConduitLLM.Configuration.Data.DatabaseInitializer>();
+
+// Add connection pool warmer for better startup performance
+builder.Services.AddHostedService<ConduitLLM.Core.Services.ConnectionPoolWarmer>(serviceProvider =>
+{
+    var logger = serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.ConnectionPoolWarmer>>();
+    return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "CoreAPI");
+});
 
 var app = builder.Build();
 
