@@ -98,7 +98,7 @@ namespace ConduitLLM.Http.EventHandlers
                 LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
                 
                 // Send completion notification via SignalR
-                await _hubContext.Clients.Group($"task-{message.RequestId}").SendAsync("TaskCompleted", new
+                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationCompleted", new
                 {
                     taskId = message.RequestId,
                     status = "completed",

@@ -78,7 +78,7 @@ namespace ConduitLLM.Http.EventHandlers
                 LogFailureMetrics(message);
                 
                 // Send failure notification via SignalR
-                await _hubContext.Clients.Group($"task-{message.RequestId}").SendAsync("TaskFailed", new
+                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationFailed", new
                 {
                     taskId = message.RequestId,
                     status = "failed",

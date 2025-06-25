@@ -37,6 +37,18 @@
                                 <i class="fa fa-film me-2"></i>
                                 <span class="small">@availableModels.Count Models Available</span>
                             </div>
+                            <div class="stat-item mt-2">
+                                @if (signalRConnected)
+                                {
+                                    <i class="fa fa-circle text-success me-2" style="font-size: 0.5rem;"></i>
+                                    <span class="small text-success">Real-time updates active</span>
+                                }
+                                else
+                                {
+                                    <i class="fa fa-circle text-warning me-2" style="font-size: 0.5rem;"></i>
+                                    <span class="small text-warning">Polling mode (2s)</span>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -483,6 +495,8 @@
     private RecentPrompts? recentPromptsComponent;
     private List<VideoGenerationTask> activeTasks = new();
     private System.Threading.Timer? statusCheckTimer;
+    private DotNetObjectReference<VideoGeneration>? dotNetRef;
+    private bool signalRConnected = false;
     
     private string videoPrompt = "";
     private string selectedModel = "";
@@ -507,6 +521,10 @@
         await LoadPersistedTasks();
         // Start periodic status check for active tasks
         statusCheckTimer = new System.Threading.Timer(async _ => await CheckTaskStatuses(), null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+        
+        // Initialize SignalR connection
+        dotNetRef = DotNetObjectReference.Create(this);
+        await InitializeSignalR();
     }
     
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -677,6 +695,13 @@
                 };
                 
                 activeTasks.Add(task);
+                
+                // Subscribe to SignalR updates for this task
+                if (signalRConnected)
+                {
+                    await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
+                    _logger.LogInformation("Subscribed to SignalR updates for task {TaskId}", task.TaskId);
+                }
                 
                 // Persist active tasks
                 await SavePersistedTasks();
@@ -931,9 +956,222 @@
         }
     }
     
+    // SignalR Methods
+    private async Task InitializeSignalR()
+    {
+        try
+        {
+            signalRConnected = await JSRuntime.InvokeAsync<bool>("videoGenerationSignalR.initialize", dotNetRef);
+            if (signalRConnected)
+            {
+                _logger.LogInformation("SignalR connection established for video generation");
+                // Subscribe to existing active tasks
+                foreach (var task in activeTasks.Where(t => t.Status != "completed" && t.Status != "failed"))
+                {
+                    await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.subscribeToTask", task.TaskId);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Failed to establish SignalR connection for video generation");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing SignalR for video generation");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnConnected()
+    {
+        signalRConnected = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnDisconnected()
+    {
+        signalRConnected = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnReconnecting()
+    {
+        signalRConnected = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnReconnected()
+    {
+        signalRConnected = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnVideoGenerationStarted(JsonElement data)
+    {
+        try
+        {
+            var requestId = data.GetProperty("requestId").GetString();
+            _logger.LogInformation("Video generation started for task {TaskId}", requestId);
+            // Update UI if needed
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling VideoGenerationStarted event");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVideoGenerationProgress(JsonElement data)
+    {
+        try
+        {
+            var taskId = data.GetProperty("taskId").GetString();
+            var progress = data.GetProperty("progress").GetInt32();
+            var status = data.GetProperty("status").GetString();
+            var message = data.TryGetProperty("message", out var msgElem) ? msgElem.GetString() : null;
+
+            _logger.LogInformation("Video generation progress for task {TaskId}: {Progress}% - {Status}", taskId, progress, status);
+
+            // Find and update the task
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.Progress = progress;
+                task.Status = MapInternalStatusToUserStatus(status ?? "processing");
+                if (!string.IsNullOrEmpty(message))
+                {
+                    task.StatusMessage = message;
+                }
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling VideoGenerationProgress event");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVideoGenerationCompleted(JsonElement data)
+    {
+        try
+        {
+            var taskId = data.GetProperty("taskId").GetString();
+            var videoUrl = data.TryGetProperty("videoUrl", out var urlElem) ? urlElem.GetString() : null;
+
+            _logger.LogInformation("Video generation completed for task {TaskId}", taskId);
+
+            // Update the task
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.Status = "completed";
+                task.Progress = 100;
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+                task.CompletedAt = DateTimeOffset.UtcNow;
+                
+                // The next polling cycle will fetch the full result
+                // or we can force a check now
+                await CheckTaskStatuses();
+                
+                // Unsubscribe from updates
+                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling VideoGenerationCompleted event");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVideoGenerationFailed(JsonElement data)
+    {
+        try
+        {
+            var taskId = data.GetProperty("taskId").GetString();
+            var error = data.TryGetProperty("error", out var errorElem) ? errorElem.GetString() : "Unknown error";
+
+            _logger.LogError("Video generation failed for task {TaskId}: {Error}", taskId, error);
+
+            // Update the task
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.Status = "failed";
+                task.Error = error;
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+                
+                // Unsubscribe from updates
+                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling VideoGenerationFailed event");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnVideoGenerationCancelled(JsonElement data)
+    {
+        try
+        {
+            var taskId = data.GetProperty("taskId").GetString();
+            _logger.LogInformation("Video generation cancelled for task {TaskId}", taskId);
+
+            // Update the task
+            var task = activeTasks.FirstOrDefault(t => t.TaskId == taskId);
+            if (task != null)
+            {
+                task.Status = "cancelled";
+                task.UpdatedAt = DateTimeOffset.UtcNow;
+                
+                // Unsubscribe from updates
+                await JSRuntime.InvokeVoidAsync("videoGenerationSignalR.unsubscribeFromTask", taskId);
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling VideoGenerationCancelled event");
+        }
+    }
+
+    // Helper method to map internal status to user-friendly status
+    private string MapInternalStatusToUserStatus(string internalStatus)
+    {
+        return internalStatus?.ToLowerInvariant() switch
+        {
+            "preparing" => "preparing",
+            "queueing" => "queued",
+            "pending" => "pending",
+            "processing" => "processing",
+            "completed" => "completed",
+            "failed" => "failed",
+            "cancelled" => "cancelled",
+            _ => "processing"
+        };
+    }
+
     public void Dispose()
     {
         statusCheckTimer?.Dispose();
+        dotNetRef?.Dispose();
+        // Stop SignalR connection
+        _ = JSRuntime.InvokeVoidAsync("videoGenerationSignalR.stop");
     }
 
     private class VideoModel
@@ -956,6 +1194,7 @@
         public DateTimeOffset? EstimatedCompletionTime { get; set; }
         public string? Error { get; set; }
         public bool IsCancelling { get; set; }
+        public string? StatusMessage { get; set; }
     }
 }
 
