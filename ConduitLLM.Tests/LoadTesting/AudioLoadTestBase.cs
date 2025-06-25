@@ -83,7 +83,9 @@ namespace ConduitLLM.Tests.LoadTesting
 
             try
             {
+                var endTime = DateTime.UtcNow.Add(config.Duration);
                 while (!cancellationToken.IsCancellationRequested &&
+                       DateTime.UtcNow < endTime &&
                        (config.RequestsPerUser == -1 || requestCount < config.RequestsPerUser))
                 {
                     var operationType = SelectOperation(random, config.OperationWeights);

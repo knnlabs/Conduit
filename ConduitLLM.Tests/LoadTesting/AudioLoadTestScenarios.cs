@@ -260,9 +260,11 @@ namespace ConduitLLM.Tests.LoadTesting
             {
                 // var metricsCollector = _serviceProvider.GetRequiredService<IAudioMetricsCollector>(); // _serviceProvider doesn't exist
             var metricsCollector = new MockMetricsCollector();
-                while (true)
+                // Monitor for the duration of the test with proper cancellation
+                var endTime = DateTime.UtcNow.Add(config.Duration);
+                while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(5000);
+                    await Task.Delay(5000, cancellationToken);
                     var snapshot = await metricsCollector.GetCurrentSnapshotAsync();
                     // In real implementation, track provider distribution
                 }

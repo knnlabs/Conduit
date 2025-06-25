@@ -27,19 +27,18 @@ namespace ConduitLLM.Tests.TestUtilities
         where TProgram : class
     {
         protected Dictionary<string, string?> AdditionalConfiguration { get; set; }
-        private static SqliteConnection? _connection;
+        private static string _sharedDbPath = Path.Combine(Path.GetTempPath(), $"conduit_test_{Guid.NewGuid():N}.db");
         private static bool _databaseSeeded = false;
+        private static readonly object _seedLock = new object();
 
         static TestWebApplicationFactory()
         {
             // Set environment variables as early as possible
-            // DO NOT skip database init - we need the tables to be created
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
             Environment.SetEnvironmentVariable("DOTNET_hostBuilder:reloadConfigOnChange", "false");
-            
-            // Create a persistent SQLite connection to maintain the database schema across tests
-            _connection = new SqliteConnection("Data Source=:memory:");
-            _connection.Open();
+            // Skip the main application's database initialization to prevent migration lock conflicts
+            // TestWebApplicationFactory handles its own database setup in SeedTestDataAsync
+            Environment.SetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT", "true");
         }
         
         /// <summary>
@@ -57,9 +56,9 @@ namespace ConduitLLM.Tests.TestUtilities
         {
             AdditionalConfiguration = new Dictionary<string, string?>
             {
-                // Use persistent SQLite connection for tests
-                { "ConnectionStrings:DefaultConnection", _connection?.ConnectionString ?? "Data Source=:memory:" },
-                { "ConnectionStrings:ConfigurationDb", _connection?.ConnectionString ?? "Data Source=:memory:" }
+                // Use shared SQLite file for tests to avoid concurrency issues
+                { "ConnectionStrings:DefaultConnection", $"Data Source={_sharedDbPath}" },
+                { "ConnectionStrings:ConfigurationDb", $"Data Source={_sharedDbPath}" }
             };
         }
 
@@ -82,37 +81,58 @@ namespace ConduitLLM.Tests.TestUtilities
         /// </summary>
         private async Task SeedTestDataAsync(IHost host)
         {
-            if (_databaseSeeded) return;
+            // Use a static lock to prevent parallel test initialization race conditions
+            bool shouldSeed;
+            lock (_seedLock)
+            {
+                shouldSeed = !_databaseSeeded;
+                if (shouldSeed)
+                {
+                    _databaseSeeded = true; // Mark as seeded immediately to prevent other threads
+                }
+            }
+            
+            if (!shouldSeed) return;
             
             using var scope = host.Services.CreateScope();
             var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConfigurationDbContext>>();
             
             await using var context = await dbContextFactory.CreateDbContextAsync();
             
-            // Check if test virtual key already exists
+            // Ensure database schema is created (since we skipped the main app's database initialization)
+            await context.Database.EnsureCreatedAsync();
+            
+            // Check if test virtual key already exists (use upsert pattern to handle race conditions)
             var testKeyHash = ComputeHash("test-api-key");
             var existingKey = await context.VirtualKeys
                 .FirstOrDefaultAsync(vk => vk.KeyHash == testKeyHash);
                 
             if (existingKey == null)
             {
-                // Create test virtual key for integration tests
-                var testVirtualKey = new VirtualKey
+                try
                 {
-                    Id = 1,
-                    KeyName = "Integration Test Key",
-                    KeyHash = testKeyHash, // SHA256 of "test-api-key"
-                    IsEnabled = true,
-                    AllowedModels = null, // Allow all models
-                    MaxBudget = null,     // No budget limit
-                    CurrentSpend = 0,
-                    ExpiresAt = null,     // No expiration
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                
-                context.VirtualKeys.Add(testVirtualKey);
-                await context.SaveChangesAsync();
+                    // Create test virtual key for integration tests
+                    var testVirtualKey = new VirtualKey
+                    {
+                        KeyName = "Integration Test Key",
+                        KeyHash = testKeyHash, // SHA256 of "test-api-key"
+                        IsEnabled = true,
+                        AllowedModels = null, // Allow all models
+                        MaxBudget = null,     // No budget limit
+                        CurrentSpend = 0,
+                        ExpiresAt = null,     // No expiration
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    
+                    context.VirtualKeys.Add(testVirtualKey);
+                    await context.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Ignore if another test instance already created the key
+                    // This handles race conditions in parallel test execution
+                }
             }
             
             // Add test model mapping for video-01 if it doesn't exist
@@ -127,35 +147,50 @@ namespace ConduitLLM.Tests.TestUtilities
                     
                 if (existingCredential == null)
                 {
-                    existingCredential = new ConduitLLM.Configuration.Entities.ProviderCredential
+                    try
                     {
-                        Id = 1,
-                        ProviderName = "minimax",
-                        ApiKey = "test-minimax-key",
-                        IsEnabled = true,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    context.ProviderCredentials.Add(existingCredential);
-                    await context.SaveChangesAsync();
+                        existingCredential = new ConduitLLM.Configuration.Entities.ProviderCredential
+                        {
+                            ProviderName = "minimax",
+                            ApiKey = "test-minimax-key",
+                            IsEnabled = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        context.ProviderCredentials.Add(existingCredential);
+                        await context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Reload if another test instance created it
+                        existingCredential = await context.ProviderCredentials
+                            .FirstOrDefaultAsync(pc => pc.ProviderName == "minimax");
+                    }
                 }
                 
-                var testModelMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                if (existingCredential != null)
                 {
-                    Id = 1,
-                    ModelAlias = "video-01",
-                    ProviderModelName = "video-01",  // Entity uses ProviderModelName
-                    ProviderCredentialId = existingCredential.Id,
-                    IsEnabled = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                
-                context.ModelProviderMappings.Add(testModelMapping);
-                await context.SaveChangesAsync();
+                    try
+                    {
+                        var testModelMapping = new ConduitLLM.Configuration.Entities.ModelProviderMapping
+                        {
+                            ModelAlias = "video-01",
+                            ProviderModelName = "video-01",  // Entity uses ProviderModelName
+                            ProviderCredentialId = existingCredential.Id,
+                            IsEnabled = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        
+                        context.ModelProviderMappings.Add(testModelMapping);
+                        await context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Ignore if mapping already exists
+                    }
+                }
             }
-            
-            _databaseSeeded = true;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -180,24 +215,20 @@ namespace ConduitLLM.Tests.TestUtilities
                 config.AddEnvironmentVariables();
             });
             
-            // Override database configuration to use persistent SQLite connection
-            // Only do this if the connection is available (defensive programming)
-            if (_connection != null)
+            // Override database configuration to use shared SQLite file
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services =>
+                // Remove the default database configuration
+                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDbContextFactory<ConfigurationDbContext>));
+                if (descriptor != null)
                 {
-                    // Remove the default database configuration
-                    var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDbContextFactory<ConfigurationDbContext>));
-                    if (descriptor != null)
-                    {
-                        services.Remove(descriptor);
-                    }
-                    
-                    // Add our persistent SQLite database configuration
-                    services.AddDbContextFactory<ConfigurationDbContext>(options =>
-                        options.UseSqlite(_connection));
-                });
-            }
+                    services.Remove(descriptor);
+                }
+                
+                // Add our shared SQLite database configuration
+                services.AddDbContextFactory<ConfigurationDbContext>(options =>
+                    options.UseSqlite($"Data Source={_sharedDbPath}"));
+            });
             
             base.ConfigureWebHost(builder);
         }
@@ -206,8 +237,18 @@ namespace ConduitLLM.Tests.TestUtilities
         {
             if (disposing)
             {
-                // Keep connection alive for other tests - only close when explicitly needed
-                // _connection?.Close();
+                // Clean up temporary database file if it exists
+                try
+                {
+                    if (File.Exists(_sharedDbPath))
+                    {
+                        File.Delete(_sharedDbPath);
+                    }
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
             }
             base.Dispose(disposing);
         }

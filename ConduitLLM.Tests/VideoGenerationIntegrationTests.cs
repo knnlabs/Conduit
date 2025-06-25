@@ -71,7 +71,22 @@ namespace ConduitLLM.Tests
         public async Task DisposeAsync()
         {
             if (_testHarness != null)
-                await _testHarness.Stop();
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await _testHarness.Stop(cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    _output?.WriteLine("Test harness stop operation timed out");
+                }
+                catch (Exception ex)
+                {
+                    _output?.WriteLine($"Error stopping test harness: {ex.Message}");
+                }
+            }
+            
             _client?.Dispose();
         }
 

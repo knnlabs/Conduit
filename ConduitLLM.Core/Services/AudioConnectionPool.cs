@@ -35,6 +35,7 @@ namespace ConduitLLM.Core.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            if (options == null) throw new ArgumentNullException(nameof(options));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
 
             // Start cleanup timer

@@ -526,14 +526,18 @@ builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IAudioCapabilityDetector, 
 builder.Services.Configure<ConduitLLM.Core.Configuration.ImageGenerationRetryConfiguration>(
     builder.Configuration.GetSection("ConduitLLM:ImageGenerationRetry"));
 
-// Add database-based background service for image generation
-builder.Services.AddHostedService<ImageGenerationDatabaseBackgroundService>();
+// Add background services for monitoring and cleanup (skip in test environment to prevent endless loops)
+if (builder.Environment.EnvironmentName != "Test")
+{
+    // Add database-based background service for image generation
+    builder.Services.AddHostedService<ImageGenerationDatabaseBackgroundService>();
 
-// Add background service for video generation monitoring and cleanup
-builder.Services.AddHostedService<VideoGenerationBackgroundService>();
+    // Add background service for video generation monitoring and cleanup
+    builder.Services.AddHostedService<VideoGenerationBackgroundService>();
 
-// Add background service for image generation metrics cleanup
-builder.Services.AddHostedService<ImageGenerationMetricsCleanupService>();
+    // Add background service for image generation metrics cleanup
+    builder.Services.AddHostedService<ImageGenerationMetricsCleanupService>();
+}
 
 Console.WriteLine("[Conduit] Image generation configured with database-first architecture");
 Console.WriteLine("[Conduit] Image generation supports multi-instance deployment with lease-based task processing");

@@ -307,7 +307,7 @@ namespace ConduitLLM.Tests.Services
             cts.CancelAfter(TimeSpan.FromMilliseconds(50));
 
             // Act & Assert
-            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            await Assert.ThrowsAsync<TaskCanceledException>(() =>
                 _service.PollTaskUntilCompletedAsync(
                     taskId,
                     TimeSpan.FromMilliseconds(10),
