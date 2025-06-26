@@ -1,11 +1,13 @@
 using System;
 using System.Threading.Tasks;
+using Polly.CircuitBreaker;
 
 namespace ConduitLLM.Core.Interfaces
 {
     /// <summary>
     /// Service for sending task notifications through SignalR hubs.
     /// This service can be injected into any component that needs to send real-time task updates.
+    /// Includes retry logic and circuit breaker for resilient communication.
     /// </summary>
     public interface ITaskNotificationService
     {
@@ -60,5 +62,22 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="timeoutSeconds">Number of seconds before timeout occurred</param>
         /// <returns>Task representing the async operation</returns>
         Task NotifyTaskTimedOutAsync(string taskId, int timeoutSeconds);
+
+        /// <summary>
+        /// Gets the current circuit breaker state for monitoring purposes.
+        /// </summary>
+        /// <returns>The current circuit breaker state</returns>
+        CircuitState GetCircuitState();
+
+        /// <summary>
+        /// Manually reset the circuit breaker if needed.
+        /// </summary>
+        void ResetCircuitBreaker();
+
+        /// <summary>
+        /// Get health status of the notification service.
+        /// </summary>
+        /// <returns>Tuple containing health status, state description, and last failure time</returns>
+        (bool IsHealthy, string State, DateTime? LastFailure) GetHealthStatus();
     }
 }

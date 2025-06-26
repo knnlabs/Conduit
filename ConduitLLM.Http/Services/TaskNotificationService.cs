@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
+using Polly;
+using Polly.CircuitBreaker;
 
 namespace ConduitLLM.Http.Services
 {
     /// <summary>
     /// Implementation of task notification service that sends real-time updates through SignalR.
+    /// Includes retry logic and circuit breaker for resilient hub communication.
     /// </summary>
     public class TaskNotificationService : ITaskNotificationService
     {
@@ -17,6 +21,10 @@ namespace ConduitLLM.Http.Services
         private readonly IHubContext<ImageGenerationHub>? _imageHubContext;
         private readonly IHubContext<VideoGenerationHub>? _videoHubContext;
         private readonly ILogger<TaskNotificationService> _logger;
+        private readonly IAsyncPolicy _retryPolicy;
+        private readonly IAsyncPolicy _circuitBreakerPolicy;
+        private readonly IAsyncPolicy _combinedPolicy;
+        private readonly SemaphoreSlim _semaphore;
 
         public TaskNotificationService(
             IHubContext<TaskHub> taskHubContext,
@@ -28,11 +36,47 @@ namespace ConduitLLM.Http.Services
             _imageHubContext = imageHubContext;
             _videoHubContext = videoHubContext;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            // Initialize retry policy - 3 retries with exponential backoff
+            _retryPolicy = Policy
+                .Handle<Exception>(ex => !(ex is ArgumentException || ex is InvalidOperationException))
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    onRetry: (exception, timeSpan, retryCount, context) =>
+                    {
+                        _logger.LogWarning(exception, 
+                            "Retry {RetryCount} after {TimeSpan}s for task notification", 
+                            retryCount, timeSpan.TotalSeconds);
+                    });
+
+            // Initialize circuit breaker - break after 5 failures for 30 seconds
+            _circuitBreakerPolicy = Policy
+                .Handle<Exception>(ex => !(ex is ArgumentException || ex is InvalidOperationException))
+                .CircuitBreakerAsync(
+                    5,
+                    TimeSpan.FromSeconds(30),
+                    (exception, duration) =>
+                    {
+                        _logger.LogError(exception, 
+                            "Circuit breaker opened for {Duration}s due to repeated failures", 
+                            duration.TotalSeconds);
+                    },
+                    () =>
+                    {
+                        _logger.LogInformation("Circuit breaker reset, resuming normal operations");
+                    });
+
+            // Combine retry and circuit breaker policies
+            _combinedPolicy = Policy.WrapAsync(_retryPolicy, _circuitBreakerPolicy);
+
+            // Initialize semaphore for thread-safe operations (allow multiple concurrent notifications)
+            _semaphore = new SemaphoreSlim(10, 10);
         }
 
         public async Task NotifyTaskStartedAsync(string taskId, string taskType, int virtualKeyId, object? metadata = null)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Prepare metadata with virtual key ID
                 var enrichedMetadata = EnrichMetadata(metadata, virtualKeyId);
@@ -49,16 +93,12 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogDebug("Notified task started: {TaskId} of type {TaskType} for Virtual Key {VirtualKeyId}",
                     taskId, taskType, virtualKeyId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task started for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskStarted:{taskId}");
         }
 
         public async Task NotifyTaskProgressAsync(string taskId, int progress, string? message = null)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
@@ -69,16 +109,12 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogDebug("Notified task progress: {TaskId} at {Progress}% - {Message}",
                     taskId, progress, message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task progress for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskProgress:{taskId}");
         }
 
         public async Task NotifyTaskCompletedAsync(string taskId, object? result = null)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
@@ -88,16 +124,12 @@ namespace ConduitLLM.Http.Services
                 await SendToLegacyHubForTask(taskId, "TaskCompleted", taskId, result ?? new object());
 
                 _logger.LogDebug("Notified task completed: {TaskId}", taskId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task completed for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskCompleted:{taskId}");
         }
 
         public async Task NotifyTaskFailedAsync(string taskId, string error, bool isRetryable = false)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
@@ -108,16 +140,12 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogDebug("Notified task failed: {TaskId} with error: {Error} (Retryable: {IsRetryable})",
                     taskId, error, isRetryable);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task failed for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskFailed:{taskId}");
         }
 
         public async Task NotifyTaskCancelledAsync(string taskId, string? reason = null)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
@@ -128,16 +156,12 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogDebug("Notified task cancelled: {TaskId} with reason: {Reason}",
                     taskId, reason);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task cancelled for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskCancelled:{taskId}");
         }
 
         public async Task NotifyTaskTimedOutAsync(string taskId, int timeoutSeconds)
         {
-            try
+            await ExecuteWithPolicyAsync(async () =>
             {
                 // Send to unified TaskHub
                 await _taskHubContext.Clients.Group($"task-{taskId}")
@@ -148,11 +172,7 @@ namespace ConduitLLM.Http.Services
 
                 _logger.LogDebug("Notified task timed out: {TaskId} after {TimeoutSeconds} seconds",
                     taskId, timeoutSeconds);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to notify task timed out for {TaskId}", taskId);
-            }
+            }, $"NotifyTaskTimedOut:{taskId}");
         }
 
         private Dictionary<string, object> EnrichMetadata(object? metadata, int virtualKeyId)
@@ -199,6 +219,7 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send to legacy hub for task type {TaskType}", taskType);
+                // Don't rethrow - legacy hub failures shouldn't break the main notification
             }
         }
 
@@ -220,7 +241,75 @@ namespace ConduitLLM.Http.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send to legacy hub for task {TaskId}", taskId);
+                // Don't rethrow - legacy hub failures shouldn't break the main notification
             }
+        }
+
+        /// <summary>
+        /// Executes an action with retry and circuit breaker policies for resilient communication.
+        /// </summary>
+        private async Task ExecuteWithPolicyAsync(Func<Task> action, string operationKey)
+        {
+            // Ensure thread-safe execution with a reasonable level of concurrency
+            await _semaphore.WaitAsync();
+            try
+            {
+                await _combinedPolicy.ExecuteAsync(async (context) =>
+                {
+                    context["OperationKey"] = operationKey;
+                    await action();
+                }, new Dictionary<string, object>());
+            }
+            catch (BrokenCircuitException ex)
+            {
+                _logger.LogError(ex, "Circuit breaker is open for operation {OperationKey}, notification skipped", operationKey);
+                // Don't rethrow circuit breaker exceptions to prevent cascading failures
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send notification for operation {OperationKey} after all retry attempts", operationKey);
+                // Don't rethrow to prevent cascading failures in notification scenarios
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Gets the current circuit breaker state for monitoring purposes.
+        /// </summary>
+        public CircuitState GetCircuitState()
+        {
+            if (_circuitBreakerPolicy is CircuitBreakerPolicy circuitBreaker)
+            {
+                return circuitBreaker.CircuitState;
+            }
+            return CircuitState.Closed;
+        }
+
+        /// <summary>
+        /// Manually reset the circuit breaker if needed.
+        /// </summary>
+        public void ResetCircuitBreaker()
+        {
+            if (_circuitBreakerPolicy is CircuitBreakerPolicy circuitBreaker)
+            {
+                circuitBreaker.Reset();
+                _logger.LogInformation("Circuit breaker manually reset");
+            }
+        }
+
+        /// <summary>
+        /// Get circuit breaker statistics for monitoring.
+        /// </summary>
+        public (bool IsHealthy, string State, DateTime? LastFailure) GetHealthStatus()
+        {
+            var state = GetCircuitState();
+            var isHealthy = state == CircuitState.Closed || state == CircuitState.HalfOpen;
+            
+            // Note: LastFailure would need to be tracked separately if needed
+            return (isHealthy, state.ToString(), null);
         }
     }
 }
