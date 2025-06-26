@@ -394,3 +394,18 @@ helm/requirements.lock
 # Temporary upload files
 uploads/
 usage_tracking*.json
+
+# Node.js build artifacts
+Clients/Node/*/dist/
+Clients/Node/*/node_modules/
+
+# Local database files
+*.db
+*.db-shm
+*.db-wal
+
+# Local configuration overrides
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+!appsettings.Production.json
