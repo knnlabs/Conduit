@@ -975,6 +975,9 @@ builder.Services.AddSingleton<IVideoGenerationNotificationService, VideoGenerati
 // Register image generation notification service
 builder.Services.AddSingleton<IImageGenerationNotificationService, ImageGenerationNotificationService>();
 
+// Register unified task notification service
+builder.Services.AddSingleton<ITaskNotificationService, TaskNotificationService>();
+
 // Register batch spend update service for optimized Virtual Key operations
 builder.Services.AddSingleton<ConduitLLM.Configuration.Services.BatchSpendUpdateService>(serviceProvider =>
 {
@@ -1166,6 +1169,10 @@ Console.WriteLine("[Conduit API] SignalR VideoGenerationHub registered at /hubs/
 app.MapHub<ConduitLLM.Http.Hubs.ImageGenerationHub>("/hubs/image-generation")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/image-generation (requires authentication)");
+
+app.MapHub<ConduitLLM.Http.Hubs.TaskHub>("/hubs/tasks")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR TaskHub registered at /hubs/tasks (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
