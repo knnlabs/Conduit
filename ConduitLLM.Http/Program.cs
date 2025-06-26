@@ -216,6 +216,11 @@ builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, 
 // Register System Notification Service
 builder.Services.AddSingleton<ConduitLLM.Http.Services.ISystemNotificationService, ConduitLLM.Http.Services.SystemNotificationService>();
 
+// Register Spend Notification Service
+builder.Services.AddSingleton<ConduitLLM.Http.Services.ISpendNotificationService, ConduitLLM.Http.Services.SpendNotificationService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotificationService>(sp => 
+    (ConduitLLM.Http.Services.SpendNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.ISpendNotificationService>());
+
 // Model Capability Service is registered via ServiceCollectionExtensions
 
 // Register Video Generation Service with explicit dependencies
@@ -523,6 +528,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ConduitLLM.Http.EventHandlers.VirtualKeyCacheInvalidationHandler>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendUpdateProcessor>();
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ProviderCredentialEventHandler>();
+    
+    // Add spend notification consumer
+    x.AddConsumer<ConduitLLM.Http.EventHandlers.SpendNotificationHandler>();
     
     // Add model capabilities consumer
     x.AddConsumer<ConduitLLM.Http.EventHandlers.ModelCapabilitiesDiscoveredHandler>();
@@ -1194,6 +1202,10 @@ Console.WriteLine("[Conduit API] SignalR TaskHub registered at /hubs/tasks (requ
 app.MapHub<ConduitLLM.Http.Hubs.SystemNotificationHub>("/hubs/notifications")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR SystemNotificationHub registered at /hubs/notifications (requires authentication)");
+
+app.MapHub<ConduitLLM.Http.Hubs.SpendNotificationHub>("/hubs/spend")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR SpendNotificationHub registered at /hubs/spend (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
