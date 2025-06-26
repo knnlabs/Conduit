@@ -2,6 +2,12 @@
 
 This document provides security guidelines and best practices for the Conduit project.
 
+## Secret Detection and Pre-commit Hooks
+
+Conduit uses automated secret detection to prevent API keys, passwords, and other sensitive information from being committed to the repository. 
+
+For setup instructions and detailed information, see [Security Pre-commit Hooks](./Security-Pre-commit-Hooks.md).
+
 ## CodeQL Security Analysis
 
 ### Fixing Log Injection Vulnerabilities (CWE-117)
