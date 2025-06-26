@@ -29,6 +29,10 @@ namespace ConduitLLM.Admin.Services
         private readonly IPublishEndpoint? _publishEndpoint;
         private readonly IHttpClientFactory _httpClientFactory;
         private Timer? _timer;
+        
+        // Track previous health status with hysteresis
+        private readonly Dictionary<string, HealthStatusHistory> _healthHistory = new();
+        private readonly object _historyLock = new();
 
         /// <summary>
         /// Initializes a new instance of the ProviderHealthMonitoringService
@@ -101,6 +105,9 @@ namespace ConduitLLM.Admin.Services
                 var healthConfigs = await providerHealthRepository.GetAllConfigurationsAsync();
                 var configDict = healthConfigs.ToDictionary(c => c.ProviderName);
 
+                // Batch health checks for efficiency
+                var healthCheckTasks = new List<Task<(ProviderCredential provider, ProviderHealthRecord? healthRecord)>>();
+                
                 foreach (var provider in enabledProviders)
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -113,13 +120,31 @@ namespace ConduitLLM.Admin.Services
                         continue;
                     }
 
-                    try
+                    // Add health check task to batch
+                    healthCheckTasks.Add(Task.Run(async () =>
                     {
-                        await CheckProviderHealthAsync(provider, providerHealthRepository);
-                    }
-                    catch (Exception ex)
+                        try
+                        {
+                            var healthRecord = await CheckProviderHealthBatchAsync(provider);
+                            return (provider, healthRecord);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error checking health for provider: {Provider}", provider.ProviderName);
+                            return (provider, null);
+                        }
+                    }, cancellationToken));
+                }
+                
+                // Wait for all health checks to complete
+                var results = await Task.WhenAll(healthCheckTasks);
+                
+                // Process results and save to repository
+                foreach (var (provider, healthRecord) in results)
+                {
+                    if (healthRecord != null)
                     {
-                        _logger.LogError(ex, "Error checking health for provider: {Provider}", provider.ProviderName);
+                        await SaveHealthRecordWithHysteresisAsync(provider, healthRecord, providerHealthRepository);
                     }
                 }
             }
@@ -174,28 +199,7 @@ namespace ConduitLLM.Admin.Services
             await healthRepository.SaveStatusAsync(healthRecord);
             await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderName);
 
-            // Publish event if status changed
-            if (previousStatus?.Status != healthRecord.Status && _publishEndpoint != null)
-            {
-                try
-                {
-                    await _publishEndpoint.Publish(new ProviderHealthChanged
-                    {
-                        ProviderId = provider.Id,
-                        ProviderName = provider.ProviderName,
-                        IsHealthy = healthRecord.Status == ProviderHealthRecord.StatusType.Online,
-                        Status = $"{healthRecord.Status}: {healthRecord.StatusMessage} (Response time: {healthRecord.ResponseTimeMs}ms)",
-                        CorrelationId = Guid.NewGuid().ToString()
-                    });
-
-                    _logger.LogInformation("Published ProviderHealthChanged event for {Provider}: {PreviousStatus} -> {CurrentStatus}",
-                        provider.ProviderName, previousStatus?.Status, healthRecord.Status);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to publish ProviderHealthChanged event for {Provider}", provider.ProviderName);
-                }
-            }
+            await SaveHealthRecordWithHysteresisAsync(provider, healthRecord, healthRepository);
         }
 
         /// <summary>
@@ -319,6 +323,115 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <summary>
+        /// Checks provider health for batch processing
+        /// </summary>
+        private async Task<ProviderHealthRecord?> CheckProviderHealthBatchAsync(ProviderCredential provider)
+        {
+            var startTime = DateTime.UtcNow;
+            
+            var healthRecord = new ProviderHealthRecord
+            {
+                ProviderName = provider.ProviderName,
+                TimestampUtc = startTime,
+                EndpointUrl = GetProviderEndpoint(provider.ProviderName)
+            };
+
+            try
+            {
+                // Perform a simple health check based on provider type
+                var isHealthy = await PerformProviderSpecificHealthCheckAsync(provider);
+                var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                healthRecord.Status = isHealthy ? ProviderHealthRecord.StatusType.Online : ProviderHealthRecord.StatusType.Offline;
+                healthRecord.StatusMessage = isHealthy ? "Provider is healthy" : "Provider health check failed";
+                healthRecord.ResponseTimeMs = responseTime;
+
+                _logger.LogInformation("Health check for {Provider}: {Status} ({ResponseTime}ms)", 
+                    provider.ProviderName, healthRecord.Status, responseTime);
+                    
+                return healthRecord;
+            }
+            catch (Exception ex)
+            {
+                healthRecord.Status = ProviderHealthRecord.StatusType.Offline;
+                healthRecord.StatusMessage = $"Health check failed: {ex.Message}";
+                healthRecord.ErrorCategory = DetermineErrorCategory(ex);
+                healthRecord.ErrorDetails = ex.ToString();
+                healthRecord.ResponseTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                _logger.LogWarning(ex, "Health check failed for provider: {Provider}", provider.ProviderName);
+                return healthRecord;
+            }
+        }
+        
+        /// <summary>
+        /// Saves health record with hysteresis to prevent flapping notifications
+        /// </summary>
+        private async Task SaveHealthRecordWithHysteresisAsync(
+            ProviderCredential provider,
+            ProviderHealthRecord healthRecord,
+            IProviderHealthRepository healthRepository)
+        {
+            // Save the health record
+            await healthRepository.SaveStatusAsync(healthRecord);
+            await healthRepository.UpdateLastCheckedTimeAsync(provider.ProviderName);
+            
+            // Apply hysteresis logic
+            bool shouldPublishEvent = false;
+            lock (_historyLock)
+            {
+                if (!_healthHistory.TryGetValue(provider.ProviderName, out var history))
+                {
+                    history = new HealthStatusHistory();
+                    _healthHistory[provider.ProviderName] = history;
+                }
+                
+                // Update history
+                history.AddStatus(healthRecord.Status, healthRecord.ResponseTimeMs);
+                
+                // Check if we should publish event based on hysteresis
+                shouldPublishEvent = history.ShouldTriggerStatusChange(healthRecord.Status);
+                
+                if (shouldPublishEvent)
+                {
+                    history.LastPublishedStatus = healthRecord.Status;
+                }
+            }
+            
+            // Publish event if status changed with hysteresis
+            if (shouldPublishEvent && _publishEndpoint != null)
+            {
+                try
+                {
+                    var healthData = new Dictionary<string, object>
+                    {
+                        ["responseTimeMs"] = healthRecord.ResponseTimeMs,
+                        ["errorCategory"] = healthRecord.ErrorCategory ?? string.Empty,
+                        ["timestamp"] = healthRecord.TimestampUtc
+                    };
+                    
+                    await _publishEndpoint.Publish(new ProviderHealthChanged
+                    {
+                        ProviderId = provider.Id,
+                        ProviderName = provider.ProviderName,
+                        IsHealthy = healthRecord.Status == ProviderHealthRecord.StatusType.Online,
+                        Status = $"{healthRecord.Status}: {healthRecord.StatusMessage}",
+                        HealthData = healthData,
+                        CorrelationId = Guid.NewGuid().ToString()
+                    });
+
+                    _logger.LogInformation(
+                        "Published ProviderHealthChanged event for {Provider}: {CurrentStatus} (Response time: {ResponseTime}ms)",
+                        provider.ProviderName, healthRecord.Status, healthRecord.ResponseTimeMs);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to publish ProviderHealthChanged event for {Provider}", provider.ProviderName);
+                }
+            }
+        }
+
+        /// <summary>
         /// Disposes the timer when stopping
         /// </summary>
         public override async Task StopAsync(CancellationToken cancellationToken)
@@ -329,6 +442,64 @@ namespace ConduitLLM.Admin.Services
             _timer?.Dispose();
             
             await base.StopAsync(cancellationToken);
+        }
+    }
+    
+    /// <summary>
+    /// Tracks health status history with hysteresis to prevent flapping
+    /// </summary>
+    internal class HealthStatusHistory
+    {
+        private const int HistorySize = 5;
+        private const int ConsecutiveChangesRequired = 3;
+        private readonly Queue<(ProviderHealthRecord.StatusType status, DateTime timestamp)> _statusHistory = new();
+        
+        public ProviderHealthRecord.StatusType? LastPublishedStatus { get; set; }
+        public double AverageResponseTime { get; private set; }
+        
+        /// <summary>
+        /// Adds a new status to the history
+        /// </summary>
+        public void AddStatus(ProviderHealthRecord.StatusType status, double responseTimeMs)
+        {
+            _statusHistory.Enqueue((status, DateTime.UtcNow));
+            
+            // Keep only recent history
+            while (_statusHistory.Count > HistorySize)
+            {
+                _statusHistory.Dequeue();
+            }
+            
+            // Update average response time
+            AverageResponseTime = (_statusHistory.Count * AverageResponseTime + responseTimeMs) / (_statusHistory.Count + 1);
+        }
+        
+        /// <summary>
+        /// Determines if status change should trigger notification based on hysteresis
+        /// </summary>
+        public bool ShouldTriggerStatusChange(ProviderHealthRecord.StatusType currentStatus)
+        {
+            // First status always triggers
+            if (LastPublishedStatus == null)
+            {
+                return true;
+            }
+            
+            // No change, no trigger
+            if (LastPublishedStatus == currentStatus)
+            {
+                return false;
+            }
+            
+            // Check if we have enough consecutive status changes
+            var recentStatuses = _statusHistory.TakeLast(ConsecutiveChangesRequired).ToList();
+            if (recentStatuses.Count < ConsecutiveChangesRequired)
+            {
+                return false;
+            }
+            
+            // All recent statuses must be the same and different from last published
+            return recentStatuses.All(s => s.status == currentStatus && s.status != LastPublishedStatus);
         }
     }
 }
