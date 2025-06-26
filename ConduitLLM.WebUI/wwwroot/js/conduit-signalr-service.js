@@ -218,7 +218,41 @@ window.ConduitSignalRService = (function() {
          * @returns {string} Current connection state
          */
         getConnectionState(hubName) {
-            return this.connectionStates.get(hubName) || ConnectionState.DISCONNECTED;
+            const connection = this.connections.get(hubName);
+            if (!connection) return 'Disconnected';
+            
+            switch (connection.state) {
+                case signalR.HubConnectionState.Connected:
+                    return 'Connected';
+                case signalR.HubConnectionState.Connecting:
+                    return 'Connecting';
+                case signalR.HubConnectionState.Reconnecting:
+                    return 'Reconnecting';
+                case signalR.HubConnectionState.Disconnected:
+                default:
+                    return 'Disconnected';
+            }
+        }
+        
+        /**
+         * Ping a hub to measure latency
+         * @param {string} hubName - Hub name
+         * @returns {Promise<void>}
+         */
+        async ping(hubName) {
+            const connection = this.connections.get(hubName);
+            if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                throw new Error(`Hub ${hubName} is not connected`);
+            }
+            
+            // Most SignalR hubs don't have a ping method, so we'll use a lightweight operation
+            // or just resolve immediately to measure round-trip time
+            try {
+                await connection.invoke('echo', 'ping');
+            } catch (error) {
+                // If echo doesn't exist, just resolve to measure connection overhead
+                await Promise.resolve();
+            }
         }
 
         /**
@@ -534,12 +568,38 @@ window.ConduitSignalRService = (function() {
          * Emit custom event
          */
         _emitEvent(hubName, eventName, data) {
+            // Add reconnect attempt info if available
+            const timer = this.reconnectTimers.get(hubName);
+            if (timer && eventName === 'stateChanged' && data.currentState === 'Reconnecting') {
+                data.reconnectAttempt = this._getReconnectAttempt(hubName);
+                data.nextRetryTime = this._getNextRetryTime(hubName);
+            }
+            
             // Create custom event
             const event = new CustomEvent(`conduit:${hubName}:${eventName}`, {
                 detail: { hubName, ...data }
             });
             
             window.dispatchEvent(event);
+        }
+        
+        /**
+         * Get reconnect attempt number (approximation)
+         */
+        _getReconnectAttempt(hubName) {
+            // This is a simplified version - in a real implementation,
+            // you'd track this more precisely
+            const metrics = this.performanceMetrics.get(hubName);
+            return metrics?.connectionTime?.count || 1;
+        }
+        
+        /**
+         * Get next retry time in seconds
+         */
+        _getNextRetryTime(hubName) {
+            // Return a default value - in real implementation, 
+            // this would calculate based on retry policy
+            return 5;
         }
 
         /**

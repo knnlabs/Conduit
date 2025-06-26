@@ -47,8 +47,8 @@
                 <span class="small">$@totalSpend.ToString("N2") Total Spend</span>
             </div>
             <div class="stat-item mt-2">
-                <i class="@GetConnectionIcon() me-2"></i>
-                <span class="small @GetConnectionTextClass()">@connectionStatus</span>
+                <ConnectionStatusIndicator HubName="spend-notifications" 
+                                         OnConnectionStateChanged="HandleConnectionStatusChanged" />
             </div>
         </Statistics>
     </PageHeader>
@@ -938,6 +938,20 @@
             SpendNotificationListener.ConnectionState.Connecting => "Connecting...",
             SpendNotificationListener.ConnectionState.Reconnecting => "Reconnecting...",
             SpendNotificationListener.ConnectionState.Failed => "Connection Failed",
+            _ => "Disconnected"
+        };
+        
+        StateHasChanged();
+    }
+    
+    private void HandleConnectionStatusChanged(ConnectionStatusIndicator.HubConnectionState state)
+    {
+        // Update connection status based on the ConnectionStatusIndicator state
+        connectionStatus = state switch
+        {
+            ConnectionStatusIndicator.HubConnectionState.Connected => "Connected",
+            ConnectionStatusIndicator.HubConnectionState.Connecting => "Connecting...",
+            ConnectionStatusIndicator.HubConnectionState.Reconnecting => "Reconnecting...",
             _ => "Disconnected"
         };
         
