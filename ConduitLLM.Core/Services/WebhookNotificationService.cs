@@ -35,7 +35,7 @@ namespace ConduitLLM.Core.Services
             Dictionary<string, string>? headers = null,
             CancellationToken cancellationToken = default)
         {
-            return await SendWebhookAsync(webhookUrl, payload, headers, "completion", cancellationToken);
+            return await SendWebhookAsync(webhookUrl, payload, headers, "completion", null, cancellationToken);
         }
 
         /// <inheritdoc/>
@@ -45,7 +45,20 @@ namespace ConduitLLM.Core.Services
             Dictionary<string, string>? headers = null,
             CancellationToken cancellationToken = default)
         {
-            return await SendWebhookAsync(webhookUrl, payload, headers, "progress", cancellationToken);
+            return await SendWebhookAsync(webhookUrl, payload, headers, "progress", null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Sends a webhook with custom timeout support.
+        /// </summary>
+        public async Task<bool> SendWebhookAsync(
+            string webhookUrl,
+            object payload,
+            Dictionary<string, string>? headers = null,
+            TimeSpan? customTimeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            return await SendWebhookAsync(webhookUrl, payload, headers, "custom", customTimeout, cancellationToken);
         }
 
         private async Task<bool> SendWebhookAsync(
@@ -53,11 +66,13 @@ namespace ConduitLLM.Core.Services
             object payload,
             Dictionary<string, string>? headers,
             string webhookType,
+            TimeSpan? customTimeout,
             CancellationToken cancellationToken)
         {
             try
             {
-                _logger.LogInformation("Sending {WebhookType} webhook to {WebhookUrl}", webhookType, webhookUrl);
+                _logger.LogInformation("Sending {WebhookType} webhook to {WebhookUrl} with timeout {Timeout}s", 
+                    webhookType, webhookUrl, customTimeout?.TotalSeconds ?? _httpClient.Timeout.TotalSeconds);
 
                 using var request = new HttpRequestMessage(HttpMethod.Post, webhookUrl);
                 
@@ -70,11 +85,25 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
+                // Add standard webhook headers
+                request.Headers.TryAddWithoutValidation("X-Webhook-Type", webhookType);
+                request.Headers.TryAddWithoutValidation("X-Webhook-Timestamp", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
+
                 // Add content
                 request.Content = JsonContent.Create(payload);
 
+                // Apply custom timeout if specified
+                using var cts = customTimeout.HasValue 
+                    ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                    : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                
+                if (customTimeout.HasValue)
+                {
+                    cts.CancelAfter(customTimeout.Value);
+                }
+
                 // Send the webhook
-                using var response = await _httpClient.SendAsync(request, cancellationToken);
+                using var response = await _httpClient.SendAsync(request, cts.Token);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -89,14 +118,28 @@ namespace ConduitLLM.Core.Services
                     return false;
                 }
             }
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || customTimeout.HasValue)
+            {
+                var timeoutDuration = customTimeout?.TotalSeconds ?? _httpClient.Timeout.TotalSeconds;
+                _logger.LogWarning("Webhook request to {WebhookUrl} timed out after {Timeout}s", 
+                    webhookUrl, timeoutDuration);
+                return false;
+            }
             catch (TaskCanceledException)
             {
-                _logger.LogWarning("Webhook request to {WebhookUrl} timed out", webhookUrl);
+                _logger.LogInformation("Webhook request to {WebhookUrl} was cancelled", webhookUrl);
+                return false;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error sending {WebhookType} webhook to {WebhookUrl}. Error: {ErrorMessage}", 
+                    webhookType, webhookUrl, ex.Message);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending {WebhookType} webhook to {WebhookUrl}", webhookType, webhookUrl);
+                _logger.LogError(ex, "Unexpected error sending {WebhookType} webhook to {WebhookUrl}", 
+                    webhookType, webhookUrl);
                 return false;
             }
         }

@@ -35,6 +35,8 @@ using Microsoft.Extensions.Caching.Distributed;
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 using StackExchange.Redis; // Added for Redis-based task service
+using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -202,12 +204,67 @@ builder.Services.Configure<ConduitLLM.Core.Configuration.VideoGenerationRetryCon
     options.RetryCheckIntervalSeconds = builder.Configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
 });
 
-// Register Webhook Notification Service with optimized timeout for high throughput
-builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(client =>
+// Register Webhook Notification Service with optimized configuration for high throughput
+builder.Services.AddTransient<ConduitLLM.Http.Handlers.WebhookMetricsHandler>();
+builder.Services.AddHttpClient<IWebhookNotificationService, WebhookNotificationService>(
+    "WebhookClient", 
+    client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(10); // Reduced from 30s for better scalability
+        client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
+        client.DefaultRequestHeaders.ConnectionClose = false; // Keep-alive for connection reuse
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Refresh connections every 5 minutes
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Close idle connections after 2 minutes
+        MaxConnectionsPerServer = 50,                           // Increase from default 2 to support burst traffic
+        EnableMultipleHttp2Connections = true,                  // Allow multiple HTTP/2 connections
+        MaxResponseHeadersLength = 64 * 1024,                   // 64KB for headers
+        ResponseDrainTimeout = TimeSpan.FromSeconds(5),         // Drain response within 5 seconds
+        ConnectTimeout = TimeSpan.FromSeconds(5),               // Connection timeout
+        KeepAlivePingTimeout = TimeSpan.FromSeconds(20),        // HTTP/2 keep-alive ping timeout
+        KeepAlivePingDelay = TimeSpan.FromSeconds(30)           // HTTP/2 keep-alive ping delay
+    })
+    .AddPolicyHandler(GetWebhookRetryPolicy())
+    .AddPolicyHandler(GetWebhookCircuitBreakerPolicy())
+    .AddHttpMessageHandler<ConduitLLM.Http.Handlers.WebhookMetricsHandler>();
+
+// Polly retry policy for webhook delivery
+static IAsyncPolicy<HttpResponseMessage> GetWebhookRetryPolicy()
 {
-    client.Timeout = TimeSpan.FromSeconds(10); // Reduced from 30s for better scalability
-    client.DefaultRequestHeaders.Add("User-Agent", "Conduit-LLM/1.0");
-});
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .OrResult(msg => !msg.IsSuccessStatusCode && msg.StatusCode != System.Net.HttpStatusCode.BadRequest)
+        .WaitAndRetryAsync(
+            3,
+            retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff: 2s, 4s, 8s
+            onRetry: (outcome, timespan, retryCount, context) =>
+            {
+                // Log retry attempts to console (logger not available in static context)
+                Console.WriteLine($"[Webhook Retry] Attempt {retryCount} after {timespan.TotalMilliseconds}ms. Status: {outcome.Result?.StatusCode.ToString() ?? "N/A"}");
+            });
+}
+
+// Polly circuit breaker policy for webhook delivery
+static IAsyncPolicy<HttpResponseMessage> GetWebhookCircuitBreakerPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromMinutes(1),
+            onBreak: (result, duration) =>
+            {
+                // Circuit breaker opened - this will be logged by the WebhookCircuitBreaker service
+                Console.WriteLine($"[Webhook Circuit Breaker] Opened for {duration.TotalSeconds} seconds");
+            },
+            onReset: () =>
+            {
+                // Circuit breaker closed
+                Console.WriteLine("[Webhook Circuit Breaker] Reset");
+            });
+}
 
 // Register Webhook Circuit Breaker for preventing repeated failures
 builder.Services.AddMemoryCache(); // Ensure memory cache is available
@@ -933,6 +990,12 @@ if (builder.Environment.EnvironmentName != "Test")
     {
         healthChecksBuilder.AddAudioHealthChecks(builder.Configuration);
     }
+
+    // Add HTTP connection pool health check for webhook delivery monitoring
+    healthChecksBuilder.AddCheck<ConduitLLM.Core.HealthChecks.HttpConnectionPoolHealthCheck>(
+        "http_connection_pool",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+        tags: new[] { "http", "webhooks", "ready" });
 }
 
 // Add database initialization services

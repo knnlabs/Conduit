@@ -35,5 +35,21 @@ namespace ConduitLLM.Core.Interfaces
             object payload,
             Dictionary<string, string>? headers = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Sends a webhook with custom timeout support.
+        /// </summary>
+        /// <param name="webhookUrl">The URL to send the notification to.</param>
+        /// <param name="payload">The payload to send in the webhook request.</param>
+        /// <param name="headers">Optional headers to include in the request.</param>
+        /// <param name="customTimeout">Custom timeout for this specific request.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>True if the webhook was sent successfully, false otherwise.</returns>
+        Task<bool> SendWebhookAsync(
+            string webhookUrl,
+            object payload,
+            Dictionary<string, string>? headers = null,
+            TimeSpan? customTimeout = null,
+            CancellationToken cancellationToken = default);
     }
 }

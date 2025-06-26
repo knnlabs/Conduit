@@ -650,6 +650,29 @@ To enable RabbitMQ, simply set the environment variables documented above. The s
 
 **For detailed scaling procedures, see:** [RabbitMQ Scaling Guide](docs/RabbitMQ-Scaling-Guide.md)
 
+### HTTP Client Connection Pooling for Webhook Delivery
+
+Conduit implements optimized HTTP client connection pooling to support 1,000+ webhook deliveries per minute:
+
+**Configuration:**
+- **50 connections per server** - Supports 100 webhooks/second burst traffic
+- **5-minute connection lifetime** - Balances reuse vs staleness
+- **2-minute idle timeout** - Prevents resource waste
+- **10-second request timeout** - Reduced from 30s for better scalability
+
+**Resilience Features:**
+- **Retry Policy**: 3 attempts with exponential backoff (2s, 4s, 8s)
+- **Circuit Breaker**: Opens after 5 failures, 1-minute break duration
+- **HTTP/2 Support**: Keep-alive pings every 30s with 20s timeout
+- **Custom Timeouts**: Per-request timeout override support
+
+**Monitoring:**
+- Connection pool health check with 70%/90% warning/critical thresholds
+- Prometheus metrics for requests, timeouts, duration, and active connections
+- Detailed logging for slow requests (>5s) and failures
+
+**See:** [HTTP Connection Pooling Guide](docs/HTTP-Connection-Pooling-Guide.md) for detailed configuration and troubleshooting.
+
 ### Future Enhancements
 
 #### Additional Events
