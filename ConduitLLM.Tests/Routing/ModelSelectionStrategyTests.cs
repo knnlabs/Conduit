@@ -6,7 +6,7 @@ using ConduitLLM.Core.Routing.Strategies;
 
 using Xunit;
 
-using CoreFactory = ConduitLLM.Core.Routing.ModelSelectionStrategyFactory;
+using CoreFactory = ConduitLLM.Core.Routing.Strategies.ModelSelectionStrategyFactory;
 using CoreRoutingStrategy = ConduitLLM.Core.Routing.RoutingStrategy;
 
 namespace ConduitLLM.Tests.Routing
@@ -107,10 +107,10 @@ namespace ConduitLLM.Tests.Routing
         public void StrategyFactory_EnumBased_ReturnsCorrectStrategy()
         {
             // Arrange & Act
-            var simpleStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.Simple);
-            var roundRobinStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.RoundRobin);
-            var randomStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.Random);
-            var leastUsedStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.LeastUsed);
+            var simpleStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.Simple.ToString().ToLowerInvariant());
+            var roundRobinStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.RoundRobin.ToString().ToLowerInvariant());
+            var randomStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.Random.ToString().ToLowerInvariant());
+            var leastUsedStrategy = CoreFactory.GetStrategy(CoreRoutingStrategy.LeastUsed.ToString().ToLowerInvariant());
 
             // Assert
             Assert.IsType<SimpleModelSelectionStrategy>(simpleStrategy);
