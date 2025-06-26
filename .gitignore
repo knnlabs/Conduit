@@ -409,3 +409,18 @@ appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
 !appsettings.Production.json
+
+# Environment and secret files
+.env
+.env.*
+!.env.example
+secrets.json
+*.key
+*.pem
+*.p12
+*credentials*
+*secret*
+*token*
+api-keys.txt
+.secrets
+.vault
