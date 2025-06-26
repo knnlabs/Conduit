@@ -221,6 +221,11 @@ builder.Services.AddSingleton<ConduitLLM.Http.Services.ISpendNotificationService
 builder.Services.AddHostedService<ConduitLLM.Http.Services.SpendNotificationService>(sp => 
     (ConduitLLM.Http.Services.SpendNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.ISpendNotificationService>());
 
+// Register Webhook Delivery Notification Service
+builder.Services.AddSingleton<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService, ConduitLLM.Http.Services.WebhookDeliveryNotificationService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.WebhookDeliveryNotificationService>(sp => 
+    (ConduitLLM.Http.Services.WebhookDeliveryNotificationService)sp.GetRequiredService<ConduitLLM.Http.Services.IWebhookDeliveryNotificationService>());
+
 // Model Capability Service is registered via ServiceCollectionExtensions
 
 // Register Video Generation Service with explicit dependencies
@@ -1206,6 +1211,10 @@ Console.WriteLine("[Conduit API] SignalR SystemNotificationHub registered at /hu
 app.MapHub<ConduitLLM.Http.Hubs.SpendNotificationHub>("/hubs/spend")
     .RequireAuthorization();
 Console.WriteLine("[Conduit API] SignalR SpendNotificationHub registered at /hubs/spend (requires authentication)");
+
+app.MapHub<ConduitLLM.Http.Hubs.WebhookDeliveryHub>("/hubs/webhooks")
+    .RequireAuthorization();
+Console.WriteLine("[Conduit API] SignalR WebhookDeliveryHub registered at /hubs/webhooks (requires authentication)");
 
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools

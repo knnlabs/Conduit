@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using MassTransit;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Http.Services;
 
 namespace ConduitLLM.Http.Consumers
 {
@@ -18,6 +20,7 @@ namespace ConduitLLM.Http.Consumers
         private readonly IWebhookNotificationService _webhookService;
         private readonly IWebhookDeliveryTracker _deliveryTracker;
         private readonly IWebhookCircuitBreaker _circuitBreaker;
+        private readonly IWebhookDeliveryNotificationService _notificationService;
         private readonly ILogger<WebhookDeliveryConsumer> _logger;
         private const int MAX_RETRY_COUNT = 3;
         private const int WEBHOOK_TIMEOUT_SECONDS = 10;
@@ -26,11 +29,13 @@ namespace ConduitLLM.Http.Consumers
             IWebhookNotificationService webhookService,
             IWebhookDeliveryTracker deliveryTracker,
             IWebhookCircuitBreaker circuitBreaker,
+            IWebhookDeliveryNotificationService notificationService,
             ILogger<WebhookDeliveryConsumer> logger)
         {
             _webhookService = webhookService ?? throw new ArgumentNullException(nameof(webhookService));
             _deliveryTracker = deliveryTracker ?? throw new ArgumentNullException(nameof(deliveryTracker));
             _circuitBreaker = circuitBreaker ?? throw new ArgumentNullException(nameof(circuitBreaker));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
@@ -44,6 +49,14 @@ namespace ConduitLLM.Http.Consumers
             _logger.LogInformation(
                 "Processing webhook delivery request: TaskId={TaskId}, Type={TaskType}, Event={EventType}, RetryCount={RetryCount}",
                 request.TaskId, request.TaskType, request.EventType, request.RetryCount);
+            
+            // Notify about delivery attempt
+            await _notificationService.NotifyDeliveryAttemptAsync(
+                request.WebhookUrl,
+                request.TaskId,
+                request.TaskType,
+                request.EventType.ToString(),
+                request.RetryCount + 1);
             
             try
             {
@@ -71,12 +84,23 @@ namespace ConduitLLM.Http.Consumers
                         request.WebhookUrl, 
                         "Circuit breaker open - endpoint temporarily disabled");
                     
+                    // Notify about circuit breaker blocking
+                    await _notificationService.NotifyDeliveryFailureAsync(
+                        request.WebhookUrl,
+                        request.TaskId,
+                        "Circuit breaker open - endpoint temporarily disabled",
+                        null,
+                        request.RetryCount + 1,
+                        true);
+                    
                     // Don't throw - just abandon this delivery
                     return;
                 }
                 
                 // Determine which method to call based on event type
                 bool success;
+                var stopwatch = Stopwatch.StartNew();
+                
                 if (request.EventType == WebhookEventType.TaskProgress)
                 {
                     // Deserialize the JSON payload
@@ -102,6 +126,8 @@ namespace ConduitLLM.Http.Consumers
                         context.CancellationToken);
                 }
                 
+                stopwatch.Stop();
+                
                 if (success)
                 {
                     // Mark as delivered
@@ -109,6 +135,14 @@ namespace ConduitLLM.Http.Consumers
                     
                     // Record success in circuit breaker
                     _circuitBreaker.RecordSuccess(request.WebhookUrl);
+                    
+                    // Notify about successful delivery
+                    await _notificationService.NotifyDeliverySuccessAsync(
+                        request.WebhookUrl,
+                        request.TaskId,
+                        200, // Assume 200 OK for successful delivery
+                        stopwatch.ElapsedMilliseconds,
+                        request.RetryCount + 1);
                     
                     _logger.LogInformation(
                         "Successfully delivered webhook for TaskId={TaskId}, Event={EventType} to {WebhookUrl}",
@@ -118,14 +152,31 @@ namespace ConduitLLM.Http.Consumers
                 {
                     // Schedule retry with exponential backoff
                     var retryDelay = TimeSpan.FromSeconds(Math.Pow(2, request.RetryCount + 1));
+                    var retryTime = DateTime.UtcNow.Add(retryDelay);
                     
                     _logger.LogWarning(
                         "Webhook delivery failed for TaskId={TaskId}, scheduling retry {RetryCount}/{MaxRetry} in {RetryDelay}s",
                         request.TaskId, request.RetryCount + 1, MAX_RETRY_COUNT, retryDelay.TotalSeconds);
                     
+                    // Notify about failure and retry
+                    await _notificationService.NotifyDeliveryFailureAsync(
+                        request.WebhookUrl,
+                        request.TaskId,
+                        "Delivery failed, retry scheduled",
+                        null,
+                        request.RetryCount + 1,
+                        false);
+                    
+                    await _notificationService.NotifyRetryScheduledAsync(
+                        request.WebhookUrl,
+                        request.TaskId,
+                        retryTime,
+                        request.RetryCount + 1,
+                        MAX_RETRY_COUNT);
+                    
                     // Schedule a new message with incremented retry count
                     await context.ScheduleSend(
-                        DateTime.UtcNow.Add(retryDelay),
+                        retryTime,
                         new WebhookDeliveryRequested
                         {
                             EventId = request.EventId,
@@ -138,7 +189,7 @@ namespace ConduitLLM.Http.Consumers
                             PayloadJson = request.PayloadJson,
                             Headers = request.Headers,
                             RetryCount = request.RetryCount + 1,
-                            NextRetryAt = DateTime.UtcNow.Add(retryDelay)
+                            NextRetryAt = retryTime
                         });
                     
                     // Record the failure
@@ -156,6 +207,15 @@ namespace ConduitLLM.Http.Consumers
                     _logger.LogError(
                         "Webhook delivery failed after {RetryCount} attempts for TaskId={TaskId} to {WebhookUrl}",
                         request.RetryCount, request.TaskId, request.WebhookUrl);
+                    
+                    // Notify about permanent failure
+                    await _notificationService.NotifyDeliveryFailureAsync(
+                        request.WebhookUrl,
+                        request.TaskId,
+                        $"Max retries ({MAX_RETRY_COUNT}) exceeded",
+                        null,
+                        request.RetryCount + 1,
+                        true);
                     
                     // Record final failure
                     await _deliveryTracker.RecordFailureAsync(
@@ -176,6 +236,15 @@ namespace ConduitLLM.Http.Consumers
                 _logger.LogError(ex, 
                     "Unexpected error processing webhook delivery for TaskId={TaskId}",
                     request.TaskId);
+                
+                // Notify about unexpected error
+                await _notificationService.NotifyDeliveryFailureAsync(
+                    request.WebhookUrl,
+                    request.TaskId,
+                    $"Unexpected error: {ex.Message}",
+                    null,
+                    request.RetryCount + 1,
+                    false);
                 
                 // Record the error
                 await _deliveryTracker.RecordFailureAsync(
