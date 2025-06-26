@@ -27,6 +27,7 @@ namespace ConduitLLM.Admin.Services
         private readonly ILogger<ProviderHealthMonitoringService> _logger;
         private readonly ProviderHealthOptions _options;
         private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IHttpClientFactory _httpClientFactory;
         private Timer? _timer;
 
         /// <summary>
@@ -36,11 +37,13 @@ namespace ConduitLLM.Admin.Services
             IServiceProvider serviceProvider,
             ILogger<ProviderHealthMonitoringService> logger,
             IOptions<ProviderHealthOptions> options,
+            IHttpClientFactory httpClientFactory,
             IPublishEndpoint? publishEndpoint = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? new ProviderHealthOptions();
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _publishEndpoint = publishEndpoint;
         }
 
@@ -224,7 +227,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                using var httpClient = new HttpClient();
+                using var httpClient = _httpClientFactory.CreateClient();
                 httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {provider.ApiKey}");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
 
@@ -245,7 +248,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                using var httpClient = new HttpClient();
+                using var httpClient = _httpClientFactory.CreateClient();
                 httpClient.DefaultRequestHeaders.Add("x-api-key", provider.ApiKey);
                 httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
@@ -273,7 +276,7 @@ namespace ConduitLLM.Admin.Services
         {
             try
             {
-                using var httpClient = new HttpClient();
+                using var httpClient = _httpClientFactory.CreateClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(_options.DefaultTimeoutSeconds);
 
                 // Call Google AI models endpoint

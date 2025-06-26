@@ -269,21 +269,6 @@ namespace ConduitLLM.Admin.Services
                     },
                     $"update virtual key {id}",
                     new { ChangedProperties = string.Join(", ", changedProperties) });
-
-                // Legacy cache invalidation (will be replaced by event-driven invalidation)
-                if (_cache != null)
-                {
-                    try
-                    {
-                        await _cache.InvalidateVirtualKeyAsync(key.KeyHash);
-                        _logger.LogDebug("Invalidated cache for Virtual Key after update: {KeyId}", id);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to invalidate cache for Virtual Key {KeyId} after update", id);
-                        // Don't fail the operation if cache invalidation fails
-                    }
-                }
             }
 
             return result;
