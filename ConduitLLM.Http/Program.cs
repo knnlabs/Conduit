@@ -211,8 +211,7 @@ builder.Services.AddRepositories();
 builder.Services.AddScoped<ConduitLLM.Configuration.IModelProviderMappingService, ConduitLLM.Configuration.ModelProviderMappingService>();
 builder.Services.AddScoped<ConduitLLM.Configuration.IProviderCredentialService, ConduitLLM.Configuration.ProviderCredentialService>();
 
-// Register Model Capability Service
-builder.Services.AddScoped<IModelCapabilityService, ModelCapabilityService>();
+// Model Capability Service is registered via ServiceCollectionExtensions
 
 // Register Video Generation Service
 builder.Services.AddScoped<IVideoGenerationService, VideoGenerationService>();

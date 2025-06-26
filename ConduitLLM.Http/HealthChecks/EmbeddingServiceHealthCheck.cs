@@ -25,7 +25,6 @@ namespace ConduitLLM.Http.HealthChecks
     {
         private readonly ILLMRouter _router;
         private readonly IEmbeddingCache? _embeddingCache;
-        private readonly IEmbeddingMonitoringService? _monitoringService;
         private readonly ILogger<EmbeddingServiceHealthCheck> _logger;
 
         /// <summary>
@@ -33,17 +32,14 @@ namespace ConduitLLM.Http.HealthChecks
         /// </summary>
         /// <param name="router">LLM router for checking model availability.</param>
         /// <param name="embeddingCache">Optional embedding cache service.</param>
-        /// <param name="monitoringService">Optional monitoring service.</param>
         /// <param name="logger">Logger instance.</param>
         public EmbeddingServiceHealthCheck(
             ILLMRouter router,
             IEmbeddingCache? embeddingCache,
-            IEmbeddingMonitoringService? monitoringService,
             ILogger<EmbeddingServiceHealthCheck> logger)
         {
             _router = router ?? throw new ArgumentNullException(nameof(router));
             _embeddingCache = embeddingCache;
-            _monitoringService = monitoringService;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -107,58 +103,9 @@ namespace ConduitLLM.Http.HealthChecks
                     warnings.Add("Embedding cache is not configured");
                 }
 
-                // Check monitoring service and get recent metrics
-                if (_monitoringService != null)
-                {
-                    try
-                    {
-                        var recentMetrics = await _monitoringService.GetMetricsAsync(
-                            TimeSpan.FromMinutes(15), cancellationToken);
-                        
-                        healthData["RecentRequestCount"] = recentMetrics.TotalRequests;
-                        healthData["RecentSuccessRate"] = Math.Round(recentMetrics.SuccessRate, 2);
-                        healthData["RecentAverageLatencyMs"] = Math.Round(recentMetrics.AverageLatencyMs, 2);
-
-                        // Check for concerning metrics
-                        if (recentMetrics.SuccessRate < 95 && recentMetrics.TotalRequests > 10)
-                        {
-                            warnings.Add($"Low success rate: {recentMetrics.SuccessRate:F1}%");
-                            isHealthy = false;
-                        }
-
-                        if (recentMetrics.AverageLatencyMs > 5000) // 5 seconds
-                        {
-                            warnings.Add($"High average latency: {recentMetrics.AverageLatencyMs:F0}ms");
-                        }
-
-                        // Check for active alerts
-                        var activeAlerts = await _monitoringService.GetActiveAlertsAsync(cancellationToken);
-                        healthData["ActiveAlerts"] = activeAlerts.Count;
-
-                        var criticalAlerts = activeAlerts.Where(a => a.Severity == EmbeddingAlertSeverity.Critical).ToList();
-                        if (criticalAlerts.Any())
-                        {
-                            isHealthy = false;
-                            warnings.Add($"{criticalAlerts.Count} critical alerts active");
-                        }
-
-                        var errorAlerts = activeAlerts.Where(a => a.Severity == EmbeddingAlertSeverity.Error).ToList();
-                        if (errorAlerts.Any())
-                        {
-                            warnings.Add($"{errorAlerts.Count} error alerts active");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get monitoring metrics");
-                        warnings.Add("Failed to retrieve monitoring metrics");
-                    }
-                }
-                else
-                {
-                    healthData["MonitoringConfigured"] = false;
-                    warnings.Add("Embedding monitoring is not configured");
-                }
+                // Note: Monitoring service functionality has been removed
+                // as the IEmbeddingMonitoringService interface was unused
+                healthData["MonitoringConfigured"] = false;
 
                 // Test basic embedding functionality
                 try
