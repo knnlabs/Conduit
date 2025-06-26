@@ -45,5 +45,4 @@ public static class FinishReason
     public const string Length = "length";
     public const string ContentFilter = "content_filter";
     public const string ToolCalls = "tool_calls";
-    public const string FunctionCall = "function_call"; // Deprecated
 }
