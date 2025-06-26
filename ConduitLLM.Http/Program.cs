@@ -32,11 +32,15 @@ using Microsoft.EntityFrameworkCore; // Added for EF Core
 using Microsoft.EntityFrameworkCore.Diagnostics; // Added for warning suppression
 using Microsoft.Extensions.Options; // Added for IOptions
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 using Npgsql.EntityFrameworkCore.PostgreSQL; // Added for PostgreSQL
 using StackExchange.Redis; // Added for Redis-based task service
 using Polly;
 using Polly.Extensions.Http;
+using Prometheus; // Added for Prometheus metrics
+using OpenTelemetry.Metrics; // Added for OpenTelemetry metrics
+using OpenTelemetry.Resources; // Added for ResourceBuilder extensions
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -102,6 +106,29 @@ builder.Services.AddScoped<VirtualKeyRateLimitPolicy>();
 builder.Services.AddScoped<ConduitLLM.Configuration.Services.IModelCostService, ConduitLLM.Configuration.Services.ModelCostService>();
 builder.Services.AddScoped<ConduitLLM.Core.Interfaces.ICostCalculationService, ConduitLLM.Core.Services.CostCalculationService>();
 builder.Services.AddMemoryCache();
+
+// Configure OpenTelemetry with metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(meterProviderBuilder =>
+    {
+        meterProviderBuilder
+            .SetResourceBuilder(OpenTelemetry.Resources.ResourceBuilder.CreateDefault()
+                .AddService(serviceName: "ConduitLLM.Http", serviceVersion: "1.0.0"))
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddProcessInstrumentation()
+            .AddPrometheusExporter();
+    });
+
+// Register monitoring services
+builder.Services.AddSingleton<ConduitLLM.Http.Services.SignalRMetricsService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.SignalRMetricsService>(provider => 
+    provider.GetRequiredService<ConduitLLM.Http.Services.SignalRMetricsService>());
+
+builder.Services.AddHostedService<ConduitLLM.Http.Services.InfrastructureMetricsService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.TaskProcessingMetricsService>();
+builder.Services.AddHostedService<ConduitLLM.Http.Services.BusinessMetricsService>();
 
 // 2. Register DbContext Factory (using connection string from environment variables)
 var connectionStringManager = new ConduitLLM.Core.Data.ConnectionStringManager();
@@ -1085,6 +1112,9 @@ app.UseAuthorization();
 // Add Virtual Key authentication (kept for compatibility with non-controller endpoints)
 app.UseVirtualKeyAuthentication();
 
+// Add HTTP metrics middleware for comprehensive request tracking
+app.UseMiddleware<ConduitLLM.Http.Middleware.HttpMetricsMiddleware>();
+
 // Add security middleware (IP filtering, rate limiting, ban checks)
 app.UseCoreApiSecurity();
 
@@ -1121,6 +1151,10 @@ Console.WriteLine("[Conduit API] SignalR ImageGenerationHub registered at /hubs/
 // Map health check endpoints without authentication requirement
 // Health endpoints should be accessible without authentication for monitoring tools
 app.MapSecureConduitHealthChecks(requireAuthorization: false);
+
+// Map Prometheus metrics endpoint for scraping
+app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
+Console.WriteLine("[Conduit API] Prometheus metrics endpoint registered at /metrics");
 
 // Add completions endpoint (legacy)
 app.MapPost("/v1/completions", ([FromServices] ILogger<Program> logger) =>

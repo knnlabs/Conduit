@@ -10,6 +10,10 @@ using MassTransit; // Added for event bus infrastructure
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using Prometheus;
+
 namespace ConduitLLM.Admin;
 
 /// <summary>
@@ -187,6 +191,24 @@ public partial class Program
             return new ConduitLLM.Core.Services.ConnectionPoolWarmer(serviceProvider, logger, "AdminAPI");
         });
 
+        // Configure OpenTelemetry metrics
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(meterProviderBuilder =>
+            {
+                meterProviderBuilder
+                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
+                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddMeter("System.Runtime")
+                    .AddMeter("Microsoft.AspNetCore.Hosting")
+                    .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
+                    .AddPrometheusExporter();
+            });
+
+        // Add monitoring services
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>();
+
         var app = builder.Build();
 
         // Log deprecation warnings and validate Redis URL
@@ -265,6 +287,23 @@ public partial class Program
 
         // Map health check endpoints with authentication requirement
         app.MapSecureConduitHealthChecks(requireAuthorization: true);
+
+        // Map Prometheus metrics endpoint - requires authentication
+        app.UseOpenTelemetryPrometheusScrapingEndpoint(
+            context => context.Request.Path == "/metrics" && 
+                      (context.User.Identity?.IsAuthenticated ?? false)
+        );
+
+        // Alternative: Map metrics endpoint without authentication (for monitoring systems)
+        // app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+        // For the prometheus-net library metrics
+        app.UseHttpMetrics(options =>
+        {
+            options.ReduceStatusCodeCardinality();
+            options.RequestDuration.Enabled = false; // We're using our custom middleware
+            options.RequestCount.Enabled = false; // We're using our custom middleware
+        });
 
         app.Run();
     }

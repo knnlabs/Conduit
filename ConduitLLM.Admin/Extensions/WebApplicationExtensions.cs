@@ -23,6 +23,9 @@ public static class WebApplicationExtensions
         // Add unified security middleware (replaces AdminAuthenticationMiddleware)
         app.UseAdminSecurity();
 
+        // Add HTTP metrics middleware
+        app.UseMiddleware<AdminHttpMetricsMiddleware>();
+
         // Add request tracking middleware
         app.UseMiddleware<AdminRequestTrackingMiddleware>();
 

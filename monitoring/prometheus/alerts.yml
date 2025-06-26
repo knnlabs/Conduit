@@ -1,0 +1,200 @@
+groups:
+  - name: conduit_critical_alerts
+    interval: 30s
+    rules:
+      # API Availability
+      - alert: APIDown
+        expr: up{job="conduit-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: conduit
+        annotations:
+          summary: "Conduit API is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.conduit.im/runbooks/api-down"
+
+      # Database Connection Pool Exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: conduit_database_connections_available < 10
+        for: 2m
+        labels:
+          severity: critical
+          service: conduit
+        annotations:
+          summary: "Database connection pool is nearly exhausted"
+          description: "Only {{ $value }} connections available. Scale up or investigate connection leaks."
+          runbook_url: "https://docs.conduit.im/runbooks/db-connection-pool"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(conduit_http_requests_total{status_code=~"5.."}[5m])) /
+            sum(rate(conduit_http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: conduit
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://docs.conduit.im/runbooks/high-error-rate"
+
+  - name: conduit_warning_alerts
+    interval: 30s
+    rules:
+      # High Response Time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(conduit_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: conduit
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile response time is {{ $value }}s"
+          runbook_url: "https://docs.conduit.im/runbooks/high-response-time"
+
+      # Task Queue Backup
+      - alert: TaskQueueBackup
+        expr: conduit_tasks_queue_depth{task_type=~"image_generation|video_generation"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: conduit
+          task_type: "{{ $labels.task_type }}"
+        annotations:
+          summary: "Task queue backup detected"
+          description: "{{ $labels.task_type }} queue has {{ $value }} pending tasks"
+          runbook_url: "https://docs.conduit.im/runbooks/task-queue-backup"
+
+      # SignalR Connection Limit
+      - alert: SignalRConnectionLimit
+        expr: conduit_signalr_connections_active > 8000
+        for: 5m
+        labels:
+          severity: warning
+          service: conduit
+        annotations:
+          summary: "SignalR connections approaching limit"
+          description: "{{ $value }} active connections (limit: 10,000)"
+          runbook_url: "https://docs.conduit.im/runbooks/signalr-connection-limit"
+
+      # Redis Memory Usage
+      - alert: RedisHighMemoryUsage
+        expr: conduit_redis_memory_used_bytes / (1024 * 1024 * 1024) > 8
+        for: 10m
+        labels:
+          severity: warning
+          service: conduit
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using {{ $value | humanize }}GB of memory"
+          runbook_url: "https://docs.conduit.im/runbooks/redis-memory"
+
+      # Virtual Key Budget Exceeded
+      - alert: VirtualKeyBudgetExceeded
+        expr: conduit_virtualkey_budget_utilization_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: conduit
+          virtual_key_id: "{{ $labels.virtual_key_id }}"
+        annotations:
+          summary: "Virtual key approaching budget limit"
+          description: "Virtual key {{ $labels.virtual_key_id }} is at {{ $value }}% of budget"
+
+      # Provider Health
+      - alert: ProviderUnhealthy
+        expr: conduit_provider_health == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: conduit
+          provider: "{{ $labels.provider }}"
+        annotations:
+          summary: "Provider {{ $labels.provider }} is unhealthy"
+          description: "Provider has been unhealthy for 5 minutes"
+          runbook_url: "https://docs.conduit.im/runbooks/provider-health"
+
+  - name: conduit_info_alerts
+    interval: 1m
+    rules:
+      # Low Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(conduit_redis_cache_hits_total[15m])) /
+            (sum(rate(conduit_redis_cache_hits_total[15m])) + sum(rate(conduit_redis_cache_misses_total[15m])))
+          ) < 0.8
+        for: 15m
+        labels:
+          severity: info
+          service: conduit
+        annotations:
+          summary: "Cache hit rate is low"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+
+      # Webhook Delivery Slow
+      - alert: WebhookDeliverySlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(conduit_webhook_delivery_duration_seconds_bucket[10m])) by (le)
+          ) > 5
+        for: 10m
+        labels:
+          severity: info
+          service: conduit
+        annotations:
+          summary: "Webhook delivery is slow"
+          description: "95th percentile webhook delivery time is {{ $value }}s"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: conduit_process_cpu_usage_percent > 80
+        for: 15m
+        labels:
+          severity: info
+          service: conduit
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Process CPU usage is {{ $value }}%"
+
+  - name: conduit_sla_alerts
+    interval: 1m
+    rules:
+      # API Availability SLA
+      - alert: APIAvailabilitySLA
+        expr: |
+          (
+            sum(increase(conduit_http_requests_total{status_code!~"5.."}[1h])) /
+            sum(increase(conduit_http_requests_total[1h]))
+          ) < 0.999
+        for: 5m
+        labels:
+          severity: warning
+          service: conduit
+          sla: "availability"
+        annotations:
+          summary: "API availability below 99.9% SLA"
+          description: "Current availability: {{ $value | humanizePercentage }}"
+
+      # Response Time SLA
+      - alert: ResponseTimeSLA
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(conduit_http_request_duration_seconds_bucket{endpoint="/v1/chat/completions"}[5m])) by (le)
+          ) > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: conduit
+          sla: "latency"
+        annotations:
+          summary: "Chat completions p99 latency exceeds SLA"
+          description: "99th percentile latency is {{ $value }}s (SLA: 10s)"
