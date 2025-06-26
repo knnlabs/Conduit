@@ -12,7 +12,7 @@ namespace ConduitLLM.Http.Hubs
     /// Unified SignalR hub for tracking all types of async operations in Conduit.
     /// Provides real-time updates for task lifecycle events with virtual key authentication.
     /// </summary>
-    public class TaskHub : BaseVirtualKeyHub, ITaskHub
+    public class TaskHub : SecureHub, ITaskHub
     {
         private readonly IAsyncTaskService _taskService;
         private readonly IHubContext<TaskHub> _hubContext;
@@ -20,8 +20,9 @@ namespace ConduitLLM.Http.Hubs
         public TaskHub(
             ILogger<TaskHub> logger,
             IAsyncTaskService taskService,
-            IHubContext<TaskHub> hubContext)
-            : base(logger)
+            IHubContext<TaskHub> hubContext,
+            IServiceProvider serviceProvider)
+            : base(logger, serviceProvider)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));

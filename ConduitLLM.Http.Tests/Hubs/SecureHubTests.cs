@@ -1,21 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Xunit;
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Http.Hubs;
 
 namespace ConduitLLM.Http.Tests.Hubs
 {
-    public class BaseVirtualKeyHubTests
+    public class SecureHubTests
     {
-        public class TestHub : BaseVirtualKeyHub
+        public class TestHub : SecureHub
         {
-            public TestHub(ILogger<TestHub> logger) : base(logger)
+            public TestHub(ILogger<TestHub> logger, IServiceProvider serviceProvider) : base(logger, serviceProvider)
             {
             }
 
@@ -24,21 +27,24 @@ namespace ConduitLLM.Http.Tests.Hubs
             public new int? GetVirtualKeyId() => base.GetVirtualKeyId();
             public new string GetVirtualKeyName() => base.GetVirtualKeyName();
             public new int RequireVirtualKeyId() => base.RequireVirtualKeyId();
-            public new static int? ConvertToInt(object value) => BaseVirtualKeyHub.ConvertToInt(value);
+            public new static int? ConvertToInt(object value) => SecureHub.ConvertToInt(value);
+            public new Task<bool> CanAccessTaskAsync(string taskId) => base.CanAccessTaskAsync(taskId);
         }
 
         private readonly Mock<ILogger<TestHub>> _loggerMock;
         private readonly TestHub _hub;
         private readonly Mock<HubCallerContext> _contextMock;
         private readonly Mock<IGroupManager> _groupsMock;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
 
-        public BaseVirtualKeyHubTests()
+        public SecureHubTests()
         {
             _loggerMock = new Mock<ILogger<TestHub>>();
             _contextMock = new Mock<HubCallerContext>();
             _groupsMock = new Mock<IGroupManager>();
+            _serviceProviderMock = new Mock<IServiceProvider>();
 
-            _hub = new TestHub(_loggerMock.Object)
+            _hub = new TestHub(_loggerMock.Object, _serviceProviderMock.Object)
             {
                 Context = _contextMock.Object,
                 Groups = _groupsMock.Object
@@ -209,7 +215,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             _contextMock.Setup(x => x.ConnectionId).Returns(connectionId);
 
             var onConnectedCalled = false;
-            var connectedHub = new Mock<BaseVirtualKeyHub>(_loggerMock.Object) { CallBase = true };
+            var connectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProviderMock.Object) { CallBase = true };
             connectedHub.Protected()
                 .Setup<Task>("OnVirtualKeyConnectedAsync", virtualKeyId, virtualKeyName)
                 .Returns(Task.CompletedTask)
@@ -242,7 +248,7 @@ namespace ConduitLLM.Http.Tests.Hubs
             _contextMock.Setup(x => x.Items).Returns(items);
 
             var onDisconnectedCalled = false;
-            var disconnectedHub = new Mock<BaseVirtualKeyHub>(_loggerMock.Object) { CallBase = true };
+            var disconnectedHub = new Mock<SecureHub>(_loggerMock.Object, _serviceProviderMock.Object) { CallBase = true };
             disconnectedHub.Protected()
                 .Setup<Task>("OnVirtualKeyDisconnectedAsync", virtualKeyId, virtualKeyName, exception)
                 .Returns(Task.CompletedTask)
@@ -255,6 +261,193 @@ namespace ConduitLLM.Http.Tests.Hubs
 
             // Assert
             Assert.True(onDisconnectedCalled);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_NoVirtualKeyId_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var items = new Dictionary<object, object?>();
+            _contextMock.Setup(x => x.Items).Returns(items);
+            _contextMock.Setup(x => x.User).Returns((ClaimsPrincipal?)null);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_NoTaskService_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(null);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_TaskNotFound_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            var taskServiceMock = new Mock<IAsyncTaskService>();
+            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AsyncTaskStatus?)null);
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_TaskOwnedByVirtualKey_ReturnsTrue()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                Metadata = new Dictionary<string, object>
+                {
+                    ["virtualKeyId"] = virtualKeyId
+                }
+            };
+            
+            var taskServiceMock = new Mock<IAsyncTaskService>();
+            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(taskStatus);
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_TaskOwnedByDifferentVirtualKey_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var otherVirtualKeyId = 456;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                Metadata = new Dictionary<string, object>
+                {
+                    ["virtualKeyId"] = otherVirtualKeyId
+                }
+            };
+            
+            var taskServiceMock = new Mock<IAsyncTaskService>();
+            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(taskStatus);
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_TaskHasNoVirtualKeyMetadata_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            var taskStatus = new AsyncTaskStatus
+            {
+                TaskId = taskId,
+                Metadata = new Dictionary<string, object>() // No virtualKeyId
+            };
+            
+            var taskServiceMock = new Mock<IAsyncTaskService>();
+            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(taskStatus);
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task CanAccessTaskAsync_ServiceThrowsException_ReturnsFalse()
+        {
+            // Arrange
+            var taskId = "test-task-123";
+            var virtualKeyId = 123;
+            var items = new Dictionary<object, object?>
+            {
+                ["VirtualKeyId"] = virtualKeyId
+            };
+            _contextMock.Setup(x => x.Items).Returns(items);
+            
+            var taskServiceMock = new Mock<IAsyncTaskService>();
+            taskServiceMock.Setup(x => x.GetTaskStatusAsync(taskId, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Service error"));
+            
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IAsyncTaskService))).Returns(taskServiceMock.Object);
+
+            // Act
+            var result = await _hub.CanAccessTaskAsync(taskId);
+
+            // Assert
+            Assert.False(result);
         }
     }
 }

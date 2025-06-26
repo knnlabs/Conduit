@@ -22,6 +22,7 @@ namespace ConduitLLM.Http.Tests.Hubs
         private readonly TaskHub _hub;
         private readonly Mock<HubCallerContext> _contextMock;
         private readonly Mock<IGroupManager> _groupsMock;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
 
         public TaskHubTests()
         {
@@ -32,11 +33,12 @@ namespace ConduitLLM.Http.Tests.Hubs
             _clientProxyMock = new Mock<IClientProxy>();
             _contextMock = new Mock<HubCallerContext>();
             _groupsMock = new Mock<IGroupManager>();
+            _serviceProviderMock = new Mock<IServiceProvider>();
 
             _hubContextMock.Setup(x => x.Clients).Returns(_clientsMock.Object);
             _clientsMock.Setup(x => x.Group(It.IsAny<string>())).Returns(_clientProxyMock.Object);
 
-            _hub = new TaskHub(_loggerMock.Object, _taskServiceMock.Object, _hubContextMock.Object)
+            _hub = new TaskHub(_loggerMock.Object, _taskServiceMock.Object, _hubContextMock.Object, _serviceProviderMock.Object)
             {
                 Context = _contextMock.Object,
                 Groups = _groupsMock.Object

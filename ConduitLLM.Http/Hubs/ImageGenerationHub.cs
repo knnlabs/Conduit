@@ -9,14 +9,15 @@ namespace ConduitLLM.Http.Hubs
     /// <summary>
     /// SignalR hub for real-time image generation status updates
     /// </summary>
-    public class ImageGenerationHub : BaseVirtualKeyHub
+    public class ImageGenerationHub : SecureHub
     {
         private readonly IAsyncTaskService _taskService;
 
         public ImageGenerationHub(
             ILogger<ImageGenerationHub> logger,
-            IAsyncTaskService taskService)
-            : base(logger)
+            IAsyncTaskService taskService,
+            IServiceProvider serviceProvider)
+            : base(logger, serviceProvider)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         }
@@ -30,56 +31,12 @@ namespace ConduitLLM.Http.Hubs
         {
             var virtualKeyId = RequireVirtualKeyId();
             
-            // Verify task ownership
-            var taskStatus = await _taskService.GetTaskStatusAsync(taskId);
-            if (taskStatus == null)
+            // Verify task ownership using the base class method
+            if (!await CanAccessTaskAsync(taskId))
             {
-                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to non-existent task {TaskId}", 
+                Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to unauthorized task {TaskId}", 
                     virtualKeyId, taskId);
-                throw new HubException("Task not found");
-            }
-            
-            // Extract virtual key ID from task metadata
-            if (taskStatus.Metadata != null && taskStatus.Metadata is IDictionary<string, object> metadata)
-            {
-                if (metadata.TryGetValue("virtualKeyId", out var taskVirtualKeyIdObj))
-                {
-                    int taskVirtualKeyId;
-                    if (taskVirtualKeyIdObj is int intValue)
-                    {
-                        taskVirtualKeyId = intValue;
-                    }
-                    else if (taskVirtualKeyIdObj is long longValue)
-                    {
-                        taskVirtualKeyId = (int)longValue;
-                    }
-                    else if (taskVirtualKeyIdObj is string stringValue && int.TryParse(stringValue, out var parsedValue))
-                    {
-                        taskVirtualKeyId = parsedValue;
-                    }
-                    else
-                    {
-                        Logger.LogWarning("Task {TaskId} has invalid virtual key metadata type", taskId);
-                        throw new HubException("Invalid task");
-                    }
-
-                    if (taskVirtualKeyId != virtualKeyId)
-                    {
-                        Logger.LogWarning("Virtual Key {KeyId} attempted to subscribe to task {TaskId} owned by Virtual Key {OwnerKeyId}", 
-                            virtualKeyId, taskId, taskVirtualKeyId);
-                        throw new HubException("Unauthorized access to task");
-                    }
-                }
-                else
-                {
-                    Logger.LogWarning("Task {TaskId} has no virtual key metadata", taskId);
-                    throw new HubException("Invalid task");
-                }
-            }
-            else
-            {
-                Logger.LogWarning("Task {TaskId} has no metadata", taskId);
-                throw new HubException("Invalid task");
+                throw new HubException("Unauthorized access to task");
             }
             
             await Groups.AddToGroupAsync(Context.ConnectionId, $"image-{taskId}");

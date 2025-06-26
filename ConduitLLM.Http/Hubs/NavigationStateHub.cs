@@ -8,51 +8,35 @@ namespace ConduitLLM.Http.Hubs
     /// <summary>
     /// SignalR hub for real-time navigation state updates to replace WebUI polling
     /// </summary>
-    public class NavigationStateHub : Hub
+    public class NavigationStateHub : BaseHub
     {
-        private readonly ILogger<NavigationStateHub> _logger;
-
         /// <summary>
         /// Initializes a new instance of the NavigationStateHub
         /// </summary>
         /// <param name="logger">Logger instance</param>
         public NavigationStateHub(ILogger<NavigationStateHub> logger)
+            : base(logger)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        protected override string GetHubName() => "NavigationStateHub";
+
         /// <summary>
-        /// Called when a client connects to the hub
+        /// Called when a client successfully connects. Override to implement hub-specific logic.
         /// </summary>
-        public override async Task OnConnectedAsync()
+        protected override async Task OnClientConnectedAsync()
         {
-            _logger.LogInformation("Client connected to NavigationStateHub: {ConnectionId}", Context.ConnectionId);
-            
             // Add the client to a group for receiving updates
-            await Groups.AddToGroupAsync(Context.ConnectionId, "navigation-updates");
-            
-            await base.OnConnectedAsync();
+            await AddToGroupAsync("navigation-updates");
         }
 
         /// <summary>
-        /// Called when a client disconnects from the hub
+        /// Called when a client disconnects. Override to implement hub-specific cleanup.
         /// </summary>
-        /// <param name="exception">Exception that caused the disconnect, if any</param>
-        public override async Task OnDisconnectedAsync(Exception? exception)
+        protected override async Task OnClientDisconnectedAsync(Exception? exception)
         {
-            if (exception != null)
-            {
-                _logger.LogWarning(exception, "Client disconnected from NavigationStateHub with error: {ConnectionId}", Context.ConnectionId);
-            }
-            else
-            {
-                _logger.LogInformation("Client disconnected from NavigationStateHub: {ConnectionId}", Context.ConnectionId);
-            }
-            
             // Remove the client from the updates group
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, "navigation-updates");
-            
-            await base.OnDisconnectedAsync(exception);
+            await RemoveFromGroupAsync("navigation-updates");
         }
 
         /// <summary>
@@ -63,12 +47,11 @@ namespace ConduitLLM.Http.Hubs
         {
             if (string.IsNullOrEmpty(modelId))
             {
-                _logger.LogWarning("Client {ConnectionId} attempted to subscribe to empty model ID", Context.ConnectionId);
+                Logger.LogWarning("Client {ConnectionId} attempted to subscribe to empty model ID", Context.ConnectionId);
                 return;
             }
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"model-{modelId}");
-            _logger.LogDebug("Client {ConnectionId} subscribed to model updates: {ModelId}", Context.ConnectionId, modelId);
+            await AddToGroupAsync($"model-{modelId}");
         }
 
         /// <summary>
@@ -82,8 +65,7 @@ namespace ConduitLLM.Http.Hubs
                 return;
             }
 
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"model-{modelId}");
-            _logger.LogDebug("Client {ConnectionId} unsubscribed from model updates: {ModelId}", Context.ConnectionId, modelId);
+            await RemoveFromGroupAsync($"model-{modelId}");
         }
 
         /// <summary>
@@ -91,7 +73,7 @@ namespace ConduitLLM.Http.Hubs
         /// </summary>
         public async Task RequestCurrentState()
         {
-            _logger.LogDebug("Client {ConnectionId} requested current navigation state", Context.ConnectionId);
+            Logger.LogDebug("Client {ConnectionId} requested current navigation state", Context.ConnectionId);
             
             // In a real implementation, this would fetch the current state from services
             // For now, we'll just acknowledge the request
